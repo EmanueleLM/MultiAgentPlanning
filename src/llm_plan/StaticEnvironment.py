@@ -49,7 +49,8 @@ class StaticAgentsVault(StaticEnviroment):
         # Public information available to anyone in the environment
         self.public_information = [
             "There is a vault in the environment.",
-            "The vault is closed. The vault requires a key to be opened.",
+            "The vault is closed.",
+            "The vault requires a key to be opened.",
             "The entrance of the vault is small.",
             "There may be another collaborative agent in the environment.",
         ]
@@ -57,16 +58,12 @@ class StaticAgentsVault(StaticEnviroment):
         # What the agents see and know
         self.knowledge = {
             "Agent A": [
-                "I am a big robot.",
-                "The vault is closed.",
                 "I have the key to open the vault.",
-                "I cannot grab the object inside the vault.",
+                "I am a big robot. I cannot enter the vault to grab the object, even if it is open.",
             ],
             "Agent B": [
-                "I am a small robot",
-                "The vault is closed.",
                 "I do not have the key to open the vault.",
-                "If the vault is open, I can enter and grab the object.",
+                "I am a small robot. If the vault is open, I can enter and grab the object.",
             ],
         }
 

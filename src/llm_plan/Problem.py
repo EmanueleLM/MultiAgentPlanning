@@ -25,29 +25,35 @@ class ProblemStaticAgentsVault(Problem):
         self.static_agent_vault = static_agent_vault
 
         # Collect information from the environment
-        self.agent_A_knowledge = " ".join(self.static_agent_vault.knowledge["Agent A"])
-        self.agent_B_knowledge = " ".join(self.static_agent_vault.knowledge["Agent B"])
-        self.agent_A_observables = " ".join(
-            self.static_agent_vault.observables["Agent A"]
+        self.agent_A_knowledge = (
+            "\n".join(self.static_agent_vault.knowledge["Agent A"]) + "\n"
         )
-        self.agent_B_observables = " ".join(
-            self.static_agent_vault.observables["Agent B"]
+        self.agent_B_knowledge = (
+            "\n".join(self.static_agent_vault.knowledge["Agent B"]) + "\n"
         )
-        self.public_information = " ".join(self.static_agent_vault.public_information)
-        self.goal = self.static_agent_vault.goal
+        self.agent_A_observables = (
+            "\n".join(self.static_agent_vault.observables["Agent A"]) + "\n"
+        )
+        self.agent_B_observables = (
+            "\n".join(self.static_agent_vault.observables["Agent B"]) + "\n"
+        )
+        self.public_information = (
+            "\n".join(self.static_agent_vault.public_information) + "\n"
+        )
+        self.goal = "\n" + self.static_agent_vault.goal + "\n"
 
-        self.system_prompt_template = "You are {agent_name}. You are an expert with PDDL problems (Planning Domain Definition Language)."
+        self.system_prompt_template = "You are an expert with PDDL problems (Planning Domain Definition Language)."
         self.prompt = (
-            "You are {agent_name}. You are in an enviroment with the following public information: {public_information}. \
-You have the following knowledge: {agent_knowledge}. \
-This is the global goal to solve: {goal}. \
-Provide a PDDL plan to solve the task. If you miss some information, do not make assumptions, \
+            "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
+You have the following knowledge:\n{agent_knowledge}\n\
+This is the global goal to solve:{goal}\n\
+Think step by step and and provide a PDDL plan to solve the task.\nIf you miss some information, do not make assumptions,\
 just give a plan that concerns the information you have."
         )
 
         self.system_prompts = {
-            "Agent A": self.system_prompt_template.format(agent_name="Agent A"),
-            "Agent B": self.system_prompt_template.format(agent_name="Agent B"),
+            "Agent A": self.system_prompt_template.format,
+            "Agent B": self.system_prompt_template.format,
         }
 
         self.prompts = {

@@ -1,3 +1,4 @@
+from openai import OpenAI
 from typing import List
 
 
@@ -13,21 +14,53 @@ class LLM:
         Args:
             model: The language model to be used for generating actions.
         """
-        self.model = model
+        self.model_name = model
 
     def generate(
         self,
+        system_prompt: str,
         prompt: str,
-        observations: List[object] = [None],
-    ):
+    ) -> str:
         """
         Generate a reponse given a prompt.
 
         Args:
-            prompt: The prompt.
+            system_prompt (str): The system prompt.
+            prompt (str): The prompt.
 
         Returns:
             The answer of the model.
         """
         # This method should be implemented by subclasses
         raise NotImplementedError("Subclasses should implement this method.")
+
+
+class GPT_Ollama(LLM):
+    def __init__(self):
+        """
+        Initialize the GPT_Ollama model.
+        Instructions can be found here to init the model:
+        https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
+        """
+        super().__init__("gpt-ollama")
+        _url = "https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama"
+
+        try:
+            self.client = OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama",
+            )
+        except Exception as e:
+            print(f"Something went wrong with GPT-Ollama initialization.\n{e}")
+            print(f"Check this url for how to setup Ollama locally: {_url}")
+
+    def generate(self, system_prompt: str, prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model="gpt-oss:20b",
+            messages=[
+                {"role": "system", "content": f"{system_prompt}"},
+                {"role": "user", "content": f"{prompt}"},
+            ],
+        )
+
+        return response.choices[0].message.content

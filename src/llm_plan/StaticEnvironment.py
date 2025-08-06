@@ -28,7 +28,7 @@ class StaticEnviroment(ABC):
 
 
 class StaticAgentsVault(StaticEnviroment):
-    def __init__(self, grid_size: int = 4, visibility: List[int] = [1, 1]):
+    def __init__(self, grid_size: int = 4, visibility: List[int] | int = [1, 1]):
         """A grid where two agents (Agent A and Agent B) are places randomly on the border, with a 'vault' in the middle.
         Agents cannot move: they have to provide a plan given the current observations they have of the environemnt.
 
@@ -41,7 +41,9 @@ class StaticAgentsVault(StaticEnviroment):
         """
         super(StaticAgentsVault, self).__init__()
         self.grid_size = grid_size
-        self.visibility = visibility
+        self.visibility = (
+            [visibility, visibility] if isinstance(visibility, int) else visibility
+        )
 
         # The dictionary to keep track of each agent
         self.agents = {"Agent A": None, "Agent B": None}
@@ -114,7 +116,7 @@ class StaticAgentsVault(StaticEnviroment):
             ],
         }
 
-        def x_sees_y(x_pos, y_pos, r):
+        def x_sees_y(x_pos: List[int], y_pos: List[int], r: float) -> bool:
             """
             Checks if agent at x_pos can see object at y_pos within a given radius r.
             This correctly uses absolute differences for both x and y coordinates.

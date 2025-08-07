@@ -28,17 +28,17 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 - ``eval "$(/opt/homebrew/bin/brew shellenv)"``
 
-- Install GNU Make:
+2. Install GNU Make:
 
-``brew install cmake`` 
+- ``brew install cmake`` 
 
 (If this gives an error of permissions, run this ``sudo chown -R $(whoami):admin /opt/homebrew``)
 
-- Install CMake:
+3. Install CMake:
 
-``brew install cmake``
+- ``brew install cmake``
 
-2. Download FastForward
+4. Download FastForward
 
 - Create create a folder named ``solvers`` inside the root folder of the project
 - cd the folder
@@ -49,13 +49,16 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 - ``./build.py``
 
 Now, you should be able to try some plans.
-You can try
+You can try:
 
 ``./fast-downward.py --alias lama-first ./../../results/StaticAgentsVault/preliminary/pddl-orchestrator/domain.pddl ./../../results/StaticAgentsVault/preliminary/pddl-orchestrator/problem.pddl``
 
 If it works, you should see the correct result in the same folder of ./fast-downward.py, named ``sas_plan`` with this content:
 
 ``(open-vault agent-a vault)``
+
 ``(enter-vault agent-b vault)``
+
 ``(grab-object agent-b obj1 vault)``
+
 ``; cost = 3 (unit cost)``

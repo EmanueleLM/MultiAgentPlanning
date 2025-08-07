@@ -1,4 +1,4 @@
-# Install GPT-OSS-20B via Ollama -- Tested on MacBook Pro M2 Sequoia 15.5 
+### Install GPT-OSS-20B via Ollama -- Tested on MacBook Pro M2 Sequoia 15.5 
 
 1. Install Ollama on your laptop:
 https://ollama.com/download/windows
@@ -8,7 +8,7 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 3. Clone this repo
 
-4. Install dependencies
+4. Install dependencies:
 - cd to the project folder
 - ``python3 -m venv .env``
 - ``source .env/bin/activate``
@@ -16,25 +16,26 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 5. You can play with GPT now and call it via the APIs. Check playground.ipynb and /test
 
-# Install Fast Downward -- Tested on MacBook Pro M2 Sequoia 15.5 
+### Install Fast Downward -- Tested on MacBook Pro M2 Sequoia 15.5 
 
-1. Install the dependencies (C++ compiler, CMake and GNU make)
+1. Install XCode and Homebrew:
 
-- Install XCode and Homebrew:
+- ``xcode-select --install``
 
-``xcode-select --install``
+- ``/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"``
 
-``/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"``
+- ``echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile``
 
-``echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile``
-
-``eval "$(/opt/homebrew/bin/brew shellenv)"``
+- ``eval "$(/opt/homebrew/bin/brew shellenv)"``
 
 - Install GNU Make:
+
 ``brew install cmake`` 
+
 (If this gives an error of permissions, run this ``sudo chown -R $(whoami):admin /opt/homebrew``)
 
-- Install CMake
+- Install CMake:
+
 ``brew install cmake``
 
 2. Download FastForward
@@ -49,13 +50,12 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 Now, you should be able to try some plans.
 You can try
+
 ``./fast-downward.py --alias lama-first ./../../results/StaticAgentsVault/preliminary/pddl-orchestrator/domain.pddl ./../../results/StaticAgentsVault/preliminary/pddl-orchestrator/problem.pddl``
 
 If it works, you should see the correct result in the same folder of ./fast-downward.py, named ``sas_plan`` with this content:
 
-``
-(open-vault agent-a vault)
-(enter-vault agent-b vault)
-(grab-object agent-b obj1 vault)
-; cost = 3 (unit cost)
-``
+``(open-vault agent-a vault)``
+``(enter-vault agent-b vault)``
+``(grab-object agent-b obj1 vault)``
+``; cost = 3 (unit cost)``

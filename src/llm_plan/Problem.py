@@ -1,3 +1,4 @@
+from typing import List
 from abc import ABC, abstractmethod
 from src.llm_plan.StaticEnvironment import StaticAgentsVault
 
@@ -24,30 +25,39 @@ class ProblemStaticAgentsVault(Problem):
         super(ProblemStaticAgentsVault, self).__init__()
         self.static_agent_vault = static_agent_vault
 
-        # Collect information from the environment
-        self.agent_A_knowledge = (
-            "\n".join(self.static_agent_vault.knowledge["Agent A"]) + "\n"
-        )
-        self.agent_B_knowledge = (
-            "\n".join(self.static_agent_vault.knowledge["Agent B"]) + "\n"
-        )
-        self.agent_A_observables = (
-            "\n".join(self.static_agent_vault.observables["Agent A"]) + "\n"
-        )
-        self.agent_B_observables = (
-            "\n".join(self.static_agent_vault.observables["Agent B"]) + "\n"
-        )
-        self.public_information = (
-            "\n".join(self.static_agent_vault.public_information) + "\n"
-        )
-        self.goal = "\n" + self.static_agent_vault.goal + "\n"
+        # Collect information from the environment and format it
+        def format_info(info: List | str) -> str:
+            if isinstance(info, List):
+                return "\n".join(info) + "\n"
+            return str(info) + "\n"
 
-        self.system_prompt_template = "You are an expert with PDDL problems (Planning Domain Definition Language)."
+        self.agent_A_knowledge = format_info(
+            self.static_agent_vault.knowledge["Agent A"]
+        )
+        self.agent_B_knowledge = format_info(
+            self.static_agent_vault.knowledge["Agent B"]
+        )
+        self.agent_A_observables = format_info(
+            self.static_agent_vault.observables["Agent A"]
+        )
+        self.agent_B_observables = format_info(
+            self.static_agent_vault.observables["Agent B"]
+        )
+        self.public_information = format_info(
+            self.static_agent_vault.public_information
+        )
+        self.agent_A_goal = format_info(self.static_agent_vault.goal["Agent A"])
+        self.agent_B_goal = format_info(self.static_agent_vault.goal["Agent B"])
+
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). \
+You always provide a PDDL domain and a PDDL problem file to solve the task."
+        )
         self.prompt = (
             "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
 You have the following knowledge:\n{agent_knowledge}\n\
 This is the global goal to solve:{goal}\n\
-Think step by step and and provide a PDDL plan to solve the task.\nIf you miss some information, do not make assumptions,\
+Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nIf you miss some information, do not make assumptions,\
 just give a plan that concerns the information you have."
         )
 
@@ -61,12 +71,12 @@ just give a plan that concerns the information you have."
                 agent_name="Agent A",
                 public_information=self.public_information,
                 agent_knowledge=self.agent_A_knowledge,
-                goal=self.goal,
+                goal=self.agent_A_goal,
             ),
             "Agent B": self.prompt.format(
                 agent_name="Agent B",
                 public_information=self.public_information,
                 agent_knowledge=self.agent_B_knowledge,
-                goal=self.goal,
+                goal=self.agent_B_goal,
             ),
         }

@@ -1,5 +1,4 @@
 from openai import OpenAI
-from typing import List
 
 
 class LLM:
@@ -42,7 +41,7 @@ class GPT_Ollama(LLM):
         Instructions can be found here to init the model:
         https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
         """
-        super().__init__("gpt-ollama")
+        super().__init__("gpt-oss-20B-ollama")
         _url = "https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama"
 
         try:
@@ -51,16 +50,21 @@ class GPT_Ollama(LLM):
                 api_key="ollama",
             )
         except Exception as e:
-            print(f"Something went wrong with GPT-Ollama initialization.\n{e}")
-            print(f"Check this url for how to setup Ollama locally: {_url}")
+            print(f"Something went wrong with GPT-OSS-Ollama initialization.\n{e}")
+            print(f"Check this url for how to setup GPT-OSS-Ollama locally: {_url}")
 
-    def generate(self, system_prompt: str, prompt: str) -> str:
-        response = self.client.chat.completions.create(
-            model="gpt-oss:20b",
-            messages=[
-                {"role": "system", "content": f"{system_prompt}"},
-                {"role": "user", "content": f"{prompt}"},
-            ],
-        )
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-oss:20b",
+                messages=[
+                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "user", "content": f"{prompt}"},
+                ],
+            )
 
-        return response.choices[0].message.content
+            return response.choices[0].message.content
+
+        except Exception as e:
+            print(f"Error while generating a response: {e}")
+            return str(e)

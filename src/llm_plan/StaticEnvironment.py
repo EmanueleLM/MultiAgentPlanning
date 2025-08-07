@@ -45,16 +45,12 @@ class StaticAgentsVault(StaticEnviroment):
             [visibility, visibility] if isinstance(visibility, int) else visibility
         )
 
-        # The dictionary to keep track of each agent
-        self.agents = {"Agent A": None, "Agent B": None}
-
         # Public information available to anyone in the environment
         self.public_information = [
             "There is a vault in the environment.",
             "The vault is closed.",
             "The vault requires a key to be opened.",
             "The entrance of the vault is small.",
-            "There may be another collaborative agent in the environment.",
         ]
 
         # What the agents see and know
@@ -62,10 +58,12 @@ class StaticAgentsVault(StaticEnviroment):
             "Agent A": [
                 "I have the key to open the vault.",
                 "I am a big robot. I cannot enter the vault to grab the object, even if it is open.",
+                "There may be another collaborative agent in the environment.",
             ],
             "Agent B": [
                 "I do not have the key to open the vault.",
                 "I am a small robot. If the vault is open, I can enter and grab the object.",
+                "There may be another collaborative agent in the environment.",
             ],
         }
 
@@ -79,7 +77,10 @@ class StaticAgentsVault(StaticEnviroment):
         }
 
         # The overall goal
-        self.goal = "Open the vault and grab the object inside."
+        self.goal = {
+            "Agent A": "Open the vault and grab the object inside.",
+            "Agent B": "Open the vault and grab the object inside.",
+        }
 
         self.reset()  # Call reset to initialize the environment
 

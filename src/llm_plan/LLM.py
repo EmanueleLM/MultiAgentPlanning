@@ -15,7 +15,7 @@ class LLM:
         """
         self.model_name = model
 
-    def generate(
+    def generate_sync(
         self,
         system_prompt: str,
         prompt: str,

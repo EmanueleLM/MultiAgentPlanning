@@ -1,0 +1,277 @@
+Prompting gpt-oss-20B-ollama with the following prompt:
+
+==================== PROMPT AGENT A ====================
+
+You are Agent A. You are in an enviroment with the following public information:
+There is a vault in the environment.
+The vault is closed.
+The vault requires a key to be opened.
+The entrance of the vault is small.
+
+You have the following knowledge:
+I am a big robot.
+The vault is closed.
+I have the key to open the vault.
+I cannot grab the object inside the vault.
+Agent B can enter the vault to grab the object.
+
+This is the global goal to solve:Open the vault and grab the object inside.
+
+Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task.
+If you miss some information, do not make assumptions,just give a plan that concerns the information you have.
+
+==================== RESPONSE AGENT A ====================
+
+Below is a minimal set of PDDL files that encode the situation you described and let a planner produce a plan that
+
+
+1. **Agent A** (the big robot that owns the key) opens the vault, and  
+2. **Agent B** (a small robot that can enter the vault) enters and grabs the object.
+
+The plan will therefore be:  
+`(open-vault A) → (enter-vault B) → (grab-object B)`.
+
+---
+
+## Domain file – `vault-domain.pddl`
+
+```pddl
+(define (domain vault-domain)
+  (:requirements :typing)
+
+  ;;;;;;;;;;;;;; Types ;;;;;;;;;;;;;;
+  (:types agent location)
+
+  ;;;;;;;;;;;;;; Predicates ;;;;;;;;;;;;;;
+  (:predicates
+    (vault-closed)                        ; the vault is shut
+    (vault-open)                          ; the vault is open
+    (has-key ?a - agent)                  ; the agent owns the key
+    (big ?a - agent)                      ; big agent – cannot enter
+    (small ?a - agent)                    ; small agent – can enter
+    (at ?a - agent ?l - location)         ; agent’s current location
+    (has-object ?a - agent)               ; agent has grabbed the object
+    (outside)                             ; special location (outside the vault)
+    (vault)                               ; the vault itself
+  )
+
+  ;;;;;;;;;;;;;; Actions ;;;;;;;;;;;;;;
+
+  ; open-vault: any agent that owns the key can open the vault
+  (:action open-vault
+    :parameters (?a - agent)
+    :precondition (and
+                    (vault-closed)
+                    (has-key ?a))
+    :effect (and
+              (not (vault-closed))
+              (vault-open))
+  )
+
+  ; enter-vault: only a small agent can enter a vault that is open
+  (:action enter-vault
+    :parameters (?a - agent)
+    :precondition (and
+                    (vault-open)
+                    (small ?a)
+                    (at ?a outside))
+    :effect (and
+              (at ?a vault)
+              (not (at ?a outside)))
+  )
+
+  ; grab-object: any agent that is inside the vault can grab the object
+  (:action grab-object
+    :parameters (?a - agent)
+    :precondition (and
+                    (at ?a vault))
+    :effect (has-object ?a)
+  )
+)
+```
+
+---
+
+## Problem file – `vault-problem.pddl`
+
+```pddl
+(define (problem vault-problem)
+  (:domain vault-domain)
+
+  ;;;;;;;;;;;;;; Objects ;;;;;;;;;;;;;;
+  (:objects
+    A B   - agent          ; Agent A (big robot), Agent B (small robot)
+    outside - location
+    vault    - location
+  )
+
+  ;;;;;;;;;;;;;; Initial State ;;;;;;;;;;;;;;
+  (:init
+    ; The vault starts closed
+    (vault-closed)
+
+    ; Locations
+    (at A outside)
+    (at B outside)
+
+    ; Size properties
+    (big A)        ; A is too large to enter
+    (small B)      ; B can enter
+
+    ; Only A owns the key
+    (has-key A)
+
+    ; Special marker for the outside
+    (outside)
+
+    ; The vault is a location where agents may be brought in
+    (vault)
+  )
+
+  ;;;;;;;;;;;;;; Goal ;;;;;;;;;;;;;;
+  (:goal (and
+           (vault-open)          ; the vault is open
+           (has-object B)        ; Agent B has grabbed the item
+         ))
+)
+```
+
+---
+
+### How a planner would solve it
+
+A planner that reads these files will discover the following simple plan:
+
+```
+(1) (open-vault A)   ; Agent A opens the vault (now vault-open true, vault-closed false)
+(2) (enter-vault B)  ; Agent B moves inside the vault
+(3) (grab-object B)  ; Agent B grabs the object
+```
+
+After executing step (3) the goal conditions `(vault-open)` and `(has-object B)` are satisfied, so the problem is solved.
+------------------------------
+
+==================== PROMPT AGENT B ====================
+
+You are Agent B. You are in an enviroment with the following public information:
+There is a vault in the environment.
+The vault is closed.
+The vault requires a key to be opened.
+The entrance of the vault is small.
+
+You have the following knowledge:
+I am a small robot
+The vault is closed.
+I do not have the key to open the vault.
+If the vault is open, I can enter and grab the object.
+Agent A has the key to open the vault.
+Agent A cannot enter the vault to grab the object.
+
+This is the global goal to solve:Open the vault and grab the object inside.
+
+Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task.
+If you miss some information, do not make assumptions,just give a plan that concerns the information you have.
+
+==================== RESPONSE AGENT A ====================
+
+**Domain – `vault-domain.pddl`**
+
+```pddl
+(define (domain vault-domain)
+  (:requirements :typing :strips :negative-preconditions)
+
+  (:types agent object location)
+
+  (:predicates
+    (closed ?v - object)                ; the vault is closed
+    (open ?v - object)                  ; the vault is open
+    (has ?a - agent ?o - object)        ; an agent holds an object
+    (small ?a - agent)                  ; the agent is small enough to fit the entrance
+    (small-entrance ?v - object)        ; the vault’s entrance is small
+    (at ?a - agent ?l - location)       ; an agent’s current location
+    (in ?o - object ?l - location)      ; an object is located somewhere
+  )
+
+  ;; -----  Agent‑B gets the key from Agent‑A  -----
+  (:action get-key
+    :parameters (?b - agent ?a - agent)
+    :precondition (and (has ?a key)            ; Agent‑A holds the key
+                       (not (has ?b key)))   ; Agent‑B does not yet hold it
+    :effect (and (has ?b key)
+                 (not (has ?a key))) )
+
+  ;; -----  Agent‑B opens the vault  -----
+  (:action open-vault
+    :parameters (?b - agent ?v - object)
+    :precondition (and (closed ?v)            ; vault is closed
+                       (has ?b key)           ; Agent‑B has the key
+                       (small ?b)             ; Agent‑B is small
+                       (small-entrance ?v))   ; entrance is small
+    :effect (and (open ?v)
+                 (not (closed ?v))) )
+
+  ;; -----  Agent‑B moves into the vault  -----
+  (:action enter-vault
+    :parameters (?b - agent ?v - object)
+    :precondition (and (open ?v)                   ; vault must be open
+                       (at ?b vault-entr)           ; Agent‑B is at the entrance
+                       (not (at ?b vault)))         ; Agent‑B is not yet inside
+    :effect (and (at ?b vault)
+                 (not (at ?b vault-entr))) )
+
+  ;; -----  Agent‑B grabs the object inside the vault  -----
+  (:action grab-object
+    :parameters (?b - agent ?v - object ?o - object)
+    :precondition (and (open ?v)                   ; vault is open
+                       (at ?b vault)                   ; Agent‑B is inside
+                       (in ?o vault))                ; Object is inside
+    :effect (and (has ?b ?o)                       ; Agent‑B holds the object
+                 (not (in ?o vault))) )
+)
+```
+
+---
+
+**Problem – `vault-problem.pddl`**
+
+```pddl
+(define (problem vault-problem)
+  (:domain vault-domain)
+
+  (:objects
+    agent-a   agent-b   - agent
+    vault     key       obj  - object
+    vault-entr            - location
+  )
+
+  (:init
+    ; The vault starts closed
+    (closed vault)
+
+    ; Agent‑A has the key; Agent‑B does not
+    (has agent-a key)
+
+    ; Agent‑B is small enough for the vault’s entrance
+    (small agent-b)
+    (small-entrance vault)
+
+    ; Both agents start at the vault entrance
+    (at agent-a vault-entr)
+    (at agent-b vault-entr)
+
+    ; The key itself is not inside the vault; the object is inside
+    (in obj vault)
+  )
+
+  (:goal
+    (and
+      (open vault)           ; vault must be open
+      (has agent-b obj)      ; Agent‑B must have obtained the object
+    ))
+)
+```
+
+The domain defines the necessary predicates and actions for two agents operating in the environment.  
+The problem file supplies the initial state (the vault is closed, the key is with Agent A, and the object is inside the vault) and the goal (the vault is open and Agent B holds the object). This PDDL combination is sufficient for any planner to synthesize a plan that satisfies the specified global goal.
+------------------------------
+

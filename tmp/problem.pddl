@@ -1,3 +1,4 @@
+
 (define (problem vault-problem)
   (:domain vault-domain)
 

@@ -11,7 +11,7 @@ if __name__ == "__main__":
     model = GPT_Ollama()
 
     # Create tmp and results directories if they do not exist
-    Path("./results/").mkdir(parents=True, exist_ok=True)
+    Path("./results/static-agents-vault/").mkdir(parents=True, exist_ok=True)
     Path("./tmp/").mkdir(parents=True, exist_ok=True)
 
     for experiment in range(n_experiments):
@@ -26,6 +26,7 @@ if __name__ == "__main__":
         agent_responses = {agent: "" for agent in agents}
 
         for agent in agents:
+            print(f"\tPrompting {agent} for the PDDL problem and domain.")
             agent_prompts[agent] = f"{agent} Problem:\n" + problem.prompts[agent] + "\n"
             answer = model.generate_sync(
                 problem.system_prompts[agent], problem.prompts[agent]
@@ -39,39 +40,46 @@ if __name__ == "__main__":
             goal=env.goal["Agent A"],
         )
 
+        print("\tPrompting the Orchestrator for the PDDL problem and domain.")
         final_plan = model.generate_sync(
             problem.system_prompts["Orchestrator"], orchestrator_prompt
         )
 
-        print(final_plan)
-
         # Isolate the pddl problem and domain
+        print("\tPrompting an LLM to clean the PDDL problem and domain.")
         pddl_domain = model.generate_sync(
             "You are a helpful assistant with expertise with PDDL.",
             "Extract the PDDL domain from this text:\n"
             + final_plan
-            + "\n Just give me the problem, nothing else. Avoid any comments or explanations, \
-    and remove any line that contains the ` character (or many of them).",
+            + "\n Just give me the PDDL domain, nothing else. Avoid any comments or explanations, \
+    and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
         )
 
         pddl_problem = model.generate_sync(
             "You are a helpful assistant with expertise with PDDL.",
             "Extract the PDDL problem from this text:\n"
             + final_plan
-            + "\n Just give me the problem, nothing else. Avoid any comments or explanations, \
-    and remove any line that contains the ` character (or many of them).",
+            + "\n Just give me the PDDL problem, nothing else. Avoid any comments or explanations, \
+    and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
         )
 
         # Save the PDDL domain and problem to files
-        with open("./../tmp/domain.pddl", "w") as domain_file:
+        with open(
+            f"./tmp/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl", "w"
+        ) as domain_file:
             domain_file.write(pddl_domain)
 
-        with open("./../tmp/problem.pddl", "w") as problem_file:
+        with open(
+            f"./tmp/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl", "w"
+        ) as problem_file:
             problem_file.write(pddl_problem)
 
         # Invoke fast downward and solve the problem
+        print("\tGenerating the plan.")
         command = f"./solvers/fast-downward-24.06.1/fast-downward.py --alias lama-first --plan-file \
 ./results/static-agents-vault/sas_plan_exp_{experiment}_visibility_{experiment % 2 == 0} \
-./tmp/domain.pddl ./tmp/problem.pddl > ./results/static-agents-vault/log_exp_{experiment}_visibility_{experiment % 2 == 0} 2>&1"
+./tmp/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl ./tmp/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
+> ./results/static-agents-vault/log_exp_{experiment}_visibility_{experiment % 2 == 0} 2>&1"
 
         subprocess.run(command, shell=True)
+        print()

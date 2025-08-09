@@ -54,22 +54,24 @@ class ProblemStaticAgentsVault(Problem):
 You always provide a PDDL domain and a PDDL problem file to solve the task."
         )
         self.prompt = (
-            "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
+            "You are {agent_name}. You are in an environment with the following public information:\n{public_information}\n\
 You have the following knowledge:\n{agent_knowledge}\n\
 This is the global goal to solve:{goal}\n\
-Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nIf you miss some information, do not make assumptions,\
+Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nIf you miss some information, do not make assumptions,\
 just give a plan that concerns the information you have."
         )
-        self.orchestrator_prompt = "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
+        self.orchestrator_prompt = (
+            "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
 You need to orchestrate them to solve the task. Keep in mind that the PDDL they send you may be partial or contain ambiguities.\n\
-A partial PDDL may partially solve a planning problem, but it may require to integrate additional information from the other PDDL to achieve the goal.\n\
+A partial PDDL may partially solve a planning problem, but it may require integrating additional information from the other PDDL to achieve the goal.\n\
 Ambiguities may appear in different forms: for example, two PDDL problems may refer to the same object with different names (e.g., a door for an agent is the entrance for the other).\n\
 Here's the information the first agent has and its PDDL response:\n\
 {pddl_agent_A}\n\
 Here's the information the second agent has and its PDDL response:\n\
 {pddl_agent_B}\n\
 You need to integrate the PDDL responses of the two agents to solve the task. The goal is: {goal}.\n\
-Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task."
+Think step by step and provide a PDDL domain and a PDDL problem file to solve the task."
+        )
 
         self.system_prompts = {
             "Agent A": self.system_prompt_template,

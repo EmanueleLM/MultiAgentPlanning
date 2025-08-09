@@ -1,0 +1,18 @@
+(define (problem vault-integration-problem)
+  (:domain vault-integration)
+  (:objects agentA agentB - agent vault - thing key object - thing outside - location)
+  (:init
+    (has-key agentA)
+    (not (has-key agentB))
+    (size-big agentA)
+    (size-small agentB)
+    (at agentA outside)
+    (at agentB outside)
+    (object-in vault)
+    (not (open vault))
+  )
+  (:goal (and
+            (open vault)
+            (has-object agentB)
+          ))
+)

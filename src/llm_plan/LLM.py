@@ -77,3 +77,33 @@ class GPT_Ollama(LLM):
         except Exception as e:
             print(f"Error while generating a response: {e}")
             return str(e)
+
+
+class GPT_4o(LLM):
+    def __init__(self):
+        """Initialize GPT-4o model."""
+        super().__init__("gpt-4o")
+        _api_key_path = r"../openai_key.txt"
+
+        with open(_api_key_path, "r") as f:
+            key = f.read()
+        try:
+            self.client = OpenAI(api_key=key)
+        except Exception as e:
+            print(f"Something went wrong with GPT-4o initialization:\n{e}")
+
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "user", "content": f"{prompt}"},
+                ],
+            )
+
+            return response.choices[0].message.content
+
+        except Exception as e:
+            print(f"Error while generating a response: {e}")
+            return str(e)

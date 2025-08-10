@@ -52,7 +52,7 @@ if __name__ == "__main__":
             "Extract the PDDL domain from this text:\n"
             + final_plan
             + "\n Just give me the PDDL domain, nothing else. Avoid any comments or explanations, \
-    and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
+and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
         )
 
         pddl_problem = model.generate_sync(
@@ -60,7 +60,7 @@ if __name__ == "__main__":
             "Extract the PDDL problem from this text:\n"
             + final_plan
             + "\n Just give me the PDDL problem, nothing else. Avoid any comments or explanations, \
-    and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
+and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
         )
 
         # Save the PDDL domain and problem to files

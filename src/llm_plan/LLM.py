@@ -35,14 +35,23 @@ class LLM:
 
 
 class GPT_Ollama(LLM):
-    def __init__(self):
+    def __init__(self, reasoning: str | None = "High"):
         """
         Initialize the GPT_Ollama model.
         Instructions can be found here to init the model:
         https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
+
+        Args:
+            reasoning (str): The reasoning level for the model, default is "High". "Medium" and "Low" are also options.
+            Keep in mind that the reasoning level is passed via the system prompt.
         """
         super().__init__("gpt-oss-20B-ollama")
         _url = "https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama"
+        self.reasoning = (
+            "Reasoning: " + reasoning + "\n"
+            if reasoning in ["High", "Medium", "Low"]
+            else ""
+        ).lower()
 
         try:
             self.client = OpenAI(
@@ -58,7 +67,7 @@ class GPT_Ollama(LLM):
             response = self.client.chat.completions.create(
                 model="gpt-oss:20b",
                 messages=[
-                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "system", "content": f"{self.reasoning}{system_prompt}"},
                     {"role": "user", "content": f"{prompt}"},
                 ],
             )

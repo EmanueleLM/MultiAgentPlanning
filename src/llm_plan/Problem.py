@@ -49,18 +49,17 @@ class ProblemStaticAgentsVault(Problem):
         self.agent_A_goal = format_info(self.static_agent_vault.goal["Agent A"])
         self.agent_B_goal = format_info(self.static_agent_vault.goal["Agent B"])
 
-        self.system_prompt_template = "You are an expert with PDDL problems (Planning Domain Definition Language). \
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). \
 You always provide a PDDL domain and a PDDL problem file to solve the task."
-<<<<<<< HEAD
         )
         self.prompt = (
-            "You are {agent_name}. You are in an environment with the following public information:\n{public_information}\n\
-=======
-        self.prompt = "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
+            "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
 You have the following knowledge:\n{agent_knowledge}\n\
 This is the global goal to solve:{goal}\n\
 Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nIf you miss some information, do not make assumptions,\
 just give a plan that concerns the information you have."
+        )
         self.orchestrator_prompt = "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
 You need to orchestrate them to solve the task. Keep in mind that the PDDL they send you may be partial or contain ambiguities.\n\
 A partial PDDL may partially solve a planning problem, but it may require to integrate additional information from the other PDDL to achieve the goal.\n\
@@ -113,38 +112,36 @@ class ProblemStaticBlocksworld(Problem):
             return str(info) + "\n"
 
         self.agent_A_knowledge = format_info(
-            self.static_agent_vault.knowledge["Agent A"]
+            self.static_blocksworld.knowledge["Agent A"]
         )
         self.agent_B_knowledge = format_info(
-            self.static_agent_vault.knowledge["Agent B"]
+            self.static_blocksworld.knowledge["Agent B"]
         )
         self.agent_A_observables = format_info(
-            self.static_agent_vault.observables["Agent A"]
+            self.static_blocksworld.observables["Agent A"]
         )
         self.agent_B_observables = format_info(
-            self.static_agent_vault.observables["Agent B"]
+            self.static_blocksworld.observables["Agent B"]
         )
         self.public_information = format_info(
-            self.static_agent_vault.public_information
+            self.static_blocksworld.public_information
         )
-        self.agent_A_goal = format_info(self.static_agent_vault.goal["Agent A"])
-        self.agent_B_goal = format_info(self.static_agent_vault.goal["Agent B"])
+        self.agent_A_goal = format_info(self.static_blocksworld.goal["Agent A"])
+        self.agent_B_goal = format_info(self.static_blocksworld.goal["Agent B"])
 
-        self.system_prompt_template = "You are an expert with PDDL problems (Planning Domain Definition Language). \
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). \
 You always provide a PDDL domain and a PDDL problem file to solve the task."
-        self.prompt = "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
->>>>>>> 7f20335 ([2] Blocks World)
+        )
+        self.prompt = (
+            "You are {agent_name}. You are in an enviroment with the following public information:\n{public_information}\n\
 You have the following knowledge:\n{agent_knowledge}\n\
 This is the global goal to solve:{goal}\n\
 Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nIf you miss some information, do not make assumptions,\
 just give a plan that concerns the information you have."
-<<<<<<< HEAD
         )
         self.orchestrator_prompt = (
             "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
-=======
-        self.orchestrator_prompt = "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
->>>>>>> 7f20335 ([2] Blocks World)
 You need to orchestrate them to solve the task. Keep in mind that the PDDL they send you may be partial or contain ambiguities.\n\
 A partial PDDL may partially solve a planning problem, but it may require integrating additional information from the other PDDL to achieve the goal.\n\
 Ambiguities may appear in different forms: for example, two PDDL problems may refer to the same object with different names (e.g., a door for an agent is the entrance for the other).\n\

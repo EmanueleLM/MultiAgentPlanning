@@ -11,8 +11,12 @@ if __name__ == "__main__":
     model = GPT_Ollama()
 
     # Create tmp and results directories if they do not exist
-    Path("./results/static-agents-vault/").mkdir(parents=True, exist_ok=True)
-    Path("./tmp/").mkdir(parents=True, exist_ok=True)
+    base_path, offset_path = (
+        "./results/static-agents-vault/",
+        ["plans/", "log/", "pddl/"],
+    )
+    for path in offset_path:
+        Path(base_path + path).mkdir(parents=True, exist_ok=True)
 
     for experiment in range(n_experiments):
         print(f"Running experiment {experiment + 1} out of {n_experiments}")
@@ -65,20 +69,23 @@ and remove any line that contains the ` character (or many of them). In other wo
 
         # Save the PDDL domain and problem to files
         with open(
-            f"./tmp/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl", "w"
+            f"{base_path}pddl/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
+            "w",
         ) as domain_file:
             domain_file.write(pddl_domain)
 
         with open(
-            f"./tmp/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl", "w"
+            f"{base_path}pddl/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
+            "w",
         ) as problem_file:
             problem_file.write(pddl_problem)
 
         # Invoke fast downward and solve the problem
         print("\tGenerating the plan.")
         command = f"./solvers/fast-downward-24.06.1/fast-downward.py --alias lama-first --plan-file \
-./results/static-agents-vault/sas_plan_exp_{experiment}_visibility_{experiment % 2 == 0} \
-./tmp/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl ./tmp/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
+{base_path}plans/sas_plan_exp_{experiment}_visibility_{experiment % 2 == 0} \
+{base_path}pddl/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
+{base_path}pddl/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
 > ./results/static-agents-vault/log_exp_{experiment}_visibility_{experiment % 2 == 0} 2>&1"
 
         subprocess.run(command, shell=True)

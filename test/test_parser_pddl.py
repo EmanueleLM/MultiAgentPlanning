@@ -6,7 +6,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from src.llm_plan.Parser import PDDLParser
+from llm_plan.Parser import PDDLParser
 
 
 def test_parser_pddl():

@@ -1,3 +1,10 @@
+### How to run test
+
+1. Install the dependencies, including pytest.
+
+2. Run:
+- ``pytest``
+
 ### Install GPT-OSS-20B via Ollama -- Tested on MacBook Pro M2 Sequoia 15.5 
 
 1. Install Ollama on your laptop:

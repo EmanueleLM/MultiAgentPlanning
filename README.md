@@ -1,4 +1,4 @@
-### How to run test
+### How to run tests
 
 1. Install the dependencies, including pytest.
 

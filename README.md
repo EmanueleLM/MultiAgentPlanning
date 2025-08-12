@@ -69,3 +69,28 @@ If it works, you should see the correct result in the same folder of ./fast-down
 ``(grab-object agent-b obj1 vault)``
 
 ``; cost = 3 (unit cost)``
+
+### Install Universal Planning Validator (similar to VAL) -- Tested on MacBook Pro M2 Sequoia 15.5 
+
+1. Clone this repo inside ``./solvers``:
+
+- ``git clone https://github.com/aig-upf/universal-planning-validator.git``
+
+2. Install scons on Mac
+
+- ``brew install scons``
+
+3. Install uVAL:
+
+- ``cd ./universal-plan-validator``
+- ``./build.sh``
+
+4. Execute the tests:
+
+- ``./tests/test.bin``
+
+5. Usage:
+- ``./solvers/universal-planning-validator/validator/validate.bin -c domain_file.pddl probelm_file.pddl plan_file``
+
+
+

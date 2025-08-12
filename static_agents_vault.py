@@ -58,11 +58,11 @@ if __name__ == "__main__":
         )
 
         # Save the final plan to a file
-        with open("./tmp/final_plan_in_text.pddl", "w") as f:
+        with open("./tmp/final_plan_in_text.txt", "w") as f:
             f.write(final_plan)
 
         # Isolate the pddl problem and domain
-        pddl_domain, pddl_problem = parser.parse("./test/data/sample_pddl.txt")
+        pddl_domain, pddl_problem = parser.parse("./tmp/final_plan_in_text.txt")
 
         # Save the PDDL domain and problem to files
         with open(

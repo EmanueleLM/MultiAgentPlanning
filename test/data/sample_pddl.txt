@@ -1,0 +1,220 @@
+Below is a **single PDDL domain** that contains the two agents in the same world.  
+The domain uses two separate hands (`hand‑empty‑a` / `hand‑empty‑b`) and two
+separate *holding* predicates (`holding‑a` / `holding‑b`).  
+Blocks that are vowels can only be moved by agent *A*; blocks that are
+consonants can only be moved by agent *B*.  The world objects
+(`on`, `on-table`, `clear`, `vowel`, `consonant`) are shared by both agents.
+
+```pddl
+;; ==============================================================
+;; Domain:  dual‑agent‑block‑world
+;; ==============================================================
+
+(define (domain dual-agent-block-world)
+  (:requirements :typing :strips)
+
+  (:types block)
+
+  (:predicates
+    ;; world predicates
+    (on          ?b1 ?b2 - block)   ; ?b1 is on top of ?b2
+    (on-table    ?b - block)        ; ?b is directly on the table
+    (clear       ?b - block)        ; nothing on top of ?b
+    (vowel       ?b - block)        ; block is a vowel
+    (consonant   ?b - block)        ; block is a consonant
+
+    ;; agent A
+    (hand-empty-a)
+    (holding-a   ?b - block)
+
+    ;; agent B
+    (hand-empty-b)
+    (holding-b   ?b - block)
+  )
+
+  ;; ---------- Agent A  -----------------------------------------
+
+  (:action pick-up-a
+    :parameters (?b - block)
+    :precondition (and
+                    (hand-empty-a)
+                    (on-table ?b)
+                    (clear ?b)
+                    (vowel ?b)
+                    (not (holding-b ?b)))          ; other agent must not hold
+    :effect (and
+              (not (hand-empty-a))
+              (not (on-table ?b))
+              (not (clear ?b))
+              (holding-a ?b)) )
+
+  (:action unstack-a
+    :parameters (?b ?b2 - block)
+    :precondition (and
+                    (hand-empty-a)
+                    (on ?b ?b2)
+                    (clear ?b)
+                    (vowel ?b)
+                    (not (holding-b ?b)))
+    :effect (and
+              (not (hand-empty-a))
+              (not (on ?b ?b2))
+              (clear ?b2)
+              (holding-a ?b)
+              (not (clear ?b))) )
+
+  (:action put-down-a
+    :parameters (?b - block)
+    :precondition (and
+                    (holding-a ?b)
+                    (vowel ?b))
+    :effect (and
+              (hand-empty-a)
+              (not (holding-a ?b))
+              (on-table ?b)
+              (clear ?b)) )
+
+  (:action stack-a
+    :parameters (?b ?s - block)
+    :precondition (and
+                    (holding-a ?b)
+                    (clear ?s)
+                    (vowel ?b)
+                    (not (holding-b ?b)))
+    :effect (and
+              (hand-empty-a)
+              (not (holding-a ?b))
+              (on ?b ?s)
+              (clear ?b)
+              (not (clear ?s))) )
+
+  ;; ---------- Agent B  -----------------------------------------
+
+  (:action pick-up-b
+    :parameters (?b - block)
+    :precondition (and
+                    (hand-empty-b)
+                    (on-table ?b)
+                    (clear ?b)
+                    (consonant ?b)
+                    (not (holding-a ?b)))          ; other agent must not hold
+    :effect (and
+              (not (hand-empty-b))
+              (not (on-table ?b))
+              (not (clear ?b))
+              (holding-b ?b)) )
+
+  (:action unstack-b
+    :parameters (?b ?b2 - block)
+    :precondition (and
+                    (hand-empty-b)
+                    (on ?b ?b2)
+                    (clear ?b)
+                    (consonant ?b)
+                    (not (holding-a ?b)))
+    :effect (and
+              (not (hand-empty-b))
+              (not (on ?b ?b2))
+              (clear ?b2)
+              (holding-b ?b)
+              (not (clear ?b))) )
+
+  (:action put-down-b
+    :parameters (?b - block)
+    :precondition (and
+                    (holding-b ?b)
+                    (consonant ?b))
+    :effect (and
+              (hand-empty-b)
+              (not (holding-b ?b))
+              (on-table ?b)
+              (clear ?b)) )
+
+  (:action stack-b
+    :parameters (?b ?s - block)
+    :precondition (and
+                    (holding-b ?b)
+                    (clear ?s)
+                    (consonant ?b)
+                    (not (holding-a ?b)))
+    :effect (and
+              (hand-empty-b)
+              (not (holding-b ?b))
+              (on ?b ?s)
+              (clear ?b)
+              (not (clear ?s))) )
+)
+```
+
+---
+
+## Problem file
+
+```pddl
+;; ==============================================================
+;; Problem:  dual‑agent‑block‑world‑task
+;; ==============================================================
+
+(define (problem dual-agent-block-world-task)
+  (:domain dual-agent-block-world)
+
+  (:objects
+    I Q W E A R   - block
+  )
+
+  (:init
+    ;; all blocks start on the table and clear
+    (on-table I)   (clear I)   (vowel I)
+    (on-table Q)   (clear Q)   (consonant Q)
+    (on-table W)   (clear W)   (consonant W)
+    (on-table E)   (clear E)   (vowel E)
+    (on-table A)   (clear A)   (vowel A)
+    (on-table R)   (clear R)   (consonant R)
+
+    ;; the two agents start with empty hands
+    (hand-empty-a)
+    (hand-empty-b)
+
+    ;; no block is initially held by either agent
+    ;; (holding‑a …) and (holding‑b …) are absent
+  )
+
+  (:goal (and
+            ;; R stays on the table and clear
+            (on-table R)
+            (clear R)
+
+            ;; I stays on the table, E on top of it and clear
+            (on-table I)
+            (on E I)
+            (clear E)
+
+            ;; W stays on the table, Q on top of it and clear
+            (on-table W)
+            (on W Q)
+            (clear Q)
+
+            ;; A stays on the table and clear
+            (on-table A)
+            (clear A)
+  ))
+)
+```
+
+### How the solution is obtained
+
+1. **Agent A (vowels)**  
+   * Pick‑up `E` from the table – `hand‑empty‑a` → `holding‑a E`, `E` no longer clear.  
+   * Stack `E` on `I` – `on E I`, `E` becomes clear.  
+   * Put‑down `E` is not needed because `E` is already on `I`.  
+   * All other vowel blocks (`I`, `A`) are never moved.
+
+2. **Agent B (consonants)**  
+   * Pick‑up `Q` from the table – `holding‑b Q`.  
+   * Stack `Q` on `W` – `on Q W`, `Q` becomes clear.  
+   * Put‑down `Q` is not needed; it stays on `W`.  
+   * `R` remains untouched on the table.
+
+Because the two agents operate on mutually exclusive sets of blocks
+(vowels vs. consonants) and keep separate hands, the required goal is
+achieved without any conflict.

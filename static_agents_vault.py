@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 from src.llm_plan.LLM import GPT_Ollama
+from src.llm_plan.Parser import PDDLParser
 from src.llm_plan.Problem import ProblemStaticAgentsVault
 from src.llm_plan.StaticEnvironment import StaticAgentsVault
 
@@ -15,6 +16,7 @@ if __name__ == "__main__":
     n_experiments = 30
     grid_size = 4  # Default grid size
     model = GPT_Ollama()
+    parser = PDDLParser()
 
     # Create tmp and results directories if they do not exist
     base_path, offset_path = (
@@ -55,36 +57,25 @@ if __name__ == "__main__":
             problem.system_prompts["Orchestrator"], orchestrator_prompt
         )
 
-        # Isolate the pddl problem and domain
-        print("\tPrompting an LLM to clean the PDDL problem and domain.")
-        pddl_domain = model.generate_sync(
-            "You are a helpful assistant with expertise with PDDL.",
-            "Extract the PDDL domain from this text:\n"
-            + final_plan
-            + "\n Just give me the PDDL domain, nothing else. Avoid any comments or explanations, \
-and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
-        )
+        # Save the final plan to a file
+        with open("./tmp/final_plan_in_text.pddl", "w") as f:
+            f.write(final_plan)
 
-        pddl_problem = model.generate_sync(
-            "You are a helpful assistant with expertise with PDDL.",
-            "Extract the PDDL problem from this text:\n"
-            + final_plan
-            + "\n Just give me the PDDL problem, nothing else. Avoid any comments or explanations, \
-and remove any line that contains the ` character (or many of them). In other words, give me something that compiles with PDDL syntax.",
-        )
+        # Isolate the pddl problem and domain
+        pddl_domain, pddl_problem = parser.parse("./test/data/sample_pddl.txt")
 
         # Save the PDDL domain and problem to files
         with open(
             f"{base_path}pddl/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
             "w",
         ) as domain_file:
-            domain_file.write(pddl_domain)
+            domain_file.write(str(pddl_domain))
 
         with open(
             f"{base_path}pddl/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
             "w",
         ) as problem_file:
-            problem_file.write(pddl_problem)
+            problem_file.write(str(pddl_problem))
 
         # Invoke fast downward and solve the problem
         print("\tGenerating the plan.")

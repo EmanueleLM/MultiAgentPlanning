@@ -1,3 +1,9 @@
+"""
+A few notes about this implementation:
+- It is sub-optimal, as it does not query the LLMs asynchronously.
+- It calls an LLM to find the PDDL domain and problem, which may be substituted by a more robust and less expensive method in the future.
+"""
+
 import subprocess
 from pathlib import Path
 

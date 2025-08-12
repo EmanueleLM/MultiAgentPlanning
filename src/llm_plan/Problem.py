@@ -144,7 +144,7 @@ just give a plan that concerns the information you have."
             "There are two agents in an environment. You will receive their PDDL domains and problems.\n\
 You need to orchestrate them to solve the task. Keep in mind that the PDDL they send you may be partial or contain ambiguities.\n\
 A partial PDDL may partially solve a planning problem, but it may require integrating additional information from the other PDDL to achieve the goal.\n\
-Ambiguities may appear in different forms: for example, two PDDL problems may refer to the same object with different names (e.g., a door for an agent is the entrance for the other).\n\
+Ambiguities may appear in different forms: for example, two PDDL problems may refer to the same object with different names (e.g., a block for an agent is a cube for the other).\n\
 Here's the information the first agent has and its PDDL response:\n\
 {pddl_agent_A}\n\
 Here's the information the second agent has and its PDDL response:\n\

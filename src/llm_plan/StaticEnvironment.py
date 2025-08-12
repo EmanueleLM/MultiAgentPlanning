@@ -262,9 +262,9 @@ class StaticBlocksworld(StaticEnviroment):
         }
 
         # reset() will populate goal and add the initial block arrangement to public information - these are different across instances
-        self.goal = {}
-        self._blocks_init = []
-        self._blocks_goal = []
+        self.goal: dict = {}
+        self._blocks_init: List[List[str]] = []
+        self._blocks_goal: List[List[str]] = []
 
         self.reset()
 

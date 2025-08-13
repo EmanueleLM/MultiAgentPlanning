@@ -1,6 +1,10 @@
 from typing import List
 from abc import ABC, abstractmethod
-from src.llm_plan.StaticEnvironment import StaticAgentsVault, StaticBlocksworld
+from src.llm_plan.StaticEnvironment import (
+    StaticAgentsVault,
+    StaticBlocksworld,
+    StaticThreeSwitchesRoom,
+)
 
 
 class Problem(ABC):
@@ -173,4 +177,85 @@ Think step by step and provide a PDDL domain and a PDDL problem file to solve th
                 goal=self.agent_B_goal,
             ),
             "Orchestrator": self.orchestrator_prompt,  # Need to format this! So probably rethink the code structure
+        }
+
+
+class ProblemStaticThreeSwitchesRoom(Problem):
+    def __init__(self, static_three_switches_room: StaticThreeSwitchesRoom):
+        """
+        Problem definition for the Three Switches Room environment.
+        """
+        super().__init__()
+        self.env = static_three_switches_room
+
+        def fmt(info: List | str) -> str:
+            return (
+                "\n".join(info) + "\n" if isinstance(info, List) else str(info) + "\n"
+            )
+
+        self.agent_R_knowledge = fmt(self.env.knowledge["Agent R"])
+        self.agent_G_knowledge = fmt(self.env.knowledge["Agent G"])
+        self.agent_B_knowledge = fmt(self.env.knowledge["Agent B"])
+
+        self.public_information = fmt(self.env.public_information)
+        self.agent_R_goal = fmt(self.env.goal["Agent R"])
+        self.agent_G_goal = fmt(self.env.goal["Agent G"])
+        self.agent_B_goal = fmt(self.env.goal["Agent B"])
+
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). "
+            "You always provide a PDDL domain and a PDDL problem file to solve the task."
+        )
+
+        self.prompt_template = (
+            "You are {agent_name}. You are in an environment with the following public information:\n{public_information}\n"
+            "You have the following knowledge:\n{agent_knowledge}\n"
+            "This is the global goal to solve:\n{goal}\n"
+            "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\n"
+            "If you miss some information, do not make assumptions—just give a plan that concerns the information you have."
+        )
+
+        self.orchestrator_prompt = (
+            "There are three agents in an environment. You will receive their PDDL domains and problems.\n"
+            "You need to orchestrate them to solve the task. Keep in mind that the PDDL they send you may be partial or contain ambiguities.\n"
+            "The goal is for all three switches to be pressed simultaneously to unlock the door.\n"
+            "A partial PDDL may partially solve a planning problem, but may require integrating additional information from other PDDLs.\n"
+            "Ambiguities may appear, e.g., objects referred to with different names.\n"
+            "Here's the information the first agent has and its PDDL response:\n"
+            "{pddl_agent_R}\n"
+            "Here's the information the second agent has and its PDDL response:\n"
+            "{pddl_agent_G}\n"
+            "Here's the information the third agent has and its PDDL response:\n"
+            "{pddl_agent_B}\n"
+            "You need to integrate the PDDL responses of the three agents to solve the task. The goal is: {goal}.\n"
+            "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task."
+        )
+
+        self.system_prompts = {
+            "Agent R": self.system_prompt_template,
+            "Agent G": self.system_prompt_template,
+            "Agent B": self.system_prompt_template,
+            "Orchestrator": self.system_prompt_template,
+        }
+
+        self.prompts = {
+            "Agent R": self.prompt_template.format(
+                agent_name="Agent R",
+                public_information=self.public_information,
+                agent_knowledge=self.agent_R_knowledge,
+                goal=self.agent_R_goal,
+            ),
+            "Agent G": self.prompt_template.format(
+                agent_name="Agent G",
+                public_information=self.public_information,
+                agent_knowledge=self.agent_G_knowledge,
+                goal=self.agent_G_goal,
+            ),
+            "Agent B": self.prompt_template.format(
+                agent_name="Agent B",
+                public_information=self.public_information,
+                agent_knowledge=self.agent_B_knowledge,
+                goal=self.agent_B_goal,
+            ),
+            "Orchestrator": self.orchestrator_prompt,
         }

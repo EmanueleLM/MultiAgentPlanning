@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
+import json
+import platform
 import subprocess
 import sys
-import platform
-from pathlib import Path
-import json
 import urllib.request
 import zipfile
+from pathlib import Path
 
 # Directories
 PROJECT_ROOT = Path(__file__).resolve().parent
-SRC_DIR = PROJECT_ROOT / "src" / "package_name"
+SRC_DIR = PROJECT_ROOT / "src" / "llm_plan"
 SOLVERS_DIR = PROJECT_ROOT / "solvers"
 CONFIG_FILE = SRC_DIR / "config.json"
 

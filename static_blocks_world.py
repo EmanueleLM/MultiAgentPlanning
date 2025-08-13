@@ -8,28 +8,27 @@ from pathlib import Path
 
 from src.llm_plan.LLM import GPT_Ollama
 from src.llm_plan.Parser import PDDLParser
-from src.llm_plan.Problem import ProblemStaticAgentsVault
-from src.llm_plan.StaticEnvironment import StaticAgentsVault
+from src.llm_plan.Problem import ProblemStaticBlocksworld
+from src.llm_plan.StaticEnvironment import StaticBlocksworld
 
 if __name__ == "__main__":
     n_experiments = 30
-    grid_size = 4  # Default grid size
     model = GPT_Ollama()
     parser = PDDLParser()
 
     # Create tmp and results directories if they do not exist
     base_path, offset_path = (
-        "./results/static-agents-vault/",
-        ["plans/", "log/", "pddl/"],
+        "./results/static-blocks-world/",
+        ["plans/", "log/", "pddl/", "tmp/"],
     )
     for path in offset_path:
         Path(base_path + path).mkdir(parents=True, exist_ok=True)
 
     for experiment in range(n_experiments):
         print(f"Running experiment {experiment + 1} out of {n_experiments}")
-        visibility = grid_size if experiment % 2 == 0 else 0  # Alternate visibility
-        env = StaticAgentsVault(grid_size=grid_size, visibility=visibility)
-        problem = ProblemStaticAgentsVault(env)
+        easy_hard = True if experiment % 2 == 0 else False  # Alternate easy-hard
+        env = StaticBlocksworld(num_vowels=3, num_consonants=3, easy=easy_hard)
+        problem = ProblemStaticBlocksworld(env)
 
         # Generate the PDDL plans for each agent
         agents = ["Agent A", "Agent B"]
@@ -51,7 +50,6 @@ if __name__ == "__main__":
             goal=env.goal["Agent A"],
         )
 
-        print("\tPrompting the Orchestrator for the PDDL problem and domain.")
         final_plan = model.generate_sync(
             problem.system_prompts["Orchestrator"], orchestrator_prompt
         )
@@ -67,13 +65,13 @@ if __name__ == "__main__":
 
         # Save the PDDL domain and problem to files
         with open(
-            f"{base_path}pddl/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
+            f"{base_path}pddl/domain_exp_{experiment}_easy_{experiment % 2 == 0}.pddl",
             "w",
         ) as domain_file:
             domain_file.write(str(pddl_domain))
 
         with open(
-            f"{base_path}pddl/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl",
+            f"{base_path}pddl/problem_exp_{experiment}_easy_{experiment % 2 == 0}.pddl",
             "w",
         ) as problem_file:
             problem_file.write(str(pddl_problem))
@@ -82,10 +80,10 @@ if __name__ == "__main__":
         print("\tGenerating the plan.")
         command = (
             f"./solvers/fast-downward-24.06.1/fast-downward.py --alias lama-first --plan-file \
-{base_path}plans/sas_plan_exp_{experiment}_visibility_{experiment % 2 == 0} \
-{base_path}pddl/domain_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
-{base_path}pddl/problem_exp_{experiment}_visibility_{experiment % 2 == 0}.pddl \
-> {base_path}log/log_exp_{experiment}_visibility_{experiment % 2 == 0} 2>&1"
+{base_path}plans/sas_plan_exp_{experiment}_easy_{experiment % 2 == 0} \
+{base_path}pddl/domain_exp_{experiment}_easy_{experiment % 2 == 0}.pddl \
+{base_path}pddl/problem_exp_{experiment}_easy_{experiment % 2 == 0}.pddl \
+> {base_path}log/log_exp_{experiment}_easy_{experiment % 2 == 0} 2>&1"
         )
 
         subprocess.run(command, shell=True)

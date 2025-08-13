@@ -80,7 +80,7 @@ If it works, you should see the correct result in the same folder of ./fast-down
 
 - ``brew install scons``
 
-3. Install uVAL:
+3. Install Universal Planning Validator:
 
 - ``cd ./universal-plan-validator``
 - ``./build.sh``
@@ -91,6 +91,3 @@ If it works, you should see the correct result in the same folder of ./fast-down
 
 5. Usage:
 - ``./solvers/universal-planning-validator/validator/validate.bin -c domain_file.pddl probelm_file.pddl plan_file``
-
-
-

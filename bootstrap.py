@@ -4,13 +4,25 @@ import sys
 import platform
 from pathlib import Path
 import json
+import urllib.request
+import zipfile
 
+# Directories
 PROJECT_ROOT = Path(__file__).resolve().parent
-PACKAGE_DIR = PROJECT_ROOT / "my_project"
-CONFIG_FILE = PACKAGE_DIR / "config.json"
+SRC_DIR = PROJECT_ROOT / "src" / "package_name"
+SOLVERS_DIR = PROJECT_ROOT / "solvers"
+CONFIG_FILE = SRC_DIR / "config.json"
+
+# URLs for solver binaries by OS (could be .zip or direct binary)
+SOLVER_URLS = {
+    "Windows": "https://example.com/solver_windows.zip",
+    "Linux": "https://example.com/solver_linux.zip",
+    "Darwin": "https://example.com/solver_mac.zip",
+}
 
 
 def install_requirements():
+    """Install dependencies for development."""
     req_file = PROJECT_ROOT / "requirements.txt"
     if req_file.exists():
         print(f"Installing dependencies from {req_file}...")
@@ -19,41 +31,55 @@ def install_requirements():
         )
 
 
-def detect_solver():
-    """Detect correct solver binary for current OS."""
+def detect_os():
+    """Return current OS string."""
     system = platform.system()
-    solvers_dir = PACKAGE_DIR / "solvers"
-
-    if system == "Windows":
-        solver_file = solvers_dir / "solver_windows.exe"
-    elif system == "Linux":
-        solver_file = solvers_dir / "solver_linux.bin"
-    elif system == "Darwin":  # macOS
-        solver_file = solvers_dir / "solver_mac.bin"
-    else:
+    if system not in SOLVER_URLS:
         raise RuntimeError(f"Unsupported OS: {system}")
+    return system
 
-    if not solver_file.exists():
-        raise FileNotFoundError(f"Solver binary not found: {solver_file}")
+
+def download_and_extract_solver(system):
+    """Download the solver for the detected OS and extract it."""
+    SOLVERS_DIR.mkdir(exist_ok=True)
+    url = SOLVER_URLS[system]
+    zip_path = SOLVERS_DIR / "solver_download.zip"
+
+    print(f"Downloading solver for {system} from {url}...")
+    urllib.request.urlretrieve(url, zip_path)
+
+    print(f"Extracting solver to {SOLVERS_DIR}...")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(SOLVERS_DIR)
+
+    zip_path.unlink()  # Remove the zip after extraction
+
+    # Find binary inside solvers directory
+    solver_file = next(SOLVERS_DIR.glob("solver_*"), None)
+    if not solver_file:
+        raise FileNotFoundError("Solver binary not found after extraction")
 
     return solver_file
 
 
-def write_config():
-    solver_file = detect_solver()
+def write_config(solver_file):
+    """Write solver location to config.json."""
     config_data = {
         "solver_binary": str(solver_file),
-        "solvers_path": str(solver_file.parent),
+        "solvers_path": str(SOLVERS_DIR),
         "project_root": str(PROJECT_ROOT),
     }
     CONFIG_FILE.write_text(json.dumps(config_data, indent=4))
     print(f"Config written to {CONFIG_FILE}")
 
 
-def bootstrap(dev_mode: bool = True):
+def bootstrap(dev_mode=True):
+    """Run full bootstrap."""
     if dev_mode:
         install_requirements()
-    write_config()
+    system = detect_os()
+    solver_file = download_and_extract_solver(system)
+    write_config(solver_file)
 
 
 if __name__ == "__main__":

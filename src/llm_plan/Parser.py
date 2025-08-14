@@ -191,3 +191,71 @@ class PDDLParser(Parser):
         with open(path, "r", encoding="utf-8") as fh:
             txt = fh.read()
         return self.extract_first_domain_and_problem(txt)
+
+
+class PythonCodeParser(Parser):
+    """
+    Parser to extract Python code blocks from natural-language text
+    by detecting typical Python syntax.
+    """
+
+    def __init__(self):
+        super().__init__()
+        # Regex patterns for common Python code
+        self.patterns = [
+            r"^\s*def\s+\w+\s*\(.*\)\s*:",  # function
+            r"^\s*class\s+\w+\s*(\(.*\))?\s*:",  # class
+            r"^\s*(if|elif|else|for|while|try|except|with)\b.*:",  # control flow
+            r"^\s*(import|from)\s+[\w\.]+",  # imports
+            r"^\s*\w+\s*=\s*.+",  # assignment
+            r"^\s*return\s+.*",  # return statement
+        ]
+        self.compiled_patterns = [re.compile(p) for p in self.patterns]
+
+    def _is_python_line(self, line: str) -> bool:
+        """Return True if the line matches Python syntax heuristics."""
+        line = line.rstrip()
+        if not line:
+            return False
+        for pat in self.compiled_patterns:
+            if pat.match(line):
+                return True
+        return False
+
+    def extract_code_blocks(self, text: str, all_matches: bool = False) -> T.List[str]:
+        """
+        Extract Python code blocks based on syntax heuristics.
+
+        Args:
+            text: Input text
+            all_matches: If True, return all code blocks; else only first.
+
+        Returns:
+            List of Python code strings.
+        """
+        code_blocks: T.List[str] = []
+        lines = text.splitlines()
+        current_block: T.List[str] = []
+
+        for line in lines:
+            if self._is_python_line(line):
+                current_block.append(line)
+            else:
+                if current_block:
+                    code_blocks.append("\n".join(current_block))
+                    if not all_matches:
+                        return code_blocks
+                    current_block = []
+
+        if current_block:
+            code_blocks.append("\n".join(current_block))
+
+        return code_blocks
+
+    def extract_first_code_block(self, text: str) -> T.Optional[str]:
+        blocks = self.extract_code_blocks(text, all_matches=False)
+        return blocks[0] if blocks else None
+
+    def parse(self, text: str) -> T.Optional[str]:
+        """Parse Python code directly from a string."""
+        return self.extract_first_code_block(text)

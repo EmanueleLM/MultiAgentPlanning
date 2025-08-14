@@ -1,0 +1,145 @@
+Below is a complete, self‑contained PDDL formulation for the block‑world episode you described.  
+The **domain** encodes the classic Pick‑Up/Put‑Down/Stack/Unstack actions that satisfy the “only one block can be moved” restriction.  
+The **problem** file specifies the exact initial configuration (B at the bottom, A on B, D on A, C on D, E on C) and the goal that *every* block is on the table and clear.
+
+> **NOTE** – No assumptions beyond the given information are made.  
+> The plan that an optimal planner would produce is:
+> ```
+> 1.  (unstack E C)
+> 2.  (put-down E)
+> 3.  (unstack C D)
+> 4.  (put-down C)
+> 5.  (unstack D A)
+> 6.  (put-down D)
+> 7.  (unstack A B)
+> 8.  (put-down A)
+> ```
+> After step 8 all five blocks are on the table and clear, and block B is automatically clear as the topmost block on its own stack.
+
+---
+
+## Domain file – `blockworld-domain.pddl`
+
+```pddl
+(define (domain blockworld)
+  (:requirements :typing :strips)
+
+  (:types block)
+
+  (:predicates
+    (clear ?x - block)            ; block has nothing on top
+    (on ?x - block ?y - block)    ; block x is directly on block y
+    (on-table ?x - block)         ; block x is directly on the table
+    (handempty)                   ; the hand is free
+    (holding ?x - block)          ; the hand holds block x
+  )
+
+  (:action pick-up
+    :parameters (?x - block)
+    :precondition (and
+                    (handempty)
+                    (clear ?x)
+                    (on-table ?x))
+    :effect (and
+              (not (handempty))
+              (not (clear ?x))
+              (not (on-table ?x))
+              (holding ?x))
+  )
+
+  (:action put-down
+    :parameters (?x - block)
+    :precondition (holding ?x)
+    :effect (and
+              (handempty)
+              (clear ?x)
+              (on-table ?x)
+              (not (holding ?x)))
+  )
+
+  (:action unstack
+    :parameters (?x - block ?y - block)
+    :precondition (and
+                    (handempty)
+                    (clear ?x)
+                    (on ?x ?y))
+    :effect (and
+              (holding ?x)
+              (clear ?y)
+              (not (clear ?x))
+              (not (on ?x ?y)))
+  )
+
+  (:action stack
+    :parameters (?x - block ?y - block)
+    :precondition (and
+                    (holding ?x)
+                    (clear ?y))
+    :effect (and
+              (not (holding ?x))
+              (handempty)
+              (clear ?x)
+              (on ?x ?y)
+              (not (clear ?y)))
+  )
+)
+```
+
+---
+
+## Problem file – `blockworld-problem.pddl`
+
+```pddl
+(define (problem blockworld-problem)
+  (:domain blockworld)
+
+  (:objects
+    A B C D E - block
+  )
+
+  (:init
+    ;; Initial stack: B bottom, A on B, D on A, C on D, E on C
+    (on-table B)
+    (on A B)
+    (on D A)
+    (on C D)
+    (on E C)
+
+    (clear E)      ; only E is clear initially
+
+    (handempty)    ; hand is free
+  )
+
+  (:goal
+    (and
+      ;; Every block must be on the table
+      (on-table A)
+      (on-table B)
+      (on-table C)
+      (on-table D)
+      (on-table E)
+
+      ;; Every block must be clear
+      (clear A)
+      (clear B)
+      (clear C)
+      (clear D)
+      (clear E)
+    )
+  )
+)
+```
+
+---
+
+### How to run
+
+1. **Save** the domain to `blockworld-domain.pddl`.
+2. **Save** the problem to `blockworld-problem.pddl`.
+3. Feed both files into your favourite PDDL planner (e.g., FastDownward, FF, or Optic), e.g.:
+
+```
+fast-downward blockworld-domain.pddl blockworld-problem.pddl --search depth-first
+```
+
+The planner will return a plan that, when executed, reaches the goal described above.

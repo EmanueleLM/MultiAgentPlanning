@@ -1,0 +1,133 @@
+Below is a straightforward **blocks‑world** domain and a problem instance that encodes exactly the situation you described.  
+No extra assumptions are made – every fact that is not explicitly true cannot be inferred.
+
+---
+
+## 1.  Domain file  – `blocks-domain.pddl`
+
+```pddl
+(define (domain blocks)
+  (:requirements :typing :strips)
+
+  (:types block)
+
+  ;; ------------------------------------------------------------------
+  ;; Predicates
+  ;; ------------------------------------------------------------------
+  (:predicates
+      (clear ?b - block)                 ; nothing on top of ?b
+      (ontable ?b - block)               ; ?b is directly on the table
+      (on ?b1 - block ?b2 - block)       ; ?b1 is directly on top of ?b2
+  )
+
+  ;; ------------------------------------------------------------------
+  ;; Action: Pick‑up a block from the table when it is clear
+  ;; ------------------------------------------------------------------
+  (:action pickup
+      :parameters (?b - block)
+      :precondition (and (clear ?b)
+                         (ontable ?b))
+      :effect (and (not (clear ?b))
+                   (not (ontable ?b)))
+  )
+
+  ;; ------------------------------------------------------------------
+  ;; Action: Put‑down a block on the table
+  ;; ------------------------------------------------------------------
+  (:action putdown
+      :parameters (?b - block)
+      :precondition (clear ?b)                 ; we are already holding ?b
+      :effect (and (clear ?b)
+                   (ontable ?b))
+  )
+
+  ;; ------------------------------------------------------------------
+  ;; Action: Stack a held block onto a clear block
+  ;; ------------------------------------------------------------------
+  (:action stack
+      :parameters (?b1 - block ?b2 - block)
+      :precondition (and (clear ?b1)
+                         (clear ?b2))
+      :effect (and (clear ?b1)
+                   (clear ?b2)
+                   (on ?b1 ?b2)
+                   (not (ontable ?b1)))
+  )
+
+  ;; ------------------------------------------------------------------
+  ;; Action: Unstack a held block that is on top of another block
+  ;; ------------------------------------------------------------------
+  (:action unstack
+      :parameters (?b1 - block ?b2 - block)
+      :precondition (and (clear ?b1)
+                         (on ?b1 ?b2))
+      :effect (and (clear ?b1)
+                   (clear ?b2)
+                   (not (on ?b1 ?b2))
+                   (not (ontable ?b1)))
+  )
+)
+```
+
+### Why these actions?
+
+* **pickup** – picks a clear block that is on the table.  
+* **putdown** – returns a held block to the table.  
+* **stack** – puts a held block onto a clear block.  
+* **unstack** – removes a clear block that is on top of another block (the same effect as `pickup` when the block is on a block).
+
+The `clear` predicate guarantees the “no‑block‑on‑top” rule, while `ontable` keeps track of blocks resting directly on the table.
+
+---
+
+## 2.  Problem file  – `blocks-problem.pddl`
+
+```pddl
+(define (problem blocks-problem)
+  (:domain blocks)
+
+  (:objects
+      E A C B D - block
+  )
+
+  (:init
+      ;;  -- the initial arrangement ------------------------------------
+      (ontable E)               ; E is on the table
+      (on A E)                  ; A is on top of E
+      (on C A)                  ; C is on top of A
+      (clear C)                 ; C has nothing on top
+      (ontable D)               ; D is on the table
+      (on B D)                  ; B is on top of D
+      (clear B)                 ; B has nothing on top
+
+      ;;  -- automatically true for other blocks (they are not clear/ontable) --
+      ;;    (clear E), (ontable A), (ontable C), (clear D), (ontable B)
+      ;;    are *not* in the initial state because they are occupied.
+  )
+
+  (:goal
+      (and
+          (ontable E)
+          (on C E)
+          (clear C)
+
+          (ontable B)
+          (on D B)
+          (clear D)
+
+          (ontable A)
+          (clear A)
+      )
+  )
+)
+```
+
+### Notes on the initial state
+
+* `clear` is only asserted for the blocks that are *actually* clear in the start (C and B).  
+* `ontable` is only asserted for the blocks that initially rest on the table (E and D).  
+* The other facts (e.g., `clear E`, `ontable A`) are **not** assumed; a planner must derive them if needed.
+
+---
+
+With these files you can load any PDDL planner (e.g., FastDownward, LAMA, or MetricFF) and let it produce a plan that rearranges the blocks from the initial configuration to the goal stated. The planner will only use the four actions defined in the domain and will never assume extra facts that are not present in the problem instance.

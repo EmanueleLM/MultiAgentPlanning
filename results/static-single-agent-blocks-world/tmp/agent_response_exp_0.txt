@@ -1,0 +1,129 @@
+Below are two PDDL files that describe exactly the situation you gave and a plan that satisfies the goal.
+
+---
+
+## 1. Domain – `blocks_domain.pddl`
+
+```lisp
+(define (domain blocks)
+  (:requirements :typing)
+  (:types block)
+
+  ;;; Predicates ------------------------------------------------------------
+  (:predicates
+    (ontable ?x   - block)          ; block x is directly on the table
+    (on      ?x ?y   - block)      ; block x is stacked on block y
+    (clear   ?x   - block)          ; nothing is on top of block x
+    (handempty)                     ; the agent’s hand is free
+    (holding ?x   - block)          ; the agent is holding block x
+  )
+
+  ;;; Actions ---------------------------------------------------------------
+  ;; Pick up a clear block that is on the table
+  (:action pickup
+    :parameters (?x - block)
+    :precondition (and
+                    (handempty)
+                    (ontable ?x)
+                    (clear ?x))
+    :effect (and
+              (holding ?x)
+              (not (handempty))
+              (not (ontable ?x))
+              (not (clear ?x))) )
+
+  ;; Put a held block onto the table
+  (:action putdown
+    :parameters (?x - block)
+    :precondition (holding ?x)
+    :effect (and
+              (ontable ?x)
+              (clear ?x)
+              (handempty)
+              (not (holding ?x))) )
+
+  ;; Move a held block to on top of another clear block
+  (:action stack
+    :parameters (?x ?y - block)
+    :precondition (and
+                    (holding ?x)
+                    (clear ?y))
+    :effect (and
+              (on ?x ?y)
+              (clear ?x)
+              (handempty)
+              (not (holding ?x))
+              (not (clear ?y))) )
+
+  ;; Unstack a held-clear block (the block x is on top of y)
+  (:action unstack
+    :parameters (?x ?y - block)
+    :precondition (and
+                    (handempty)
+                    (on ?x ?y)
+                    (clear ?x))
+    :effect (and
+              (holding ?x)
+              (clear ?y)
+              (not (on ?x ?y))
+              (not (clear ?x))) )
+)
+```
+
+---
+
+## 2. Problem – `blocks_problem.pddl`
+
+```lisp
+(define (problem blocks-problem)
+  (:domain blocks)
+
+  (:objects A B C D E - block)
+
+  ;;; Initial state ---------------------------------------------------------
+  (:init
+    ;  All blocks are on the table and clear
+    (ontable A) (clear A)
+    (ontable B) (clear B)
+    (ontable C) (clear C)
+    (ontable D) (clear D)
+    (ontable E) (clear E)
+
+    ;  The agent’s hand is free
+    (handempty)
+  )
+
+  ;;; Goal ----------------------------------------------------------
+  (:goal (and
+           ; D on table, E on top of D and clear
+           (ontable D)
+           (on E D)
+           (clear E)
+
+           ; C on table and clear
+           (ontable C)
+           (clear C)
+
+           ; A on table
+           (ontable A)
+
+           ; B on top of A and clear
+           (on B A)
+           (clear B)
+         ))
+)
+```
+
+---
+
+## 3. One optimal plan (shown for clarity; any planner will generate similar results)
+
+```
+1. (pickup B)          ; hand holds B
+2. (stack B A)         ; B is now on top of A, hand empty
+
+3. (pickup E)          ; hand holds E
+4. (stack E D)         ; E is now on top of D, hand empty
+```
+
+This set of actions satisfies all the conjuncts of the goal while respecting every pre‑condition and effect rule. The plan contains only two moves per block, which is minimal for this instance.

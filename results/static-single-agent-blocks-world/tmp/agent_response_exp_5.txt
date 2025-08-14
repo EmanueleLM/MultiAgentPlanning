@@ -1,0 +1,112 @@
+Below is a completely self‑contained definition of a **Blocks–World** domain and a problem that formalises the situation you described.
+
+The domain contains two primitive “move” actions:
+
+* `move-to-table` – moves a clear block that is supported by another clear block onto the table.  
+* `move-to-block` – moves a clear block that is supported by some block onto another clear block.
+
+The pre‑ and post‑conditions express exactly what is allowed in your description (only one block may be moved at a time and a block may only be moved when it is clear).
+
+--------------------------------------------------------------------
+### Domain – `blocks.pddl`
+
+```pddl
+(define (domain blocks)
+  (:requirements :typing)
+  (:types block - object)
+
+  ;; ----- Predicates ----------------------------------------------------
+  ;;  ont    – the block is on the table
+  ;;  clear  – the block has no other block on top of it
+  ;;  on     – block A is directly on block B
+  (:predicates
+    (ontable  ?b - block)
+    (clear    ?b - block)
+    (on       ?b1 - block ?b2 - block)
+  )
+
+  ;; ----- Move the block onto the table --------------------------------
+  (:action move-to-table
+    :parameters (?b ?s - block)
+    :precondition (and
+                    (clear ?b)               ; block to move is clear
+                    (clear ?s)               ; the block that currently supports ?b must also be clear
+                    (on     ?b ?s)           ; ?b is supported by ?s
+                    (not (ontable ?b))       ; ?b must not already be on the table
+                  )
+    :effect (and
+              (ontable ?b)                 ; ?b is now on the table
+              (not (on ?b ?s))             ; old support removed
+              (clear ?s)                   ; old support becomes clear
+              (not (clear ?b))             ; ?b is no longer clear
+            )
+  )
+
+  ;; ----- Move the block onto another clear block -----------------------
+  (:action move-to-block
+    :parameters (?b ?t ?s - block)
+    :precondition (and
+                    (clear ?b)                   ; block to move is clear
+                    (clear ?t)                   ; target block is clear
+                    (on     ?b ?s)               ; ?b is supported by ?s
+                    (not (ontable ?b))           ; ?b must not already be on the table
+                    (not (eq ?b ?t))             ; cannot put a block on top of itself
+                  )
+    :effect (and
+              (on     ?b ?t)                 ; ?b is now on the target block
+              (not (on   ?b ?s))             ; old support removed
+              (clear  ?s)                    ; old support becomes clear
+              (not (clear ?b))               ; ?b is no longer clear
+              (not (clear ?t))               ; target block is no longer clear
+            )
+  )
+)
+```
+
+--------------------------------------------------------------------
+### Problem – `blocks-problem.pddl`
+
+```pddl
+(define (problem blocks-1)
+  (:domain blocks)
+
+  ;; ---- Objects -----------------------------------------------------------
+  (:objects
+    E  A  D  B  C - block
+  )
+
+  ;; ---- Initial situation ------------------------------------------------
+  (:init
+    ;; The original stack:  E -> A -> D -> B -> C
+    (ontable  E)          ; E is on the table
+    (on       A E)        ; A on top of E
+    (on       D A)        ; D on top of A
+    (on       B D)        ; B on top of D
+    (on       C B)        ; C on top of B
+    (clear    C)          ; only the top block is clear
+  )
+
+  ;; ---- Goal situation ----------------------------------------------------
+  (:goal (and
+           (ontable  E)          ; E still on the table
+           (on       C E)        ; C is moved on top of E
+           (clear    C)          ; C remains clear
+           (ontable  D)          ; D is put on a new stack on the table
+           (on       A D)        ; A on top of D
+           (on       B A)        ; B on top of A
+           (clear    B)          ; B becomes clear
+         ))
+)
+```
+
+--------------------------------------------------------------------
+### How the PDDL files solve the task
+
+* **Initial state** represents the single stack *E‑A‑D‑B‑C* with only `C` clear.  
+* The **goal** describes two separate stacks:
+  * `E` – `C` (with `C` clear)
+  * `D` – `A` – `B` (with `B` clear)
+
+A planner that reads the two files will generate a sequence of the two primitive actions  
+(`move-to-table` and `move-to-block`) that transforms the initial state into the goal state.  
+The plan is guaranteed to be valid because every action respects the rules you specified – only clear blocks are moved, and they are moved onto the table or onto another clear block.

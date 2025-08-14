@@ -1,9 +1,13 @@
 from typing import List
 from abc import ABC, abstractmethod
+
+# For the agentic framework, this line should be
+# from src.llm_plan.AgenticFramework import *
 from src.llm_plan.StaticEnvironment import (
     StaticAgentsVault,
     StaticBlocksworld,
     StaticThreeSwitchesRoom,
+    StaticSingleAgentBlocksworld,
 )
 
 
@@ -259,3 +263,41 @@ class ProblemStaticThreeSwitchesRoom(Problem):
             ),
             "Orchestrator": self.orchestrator_prompt,
         }
+
+
+class ProblemStaticSingleAgentBlocksworld(Problem):
+    def __init__(self, static_single_blocksworld: StaticSingleAgentBlocksworld):
+        super().__init__()
+        self.env = static_single_blocksworld
+
+        def fmt(info: List | str) -> str:
+            return (
+                "\n".join(info) + "\n" if isinstance(info, List) else str(info) + "\n"
+            )
+
+        self.agent_knowledge = fmt(self.env.knowledge["Agent"])
+        self.public_information = fmt(self.env.public_information)
+        self.agent_goal = fmt(self.env.goal["Agent"])
+
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). "
+            "You always provide a PDDL domain and a PDDL problem file to solve the task."
+        )
+
+        self.prompt = (
+            "You are the only agent in an environment with the following public information:\n"
+            "{public_information}\n"
+            "You have the following knowledge:\n"
+            "{agent_knowledge}\n"
+            "This is the global goal to solve:\n"
+            "{goal}\n"
+            "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\n"
+            "If you miss some information, do not make assumptions—just give a plan that concerns the information you have."
+        ).format(
+            public_information=self.public_information,
+            agent_knowledge=self.agent_knowledge,
+            goal=self.agent_goal,
+        )
+
+        self.system_prompts = {"Agent": self.system_prompt_template}
+        self.prompts = {"Agent": self.prompt}

@@ -9,7 +9,7 @@ from pathlib import Path
 from src.llm_plan.LLM import GPT_Ollama
 from src.llm_plan.Parser import PDDLParser
 from src.llm_plan.Problem import ProblemStaticAgentsVault
-from src.llm_plan.StaticEnvironment import StaticAgentsVault
+from src.llm_plan.Environment import StaticAgentsVault
 
 if __name__ == "__main__":
     n_experiments = 30

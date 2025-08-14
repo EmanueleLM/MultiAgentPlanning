@@ -11,7 +11,7 @@ from pathlib import Path
 from src.llm_plan.LLM import GPT_Ollama
 from src.llm_plan.Parser import PDDLParser
 from src.llm_plan.Problem import ProblemStaticSingleAgentBlocksworld
-from src.llm_plan.StaticEnvironment import StaticSingleAgentBlocksworld
+from src.llm_plan.Environment import StaticSingleAgentBlocksworld
 
 if __name__ == "__main__":
     n_experiments = 30

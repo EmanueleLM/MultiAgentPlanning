@@ -1,21 +1,15 @@
 from typing import List
 from abc import ABC, abstractmethod
 
-# For the agentic framework, this line should be
-# from src.llm_plan.AgenticFramework import *
-from src.llm_plan.StaticEnvironment import (
-    StaticAgentsVault,
-    StaticBlocksworld,
-    StaticThreeSwitchesRoom,
-    StaticSingleAgentBlocksworld,
-)
+# This is not a good import practice, but we require it for the agentic framework
+from src.llm_plan.AgenticFramework import *
 
 
 class Problem(ABC):
     """
     Abstract base class for problems.
     Classes that extend Problem should define the specific problem to be solved.
-    TODO: add eventual methods that are mandatory for the subclasses.
+    TODO: add methods that are mandatory for any subclasses.
     """
 
     pass

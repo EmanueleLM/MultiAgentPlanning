@@ -15,7 +15,7 @@ from pathlib import Path
 from src.llm_plan.LLM import GPT_Ollama
 from src.llm_plan.Parser import PDDLParser
 from src.llm_plan.Problem import ProblemStaticThreeSwitchesRoom
-from src.llm_plan.StaticEnvironment import StaticThreeSwitchesRoom
+from src.llm_plan.Environment import StaticThreeSwitchesRoom
 
 if __name__ == "__main__":
     n_experiments = 30

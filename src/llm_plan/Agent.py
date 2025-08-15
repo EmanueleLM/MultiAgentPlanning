@@ -81,18 +81,18 @@ wraps a problem defined in Problem.py: \n\n{environemt_py}\n\n"
             "problem": (
                 "{history}\n{prefix}\
 Extend the code in Problem.py with a class named {problem_name} to solve the task I gave you at the beginning.\n\
-Just return the Python class, not the entire code for Problem.py."
+Think step by step and return and return the Python class I request, not the entire code for Problem.py."
             ),
             "environment": (
                 "{history}\n{prefix}\
 Extend the code in Environment.py with with a class named {environemt_name} to solve the task I gave you at the beginning.\n\
-Just return the Python class, not the entire code for Environment.py."
+Think step by step and return and return the Python class I request, not the entire code for Environment.py."
             ),
             "experiment": (
                 "{history}\n{prefix}\
 Here's a Python file that defines how to run the experiments once {problem_name} and {environemt_name} are defined\
 :\n{experiment_py}.\n\n\
-Write the code to run similar experiments as per that file."
+Think step by step and return the code to run similar experiments as per the file I gave you."
             ),
         }
 

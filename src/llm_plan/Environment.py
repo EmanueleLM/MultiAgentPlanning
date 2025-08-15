@@ -1,3 +1,4 @@
+import copy
 import itertools
 import random
 from abc import ABC, abstractmethod
@@ -591,128 +592,99 @@ class StaticSingleAgentBlocksworld(StaticEnviroment):
         print("\n".join(rows[::-1]))
 
 
-# class EnvironmentSingleAgentBlocksWorld(StaticEnviroment):
-#     def __init__(
-#         self,
-#         blocks: list[str],
-#         initial_state: list[list[str]] = None,
-#         goal_state: list[list[str]] = None,
-#     ):
-#         """
-#         Simple single-agent Blocks World environment.
-#         The agent can only move a block if it does not have other blocks on top.
+class StaticPackageDelivery(StaticEnviroment):
+    """
+    A single-agent, static environment where a truck must deliver a package
+    from a post office to a house. The environment itself does not change,
+    but it presents a planning problem to the agent.
+    """
 
-#         Args:
-#             blocks (list[str]): Unique labels for blocks.
-#             initial_state (list[list[str]], optional): Starting stacks (bottom at index 0).
-#             goal_state (list[list[str]], optional): Goal stacks (bottom at index 0).
-#         """
-#         super().__init__()
-#         if len(set(blocks)) != len(blocks):
-#             raise ValueError("Block labels must be unique.")
+    def __init__(self):
+        """
+        Initializes the Package Delivery environment.
+        """
+        super().__init__()
+        self.locations = ["post-office", "house"]
 
-#         self.blocks = blocks
-#         self.initial_state = (
-#             initial_state
-#             if initial_state is not None
-#             else self._generate_random_state()
-#         )
-#         self.goal_state = (
-#             goal_state if goal_state is not None else self._generate_random_state()
-#         )
+        # Public information available to the agent
+        self.public_information = [
+            "A single package, initially at a post office, needs to be transported to a house using one truck.",
+            "The truck can move between the post office and the house.",
+        ]
 
-#         while self.goal_state == self.initial_state:
-#             self.goal_state = self._generate_random_state()
+        # Base knowledge for the agent, not including the initial state
+        self._base_knowledge = {
+            "Agent": [
+                "I am the truck driver.",
+                "To load the package, the truck must be at the same location as the package.",
+                "To unload the package, it must first be inside the truck.",
+                "The package cannot move on its own; it must be transported by the truck.",
+            ]
+        }
 
-#     def _generate_random_state(self) -> list[list[str]]:
-#         """Generate a random arrangement of blocks."""
-#         stacks = []
-#         remaining = self.blocks.copy()
-#         random.shuffle(remaining)
-#         # Decide number of stacks (at least 1, at most len(blocks))
-#         num_stacks = random.randint(1, len(self.blocks))
-#         for i in range(num_stacks):
-#             stacks.append([remaining.pop()])
-#         while remaining:
-#             choice = random.choice(stacks)
-#             choice.append(remaining.pop())
-#         return stacks
+        # The agent's specific knowledge will be fully populated by reset()
+        self.knowledge = {}
 
-#     def reset(self):
-#         """Reset to a new random initial and goal state."""
-#         self.initial_state = self._generate_random_state()
-#         self.goal_state = self._generate_random_state()
-#         while self.goal_state == self.initial_state:
-#             self.goal_state = self._generate_random_state()
+        # The final goal of the problem
+        self.goal = {"Agent": "The package must be delivered to the house."}
 
-#     def render(self, config: str = "init"):
-#         """
-#         Render the current stacks.
-#         Args:
-#             config (str): 'init' to show initial state, 'goal' to show goal state.
-#         """
-#         if config == "init":
-#             stacks = self.initial_state
-#             title = "Initial State"
-#         elif config == "goal":
-#             stacks = self.goal_state
-#             title = "Goal State"
-#         else:
-#             raise ValueError("config must be 'init' or 'goal'.")
+        # The state of the environment, initialized by reset()
+        self.state = {}
 
-#         print(f"--- {title} ---")
-#         max_height = max(len(stack) for stack in stacks)
-#         for level in range(max_height - 1, -1, -1):
-#             row = []
-#             for stack in stacks:
-#                 row.append(stack[level] if level < len(stack) else " ")
-#             print("   ".join(row))
-#         print("-" * 30)
+        self.reset()  # Initialize the environment to its starting state
 
-#     @property
-#     def public_information(self) -> list[str]:
-#         """Generate textual description of environment rules and initial state."""
+    def reset(self):
+        """
+        Resets the environment to its initial state.
+        The truck and the package are at the post office.
+        """
+        self.state = {
+            "truck_at": "post-office",
+            "package_at": "post-office",
+            "in_truck": False,
+        }
 
-#         def describe_state(stacks: list[list[str]]) -> str:
-#             facts = []
-#             for stack in stacks:
-#                 bottom = stack[0]
-#                 facts.append(f"the {bottom} block is on the table")
-#                 for below, above in zip(stack, stack[1:]):
-#                     facts.append(f"the block {above} is on top of the {below} block")
-#                 top = stack[-1]
-#                 facts.append(f"the block {top} is clear")
-#             if len(facts) == 1:
-#                 return facts[0] + "."
-#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+        # Create a fresh copy of knowledge and add the initial state information
+        self.knowledge = copy.deepcopy(self._base_knowledge)
+        initial_state_info = [
+            f"The truck is currently at the {self.state['truck_at']}.",
+            f"The package is currently at the {self.state['package_at']}.",
+        ]
+        self.knowledge["Agent"].extend(initial_state_info)
 
-#         return [
-#             "You are in a blocks world environment.",
-#             "You can pick up a block if it is clear and on the table.",
-#             "You can unstack a block from on top of another block if it is clear.",
-#             "You can put down a block you are holding onto the table.",
-#             "You can stack a block you are holding on top of another clear block.",
-#             "You can only hold one block at a time.",
-#             f"As initial conditions, {describe_state(self.initial_state)}",
-#         ]
+    def render(self):
+        """
+        Renders a text-based representation of the environment's current state.
+        """
+        print("--- Package Delivery Environment ---")
+        print(f"Goal: {self.goal['Agent']}")
 
-#     @property
-#     def goal(self) -> dict:
-#         """Return the goal description."""
+        print("\n--- Current State ---")
+        truck_loc = self.state["truck_at"]
+        pkg_loc = self.state["package_at"]
+        in_truck = self.state["in_truck"]
 
-#         def describe_state(stacks: list[list[str]]) -> str:
-#             facts = []
-#             for stack in stacks:
-#                 bottom = stack[0]
-#                 facts.append(f"the {bottom} block is on the table")
-#                 for below, above in zip(stack, stack[1:]):
-#                     facts.append(f"the block {above} is on top of the {below} block")
-#                 top = stack[-1]
-#                 facts.append(f"the block {top} is clear")
-#             if len(facts) == 1:
-#                 return facts[0] + "."
-#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+        print(f"Truck Location: {truck_loc}")
+        print(f"Package Location: {'Inside Truck' if in_truck else pkg_loc}")
 
-#         return {
-#             "Agent": f"Arrange the blocks so that {describe_state(self.goal_state)}"
-#         }
+        # Visual representation
+        po_occupants = []
+        house_occupants = []
+
+        if truck_loc == "post-office":
+            po_occupants.append("T(P)" if in_truck else "T")
+        elif truck_loc == "house":
+            house_occupants.append("T(P)" if in_truck else "T")
+
+        if not in_truck:
+            if pkg_loc == "post-office":
+                po_occupants.append("P")
+            elif pkg_loc == "house":
+                house_occupants.append("P")
+
+        print("\n--- Visual ---")
+        print(
+            f"[Post Office] {' '.join(sorted(po_occupants)):<5} <---> [House] {' '.join(sorted(house_occupants)):<5}"
+        )
+        print("T: Truck, P: Package, T(P): Package in Truck")
+        print("------------------------------------")

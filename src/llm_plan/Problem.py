@@ -298,72 +298,55 @@ class ProblemStaticSingleAgentBlocksworld(Problem):
         self.prompts = {"Agent": self.prompt}
 
 
-# class ProblemSingleAgentBlocksWorld(Problem):
-#     def __init__(self, initial_state: list[list[str]], goal_state: list[list[str]]):
-#         """
-#         Problem definition for a simple single-agent Blocks World environment.
-#         The agent can only move a block if it does not have other blocks on top.
+class ProblemPackageDelivery(Problem):
+    """
+    Problem definition for the single-agent Package Delivery environment.
+    """
 
-#         Args:
-#             initial_state (list[list[str]]): Initial stacks of blocks (bottom at index 0).
-#             goal_state (list[list[str]]): Goal stacks of blocks (bottom at index 0).
-#         """
-#         super().__init__()
-#         self.initial_state = initial_state
-#         self.goal_state = goal_state
+    def __init__(self, static_package_delivery: "StaticPackageDelivery"):
+        """
+        Initialize the problem with a StaticPackageDelivery instance.
 
-#         def describe_state(stacks: list[list[str]]) -> str:
-#             """Generate a natural language description of the block arrangement."""
-#             facts = []
-#             for stack in stacks:
-#                 # bottom block is on the table
-#                 bottom = stack[0]
-#                 facts.append(f"the {bottom} block is on the table")
+        Args:
+            static_package_delivery (StaticPackageDelivery): The package delivery environment.
+            This must be initialized before.
+        """
+        super().__init__()
+        self.env = static_package_delivery
 
-#                 # relationships between adjacent blocks
-#                 for below, above in zip(stack, stack[1:]):
-#                     facts.append(f"the block {above} is on top of the {below} block")
+        def fmt(info: List | str) -> str:
+            """Helper function to format information strings."""
+            return (
+                "\n".join(info) + "\n" if isinstance(info, List) else str(info) + "\n"
+            )
 
-#                 # top block is clear
-#                 top = stack[-1]
-#                 facts.append(f"the block {top} is clear")
+        # Extract information from the environment instance
+        self.agent_knowledge = fmt(self.env.knowledge["Agent"])
+        self.public_information = fmt(self.env.public_information)
+        self.agent_goal = fmt(self.env.goal["Agent"])
 
-#             if len(facts) == 1:
-#                 return facts[0] + "."
-#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+        # Define the system prompt template for the PDDL expert
+        self.system_prompt_template = (
+            "You are an expert with PDDL problems (Planning Domain Definition Language). "
+            "You always provide a PDDL domain and a PDDL problem file to solve the task."
+        )
 
-#         self.public_information = [
-#             "You are in a blocks world environment.",
-#             "You can pick up a block if it is clear (no block on top) and on the table.",
-#             "You can unstack a block from on top of another block if it is clear.",
-#             "You can put down a block you are holding onto the table.",
-#             "You can stack a block you are holding on top of another clear block.",
-#             "You can only hold one block at a time.",
-#             f"The initial configuration is: {describe_state(self.initial_state)}",
-#         ]
+        # Define the main prompt for the agent
+        self.prompt = (
+            "You are the only agent, a truck driver. You are in an environment with the following public information:\n"
+            "{public_information}\n"
+            "You have the following knowledge:\n"
+            "{agent_knowledge}\n"
+            "This is the global goal to solve:\n"
+            "{goal}\n"
+            "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\n"
+            "If you miss some information, do not make assumptions—just give a plan that concerns the information you have."
+        ).format(
+            public_information=self.public_information,
+            agent_knowledge=self.agent_knowledge,
+            goal=self.agent_goal,
+        )
 
-#         self.goal = {
-#             "Agent": f"Arrange the blocks so that {describe_state(self.goal_state)}"
-#         }
-
-#         self.system_prompt_template = (
-#             "You are an expert with PDDL problems (Planning Domain Definition Language). "
-#             "You always provide a PDDL domain and a PDDL problem file to solve the task."
-#         )
-
-#         self.prompt = (
-#             "You are a single agent in a blocks world environment with the following public information:\n"
-#             "{public_information}\n"
-#             "Your goal is:\n{goal}\n"
-#             "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\n"
-#             "If you miss some information, do not make assumptions—just give a plan that concerns the information you have."
-#         )
-
-#         self.system_prompts = {"Agent": self.system_prompt_template}
-
-#         self.prompts = {
-#             "Agent": self.prompt.format(
-#                 public_information="\n".join(self.public_information),
-#                 goal=self.goal["Agent"],
-#             )
-#         }
+        # Set up the prompts for the agent framework
+        self.system_prompts = {"Agent": self.system_prompt_template}
+        self.prompts = {"Agent": self.prompt}

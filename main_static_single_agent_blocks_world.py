@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
         # Save raw response
         with open(f"{base_path}tmp/agent_response_exp_{experiment}.txt", "w") as f:
-            f.write(agent_response)
+            f.write(str(agent_response))
 
         # Parse PDDL domain and problem from the response
         pddl_domain, pddl_problem = parser.parse(

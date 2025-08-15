@@ -2,6 +2,7 @@ from typing import List
 from abc import ABC, abstractmethod
 
 # This is not a good import practice, but we require it for the agentic framework
+# TODO: fix this
 from src.llm_plan.Environment import *
 
 
@@ -96,13 +97,13 @@ Think step by step and and provide a PDDL domain and a PDDL problem file to solv
         }
 
 
-class ProblemStaticBlocksworld(Problem):
-    def __init__(self, static_blocksworld: StaticBlocksworld):
+class ProblemStaticTwoAgentsBlocksworld(Problem):
+    def __init__(self, static_blocksworld: StaticTwoAgentsBlocksworld):
         """
-        Initialize the problem with a StaticBlocksworld instance.
+        Initialize the problem with a StaticTwoAgentsBlocksworld instance.
 
         Args:
-            static_blocksworld (StaticBlocksworld): The static blocksworld environment.
+            static_blocksworld (StaticTwoAgentsBlocksworld): The static blocksworld environment.
             This must be initialized before.
         """
         super().__init__()

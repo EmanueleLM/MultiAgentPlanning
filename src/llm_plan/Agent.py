@@ -165,11 +165,6 @@ that your code is syntactically correct and follows best practices."
             )
 
         # 2. Use the LLM to generate code
-        print(self.system_prompt)
-        print("\n\n")
-        print(prompt)
-        alakazam
-
         result = self.model.generate_sync(self.system_prompt, prompt)
 
         if result is None:
@@ -194,6 +189,7 @@ that your code is syntactically correct and follows best practices."
             )
 
         # # 5. Write to the appropriate file based on the task type
+        # WARNING: UNCOMMENT THIS BLOCK IF YOU WANT TO WRITE THE FILES
         # if syntax_ok:
         #     if task == "problem":
         #         write_formatted(python_code, self.problem_filename)

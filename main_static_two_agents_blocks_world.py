@@ -8,8 +8,8 @@ from pathlib import Path
 
 from src.llm_plan.LLM import GPT_Ollama
 from src.llm_plan.Parser import PDDLParser
-from src.llm_plan.Problem import ProblemStaticBlocksworld
-from src.llm_plan.Environment import StaticBlocksworld
+from src.llm_plan.Problem import ProblemStaticTwoAgentsBlocksworld
+from src.llm_plan.Environment import StaticTwoAgentsBlocksworld
 
 if __name__ == "__main__":
     n_experiments = 30
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     for experiment in range(n_experiments):
         print(f"Running experiment {experiment + 1} out of {n_experiments}")
         easy_hard = True if experiment % 2 == 0 else False  # Alternate easy-hard
-        env = StaticBlocksworld(num_vowels=3, num_consonants=3, easy=easy_hard)
-        problem = ProblemStaticBlocksworld(env)
+        env = StaticTwoAgentsBlocksworld(num_vowels=3, num_consonants=3, easy=easy_hard)
+        problem = ProblemStaticTwoAgentsBlocksworld(env)
 
         # Generate the PDDL plans for each agent
         agents = ["Agent A", "Agent B"]

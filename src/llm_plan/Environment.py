@@ -188,7 +188,7 @@ class StaticAgentsVault(StaticEnviroment):
         print("-------------------------------------")
 
 
-class StaticBlocksworld(StaticEnviroment):
+class StaticTwoAgentsBlocksworld(StaticEnviroment):
     def __init__(self, num_vowels: int = 3, num_consonants: int = 3, easy: bool = True):
         super().__init__()
         """Two body-less agents A and B are in an environment with blocks labelled by letters. Agent A can only move vowel blocks

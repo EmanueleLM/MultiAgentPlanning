@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 from openai import OpenAI
 
 
@@ -82,12 +84,12 @@ class GPT_4o(LLM):
     def __init__(self):
         """Initialize GPT-4o model."""
         super().__init__("gpt-4o")
-        _api_key_path = r"../openai_key.txt"
 
-        with open(_api_key_path, "r") as f:
-            key = f.read()
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+
         try:
-            self.client = OpenAI(api_key=key)
+            self.client = OpenAI(api_key=api_key)
         except Exception as e:
             print(f"Something went wrong with GPT-4o initialization:\n{e}")
 

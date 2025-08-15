@@ -1,21 +1,22 @@
-(define (problem deliver-prob)
-  (:domain delivery)
+(define (problem deliver-package)
+  (:domain truck)
 
-  ;; Objects in this instance
+  ;; ----------------------------------------------------
+  ;; Objects in the world
   (:objects
-     mytruck      - truck
-     mypackage    - package
-     postoffice   house   - location
+    truck1     - truck
+    package1   - package
+    post-office house   - location
   )
 
-  ;; ---------- Initial State ----------
+  ;; ----------------------------------------------------
+  ;; Initial situation
   (:init
-    (at_truck      mytruck postoffice)   ; the truck is at the post‑office
-    (at_package    mypackage postoffice) ; the package is at the post‑office
+    (at truck1 post-office)    ; truck starts at the post‑office
+    (at-pkg package1 post-office)   ; the package starts at the post‑office
   )
 
-  ;; ---------- Goal ----------
-  (:goal
-    (at_package mypackage house)         ; the package must be at the house
-  )
+  ;; ----------------------------------------------------
+  ;; Goal
+  (:goal (at-pkg package1 house))
 )

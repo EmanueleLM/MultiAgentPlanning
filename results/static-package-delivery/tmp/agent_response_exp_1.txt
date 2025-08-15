@@ -1,0 +1,97 @@
+Here is the minimal PDDL **domain** and **problem** that encode the situation you described.  
+All the facts that you supplied are used and no extra assumptions are added.
+
+---  
+
+### Domain file – `truckdriver-domain.pddl`
+
+```pddl
+(define (domain truckdriver)
+  (:requirements :typing :strips :adl :negative-preconditions :equality)
+  (:types vehicle person item location)
+
+  (:predicates
+    (at ?x - (either vehicle person item) ?l - location)   ; where an object is
+    (in ?i - item ?v - vehicle)                            ; item is inside a vehicle
+    (adjacent ?l1 - location ?l2 - location)               ; travel connectivity
+  )
+
+  ;------------------
+  ; Actions
+  ;------------------
+  (:action move
+    :parameters (?v - vehicle ?from - location ?to - location)
+    :precondition (and
+                     (at ?v ?from)
+                     (adjacent ?from ?to))
+    :effect (and
+               (not (at ?v ?from))
+               (at ?v ?to))
+  )
+
+  (:action load
+    :parameters (?v - vehicle ?i - item ?l - location)
+    :precondition (and
+                     (at ?v ?l)
+                     (at ?i ?l))
+    :effect (and
+               (not (at ?i ?l))
+               (in ?i ?v))
+  )
+
+  (:action unload
+    :parameters (?v - vehicle ?i - item ?l - location)
+    :precondition (and
+                     (in ?i ?v)
+                     (at ?v ?l))
+    :effect (and
+               (not (in ?i ?v))
+               (at ?i ?l))
+  )
+)
+```
+
+---  
+
+### Problem file – `deliver-problem.pddl`
+
+```pddl
+(define (problem deliver-to-house)
+  (:domain truckdriver)
+
+  ; Objects: one truck, one package, two locations
+  (:objects
+    truck1 - vehicle
+    package1 - item
+    post-office house - location
+  )
+
+  ; Static facts – the two locations are adjacent (undirected)
+  (:init
+    ; Initial locations
+    (at truck1 post-office)
+    (at package1 post-office)
+
+    ; Connectivity
+    (adjacent post-office house)
+    (adjacent house post-office)
+  )
+
+  ; Goal: the package must be at the house
+  (:goal (at package1 house))
+)
+```
+
+---  
+
+### Sample plan (for reference)
+
+If you run an off‑the‑shelf planner on the above files, one optimal plan will look like:
+
+```
+1  (load truck1 package1 post-office)
+2  (move truck1 post-office house)
+3  (unload truck1 package1 house)
+```
+
+This plan uses exactly the actions and predicates defined in the domain and achieves the goal that the package is delivered to the house.

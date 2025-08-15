@@ -46,8 +46,8 @@ class Agent:
             self.environemt_name + ".py"
         )  # Environment.py file name
         self.problem_filename = self.problem_name + ".py"
-        self.experiment_name = to_snake_case(
-            task_name
+        self.experiment_filename = (
+            to_snake_case(task_name) + ".py"
         )  # This is the experiment file name
 
         def code_task(self) -> str:
@@ -188,18 +188,18 @@ that your code is syntactically correct and follows best practices."
                 f"Generated code is empty or invalid.: {result}, {python_code}"
             )
 
-        # # 5. Write to the appropriate file based on the task type
+        # 5. Write to the appropriate file based on the task type
         # WARNING: UNCOMMENT THIS BLOCK IF YOU WANT TO WRITE THE FILES
-        # if syntax_ok:
-        #     if task == "problem":
-        #         write_formatted(python_code, self.problem_filename)
-        #     elif task == "environment":
-        #         write_formatted(python_code, self.environemt_filename)
-        #     elif task == "experiment":
-        #         with open(self.experiment_name + ".py", "w") as file:
-        #             file.write(python_code)
-        # else:
-        #     raise ValueError("Generated code has syntax errors.")
+        if syntax_ok:
+            if task == "problem":
+                write_formatted(python_code, self.problem_filename)
+            elif task == "environment":
+                write_formatted(python_code, self.environment_filename)
+            elif task == "experiment":
+                with open(self.experiment_filename, "w") as file:
+                    file.write(python_code)
+        else:
+            raise ValueError("Generated code has syntax errors.")
 
         return prompt + result
 

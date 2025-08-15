@@ -1,46 +1,53 @@
-(define (domain delivery)
+(define (domain truck)
   (:requirements :typing :strips)
-  (:types truck package location - object)
 
-  ;; ---------- Predicates ----------
+  ;; ----------------------------------------------------
+  ;; Types
+  (:types truck package location)
+
+  ;; ----------------------------------------------------
+  ;; Predicates
   (:predicates
-    ;; Where the truck and the package are
-    (at_truck      ?t - truck     ?l - location)
-    (at_package    ?p - package   ?l - location)
-
-    ;; Whether the package is inside the truck
-    (in            ?p - package   ?t - truck)
+    (at      ?t - truck    ?l - location)   ; truck is at a location
+    (at-pkg  ?p - package  ?l - location)   ; package is on the ground at a location
+    (in      ?p - package  ?t - truck)      ; package is inside the truck
   )
 
-  ;; ---------- Actions ----------
-  ;; Move the truck from one location to another
-  (:action move
-    :parameters (?t - truck ?from - location ?to - location)
-    :precondition (at_truck ?t ?from)
+  ;; ----------------------------------------------------
+  ;; Actions
+  (:action move-to-house
+    :parameters (?t - truck)
+    :precondition (at ?t post-office)
     :effect (and
-              (not (at_truck ?t ?from))
-              (at_truck ?t ?to))
+              (at ?t house)
+              (not (at ?t post-office)))
   )
 
-  ;; Load the package onto the truck
+  (:action move-to-postoffice
+    :parameters (?t - truck)
+    :precondition (at ?t house)
+    :effect (and
+              (at ?t post-office)
+              (not (at ?t house)))
+  )
+
   (:action load
     :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-                    (at_truck ?t ?l)
-                    (at_package ?p ?l))
+                    (at ?t ?l)
+                    (at-pkg ?p ?l))
     :effect (and
-              (not (at_package ?p ?l))
-              (in ?p ?t))
+              (in ?p ?t)
+              (not (at-pkg ?p ?l)))
   )
 
-  ;; Unload the package from the truck
   (:action unload
     :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-                    (at_truck ?t ?l)
+                    (at ?t ?l)
                     (in ?p ?t))
     :effect (and
-              (not (in ?p ?t))
-              (at_package ?p ?l))
+              (at-pkg ?p ?l)
+              (not (in ?p ?t)))
   )
 )

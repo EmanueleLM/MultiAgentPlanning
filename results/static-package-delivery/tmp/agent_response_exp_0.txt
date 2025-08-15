@@ -1,91 +1,102 @@
-Below are two files that together describe exactly the situation you gave me.  
-Nothing in the domain or problem assumes anything that was not explicitly stated in the prompt.
+Below is a minimal PDDL specification that captures exactly the knowledge that was given.  
+No additional assumptions are made – only the two locations that actually exist (the post‑office and the house) are used, and the truck can only move between these two locations.  
 
----
-
-## `delivery-domain.pddl`
+The domain defines the four objects that are needed, the predicates that describe the truck’s position, the package’s position, and whether the package is inside the truck.  
+The planning problem states the initial situation that the truck and the package are both at the post‑office and declares the goal that the package is at the house.  
 
 ```pddl
-(define (domain delivery)
+;; =====================  Domain  =====================
+
+(define (domain truck)
   (:requirements :typing :strips)
-  (:types truck package location - object)
 
-  ;; ---------- Predicates ----------
+  ;; ----------------------------------------------------
+  ;; Types
+  (:types truck package location)
+
+  ;; ----------------------------------------------------
+  ;; Predicates
   (:predicates
-    ;; Where the truck and the package are
-    (at_truck      ?t - truck     ?l - location)
-    (at_package    ?p - package   ?l - location)
-
-    ;; Whether the package is inside the truck
-    (in            ?p - package   ?t - truck)
+    (at      ?t - truck    ?l - location)   ; truck is at a location
+    (at-pkg  ?p - package  ?l - location)   ; package is on the ground at a location
+    (in      ?p - package  ?t - truck)      ; package is inside the truck
   )
 
-  ;; ---------- Actions ----------
-  ;; Move the truck from one location to another
-  (:action move
-    :parameters (?t - truck ?from - location ?to - location)
-    :precondition (at_truck ?t ?from)
+  ;; ----------------------------------------------------
+  ;; Actions
+  (:action move-to-house
+    :parameters (?t - truck)
+    :precondition (at ?t post-office)
     :effect (and
-              (not (at_truck ?t ?from))
-              (at_truck ?t ?to))
+              (at ?t house)
+              (not (at ?t post-office)))
   )
 
-  ;; Load the package onto the truck
+  (:action move-to-postoffice
+    :parameters (?t - truck)
+    :precondition (at ?t house)
+    :effect (and
+              (at ?t post-office)
+              (not (at ?t house)))
+  )
+
   (:action load
     :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-                    (at_truck ?t ?l)
-                    (at_package ?p ?l))
+                    (at ?t ?l)
+                    (at-pkg ?p ?l))
     :effect (and
-              (not (at_package ?p ?l))
-              (in ?p ?t))
+              (in ?p ?t)
+              (not (at-pkg ?p ?l)))
   )
 
-  ;; Unload the package from the truck
   (:action unload
     :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-                    (at_truck ?t ?l)
+                    (at ?t ?l)
                     (in ?p ?t))
     :effect (and
-              (not (in ?p ?t))
-              (at_package ?p ?l))
+              (at-pkg ?p ?l)
+              (not (in ?p ?t)))
   )
 )
 ```
 
----
-
-## `delivery-problem.pddl`
-
 ```pddl
-(define (problem deliver-prob)
-  (:domain delivery)
+;; =====================  Problem  =====================
 
-  ;; Objects in this instance
+(define (problem deliver-package)
+  (:domain truck)
+
+  ;; ----------------------------------------------------
+  ;; Objects in the world
   (:objects
-     mytruck      - truck
-     mypackage    - package
-     postoffice   house   - location
+    truck1     - truck
+    package1   - package
+    post-office house   - location
   )
 
-  ;; ---------- Initial State ----------
+  ;; ----------------------------------------------------
+  ;; Initial situation
   (:init
-    (at_truck      mytruck postoffice)   ; the truck is at the post‑office
-    (at_package    mypackage postoffice) ; the package is at the post‑office
+    (at truck1 post-office)    ; truck starts at the post‑office
+    (at-pkg package1 post-office)   ; the package starts at the post‑office
   )
 
-  ;; ---------- Goal ----------
-  (:goal
-    (at_package mypackage house)         ; the package must be at the house
-  )
+  ;; ----------------------------------------------------
+  ;; Goal
+  (:goal (at-pkg package1 house))
 )
 ```
 
 ### How a planner would solve it
 
-1. **Load** the package onto the truck while both are at the post‑office.  
-2. **Move** the truck from the post‑office to the house.  
-3. **Unload** the package at the house.  
+Running any STRIPS‑style planner on the problem will yield the following short plan:
 
-The planner’s plan will look exactly like the three actions above, satisfying all predicates that the domain requires.
+```
+(load truck1 package1 post-office)
+(move-to-house truck1)
+(unload truck1 package1 house)
+```
+
+No additional predicates or actions are required, and the specification complies strictly with the knowledge that was provided.

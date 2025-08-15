@@ -1,13 +1,29 @@
 import ast
 import black
 import re
+from pathlib import Path
+
+
+def find_project_root(current_file: Path) -> Path:
+    for parent in current_file.resolve().parents:
+        if (parent / ".git").exists() or (parent / "pyproject.toml").exists():
+            return parent
+    return current_file.resolve().parent  # fallback
+
+
+def find_project_code(current_file: Path) -> Path:
+    for parent in current_file.resolve().parents:
+        # TODO: handle this with a more robust check
+        if (parent / "src" / "llm_plan").exists():
+            return parent / "src" / "llm_plan"
+    return current_file.resolve().parent  # fallback
 
 
 def to_snake_case(s: str) -> str:
     try:
         # Insert underscore before capital letters (except first)
         s = re.sub(r"(?<!^)(?=[A-Z])", "_", s)
-    except:
+    except:  # Ok to have bare exception here. If it fails, we just return the original string
         pass
 
     return s.lower()

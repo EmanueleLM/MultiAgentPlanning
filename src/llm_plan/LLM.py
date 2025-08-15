@@ -19,7 +19,7 @@ class LLM:
         self,
         system_prompt: str,
         prompt: str,
-    ) -> str:
+    ) -> str | None:
         """
         Generate a reponse given a prompt.
 
@@ -28,7 +28,7 @@ class LLM:
             prompt (str): The prompt.
 
         Returns:
-            The answer of the model.
+            The answer of the model. None if there is an error.
         """
         # This method should be implemented by subclasses
         raise NotImplementedError("Subclasses should implement this method.")
@@ -62,7 +62,7 @@ class GPT_Ollama(LLM):
             print(f"Something went wrong with GPT-OSS-Ollama initialization.\n{e}")
             print(f"Check this url for how to setup GPT-OSS-Ollama locally: {_url}")
 
-    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+    def generate_sync(self, system_prompt: str, prompt: str) -> str | None:
         try:
             response = self.client.chat.completions.create(
                 model="gpt-oss:20b",
@@ -75,8 +75,7 @@ class GPT_Ollama(LLM):
             return response.choices[0].message.content
 
         except Exception as e:
-            print(f"Error while generating a response: {e}")
-            return str(e)
+            raise Exception(f"Error while generating a response: {e}")
 
 
 class GPT_4o(LLM):

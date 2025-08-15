@@ -589,3 +589,130 @@ class StaticSingleAgentBlocksworld(StaticEnviroment):
             for h in range(max_h)
         ]
         print("\n".join(rows[::-1]))
+
+
+# class EnvironmentSingleAgentBlocksWorld(StaticEnviroment):
+#     def __init__(
+#         self,
+#         blocks: list[str],
+#         initial_state: list[list[str]] = None,
+#         goal_state: list[list[str]] = None,
+#     ):
+#         """
+#         Simple single-agent Blocks World environment.
+#         The agent can only move a block if it does not have other blocks on top.
+
+#         Args:
+#             blocks (list[str]): Unique labels for blocks.
+#             initial_state (list[list[str]], optional): Starting stacks (bottom at index 0).
+#             goal_state (list[list[str]], optional): Goal stacks (bottom at index 0).
+#         """
+#         super().__init__()
+#         if len(set(blocks)) != len(blocks):
+#             raise ValueError("Block labels must be unique.")
+
+#         self.blocks = blocks
+#         self.initial_state = (
+#             initial_state
+#             if initial_state is not None
+#             else self._generate_random_state()
+#         )
+#         self.goal_state = (
+#             goal_state if goal_state is not None else self._generate_random_state()
+#         )
+
+#         while self.goal_state == self.initial_state:
+#             self.goal_state = self._generate_random_state()
+
+#     def _generate_random_state(self) -> list[list[str]]:
+#         """Generate a random arrangement of blocks."""
+#         stacks = []
+#         remaining = self.blocks.copy()
+#         random.shuffle(remaining)
+#         # Decide number of stacks (at least 1, at most len(blocks))
+#         num_stacks = random.randint(1, len(self.blocks))
+#         for i in range(num_stacks):
+#             stacks.append([remaining.pop()])
+#         while remaining:
+#             choice = random.choice(stacks)
+#             choice.append(remaining.pop())
+#         return stacks
+
+#     def reset(self):
+#         """Reset to a new random initial and goal state."""
+#         self.initial_state = self._generate_random_state()
+#         self.goal_state = self._generate_random_state()
+#         while self.goal_state == self.initial_state:
+#             self.goal_state = self._generate_random_state()
+
+#     def render(self, config: str = "init"):
+#         """
+#         Render the current stacks.
+#         Args:
+#             config (str): 'init' to show initial state, 'goal' to show goal state.
+#         """
+#         if config == "init":
+#             stacks = self.initial_state
+#             title = "Initial State"
+#         elif config == "goal":
+#             stacks = self.goal_state
+#             title = "Goal State"
+#         else:
+#             raise ValueError("config must be 'init' or 'goal'.")
+
+#         print(f"--- {title} ---")
+#         max_height = max(len(stack) for stack in stacks)
+#         for level in range(max_height - 1, -1, -1):
+#             row = []
+#             for stack in stacks:
+#                 row.append(stack[level] if level < len(stack) else " ")
+#             print("   ".join(row))
+#         print("-" * 30)
+
+#     @property
+#     def public_information(self) -> list[str]:
+#         """Generate textual description of environment rules and initial state."""
+
+#         def describe_state(stacks: list[list[str]]) -> str:
+#             facts = []
+#             for stack in stacks:
+#                 bottom = stack[0]
+#                 facts.append(f"the {bottom} block is on the table")
+#                 for below, above in zip(stack, stack[1:]):
+#                     facts.append(f"the block {above} is on top of the {below} block")
+#                 top = stack[-1]
+#                 facts.append(f"the block {top} is clear")
+#             if len(facts) == 1:
+#                 return facts[0] + "."
+#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+
+#         return [
+#             "You are in a blocks world environment.",
+#             "You can pick up a block if it is clear and on the table.",
+#             "You can unstack a block from on top of another block if it is clear.",
+#             "You can put down a block you are holding onto the table.",
+#             "You can stack a block you are holding on top of another clear block.",
+#             "You can only hold one block at a time.",
+#             f"As initial conditions, {describe_state(self.initial_state)}",
+#         ]
+
+#     @property
+#     def goal(self) -> dict:
+#         """Return the goal description."""
+
+#         def describe_state(stacks: list[list[str]]) -> str:
+#             facts = []
+#             for stack in stacks:
+#                 bottom = stack[0]
+#                 facts.append(f"the {bottom} block is on the table")
+#                 for below, above in zip(stack, stack[1:]):
+#                     facts.append(f"the block {above} is on top of the {below} block")
+#                 top = stack[-1]
+#                 facts.append(f"the block {top} is clear")
+#             if len(facts) == 1:
+#                 return facts[0] + "."
+#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+
+#         return {
+#             "Agent": f"Arrange the blocks so that {describe_state(self.goal_state)}"
+#         }

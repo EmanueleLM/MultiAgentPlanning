@@ -2,7 +2,7 @@ from typing import List
 from abc import ABC, abstractmethod
 
 # This is not a good import practice, but we require it for the agentic framework
-from src.llm_plan.AgenticFramework import *
+from src.llm_plan.Environment import *
 
 
 class Problem(ABC):
@@ -295,3 +295,74 @@ class ProblemStaticSingleAgentBlocksworld(Problem):
 
         self.system_prompts = {"Agent": self.system_prompt_template}
         self.prompts = {"Agent": self.prompt}
+
+
+# class ProblemSingleAgentBlocksWorld(Problem):
+#     def __init__(self, initial_state: list[list[str]], goal_state: list[list[str]]):
+#         """
+#         Problem definition for a simple single-agent Blocks World environment.
+#         The agent can only move a block if it does not have other blocks on top.
+
+#         Args:
+#             initial_state (list[list[str]]): Initial stacks of blocks (bottom at index 0).
+#             goal_state (list[list[str]]): Goal stacks of blocks (bottom at index 0).
+#         """
+#         super().__init__()
+#         self.initial_state = initial_state
+#         self.goal_state = goal_state
+
+#         def describe_state(stacks: list[list[str]]) -> str:
+#             """Generate a natural language description of the block arrangement."""
+#             facts = []
+#             for stack in stacks:
+#                 # bottom block is on the table
+#                 bottom = stack[0]
+#                 facts.append(f"the {bottom} block is on the table")
+
+#                 # relationships between adjacent blocks
+#                 for below, above in zip(stack, stack[1:]):
+#                     facts.append(f"the block {above} is on top of the {below} block")
+
+#                 # top block is clear
+#                 top = stack[-1]
+#                 facts.append(f"the block {top} is clear")
+
+#             if len(facts) == 1:
+#                 return facts[0] + "."
+#             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
+
+#         self.public_information = [
+#             "You are in a blocks world environment.",
+#             "You can pick up a block if it is clear (no block on top) and on the table.",
+#             "You can unstack a block from on top of another block if it is clear.",
+#             "You can put down a block you are holding onto the table.",
+#             "You can stack a block you are holding on top of another clear block.",
+#             "You can only hold one block at a time.",
+#             f"The initial configuration is: {describe_state(self.initial_state)}",
+#         ]
+
+#         self.goal = {
+#             "Agent": f"Arrange the blocks so that {describe_state(self.goal_state)}"
+#         }
+
+#         self.system_prompt_template = (
+#             "You are an expert with PDDL problems (Planning Domain Definition Language). "
+#             "You always provide a PDDL domain and a PDDL problem file to solve the task."
+#         )
+
+#         self.prompt = (
+#             "You are a single agent in a blocks world environment with the following public information:\n"
+#             "{public_information}\n"
+#             "Your goal is:\n{goal}\n"
+#             "Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\n"
+#             "If you miss some information, do not make assumptions—just give a plan that concerns the information you have."
+#         )
+
+#         self.system_prompts = {"Agent": self.system_prompt_template}
+
+#         self.prompts = {
+#             "Agent": self.prompt.format(
+#                 public_information="\n".join(self.public_information),
+#                 goal=self.goal["Agent"],
+#             )
+#         }

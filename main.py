@@ -50,6 +50,7 @@ if __name__ == "__main__":
     with open(_BASE_PATH + "problem.pddl", "w") as f_problem:
         f_problem.write(str(pddl_domain))
 
+    # Launch the solver
     command = [
         _SOLVER,
         "--alias",

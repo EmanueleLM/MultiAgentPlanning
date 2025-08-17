@@ -64,7 +64,7 @@ class GPT_Ollama(LLM):
             print(f"Something went wrong with GPT-OSS-Ollama initialization.\n{e}")
             print(f"Check this url for how to setup GPT-OSS-Ollama locally: {_url}")
 
-    def generate_sync(self, system_prompt: str, prompt: str) -> str | None:
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
         try:
             response = self.client.chat.completions.create(
                 model="gpt-oss:20b",
@@ -77,7 +77,7 @@ class GPT_Ollama(LLM):
             return response.choices[0].message.content
 
         except Exception as e:
-            raise Exception(f"Error while generating a response: {e}")
+            return f"Error while generating a response: {e}"
 
 
 class GPT_4o(LLM):
@@ -106,5 +106,4 @@ class GPT_4o(LLM):
             return response.choices[0].message.content
 
         except Exception as e:
-            print(f"Error while generating a response: {e}")
-            return str(e)
+            return f"Error while generating a response: {e}"

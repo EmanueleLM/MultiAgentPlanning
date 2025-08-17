@@ -1,8 +1,3 @@
-"""
-A few notes about this implementation:
-- It is sub-optimal, as it does not query the LLMs asynchronously.
-"""
-
 import subprocess
 from pathlib import Path
 
@@ -55,12 +50,15 @@ if __name__ == "__main__":
     with open(_BASE_PATH + "problem.pddl", "w") as f_problem:
         f_problem.write(str(pddl_domain))
 
-    # Invoke the solver and generate the plan
-    command = f"{_SOLVER} --alias lama-first --plan-file \
-{_BASE_PATH}/sas_plan \
-{_BASE_PATH}/domain.pddl \
-{_BASE_PATH}/problem.pddl \
-> \
-{_BASE_PATH}/logs.txt 2>&1"
+    command = [
+        _SOLVER,
+        "--alias",
+        "lama-first",
+        "--plan-file",
+        f"{_BASE_PATH}/sas_plan",
+        f"{_BASE_PATH}/domain.pddl",
+        f"{_BASE_PATH}/problem.pddl",
+    ]
 
-    subprocess.run(command, shell=True)
+    with open(f"{_BASE_PATH}/logs.txt", "w") as logfile:
+        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)

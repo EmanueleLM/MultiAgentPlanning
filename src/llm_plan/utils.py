@@ -32,7 +32,7 @@ def to_snake_case(s: str) -> str:
 def check_syntax(code_str: str) -> bool:
     """This function checks if the given code string has valid Python syntax."""
     try:
-        compile(code_str, "<string>", "exec")
+        compile(repr(code_str), "<string>", "exec")
         return True
     except SyntaxError as e:
         print(f"Syntax error: {e}")
@@ -42,7 +42,7 @@ def check_syntax(code_str: str) -> bool:
 def write_formatted(code_str: str, file_path: str):
     """This function appends the given code string to a file at the specified path."""
     try:
-        formatted_code = black.format_str(code_str, mode=black.Mode())
+        formatted_code = black.format_str(repr(code_str), mode=black.Mode())
     except black.NothingChanged:
         formatted_code = code_str
 

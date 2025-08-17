@@ -187,10 +187,26 @@ class PDDLParser(Parser):
         problem = found["problem"][0] if found["problem"] else None
         return domain, problem
 
-    def parse(self, path: str) -> T.Tuple[T.Optional[str], T.Optional[str]]:
-        """Read file and return (domain, problem) as strings (or None if missing)."""
-        with open(path, "r", encoding="utf-8") as fh:
-            txt = fh.read()
+    def parse(
+        self, source: str, from_file: bool = True
+    ) -> T.Tuple[T.Optional[str], T.Optional[str]]:
+        """
+        Parse either from a file path (default) or directly from a PDDL string.
+
+        Args:
+            source: Either a file path (if from_file=True) or a PDDL text string.
+            from_file: If True, treat `source` as a path to read from disk.
+                       If False, treat `source` as raw PDDL text.
+
+        Returns:
+            (domain, problem) strings or None if not found.
+        """
+        if from_file:
+            with open(source, "r", encoding="utf-8") as fh:
+                txt = fh.read()
+        else:
+            txt = source
+
         return self.extract_first_domain_and_problem(txt)
 
 

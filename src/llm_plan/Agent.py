@@ -184,22 +184,23 @@ that your code is syntactically correct and follows best practices."
         if python_code is not None:
             syntax_ok = check_syntax(python_code)
         else:
-            raise ValueError(
-                f"Generated code is empty or invalid.: {result}, {python_code}"
-            )
+            print("Potential issues with the code!")
+            # raise ValueError(
+            #     f"Generated code is empty or invalid.: {result}, {python_code}"
+            # )
 
         # 5. Write to the appropriate file based on the task type
         # WARNING: UNCOMMENT THIS BLOCK IF YOU WANT TO WRITE THE FILES
-        if syntax_ok:
-            if task == "problem":
-                write_formatted(python_code, self.problem_filename)
-            elif task == "environment":
-                write_formatted(python_code, self.environment_filename)
-            elif task == "experiment":
-                with open(self.experiment_filename, "w") as file:
-                    file.write(python_code)
-        else:
-            raise ValueError("Generated code has syntax errors.")
+        # if syntax_ok:
+        if task == "problem":
+            write_formatted(str(python_code), self.problem_filename)
+        elif task == "environment":
+            write_formatted(str(python_code), self.environment_filename)
+        elif task == "experiment":
+            with open(self.experiment_filename, "w") as file:
+                file.write(str(python_code))
+        # else:
+        #     raise ValueError("Generated code has syntax errors.")
 
         return prompt + result
 

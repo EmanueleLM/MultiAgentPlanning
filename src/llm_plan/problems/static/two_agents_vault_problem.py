@@ -63,5 +63,5 @@ class AgentsVaultProblem(Problem):
             )
 
         # Orchestrator
-        self.system_prompts["Orchestrator"] = _SYSTEM_PROMPT
-        self.prompts["Orchestrator"] = _PROMPT_ORCHESTRATOR
+        self.system_prompts[two_agent_vault.orchestrator_name] = _SYSTEM_PROMPT
+        self.prompts[two_agent_vault.orchestrator_name] = _PROMPT_ORCHESTRATOR

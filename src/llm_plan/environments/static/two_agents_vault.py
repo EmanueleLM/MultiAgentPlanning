@@ -1,7 +1,9 @@
+import copy
 import itertools
 import random
 from typing import List, Tuple, Dict
-import copy
+
+from src.llm_plan.environment import Environment
 
 # Separate data from logic
 _PUBLIC_INFO = [
@@ -38,7 +40,7 @@ _VAULT_NAME = "Vault"
 _GOAL = "Open the vault and grab the object inside."
 
 
-class TwoAgentsVault:
+class TwoAgentsVault(Environment):
     """
     A grid environment where two collaborative agents must open a vault.
 
@@ -61,6 +63,7 @@ class TwoAgentsVault:
         grid_size: int = 4,
         visibility: int | List[int] = 1,
         agent_names: Tuple[str, str] = ("Agent A", "Agent B"),
+        orchestrator_name: str = "Orchestrator",
     ):
         """
         Initializes the TwoAgentsVault environment.
@@ -72,8 +75,10 @@ class TwoAgentsVault:
                                           If a list, specifies radius for each agent.
             agent_names (Tuple[str, str]): The names for the two agents.
         """
+        super().__init__(name="two-agents-vault")
         self.grid_size = grid_size
         self.agent_names = agent_names
+        self.orchestrator_name = orchestrator_name
         self.visibility = (
             [visibility, visibility] if isinstance(visibility, int) else visibility
         )

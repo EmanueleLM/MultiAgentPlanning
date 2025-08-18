@@ -9,7 +9,7 @@ from src.llm_plan.problems.static.two_agents_vault_problem import (
 from src.llm_plan.environments.static.two_agents_vault import TwoAgentsVault
 
 # TODO: Move some of this logic to a config file
-_BASE_PATH = "./results/static-agents-vault/pddl"
+_BASE_PATH = "./results/static-agents-vault"
 _SOLVER = "./solvers/fast-downward-24.06.1/fast-downward.py"
 
 if __name__ == "__main__":
@@ -28,16 +28,17 @@ if __name__ == "__main__":
             problem.system_prompts[agent_name], problem.prompts[agent_name]
         )
         # Format the pddl plan received by an agent
-        problem.prompts["Orchestrator"].format(
+        problem.prompts[env.orchestrator_name].format(
             pddl_agent_A=f"{answer}",
         )
 
     # Format the goal
-    problem.prompts["Orchestrator"].format(goal=env.goal)
+    problem.prompts[env.orchestrator_name].format(goal=env.goal)
 
     # The orchestrator generates the final plan
     orchestrator_plan = model.generate_sync(
-        problem.system_prompts["Orchestrator"], problem.prompts["Orchestrator"]
+        problem.system_prompts[env.orchestrator_name],
+        problem.prompts[env.orchestrator_name],
     )
 
     # Isolate the pddl problem and domain

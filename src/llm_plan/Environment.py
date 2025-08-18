@@ -9,6 +9,9 @@ class Environment(ABC):
     - the agents cannot explore.
     """
 
+    def __init__(self, name: str):
+        self.name = name
+
     @abstractmethod
     def render(self):
         """

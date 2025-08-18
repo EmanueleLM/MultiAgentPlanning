@@ -6,7 +6,7 @@ from src.llm_plan.llm import GPT_Ollama
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.config import RESULTS_FOLDER, SOLVER_BINARY, SOLVER_ARGS
 
-from src.llm_plan.utils import create_env_prob_instance
+from src.llm_plan.utils import create_problem_instance
 
 
 if __name__ == "__main__":
@@ -20,10 +20,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Problem local variables
+    # Instantiate the model, parser, and problem
     model = GPT_Ollama()
     pddl_parser = PDDLParser()
-    problem = create_env_prob_instance(args.problem)
+    problem = create_problem_instance(
+        args.problem
+    )  # This eventually accepts **args for the environment creation
     env = problem.environment
 
     # Create result directory if they do not exist

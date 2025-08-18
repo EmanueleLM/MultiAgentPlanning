@@ -11,7 +11,7 @@ import src.llm_plan.environments as environments
 import src.llm_plan.problems as problems
 
 
-def create_env_prob_instance(class_name: str, *args, **kwargs) -> Problem:
+def create_problem_instance(class_name: str, *args, **kwargs) -> Problem:
     """Import all the instances of the classes in the problems.static module
     and instantiate the one thatvmatches with class_name.
 

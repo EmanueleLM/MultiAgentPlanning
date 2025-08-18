@@ -1,7 +1,47 @@
 import ast
 import black
+import importlib
+import inspect
+import pkgutil
 import re
 from pathlib import Path
+
+from src.llm_plan.problem import Problem
+import src.llm_plan.environments as environments
+import src.llm_plan.problems as problems
+
+
+def create_env_prob_instance(class_name: str, *args, **kwargs) -> Problem:
+    """Import all the instances of the classes in the problems.static module
+    and instantiate the one thatvmatches with class_name.
+
+    Args:
+        class_name (str): the name of the probelm (defined as self.name in the class).
+
+    Returns:
+        Problem: The corresponding Problem instances.
+    """
+    # Dynamically import every static environment and problem
+    for prob_info in pkgutil.iter_modules(
+        problems.__path__, environments.__name__ + "."
+    ):
+        importlib.import_module(prob_info.name)
+
+    problem_classes = {
+        name: c
+        for name, c in inspect.getmembers(problems, inspect.isclass)
+        if c.__module__.startswith(problems.__name__)
+    }
+
+    if class_name not in problem_classes:
+        raise ValueError(
+            f"Unknown class {class_name}. Available: {list(problem_classes.keys())}"
+        )
+
+    # Instantiate the environment and problem classes
+    problem = problem_classes[class_name](*args, **kwargs)
+
+    return problem
 
 
 def find_project_root(current_file: Path) -> Path:

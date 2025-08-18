@@ -3,9 +3,37 @@ from typing import List
 
 from src.llm_plan.environment import Environment
 
+# Separate data from logic
+# Public information (may need formatting)
+_PUBLIC_INFO = [
+    "I can move blocks between stacks.",
+    "I can only move one block at a time.",
+    "I can only move a block if there is no other block on top of it (the block is clear).",
+    "Once I move a block, I can place it either on the table (start a new stack) or on top of another clear block.",
+    "As initial conditions: {initial_conditions}",
+]
+
+# Agent information
+_KNOWLEDGE = [
+    "I am the only agent in this environment.",
+    "I can rearrange blocks according to the rules.",
+]
+
+# Goal (to format)
+_GOAL = "Rearrange the blocks so that {goal_description}."
+
+# Initial state descriptions (to format)
+_INITIAL_STATES = {
+    "on_table": "the {block} block is on the table",
+    "on_top": "the block {above} is on top of the {below} block",
+    "clear": "the block {block} is clear",
+}
+
 
 class SingleAgentBlocksworld(Environment):
-    def __init__(self, num_blocks: int = 5, easy: bool = True):
+    def __init__(
+        self, num_blocks: int = 5, easy: bool = True, agent_name: str = "Agent"
+    ):
         """
         Single-agent version of the blocks world problem.
 
@@ -13,30 +41,19 @@ class SingleAgentBlocksworld(Environment):
             num_blocks (int): Number of uniquely labeled blocks. Defaults to 5.
             easy (bool): If True, start with each block in its own stack.
         """
-        super(SingleAgentBlocksworld, self).__init__()
+        super(SingleAgentBlocksworld, self).__init__(name="single-agent-blocksworld")
         if num_blocks < 2:
             raise ValueError("There must be at least 2 blocks.")
+        self.agents_name = agent_name
         self.num_blocks = num_blocks
         self.easy = easy
         self.letters = [chr(ord("A") + i) for i in range(num_blocks)]
 
-        self.public_information = [
-            "I can move blocks between stacks.",
-            "I can only move one block at a time.",
-            "I can only move a block if there is no other block on top of it (the block is clear).",
-            "Once I move a block, I can place it either on the table (start a new stack) or on top of another clear block.",
-        ]
+        self.public_information = _PUBLIC_INFO
 
-        self.knowledge = {
-            "Agent": [
-                "I am the only agent in this environment.",
-                "I can rearrange blocks according to the rules.",
-            ]
-        }
+        self.knowledge = {self.agents_name: _KNOWLEDGE}
 
-        self.observables = {"Agent": ["This agent can move any block that is clear."]}
-
-        self.goal = {"Agent": ""}
+        self.goal = ""
         self._blocks_init: List[str] = []
         self._blocks_goal: List[str] = []
 
@@ -59,10 +76,12 @@ class SingleAgentBlocksworld(Environment):
         def describe(stacks: List[List[str]]) -> str:
             facts = []
             for stack in stacks:
-                facts.append(f"the {stack[0]} block is on the table")
+                facts.append(_INITIAL_STATES["on_table"].format(block=stack[0]))
                 for below, above in zip(stack, stack[1:]):
-                    facts.append(f"the block {above} is on top of the {below} block")
-                facts.append(f"the block {stack[-1]} is clear")
+                    facts.append(
+                        _INITIAL_STATES["on_top"].format(above=above, below=below)
+                    )
+                facts.append(_INITIAL_STATES["clear"].format(block=stack[-1]))
             return ", ".join(facts[:-1]) + ", and " + facts[-1] + "."
 
         bins = self.num_blocks if self.easy else random.randint(1, self.num_blocks)
@@ -75,8 +94,10 @@ class SingleAgentBlocksworld(Environment):
 
         self._blocks_init = init_stack
         self._blocks_goal = goal_stack
-        self.goal["Agent"] = f"Rearrange the blocks so that {describe(goal_stack)}"
-        self.public_information.append(f"As initial conditions: {describe(init_stack)}")
+        self.goal = _GOAL.format(goal_description=describe(goal_stack))
+        self.public_information = _PUBLIC_INFO[-1].format(
+            initial_conditions=describe(init_stack)
+        )
 
     def render(self, config: str = "init"):
         if config == "init":

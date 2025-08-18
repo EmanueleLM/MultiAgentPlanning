@@ -25,6 +25,79 @@ class Parser(ABC):
 class PDDLParser(Parser):
     """
     Parser for PDDL (Planning Domain Definition Language).
+    This parser extracts the first domain and problem definitions from a PDDL text.
+    It looks for the tags `<domain>` and `<problem>` to find the respective sections.
+    If the tags are not found, it falls back to an emergency parser that uses heuristics.
+    # -------------------------
+    # Example usage:
+    # -------------------------
+    if __name__ == "__main__":
+        sample_path = "text_and_pddl.txt"
+        domain_text, problem_text = extract_pddl_from_file(sample_path)
+        print("DOMAIN:\n", domain_text[:400], "...\n")
+        print("PROBLEM:\n", problem_text[:400], "...\n")
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.domain_tag_begin, self.domain_tag_end = ("<domain>", "</domain>")
+        self.problem_tag_begin, self.problem_tag_end = ("<problem>", "</problem>")
+
+    def parse(
+        self, source: str, from_file: bool = True
+    ) -> T.Tuple[T.Optional[str], T.Optional[str]]:
+        """
+        Parse either from a file path (default) or directly from a PDDL string.
+
+        Args:
+            source: Either a file path (if from_file=True) or a PDDL text string.
+            from_file: If True, treat `source` as a path to read from disk.
+                       If False, treat `source` as raw PDDL text.
+
+        Returns:
+            (domain, problem) strings or None if not found.
+        """
+        if from_file:
+            with open(source, "r", encoding="utf-8") as fh:
+                txt = fh.read()
+        else:
+            txt = source
+
+        return self.extract_first_domain_and_problem(txt)
+
+    def extract_first_domain_and_problem(
+        self, text: str
+    ) -> T.Tuple[T.Optional[str], T.Optional[str]]:
+        try:
+            domain_start = text.index(self.domain_tag_begin) + len(
+                self.domain_tag_begin
+            )
+            domain_end = text.index(self.domain_tag_end)
+            domain_text = text[domain_start:domain_end].strip()
+
+            problem_start = text.index(self.problem_tag_begin) + len(
+                self.problem_tag_begin
+            )
+            problem_end = text.index(self.problem_tag_end)
+            problem_text = text[problem_start:problem_end].strip()
+
+            return domain_text, problem_text
+
+        except Exception as e:
+            print(
+                f"Error extracting PDDL sections: {e}.\nFalling back to emergency parser."
+            )
+            emergency_parser = _EmergencyPDDLParser()
+
+            return emergency_parser.extract_first_domain_and_problem(text)
+
+
+class _EmergencyPDDLParser(Parser):
+    """
+    Emergency parser for PDDL (Planning Domain Definition Language).
+    This is a private class and should not be used by external code.
+    In case PDDLParser fails, this one is called to retrieve the pddl domain and problem.
+    This parser uses a simple heuristic to extract the first domain and problem definitions.
 
     # -------------------------
     # Example usage:

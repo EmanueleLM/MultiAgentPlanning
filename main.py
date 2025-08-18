@@ -1,26 +1,33 @@
+import argparse
 import subprocess
 from pathlib import Path
 
 from src.llm_plan.llm import GPT_Ollama
 from src.llm_plan.parser import PDDLParser
-from src.llm_plan.problems.static.two_agents_vault_problem import (
-    AgentsVaultProblem,
-)
-from src.llm_plan.environments.static.two_agents_vault import TwoAgentsVault
+from src.llm_plan.config import RESULTS_FOLDER, SOLVER_BINARY, SOLVER_ARGS
 
-# TODO: Move some of this logic to a config file
-_BASE_PATH = "./results/static-agents-vault"
-_SOLVER = "./solvers/fast-downward-24.06.1/fast-downward.py"
+from src.llm_plan.utils import create_env_prob_instance
+
 
 if __name__ == "__main__":
+    # Argparser for command line arguments
+    parser = argparse.ArgumentParser(description="Run problems.")
+    parser.add_argument(
+        "--problem",
+        type=str,
+        default="two-agents-vault",
+        help="The name of the problem to run.",
+    )
+    args = parser.parse_args()
+
     # Problem local variables
     model = GPT_Ollama()
-    parser = PDDLParser()
-    env = TwoAgentsVault()
-    problem = AgentsVaultProblem(env)
+    pddl_parser = PDDLParser()
+    problem = create_env_prob_instance(args.problem)
+    env = problem.environment
 
-    # Create result directories
-    Path(_BASE_PATH).mkdir(parents=True, exist_ok=True)
+    # Create result directory if they do not exist
+    (RESULTS_FOLDER / Path(env.name)).mkdir(parents=True, exist_ok=True)
 
     # Generate the PDDL plan for each agent
     for agent_name in env.agent_names:
@@ -42,25 +49,23 @@ if __name__ == "__main__":
     )
 
     # Isolate the pddl problem and domain
-    pddl_domain, pddl_problem = parser.parse(orchestrator_plan, from_file=False)
+    pddl_domain, pddl_problem = pddl_parser.parse(orchestrator_plan, from_file=False)
 
     # Store the pddl domain and problem
-    with open(_BASE_PATH + "domain.pddl", "w") as f_domain:
+    with open(RESULTS_FOLDER / "domain.pddl", "w") as f_domain:
         f_domain.write(str(pddl_domain))
 
-    with open(_BASE_PATH + "problem.pddl", "w") as f_problem:
+    with open(RESULTS_FOLDER / "problem.pddl", "w") as f_problem:
         f_problem.write(str(pddl_domain))
 
     # Launch the solver
     command = [
-        _SOLVER,
-        "--alias",
-        "lama-first",
-        "--plan-file",
-        f"{_BASE_PATH}/sas_plan",
-        f"{_BASE_PATH}/domain.pddl",
-        f"{_BASE_PATH}/problem.pddl",
+        SOLVER_BINARY,
+        *SOLVER_ARGS,
+        RESULTS_FOLDER / "sas_plan",
+        RESULTS_FOLDER / "domain.pddl",
+        RESULTS_FOLDER / "problem.pddl",
     ]
 
-    with open(f"{_BASE_PATH}/logs.txt", "w") as logfile:
+    with open(RESULTS_FOLDER / "logs.txt", "w") as logfile:
         subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)

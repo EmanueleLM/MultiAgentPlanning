@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 
 class Environment(ABC):
@@ -11,6 +12,11 @@ class Environment(ABC):
 
     def __init__(self, name: str):
         self.name = name
+        self.system_prompts: str | dict[str, str]
+        self.agent_names: str | List[str]
+        self.orchestrator_name: str
+        self.prompts: dict[str, str]
+        self.goal: str | dict[str, str]
 
     @abstractmethod
     def render(self):

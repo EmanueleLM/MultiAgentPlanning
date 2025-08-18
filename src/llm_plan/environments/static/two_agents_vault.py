@@ -6,6 +6,7 @@ from typing import List, Tuple, Dict
 from src.llm_plan.environment import Environment
 
 # Separate data from logic
+# Public information
 _PUBLIC_INFO = [
     "There is a vault in the environment.",
     "The vault is closed.",
@@ -13,7 +14,7 @@ _PUBLIC_INFO = [
     "The entrance of the vault is small.",
 ]
 
-# Define agent properties in a structured way for easy modification.
+# Define agent properties in a structured way for easy modification
 _AGENT_PROPERTIES = {
     "key_holder": {
         "description": "I am a big robot.",

@@ -21,7 +21,7 @@ class LLM:
         self,
         system_prompt: str,
         prompt: str,
-    ) -> str | None:
+    ) -> str:
         """
         Generate a reponse given a prompt.
 
@@ -33,7 +33,7 @@ class LLM:
             The answer of the model. None if there is an error.
         """
         # This method should be implemented by subclasses
-        raise NotImplementedError("Subclasses should implement this method.")
+        return "Subclasses should implement this method."
 
 
 class GPT_Ollama(LLM):

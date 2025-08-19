@@ -14,6 +14,8 @@ else:
 
 PROJECT_ROOT = Path(CONFIG.get("project_root", ""))
 PACKAGE_FOLDER = Path(CONFIG.get("package_folder", ""))
+ENVIRONMENTS_PATH = Path(CONFIG.get("environments_path", ""))
 RESULTS_FOLDER = Path(CONFIG.get("results_folder", ""))
+ENVIRONMENTS_JSON_PATH = Path(CONFIG.get("environments_json_path", ""))
 SOLVER_BINARY = Path(CONFIG.get("solver_binary", ""))
 SOLVER_ARGS = CONFIG.get("solver_args", [])

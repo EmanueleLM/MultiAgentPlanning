@@ -283,7 +283,58 @@ class _EmergencyPDDLParser(Parser):
         return self.extract_first_domain_and_problem(txt)
 
 
-class PythonCodeParser(Parser):
+class PythonParser(Parser):
+    """
+    Parser for Python code.
+    This parser extracts Python code from a text.
+    It looks for the tags `<Python>` and `</Python>` to find the code.
+    If the tags are not found, it falls back to an emergency parser that uses heuristics.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.domain_tag_begin, self.domain_tag_end = ("<Python>", "</Python>")
+
+    def parse(self, source: str, from_file: bool = True) -> str:
+        """
+        Parse either from a file path (default) or directly from a PDDL string.
+
+        Args:
+            source: Either a file path (if from_file=True) or a PDDL text string.
+            from_file: If True, treat `source` as a path to read from disk.
+                       If False, treat `source` as raw PDDL text.
+
+        Returns:
+            (domain, problem) strings or None if not found.
+        """
+        if from_file:
+            with open(source, "r", encoding="utf-8") as fh:
+                txt = fh.read()
+        else:
+            txt = source
+
+        return self.extract_first_domain_and_problem(txt)
+
+    def extract_first_domain_and_problem(self, text: str) -> str:
+        try:
+            domain_start = text.index(self.domain_tag_begin) + len(
+                self.domain_tag_begin
+            )
+            domain_end = text.index(self.domain_tag_end)
+            domain_text = text[domain_start:domain_end].strip()
+
+            return domain_text
+
+        except Exception as e:
+            print(
+                f"Error extracting Python code: {e}.\nFalling back to emergency parser."
+            )
+            emergency_parser = _EmergencyPythonParser()
+
+            return str(emergency_parser.parse(text))
+
+
+class _EmergencyPythonParser(Parser):
     """
     Parser to extract Python code blocks from natural-language text
     by detecting typical Python syntax.

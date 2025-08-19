@@ -1,31 +1,22 @@
-(define (problem dual-agent-block-world-task)
-  (:domain dual-agent-block-world)
-
+(define (problem integrated_vault_problem)
+  (:domain integrated_vault_domain)
   (:objects
-    I Q W E A R - block
+    my_robot - agent
+    vault_key - key
+    the_vault - vault
+    valuable_object - object
   )
-
+  
   (:init
-    (on-table I) (clear I) (vowel I)
-    (on-table Q) (clear Q) (consonant Q)
-    (on-table W) (clear W) (consonant W)
-    (on-table E) (clear E) (vowel E)
-    (on-table A) (clear A) (vowel A)
-    (on-table R) (clear R) (consonant R)
-    (hand-empty-a)
-    (hand-empty-b)
+    (vault_closed the_vault)
+    (vault_contains_object the_vault valuable_object)
+    (key_fits the_vault vault_key)
+    (not (has my_robot vault_key))
+    (not (object_acquired valuable_object))
+    (not (in_vault my_robot))
   )
-
-  (:goal (and
-            (on-table R)
-            (clear R)
-            (on-table I)
-            (on E I)
-            (clear E)
-            (on-table W)
-            (on W Q)
-            (clear Q)
-            (on-table A)
-            (clear A)
-  ))
+  
+  (:goal
+    (object_acquired valuable_object)
+  )
 )

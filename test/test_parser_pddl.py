@@ -6,7 +6,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from llm_plan.Parser import PDDLParser
+from llm_plan.parser import PDDLParser
 
 
 def test_parser_pddl():
@@ -16,7 +16,9 @@ def test_parser_pddl():
 
 def test_parser_pddl_with_text():
     parser = PDDLParser()
-    domain_text, problem_text = parser.parse("./test/data/sample_pddl.txt")
+    domain_text, problem_text = parser.parse(
+        "./test/data/sample_pddl.txt", from_file=True
+    )
     # TODO: add VAL to test if the domain and problem are proper PDDL files
     assert domain_text is not None
     assert problem_text is not None

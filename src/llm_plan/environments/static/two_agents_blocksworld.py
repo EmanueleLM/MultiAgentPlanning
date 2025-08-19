@@ -4,17 +4,14 @@ from typing import List
 from src.llm_plan.environment import Environment
 
 
-class ThreeSwitchesRoom(Environment):
+class TwoAgentsBlocksWorld(Environment):
     """
-    A grid environment where three agents must simultaneously press switches
-    to unlock a door.
+    A Blocksworld environment with two agents:
+    - AgentVowels can move blocks starting with vowels (A, E, I, O, U).
+    - AgentConsonants can move blocks starting with consonants.
 
-    Attributes:
-        grid_size (int): The side length of the square grid.
-        visibility (int): How far each agent can observe.
-        agent_names (List[str]): The names of the agents.
-        orchestrator_name (str): The orchestrator's name.
-        plan (List[str]): The ordered workflow plan.
+    Agents cannot hold more than one block at a time and must collaborate
+    to reach the target configuration.
     """
 
     def __init__(self, config: str):
@@ -25,11 +22,12 @@ class ThreeSwitchesRoom(Environment):
     def reset(self, config: str | None = None):
         """Set up environment, agents, orchestrator, workflow, and plan."""
         if config:
-            super().__init__(config)  # reload environment with new config
+            super().__init__(config)
 
         # Environment setup
-        self.grid_size = self.environment.get("init", {}).get("grid_size", 4)
-        self.visibility = self.environment.get("init", {}).get("visibility", 1)
+        self.blocks = self.environment.get("init", {}).get("blocks", [])
+        self.positions = self.environment.get("init", {}).get("positions", {})
+        self.goal_positions = self.environment.get("init", {}).get("goal_positions", {})
 
         # Agents
         self.agent_names = self.agents.get("names", [])
@@ -65,6 +63,8 @@ class ThreeSwitchesRoom(Environment):
 
     def render(self):
         """Prints a human-readable representation of the environment."""
-        print(f"Grid: {self.grid_size}x{self.grid_size}, visibility={self.visibility}")
+        print("Blocks:", self.blocks)
+        print("Initial positions:", self.positions)
+        print("Goal positions:", self.goal_positions)
         print("Agents:", ", ".join(self.agent_names))
         print("Workflow Plan:", " -> ".join(self.plan))

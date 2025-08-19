@@ -74,8 +74,10 @@ class TwoAgentsVault(Environment):
         # 4. Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
 
-    def render(self):
-        """
-        Prints a human-readable representation of the environment's current state.
-        """
-        pass
+
+def render(self):
+    print(f"Grid: {self.grid_size}x{self.grid_size}, visibility={self.visibility}")
+    print("Agents:", self.agent_names)
+    print("Workflow Plan:", " -> ".join(self.plan))
+    for agent, output in self.outputs.items():
+        print(f"{agent} output:\n{output}\n")

@@ -1,22 +1,24 @@
-(define (problem integrated_vault_problem)
-  (:domain integrated_vault_domain)
+(define (problem unlock-environment-problem)
+  (:domain unlock-environment)
   (:objects
-    my_robot - agent
-    vault_key - key
-    the_vault - vault
-    valuable_object - object
-  )
+    agent_r agent_g agent_b - agent
+    red_switch green_switch blue_switch - switch
+    room_door - door)
   
   (:init
-    (vault_closed the_vault)
-    (vault_contains_object the_vault valuable_object)
-    (key_fits the_vault vault_key)
-    (not (has my_robot vault_key))
-    (not (object_acquired valuable_object))
-    (not (in_vault my_robot))
+    (door-locked)
+    (can-press agent_r red_switch)
+    (can-press agent_g green_switch)
+    (can-press agent_b blue_switch)
+    (acting agent_r)
+    (acting agent_g)
+    (acting agent_b)
+    (not (switch-pressed red_switch))
+    (not (switch-pressed green_switch))
+    (not (switch-pressed blue_switch))
+    (not (door-unlocked room_door))
   )
   
-  (:goal
-    (object_acquired valuable_object)
-  )
+  (:goal 
+    (door-unlocked room_door))
 )

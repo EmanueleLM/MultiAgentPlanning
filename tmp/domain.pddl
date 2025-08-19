@@ -1,41 +1,20 @@
-(define (domain integrated_vault_domain)
+(define (domain unlock-environment)
   (:requirements :strips :typing)
-
-  (:types 
-    agent key vault object
-  )
-  
+  (:types agent switch door)
   (:predicates 
-    (has ?agent - agent ?key - key)
-    (key_fits ?vault - vault ?key - key)
-    (vault_closed ?vault - vault)
-    (vault_opened ?vault - vault)
-    (vault_contains_object ?vault - vault ?object - object)
-    (object_acquired ?object - object)
-    (in_vault ?agent - agent)
-  )
-  
-  (:action acquire_key
-    :parameters (?agent - agent ?key - key)
-    :precondition (not (has ?agent ?key))
-    :effect (has ?agent ?key)
-  )
+    (door-locked)
+    (switch-pressed ?s - switch)
+    (acting ?a - agent)
+    (can-press ?a - agent ?s - switch)
+    (door-unlocked ?d - door))
 
-  (:action open_vault
-    :parameters (?agent - agent ?vault - vault ?key - key)
-    :precondition (and (vault_closed ?vault) (has ?agent ?key) (key_fits ?vault ?key))
-    :effect (and (not (vault_closed ?vault)) (vault_opened ?vault))
-  )
+  (:action press-switch
+    :parameters (?a - agent ?s - switch)
+    :precondition (and (acting ?a) (can-press ?a ?s) (door-locked) (not (switch-pressed ?s)))
+    :effect (switch-pressed ?s))
 
-  (:action enter_vault
-    :parameters (?agent - agent ?vault - vault)
-    :precondition (vault_opened ?vault)
-    :effect (in_vault ?agent)
-  )
-
-  (:action acquire_object
-    :parameters (?agent - agent ?vault - vault ?object - object)
-    :precondition (and (vault_opened ?vault) (vault_contains_object ?vault ?object) (in_vault ?agent))
-    :effect (object_acquired ?object)
-  )
+  (:action unlock-door
+    :parameters (?d - door ?s1 ?s2 ?s3 - switch)
+    :precondition (and (switch-pressed ?s1) (switch-pressed ?s2) (switch-pressed ?s3))
+    :effect (and (not (door-locked)) (door-unlocked ?d)))
 )

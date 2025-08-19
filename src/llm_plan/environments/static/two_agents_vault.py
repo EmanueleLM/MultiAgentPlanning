@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 from src.llm_plan.environment import Environment
 

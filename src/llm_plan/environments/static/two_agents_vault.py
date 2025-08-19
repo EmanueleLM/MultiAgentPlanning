@@ -74,28 +74,6 @@ class TwoAgentsVault(Environment):
         # 4. Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
 
-    @staticmethod
-    def _check_visibility(
-        pos1: Tuple[int, int], pos2: Tuple[int, int], radius: int
-    ) -> bool:
-        """
-        Checks if an entity at pos1 can see an entity at pos2.
-
-        Visibility is based on the Chebyshev distance (maximum coordinate difference),
-        which creates a square-shaped field of view.
-
-        Args:
-            pos1 (Tuple[int, int]): The (x, y) position of the observer.
-            pos2 (Tuple[int, int]): The (x, y) position of the target.
-            radius (int): The visibility radius.
-
-        Returns:
-            bool: True if pos2 is within the visibility radius of pos1.
-        """
-        dx = abs(pos1[0] - pos2[0])
-        dy = abs(pos1[1] - pos2[1])
-        return dx <= radius and dy <= radius
-
     def render(self):
         """
         Prints a human-readable representation of the environment's current state.

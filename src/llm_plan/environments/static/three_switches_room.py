@@ -67,4 +67,4 @@ class ThreeSwitchesRoom(Environment):
         """Prints a human-readable representation of the environment."""
         print(f"Grid: {self.grid_size}x{self.grid_size}, visibility={self.visibility}")
         print("Agents:", ", ".join(self.agent_names))
-        print("Workflow Plan:", " -> ".join(self.plan))
+        print("Workflow Plan:", " -> ", self.plan)

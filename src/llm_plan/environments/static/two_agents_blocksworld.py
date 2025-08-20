@@ -67,4 +67,4 @@ class TwoAgentsBlocksWorld(Environment):
         print("Initial positions:", self.positions)
         print("Goal positions:", self.goal_positions)
         print("Agents:", ", ".join(self.agent_names))
-        print("Workflow Plan:", " -> ".join(self.plan))
+        print("Workflow Plan:", " -> ", self.plan)

@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 from openai import OpenAI
 
 
@@ -33,7 +32,60 @@ class LLM:
             The answer of the model. None if there is an error.
         """
         # This method should be implemented by subclasses
-        return "Subclasses should implement this method."
+        raise NotImplementedError("Subclasses should implement this method.")
+
+
+class GPT(LLM):
+    def __init__(self, model: str, reasoning: str = "high"):
+        super().__init__(model)
+        """
+        Initialize an OpenAI GPT model.
+        Instructions for ollama can be found: https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
+        By default, assumes the API key is stored as an environment variable OpenAI_key
+        Args:
+            model (str): The model name, a member of the lists below.
+            reasoning (str, optional): The reasoning level for the model, "minimal", "low", "medium" or
+                "high". Default is "high".
+                https://platform.openai.com/docs/guides/reasoning
+        """
+        self.reasoning = None
+        # List of reasoning and non-reasoning models
+        models_reas = [
+            "gpt-5",
+            "gpt-5-chat-latest",
+            "gpt-5-mini",
+            "gpt-5-nano",
+            "gpt-oss-120b",
+            "gpt-o4-mini",
+            "gpt-o3",
+            "gpt-o3-mini",
+        ]
+        models_nonr = ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"]
+        if model not in models_reas + models_nonr:
+            raise ValueError(f"Unsupported model {model}!")
+        elif model in models_reas:
+            self.reasoning = {"effort": reasoning}
+
+        try:
+            self.client = OpenAI(api_key=os.getenv("OpenAI_key"))
+        except Exception as e:
+            return f"Something went wrong with {self.model_name} initialization: \n{e}"
+
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            response = self.client.responses.create(
+                model=self.model_name,
+                reasoning=self.reasoning,
+                input=[
+                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "user", "content": f"{prompt}"},
+                ],
+            )
+
+            return response.output_text
+
+        except Exception as e:
+            return f"Error while generating a response: {e}"
 
 
 class GPT_Ollama(LLM):
@@ -70,35 +122,6 @@ class GPT_Ollama(LLM):
                 model="gpt-oss:20b",
                 messages=[
                     {"role": "system", "content": f"{self.reasoning}{system_prompt}"},
-                    {"role": "user", "content": f"{prompt}"},
-                ],
-            )
-
-            return response.choices[0].message.content
-
-        except Exception as e:
-            return f"Error while generating a response: {e}"
-
-
-class GPT_4o(LLM):
-    def __init__(self):
-        """Initialize GPT-4o model."""
-        super().__init__("gpt-4o")
-
-        load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
-
-        try:
-            self.client = OpenAI(api_key=api_key)
-        except Exception as e:
-            print(f"Something went wrong with GPT-4o initialization:\n{e}")
-
-    def generate_sync(self, system_prompt: str, prompt: str) -> str:
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": f"{system_prompt}"},
                     {"role": "user", "content": f"{prompt}"},
                 ],
             )

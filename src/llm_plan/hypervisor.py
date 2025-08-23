@@ -16,7 +16,10 @@ This class implements methods to check if:
 - ...
 """
 
+import textwrap
 from abc import ABC, abstractmethod
+
+from src.llm_plan.llm import LLM
 
 
 class Hypervisor(ABC):
@@ -24,6 +27,7 @@ class Hypervisor(ABC):
         """Initialize the hypervisor with a name."""
         self.name = name
 
+    @abstractmethod
     def run(self, src: str) -> str:
         """
         Run the hypervisor on the given plan.
@@ -36,13 +40,24 @@ class Hypervisor(ABC):
 
 
 class HypervisorHallucinations(Hypervisor):
-    def __init__(self):
+    def __init__(self, llm: LLM):
         """Initialize the hypervisor for hallucinations detection."""
         super().__init__(name="HypervisorHallucinations")
+        self.llm = llm
+        self.system_prompt = textwrap.dedent("""You are a hypervisor that detects hallucinations. 
+                                             Your task is to analyze the provided plan and determine if it 
+                                             contains any hallucinations or inconsistencies.""").strip()
+        self.prompt = textwrap.dedent("""Analyze the following information and detect any hallucinations: 
+                                      {src}
+                                      For any potential hallucination, return a description of it and its 
+                                      severity, from 1 (low) to 5 (high).""").strip()
 
-    def detect_hallucinations(self, src: str) -> bool:
+    def detect_hallucinations(self, src: str) -> str:
         """Detect hallucinations in the given plan."""
-        return True
+        hallucinations = self.llm.generate_sync(
+            system_prompt=self.system_prompt, prompt=self.prompt.format(src=src)
+        )
+        return hallucinations
 
     def run(self, src: str) -> str:
         """

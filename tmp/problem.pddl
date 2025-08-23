@@ -1,26 +1,37 @@
-(define (problem blocksworld-coordinated-problem)
+(define (problem rearrange-blocks-coordinated)
   (:domain blocksworld-coordinated)
-
-  (:objects
+  (:objects 
     A B C E O - block
   )
-
+  
   (:init
-    (on-table A) (clear B)
+    (ontable A)
     (on B A)
-    (on-table C) (clear O)
+    (ontable C)
+    (ontable E)
     (on O C)
-    (on-table E) (clear E)
-    (handempty)
+    (clear B)
+    (clear O)
+    (clear E)
+    (arm-empty-vowel)
+    (handempty-consonant)
+    (is-consonant B)
+    (is-consonant C)
+    (is-vowel A)
+    (is-vowel E)
+    (is-vowel O)
   )
 
   (:goal
-    (and
+    (and 
       (on A B)
-      (on-table B)
+      (ontable B)
       (on C E)
-      (on-table E)
-      (on-table O)
+      (ontable E)
+      (ontable O)
+      (clear A)
+      (clear C)
+      (clear O)
     )
   )
 )

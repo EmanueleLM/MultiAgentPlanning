@@ -43,24 +43,13 @@ class TwoAgentsVault(Environment):
         # 2. Agents information
         self.agent_names = self.agents.get("names")
 
-        # 3. Orchestrator information
-        if "orchestrator" in self.config_data:
-            self.orchestrator_name = self.config_data.get("orchestrator").get(
-                "name", "Orchestrator"
-            )
-
         # Workflow information
         # 1. Agents actions
         self.actions = {}
         for agent in self.agent_names:
             self.actions[agent] = self.workflow.get(agent)
 
-        # 2. Orchestrator actions
-        self.actions[self.orchestrator_name] = self.workflow.get(
-            self.orchestrator_name, {}
-        )
-
-        # 3. Collect actions and constraints
+        # 2. Collect actions and constraints
         actions = []
         for agent, config in self.workflow.items():
             if agent == "constraints":
@@ -74,10 +63,9 @@ class TwoAgentsVault(Environment):
         # 4. Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
 
-
-def render(self):
-    print(f"Grid: {self.grid_size}x{self.grid_size}, visibility={self.visibility}")
-    print("Agents:", self.agent_names)
-    print("Workflow Plan:", " -> ".join(self.plan))
-    for agent, output in self.outputs.items():
-        print(f"{agent} output:\n{output}\n")
+    def render(self) -> None:
+        print(f"Grid: {self.grid_size}x{self.grid_size}, visibility={self.visibility}")
+        print("Agents:", self.agent_names)
+        print("Plan:")
+        for i, actions in enumerate(self.plan):
+            print(f"[t={i + 1}] Actions: {actions}  # parallelizable")

@@ -94,7 +94,9 @@ class Environment(BaseModel):
 
 
 class AgentSpec(BaseModel):
-    input: Any = Field(..., description="Inputs (references to other artifacts).")
+    input: str | List[str] = Field(
+        ..., description="Inputs (references to other artifacts)."
+    )
     output: str = Field(..., description="Output artifact name.")
     system_prompt: str = Field(..., description="System prompt for this agent.")
     prompt: str = Field(
@@ -147,7 +149,7 @@ class State(TypedDict):
         List[QnA], list.__add__
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
-    plan: Optional[Dict[str, Any]]  # parsed_model.model_dump() -> Dict[str, Any]
+    plan_json: Optional[Dict[str, Any]]  # parsed_model.model_dump() -> Dict[str, Any]
     env_class: Optional[str]  # code string for the environment class
 
 
@@ -169,9 +171,8 @@ def ask_clarify(question: str) -> str:
 oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
 # summarizer_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
-coder_json_llm = ChatOpenAI(model=MODEL, temperature=0).with_structured_output(
-    PlanSchema
-)
+# somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
+coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
 coder_py_llm = ChatOpenAI(model=MODEL, temperature=0)
 refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
@@ -228,12 +229,16 @@ def agent_coder_json(state: State):
         "generate a comprehensive JSON representation of the planning task, following the example given."
         "The JSON should include a breakdown of tasks and knowledge for each agent and the orchestrator."
         "Depending on the task, the structure of the init and goal fields of the environment may vary."
-        "Ensure the JSON is well-structured and adheres to best practices."
+        "Each constraint should be of the form [agent name] [task]->[agent name] [task], specifying which"
+        "tasks should be completed before which others. For example, 'Agent1 pddl->orchestrator pddl.'"
     )
+    format_instructions = plan_parser.get_format_instructions()
 
     human_prompt = (
         f"\n{state.get('revised_description', '')}\n\n"
-        "Return only the JSON that conforms to the schema."
+        "Return only the JSON that conforms to the schema below.\n\n"
+        f"{format_instructions}\n\n"
+        "Do not include any extra commentary or Markdown, only the JSON."
     )
 
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=human_prompt)]
@@ -266,15 +271,15 @@ def agent_coder_json(state: State):
         except Exception as e:
             return {"messages": out.get("messages", out), "json_error": str(e)}
 
-    return {"messages": out.get("messages", out), "plan": parsed_plan}
+    return {"messages": out, "plan_json": parsed_plan}
 
 
 def agent_coder_py(state: State):
     sys_msg = (
         "You are an expert Python programmer. Given a JSON representation of a planning task, "
         "complete a class description for the problem, adhering closely to the given template and example(s). "
-        "Only implement the environment setup in reset() and a render() method. "
-        "Return only the Python code for the completed Problem class (no explanation)."
+        "Focus on the environment setup in reset() and implement a render() method. Give a suitable name for the class, "
+        "as well as a concise description. Return only the Python code for the completed class (no explanation)."
     )
 
     # reference files (base Environment class and template)
@@ -299,7 +304,7 @@ def agent_coder_py(state: State):
 
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=human_prompt)]
     out = coder_py_llm.invoke(inp)
-    return {"messages": out.get("messages", out), "env_class": out}
+    return {"messages": out, "env_class": out}
 
 
 # build graph

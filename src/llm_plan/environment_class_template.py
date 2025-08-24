@@ -18,6 +18,7 @@ class Problem(Environment):
             super().__init__(config)  # reload environment with new config
 
         # TODO: Environment setup: complete this section based on how the environment is defined in the JSON config
+        # YOUR CODE HERE
 
         # Agents
         self.agent_names = self.agents.get("names", [])
@@ -54,4 +55,5 @@ class Problem(Environment):
     def render(self):
         """Prints a human-readable representation of the environment."""
         # TODO: Implement the render method
+        # YOUR CODE HERE
         pass

@@ -40,36 +40,79 @@ class Hypervisor(ABC):
 
 
 class HypervisorHallucinations(Hypervisor):
-    def __init__(self, llm: LLM):
-        """Initialize the hypervisor for hallucinations detection."""
+    def __init__(self, llm: LLM, threshold: int = 3):
+        """
+        Initialize the hypervisor for hallucinations detection.
+
+        Input:
+            llm (LLM): The language model to use for detecting and mitigating hallucinations.
+            threshold (int): The severity threshold above which a hallucination is considered critical.
+        """
         super().__init__(name="HypervisorHallucinations")
         self.llm = llm
-        self.system_prompt = textwrap.dedent("""You are a hypervisor that detects hallucinations. 
-                                             Your task is to analyze the provided plan and determine if it 
-                                             contains any hallucinations or inconsistencies.""").strip()
-        self.prompt = textwrap.dedent("""Analyze the following information and detect any hallucinations: 
-                                      {src}
-                                      For any potential hallucination, return a description of it and its 
-                                      severity, from 1 (low) to 5 (high).""").strip()
+        self.threshold = threshold
+
+        # Prompts
+        # TODO: split logic and data
+        self.system_prompt_detect = textwrap.dedent("""
+                                                    You are a hypervisor that detects hallucinations. 
+                                                    Your task is to analyze a provided plan and its assumptions
+                                                    and detect any hallucinations or inconsistencies.
+                                                    """).strip()
+        self.prompt_detect = textwrap.dedent("""
+                                             Analyze the following plan and detect any hallucinations: 
+                                             \n{plan}\n
+                                             For any potential hallucination, return a description of it and its 
+                                             severity, from 1 (low) to 5 (high).
+                                             """).strip()
+
+        self.system_prompt = textwrap.dedent("""
+                                             You are a hypervisor that mitigates hallucinations. 
+                                             Your task is to analyze a provided plan and a list of hallucinations, 
+                                             each flagged with a severity score, from 1 (low) to 5 (high), 
+                                             and solve them.
+                                             """).strip()
+        self.prompt = textwrap.dedent("""
+                                      Given this plan:
+                                      \n{plan}\n
+                                      And this list of hallucinations and their severity scores 
+                                      (from 1 (low) to 5 (high)):
+                                      \n{hallucinations}\n
+                                      Return a plan where all the hallucinations whose severity 
+                                      is at least {threshold} have been solved or removed.
+                                      """).strip()
 
     def detect_hallucinations(self, src: str) -> str:
-        """Detect hallucinations in the given plan."""
-        hallucinations = self.llm.generate_sync(
-            system_prompt=self.system_prompt, prompt=self.prompt.format(src=src)
-        )
-        return hallucinations
-
-    def run(self, src: str) -> str:
         """
-        Run the hypervisor to detect hallucinations in the plan.
+        Detect hallucinations in the given plan.
 
         Input:
             src (str): The plan to be checked for hallucinations.
 
         Output:
-            str: A message indicating whether hallucinations were detected.
+            str: A free-form text with all the hallucinations the model could find.
         """
-        if self.detect_hallucinations(src):
-            return "Hallucinations detected in the plan."
-        else:
-            return "No hallucinations detected in the plan."
+        hallucinations = self.llm.generate_sync(
+            system_prompt=self.system_prompt_detect,
+            prompt=self.prompt_detect.format(plan=src),
+        )
+        return hallucinations
+
+    def run(self, src: str) -> str:
+        """
+        Run the hypervisor to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        hallucinations = self.detect_hallucinations(src)
+        response = self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=self.prompt.format(
+                hallucinations=hallucinations, threshold=self.threshold, plan=src
+            ),
+        )
+        return response

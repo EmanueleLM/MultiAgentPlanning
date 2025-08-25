@@ -1,10 +1,9 @@
 import json
-from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from typing import List
 
 
-class Environment(ABC):
+class Environment:
     """
     Abstract base class for static environments.
     """
@@ -25,6 +24,40 @@ class Environment(ABC):
         self.environment = self.config_data.get("environment")
         self.workflow = self.config_data.get("workflow")
         self.plan: List[List[str]]
+
+        self.reset()
+
+    def reset(self, **args):
+        """
+        This method creates the graph of the constraints and sets up the prompts
+        """
+        # Map additional fields that are not defined in the abstract Environment class
+        # 1. Envrionment constants
+        for arg in args:
+            self.environment.get("init").get(arg)
+
+        # 2. Agents information
+        self.agent_names = self.agents.get("names")
+
+        # Workflow information
+        # 1. Agents actions
+        self.actions = {}
+        for agent in self.agent_names:
+            self.actions[agent] = self.workflow.get(agent)
+
+        # 2. Collect actions and constraints
+        actions = []
+        for agent, config in self.workflow.items():
+            if agent == "constraints":  # TODO: reformat workflow to avoid this
+                continue
+            actions.extend(
+                [f"{agent}.{a}" for a in self.workflow.get(agent, {}).keys()]
+            )
+
+        self.workflow_constraints: List[str] = self.workflow.get("constraints", [])
+
+        # 4. Build the dependency graph between tasks
+        self.plan = self.schedule(actions, self.workflow_constraints)
 
     @staticmethod
     def schedule(actions: List[str], constraints: List[str]) -> List[List[str]]:
@@ -57,10 +90,3 @@ class Environment(ABC):
             raise ValueError("Cycle detected in constraints!")
 
         return result
-
-    @abstractmethod
-    def render(self):
-        """
-        Render the current state of the environment.
-        """
-        pass

@@ -1,33 +1,28 @@
-(define (problem cooperative-vault-problem)
-  (:domain cooperative-vault-domain)
-
+(define (problem collaborative_vault_problem)
+  (:domain collaborative_vault_domain)
   (:objects
-    robot1 - robot
-    robot2 - robot
-    key1 - key
-    vault1 - vault
-    object1 - object
+    large_robot - robot
+    small_robot - robot
+    the_vault - vault
+    the_key - key
+    the_object - object
   )
-
   (:init
-    ;; Initial conditions for Agent 1
-    (vault-closed vault1)
-    (has-key robot1 key1)
-    ;(grabbed-object vault1 object1) ;; This predicate should not be used as the object is initially inside the vault
-    (is-big robot1)
-    ;(is-small vault1) ;; The is-small predicate should not apply to vaults, setting it here doesn't align with listed predicates
-
-    ;; Initial conditions for Agent 2
-    (object-inside vault1 object1)
-    (is-small robot2)
-    (not (vault-open))
-    (not (object-grabbed))
+    (vault_closed the_vault)
+    (vault_requires_key the_vault the_key)
+    (key_in_hand large_robot the_key)
+    (object_in_vault the_vault the_object)
+    (robot_large large_robot)
+    (robot_small small_robot)
+    (vault_small_entrance the_vault)
+    (robot_at_vault large_robot the_vault)
+    (key_in_reach)
+    (not (at_vault small_robot))
+    (not (has_key small_robot))
   )
-
   (:goal
     (and
-      (object-grabbed)
-      (holding robot2 object1)
-    )
+      (vault_open the_vault)
+      (object_in_hand large_robot the_object))
   )
 )

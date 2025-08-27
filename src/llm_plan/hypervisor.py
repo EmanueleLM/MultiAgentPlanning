@@ -2,6 +2,7 @@
 This class implements a hypervisor, a piece of software that mixes neural (LLMs, etc.)
 and formal techniques (VAL, uVal, etc.) to mitigate the issues of multi-agent planning.
 The issues that we reckon are relevant in this context are:
+- Correct PDDL syntax
 - Hallucinations
 - Asynchronicity
 - Validity
@@ -173,6 +174,67 @@ class HypervisorDeepThinkPDDL(Hypervisor):
                                       And this PDDL problem that instatiates the specification:
                                       \n<problem>{pddl_problem}</problem>\n
                                       Think *very carefully* whether the PDDL domain and plan reflect the human specification.
+                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
+                                      Return the PDDL domain between <domain> and </domain> tags, 
+                                      and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
+                                      """).strip()
+
+    def run(self) -> str:
+        """
+        Run the hypervisor to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        self.upload_args(self.prompt_args)  # ensure args are uploaded
+
+        # Fix the plan
+        prompt = self.prompt.format(
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class HypervisorSyntaxPDDL(Hypervisor):
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Initialize the hypervisor that evaluates the PDDL syntax generated.
+
+        Input:
+            llm (LLM): The language model to use for fixing the syntax.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "HypervisorSyntaxPDDL"
+        self.llm = llm
+        self.required_args = {
+            "specification": "(str) The plan to be checked for improvement.",
+            "pddl_domain": "(str) The PDDL domain that describes the specification.",
+            "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        }
+
+        # Prompts
+        self.system_prompt = textwrap.dedent("""
+                                             You are a hypervisor that evaluates each plan's step. 
+                                             Your task is to analyze a provided plan against the human specifics,
+                                             and identify all the possible inconsistencies with the PDDL syntax.
+                                             The PDDL syntax required is that used by *Fast Downward*. You can think as much as you want before answering, and you can use as many steps as you want.
+                                             """).strip()
+        self.prompt = textwrap.dedent("""
+                                      Given this specification in JSON format:
+                                      \n{specification}\n
+                                      And this PDDL domain that describes the specification:
+                                      \n<domain>{pddl_domain}</domain>\n
+                                      And this PDDL problem that instatiates the specification:
+                                      \n<problem>{pddl_problem}</problem>\n
+                                      Think *very carefully* whether the PDDL domain and plan are compliant with the PDDL syntax required by *Fast Downward*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
                                       Return the PDDL domain between <domain> and </domain> tags, 
                                       and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.

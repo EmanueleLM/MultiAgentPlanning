@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict, deque
-from typing import List
+from typing import List, Any, Dict
 
 
 class Environment:
@@ -8,15 +8,20 @@ class Environment:
     Abstract base class for static environments.
     """
 
-    def __init__(self, config: str):
+    def __init__(self, config: str | Dict[str, Any]):
         """
-        Initialize the environment with a json configuration file.
+        Initialize the environment with a json configuration file/dictionary object.
 
         Args:
-            config (str): Path to the json configuration string for the environment.
+            config (str | dict): Dict, or str path to the json configuration string for the environment.
         """
-        with open(config, "r") as f:
-            self.config_data = json.load(f)
+        if isinstance(config, str):
+            with open(config, "r") as f:
+                self.config_data = json.load(f)
+        elif isinstance(config, dict):
+            self.config_data = config
+        else:
+            raise ValueError("Invalid config type. Must be str or dict.")
 
         self.name = self.config_data.get("name", "UnnamedEnvironment")
         self.agents = self.config_data.get("agents")

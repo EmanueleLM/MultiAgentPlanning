@@ -1,50 +1,22 @@
-(define (domain traveler)
+(define (domain travel)
   (:requirements :strips :typing)
-  
-  (:types
-    city hotel person
-  )
-      
-  (:predicates
-    (connected ?from ?to - city)
-    (at ?person - person ?place - city)
-    (in-stay ?person - person ?hotel - hotel)
-    (flight-available ?from ?to - city ?day - day)
-    (day ?day - day)
-    (next-day ?current ?next - day)
-    (hotel-available ?hotel - hotel ?city - city ?day - day)
-    (can-stay ?hotel - hotel ?from-day ?to-day - day ?person - person)
-  )
-  
-  (:action book-flight
-    :parameters (?person - person ?from ?to - city ?day - day)
-    :precondition (and 
-      (at ?person ?from)
-      (connected ?from ?to)
-      (flight-available ?from ?to ?day)
-    )
-    :effect (and 
-      (at ?person ?to)
-      (not (at ?person ?from))
-    )
-  )
-  
-  (:action check-in-hotel
-    :parameters (?person - person ?hotel - hotel ?city - city ?checkin-day ?checkout-day - day)
-    :precondition (and 
-      (at ?person ?city)
-      (hotel-available ?hotel ?city ?checkin-day)
-      (can-stay ?hotel ?checkin-day ?checkout-day ?person)
-    )
-    :effect (in-stay ?person ?hotel)
-  )
-
-  (:action advance-day
-    :parameters (?current ?next - day)
-    :precondition (next-day ?current ?next)
-    :effect (and 
-      (not (day ?current))
-      (day ?next)
-    )
-  )
-)
+  (:types location number)
+  (:predicates 
+    (at ?loc - location)
+    (has-flight ?from ?to - location)
+    (visited ?loc - location)
+    (at-day ?day - number)
+    (next-day-sequence ?current ?next - number)
+    (days-in-location ?loc - location ?days - number))
+  (:action fly
+    :parameters (?from ?to - location)
+    :precondition (and (at ?from) (has-flight ?from ?to))
+    :effect (and (not (at ?from)) (at ?to) (visited ?to)))
+  (:action next-day
+    :parameters (?current - number ?next - number)
+    :precondition (and (at-day ?current) (next-day-sequence ?current ?next))
+    :effect (and (not (at-day ?current)) (at-day ?next)))
+  (:action stay
+    :parameters (?loc - location ?days - number)
+    :precondition (and (at ?loc) (at-day 1)) 
+    :effect (days-in-location ?loc ?days)))

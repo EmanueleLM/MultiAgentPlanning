@@ -53,7 +53,6 @@ def _read_file_snippet(p: Path, max_chars: int = 12_000) -> str:
 
 # Schemas for controlling JSON format
 class AgentInfo(BaseModel):
-    mode: str = Field(..., description="Representation mode (e.g. 'pddl').")
     private_information: List[str] = Field(
         default_factory=list, description="Private facts/constraints for the agent."
     )
@@ -71,14 +70,6 @@ class AgentsSection(BaseModel):
     )
 
 
-class OrchestratorSpec(BaseModel):
-    name: str = Field(..., description="Orchestrator agent name.")
-    enabled: Optional[bool] = Field(
-        None, description="Whether the orchestrator is enabled."
-    )
-    goal: Optional[str] = Field(None, description="Global coordination goal.")
-
-
 class Environment(BaseModel):
     init: Dict = Field(
         ...,
@@ -94,9 +85,7 @@ class Environment(BaseModel):
 
 
 class AgentSpec(BaseModel):
-    input: str | List[str] = Field(
-        ..., description="Inputs (references to other artifacts)."
-    )
+    input: List[str] = Field(..., description="Inputs (references to other artifacts).")
     output: str = Field(..., description="Output artifact name.")
     system_prompt: str = Field(..., description="System prompt for this agent.")
     prompt: str = Field(
@@ -112,7 +101,7 @@ class WorkflowSpec(BaseModel):
     )
     constraints: List[str] = Field(
         default_factory=list,
-        description="List of constraint expressions for which tasks should come before others.",
+        description="List of constraint expressions for which tasks should come before others, e.g. 'task1->task2'.",
     )
 
 
@@ -121,9 +110,6 @@ class PlanSchema(BaseModel):
     author: Optional[str] = Field(None, description="Author metadata.")
     agents: AgentsSection = Field(
         ..., description="Agents section with counts, names and details."
-    )
-    orchestrator: Optional[OrchestratorSpec] = Field(
-        None, description="Orchestrator metadata."
     )
     environment: Environment = Field(
         ..., description="Environment initial state and public info."
@@ -274,39 +260,6 @@ def agent_coder_json(state: State):
     return {"messages": out, "plan_json": parsed_plan}
 
 
-def agent_coder_py(state: State):
-    sys_msg = (
-        "You are an expert Python programmer. Given a JSON representation of a planning task, "
-        "complete a class description for the problem, adhering closely to the given template and example(s). "
-        "Focus on the environment setup in reset() and implement a render() method. Give a suitable name for the class, "
-        "as well as a concise description. Return only the Python code for the completed class (no explanation)."
-    )
-
-    # reference files (base Environment class and template)
-    base = Path(__file__).parent
-    env_path = base / "Environment.py"
-    tmpl_path = base / "environment_class_template.py"
-
-    env_snip = _read_file_snippet(env_path)
-    tmpl_snip = _read_file_snippet(tmpl_path)
-
-    human_prompt = (
-        f"Task JSON:\n{state.get('plan', {})}\n\n"
-        "Reference: Environment base class:\n"
-        "```python\n"
-        f"{env_snip}\n"
-        "```\n\n"
-        "Reference: Class template to complete:\n"
-        "```python\n"
-        f"{tmpl_snip}\n"
-        "```\n"
-    )
-
-    inp = [SystemMessage(content=sys_msg), HumanMessage(content=human_prompt)]
-    out = coder_py_llm.invoke(inp)
-    return {"messages": out, "env_class": out}
-
-
 # build graph
 builder = StateGraph(State)
 
@@ -315,13 +268,11 @@ builder.add_node("Oracle", agent_oracle)
 # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
 builder.add_node("Reworder", agent_summarizer)
 builder.add_node("JSON coder", agent_coder_json)
-builder.add_node("Python coder", agent_coder_py)
 
 # edges
 builder.add_edge(START, "Oracle")
 builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
-builder.add_edge("JSON coder", "Python coder")
-builder.add_edge("Python coder", END)
+builder.add_edge("JSON coder", END)
 
 graph = builder.compile()

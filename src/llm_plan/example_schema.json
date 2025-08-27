@@ -1,99 +1,61 @@
 {
-    "name": "TwoAgentsBlocksWorld",
+    "name": "TripPlanner",
     "author": "ChatGPT",
     "agents": {
         "number": 2,
         "names": [
-            "AgentVowels",
-            "AgentConsonants"
+            "traveler",
+            "orchestrator"
         ],
         "agent_details": {
-            "AgentVowels": {
-                "mode": "pddl",
+            "traveler": {
                 "private_information": [
-                    "I can only move blocks whose names start with a vowel (A, E, I, O, U).",
-                    "I cannot pick up a block if I am already holding one."
+                    "I want to visit 3 European cities for 14 days.",
+                    "I want to stay in London for 4 days.",
+                    "I want to stay in Bucharest for 5 days.",
+                    "I want to meet a friend in Bucharest between day 10 and day 14.",
+                    "I want to stay in Reykjavik for 7 days.",
+                    "I only take direct flights."
                 ],
-                "goal": "Help rearrange the blocks into the target configuration by moving vowel-named blocks."
+                "goal": "Plan a 14-day trip across London, Bucharest, and Reykjavik that respects the stay durations and constraints."
             },
-            "AgentConsonants": {
-                "mode": "pddl",
-                "private_information": [
-                    "I can only move blocks whose names start with a consonant.",
-                    "I cannot pick up a block if I am already holding one."
-                ],
-                "goal": "Help rearrange the blocks into the target configuration by moving consonant-named blocks."
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the traveler's preferences and flight constraints into a feasible trip plan."
             }
         }
     },
-    "orchestrator": {
-        "name": "Orchestrator",
-        "enabled": "true",
-        "goal": "Coordinate the two agents so that blocks are moved into the target configuration."
-    },
     "environment": {
         "init": {
-            "blocks": [
-                "A",
-                "B",
-                "C",
-                "E",
-                "O"
-            ],
-            "positions": {
-                "A": "table",
-                "B": "A",
-                "C": "table",
-                "E": "table",
-                "O": "C"
-            },
-            "goal_positions": {
-                "A": "B",
-                "B": "table",
-                "C": "E",
-                "E": "table",
-                "O": "table"
-            }
+            "trip_duration": 14
+        },
+        "goal":{
+            "trip_plan": "Plan a 14-day trip across London, Bucharest, and Reykjavik that respects the stay durations and constraints."
         },
         "public_information": [
-            "The world consists of blocks that can be stacked on one another or on the table.",
-            "An agent can hold at most one block at a time.",
-            "A block can only be moved if it is clear (nothing stacked on it)."
+            "Direct flights exist between London and Bucharest.",
+            "Direct flights exist between Reykjavik and London."
         ]
     },
     "workflow": {
-        "participants": {
-            "AgentVowels": {
-                "pddl": {
-                    "input": [],
-                    "output": "pddl_agent_vowels",
-                    "system_prompt": "You are an expert in PDDL (Planning Domain Definition Language). Provide a domain and problem file for blocks whose names start with vowels.",
-                "prompt": "Your name is AgentVowels. You are in a Blocksworld environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->AgentVowels->private_information}\nThis is your goal:\n{agents->AgentVowels->goal}\nInitial state:\n{environment->init}\nThink step by step and provide a PDDL domain and problem to solve the task, focusing only on vowel-named blocks.\nEnclose the domain between <domain></domain> and the problem between <problem></problem>."
-                }
-            },
-            "AgentConsonants": {
-                "pddl": {
-                    "input": [],
-                    "output": "pddl_agent_consonants",
-                    "system_prompt": "You are an expert in PDDL (Planning Domain Definition Language). Provide a domain and problem file for blocks whose names start with consonants.",
-                    "prompt": "Your name is AgentConsonants. You are in a Blocksworld environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->AgentConsonants->private_information}\nThis is your goal:\n{agents->AgentConsonants->goal}\nInitial state:\n{environment->init}\nThink step by step and provide a PDDL domain and problem to solve the task, focusing only on consonant-named blocks.\nEnclose the domain between <domain></domain> and the problem between <problem></problem>."
-                }
+        "participants":{
+            "traveler": {
+                "input": [],
+                "output": "pddl_traveler",
+                "system_prompt": "You are an expert in PDDL for travel planning. You always provide a PDDL domain and a PDDL problem file. Enclose the domain in <domain></domain> tags, and the problem in <problem></problem> tags.",
+                "prompt": "Your name is traveler. You are planning a 14-day trip in Europe. Public information: {environment->public_information}. Your personal constraints: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Think step by step and provide a PDDL domain and problem that encode the trip plan. Do not make assumptions beyond the given information."
             },
             "orchestrator": {
-                "pddl": {
-                    "input": [
-                        "pddl_agent_vowels",
-                        "pddl_agent_consonants"
-                    ],
-                    "output": "pddl_orchestrator",
-                    "system_prompt": "You are an expert in PDDL (Planning Domain Definition Language). Provide a domain and problem file for coordinating multiple agents in Blocksworld.",
-                    "prompt": "Two agents are solving a Blocksworld task together. You will receive their PDDL domains and problems. Merge them into a single consistent PDDL domain and problem that achieves the following global goal:\n{orchestrator->goal}\nInitial state:\n{environment->init}\nTarget configuration:\n{environment->init->goal_positions}\nAgentVowels PDDL:\n{pddl_agent_vowels}\nAgentConsonants PDDL:\n{pddl_agent_consonants}\nThink carefully and provide the merged domain and problem. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
-                }
+                "input": [
+                    "pddl_traveler"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning. You always provide a PDDL domain and a PDDL problem file to solve the task. Keep the actions distinct and respect the given constraints. Enclose the domain in <domain></domain> tags, and the problem in <problem></problem> tags.",
+                "prompt": "You receive the traveler's PDDL. Your task is to orchestrate the constraints and goals into a feasible 14-day trip plan. Ensure direct flights only are used, and all stay durations and timing constraints are respected."
             }
         },
         "constraints": [
-            "AgentVowels.pddl->orchestrator.pddl",
-            "AgentConsonants.pddl->orchestrator.pddl"
+            "traveler.pddl->orchestrator.pddl"
         ]
     }
 }

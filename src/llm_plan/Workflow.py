@@ -11,7 +11,7 @@ from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
-from src.llm_plan.environment import Environment
+from src.llm_plan.environment import Environment as TaskEnvironment
 
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
 
@@ -129,6 +129,7 @@ class State(TypedDict):
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
     plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
+    environment: TaskEnvironment  # environment object for the problem
     workflow: List[List[str]]  # environment.plan
 
 
@@ -262,7 +263,7 @@ def agent_coder_json(state: State):
 
 
 def env_constructor(state: State):
-    env = Environment(state["plan_json"])
+    env = TaskEnvironment(state["plan_json"])
     return {"messages": state["messages"], "workflow": env.plan}
 
 

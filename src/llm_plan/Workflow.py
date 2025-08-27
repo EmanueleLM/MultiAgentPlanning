@@ -1,3 +1,5 @@
+import json
+from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, AnyMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
@@ -9,6 +11,7 @@ from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
+from src.llm_plan.environment import Environment
 
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
 
@@ -39,16 +42,6 @@ def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
             qa_list.append({"question": pending_q, "answer": msg.content})
             pending_q = None
     return qa_list
-
-
-def _read_file_snippet(p: Path, max_chars: int = 12_000) -> str:
-    try:
-        txt = p.read_text(encoding="utf-8")
-    except Exception:
-        return f"# Could not read file: {p}"
-    if len(txt) > max_chars:
-        return txt[:max_chars] + "\n# ...truncated..."
-    return txt
 
 
 # Schemas for controlling JSON format
@@ -136,7 +129,7 @@ class State(TypedDict):
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
     plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
-    env_class: str  # code string for the environment class
+    workflow: List[List[str]]  # environment.plan
 
 
 # tools
@@ -155,11 +148,9 @@ def ask_clarify(question: str) -> str:
 
 # define llms
 oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
-# summarizer_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
-coder_py_llm = ChatOpenAI(model=MODEL, temperature=0)
 refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
 
@@ -183,13 +174,14 @@ def agent_oracle(state: State):
     sys_msg = (
         "You are an expert in planning. Given a description of a planning task, your job is only to decide "
         "whether there is sufficient information to come up with a plan. If not, or if anything is unclear,"
-        "ask a concise question for more details or clarification."
+        "ask a concise question for more details or clarification. Do not ask to ask. If you have a question, "
+        "just make a tool call."
     )
     inp = {"messages": [SystemMessage(content=sys_msg)] + state["messages"]}
     out = oracle.invoke(inp)
     return {
         **init,
-        "messages": out["messages"],
+        "messages": state["messages"] + out["messages"],
         "clarifications": _get_qa(out["messages"]),
     }
 
@@ -206,7 +198,7 @@ def agent_summarizer(state: State):
     )
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = oracle_llm.invoke(inp)
-    return {"messages": out, "revised_description": out}
+    return {"messages": state["messages"] + out, "revised_description": out}
 
 
 def agent_coder_json(state: State):
@@ -255,9 +247,23 @@ def agent_coder_json(state: State):
             parsed_model = plan_parser.parse(assistant_text)
             parsed_plan = parsed_model.model_dump()
         except Exception as e:
-            return {"messages": out.get("messages", out), "json_error": str(e)}
+            return {
+                "messages": state["messages"] + out.get("messages", out),
+                "json_error": str(e),
+            }
 
-    return {"messages": out, "plan_json": parsed_plan}
+    # write json to file, name with timestamp to avoid clash
+    plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_path = Path(f"../../environments/static/{plan_name}_{timestamp}.json")
+    json_path.write_text(json.dumps(parsed_plan, indent=2))
+
+    return {"messages": state["messages"] + out, "plan_json": parsed_plan}
+
+
+def env_constructor(state: State):
+    env = Environment(state["plan_json"])
+    return {"messages": state["messages"], "workflow": env.plan}
 
 
 # build graph
@@ -268,11 +274,13 @@ builder.add_node("Oracle", agent_oracle)
 # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
 builder.add_node("Reworder", agent_summarizer)
 builder.add_node("JSON coder", agent_coder_json)
+builder.add_node("Environment Builder", env_constructor)
 
 # edges
 builder.add_edge(START, "Oracle")
 builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
-builder.add_edge("JSON coder", END)
+builder.add_edge("JSON coder", "Environment Builder")
+builder.add_edge("Environment Builder", END)
 
 graph = builder.compile()

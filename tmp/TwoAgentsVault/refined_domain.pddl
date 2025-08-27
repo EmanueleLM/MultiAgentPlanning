@@ -9,8 +9,8 @@
     (has-key ?r - robot ?k - key)
     (vault-closed ?v - vault)
     (holding ?r - robot ?o - object)
-    (grabbed-object ?v - vault ?o - object)
-    (is-small ?v - vault)
+    ;(grabbed-object ?v - vault ?o - object) ;; This predicate should not be used here
+    ;(is-small ?v - vault) ;; The is-small predicate should not apply to vaults
     (is-big ?r - robot)
 
     ;; From Agent 2

@@ -1,77 +1,37 @@
-(define (domain collaborative_vault_domain)
+```lisp
+(define (domain multi-agent-vault-operation)
   (:requirements :strips :typing)
-  (:types robot vault key object)
+  (:types
+    robot object key vault)
+
   (:predicates
-    (vault_closed ?v - vault)
-    (vault_open ?v - vault)
-    (key_in_hand ?r - robot ?k - key)
-    (vault_requires_key ?v - vault ?k - key)
-    (object_in_vault ?v - vault ?o - object)
-    (object_in_hand ?r - robot ?o - object)
-    (robot_large ?r - robot)
-    (robot_small ?r - robot)
-    (vault_small_entrance ?v - vault)
-    (robot_at_vault ?r - robot ?v - vault)
-    (has_key ?r - robot)
-    (key_in_reach)
-    (at_vault ?r - robot)
-  )
+    (has-key ?r - robot ?k - key)
+    (vault-closed ?v - vault)
+    (vault-open ?v - vault)
+    (vault-has-object ?v - vault ?o - object)
+    (object-grasped ?r - robot ?o - object)
+    (can-access-vault ?r - robot ?v - vault))
 
-  ;; Actions for large robot
-  (:action open_vault
+  ; Actions for the big robot (from the first agent)
+  (:action open-vault
     :parameters (?r - robot ?v - vault ?k - key)
-    :precondition (and (vault_closed ?v)
-                       (key_in_hand ?r ?k)
-                       (vault_requires_key ?v ?k)
-                       (robot_at_vault ?r ?v)
-                       (robot_large ?r))
-    :effect (and (vault_open ?v)
-                 (not (vault_closed ?v)))
-  )
+    :precondition (and (has-key ?r ?k) (vault-closed ?v) (can-access-vault ?r ?v))
+    :effect (and (not (vault-closed ?v)) (vault-open ?v)))
 
-  (:action grab_object_large_robot
-    :parameters (?r - robot ?v - vault ?o - object)
-    :precondition (and (vault_open ?v)
-                       (object_in_vault ?v ?o)
-                       (robot_at_vault ?r ?v)
-                       (robot_large ?r))
-    :effect (and (object_in_hand ?r ?o)
-                 (not (object_in_vault ?v ?o)))
-  )
-
-  ;; Actions for small robot
-  (:action find_key
+  ; Actions for the small robot (from the second agent)
+  (:action acquire-key
     :parameters (?r - robot ?k - key)
-    :precondition (and (robot_small ?r)
-                       (key_in_reach)
-                       (not (has_key ?r)))
-    :effect (has_key ?r)
-  )
+    :precondition (not (has-key ?r ?k))
+    :effect (has-key ?r ?k))
 
-  (:action move_to_vault
-    :parameters (?r - robot)
-    :precondition (and (robot_small ?r)
-                       (not (at_vault ?r)))
-    :effect (at_vault ?r)
-  )
+  (:action small-open-vault
+    :parameters (?r - robot ?v - vault ?k - key)
+    :precondition (and (has-key ?r ?k) (vault-closed ?v))
+    :effect (and (not (vault-closed ?v)) (vault-open ?v)))
 
-  (:action unlock_vault_small_robot
-    :parameters (?r - robot ?v - vault)
-    :precondition (and (at_vault ?r)
-                       (vault_closed ?v)
-                       (has_key ?r)
-                       (robot_small ?r))
-    :effect (and (vault_open ?v)
-                 (not (vault_closed ?v)))
-  )
-
-  (:action grab_object_small_robot
+  (:action grab-object
     :parameters (?r - robot ?v - vault ?o - object)
-    :precondition (and (at_vault ?r)
-                       (vault_open ?v)
-                       (object_in_vault ?v ?o)
-                       (robot_small ?r))
-    :effect (and (object_in_hand ?r ?o)
-                 (not (object_in_vault ?v ?o)))
-  )
+    :precondition (and (vault-open ?v) (vault-has-object ?v ?o) (can-access-vault ?r ?v))
+    :effect (object-grasped ?r ?o))
 )
+```

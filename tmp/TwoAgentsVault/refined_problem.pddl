@@ -1,28 +1,19 @@
-(define (problem collaborative_vault_problem)
-  (:domain collaborative_vault_domain)
+(define (problem coordinated-open-vault)
+  (:domain multi-agent-vault-operation)
+
   (:objects
-    large_robot - robot
-    small_robot - robot
-    the_vault - vault
-    the_key - key
-    the_object - object
-  )
+    key-holder - robot
+    small-robot - robot
+    key1 - key
+    vault1 - vault
+    object1 - object)
+
   (:init
-    (vault_closed the_vault)
-    (vault_requires_key the_vault the_key)
-    (key_in_hand large_robot the_key)
-    (object_in_vault the_vault the_object)
-    (robot_large large_robot)
-    (robot_small small_robot)
-    (vault_small_entrance the_vault)
-    (robot_at_vault large_robot the_vault)
-    (key_in_reach)
-    (not (at_vault small_robot))
-    (not (has_key small_robot))
-  )
+    (vault-closed vault1)
+    (vault-has-object vault1 object1)
+    (has-key key-holder key1)
+    (can-access-vault small-robot vault1)
+    (can-access-vault key-holder vault1))
+
   (:goal
-    (and
-      (vault_open the_vault)
-      (object_in_hand large_robot the_object))
-  )
-)
+    (object-grasped small-robot object1)))

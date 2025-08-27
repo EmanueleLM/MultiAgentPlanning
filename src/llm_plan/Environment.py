@@ -52,12 +52,8 @@ class Environment:
 
         # 2. Collect actions and constraints
         actions = []
-        for agent, config in self.workflow.items():
-            if agent == "constraints":  # TODO: reformat workflow to avoid this
-                continue
-            actions.extend(
-                [f"{agent}.{a}" for a in self.workflow.get(agent, {}).keys()]
-            )
+        for agent, config in self.workflow.participants.items():
+            actions.extend([f"{agent}.{a}" for a in config.get("tasks", {}).keys()])
 
         self.workflow_constraints: List[str] = self.workflow.get("constraints", [])
 

@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import START, END, StateGraph, MessagesState
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
+from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
 from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any
 from langgraph.types import Command, interrupt
@@ -14,6 +15,8 @@ from pathlib import Path
 from src.llm_plan.environment import Environment as TaskEnvironment
 
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
+JSON_OUTPUT_PATH = "../../environments/static"
+PDDL_OUTPUT_PATH = "../../environments/static/pddl"
 
 
 # helper functions
@@ -78,6 +81,7 @@ class Environment(BaseModel):
 
 
 class AgentSpec(BaseModel):
+    task: str = Field(..., description="Task name for this agent.") # pddl or obs
     input: List[str] = Field(..., description="Inputs (references to other artifacts).")
     output: str = Field(..., description="Output artifact name.")
     system_prompt: str = Field(..., description="System prompt for this agent.")
@@ -131,6 +135,7 @@ class State(TypedDict):
     plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
     environment: TaskEnvironment  # environment object for the problem
     workflow: List[List[str]]  # environment.plan
+    workflow_idx: int = 0
 
 
 # tools
@@ -256,15 +261,20 @@ def agent_coder_json(state: State):
     # write json to file, name with timestamp to avoid clash
     plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_path = Path(f"../../environments/static/{plan_name}_{timestamp}.json")
+    json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}_{timestamp}.json")
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
     return {"messages": state["messages"] + out, "plan_json": parsed_plan}
 
 
-def env_constructor(state: State):
+def continue_to_workflow(state: State):
     env = TaskEnvironment(state["plan_json"])
-    return {"messages": state["messages"], "workflow": env.plan}
+    workflow = env.plan
+
+    return Send[]
+    return {"messages": state["messages"], "environment": env, "workflow": env.plan}
+
+
 
 
 # build graph
@@ -275,13 +285,13 @@ builder.add_node("Oracle", agent_oracle)
 # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
 builder.add_node("Reworder", agent_summarizer)
 builder.add_node("JSON coder", agent_coder_json)
-builder.add_node("Environment Builder", env_constructor)
+builder.add_node("Workflow splitter", continue_to_workflow)
 
 # edges
 builder.add_edge(START, "Oracle")
 builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
-builder.add_edge("JSON coder", "Environment Builder")
-builder.add_edge("Environment Builder", END)
+builder.add_edge("JSON coder", "Workflow splitter")
+builder.add_edge("Workflow splitter", END)
 
 graph = builder.compile()

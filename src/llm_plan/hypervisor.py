@@ -2,10 +2,10 @@
 This class implements a hypervisor, a piece of software that mixes neural (LLMs, etc.)
 and formal techniques (VAL, uVal, etc.) to mitigate the issues of multi-agent planning.
 The issues that we reckon are relevant in this context are:
-- Correct PDDL syntax
-- Hallucinations
+- Correct PDDL syntax  ✔
+- Hallucinations  ✔
 - Asynchronicity
-- Validity
+- Validity  ✔
 - Optimality
 - Partial observability
 

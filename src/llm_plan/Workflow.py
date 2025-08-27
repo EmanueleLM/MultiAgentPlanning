@@ -149,8 +149,8 @@ class State(TypedDict):
         List[QnA], list.__add__
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
-    plan_json: Optional[Dict[str, Any]]  # parsed_model.model_dump() -> Dict[str, Any]
-    env_class: Optional[str]  # code string for the environment class
+    plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
+    env_class: str  # code string for the environment class
 
 
 # tools

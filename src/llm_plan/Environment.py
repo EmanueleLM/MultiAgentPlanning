@@ -25,7 +25,6 @@ class Environment:
 
         self.name = self.config_data.get("name", "UnnamedEnvironment")
         self.agents = self.config_data.get("agents")
-        self.orchestrator = self.config_data.get("orchestrator", None)
         self.environment = self.config_data.get("environment")
         self.workflow = self.config_data.get("workflow")
         self.plan: List[List[str]]

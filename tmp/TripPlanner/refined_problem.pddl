@@ -1,62 +1,33 @@
-(define (problem travel-plan)
-  (:domain traveler)
-  
-  (:objects 
-    London Bucharest Reykjavik - city
-    hotel1London hotel1Bucharest hotel1Reykjavik - hotel
-    traveler - person
-    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
-  )
-  
-  (:init 
-    (at traveler London)
-    (connected London Bucharest)
-    (connected Bucharest Reykjavik)
-    (connected Reykjavik London)
-    
-    (day day1)
-    (next-day day1 day2)
-    (next-day day2 day3)
-    (next-day day3 day4)
-    (next-day day4 day5)
-    (next-day day5 day6)
-    (next-day day6 day7)
-    (next-day day7 day8)
-    (next-day day8 day9)
-    (next-day day9 day10)
-    (next-day day10 day11)
-    (next-day day11 day12)
-    (next-day day12 day13)
-    (next-day day13 day14)
-
-    (flight-available London Bucharest day4)
-    (flight-available Bucharest Reykjavik day9)
-    (flight-available Reykjavik London day14)
-
-    (hotel-available hotel1London London day1)
-    (hotel-available hotel1London London day2)
-    (hotel-available hotel1London London day3)
-    (hotel-available hotel1London London day4)
-    (hotel-available hotel1Bucharest Bucharest day5)
-    (hotel-available hotel1Bucharest Bucharest day6)
-    (hotel-available hotel1Bucharest Bucharest day7)
-    (hotel-available hotel1Bucharest Bucharest day8)
-    (hotel-available hotel1Bucharest Bucharest day9)
-    (hotel-available hotel1Reykjavik Reykjavik day10)
-    (hotel-available hotel1Reykjavik Reykjavik day11)
-    (hotel-available hotel1Reykjavik Reykjavik day12)
-    (hotel-available hotel1Reykjavik Reykjavik day13)
-    (hotel-available hotel1Reykjavik Reykjavik day14)
-
-    (can-stay hotel1London day1 day4 traveler)
-    (can-stay hotel1Bucharest day5 day9 traveler)
-    (can-stay hotel1Reykjavik day10 day14 traveler)
-  )
-  
-  (:goal 
+(define (problem travel-planning)
+  (:domain travel)
+  (:objects
+    london bucharest reykjavik - location
+    1 2 3 4 5 6 7 8 9 10 11 12 13 14 - number)
+  (:init
+    (at london)
+    (at-day 1)
+    (next-day-sequence 1 2)
+    (next-day-sequence 2 3)
+    (next-day-sequence 3 4)
+    (next-day-sequence 4 5)
+    (next-day-sequence 5 6)
+    (next-day-sequence 6 7)
+    (next-day-sequence 7 8)
+    (next-day-sequence 8 9)
+    (next-day-sequence 9 10)
+    (next-day-sequence 10 11)
+    (next-day-sequence 11 12)
+    (next-day-sequence 12 13)
+    (next-day-sequence 13 14)
+    (has-flight london bucharest)
+    (has-flight reykjavik london)
+    (has-flight london reykjavik))
+  (:goal
     (and 
-      (at traveler Reykjavik)
-      (day day14)
-    )
-  )
-)
+      (visited london)
+      (visited bucharest)
+      (visited reykjavik)
+      (at-day 14)
+      (days-in-location london 4)
+      (days-in-location bucharest 5)
+      (days-in-location reykjavik 7))))

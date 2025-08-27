@@ -218,6 +218,7 @@ class HypervisorSyntaxPDDL(Hypervisor):
             "specification": "(str) The plan to be checked for improvement.",
             "pddl_domain": "(str) The PDDL domain that describes the specification.",
             "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+            "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
         }
 
         # Prompts
@@ -234,7 +235,10 @@ class HypervisorSyntaxPDDL(Hypervisor):
                                       \n<domain>{pddl_domain}</domain>\n
                                       And this PDDL problem that instatiates the specification:
                                       \n<problem>{pddl_problem}</problem>\n
-                                      Think *very carefully* whether the PDDL domain and plan are compliant with the PDDL syntax required by *Fast Downward*. 
+                                      This is the error message returned by a PDDL validator:
+                                      \n{syntax_errors}\n
+                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *Fast Downward*.
+                                      Remember that the PDDL domain and problem must compliant with the PDDL syntax required by *Fast Downward*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
                                       Return the PDDL domain between <domain> and </domain> tags, 
                                       and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
@@ -257,6 +261,7 @@ class HypervisorSyntaxPDDL(Hypervisor):
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            syntax_errors=self.prompt_args["syntax_errors"],
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,

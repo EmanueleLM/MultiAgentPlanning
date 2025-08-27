@@ -45,19 +45,14 @@ class Environment:
         self.agent_names = self.agents.get("names")
 
         # Workflow information
-        # 1. Agents actions
-        self.actions = {}
-        for agent in self.agent_names:
-            self.actions[agent] = self.workflow.get(agent)
-
-        # 2. Collect actions and constraints
+        # 1. Collect actions and constraints
         actions = []
         for agent, config in self.workflow.participants.items():
-            actions.extend([f"{agent}.{a}" for a in config.get("tasks", {}).keys()])
+            actions.extend([f"{agent}.{a}" for a in config.get("tasks", {})])
 
         self.workflow_constraints: List[str] = self.workflow.get("constraints", [])
 
-        # 4. Build the dependency graph between tasks
+        # 2. Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
 
     @staticmethod

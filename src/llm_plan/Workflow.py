@@ -81,7 +81,7 @@ class Environment(BaseModel):
 
 
 class AgentSpec(BaseModel):
-    task: str = Field(..., description="Task name for this agent.") # pddl or obs
+    task: str = Field(..., description="Task name for this agent.")  # pddl or obs
     input: List[str] = Field(..., description="Inputs (references to other artifacts).")
     output: str = Field(..., description="Output artifact name.")
     system_prompt: str = Field(..., description="System prompt for this agent.")
@@ -136,6 +136,16 @@ class State(TypedDict):
     environment: TaskEnvironment  # environment object for the problem
     workflow: List[List[str]]  # environment.plan
     workflow_idx: int = 0
+    num_steps: int  # number of sequential steps in the planning workflow
+
+
+# state for a generic agent, including actors and orchestrator
+class AgentState(TypedDict):
+    name: str  # agent name
+    sys_msg: str
+    prompt: str
+    inputs: List[str]
+    output: str
 
 
 # tools
@@ -267,14 +277,31 @@ def agent_coder_json(state: State):
     return {"messages": state["messages"] + out, "plan_json": parsed_plan}
 
 
-def continue_to_workflow(state: State):
+def construct_environment(state: State):
     env = TaskEnvironment(state["plan_json"])
     workflow = env.plan
+    num_steps = len(workflow)
+    return {
+        "messages": state["messages"],
+        "environment": env,
+        "workflow": env.plan,
+        "num_steps": num_steps,
+    }
 
-    return Send[]
-    return {"messages": state["messages"], "environment": env, "workflow": env.plan}
+
+# keep all the initialising in construct_environment so continue_to_workflow can loop.
+# set branch condition! TODO
+def continue_to_workflow(state: State):
+
+    return Send[("Actor node", {})]
 
 
+def generic_actor(state: AgentState):
+    pass
+
+
+def external_solver(state: State):
+    pass
 
 
 # build graph
@@ -285,13 +312,16 @@ builder.add_node("Oracle", agent_oracle)
 # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
 builder.add_node("Reworder", agent_summarizer)
 builder.add_node("JSON coder", agent_coder_json)
+builder.add_node("Task Environment Constructor", construct_environment)
 builder.add_node("Workflow splitter", continue_to_workflow)
+builder.add_node("Actor node", generic_actor)
 
 # edges
 builder.add_edge(START, "Oracle")
 builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
-builder.add_edge("JSON coder", "Workflow splitter")
+builder.add_edge("JSON coder", "Task Environment Constructor")
+builder.add_edge("Task Environment Constructor", "Workflow splitter")
 builder.add_edge("Workflow splitter", END)
 
 graph = builder.compile()

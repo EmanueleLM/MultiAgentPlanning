@@ -1,23 +1,26 @@
-```lisp
-(define (problem coordinated-open-vault)
-  (:domain multi-agent-vault-operation)
+(define (problem integrated-fetch-object)
+  (:domain integrated-vault-task)
 
-  (:objects
-    big-robot - robot
-    small-robot - robot
+  (:objects 
+    small_robot - robot
+    tool1 - tool
     key1 - key
     vault1 - vault
-    object1 - object)
-
-  (:init
-    (vault-closed vault1)
-    (vault-has-object vault1 object1)
-    (has-key small-robot key1)
-    ; Small robot can access the vault
-    (can-access-vault small-robot vault1)
+    object1 - object
   )
 
-  (:goal
-    (object-grasped small-robot object1))
+  (:init 
+    (robot_at small_robot vault1)
+    (vault_closed vault1)
+    (object_inside vault1)
+    (has-small-robot)
+    (small_robot_available)
+  )
+
+  (:goal 
+    (and 
+      (object_grabbed object1)
+      (object_retrieved)
+    )
+  )
 )
-```

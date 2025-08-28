@@ -1,26 +1,29 @@
-(define (problem travel-planning)
-  (:domain travel)
+(define (problem plan-14-day-trip)
+  (:domain travel-planner)
   (:objects
-    new_york los_angeles chicago miami - location
-    1 2 3 4 5 6 7 8 9 10 11 12 13 14 - number
+    traveler1 - traveler
+    paris rome berlin - location
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+    3 5 2 1 - number
   )
 
   (:init
-    (at new_york)
-    (at-day 1)
-
-    (has-flight new_york los_angeles)
-    (has-flight los_angeles chicago)
-    (has-flight chicago miami)
-    (has-flight miami new_york)
+    (at traveler1 paris day1)
+    (has-direct-flight paris rome)
+    (has-direct-flight rome berlin)
+    (next-day day1 day2) (next-day day2 day3) (next-day day3 day4)
+    (next-day day4 day5) (next-day day5 day6) (next-day day6 day7)
+    (next-day day7 day8) (next-day day8 day9) (next-day day9 day10)
+    (next-day day10 day11) (next-day day11 day12) (next-day day12 day13)
+    (next-day day13 day14)
+    (stay-duration paris 3)
+    (stay-duration rome 5)
+    (stay-duration berlin 2)
   )
-
+  
   (:goal
     (and 
-      (at new_york) ; Return to New York
-      (visited los_angeles)
-      (visited chicago)
-      (visited miami)
+      (at traveler1 berlin day14)
     )
   )
 )

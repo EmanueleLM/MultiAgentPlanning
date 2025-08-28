@@ -238,7 +238,7 @@ class HypervisorSyntaxPDDL(Hypervisor):
                                       This is the error message returned by a PDDL validator:
                                       \n{syntax_errors}\n
                                       Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *Fast Downward*.
-                                      Remember that the PDDL domain and problem must compliant with the PDDL syntax required by *Fast Downward*. 
+                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *Fast Downward*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
                                       Return the PDDL domain between <domain> and </domain> tags, 
                                       and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
@@ -262,6 +262,71 @@ class HypervisorSyntaxPDDL(Hypervisor):
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             syntax_errors=self.prompt_args["syntax_errors"],
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class HypervisorNaturalLanguage(Hypervisor):
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Initialize the hypervisor that eventually turns the final plan into natural actions.
+
+        Input:
+            llm (LLM): The language model to use for fixing the syntax.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "HypervisorNaturalLanguage"
+        self.llm = llm
+        self.required_args = {
+            "specification": "(str) The plan to be checked for improvement.",
+            "pddl_domain": "(str) The PDDL domain that describes the specification.",
+            "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+            "pddl_plan": "(str) The PDDL plan.",
+        }
+
+        # Prompts
+        self.system_prompt = textwrap.dedent("""
+                                             You are a hypervisor that translates PDDL into natural language. 
+                                             Your task is to turn a specific in JSON, a PDDL problem, a PDDL domain, and a PDDL plan, into a set of actions that is readable by humans. You follow closely the plan provided within <plan></plan> tags. You can think as much as you want before answering, and you can use as many steps as you want.
+                                             """).strip()
+        self.prompt = textwrap.dedent("""
+                                      Given this specification in JSON format:
+                                      \n{specification}\n
+                                      And this PDDL domain that describes the specification:
+                                      \n<domain>{pddl_domain}</domain>\n
+                                      And this PDDL problem that instatiates the specification:
+                                      \n<problem>{pddl_problem}</problem>\n
+                                      This is the PDDL plan that correctly solves the task:
+                                      \n<plan>{pddl_plan}</plan>\n
+                                      Your task is to output a set of actions that is readable by humans and that satisfies the final goal.
+                                      Remember that your output:\n
+                                      - Must match closely each action in the plan. Do not add more or delete any.\n
+                                      - Must report each step clearly.\n
+                                      - Whenever possible, each step should report the time duration and/or the timestamp.
+                                      - Your plan must be compliant with the specification.
+                                      """).strip()
+
+    def run(self) -> str:
+        """
+        Run the hypervisor to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        self.upload_args(self.prompt_args)  # ensure args are uploaded
+
+        # Fix the plan
+        prompt = self.prompt.format(
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_plan=self.prompt_args["pddl_plan"],
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,

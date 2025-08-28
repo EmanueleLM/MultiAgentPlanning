@@ -1,22 +1,43 @@
-(define (domain travel)
-  (:requirements :strips :typing)
-  (:types location number)
+(define (domain travel-planner)
+  (:requirements :strips :typing :equality :numeric-fluents)
+  (:types traveler location day number)
+
   (:predicates 
-    (at ?loc - location)
-    (has-flight ?from ?to - location)
-    (visited ?loc - location)
-    (at-day ?day - number)
-    (next-day-sequence ?current ?next - number)
-    (days-in-location ?loc - location ?days - number))
+    (at ?t - traveler ?l - location ?d - day)
+    (has-direct-flight ?from - location ?to - location)
+    (next-day ?d1 - day ?d2 - day)
+    (assigned-day-number ?d - day ?n - number)
+  )
+
+  (:functions
+    (stay-duration ?l - location)
+  )
+
   (:action fly
-    :parameters (?from ?to - location)
-    :precondition (and (at ?from) (has-flight ?from ?to))
-    :effect (and (not (at ?from)) (at ?to) (visited ?to)))
-  (:action next-day
-    :parameters (?current - number ?next - number)
-    :precondition (and (at-day ?current) (next-day-sequence ?current ?next))
-    :effect (and (not (at-day ?current)) (at-day ?next)))
+    :parameters (?t - traveler ?from - location ?to - location ?d1 - day ?d2 - day)
+    :precondition (and 
+      (at ?t ?from ?d1)
+      (has-direct-flight ?from ?to) 
+      (next-day ?d1 ?d2)
+    )
+    :effect (and 
+      (not (at ?t ?from ?d1))
+      (at ?t ?to ?d2)
+    )
+  )
+
   (:action stay
-    :parameters (?loc - location ?days - number)
-    :precondition (and (at ?loc) (at-day 1)) 
-    :effect (days-in-location ?loc ?days)))
+    :parameters (?t - traveler ?l - location ?d1 - day ?d2 - day ?n1 - number ?n2 - number)
+    :precondition (and 
+      (at ?t ?l ?d1)
+      (next-day ?d1 ?d2)
+      (assigned-day-number ?d1 ?n1)
+      (assigned-day-number ?d2 ?n2)
+      (<= (- ?n2 ?n1) (stay-duration ?l))
+    )
+    :effect (and
+      (at ?t ?l ?d2)
+      (not (at ?t ?l ?d1))
+    )
+  )
+)

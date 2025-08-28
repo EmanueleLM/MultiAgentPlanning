@@ -16,7 +16,7 @@ from src.llm_plan.environment import Environment as TaskEnvironment
 
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
 JSON_OUTPUT_PATH = "../../environments/static"
-PDDL_OUTPUT_PATH = "../../environments/static/pddl"
+ACTOR_OUTPUT_PATH = "../../environments/static/temp"
 
 
 # helper functions
@@ -135,17 +135,20 @@ class State(TypedDict):
     plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
     environment: TaskEnvironment  # environment object for the problem
     workflow: List[List[str]]  # environment.plan
-    workflow_idx: int = 0
+    current_step: int = 0
     num_steps: int  # number of sequential steps in the planning workflow
+    pddl: Dict[str, str]  # domain and problem PDDL names from orchestrator, for solver
 
 
 # state for a generic agent, including actors and orchestrator
 class AgentState(TypedDict):
     name: str  # agent name
+    task: str  # task mode, e.g. pddl
     sys_msg: str
     prompt: str
     inputs: List[str]
     output: str
+    is_final: bool = False  # whether this is the final agent in the workflow
 
 
 # tools
@@ -167,6 +170,7 @@ oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
+pddl_llm = ChatOpenAI(model=MODEL, temperature=0)
 refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
 
@@ -292,16 +296,103 @@ def construct_environment(state: State):
 # keep all the initialising in construct_environment so continue_to_workflow can loop.
 # set branch condition! TODO
 def continue_to_workflow(state: State):
+    environment = state["environment"]
+    parallel_steps = state["workflow"][state["workflow_idx"]]
+    agent_configs = []
+    for step in parallel_steps:
+        agent_name, action = step.split(".")
+        agent_spec = environment.workflow["participants"][agent_name]
+        assert (
+            action in agent_spec["task"]
+        ), f"Action {action} not found in agent {agent_name} spec."
 
-    return Send[("Actor node", {})]
+        sys_msg = agent_spec["system_prompt"]
+        prompt = agent_spec["prompt"]
+        inputs = agent_spec["input"]
+        output = agent_spec["output"]
+        agent_configs.append((agent_name, sys_msg, prompt, inputs, output))
+
+    return [
+        Send(
+            "Actor node",
+            {
+                "name": agent_name,
+                "sys_msg": sys_msg,
+                "prompt": prompt,
+                "inputs": inputs,
+                "output": output,
+                "is_final": state["current_step"] + 1 == state["num_steps"],
+            },
+        )
+        for agent_name, sys_msg, prompt, inputs, output in agent_configs
+    ]
 
 
 def generic_actor(state: AgentState):
-    pass
+    name = state["name"]
+    sys_msg = state["sys_msg"]
+    prompt = state["prompt"]
+    inputs = state["inputs"]
+    output = state["output"]
+
+    base_dir = (Path(__file__).parent / ACTOR_OUTPUT_PATH).resolve()
+
+    formatted_parts: List[str] = []
+    for inp in inputs or []:
+        d = base_dir / f"{inp}_domain"
+        p = base_dir / f"{inp}_problem"
+        content_domain, content_problem = "", ""
+        p_file_name = p.name
+        d_file_name = d.name
+        try:
+            content_domain = d.read_text(encoding="utf-8")
+            content_problem = p.read_text(encoding="utf-8")
+        except Exception as e:
+            raise ValueError(f"Error reading input files for {inp}: {e}")
+
+        formatted_parts.append(f"[{d_file_name}]:\n{content_domain}\n\n")
+        formatted_parts.append(f"[{p_file_name}]:\n{content_problem}\n\n")
+
+    formatted_inputs = "[Inputs]:\n" + "".join(formatted_parts)
+
+    # Invoke the PDDL LLM with system message and a human message containing the prompt + formatted inputs
+    prompt_with_inputs = prompt + "\n\n" + formatted_inputs
+    response = pddl_llm.invoke(
+        [SystemMessage(content=sys_msg), HumanMessage(content=prompt_with_inputs)]
+    )
+    response_text = response.content
+
+    # if task mode is pddl:
+    if state["task"] == "pddl":
+        # extract domain and problem from pddl
+        # assume system message instructed agent to enclose <> tags
+        domain = response_text.split("<domain>")[1].split("</domain>")[0]
+        problem = response_text.split("<problem>")[1].split("</problem>")[0]
+        domain_path = base_dir / f"{output}_domain.pddl"
+        problem_path = base_dir / f"{output}_problem.pddl"
+        domain_path.write_text(domain, encoding="utf-8")
+        problem_path.write_text(problem, encoding="utf-8")
+
+    # If final step and orchestrator, store the final domain and problem content
+    if name == "orchestrator" and state["is_final"]:
+        return {"pddl": {"domain": domain, "problem": problem}}
+
+    # TODO: add additional logic for other task modes
+
+    return {}
 
 
 def external_solver(state: State):
+    print("Solver reached.")
     pass
+
+
+def proceed_to_solver(state: State) -> Literal["External solver", "Workflow splitter"]:
+    if state["current_step"] + 1 >= state["num_steps"]:
+        return "External solver"
+    else:
+        state["current_step"] += 1
+        return "Workflow splitter"
 
 
 # build graph
@@ -315,6 +406,7 @@ builder.add_node("JSON coder", agent_coder_json)
 builder.add_node("Task Environment Constructor", construct_environment)
 builder.add_node("Workflow splitter", continue_to_workflow)
 builder.add_node("Actor node", generic_actor)
+builder.add_node("External solver", external_solver)
 
 # edges
 builder.add_edge(START, "Oracle")
@@ -322,6 +414,7 @@ builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
 builder.add_edge("JSON coder", "Task Environment Constructor")
 builder.add_edge("Task Environment Constructor", "Workflow splitter")
-builder.add_edge("Workflow splitter", END)
+builder.add_conditional_edges("Workflow splitter", proceed_to_solver)
+builder.add_edge("External solver", END)
 
 graph = builder.compile()

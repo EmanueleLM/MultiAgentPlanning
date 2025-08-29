@@ -141,6 +141,7 @@ class State(TypedDict):
     num_steps: int  # number of sequential steps in the planning workflow
     pddl: Dict[str, str]  # domain and problem PDDL names from orchestrator, for solver
     agent_configs: List[Tuple]  # configurations for agents in the current parallel step
+    is_final: bool = False  # whether this is the final step in the workflow
 
 
 # state for a generic agent, including actors and orchestrator
@@ -151,7 +152,7 @@ class AgentState(TypedDict):
     prompt: str
     inputs: List[str]
     output: str
-    is_final: bool = False  # whether this is the final agent in the workflow
+    is_final: bool
 
 
 # tools
@@ -327,6 +328,10 @@ def workflow_splitter(state: State):
         agent_configs.append((agent_name, task, sys_msg, prompt, inputs, output))
     print(f"Agent configs: {agent_configs}")
     state["agent_configs"] = agent_configs
+    state["current_step"] += 1
+    state["is_final"] = False
+    if state["current_step"] == state["num_steps"]:
+        state["is_final"] = True
     return state
 
 
@@ -342,7 +347,7 @@ def continue_to_workflow(state: State):
                 "prompt": prompt,
                 "inputs": inputs,
                 "output": output,
-                "is_final": state["current_step"] + 1 == state["num_steps"],
+                "is_final": state["is_final"],
             },
         )
         for agent_name, task, sys_msg, prompt, inputs, output in agent_configs
@@ -359,9 +364,10 @@ def generic_actor(state: AgentState):
     base_dir = (Path(__file__).parent / ACTOR_OUTPUT_PATH).resolve()
 
     formatted_parts: List[str] = []
+    # TODO: this assumes pddl mode! Need additional logic if want only observations
     for inp in inputs or []:
-        d = base_dir / f"{inp}_domain"
-        p = base_dir / f"{inp}_problem"
+        d = base_dir / f"{inp}_domain.pddl"
+        p = base_dir / f"{inp}_problem.pddl"
         content_domain, content_problem = "", ""
         p_file_name = p.name
         d_file_name = d.name
@@ -411,12 +417,17 @@ def external_solver(state: State):
     pass
 
 
-def proceed_to_solver(state: State) -> Literal["External solver", "Workflow splitter"]:
-    if state["current_step"] + 1 >= state["num_steps"]:
+def proceed_to_solver(
+    state: State,
+) -> Literal["External solver", "Workflow splitter"]:
+    if state["is_final"]:
         return "External solver"
-    else:
-        state["current_step"] += 1
-        return "Workflow splitter"
+    return "Workflow splitter"
+    # if state["current_step"] + 1 >= state["num_steps"]:
+    #    return "External solver"
+    # else:
+    #    state["current_step"] += 1
+    #    return "Workflow splitter"
 
 
 # build graph
@@ -439,8 +450,7 @@ builder.add_edge("Reworder", "JSON coder")
 builder.add_edge("JSON coder", "Task Environment Constructor")
 builder.add_edge("Task Environment Constructor", "Workflow splitter")
 builder.add_conditional_edges("Workflow splitter", continue_to_workflow, ["Actor node"])
-builder.add_edge("Actor node", "Workflow splitter")
-builder.add_conditional_edges("Workflow splitter", proceed_to_solver)
+builder.add_conditional_edges("Actor node", proceed_to_solver)
 builder.add_edge("External solver", END)
 
 graph = builder.compile()

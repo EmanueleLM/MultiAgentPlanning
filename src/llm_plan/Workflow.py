@@ -8,7 +8,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
 from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
-from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any
+from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any, Tuple
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -17,6 +17,8 @@ from llm_plan.environment import Environment as TaskEnvironment
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
+EXAMPLE_JSON = "./example_schema.json"
+ENVIRONMENT_CLASS = "./environment.py"
 
 
 # helper functions
@@ -138,12 +140,13 @@ class State(TypedDict):
     current_step: int = 0
     num_steps: int  # number of sequential steps in the planning workflow
     pddl: Dict[str, str]  # domain and problem PDDL names from orchestrator, for solver
+    agent_configs: List[Tuple]  # configurations for agents in the current parallel step
 
 
 # state for a generic agent, including actors and orchestrator
 class AgentState(TypedDict):
     name: str  # agent name
-    task: str  # task mode, e.g. pddl
+    task: Literal["pddl", "obs"]  # task mode, e.g. pddl
     sys_msg: str
     prompt: str
     inputs: List[str]
@@ -223,20 +226,29 @@ def agent_summarizer(state: State):
 
 
 def agent_coder_json(state: State):
+    # TODO: for now, specify pddl in the system prompt. Will have to revise if we want observations instead.
     sys_msg = (
-        "You are an expert programmer. Given a structured brief of a planning task, "
-        "generate a comprehensive JSON representation of the planning task, following the example given."
-        "The JSON should include a breakdown of tasks and knowledge for each agent and the orchestrator."
-        "Depending on the task, the structure of the init and goal fields of the environment may vary."
-        "Each constraint should be of the form [agent name] [task]->[agent name] [task], specifying which"
-        "tasks should be completed before which others. For example, 'Agent1 pddl->orchestrator pddl.'"
+        "You are an expert programmer. Given a structured brief of a planning problem, "
+        "generate a comprehensive JSON representation of the planning problem, following the example given. "
+        "The JSON should include a breakdown of tasks and knowledge for each agent and the orchestrator (also an agent). "
+        "Each agent generates a PDDL domain + problem and sends it to the orchestrator that generates the final plan. "
+        "Depending on the problem, the structure of the init and goal fields of the environment may vary. "
+        "Each constraint should strictly be of the form [agent name].[task]->[agent name].[task], specifying which"
+        "tasks should be completed before which others. For example, 'Agent1.pddl->orchestrator.pddl.'"
     )
     format_instructions = plan_parser.get_format_instructions()
+    with open(EXAMPLE_JSON, "r") as f:
+        example_json = f.read()
+    with open(ENVIRONMENT_CLASS, "r") as f:
+        environment_class = f.read()
 
     human_prompt = (
-        f"\n{state.get('revised_description', '')}\n\n"
         "Return only the JSON that conforms to the schema below.\n\n"
         f"{format_instructions}\n\n"
+        f"[Example]\n{example_json}\n\n"
+        "You should make sure the json conforms to the following environment class, which will access it:"
+        f"[Environment]\n{environment_class}\n\n"
+        f"[Problem]\n{state.get('revised_description', '')}\n\n"
         "Do not include any extra commentary or Markdown, only the JSON."
     )
 
@@ -291,14 +303,14 @@ def construct_environment(state: State):
         "environment": env,
         "workflow": env.plan,
         "num_steps": num_steps,
+        "current_step": 0,
     }
 
 
 # keep all the initialising in construct_environment so continue_to_workflow can loop.
-# set branch condition! TODO
-def continue_to_workflow(state: State):
+def workflow_splitter(state: State):
     environment = state["environment"]
-    parallel_steps = state["workflow"][state["workflow_idx"]]
+    parallel_steps = state["workflow"][state["current_step"]]
     agent_configs = []
     for step in parallel_steps:
         agent_name, action = step.split(".")
@@ -311,13 +323,21 @@ def continue_to_workflow(state: State):
         prompt = agent_spec["prompt"]
         inputs = agent_spec["input"]
         output = agent_spec["output"]
-        agent_configs.append((agent_name, sys_msg, prompt, inputs, output))
+        task = agent_spec["task"]
+        agent_configs.append((agent_name, task, sys_msg, prompt, inputs, output))
+    print(f"Agent configs: {agent_configs}")
+    state["agent_configs"] = agent_configs
+    return state
 
+
+def continue_to_workflow(state: State):
+    agent_configs = state["agent_configs"]
     return [
         Send(
             "Actor node",
             {
                 "name": agent_name,
+                "task": task,
                 "sys_msg": sys_msg,
                 "prompt": prompt,
                 "inputs": inputs,
@@ -325,7 +345,7 @@ def continue_to_workflow(state: State):
                 "is_final": state["current_step"] + 1 == state["num_steps"],
             },
         )
-        for agent_name, sys_msg, prompt, inputs, output in agent_configs
+        for agent_name, task, sys_msg, prompt, inputs, output in agent_configs
     ]
 
 
@@ -371,6 +391,9 @@ def generic_actor(state: AgentState):
         problem = response_text.split("<problem>")[1].split("</problem>")[0]
         domain_path = base_dir / f"{output}_domain.pddl"
         problem_path = base_dir / f"{output}_problem.pddl"
+        # create directory if doesn't exist
+        base_dir.mkdir(parents=True, exist_ok=True)
+
         domain_path.write_text(domain, encoding="utf-8")
         problem_path.write_text(problem, encoding="utf-8")
 
@@ -405,7 +428,7 @@ builder.add_node("Oracle", agent_oracle)
 builder.add_node("Reworder", agent_summarizer)
 builder.add_node("JSON coder", agent_coder_json)
 builder.add_node("Task Environment Constructor", construct_environment)
-builder.add_node("Workflow splitter", continue_to_workflow)
+builder.add_node("Workflow splitter", workflow_splitter)
 builder.add_node("Actor node", generic_actor)
 builder.add_node("External solver", external_solver)
 
@@ -415,6 +438,8 @@ builder.add_edge("Oracle", "Reworder")
 builder.add_edge("Reworder", "JSON coder")
 builder.add_edge("JSON coder", "Task Environment Constructor")
 builder.add_edge("Task Environment Constructor", "Workflow splitter")
+builder.add_conditional_edges("Workflow splitter", continue_to_workflow, ["Actor node"])
+builder.add_edge("Actor node", "Workflow splitter")
 builder.add_conditional_edges("Workflow splitter", proceed_to_solver)
 builder.add_edge("External solver", END)
 

@@ -12,7 +12,7 @@ from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any
 from langgraph.types import Command, interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
-from src.llm_plan.environment import Environment as TaskEnvironment
+from llm_plan.environment import Environment as TaskEnvironment
 
 MODEL = "gpt-4o"  # use same model for all workflow agents for now
 JSON_OUTPUT_PATH = "../../environments/static"
@@ -152,7 +152,7 @@ class AgentState(TypedDict):
 
 
 # tools
-@tool("AskClarify", return_direct=True)
+@tool("AskClarify")
 def ask_clarify(question: str) -> str:
     """
     Asks for clarification if task description is ambiguous or missing details.
@@ -175,9 +175,16 @@ refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
 
 # define agents
+oracle_sys_msg = (
+    "You are an expert in planning. Given a description of a planning task, your job is only to decide "
+    "whether there is sufficient information to come up with a plan. If not, or if anything is unclear,"
+    "ask a concise question for more details or clarification. Do not ask to ask. If you have a question, "
+    "just make a tool call."
+)
 oracle = create_react_agent(
     model=oracle_llm,
     tools=[ask_clarify],
+    state_modifiers=[SystemMessage(content=oracle_sys_msg)],
 )
 
 
@@ -191,13 +198,7 @@ def agent_oracle(state: State):
             # first human message is used to invoke graph, should just be a single message with task desc.
             init["initial_description"] = human_texts[0]
 
-    sys_msg = (
-        "You are an expert in planning. Given a description of a planning task, your job is only to decide "
-        "whether there is sufficient information to come up with a plan. If not, or if anything is unclear,"
-        "ask a concise question for more details or clarification. Do not ask to ask. If you have a question, "
-        "just make a tool call."
-    )
-    inp = {"messages": [SystemMessage(content=sys_msg)] + state["messages"]}
+    inp = {"messages": state["messages"]}
     out = oracle.invoke(inp)
     return {
         **init,
@@ -218,7 +219,7 @@ def agent_summarizer(state: State):
     )
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = oracle_llm.invoke(inp)
-    return {"messages": state["messages"] + out, "revised_description": out}
+    return {"messages": state["messages"] + [out], "revised_description": out}
 
 
 def agent_coder_json(state: State):
@@ -268,7 +269,7 @@ def agent_coder_json(state: State):
             parsed_plan = parsed_model.model_dump()
         except Exception as e:
             return {
-                "messages": state["messages"] + out.get("messages", out),
+                "messages": state["messages"] + [out],
                 "json_error": str(e),
             }
 
@@ -278,7 +279,7 @@ def agent_coder_json(state: State):
     json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}_{timestamp}.json")
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
-    return {"messages": state["messages"] + out, "plan_json": parsed_plan}
+    return {"messages": state["messages"] + [out], "plan_json": parsed_plan}
 
 
 def construct_environment(state: State):

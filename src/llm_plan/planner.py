@@ -62,6 +62,10 @@ class Planner:
                                  Think carefully about the entities, their attributes, and the relationships between them.
                                  Make sure the {format} file is valid and can be parsed without errors.
                                  
+                                 Remember that the {format} that you return:
+                                 - Should not contain special characters like \n, etc.
+                                 - Should be properly formatted and indented. Don't wrap it between quotes.
+                                 
                                  Think step by step and return the {format} file within {tag_begin}{tag_end} tags.
                                  """).strip()
 

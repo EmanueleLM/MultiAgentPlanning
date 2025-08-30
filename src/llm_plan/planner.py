@@ -92,8 +92,8 @@ class Planner:
         formatted_environment = response[json_start:json_end].strip()
 
         # 4. Save the representation in the correct folder
-        filename = env_name + format
-        with open(ENVIRONMENTS_JSON_PATH / filename, "r") as f:
+        filename = env_name + "." + format
+        with open(ENVIRONMENTS_JSON_PATH / filename, "w") as f:
             json.dump(formatted_environment, f, indent=4)
 
         # 5. Return its path

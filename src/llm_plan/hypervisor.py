@@ -81,10 +81,10 @@ class HypervisorHallucinations(Hypervisor):
                                                     """).strip()
         self.prompt_detect = textwrap.dedent("""
                                              Analyze the following information and detect any hallucinations: 
-                                             \n{plan}\n
-                                             For any potential hallucination, return a description of it and its 
-                                             severity, from 1 (low) to 5 (high). If there are no evident hallucinations,
-                                             there is no need to invent them.
+                                             {plan}
+                                             
+                                             For any potential hallucination, return a description of it and its severity, from 1 (low) to 5 (high).
+                                             If there are no evident hallucinations,there is no need to invent them.
                                              """).strip()
 
         self.system_prompt = textwrap.dedent("""
@@ -95,12 +95,12 @@ class HypervisorHallucinations(Hypervisor):
                                              """).strip()
         self.prompt = textwrap.dedent("""
                                       Given this plan:
-                                      \n{plan}\n
-                                      And this list of hallucinations and their severity scores 
-                                      (from 1 (low) to 5 (high)):
-                                      \n{hallucinations}\n
-                                      Return a plan where all the hallucinations whose severity 
-                                      is at least {threshold} have been solved or removed.
+                                      {plan}
+                                      
+                                      And this list of hallucinations and their severity scores (from 1 (low) to 5 (high)):
+                                      {hallucinations}
+                                      
+                                      Return a plan where all the hallucinations whose severity is at least {threshold} have been solved or removed.
                                       """).strip()
 
     def _detect_hallucinations(self) -> None:
@@ -168,15 +168,18 @@ class HypervisorDeepThinkPDDL(Hypervisor):
                                              """).strip()
         self.prompt = textwrap.dedent("""
                                       Given this specification in JSON format:
-                                      \n{specification}\n
+                                      {specification}
+                                      
                                       And this PDDL domain that describes the specification:
-                                      \n<domain>{pddl_domain}</domain>\n
+                                      <domain>{pddl_domain}</domain>
+                                      
                                       And this PDDL problem that instatiates the specification:
-                                      \n<problem>{pddl_problem}</problem>\n
+                                      <problem>{pddl_problem}</problem>
+                                      
                                       Think *very carefully* whether the PDDL domain and plan reflect the human specification.
-                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
-                                      Return the PDDL domain between <domain> and </domain> tags, 
-                                      and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
+                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
+                                      
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
                                       """).strip()
 
     def run(self) -> str:
@@ -230,18 +233,21 @@ class HypervisorSyntaxPDDL(Hypervisor):
                                              """).strip()
         self.prompt = textwrap.dedent("""
                                       Given this specification in JSON format:
-                                      \n{specification}\n
+                                      {specification}
                                       And this PDDL domain that describes the specification:
-                                      \n<domain>{pddl_domain}</domain>\n
+                                      <domain>{pddl_domain}</domain>
+                                      
                                       And this PDDL problem that instatiates the specification:
-                                      \n<problem>{pddl_problem}</problem>\n
+                                      <problem>{pddl_problem}</problem>
+                                      
                                       This is the error message returned by a PDDL validator:
-                                      \n{syntax_errors}\n
+                                      {syntax_errors}
+                                      
                                       Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *Fast Downward*.
                                       Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *Fast Downward*. 
-                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.\n
-                                      Return the PDDL domain between <domain> and </domain> tags, 
-                                      and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
+                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
+                                      
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. Just return the PDDL code, do not add special characters or comments.
                                       """).strip()
 
     def run(self) -> str:
@@ -294,17 +300,21 @@ class HypervisorNaturalLanguage(Hypervisor):
                                              """).strip()
         self.prompt = textwrap.dedent("""
                                       Given this specification in JSON format:
-                                      \n{specification}\n
+                                      {specification}
+                                      
                                       And this PDDL domain that describes the specification:
-                                      \n<domain>{pddl_domain}</domain>\n
+                                      <domain>{pddl_domain}</domain>
+                                      
                                       And this PDDL problem that instatiates the specification:
-                                      \n<problem>{pddl_problem}</problem>\n
+                                      <problem>{pddl_problem}</problem>
+                                      
                                       This is the PDDL plan that correctly solves the task:
-                                      \n<plan>{pddl_plan}</plan>\n
+                                      <plan>{pddl_plan}</plan>
+                                      
                                       Your task is to output a set of actions that is readable by humans and that satisfies the final goal.
-                                      Remember that your output:\n
-                                      - Must match closely each action in the plan. Do not add more or delete any.\n
-                                      - Must report each step clearly.\n
+                                      Remember that your output:
+                                      - Must match closely each action in the plan. Do not add more or delete any.
+                                      - Must report each step clearly.
                                       - Whenever possible, each step should report the time duration and/or the timestamp.
                                       - Your plan must be compliant with the specification.
                                       """).strip()

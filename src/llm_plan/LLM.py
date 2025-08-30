@@ -8,14 +8,14 @@ class LLM:
     A class representing a Language Model (LLM) that can generate problems (e.g., pddl) based on observations and prompts.
     """
 
-    def __init__(self, model):
+    def __init__(self, model_name: str = "LLM (Abstract)"):
         """
         Initialize the LLM with a specific model.
 
         Args:
             model: The language model to be used for generating actions.
         """
-        self.model_name = model
+        self.model_name = model_name
 
     def generate_sync(
         self,
@@ -74,7 +74,11 @@ class GPT_Ollama(LLM):
                 ],
             )
 
-            return response.choices[0].message.content
+            return (
+                "No response generated."
+                if response.choices[0].message.content is None
+                else response.choices[0].message.content
+            )
 
         except Exception as e:
             return f"Error while generating a response: {e}"
@@ -103,7 +107,11 @@ class GPT_4o(LLM):
                 ],
             )
 
-            return response.choices[0].message.content
+            return (
+                "No response generated."
+                if response.choices[0].message.content is None
+                else response.choices[0].message.content
+            )
 
         except Exception as e:
             return f"Error while generating a response: {e}"

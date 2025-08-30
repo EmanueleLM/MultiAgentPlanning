@@ -1,0 +1,15 @@
+(define (problem blocks-problem)
+  (:domain blocks-world)
+  (:objects a b c)
+  (:init
+    (table a)
+    (table b)
+    (table c)
+    (clear a)
+    (clear b)
+    (clear c)
+  )
+  (:goal
+    (and (on a b))
+  )
+)

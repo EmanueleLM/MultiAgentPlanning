@@ -84,18 +84,26 @@ class GPT_Ollama(LLM):
             return f"Error while generating a response: {e}"
 
 
-class GPT_4o(LLM):
-    def __init__(self):
-        """Initialize GPT-4o model."""
-        super().__init__("gpt-4o")
+class ChatGPT(LLM):
+    def __init__(self, model_name: str = "gpt-4o"):
+        """Load a ChatGPT model.
+
+        Args:
+            model_name (str, optional): The model as it appears on the ChatGPT APIs. Defaults to "gpt-4o".
+        """
+        super().__init__(model_name=model_name)
 
         load_dotenv()
         api_key = os.getenv("OPENAI_API_KEY")
 
         try:
             self.client = OpenAI(api_key=api_key)
+            self._available_models = [m.id for m in self.client.models.list().data]
+            assert model_name in self._available_models, (
+                f"Model {model_name} not found in OpenAI models."
+            )
         except Exception as e:
-            print(f"Something went wrong with GPT-4o initialization:\n{e}")
+            print(f"Something went wrong with {model_name} initialization:\n{e}")
 
     def generate_sync(self, system_prompt: str, prompt: str) -> str:
         try:

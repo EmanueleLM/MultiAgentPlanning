@@ -14,21 +14,17 @@ from src.llm_plan.utils import get_fields_in_formatted_string, get_json_nested_f
 
 
 class Planner:
-    def __init__(self, model: LLM):
-        """This class uses a workflow in an environment to plan with LLMs.
-
-        Args:
-            model (LLM): the LLM used for planning.
-            TODO: Support multiple models for different agents.
-        """
+    def __init__(self):
+        """This class uses a workflow in an environment to plan with LLMs."""
         self.environment: Environment
-        self.model = model
         self.format_fields: dict[str, str] = {}
 
+    @staticmethod
     def generate_representation(
-        self, specific: str, env_name: str, format: str = "json"
+        model: LLM, specific: str, env_name: str, format: str = "json"
     ) -> Path:
-        """Generate a new environment representation in the given format.
+        """Generate a new environment representation in the given format and save it
+        in ENVIRONMENTS_JSON_PATH (for json).
 
         Args:
             specific (str): The human description of the planning task.
@@ -85,7 +81,7 @@ class Planner:
         )
 
         # 2. Ask the llm to generate a representation of the new environment in the given format
-        response = self.model.generate_sync(system_prompt=system_prompt, prompt=prompt)
+        response = model.generate_sync(system_prompt=system_prompt, prompt=prompt)
         print(response)
 
         # Identify the plan in the response
@@ -113,7 +109,7 @@ class Planner:
         # 5. Return its path
         return ENVIRONMENTS_JSON_PATH / env_name
 
-    def plan(self, environment: Environment) -> dict[str, str]:
+    def plan(self, model: LLM, environment: Environment) -> dict[str, str]:
         """
         Take a workflow and generate a sequential plan using the LLMs.
         Parallelizable actions are executed in the order they appear in the sequence.
@@ -159,7 +155,7 @@ class Planner:
                         )
 
                 # Prompt the LLM
-                self.format_fields[variable_output] = self.model.generate_sync(
+                self.format_fields[variable_output] = model.generate_sync(
                     system_prompt=system_prompt, prompt=prompt
                 )
                 print(f"----- {agent_name}->{action_name} -----\n")

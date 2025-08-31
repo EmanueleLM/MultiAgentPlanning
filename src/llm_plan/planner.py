@@ -44,12 +44,11 @@ class Planner:
             raise NotImplementedError(f"Format {format} not supported.")
 
         # 1. Prepare the prompts and the samples
-        system_prompt = inspect.cleandoc("""
-                                        You are an expert of {format}. 
-                                        Your task is to return a valid {format} file 
-                                        that is compliant with the human specifics.
+        system_prompt = inspect.cleandoc("""\
+                                        You are an expert of {format} and also very knowledgable about PDDL plans. 
+                                        Your task is to return a valid {format} file that is compliant with the human specifics.
                                         """)
-        prompt = inspect.cleandoc("""
+        prompt = inspect.cleandoc("""\
                                  Here's an example of a {format} file that describes an environment:
                                  <environment-{format}>{sample_environment}</environment-{format}>
                                  
@@ -63,7 +62,8 @@ class Planner:
                                  Make sure the {format} file is valid and can be parsed without errors.
                                  
                                  Remember that the {format} that you return:
-                                 - Should not contain special characters like \n, etc.
+                                 - Should include instructions that ask to generate PDDL domain and problem files.
+                                 - Should not contain special characters like \\n, etc.
                                  - Should be properly formatted and indented. Don't wrap it between quotes.
                                  
                                  Think step by step and return the {format} file within {tag_begin}{tag_end} tags.
@@ -85,18 +85,28 @@ class Planner:
         )
 
         # 2. Ask the llm to generate a representation of the new environment in the given format
-        print(prompt)
         response = self.model.generate_sync(system_prompt=system_prompt, prompt=prompt)
         print(response)
 
         # Identify the plan in the response
-        # TODO: deal with potential errors in the generation
-        json_start = response.index(tag_begin) + len(tag_begin)
-        json_end = response.index(tag_end)
-        formatted_environment = response[json_start:json_end].strip()
+        format_start = response.index(tag_begin) + len(tag_begin)
+        format_end = response.index(tag_end)
+        formatted_environment = response[format_start:format_end].strip()
 
         # 4. Save the representation in the correct folder
         filename = env_name + "." + format
+        try:
+            if format == "json":
+                formatted_environment = json.loads(formatted_environment)
+            else:
+                raise NotImplementedError(f"Format {format} not supported.")
+        except json.JSONDecodeError as e:
+            print(f"!: The generated environment is not a valid {format}.")
+            print(f"[ERROR]: {e}")
+            print(
+                f"The file will be saved in {filename} but you have to fix the {format} errors manually."
+            )
+
         with open(ENVIRONMENTS_JSON_PATH / filename, "w") as f:
             json.dump(formatted_environment, f, indent=4)
 

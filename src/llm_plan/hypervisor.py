@@ -73,13 +73,12 @@ class HypervisorHallucinations(Hypervisor):
         }
 
         # Prompts
-        # TODO: split logic and data
-        self.system_prompt_detect = inspect.cleandoc("""
+        self.system_prompt_detect = inspect.cleandoc("""\
                                                     You are a hypervisor that detects hallucinations. 
                                                     Your task is to analyze a provided plan and its assumptions
                                                     and detect any hallucinations or inconsistencies.
                                                     """)
-        self.prompt_detect = inspect.cleandoc("""
+        self.prompt_detect = inspect.cleandoc("""\
                                              Analyze the following information and detect any hallucinations: 
                                              {plan}
                                              
@@ -87,13 +86,13 @@ class HypervisorHallucinations(Hypervisor):
                                              If there are no evident hallucinations,there is no need to invent them.
                                              """)
 
-        self.system_prompt = inspect.cleandoc("""
+        self.system_prompt = inspect.cleandoc("""\
                                              You are a hypervisor that mitigates hallucinations. 
                                              Your task is to analyze a provided plan and a list of hallucinations, 
                                              each flagged with a severity score, from 1 (low) to 5 (high), 
                                              and solve them.
                                              """)
-        self.prompt = inspect.cleandoc("""
+        self.prompt = inspect.cleandoc("""\
                                       Given this plan:
                                       {plan}
                                       
@@ -161,12 +160,12 @@ class HypervisorDeepThinkPDDL(Hypervisor):
         }
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""
+        self.system_prompt = inspect.cleandoc("""\
                                              You are a hypervisor that evaluates each plan's step. 
                                              Your task is to analyze a provided plan against the human specifics,
                                              and identify all the possible inconsistencies. You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
-        self.prompt = inspect.cleandoc("""
+        self.prompt = inspect.cleandoc("""\
                                       Given this specification in JSON format:
                                       {specification}
                                       
@@ -206,6 +205,72 @@ class HypervisorDeepThinkPDDL(Hypervisor):
         )
 
 
+class HypervisorFastDownwardAdapter(Hypervisor):
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Initialize the hypervisor that adapts PDDL domains and problems for Fast Downward.
+
+        Input:
+            llm (LLM): The language model to use for rewriting/adapting PDDL.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "HypervisorFastDownwardAdapter"
+        self.llm = llm
+        self.required_args = {
+            "pddl_domain": "(str) The original PDDL domain.",
+            "pddl_problem": "(str) The original PDDL problem.",
+            "specification": "(str) Optional human-readable specification of the task.",
+        }
+
+        # Prompts
+        self.system_prompt = inspect.cleandoc("""\
+            You are a hypervisor that adapts PDDL domains and problems for Fast Downward. 
+            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs
+            so that Fast Downward can plan with the domain. Maintain as much of the original semantics as possible.
+            """)
+        self.prompt = inspect.cleandoc("""\
+            Given this specification (optional):
+            {specification}
+
+            And this PDDL domain:
+            <domain>{pddl_domain}</domain>
+
+            And this PDDL problem:
+            <problem>{pddl_problem}</problem>
+
+            Rewrite the domain and problem to be compatible with Fast Downward:
+            - Replace numeric fluents with predicates.
+            - Precompute arithmetic constraints as predicates in the problem.
+            - Discretize temporal/duration effects into sequences of instantaneous actions.
+            - Use symbolic ordering instead of numeric comparisons.
+            - Encode optimization via :action-costs only.
+            - Keep types, equality, and STRIPS/ADL features.
+            
+            Return the domain between <domain></domain> and the problem between <problem></problem>.
+            Only return the PDDL code, no extra comments or characters.
+            """)
+
+    def run(self) -> str:
+        """
+        Run the hypervisor to adapt the PDDL domain and problem for Fast Downward.
+
+        Output:
+            str: The adapted PDDL domain and problem in Fast Downward-compatible form.
+        """
+        self.upload_args(self.prompt_args)
+
+        prompt = self.prompt.format(
+            specification=self.prompt_args.get("specification", ""),
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+        )
+
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
 class HypervisorSyntaxPDDL(Hypervisor):
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -225,13 +290,13 @@ class HypervisorSyntaxPDDL(Hypervisor):
         }
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""
+        self.system_prompt = inspect.cleandoc("""\
                                              You are a hypervisor that evaluates each plan's step. 
                                              Your task is to analyze a provided plan against the human specifics,
                                              and identify all the possible inconsistencies with the PDDL syntax.
                                              The PDDL syntax required is that used by *Fast Downward*. You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
-        self.prompt = inspect.cleandoc("""
+        self.prompt = inspect.cleandoc("""\
                                       Given this specification in JSON format:
                                       {specification}
                                       And this PDDL domain that describes the specification:
@@ -294,11 +359,11 @@ class HypervisorNaturalLanguage(Hypervisor):
         }
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""
+        self.system_prompt = inspect.cleandoc("""\
                                              You are a hypervisor that translates PDDL into natural language. 
                                              Your task is to turn a specific in JSON, a PDDL problem, a PDDL domain, and a PDDL plan, into a set of actions that is readable by humans. You follow closely the plan provided within <plan></plan> tags. You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
-        self.prompt = inspect.cleandoc("""
+        self.prompt = inspect.cleandoc("""\
                                       Given this specification in JSON format:
                                       {specification}
                                       

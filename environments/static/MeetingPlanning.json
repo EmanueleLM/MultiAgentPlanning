@@ -1,50 +1,83 @@
 {
-    "name": "MeetJamesSchedule",
+    "name": "MeetJamesSF",
     "author": "Human",
     "agents": {
-        "number": 1,
+        "number": 3,
         "names": [
-            "planner"
+            "traveler",
+            "james",
+            "orchestrator"
         ],
-        "planner": {
+        "traveler": {
             "private_information": [
                 "I arrive at Marina District at 09:00",
-                "I want to meet James for at least 75 minutes"
+                "I can move between locations and my travel time is given in the environment"
             ],
-            "goal": "Meet James at Alamo Square for a minimum of 75 minutes"
+            "goal": "Meet James for at least 75 minutes."
+        },
+        "james": {
+            "private_information": [
+                "I will be at Alamo Square from 15:45 to 20:00"
+            ],
+            "goal": "Meet the traveler for at least 75 minutes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a schedule that allows the traveler to meet James for at least 75 minutes."
         }
     },
     "environment": {
         "init": {
-            "travel_times": {
-                "Marina District": {
-                    "Alamo Square": 15
-                },
-                "Alamo Square": {
-                    "Marina District": 15
-                }
-            },
+            "start_location": "Marina District",
             "arrival_time": "09:00",
-            "james_availability": {
-                "start": "15:45",
-                "end": "20:00"
+            "locations": [
+                "Marina District",
+                "Alamo Square"
+            ],
+            "travel_times_minutes": {
+                "Marina District->Alamo Square": 15,
+                "Alamo Square->Marina District": 15
             }
         },
         "public_information": [
-            "Travel time between Marina District and Alamo Square is 15 minutes",
-            "You arrive at Marina District at 09:00",
-            "James will be at Alamo Square from 15:45 to 20:00"
+            "Two relevant locations: Marina District and Alamo Square.",
+            "Travel time between Marina District and Alamo Square is 15 minutes each way.",
+            "Traveler arrives at Marina District at 09:00.",
+            "James will be at Alamo Square from 15:45 to 20:00.",
+            "Goal is to meet James for at least 75 minutes."
         ]
     },
     "workflow": {
-        "planner": {
+        "traveler": {
             "pddl": {
                 "input": [],
-                "output": "pddl_planner",
-                "system_prompt": "You are an expert in temporal planning with PDDL. You always provide a PDDL domain and a PDDL problem file to model scheduling with time windows.",
-                "prompt": "Your name is planner. You are in an environment with the following public information:{environment->public_information}You have the following private information:{agents->planner->private_information}Your goal is:{agents->planner->goal}Think step by step and provide a PDDL domain and a PDDL problem file to solve the scheduling problem. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags."
+                "output": "pddl_traveler",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is traveler. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->traveler->private_information} This is the global goal to solve: {agents->traveler->goal} Think step by step and provide a PDDL domain and a PDDL problem file to solve the task. If you miss some information, do not make assumptions, just give a plan that concerns the information you have. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
             }
         },
-        "constraints": []
+        "james": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_james",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is james. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->james->private_information} This is the global goal to solve: {agents->james->goal} Think step by step and provide a PDDL domain and a PDDL problem file to solve the task. If you miss some information, do not make assumptions, just give a plan that concerns the information you have. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_traveler",
+                    "pddl_james"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags. If there are multiple agents, you keep their actions distinct.",
+                "prompt": "There are two agents planning to meet. You will receive their PDDL domains and problems. You have to orchestrate them to solve the following task: {agents->orchestrator->goal} Keep in mind that the PDDL they send you may be partial or contain ambiguities. A partial PDDL may partially solve a planning problem but may require integration of information. Ambiguities may appear in different forms. Here is the first agent PDDL: {pddl_traveler} Here is the second agent PDDL: {pddl_james} You need to integrate the responses to solve the task. It is important that you keep the actions of the two agents distinct. Think step by step and provide a PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.pddl->orchestrator.pddl",
+            "james.pddl->orchestrator.pddl"
+        ]
     }
 }

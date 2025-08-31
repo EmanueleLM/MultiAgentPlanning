@@ -1,50 +1,46 @@
-(define (domain meet-orchestrated)
-  (:requirements :strips :durative-actions :typing :negative-preconditions :timed-initial-literals)
-  (:types person location)
+```
+(define (domain integrated-meeting)
+    (:requirements :strips :durative-actions :typing :fluents :negative-preconditions)
+    
+    (:types person location)
+    
+    (:predicates
+        (at ?person - person ?loc - location)
+        (met ?person1 - person ?person2 - person)
+        (meeting-planned ?person1 - person ?person2 - person)
+        (meet-for-75 ?person1 - person ?person2 - person)
+    )
+    
+    (:functions 
+        (time)
+    )
 
-  (:predicates
-    (at ?p - person ?l - location)
-    (met ?a - person ?b - person)
-  )
-
-  ;; Traveler-specific travel action (distinct name)
-  (:durative-action travel_traveler
-    :parameters (?p - person ?from - location ?to - location)
-    :duration (= ?duration 15)
-    :condition (and
-      (at start (at ?p ?from))
+    ;; Agent 1's Actions
+    (:durative-action travel
+        :parameters (?person - person ?from ?to - location)
+        :duration (= ?duration 15)
+        :condition (and (at start (at ?person ?from)))
+        :effect (and (at end (at ?person ?to)) 
+                     (at start (not (at ?person ?from))) 
+                     (increase (time) 15))
     )
-    :effect (and
-      (at end (not (at ?p ?from)))
-      (at end (at ?p ?to))
+    
+    (:durative-action wait
+        :parameters (?person - person ?loc - location)
+        :duration (>= ?duration 1)
+        :condition (and (at start (at ?person ?loc)))
+        :effect (increase (time) ?duration)
     )
-  )
-
-  ;; James-specific travel action (distinct name). Kept separate so agent actions remain distinct.
-  (:durative-action travel_james
-    :parameters (?p - person ?from - location ?to - location)
-    :duration (= ?duration 15)
-    :condition (and
-      (at start (at ?p ?from))
+    
+    ;; Combined Action
+    (:durative-action meet
+        :parameters (?person1 - person ?person2 - person)
+        :duration (= ?duration 75)
+        :condition (and (at start (at ?person1 alamo-square))
+                        (at start (at ?person2 alamo-square))
+                        (>= (time) 945) 
+                        (<= (time) 1200))
+        :effect (at end (met ?person1 ?person2))
     )
-    :effect (and
-      (at end (not (at ?p ?from)))
-      (at end (at ?p ?to))
-    )
-  )
-
-  ;; 75-minute meeting requiring both agents to be co-located for the whole duration.
-  ;; The meeting can only be scheduled if James is present during the entire 75 minutes
-  ;; (James' presence window is provided in the problem via timed initial literals).
-  (:durative-action meet_75
-    :parameters (?trav - person ?j - person ?l - location)
-    :duration (= ?duration 75)
-    :condition (and
-      (at start (at ?trav ?l))
-      (at start (at ?j ?l))
-      (over all (at ?trav ?l))
-      (over all (at ?j ?l))
-    )
-    :effect (at end (met ?trav ?j))
-  )
 )
+```

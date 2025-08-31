@@ -1,65 +1,40 @@
-(define (domain meet-orchestrated)
-  (:requirements :strips :typing :equality :action-costs)
-  (:types person location time)
-  (:predicates
-    (at ?p - person ?l - location ?t - time)
-    (met ?a - person ?b - person)
-    (next ?t1 - time ?t2 - time)
-    (allowed-at ?p - person ?t - time)
-  )
-
-  (:action travel_traveler
-    :parameters (?from - location ?to - location ?t1 - time ?t2 - time)
-    :precondition (and
-      (at traveler ?from ?t1)
-      (next ?t1 ?t2)
-      (allowed-at traveler ?t2)
+(define (domain integrated-meeting-fd)
+    (:requirements :strips :typing :negative-preconditions :equality)
+    (:types person location timepoint)
+    (:predicates
+        (at ?person - person ?loc - location)
+        (met ?person1 - person ?person2 - person)
+        (at-time ?t - timepoint)
+        (next-time ?t1 ?t2 - timepoint)
+        (can-meet ?person1 - person ?person2 - person)
+        (ready-to-meet ?person1 - person ?person2 - person)
+        (meet-slot ?slot - timepoint)
+        (has-travelled ?person - person ?from ?to - location)
     )
-    :effect (and
-      (at traveler ?to ?t2)
-      (not (at traveler ?from ?t1))
+    (:action travel
+        :parameters (?person - person ?from ?to - location ?t1 ?t2 - timepoint ?t3 ?t4 - timepoint)
+        :precondition (and (at ?person ?from) (at-time ?t1) (next-time ?t1 ?t2) (next-time ?t2 ?t3) (next-time ?t3 ?t4))
+        :effect (and (at ?person ?to) (not (at ?person ?from)) (not (at-time ?t1)) (not (at-time ?t2)) (not (at-time ?t3)) (at-time ?t4) (has-travelled ?person ?from ?to))
     )
-    :cost 15
-  )
-
-  (:action wait_traveler
-    :parameters (?l - location ?t1 - time ?t2 - time)
-    :precondition (and
-      (at traveler ?l ?t1)
-      (next ?t1 ?t2)
-      (allowed-at traveler ?t2)
+    (:action wait
+        :parameters (?person - person ?loc - location ?t1 ?t2 - timepoint)
+        :precondition (and (at ?person ?loc) (at-time ?t1) (next-time ?t1 ?t2))
+        :effect (and (at ?person ?loc) (not (at-time ?t1)) (at-time ?t2))
     )
-    :effect (and
-      (at traveler ?l ?t2)
-      (not (at traveler ?l ?t1))
+    (:action prepare-to-meet
+        :parameters (?person1 - person ?person2 - person ?loc - location ?t - timepoint)
+        :precondition (and
+            (at ?person1 ?loc)
+            (at ?person2 ?loc)
+            (at-time ?t)
+            (can-meet ?person1 ?person2)
+            (meet-slot ?t)
+        )
+        :effect (ready-to-meet ?person1 ?person2)
     )
-    :cost 0
-  )
-
-  (:action wait_james
-    :parameters (?l - location ?t1 - time ?t2 - time)
-    :precondition (and
-      (at james ?l ?t1)
-      (next ?t1 ?t2)
-      (allowed-at james ?t2)
+    (:action confirm-meet
+        :parameters (?person1 - person ?person2 - person ?t - timepoint)
+        :precondition (and (ready-to-meet ?person1 ?person2) (at-time ?t) (meet-slot ?t))
+        :effect (met ?person1 ?person2)
     )
-    :effect (and
-      (at james ?l ?t2)
-      (not (at james ?l ?t1))
-    )
-    :cost 0
-  )
-
-  (:action meet_75
-    :parameters (?l - location ?t1 - time ?t2 - time ?t3 - time ?t4 - time ?t5 - time ?t6 - time)
-    :precondition (and
-      (next ?t1 ?t2) (next ?t2 ?t3) (next ?t3 ?t4) (next ?t4 ?t5) (next ?t5 ?t6)
-      (at traveler ?l ?t1) (at traveler ?l ?t2) (at traveler ?l ?t3) (at traveler ?l ?t4) (at traveler ?l ?t5) (at traveler ?l ?t6)
-      (at james ?l ?t1)    (at james ?l ?t2)    (at james ?l ?t3)    (at james ?l ?t4)    (at james ?l ?t5)    (at james ?l ?t6)
-    )
-    :effect (and
-      (met traveler james)
-    )
-    :cost 0
-  )
 )

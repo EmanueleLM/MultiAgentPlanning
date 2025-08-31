@@ -1,5 +1,5 @@
+import inspect
 import json
-import textwrap
 
 from pathlib import Path
 
@@ -44,12 +44,12 @@ class Planner:
             raise NotImplementedError(f"Format {format} not supported.")
 
         # 1. Prepare the prompts and the samples
-        system_prompt = textwrap.dedent("""
+        system_prompt = inspect.cleandoc("""
                                         You are an expert of {format}. 
                                         Your task is to return a valid {format} file 
                                         that is compliant with the human specifics.
-                                        """).strip()
-        prompt = textwrap.dedent("""
+                                        """)
+        prompt = inspect.cleandoc("""
                                  Here's an example of a {format} file that describes an environment:
                                  <environment-{format}>{sample_environment}</environment-{format}>
                                  
@@ -67,7 +67,7 @@ class Planner:
                                  - Should be properly formatted and indented. Don't wrap it between quotes.
                                  
                                  Think step by step and return the {format} file within {tag_begin}{tag_end} tags.
-                                 """).strip()
+                                 """)
 
         with open(ENVIRONMENTS_JSON_SAMPLE_PATH, "r") as f:
             sample_environment = json.load(f)

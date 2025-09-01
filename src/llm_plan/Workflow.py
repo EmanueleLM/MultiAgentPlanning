@@ -15,8 +15,10 @@ from langgraph.types import Command, interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
 from llm_plan.environment import Environment as TaskEnvironment
+from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 
-MODEL = "gpt-4o"  # use same model for all workflow agents for now
+MODEL = "gpt-4o"  # use 4o for everything else
+MODEL_PDDL = "gpt-o4-mini"  # need better model for pddl
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
 EXAMPLE_JSON = "./example_schema.json"
@@ -57,6 +59,25 @@ def _win_to_wsl_path(p: Path) -> str:
     p = p.resolve()
     drive = p.drive.rstrip(":").lower()
     return f"/mnt/{drive}" + "/" + "/".join(p.parts[1:])
+
+
+def _extract(text: str, anchor: str) -> str:
+    start = text.find(anchor)
+    if start == -1:
+        raise ValueError(f"Anchor not found: {anchor!r}")
+    depth = 0
+    end = None
+    for i, c in enumerate(text[start:], start):
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end is None:
+        raise ValueError(f"Unbalanced parentheses for anchor {anchor!r}")
+    return text[start : end + 1]  # noqa E203
 
 
 def _solve_pddl(
@@ -251,7 +272,7 @@ oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
-pddl_llm = ChatOpenAI(model=MODEL, temperature=0)
+pddl_llm = ChatOpenAI(model=MODEL_PDDL, temperature=0)
 refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
 
@@ -406,6 +427,21 @@ def workflow_splitter(state: State):
         inputs = agent_spec["input"]
         output = agent_spec["output"]
         task = agent_spec["task"]
+
+        # Extract fields from the prompt
+        prompt_fields_to_fill = get_fields_in_formatted_string(prompt)
+
+        # Fill the missing information in the prompt
+        for field in prompt_fields_to_fill:
+            # Static fields (i.e., what is not dynamic)
+            if "->" in field:
+                v = get_json_nested_fields(environment.config_data, field.split("->"))
+                prompt = prompt.replace(f"{{{field}}}", str(v))
+
+            # Dynamic fields
+            else:
+                prompt = prompt.replace(f"{{{field}}}", environment.config_data[field])
+
         agent_configs.append((agent_name, task, sys_msg, prompt, inputs, output))
     state["agent_configs"] = agent_configs
     state["current_step"] += 1
@@ -464,7 +500,9 @@ def generic_actor(state: AgentState):
         formatted_parts.append(f"[{d_file_name}]:\n{content_domain}\n\n")
         formatted_parts.append(f"[{p_file_name}]:\n{content_problem}\n\n")
 
-    formatted_inputs = "[Inputs]:\n" + "".join(formatted_parts)
+    formatted_inputs = ""
+    if inputs:
+        formatted_inputs = "[Inputs]:\n" + "".join(formatted_parts)
 
     # Invoke the PDDL LLM with system message and a human message containing the prompt + formatted inputs
     prompt_with_inputs = prompt + "\n\n" + formatted_inputs
@@ -479,13 +517,18 @@ def generic_actor(state: AgentState):
         # assume system message instructed agent to enclose <> tags
         domain = response_text.split("<domain>")[1].split("</domain>")[0]
         problem = response_text.split("<problem>")[1].split("</problem>")[0]
+
+        # another safety net to ensure only raw pddl is extracted
+        domain_text = _extract(domain, "(define (domain")
+        problem_text = _extract(problem, "(define (problem")
+
         domain_path = base_dir / f"{output}_domain.pddl"
         problem_path = base_dir / f"{output}_problem.pddl"
         # create directory if doesn't exist
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        domain_path.write_text(domain, encoding="utf-8")
-        problem_path.write_text(problem, encoding="utf-8")
+        domain_path.write_text(domain_text, encoding="utf-8")
+        problem_path.write_text(problem_text, encoding="utf-8")
 
     # If final step and orchestrator, store the final domain and problem content
     if name == "orchestrator" and state["is_final"]:

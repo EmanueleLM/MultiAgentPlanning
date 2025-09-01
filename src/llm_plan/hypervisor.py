@@ -305,6 +305,9 @@ class HypervisorSyntaxPDDL(Hypervisor):
                                       And this PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
+                                      These are the logs of the attempted execution with *Fast Downward*:
+                                      <logs>{pddl_logs}</logs>
+                                      
                                       This is the error message returned by a PDDL validator:
                                       {syntax_errors}
                                       
@@ -332,6 +335,7 @@ class HypervisorSyntaxPDDL(Hypervisor):
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
         )
         return self.llm.generate_sync(

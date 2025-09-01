@@ -1,4 +1,6 @@
 import json
+import subprocess
+import shlex
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, AnyMessage
 from langchain_core.tools import tool
@@ -36,6 +38,7 @@ class QnA(TypedDict):
 
 # helper functions
 def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
+    """Extract question-answer pairs from messages."""
     qa_list: List[QnA] = []
     pending_q = None
     for msg in messages:
@@ -47,6 +50,76 @@ def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
             qa_list.append({"question": pending_q, "answer": msg.content})
             pending_q = None
     return qa_list
+
+
+def _win_to_wsl_path(p: Path) -> str:
+    """Convert a Windows path to WSL (/mnt/drive/...) form."""
+    p = p.resolve()
+    drive = p.drive.rstrip(":").lower()
+    return f"/mnt/{drive}" + "/" + "/".join(p.parts[1:])
+
+
+def _solve_pddl(
+    domain_path,
+    problem_path,
+    plan_out_path,
+    fd_dir_wsl="~/fast-downward",
+    search="astar(blind())",
+):
+    """
+    Run Fast Downward via WSL. Re-implement this depending on your OS to call fast-downward or any other planner.
+    Ensure the output plan is in the same format as that of fast-downward.
+    Args:
+        domain_path (str): Windows path to domain.pddl
+        problem_path (str): Windows path to problem.pddl
+        plan_out_path (str): Windows path where plan file will be saved.
+        fd_dir_wsl (str): WSL directory where fast-downward.py resides (default: ~/fast-downward)
+        search (str): Fast Downward search spec, e.g. 'astar(lmcut())'
+    """
+    domain_path = Path(domain_path)
+    problem_path = Path(problem_path)
+    plan_out_path = Path(plan_out_path)
+
+    plan_out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    domain_wsl = _win_to_wsl_path(domain_path)
+    problem_wsl = _win_to_wsl_path(problem_path)
+    outdir_wsl = _win_to_wsl_path(plan_out_path)
+
+    # Build inner bash command:
+    # 1) cd into FD folder
+    # 2) run planner to produce sas_plan
+    # 3) copy sas_plan* into Windows folder
+    # 4) remove sas_plan* from WSL side
+    run_cmd = " ".join(
+        [
+            "python3",
+            "fast-downward.py",
+            shlex.quote(domain_wsl),
+            shlex.quote(problem_wsl),
+            "--search",
+            shlex.quote(search),
+        ]
+    )
+    copy_cmd = (
+        "if ls sas_plan* >/dev/null 2>&1; then "
+        "mkdir -p " + shlex.quote(outdir_wsl) + " && "
+        "cp -f sas_plan* " + shlex.quote(outdir_wsl) + "/ && "
+        "rm -f sas_plan*; "
+        "fi"
+    )
+
+    inner_cmd = f"cd {fd_dir_wsl} && {run_cmd} && {copy_cmd}"
+
+    proc = subprocess.run(
+        ["wsl", "bash", "-lc", inner_cmd], capture_output=True, text=True
+    )
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            "Fast Downward failed.\n"
+            f"STDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
+        )
 
 
 # Schemas for controlling JSON format
@@ -135,17 +208,21 @@ class State(TypedDict):
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
     plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
+    problem_name: str  # name of the planning problem
     environment: TaskEnvironment  # environment object for the problem
     workflow: List[List[str]]  # environment.plan
     current_step: int = 0
     num_steps: int  # number of sequential steps in the planning workflow
-    pddl: Dict[str, str]  # domain and problem PDDL names from orchestrator, for solver
+    pddl: Dict[
+        str, str
+    ]  # domain and problem PDDL names and paths from orchestrator, for solver
     agent_configs: List[Tuple]  # configurations for agents in the current parallel step
     is_final: bool = False  # whether this is the final step in the workflow
 
 
 # state for a generic agent, including actors and orchestrator
 class AgentState(TypedDict):
+    problem_name: str  # problem name, to save output in correct folder
     name: str  # agent name
     task: Literal["pddl", "obs"]  # task mode, e.g. pddl
     sys_msg: str
@@ -183,7 +260,7 @@ oracle_sys_msg = (
     "You are an expert in planning. Given a description of a planning task, your job is only to decide "
     "whether there is sufficient information to come up with a plan. If not, or if anything is unclear,"
     "ask a concise question for more details or clarification. Do not ask to ask. If you have a question, "
-    "just make a tool call."
+    "just make a tool call. You do not need to come up with a plan."
 )
 oracle = create_react_agent(
     model=oracle_llm,
@@ -292,7 +369,11 @@ def agent_coder_json(state: State):
     json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}_{timestamp}.json")
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
-    return {"messages": state["messages"] + [out], "plan_json": parsed_plan}
+    return {
+        "messages": state["messages"] + [out],
+        "plan_json": parsed_plan,
+        "problem_name": parsed_plan.get("name", "unnamed_problem"),
+    }
 
 
 def construct_environment(state: State):
@@ -326,7 +407,6 @@ def workflow_splitter(state: State):
         output = agent_spec["output"]
         task = agent_spec["task"]
         agent_configs.append((agent_name, task, sys_msg, prompt, inputs, output))
-    print(f"Agent configs: {agent_configs}")
     state["agent_configs"] = agent_configs
     state["current_step"] += 1
     state["is_final"] = False
@@ -341,6 +421,7 @@ def continue_to_workflow(state: State):
         Send(
             "Actor node",
             {
+                "problem_name": state["problem_name"],
                 "name": agent_name,
                 "task": task,
                 "sys_msg": sys_msg,
@@ -355,13 +436,16 @@ def continue_to_workflow(state: State):
 
 
 def generic_actor(state: AgentState):
+    problem_name = state["problem_name"]
     name = state["name"]
     sys_msg = state["sys_msg"]
     prompt = state["prompt"]
     inputs = state["inputs"]
     output = state["output"]
 
-    base_dir = (Path(__file__).parent / ACTOR_OUTPUT_PATH).resolve()
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
 
     formatted_parts: List[str] = []
     # TODO: this assumes pddl mode! Need additional logic if want only observations
@@ -405,7 +489,14 @@ def generic_actor(state: AgentState):
 
     # If final step and orchestrator, store the final domain and problem content
     if name == "orchestrator" and state["is_final"]:
-        return {"pddl": {"domain": domain, "problem": problem}}
+        return {
+            "pddl": {
+                "domain": domain,
+                "problem": problem,
+                "domain_path": domain_path,
+                "problem_path": problem_path,
+            },
+        }
 
     # TODO: add additional logic for other task modes
 
@@ -413,8 +504,16 @@ def generic_actor(state: AgentState):
 
 
 def external_solver(state: State):
-    print("Solver reached.")
-    pass
+    problem_name = state["problem_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
+
+    domain_path = state["pddl"]["domain_path"]
+    problem_path = state["pddl"]["problem_path"]
+    plan_out_path = base_dir / f"{problem_name}_plan.sas"
+    _solve_pddl(domain_path, problem_path, plan_out_path)
+    return {}
 
 
 def proceed_to_solver(
@@ -423,11 +522,6 @@ def proceed_to_solver(
     if state["is_final"]:
         return "External solver"
     return "Workflow splitter"
-    # if state["current_step"] + 1 >= state["num_steps"]:
-    #    return "External solver"
-    # else:
-    #    state["current_step"] += 1
-    #    return "Workflow splitter"
 
 
 # build graph

@@ -1,28 +1,44 @@
-(define (problem IntegratedTravelItinerary)
-  (:domain IntegratedTravelPlanning)
-  
+(define (problem integrated_travel_plan)
+  (:domain integrated_travel)
   (:objects
-    Barcelona Florence Helsinki - city
+    barcelona florence helsinki - city
     day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
-    number1 number2 number3 number4 number5 number6 number7 number8 number9 number10 number11 number12 number13 number14 - number
   )
   
-  (:init 
-    (at Barcelona)
-    (flight-available Barcelona Florence)
-    (flight-available Helsinki Barcelona)
-    (travel-day number1)
-    (travel-day number7)
-    (travel-day number8)
+  (:init
+    (current-city barcelona)
+    (at barcelona)
+    (visited barcelona)
+    (day day1)
+    (available-flight barcelona florence)
+    (available-flight florence barcelona)
+    (available-flight helsinki barcelona)
+    (available-flight barcelona helsinki)
+    
+    (next-day day1 day2)
+    (next-day day2 day3)
+    (next-day day3 day4)
+    (next-day day4 day5)
+    (next-day day5 day6)
+    (next-day day6 day7)
+    (next-day day7 day8)
+    (next-day day8 day9)
+    (next-day day9 day10)
+    (next-day day10 day11)
+    (next-day day11 day12)
+    (next-day day12 day13)
+    (next-day day13 day14)
+    (= (total-cost) 0)
   )
-  
+
   (:goal
     (and
-      (visited Barcelona)
-      (visited Florence)
-      (visited Helsinki)
-      (days-planned Barcelona day5)
-      (days-planned Helsinki day5)
+      (visited barcelona)
+      (visited florence)
+      (visited helsinki)
+      (current-city florence)
+      (day day14)
     )
   )
+  (:metric minimize (total-cost))
 )

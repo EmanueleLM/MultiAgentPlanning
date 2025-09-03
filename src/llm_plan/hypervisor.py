@@ -57,7 +57,7 @@ class Hypervisor:
             dict: A dictionary of class names to class objects.
         """
         module_path = Path(AGENT_PYTHON_PATH).resolve()
-        print(f"Attempting to load module from: {module_path}")
+        # print(f"Attempting to load module from: {module_path}")
 
         try:
             # Load the module dynamically from file
@@ -68,9 +68,9 @@ class Hypervisor:
 
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            print(f"Module {module.__name__} loaded successfully!")
+            # print(f"Module {module.__name__} loaded successfully!")
         except Exception as e:
-            print(f"Error importing module {module_path}: {e}")
+            # print(f"Error importing module {module_path}: {e}")
             return {}
 
         # Gather all classes defined directly in this module

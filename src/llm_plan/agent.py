@@ -24,6 +24,8 @@ from src.llm_plan.llm import LLM
 
 
 class Agent(ABC):
+    required_args: dict[str, str] = {}
+
     def __init__(
         self,
         prompt_args: dict[str, str],
@@ -31,7 +33,6 @@ class Agent(ABC):
         """Initialize the Agent with a name and the arguments."""
         self.name = "AbstractAgent"
         self.prompt_args = prompt_args
-        self.required_args: dict[str, str] = {}
 
     def upload_args(self, prompt_args: dict[str, str]) -> None:
         """
@@ -40,7 +41,7 @@ class Agent(ABC):
         Input:
             prompt_args (dict): A dictionary containing the arguments.
         """
-        for arg in self.required_args.keys():
+        for arg in Agent.required_args.keys():
             if arg not in prompt_args:
                 raise ValueError(f"Missing required argument: {arg}")
             self.prompt_args[arg] = prompt_args[arg]
@@ -53,8 +54,22 @@ class Agent(ABC):
         """
         return "This function should be implemented by subclasses."
 
+    def get_required_args(self) -> dict[str, str]:
+        """
+        Get the required arguments for the Agent.
+
+        Output:
+            dict: A dictionary containing the required arguments.
+        """
+        return Agent.required_args
+
 
 class AgentHallucinations(Agent):
+    required_args = {
+        "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
+        "plan": "(str) The plan to be checked for hallucinations.",
+    }
+
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         This Agent detects and solves hallucinations.
@@ -70,10 +85,6 @@ class AgentHallucinations(Agent):
 
         self.name = "AgentHallucinations"
         self.llm = llm
-        self.required_args = {
-            "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
-            "plan": "(str) The plan to be checked for hallucinations.",
-        }
 
         # Prompts
         self.system_prompt_detect = inspect.cleandoc("""\
@@ -145,6 +156,12 @@ class AgentHallucinations(Agent):
 
 
 class AgentDeepThinkPDDL(Agent):
+    required_args = {
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+    }
+
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         This agent deeply evaluates each PDDL plan's step and identifies inconsistencies between the constraints, the goal, and the final plan.
@@ -160,11 +177,6 @@ class AgentDeepThinkPDDL(Agent):
         super().__init__(prompt_args=prompt_args)
         self.name = "AgentDeepThinkPDDL"
         self.llm = llm
-        self.required_args = {
-            "specification": "(str) The plan to be checked for improvement.",
-            "pddl_domain": "(str) The PDDL domain that describes the specification.",
-            "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-        }
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
@@ -218,6 +230,12 @@ class AgentDeepThinkPDDL(Agent):
 
 
 class AgentFastDownwardAdapter(Agent):
+    required_args = {
+        "pddl_domain": "(str) The original PDDL domain.",
+        "pddl_problem": "(str) The original PDDL problem.",
+        "specification": "(str) Optional human-readable specification of the task.",
+    }
+
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         This agent adapts the PDDL domains and problems so that they are compatible with the Fast Downward solver.
@@ -236,11 +254,6 @@ class AgentFastDownwardAdapter(Agent):
         super().__init__(prompt_args=prompt_args)
         self.name = "AgentFastDownwardAdapter"
         self.llm = llm
-        self.required_args = {
-            "pddl_domain": "(str) The original PDDL domain.",
-            "pddl_problem": "(str) The original PDDL problem.",
-            "specification": "(str) Optional human-readable specification of the task.",
-        }
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
@@ -292,6 +305,14 @@ class AgentFastDownwardAdapter(Agent):
 
 
 class AgentSyntaxPDDL(Agent):
+    required_args = {
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "pddl_logs": "(str) The logs of the attempted execution with Fast Downward.",
+        "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
+    }
+
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         This agent evaluates the PDDL syntax generated.
@@ -303,12 +324,6 @@ class AgentSyntaxPDDL(Agent):
         super().__init__(prompt_args=prompt_args)
         self.name = "AgentSyntaxPDDL"
         self.llm = llm
-        self.required_args = {
-            "specification": "(str) The plan to be checked for improvement.",
-            "pddl_domain": "(str) The PDDL domain that describes the specification.",
-            "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-            "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
-        }
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
@@ -369,6 +384,13 @@ class AgentSyntaxPDDL(Agent):
 
 
 class AgentNaturalLanguage(Agent):
+    required_args = {
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "pddl_plan": "(str) The PDDL plan.",
+    }
+
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         Initialize the Agent that eventually turns the final plan into natural actions.
@@ -379,12 +401,6 @@ class AgentNaturalLanguage(Agent):
         super().__init__(prompt_args=prompt_args)
         self.name = "AgentNaturalLanguage"
         self.llm = llm
-        self.required_args = {
-            "specification": "(str) The plan to be checked for improvement.",
-            "pddl_domain": "(str) The PDDL domain that describes the specification.",
-            "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-            "pddl_plan": "(str) The PDDL plan.",
-        }
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\

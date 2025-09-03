@@ -18,7 +18,7 @@ from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 
 MODEL = "gpt-4o"  # use 4o for everything else
-MODEL_PDDL = "gpt-o4-mini"  # need better model for pddl
+MODEL_PDDL = "gpt-4o"  # need better model for pddl
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
 EXAMPLE_JSON = "./example_schema.json"

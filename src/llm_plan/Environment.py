@@ -49,7 +49,9 @@ class Environment:
         for agent, config in self.workflow["participants"].items():
             actions.append(f"{agent}.{config['task']}")
 
-        self.workflow_constraints: List[str] = self.workflow.get("constraints", [])
+        self.workflow_constraints: List[str] = self.workflow.get(
+            "order_constraints", []
+        )
 
         # 2. Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
@@ -82,6 +84,6 @@ class Environment:
 
         # sanity check (detect cycle)
         if any(indegree[a] > 0 for a in actions):
-            raise ValueError("Cycle detected in constraints!")
+            raise ValueError("Cycle detected in order constraints!")
 
         return result

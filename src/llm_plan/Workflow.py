@@ -2,16 +2,16 @@ import json
 import subprocess
 import shlex
 from datetime import datetime
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, AnyMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AnyMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langgraph.graph import START, END, StateGraph, MessagesState
+from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
 from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
 from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any, Tuple
-from langgraph.types import Command, interrupt
+from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
 from llm_plan.environment import Environment as TaskEnvironment
@@ -21,7 +21,7 @@ MODEL = "gpt-4o"  # use 4o for everything else
 MODEL_PDDL = "gpt-4o"  # need better model for pddl
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
-EXAMPLE_JSON = "./example_schema.json"
+EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
 
 
@@ -108,10 +108,6 @@ def _solve_pddl(
     outdir_wsl = _win_to_wsl_path(plan_out_path)
 
     # Build inner bash command:
-    # 1) cd into FD folder
-    # 2) run planner to produce sas_plan
-    # 3) copy sas_plan* into Windows folder
-    # 4) remove sas_plan* from WSL side
     run_cmd = " ".join(
         [
             "python3",
@@ -192,9 +188,9 @@ class WorkflowSpec(BaseModel):
         default_factory=dict,
         description="Per-participant generation specification.",
     )
-    constraints: List[str] = Field(
+    order_constraints: List[str] = Field(
         default_factory=list,
-        description="List of constraint expressions for which tasks should come before others, e.g. 'task1->task2'.",
+        description="List of order constraint expressions for which tasks should come before others, e.g. 'task1->task2'.",
     )
 
 
@@ -220,6 +216,8 @@ plan_parser = PydanticOutputParser(pydantic_object=PlanSchema)
 class State(TypedDict):
     """Graph state"""
 
+    mode: Literal["pddl", "direct"]
+    multi_agent: bool  # whether it's a multi agent problem
     messages: Annotated[List[AnyMessage], add_messages]
     initial_description: Annotated[
         str, _set_once
@@ -245,12 +243,32 @@ class State(TypedDict):
 class AgentState(TypedDict):
     problem_name: str  # problem name, to save output in correct folder
     name: str  # agent name
-    task: Literal["pddl", "obs"]  # task mode, e.g. pddl
+    task: Literal["pddl"]  # task mode, e.g. pddl. Can add others in future
     sys_msg: str
     prompt: str
     inputs: List[str]
     output: str
     is_final: bool
+
+
+def _validate_initial_state_fields(state: State):
+    """
+    Ensure caller supplied required initial fields and enforce:
+      - if multi_agent is False, mode must be 'direct'
+    Raises ValueError on invalid inputs.
+    """
+    if "mode" not in state or "multi_agent" not in state:
+        raise ValueError(
+            "Initial state must include both 'mode' and 'multi_agent' fields."
+        )
+    mode = state["mode"]
+    multi = state["multi_agent"]
+    if not isinstance(multi, bool):
+        raise ValueError("'multi_agent' must be a boolean.")
+    if mode not in ("pddl", "direct"):
+        raise ValueError("'mode' must be one of: 'pddl', 'direct'.")
+    if not multi and mode != "direct":
+        raise ValueError("If 'multi_agent' is False then 'mode' must be 'direct'.")
 
 
 # tools
@@ -291,6 +309,9 @@ oracle = create_react_agent(
 
 
 def agent_oracle(state: State):
+    # validate fields
+    _validate_initial_state_fields(state)
+
     init = {}
     if not state.get("initial_description"):
         human_texts = [
@@ -325,18 +346,35 @@ def agent_summarizer(state: State):
 
 
 def agent_coder_json(state: State):
-    # TODO: for now, specify pddl in the system prompt. Will have to revise if we want observations instead.
-    sys_msg = (
+    sys_msg_prefix = (
         "You are an expert programmer. Given a structured brief of a planning problem, "
         "generate a comprehensive JSON representation of the planning problem, following the example given. "
         "The JSON should include a breakdown of tasks and knowledge for each agent and the orchestrator (also an agent). "
-        "Each agent generates a PDDL domain + problem and sends it to the orchestrator that generates the final plan. "
         "Depending on the problem, the structure of the init and goal fields of the environment may vary. "
-        "Each constraint should strictly be of the form [agent name].[task]->[agent name].[task], specifying which"
+    )
+    sys_msg_direct = (
+        "The orchestrator will be the only participant in the workflow, prompted with initial information about the environment and the goal,"
+        "as well as the constraints of each agent, and is responsible for generating a PDDL domain and problem file that coordinates the agents."
+        "The order_constraints field of workflow should simply be 'orchestrator.pddl'."
+    )
+    sys_msg_pddl = (
+        "Each agent generates a PDDL domain + problem and sends it to the orchestrator that generates the final plan. "
+        "Each order constraint should strictly be of the form [agent name].[task]->[agent name].[task], specifying which"
         "tasks should be completed before which others. For example, 'Agent1.pddl->orchestrator.pddl.'"
     )
+    # constructs prompt and selects example json based on multi/single agent and operating mode.
+    if state["mode"] == "direct":
+        sys_msg = sys_msg_prefix + sys_msg_direct
+        if state["multi_agent"]:
+            example_json_path = EXAMPLE_JSON + "/example_json_multi_direct.json"
+        else:
+            example_json_path = EXAMPLE_JSON + "/example_json_single_direct.json"
+    else:
+        sys_msg = sys_msg_prefix + sys_msg_pddl
+        example_json_path = EXAMPLE_JSON + "/example_json_multi_pddl.json"
+
     format_instructions = plan_parser.get_format_instructions()
-    with open(EXAMPLE_JSON, "r") as f:
+    with open(example_json_path, "r") as f:
         example_json = f.read()
     with open(ENVIRONMENT_CLASS, "r") as f:
         environment_class = f.read()
@@ -541,7 +579,7 @@ def generic_actor(state: AgentState):
             },
         }
 
-    # TODO: add additional logic for other task modes
+    # TODO: add additional logic for other task modes (this refers to the formal planning language structure used, and is not the same as the 'mode' field in state!)
 
     return {}
 

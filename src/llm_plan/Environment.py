@@ -4,6 +4,7 @@ from typing import List, Any, Dict
 
 
 class Environment:
+class Environment:
     """
     Abstract base class for static environments.
     """

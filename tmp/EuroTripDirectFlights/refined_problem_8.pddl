@@ -1,0 +1,56 @@
+(define (problem IntegratedTravelItinerary_FD_Adapted)
+  (:domain IntegratedTravelPlanning_FD_Adapted)
+
+  (:objects
+    Barcelona Florence Helsinki - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+  )
+
+  (:init 
+    (at Florence)
+    (flight-available Florence Barcelona)
+    (flight-available Barcelona Florence)
+    (flight-available Helsinki Barcelona)
+    (flight-available Barcelona Helsinki)
+    (current-day day1)
+    (next-day day1 day2)
+    (next-day day2 day3)
+    (next-day day3 day4)
+    (next-day day4 day5)
+    (next-day day5 day6)
+    (next-day day6 day7)
+    (next-day day7 day8)
+    (next-day day8 day9)
+    (next-day day9 day10)
+    (next-day day10 day11)
+    (next-day day11 day12)
+    (next-day day12 day13)
+    (next-day day13 day14)
+  )
+
+  (:goal
+    (and
+      (stay-day Florence day9)
+      (stay-day Florence day10)
+      (stay-day Florence day11)
+      (stay-day Florence day12)
+      (stay-day Florence day13)
+      (stay-day Florence day14)
+      (stay-day Barcelona day1)
+      (stay-day Barcelona day2)
+      (stay-day Barcelona day3)
+      (stay-day Barcelona day4)
+      (stay-day Barcelona day5)
+      (stay-day Helsinki day6)
+      (stay-day Helsinki day7)
+      (stay-day Helsinki day8)
+      (stay-day Helsinki day9)
+      (stay-day Helsinki day10)
+      (visited Florence)
+      (visited Barcelona)
+      (visited Helsinki)
+    )
+  )
+
+  (:metric minimize (total-cost))
+)

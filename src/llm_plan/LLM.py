@@ -7,14 +7,14 @@ class LLM:
     A class representing a Language Model (LLM) that can generate problems (e.g., pddl) based on observations and prompts.
     """
 
-    def __init__(self, model):
+    def __init__(self, model_name: str = "LLM (Abstract)"):
         """
         Initialize the LLM with a specific model.
 
         Args:
             model: The language model to be used for generating actions.
         """
-        self.model_name = model
+        self.model_name = model_name
 
     def generate_sync(
         self,
@@ -126,7 +126,52 @@ class GPT_Ollama(LLM):
                 ],
             )
 
-            return response.choices[0].message.content
+            return (
+                "No response generated."
+                if response.choices[0].message.content is None
+                else response.choices[0].message.content
+            )
+
+        except Exception as e:
+            return f"Error while generating a response: {e}"
+
+
+class ChatGPT(LLM):
+    def __init__(self, model_name: str = "gpt-4o"):
+        """Load a ChatGPT model.
+
+        Args:
+            model_name (str, optional): The model as it appears on the ChatGPT APIs. Defaults to "gpt-4o".
+        """
+        super().__init__(model_name=model_name)
+
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+
+        try:
+            self.client = OpenAI(api_key=api_key)
+            self._available_models = [m.id for m in self.client.models.list().data]
+            assert (
+                model_name in self._available_models
+            ), f"Model {model_name} not found in OpenAI models."
+        except Exception as e:
+            print(f"Something went wrong with {model_name} initialization:\n{e}")
+
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "user", "content": f"{prompt}"},
+                ],
+            )
+
+            return (
+                "No response generated."
+                if response.choices[0].message.content is None
+                else response.choices[0].message.content
+            )
 
         except Exception as e:
             return f"Error while generating a response: {e}"

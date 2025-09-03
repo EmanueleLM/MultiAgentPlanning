@@ -1,36 +1,110 @@
-```lisp
-(define (domain combined-schedule-adl)
-  (:requirements :adl :strips :typing)
+(define (domain integrated-meeting-scheduling)
+  (:requirements :typing :negative-preconditions :universal-preconditions :existential-preconditions :fluents :action-costs)
+  (:types person slot)
 
-  (:types time-slot)
- 
-  ;; Define predicates 
-  (:predicates 
-    (available ?p - participant ?t - time-slot)
-    (meeting-scheduled ?p - participant ?t1 ?t2 - time-slot)
-    (next ?t1 ?t2 - time-slot)
-    (scheduled)
+  (:predicates
+    (next ?s1 - slot ?s2 - slot)
+    (same-slot ?s1 - slot ?s2 - slot)
+
+    (available_p1 ?p - person ?s - slot)
+    (scheduled_p1 ?s - slot)
+
+    (slot_steven ?s - slot)
+    (free_steven ?s - slot)
+    (meeting-scheduled-steven)
+    (meeting-at-steven ?s - slot)
+
+    (available_p3 ?s - slot)
+    (meeting-scheduled-p3)
+    (meeting_start_p3 ?s - slot)
+
+    (meeting_scheduled_global)
+    (meeting_start_at ?s - slot)
   )
 
-  ;; Define actions for scheduling meetings
-  (:action schedule-meeting
-    :parameters (?p - participant ?t1 ?t2 - time-slot)
+  (:functions (total-cost))
+
+  (:action schedule_michelle
+    :parameters (?start - slot ?next - slot)
     :precondition (and
-      (available ?p ?t1)
-      (available ?p ?t2)
+      (next ?start ?next)
+      (available_p1 michelle ?start)
+      (available_p1 michelle ?next)
+      (not (scheduled_p1 ?start))
+    )
+    :effect (and
+      (scheduled_p1 ?start)
+      (increase (total-cost) 1)
+    )
+  )
+
+  (:action schedule_steven
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and
+      (slot_steven ?s)
+      (slot_steven ?s2)
+      (next ?s ?s2)
+      (free_steven ?s)
+      (free_steven ?s2)
+      (not (meeting-scheduled-steven))
+    )
+    :effect (and
+      (not (free_steven ?s))
+      (not (free_steven ?s2))
+      (meeting-scheduled-steven)
+      (meeting-at-steven ?s)
+      (increase (total-cost) 1)
+    )
+  )
+
+  (:action schedule_p3
+    :parameters (?t1 - slot ?t2 - slot)
+    :precondition (and
       (next ?t1 ?t2)
+      (available_p3 ?t1)
+      (available_p3 ?t2)
+      (not (meeting-scheduled-p3))
     )
-    :effect (meeting-scheduled ?p ?t1 ?t2)
+    :effect (and
+      (meeting-scheduled-p3)
+      (meeting_start_p3 ?t1)
+      (increase (total-cost) 1)
+    )
   )
 
-  (:action finalize-meeting
-    :parameters ()
+  (:action schedule_meeting_all_participants
+    :parameters
+      (?m_start - slot ?m_next - slot
+       ?s_start - slot ?s_next - slot
+       ?p3_start - slot ?p3_next - slot)
     :precondition (and
-      (meeting-scheduled michelle ?t1 ?t2)
-      (meeting-scheduled steven ?t1 ?t2)
-      (meeting-scheduled jerry ?t1 ?t2)
+      (next ?m_start ?m_next)
+      (next ?s_start ?s_next)
+      (next ?p3_start ?p3_next)
+
+      (same-slot ?m_start ?s_start)
+      (same-slot ?m_start ?p3_start)
+      (same-slot ?m_next ?s_next)
+      (same-slot ?m_next ?p3_next)
+
+      (available_p1 michelle ?m_start)
+      (available_p1 michelle ?m_next)
+
+      (free_steven ?s_start)
+      (free_steven ?s_next)
+
+      (available_p3 ?p3_start)
+      (available_p3 ?p3_next)
+
+      (not (meeting_scheduled_global))
     )
-    :effect (scheduled)
+    :effect (and
+      (meeting_scheduled_global)
+      (meeting_start_at ?m_start)
+      (meeting-scheduled-steven)
+      (meeting_start_p3 ?p3_start)
+      (scheduled_p1 ?m_start)
+      (increase (total-cost) 1)
+    )
   )
 )
-```

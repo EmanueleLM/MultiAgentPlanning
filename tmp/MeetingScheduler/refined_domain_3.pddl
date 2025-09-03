@@ -1,52 +1,123 @@
-(define (domain combined-schedule-strips)
-  (:requirements :strips :typing :equality)
+(define (domain integrated-meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types person slot)
 
-  (:types time-slot participant)
+  (:predicates
+    (next ?s1 - slot ?s2 - slot)
+    (same-slot ?s1 - slot ?s2 - slot)
 
-  (:predicates 
-    (available ?p - participant ?t - time-slot)
-    (meeting-scheduled ?p - participant)
-    (scheduled)
-    (next ?t1 ?t2 - time-slot)
+    (available ?p - person ?s - slot)
+    (busy ?p - person ?s - slot)
+
+    (meeting_scheduled ?p - person)
+    (meeting_start ?p - person ?s - slot)
+
+    (meeting_scheduled_global)
+    (meeting_start_at ?s - slot)
   )
 
-  (:action schedule-michelle
-    :parameters (?t1 - time-slot ?t2 - time-slot)
+  (:action schedule_michelle
+    :parameters (?start - slot ?next - slot)
     :precondition (and
-      (available michelle ?t1)
-      (available michelle ?t2)
-      (next ?t1 ?t2)
+      (next ?start ?next)
+      (available michelle ?start)
+      (available michelle ?next)
+      (not (busy michelle ?start))
+      (not (busy michelle ?next))
+      (not (meeting_scheduled michelle))
     )
-    :effect (meeting-scheduled michelle)
+    :effect (and
+      (busy michelle ?start)
+      (busy michelle ?next)
+      (meeting_scheduled michelle)
+      (meeting_start michelle ?start)
+    )
+    :cost 0
   )
 
-  (:action schedule-steven
-    :parameters (?t1 - time-slot ?t2 - time-slot)
+  (:action schedule_steven
+    :parameters (?start - slot ?next - slot)
     :precondition (and
-      (available steven ?t1)
-      (available steven ?t2)
-      (next ?t1 ?t2)
+      (next ?start ?next)
+      (available steven ?start)
+      (available steven ?next)
+      (not (busy steven ?start))
+      (not (busy steven ?next))
+      (not (meeting_scheduled steven))
     )
-    :effect (meeting-scheduled steven)
+    :effect (and
+      (busy steven ?start)
+      (busy steven ?next)
+      (meeting_scheduled steven)
+      (meeting_start steven ?start)
+    )
+    :cost 0
   )
 
-  (:action schedule-jerry
-    :parameters (?t1 - time-slot ?t2 - time-slot)
+  (:action schedule_jerry
+    :parameters (?start - slot ?next - slot)
     :precondition (and
-      (available jerry ?t1)
-      (available jerry ?t2)
-      (next ?t1 ?t2)
+      (next ?start ?next)
+      (available jerry ?start)
+      (available jerry ?next)
+      (not (busy jerry ?start))
+      (not (busy jerry ?next))
+      (not (meeting_scheduled jerry))
     )
-    :effect (meeting-scheduled jerry)
+    :effect (and
+      (busy jerry ?start)
+      (busy jerry ?next)
+      (meeting_scheduled jerry)
+      (meeting_start jerry ?start)
+    )
+    :cost 0
   )
 
-  (:action finalize-meeting
-    :parameters ()
+  (:action schedule_meeting_michelle_steven_jerry
+    :parameters
+      (?m_start - slot ?m_next - slot
+       ?s_start - slot ?s_next - slot
+       ?j_start - slot ?j_next - slot)
     :precondition (and
-      (meeting-scheduled michelle)
-      (meeting-scheduled steven)
-      (meeting-scheduled jerry)
+      (next ?m_start ?m_next)
+      (next ?s_start ?s_next)
+      (next ?j_start ?j_next)
+
+      (same-slot ?m_start ?s_start)
+      (same-slot ?m_start ?j_start)
+      (same-slot ?m_next ?s_next)
+      (same-slot ?m_next ?j_next)
+
+      (available michelle ?m_start)
+      (available michelle ?m_next)
+
+      (available steven ?s_start)
+      (available steven ?s_next)
+
+      (available jerry ?j_start)
+      (available jerry ?j_next)
+
+      (not (meeting_scheduled_global))
     )
-    :effect (scheduled)
+    :effect (and
+      (meeting_scheduled_global)
+      (meeting_start_at ?m_start)
+
+      (busy michelle ?m_start)
+      (busy michelle ?m_next)
+      (meeting_scheduled michelle)
+      (meeting_start michelle ?m_start)
+
+      (busy steven ?s_start)
+      (busy steven ?s_next)
+      (meeting_scheduled steven)
+      (meeting_start steven ?s_start)
+
+      (busy jerry ?j_start)
+      (busy jerry ?j_next)
+      (meeting_scheduled jerry)
+      (meeting_start jerry ?j_start)
+    )
+    :cost 1
   )
 )

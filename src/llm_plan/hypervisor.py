@@ -2,8 +2,9 @@ import inspect
 import importlib.util
 from pathlib import Path
 
-from src.llm_plan.llm import LLM
-from src.llm_plan.config import AGENT_PYTHON_PATH
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from llm_plan.config import AGENT_PYTHON_PATH
 
 
 class Hypervisor:
@@ -89,7 +90,7 @@ class Hypervisor:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             # print(f"Module {module.__name__} loaded successfully!")
-        except Exception as e:
+        except Exception:
             # print(f"Error importing module {module_path}: {e}")
             return {}
 
@@ -119,7 +120,7 @@ class Hypervisor:
                 raise ValueError(f"Missing required argument: {arg}")
             self.prompt_args[arg] = prompt_args[arg]
 
-    def run(self, model: LLM) -> str:
+    def run(self, model: ChatOpenAI) -> str:
         """
         Run the Agent to solve hallucinations in the plan.
 
@@ -144,9 +145,7 @@ class Hypervisor:
             history=self.history,
         )
 
-        response = model.generate_sync(
-            system_prompt=self.system_prompt,
-            prompt=prompt,
-        )
+        inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
+        response = model.invoke(inp).content
 
         return response

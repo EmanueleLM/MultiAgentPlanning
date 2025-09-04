@@ -1,6 +1,7 @@
 import json
 import subprocess
 import shlex
+import ast
 from datetime import datetime
 from langchain_core.messages import (
     SystemMessage,
@@ -16,7 +17,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
 from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
-from typing import Annotated, TypedDict, Literal, List, Dict, Optional, Any, Tuple
+from typing import Annotated, TypedDict, Literal, Optional, Any
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -24,7 +25,7 @@ from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 
 MODEL = "gpt-4o"  # use 4o for everything else
-MODEL_PDDL = "gpt-o3"  # need better model for pddl
+MODEL_PDDL = "gpt-4o"  # need better model for pddl
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
 EXAMPLE_JSON = "./example_json"
@@ -45,9 +46,9 @@ class QnA(TypedDict):
 
 
 # helper functions
-def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
+def _get_qa(messages: list[AnyMessage]) -> list[QnA]:
     """Extract question-answer pairs from messages."""
-    qa_list: List[QnA] = []
+    qa_list: list[QnA] = []
     pending_q = None
     for msg in messages:
         if getattr(
@@ -61,18 +62,26 @@ def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
 
 
 def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
-    q_by_id = {}
+    """Extract Q/A pairs from AskBatchClarify tool calls and results."""
     qas: list[QnA] = []
+    questions_by_id: dict[str, list[str]] = {}
+    print()
+    print("new messages:")
+    print(new_msgs)
 
     for m in new_msgs:
-        if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
+        if isinstance(m, AIMessage) and m.tool_calls:
             for tc in m.tool_calls:
-                if tc.get("name") == "AskClarify":
-                    q_by_id[tc["id"]] = tc.get("args", {}).get("question", "")
-        elif isinstance(m, ToolMessage) and getattr(m, "name", "") == "AskClarify":
-            q = q_by_id.get(m.tool_call_id, "")
-            if q:
-                qas.append({"question": q, "answer": m.content})
+                if tc.get("name") == "AskBatchClarify":
+                    questions_by_id[tc["id"]] = tc.get("args", {}).get("questions", [])
+
+        elif isinstance(m, ToolMessage) and m.name == "AskBatchClarify":
+            qs = questions_by_id.get(m.tool_call_id, [])
+            response_dict = ast.literal_eval(m.content)
+            answers = response_dict.get("answers", [])
+            for q, a in zip(qs, answers):
+                qas.append({"question": q, "answer": a})
+    print(f"QAs: {qas}")
     return qas
 
 
@@ -163,7 +172,7 @@ def _solve_pddl(
 
 # Schemas for controlling JSON format
 class AgentInfo(BaseModel):
-    private_information: List[str] = Field(
+    private_information: list[str] = Field(
         default_factory=list, description="Private facts/constraints for the agent."
     )
     goal: str = Field(
@@ -173,30 +182,30 @@ class AgentInfo(BaseModel):
 
 class AgentsSection(BaseModel):
     number: int = Field(..., description="Number of agents.")
-    names: List[str] = Field(..., description="List of agent names.")
-    agent_details: Dict[str, AgentInfo] = Field(
+    names: list[str] = Field(..., description="List of agent names.")
+    agent_details: dict[str, AgentInfo] = Field(
         default_factory=dict,
         description="Mapping of agent name to AgentInfo. Keys are entries listed in 'names'.",
     )
 
 
 class Environment(BaseModel):
-    init: Dict = Field(
+    init: dict = Field(
         ...,
         description="Initial world state, different depending on the planning task.",
     )
-    goal: Dict = Field(
+    goal: dict = Field(
         ...,
         description="Goal state for the environment, different depending on the planning task.",
     )
-    public_information: List[str] = Field(
+    public_information: list[str] = Field(
         default_factory=list, description="Global public facts about the environment."
     )
 
 
 class AgentSpec(BaseModel):
     task: str = Field(..., description="Task name for this agent.")  # pddl or obs
-    input: List[str] = Field(..., description="Inputs (references to other artifacts).")
+    input: list[str] = Field(..., description="Inputs (references to other artifacts).")
     output: str = Field(..., description="Output artifact name.")
     system_prompt: str = Field(..., description="System prompt for this agent.")
     prompt: str = Field(
@@ -206,11 +215,11 @@ class AgentSpec(BaseModel):
 
 class WorkflowSpec(BaseModel):
     # mapping of participant name to AgentSpec
-    participants: Dict[str, AgentSpec] = Field(
+    participants: dict[str, AgentSpec] = Field(
         default_factory=dict,
         description="Per-participant generation specification.",
     )
-    order_constraints: List[str] = Field(
+    order_constraints: list[str] = Field(
         default_factory=list,
         description="List of order constraint expressions for which tasks should come before others, e.g. 'task1->task2'.",
     )
@@ -240,24 +249,24 @@ class State(TypedDict):
 
     mode: Literal["pddl", "direct"]
     multi_agent: bool  # whether it's a multi agent problem
-    messages: Annotated[List[AnyMessage], add_messages]
+    messages: Annotated[list[AnyMessage], add_messages]
     initial_description: Annotated[
         str, _set_once
     ]  # initial human NL description of the task
     clarifications: Annotated[
-        List[QnA], list.__add__
+        list[QnA], list.__add__
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
-    plan_json: Dict[str, Any]  # parsed_model.model_dump() -> Dict[str, Any]
+    plan_json: dict[str, Any]  # parsed_model.model_dump() -> dict[str, Any]
     problem_name: str  # name of the planning problem
     environment: TaskEnvironment  # environment object for the problem
-    workflow: List[List[str]]  # environment.plan
+    workflow: list[list[str]]  # environment.plan
     current_step: int = 0
     num_steps: int  # number of sequential steps in the planning workflow
-    pddl: Dict[
+    pddl: dict[
         str, str
     ]  # domain and problem PDDL names and paths from orchestrator, for solver
-    agent_configs: List[Tuple]  # configurations for agents in the current parallel step
+    agent_configs: list[tuple]  # configurations for agents in the current parallel step
     is_final: bool = False  # whether this is the final step in the workflow
 
 
@@ -268,7 +277,7 @@ class AgentState(TypedDict):
     task: Literal["pddl"]  # task mode, e.g. pddl. Can add others in future
     sys_msg: str
     prompt: str
-    inputs: List[str]
+    inputs: list[str]
     output: str
     is_final: bool
 
@@ -307,6 +316,14 @@ def ask_clarify(question: str) -> str:
     return answer if isinstance(answer, str) else answer.get("answer", "")
 
 
+@tool("AskBatchClarify")
+def ask_batch_clarify(questions: list[str]) -> dict:
+    """Ask multiple clarifications at once. Return a dict mapping to answers."""
+    answers = interrupt({"purpose": "clarifications_batch", "questions": questions})
+    # Expect resume payload like: {"answers": ["ans1","ans2",...]} or dict
+    return {"answers": answers}
+
+
 # define llms
 oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
@@ -319,14 +336,15 @@ refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 # define agents
 oracle_sys_msg = (
     "You are an expert in planning. Your job is only to decide whether there is "
-    "enough info to make a plan. If something is unclear, ask EXACTLY ONE concise "
-    "clarification at a time via the AskClarify tool, then wait for the answer. "
-    "Never ask duplicates or paraphrases of already-answered questions."
+    "enough info to make a plan. If more than one clarification is needed, "
+    "call AskBatchClarify with a list of questions (one call per turn). Then wait for answers."
+    "You do not need to make a plan or ask for confirmation to ask questions. "
+    "Do not ask questions for the sake of asking. Only ask if something is unclear or unspecified in the task description."
 )
 
 oracle = create_react_agent(
-    model=oracle_llm.bind_tools([ask_clarify], parallel_tool_calls=False),  # <- key
-    tools=[ask_clarify],
+    model=oracle_llm.bind_tools([ask_batch_clarify], parallel_tool_calls=False),
+    tools=[ask_batch_clarify],
     prompt=oracle_sys_msg,
 )
 
@@ -349,7 +367,7 @@ def agent_oracle(state: State):
     return {
         **init,
         "messages": out["messages"],
-        "clarifications": _collect_qas(out["messages"]),
+        "clarifications": _collect_qas(out["messages"][1:]),
     }
 
 
@@ -359,10 +377,9 @@ def agent_summarizer(state: State):
         "Rewrite task descriptions into a crisp, structured brief. Prefer specifics from clarifications"
         "over the initial description."
     )
-    task_info = (
-        f"Initial description: {state["initial_description"]}\n"
-        f"clarifications: {'\n'.join([f'{pair["question"]} - {pair["answer"]}' for pair in state["clarifications"]])}"
-    )
+    task_info = f"Initial description: {state["initial_description"]}\n"
+    if state["clarifications"]:
+        task_info += f"clarifications: {'\n'.join([f'{pair["question"]} - {pair["answer"]}' for pair in state["clarifications"]])}"
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = oracle_llm.invoke(inp)
     return {"messages": [out], "revised_description": out}
@@ -544,7 +561,7 @@ def generic_actor(state: AgentState):
         Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
     ).resolve()
 
-    formatted_parts: List[str] = []
+    formatted_parts: list[str] = []
     # TODO: this assumes pddl mode! Need additional logic if want only observations
     for inp in inputs or []:
         d = base_dir / f"{inp}_domain.pddl"

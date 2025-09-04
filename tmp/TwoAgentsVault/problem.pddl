@@ -1,26 +1,20 @@
-(define (problem integrated-fetch-object)
-  (:domain integrated-vault-task)
+(define (problem open-vault-problem-multi-agent)
+  (:domain multi-agent-vault)
 
   (:objects 
-    small_robot - robot
-    tool1 - tool
-    key1 - key
-    vault1 - vault
-    object1 - object
+    big-robot1 small-robot1 - robot
   )
-
+  
   (:init 
-    (robot_at small_robot vault1)
-    (vault_closed vault1)
-    (object_inside vault1)
-    (has-small-robot)
-    (small_robot_available)
+    (vault-closed)
+    (object-inside)
+    (have-key big-robot1)
+    (big-robot big-robot1)
+    (at-small small-robot1)
+    (small-robot small-robot1)
   )
-
+  
   (:goal 
-    (and 
-      (object_grabbed object1)
-      (object_retrieved)
-    )
+    (object-retrieved)
   )
 )

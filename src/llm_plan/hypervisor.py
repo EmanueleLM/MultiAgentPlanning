@@ -17,7 +17,12 @@ class Hypervisor:
             "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
             "pddl_logs": "(str) The logs of the attempted execution with Fast Downward.",
             "syntax_errors": "(str) The error message returned by a PDDL validator.",
+            "history": "(list[str]) The history of the agents picked up.",
         }
+
+        self.history: list[
+            str
+        ] = []  # This contains the history of the agents picked up
 
         self.system_prompt = inspect.cleandoc("""\
             You are a hypervisor that manages multiple agents. Each agent has a specific role and capabilities.
@@ -26,6 +31,8 @@ class Hypervisor:
             You always discard abstract classes and classes with abstract methods.
             """)
         self.prompt = inspect.cleandoc("""\
+            You are a hypervisor that manages multiple agents and decides which one is best suited to improve a given plan.
+            
             Given this specification in JSON format:
             <specification>{specification}</specification>
             
@@ -42,10 +49,19 @@ class Hypervisor:
             <errors>{syntax_errors}</errors>
             
             These are the agents available to improve the plan, along with their capabilities.
+            Ignore abstract classes and classes with abstract methods.
             <agents>{agents}</agents>
             
+            Also, here is the history of the agents you have already picked.
+            <history>{history}</history>
+            
+            The history is useful as you want to have some diversity in the agents you pick.
+            For sure you want to ensure picking up at some point:
+            - an agent that fixes the syntax inconsistencies.
+            - an agent that adapts the domain and problem to the solver.
+            - an agent that ensures the current domain and problem satisfy the specification as a *multi-agent* system, where each action referes to the agent that takes it.
+            
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
-            Ignore abstract classes and classes with abstract methods.
             """)
 
     @staticmethod
@@ -121,6 +137,7 @@ class Hypervisor:
             agents="\n".join(
                 f"{name}: {cls.__doc__}" for name, cls in self.agents.items()
             ),
+            history=self.history,
         )
 
         response = model.generate_sync(

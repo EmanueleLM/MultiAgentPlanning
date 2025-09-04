@@ -24,6 +24,12 @@ from src.llm_plan.llm import LLM
 
 
 class Agent(ABC):
+    """
+    Abstract class for an Agent.
+    Each Agent mitigates a specific issue in multi-agent planning.
+    The variable required_args is static and contains the arguments required by each Agent.
+    """
+
     required_args: dict[str, str] = {}
 
     def __init__(
@@ -211,6 +217,80 @@ class AgentDeepThinkPDDL(Agent):
 
         Input:
             src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        self.upload_args(self.prompt_args)  # ensure args are uploaded
+
+        # Fix the plan
+        prompt = self.prompt.format(
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentEnforceMultiAgency(Agent):
+    required_args = {
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+    }
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        This agent identifies inconsistencies between the specific and the requirements in the context of a multi-agent system.
+        In particular:
+        - It checks whether the PDDL domain and plan correctly implement the specific as a multi-agent system.
+        - It checks whether the PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
+        - Fixes all the issues mentioned above.
+
+        Input:
+            llm (LLM): The language model to use for detecting and mitigating hallucinations.
+            prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentEnforceMultiAgency"
+        self.llm = llm
+
+        # Prompts
+        self.system_prompt = inspect.cleandoc("""\
+                                             You are an agent that evaluates each plan's step. 
+                                             Your task is to analyze a provided plan against the human specifics, and identify all the possible inconsistencies. 
+                                             You focus on whether the PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
+                                             You aim is to return a plan that fixes all the inconsistencies and satisfies the goal.
+                                             You can think as much as you want before answering, and you can use as many steps as you want.
+                                             """)
+        self.prompt = inspect.cleandoc("""\
+                                      Given this specification in JSON format:
+                                      <specification>{specification}</specification>
+                                      
+                                      And this PDDL domain that describes the specification:
+                                      <domain>{pddl_domain}</domain>
+                                      
+                                      And this PDDL problem that instatiates the specification:
+                                      <problem>{pddl_problem}</problem>
+                                      
+                                      Think *very carefully* whether:
+                                      - The PDDL domain and plan correctly implement the specific as a multi-agent system.
+                                      - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
+                                      
+                                      You task is to fix all the issues mentioned above.
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
+                                      Just return the PDDL code, do not add special characters or comments.
+                                      """)
+
+    def run(self) -> str:
+        """
+        Run the Agent to solve the issues in the plan.
+
+        Input:
+            src (str): The plan to be fixed.
 
         Output:
             str: The fixed plan.

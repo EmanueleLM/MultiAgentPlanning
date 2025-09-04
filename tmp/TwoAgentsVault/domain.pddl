@@ -1,46 +1,46 @@
-(define (domain integrated-vault-task)
+(define (domain multi-agent-vault)
   (:requirements :strips :typing)
-  (:types robot vault key object tool)
+  (:types robot)
 
   (:predicates
-    (robot_at ?r - robot ?loc - vault)
-    (vault_closed ?v - vault)
-    (vault_open ?v - vault)
-    (has_key ?r - robot)
-    (object_grabbed ?o - object)
-    (object_inside ?v - vault)
-    (has_small_robot)
-    (small_robot_available)
-    (object_retrieved)
+     (vault-closed)
+     (vault-open)
+     (object-retrieved)
+     (have-key ?r - robot)
+     (big-robot ?r - robot)
+     (small-robot ?r - robot)
+     (vault-restricted-access)
+     (at-small ?r - robot)
+     (object-inside)
   )
 
-  ; Agent 1's Actions
-  (:action use-small-robot
-    :precondition (and (has-small-robot) (vault_closed ?v))
-    :effect (and (vault_open ?v) (not (vault_closed ?v)) (object_inside ?v))
-  )
-
-  (:action retrieve-object
-    :precondition (and (vault_open ?v) (object_inside ?v))
-    :effect (and (object_retrieved) (not (object_inside ?v)))
-  )
-
-  ; Agent 2's Actions
-  (:action find_key
+  (:action use-key-big
     :parameters (?r - robot)
-    :precondition ()
-    :effect (has_key ?r)
+    :precondition (and (have-key ?r) (vault-closed) (big-robot ?r))
+    :effect (and (vault-open) (not (vault-closed)))
   )
 
-  (:action open_vault
-    :parameters (?r - robot ?v - vault)
-    :precondition (and (robot_at ?r ?v) (has_key ?r) (vault_closed ?v))
-    :effect (and (not (vault_closed ?v)) (vault_open ?v))
+  (:action analyze-access
+    :parameters (?r - robot)
+    :precondition (big-robot ?r)
+    :effect (vault-restricted-access)
   )
 
-  (:action grab_object
-    :parameters (?r - robot ?o - object ?v - vault)
-    :precondition (and (robot_at ?r ?v) (vault_open ?v))
-    :effect (object_grabbed ?o)
+  (:action use-key-small
+    :parameters (?r - robot)
+    :precondition (and (vault-closed) (have-key ?r) (small-robot ?r) (vault-restricted-access) (at-small ?r))
+    :effect (and (not (vault-closed)) (vault-open))
+  )
+
+  (:action grab-object-small
+    :parameters (?r - robot)
+    :precondition (and (vault-open) (object-inside) (small-robot ?r) (at-small ?r))
+    :effect (and (object-retrieved) (not (object-inside)))
+  )
+
+  (:action pass-key
+    :parameters (?giver - robot ?receiver - robot)
+    :precondition (and (have-key ?giver) (big-robot ?giver) (small-robot ?receiver))
+    :effect (and (not (have-key ?giver)) (have-key ?receiver))
   )
 )

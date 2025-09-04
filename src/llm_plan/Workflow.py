@@ -46,21 +46,6 @@ class QnA(TypedDict):
 
 
 # helper functions
-def _get_qa(messages: list[AnyMessage]) -> list[QnA]:
-    """Extract question-answer pairs from messages."""
-    qa_list: list[QnA] = []
-    pending_q = None
-    for msg in messages:
-        if getattr(
-            msg, "tool_name", None
-        ) == "AskClarify" and msg.additional_kwargs.get("args"):
-            pending_q = msg.additional_kwargs["args"].get("question")
-        elif msg.type == "human" and pending_q:
-            qa_list.append({"question": pending_q, "answer": msg.content})
-            pending_q = None
-    return qa_list
-
-
 def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
     """Extract Q/A pairs from AskBatchClarify tool calls and results."""
     qas: list[QnA] = []
@@ -300,20 +285,6 @@ def _validate_initial_state_fields(state: State):
         raise ValueError("'mode' must be one of: 'pddl', 'direct'.")
     if not multi and mode != "direct":
         raise ValueError("If 'multi_agent' is False then 'mode' must be 'direct'.")
-
-
-# tools
-@tool("AskClarify")
-def ask_clarify(question: str) -> str:
-    """
-    Asks for clarification if task description is ambiguous or missing details.
-    Pass a concise question. Returns the user's answer.
-
-    Args:
-        question (str): Question asking for clarification.
-    """
-    answer = interrupt({"purpose": "clarification", "question": question})
-    return answer if isinstance(answer, str) else answer.get("answer", "")
 
 
 @tool("AskBatchClarify")

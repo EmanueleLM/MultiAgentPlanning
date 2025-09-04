@@ -44,7 +44,7 @@ class Environment:
         self.agent_names = self.agents.get("names")
 
         # Workflow information
-        # 1. Collect actions and constraints
+        # Collect actions and constraints
         actions = []
         for agent, config in self.workflow["participants"].items():
             actions.append(f"{agent}.{config['task']}")
@@ -53,26 +53,55 @@ class Environment:
             "order_constraints", []
         )
 
-        # 2. Build the dependency graph between tasks
+        # Build the dependency graph between tasks
         self.plan = self.schedule(actions, self.workflow_constraints)
 
     @staticmethod
     def schedule(actions: List[str], constraints: List[str]) -> List[List[str]]:
-        # Build graph
-        graph = defaultdict(list)
-        indegree = {a: 0 for a in actions}
+        # Collect all actions in a stable order
+        ordered_actions: List[str] = []
 
+        def add_action(a: str):
+            a = a.strip()
+            if a and a not in ordered_actions:
+                ordered_actions.append(a)
+
+        for a in actions:
+            add_action(a)
+
+        # peek constraints to discover actions
+        parsed_edges = []  # list of (src, dst)
         for c in constraints:
-            src, dst = c.split("->")
+            c = c.strip()
+            if not c:
+                continue
+            if "->" in c:
+                src, dst = map(str.strip, c.split("->", 1))
+                add_action(src)
+                add_action(dst)
+                parsed_edges.append((src, dst))
+            else:
+                # track singleton, will have indegree 0
+                add_action(c)
+
+        graph = defaultdict(list)
+        indegree = {a: 0 for a in ordered_actions}
+
+        for src, dst in parsed_edges:
             graph[src].append(dst)
             indegree[dst] += 1
 
-        # Kahn’s algorithm: collect levels
-        result = []
-        queue = deque([a for a in actions if indegree[a] == 0])
+        # Ensure all nodes exist in adjacency list
+        for a in ordered_actions:
+            graph.setdefault(a, [])
+
+        # Kahn’s algorithm with level collection (preserve stable order)
+        queue = deque([a for a in ordered_actions if indegree[a] == 0])
+        result: List[List[str]] = []
 
         while queue:
-            level = list(queue)  # current layer (parallel actions)
+            # Current parallelizable layer (preserve order of insertion)
+            level = list(queue)
             result.append(level)
 
             for _ in range(len(queue)):
@@ -81,9 +110,7 @@ class Environment:
                     indegree[nei] -= 1
                     if indegree[nei] == 0:
                         queue.append(nei)
-
-        # sanity check (detect cycle)
-        if any(indegree[a] > 0 for a in actions):
+        if any(indegree[a] > 0 for a in ordered_actions):
             raise ValueError("Cycle detected in order constraints!")
 
         return result

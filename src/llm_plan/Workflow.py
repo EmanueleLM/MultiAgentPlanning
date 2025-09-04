@@ -24,7 +24,7 @@ from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 
 MODEL = "gpt-4o"  # use 4o for everything else
-MODEL_PDDL = "gpt-4o"  # need better model for pddl
+MODEL_PDDL = "gpt-o3"  # need better model for pddl
 JSON_OUTPUT_PATH = "../../environments/static"
 ACTOR_OUTPUT_PATH = "../../environments/static/temp"
 EXAMPLE_JSON = "./example_json"
@@ -318,13 +318,14 @@ refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
 
 # define agents
 oracle_sys_msg = (
-    "You are an expert in planning. Given a description of a planning task, your job is only to decide "
-    "whether there is sufficient information to come up with a plan. If not, or if anything is unclear,"
-    "ask a concise question for more details or clarification. Do not ask to ask. If you have a question, "
-    "just make a tool call. You do not need to come up with a plan."
+    "You are an expert in planning. Your job is only to decide whether there is "
+    "enough info to make a plan. If something is unclear, ask EXACTLY ONE concise "
+    "clarification at a time via the AskClarify tool, then wait for the answer. "
+    "Never ask duplicates or paraphrases of already-answered questions."
 )
+
 oracle = create_react_agent(
-    model=oracle_llm,
+    model=oracle_llm.bind_tools([ask_clarify], parallel_tool_calls=False),  # <- key
     tools=[ask_clarify],
     prompt=oracle_sys_msg,
 )

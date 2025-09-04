@@ -82,7 +82,7 @@ class Planner:
 
         # 2. Ask the llm to generate a representation of the new environment in the given format
         response = model.generate_sync(system_prompt=system_prompt, prompt=prompt)
-        print(response)
+        # print(response)
 
         # Identify the plan in the response
         format_start = response.index(tag_begin) + len(tag_begin)
@@ -158,15 +158,15 @@ class Planner:
                 self.format_fields[variable_output] = model.generate_sync(
                     system_prompt=system_prompt, prompt=prompt
                 )
-                print(f"----- {agent_name}->{action_name} -----\n")
-                print("----- System Prompt -----")
-                print(f"{system_prompt}\n")
-                print("----- Prompt -----")
-                print(f"{prompt}\n")
-                print("----- Response -----")
-                print(f"{self.format_fields[variable_output]}")
-                print(self.format_fields[variable_output])
-                print("=" * 30)
-                print()
+                # print(f"----- {agent_name}->{action_name} -----\n")
+                # print("----- System Prompt -----")
+                # print(f"{system_prompt}\n")
+                # print("----- Prompt -----")
+                # print(f"{prompt}\n")
+                # print("----- Response -----")
+                # print(f"{self.format_fields[variable_output]}")
+                # print(self.format_fields[variable_output])
+                # print("=" * 30)
+                # print()
 
         return self.format_fields

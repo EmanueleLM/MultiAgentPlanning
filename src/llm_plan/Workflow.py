@@ -2,7 +2,13 @@ import json
 import subprocess
 import shlex
 from datetime import datetime
-from langchain_core.messages import SystemMessage, HumanMessage, AnyMessage
+from langchain_core.messages import (
+    SystemMessage,
+    HumanMessage,
+    AIMessage,
+    ToolMessage,
+    AnyMessage,
+)
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import START, END, StateGraph
@@ -52,6 +58,22 @@ def _get_qa(messages: List[AnyMessage]) -> List[QnA]:
             qa_list.append({"question": pending_q, "answer": msg.content})
             pending_q = None
     return qa_list
+
+
+def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
+    q_by_id = {}
+    qas: list[QnA] = []
+
+    for m in new_msgs:
+        if isinstance(m, AIMessage) and getattr(m, "tool_calls", None):
+            for tc in m.tool_calls:
+                if tc.get("name") == "AskClarify":
+                    q_by_id[tc["id"]] = tc.get("args", {}).get("question", "")
+        elif isinstance(m, ToolMessage) and getattr(m, "name", "") == "AskClarify":
+            q = q_by_id.get(m.tool_call_id, "")
+            if q:
+                qas.append({"question": q, "answer": m.content})
+    return qas
 
 
 def _win_to_wsl_path(p: Path) -> str:
@@ -304,7 +326,7 @@ oracle_sys_msg = (
 oracle = create_react_agent(
     model=oracle_llm,
     tools=[ask_clarify],
-    state_modifiers=[SystemMessage(content=oracle_sys_msg)],
+    prompt=oracle_sys_msg,
 )
 
 
@@ -325,8 +347,8 @@ def agent_oracle(state: State):
     out = oracle.invoke(inp)
     return {
         **init,
-        "messages": state["messages"] + out["messages"],
-        "clarifications": _get_qa(out["messages"]),
+        "messages": out["messages"],
+        "clarifications": _collect_qas(out["messages"]),
     }
 
 
@@ -342,7 +364,7 @@ def agent_summarizer(state: State):
     )
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = oracle_llm.invoke(inp)
-    return {"messages": state["messages"] + [out], "revised_description": out}
+    return {"messages": [out], "revised_description": out}
 
 
 def agent_coder_json(state: State):
@@ -368,7 +390,7 @@ def agent_coder_json(state: State):
         if state["multi_agent"]:
             example_json_path = EXAMPLE_JSON + "/example_json_multi_direct.json"
         else:
-            example_json_path = EXAMPLE_JSON + "/example_json_single_direct.json"
+            example_json_path = EXAMPLE_JSON + "/example_json_single.json"
     else:
         sys_msg = sys_msg_prefix + sys_msg_pddl
         example_json_path = EXAMPLE_JSON + "/example_json_multi_pddl.json"
@@ -418,7 +440,7 @@ def agent_coder_json(state: State):
             parsed_plan = parsed_model.model_dump()
         except Exception as e:
             return {
-                "messages": state["messages"] + [out],
+                "messages": [out],
                 "json_error": str(e),
             }
 
@@ -429,7 +451,7 @@ def agent_coder_json(state: State):
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
     return {
-        "messages": state["messages"] + [out],
+        "messages": [out],
         "plan_json": parsed_plan,
         "problem_name": parsed_plan.get("name", "unnamed_problem"),
     }

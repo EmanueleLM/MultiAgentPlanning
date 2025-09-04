@@ -1,26 +1,15 @@
-(define (domain meeting_scheduler_multi_agent)
-  (:requirements :strips :typing)
-
-  (:types
-    agent time_slot
-  )
+(define (domain meeting-scheduler)
+  (:requirements :strips :typing :equality)
+  (:types time_slot agent)
 
   (:predicates
     (available ?a - agent ?t - time_slot)
-    (meeting_scheduled ?t - time_slot)
+    (meeting-scheduled ?t - time_slot)
   )
 
-  (:action schedule_meeting
+  (:action schedule-meeting
     :parameters (?a - agent ?t - time_slot)
     :precondition (available ?a ?t)
-    :effect (not (available ?a ?t))
-  )
-
-  (:action schedule_global_meeting
-    :parameters (?t - time_slot)
-    :precondition (and (available michelle ?t)
-                       (available steven ?t)
-                       (available jerry ?t))
-    :effect (meeting_scheduled ?t)
+    :effect (meeting-scheduled ?t)
   )
 )

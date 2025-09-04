@@ -1,36 +1,36 @@
-(define (problem schedule_combined_meeting)
-  (:domain meeting_scheduler_multi_agent)
-
+(define (problem organized-meeting-monday)
+  (:domain meeting-scheduler)
+  
   (:objects
+    ts_9-10 ts_10-11 ts_11-12 ts_12-13
+    ts_13-14 ts_14-15 ts_15-16 ts_16-17 - time_slot
     michelle steven jerry - agent
-    monday_0900 monday_0930 monday_1000 monday_1030 monday_1100
-    monday_1130 monday_1200 monday_1230 monday_1300 monday_1330
-    monday_1400 monday_1430 monday_1500 monday_1530
-    monday_1600 monday_1630 monday_1700
-    - time_slot
   )
-
+  
   (:init
-    (available michelle monday_0900)
-    (available michelle monday_0930)
-    (available michelle monday_1000)
-    (available michelle monday_1030)
-    (available michelle monday_1200)
+    (available michelle ts_9-10)
+    (available michelle ts_10-11)
+    (available michelle ts_12-13)
+    (available michelle ts_13-14)
+    (available michelle ts_14-15)
+    (available michelle ts_15-16)
+    (available michelle ts_16-17)
 
-    (available steven monday_1000)
-    (available steven monday_1100)
-    (available steven monday_1330)
-    (available steven monday_1430)
+    (available steven ts_9-10)
+    (available steven ts_10-11)
+    (available steven ts_12-13)
+    (available steven ts_14-15)
+    (available steven ts_16-17)
 
-    (available jerry monday_1000)
-    (available jerry monday_1100)
-    (available jerry monday_1300)
-    (available jerry monday_1400)
+    (available jerry ts_12-13)
+    (available jerry ts_14-15)
   )
-
+  
   (:goal
     (exists (?t - time_slot)
-      (meeting_scheduled ?t)
-    )
-  )
+      (and
+        (meeting-scheduled ?t)
+        (available michelle ?t)
+        (available steven ?t)
+        (available jerry ?t))))
 )

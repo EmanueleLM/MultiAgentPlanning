@@ -30,7 +30,7 @@ class Agent(ABC):
     The variable required_args is static and contains the arguments required by each Agent.
     """
 
-    required_args: dict[str, str] = {}
+    required_args: dict[str, str] = {}  # Static!
 
     def __init__(
         self,
@@ -74,7 +74,7 @@ class AgentHallucinations(Agent):
     required_args = {
         "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
         "plan": "(str) The plan to be checked for hallucinations.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -166,7 +166,7 @@ class AgentDeepThinkPDDL(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -240,7 +240,7 @@ class AgentEnforceMultiAgency(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -279,6 +279,7 @@ class AgentEnforceMultiAgency(Agent):
                                       Think *very carefully* whether:
                                       - The PDDL domain and plan correctly implement the specific as a multi-agent system.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
+                                      - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
                                       
                                       You task is to fix all the issues mentioned above.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
@@ -314,7 +315,7 @@ class AgentFastDownwardAdapter(Agent):
         "pddl_domain": "(str) The original PDDL domain.",
         "pddl_problem": "(str) The original PDDL problem.",
         "specification": "(str) Optional human-readable specification of the task.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -391,7 +392,7 @@ class AgentSyntaxPDDL(Agent):
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "pddl_logs": "(str) The logs of the attempted execution with Fast Downward.",
         "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
@@ -469,7 +470,7 @@ class AgentNaturalLanguage(Agent):
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "pddl_plan": "(str) The PDDL plan.",
-    }
+    }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """

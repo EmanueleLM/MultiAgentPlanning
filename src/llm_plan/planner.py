@@ -55,9 +55,13 @@ class Planner:
                                  <use-case>{specific}</use-case>
                                  
                                  Think carefully about the entities, their attributes, and the relationships between them.
-                                 Make sure the {format} file is valid and can be parsed without errors.
+                                 When generating it, consider the following:
+                                 - Make sure the {format} file is valid and can be parsed without errors.
+                                 - Make also sure that the primary keys in the {format} file are the same as those in the <environment-{format}></environment-{format}>.
+                                 - Make sure that the field "name" is "{env_name}".
+                                 - Remember to always add an "orchestrator" agent that will be in charge of planning the actions of the other agents. His name is "orchestrator".
                                  
-                                 Remember that the {format} that you return:
+                                 Further, the {format} that you return:
                                  - Should include instructions that ask to generate PDDL domain and problem files.
                                  - Should not contain special characters like \\n, etc.
                                  - Should be properly formatted and indented. Don't wrap it between quotes.
@@ -78,6 +82,7 @@ class Planner:
             specific=specific,
             tag_begin=tag_begin,
             tag_end=tag_end,
+            env_name=env_name,
         )
 
         # 2. Ask the llm to generate a representation of the new environment in the given format

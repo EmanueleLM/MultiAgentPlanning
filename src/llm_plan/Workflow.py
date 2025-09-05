@@ -2,6 +2,7 @@ import json
 import subprocess
 import shlex
 import ast
+import re
 from datetime import datetime
 from langchain_core.messages import (
     SystemMessage,
@@ -23,6 +24,16 @@ from pydantic import BaseModel, Field
 from pathlib import Path
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
+from llm_plan.hypervisor import Hypervisor
+from llm_plan.agent import (
+    Agent,
+    AgentDeepThinkPDDL,
+    AgentEnforceMultiAgency,
+    AgentFastDownwardAdapter,
+    AgentHallucinations,
+    AgentNaturalLanguage,
+    AgentSyntaxPDDL,
+)
 
 MODEL = "gpt-4o"  # use 4o for everything else
 MODEL_PDDL = "gpt-4o"  # need better model for pddl
@@ -234,7 +245,6 @@ class State(TypedDict):
 
     mode: Literal["pddl", "direct"]
     multi_agent: bool  # whether it's a multi agent problem
-    refinement_iters: int  # number of refinement iterations by the hypervisor
     messages: Annotated[list[AnyMessage], add_messages]
     initial_description: Annotated[
         str, _set_once
@@ -254,6 +264,10 @@ class State(TypedDict):
     ]  # domain and problem PDDL names and paths from orchestrator, for solver
     agent_configs: list[tuple]  # configurations for agents in the current parallel step
     is_final: bool = False  # whether this is the final step in the workflow
+    refinement_iters: int  # number of refinement iterations by the hypervisor
+    curr_refinement_iter: int = 0
+    hypervisor: Hypervisor
+    acting_agent_name: str  # current refinement agent name
 
 
 # state for a generic agent, including actors and orchestrator
@@ -585,8 +599,8 @@ def generic_actor(state: AgentState):
     if name == "orchestrator" and state["is_final"]:
         return {
             "pddl": {
-                "domain": domain,
-                "problem": problem,
+                "domain": domain_text,
+                "problem": problem_text,
                 "domain_path": domain_path,
                 "problem_path": problem_path,
             },
@@ -618,8 +632,40 @@ def proceed_to_solver(
     return "Workflow splitter"
 
 
-def refiner(state: State):
-    # Implement the refinement logic here
+def refine_or_end(state: State):
+    if state["curr_refinement_iter"] < state["refinement_iters"]:
+        state["curr_refinement_iter"] += 1
+        return "Select refiner"
+    return END
+
+
+def select_agent(state: State):
+    prompt_args_hypervisor = {
+        "plan": "No plan yet.",
+        "specification": state["environment"].config_data,
+        "pddl_domain": state["pddl"]["domain"],
+        "pddl_problem": state["pddl"]["problem"],
+        "syntax_errors": "No error file yet.",
+        "pddl_logs": "No log file yet.",
+        "history": [],
+    }
+    hypervisor = Hypervisor(prompt_args_hypervisor)
+    response = hypervisor.run(refiner_llm)
+
+    match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
+    if match:
+        agent_name = match.group(1).strip()
+    else:
+        # default to AgentDeepThinkPDDL if no class is found
+        agent_name = "AgentDeepThinkPDDL"
+
+    return {"hypervisor": hypervisor, "acting_agent_name": agent_name}
+
+
+def agent_refiner(state: State):
+    hypervisor = state["hypervisor"]
+    acting_agent_name = state["acting_agent_name"]
+    # Implement the logic for the agent refiner
     return {}
 
 
@@ -636,7 +682,8 @@ def build_graph():
     builder.add_node("Workflow splitter", workflow_splitter)
     builder.add_node("Actor node", generic_actor)
     builder.add_node("External solver", external_solver)
-    # builder.add_node()
+    builder.add_node("Select refiner", select_agent)
+    builder.add_node("Refiner", agent_refiner)
 
     # edges
     builder.add_edge(START, "Oracle")
@@ -648,7 +695,9 @@ def build_graph():
         "Workflow splitter", continue_to_workflow, ["Actor node"]
     )
     builder.add_conditional_edges("Actor node", proceed_to_solver)
-    builder.add_edge("External solver", END)
+    builder.add_conditional_edges("External solver", refine_or_end)
+    builder.add_edge("Select refiner", "Refiner")
+    builder.add_conditional_edges("Refiner", refine_or_end)
 
     return builder
 

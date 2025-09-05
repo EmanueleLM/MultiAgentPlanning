@@ -234,6 +234,7 @@ class State(TypedDict):
 
     mode: Literal["pddl", "direct"]
     multi_agent: bool  # whether it's a multi agent problem
+    refinement_iters: int  # number of refinement iterations by the hypervisor
     messages: Annotated[list[AnyMessage], add_messages]
     initial_description: Annotated[
         str, _set_once
@@ -317,6 +318,7 @@ oracle = create_react_agent(
     model=oracle_llm.bind_tools([ask_batch_clarify], parallel_tool_calls=False),
     tools=[ask_batch_clarify],
     prompt=oracle_sys_msg,
+    tool_choice="auto",
 )
 
 
@@ -353,7 +355,7 @@ def agent_summarizer(state: State):
         task_info += f"clarifications: {'\n'.join([f'{pair["question"]} - {pair["answer"]}' for pair in state["clarifications"]])}"
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = oracle_llm.invoke(inp)
-    return {"messages": [out], "revised_description": out}
+    return {"messages": [out], "revised_description": out.content}
 
 
 def agent_coder_json(state: State):
@@ -616,27 +618,39 @@ def proceed_to_solver(
     return "Workflow splitter"
 
 
+def refiner(state: State):
+    # Implement the refinement logic here
+    return {}
+
+
 # build graph
-builder = StateGraph(State)
+def build_graph():
+    builder = StateGraph(State)
 
-# nodes
-builder.add_node("Oracle", agent_oracle)
-# builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
-builder.add_node("Reworder", agent_summarizer)
-builder.add_node("JSON coder", agent_coder_json)
-builder.add_node("Task Environment Constructor", construct_environment)
-builder.add_node("Workflow splitter", workflow_splitter)
-builder.add_node("Actor node", generic_actor)
-builder.add_node("External solver", external_solver)
+    # nodes
+    builder.add_node("Oracle", agent_oracle)
+    # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
+    builder.add_node("Reworder", agent_summarizer)
+    builder.add_node("JSON coder", agent_coder_json)
+    builder.add_node("Task Environment Constructor", construct_environment)
+    builder.add_node("Workflow splitter", workflow_splitter)
+    builder.add_node("Actor node", generic_actor)
+    builder.add_node("External solver", external_solver)
+    # builder.add_node()
 
-# edges
-builder.add_edge(START, "Oracle")
-builder.add_edge("Oracle", "Reworder")
-builder.add_edge("Reworder", "JSON coder")
-builder.add_edge("JSON coder", "Task Environment Constructor")
-builder.add_edge("Task Environment Constructor", "Workflow splitter")
-builder.add_conditional_edges("Workflow splitter", continue_to_workflow, ["Actor node"])
-builder.add_conditional_edges("Actor node", proceed_to_solver)
-builder.add_edge("External solver", END)
+    # edges
+    builder.add_edge(START, "Oracle")
+    builder.add_edge("Oracle", "Reworder")
+    builder.add_edge("Reworder", "JSON coder")
+    builder.add_edge("JSON coder", "Task Environment Constructor")
+    builder.add_edge("Task Environment Constructor", "Workflow splitter")
+    builder.add_conditional_edges(
+        "Workflow splitter", continue_to_workflow, ["Actor node"]
+    )
+    builder.add_conditional_edges("Actor node", proceed_to_solver)
+    builder.add_edge("External solver", END)
 
-graph = builder.compile()
+    return builder
+
+
+graph = build_graph().compile()

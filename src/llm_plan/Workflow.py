@@ -625,31 +625,27 @@ def external_solver(state: State):
 
     domain_path = state["pddl"]["domain_path"]
     problem_path = state["pddl"]["problem_path"]
-    plan_out_path = base_dir / f"{problem_name}_plan.sas"
-    _solve_pddl(domain_path, problem_path, plan_out_path)
+    # run fd
+    command = [
+        SOLVER_BINARY,
+        *SOLVER_ARGS,
+        str(base_dir / "sas_plan"),
+        domain_path,
+        problem_path,
+    ]
+    if state["WSL"]:
+        command = ["wsl"] + command
 
-    prompt_args_hypervisor = {
-        "plan": "No plan yet.",
-        "specification": state["environment"].config_data,
-        "pddl_domain": state["pddl"]["domain"],
-        "pddl_problem": state["pddl"]["problem"],
-        "syntax_errors": "No error file yet.",
-        "pddl_logs": "No log file yet.",
-        "history": [],
-    }
-
-    return {
-        "refinement_iters": state["refinement_iters"],
-        "refiner_args": prompt_args_hypervisor,
-        "problem_name": problem_name,
-        "WSL": state["WSL"],
-    }
+    with open(base_dir / "logs.txt", "w") as logfile:
+        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
 
 
 def proceed_to_solver(
     state: State,
-) -> Literal["External solver", "Workflow splitter"]:
+) -> Literal["External solver", "Workflow splitter", "Init refiner state"]:
     if state["is_final"]:
+        if state["refinement_iters"] > 0:
+            return "Init refiner state"
         return "External solver"
     return "Workflow splitter"
 
@@ -659,6 +655,24 @@ def refine_or_end(state: RefinerState):
         state["curr_refinement_iter"] += 1
         return "Select refiner"
     return END
+
+
+def init_refiner_state(state: State):
+    return {
+        "refinement_iters": state["refinement_iters"],
+        "refiner_args": {
+            "plan": "No plan yet.",
+            "specification": state["environment"].config_data,
+            "pddl_domain": state["pddl"]["domain"],
+            "pddl_problem": state["pddl"]["problem"],
+            "syntax_errors": "No error file yet.",
+            "pddl_logs": "No log file yet.",
+            "history": [],
+        },
+        "problem_name": state["problem_name"],
+        "curr_refinement_iter": 0,
+        "WSL": state["WSL"],
+    }
 
 
 def select_agent(state: RefinerState):
@@ -708,10 +722,12 @@ def agent_refiner(state: RefinerState):
     command = [
         SOLVER_BINARY,
         *SOLVER_ARGS,
-        base_dir / "sas_plan",
-        base_dir / "domain.pddl",
-        base_dir / "problem.pddl",
+        str(base_dir / "sas_plan"),
+        str(base_dir / "domain.pddl"),
+        str(base_dir / "problem.pddl"),
     ]
+    if state["WSL"]:
+        command = ["wsl"] + command
 
     with open(base_dir / "logs.txt", "w") as logfile:
         subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
@@ -766,6 +782,7 @@ def build_graph():
     builder.add_node("Workflow splitter", workflow_splitter)
     builder.add_node("Actor node", generic_actor)
     builder.add_node("External solver", external_solver)
+    builder.add_node("Init refiner state", init_refiner_state)
     builder.add_node("Select refiner", select_agent)
     builder.add_node("Refiner", agent_refiner)
 
@@ -779,9 +796,10 @@ def build_graph():
         "Workflow splitter", continue_to_workflow, ["Actor node"]
     )
     builder.add_conditional_edges("Actor node", proceed_to_solver)
-    builder.add_conditional_edges("External solver", refine_or_end)
+    builder.add_edge("Init refiner state", "Select refiner")
     builder.add_edge("Select refiner", "Refiner")
     builder.add_conditional_edges("Refiner", refine_or_end)
+    builder.add_edge("External solver", END)
 
     return builder
 

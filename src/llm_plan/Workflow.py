@@ -25,20 +25,13 @@ from pathlib import Path
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
-from llm_plan.agent import (
-    Agent,
-    AgentDeepThinkPDDL,
-    AgentEnforceMultiAgency,
-    AgentFastDownwardAdapter,
-    AgentHallucinations,
-    AgentNaturalLanguage,
-    AgentSyntaxPDDL,
-)
+from llm_plan.config import UNIVERSAL_VALIDATOR_BIN, SOLVER_BINARY, SOLVER_ARGS
+from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-4o"  # use 4o for everything else
 MODEL_PDDL = "gpt-4o"  # need better model for pddl
-JSON_OUTPUT_PATH = "../../environments/static"
-ACTOR_OUTPUT_PATH = "../../environments/static/temp"
+JSON_OUTPUT_PATH = "./tmp"
+ACTOR_OUTPUT_PATH = "./tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
 
@@ -265,9 +258,6 @@ class State(TypedDict):
     agent_configs: list[tuple]  # configurations for agents in the current parallel step
     is_final: bool = False  # whether this is the final step in the workflow
     refinement_iters: int  # number of refinement iterations by the hypervisor
-    curr_refinement_iter: int = 0
-    hypervisor: Hypervisor
-    acting_agent_name: str  # current refinement agent name
 
 
 # state for a generic agent, including actors and orchestrator
@@ -280,6 +270,15 @@ class AgentState(TypedDict):
     inputs: list[str]
     output: str
     is_final: bool
+
+
+class RefinerState(TypedDict):
+    problem_name: str  # problem name, to save output in correct folder
+    refinement_iters: int  # number of refinement iterations by the hypervisor
+    curr_refinement_iter: int = 0
+    hypervisor: Hypervisor
+    acting_agent_name: str  # current refinement agent name
+    refiner_args: dict[str, Any]  # arguments to pass to the refiner agent
 
 
 def _validate_initial_state_fields(state: State):
@@ -452,13 +451,13 @@ def agent_coder_json(state: State):
     # write json to file, name with timestamp to avoid clash
     plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}_{timestamp}.json")
+    json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}/{plan_name}_{timestamp}.json")
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
     return {
         "messages": [out],
         "plan_json": parsed_plan,
-        "problem_name": parsed_plan.get("name", "unnamed_problem"),
+        "problem_name": plan_name,
     }
 
 
@@ -621,7 +620,22 @@ def external_solver(state: State):
     problem_path = state["pddl"]["problem_path"]
     plan_out_path = base_dir / f"{problem_name}_plan.sas"
     _solve_pddl(domain_path, problem_path, plan_out_path)
-    return {}
+
+    prompt_args_hypervisor = {
+        "plan": "No plan yet.",
+        "specification": state["environment"].config_data,
+        "pddl_domain": state["pddl"]["domain"],
+        "pddl_problem": state["pddl"]["problem"],
+        "syntax_errors": "No error file yet.",
+        "pddl_logs": "No log file yet.",
+        "history": [],
+    }
+
+    return {
+        "refinement_iters": state["refinement_iters"],
+        "refiner_args": prompt_args_hypervisor,
+        "problem_name": problem_name,
+    }
 
 
 def proceed_to_solver(
@@ -632,24 +646,16 @@ def proceed_to_solver(
     return "Workflow splitter"
 
 
-def refine_or_end(state: State):
+def refine_or_end(state: RefinerState):
     if state["curr_refinement_iter"] < state["refinement_iters"]:
         state["curr_refinement_iter"] += 1
         return "Select refiner"
     return END
 
 
-def select_agent(state: State):
-    prompt_args_hypervisor = {
-        "plan": "No plan yet.",
-        "specification": state["environment"].config_data,
-        "pddl_domain": state["pddl"]["domain"],
-        "pddl_problem": state["pddl"]["problem"],
-        "syntax_errors": "No error file yet.",
-        "pddl_logs": "No log file yet.",
-        "history": [],
-    }
-    hypervisor = Hypervisor(prompt_args_hypervisor)
+def select_agent(state: RefinerState):
+
+    hypervisor = Hypervisor(state["refiner_args"])
     response = hypervisor.run(refiner_llm)
 
     match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
@@ -662,11 +668,75 @@ def select_agent(state: State):
     return {"hypervisor": hypervisor, "acting_agent_name": agent_name}
 
 
-def agent_refiner(state: State):
+def agent_refiner(state: RefinerState):
     hypervisor = state["hypervisor"]
     acting_agent_name = state["acting_agent_name"]
-    # Implement the logic for the agent refiner
-    return {}
+    refiner_args = state["refiner_args"]
+    problem_name = state["problem_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
+
+    pddl_parser = PDDLParser()
+    agent_class = hypervisor.agents[acting_agent_name]
+    for arg in agent_class.required_args.keys():
+        agent_class.required_args[arg] = refiner_args[arg]
+
+    new_agent = agent_class(refiner_llm, agent_class.required_args)
+    response = new_agent.run()
+
+    # Get domain and plan
+    domain, problem = pddl_parser.parse(response, from_file=False)
+    refiner_args["pddl_domain"] = domain
+    refiner_args["pddl_problem"] = problem
+
+    with open(base_dir / "problem.pddl", "w") as f:
+        f.write(problem)
+
+    with open(base_dir / "domain.pddl", "w") as f:
+        f.write(domain)
+
+    # Launch the solver
+    command = [
+        SOLVER_BINARY,
+        *SOLVER_ARGS,
+        base_dir / "sas_plan",
+        base_dir / "domain.pddl",
+        base_dir / "problem.pddl",
+    ]
+
+    with open(base_dir / "logs.txt", "w") as logfile:
+        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+
+    # Validate the plan with uVAL
+    command = f"{UNIVERSAL_VALIDATOR_BIN} -cv \
+    {base_dir / 'domain.pddl'} \
+    {base_dir / 'problem.pddl'} \
+    {base_dir / 'sas_plan'}"
+
+    out = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+    # This part won't be printed at test time
+    if out.stderr:
+        pddl_error = out.stderr
+        # print(f"The validation found a problem with the plan: {out.stderr}")
+    else:
+        pddl_error = "No error found."
+        # print("The plan is valid.")
+        # print("[stdout]", out.stdout)
+
+    with open(base_dir / "logs.txt", "r") as f:
+        pddl_logs = f.read()
+
+    # Syntax errors and logs
+    refiner_args["syntax_errors"] = pddl_error
+    refiner_args["pddl_logs"] = pddl_logs
+
+    # History
+    hypervisor.history.append(acting_agent_name)
+    refiner_args["history"] = hypervisor.history
+
+    return {"refiner_args": refiner_args}
 
 
 # build graph

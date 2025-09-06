@@ -25,7 +25,12 @@ from pathlib import Path
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
-from llm_plan.config import UNIVERSAL_VALIDATOR_BIN, SOLVER_BINARY, SOLVER_ARGS
+from llm_plan.config import (
+    UNIVERSAL_VALIDATOR_BIN,
+    UNIVERSAL_VALIDATOR,
+    SOLVER_BINARY,
+    SOLVER_ARGS,
+)
 from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-4o"  # use 4o for everything else
@@ -258,6 +263,7 @@ class State(TypedDict):
     agent_configs: list[tuple]  # configurations for agents in the current parallel step
     is_final: bool = False  # whether this is the final step in the workflow
     refinement_iters: int  # number of refinement iterations by the hypervisor
+    WSL: bool = True
 
 
 # state for a generic agent, including actors and orchestrator
@@ -279,6 +285,7 @@ class RefinerState(TypedDict):
     hypervisor: Hypervisor
     acting_agent_name: str  # current refinement agent name
     refiner_args: dict[str, Any]  # arguments to pass to the refiner agent
+    WSL: bool
 
 
 def _validate_initial_state_fields(state: State):
@@ -635,6 +642,7 @@ def external_solver(state: State):
         "refinement_iters": state["refinement_iters"],
         "refiner_args": prompt_args_hypervisor,
         "problem_name": problem_name,
+        "WSL": state["WSL"],
     }
 
 
@@ -708,11 +716,17 @@ def agent_refiner(state: RefinerState):
     with open(base_dir / "logs.txt", "w") as logfile:
         subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
 
-    # Validate the plan with uVAL
-    command = f"{UNIVERSAL_VALIDATOR_BIN} -cv \
-    {base_dir / 'domain.pddl'} \
-    {base_dir / 'problem.pddl'} \
-    {base_dir / 'sas_plan'}"
+    # Validate the plan with VAL
+    if state["WSL"]:
+        command = f"wsl cd {UNIVERSAL_VALIDATOR} && ./Validate \
+        {base_dir / 'domain.pddl'} \
+        {base_dir / 'problem.pddl'} \
+        {base_dir / 'sas_plan'}"
+    else:
+        command = f"{UNIVERSAL_VALIDATOR_BIN} \
+        {base_dir / 'domain.pddl'} \
+        {base_dir / 'problem.pddl'} \
+        {base_dir / 'sas_plan'}"
 
     out = subprocess.run(command, shell=True, capture_output=True, text=True)
 

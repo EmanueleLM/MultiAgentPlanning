@@ -84,13 +84,13 @@ class Hypervisor:
             # Load the module dynamically from file
             spec = importlib.util.spec_from_file_location(module_path.stem, module_path)
             if spec is None:
-                print(f"Failed to create a module spec for {module_path}")
+                # print(f"Failed to create a module spec for {module_path}")
                 return {}
 
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             # print(f"Module {module.__name__} loaded successfully!")
-        except Exception:
+        except Exception as e:
             # print(f"Error importing module {module_path}: {e}")
             return {}
 
@@ -133,6 +133,7 @@ class Hypervisor:
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
         # Fix the plan
+        print(self.agents)
         prompt = self.prompt.format(
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],

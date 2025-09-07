@@ -1,6 +1,7 @@
 import json
 import subprocess
-import shlex
+
+# import shlex
 import ast
 import re
 from datetime import datetime
@@ -18,10 +19,10 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
 from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
-from typing import Annotated, TypedDict, Literal, Optional, Any
+from typing import Annotated, TypedDict, Literal, Optional, Any, Union
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
@@ -35,8 +36,8 @@ from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-4o"  # use 4o for everything else
 MODEL_PDDL = "gpt-4o"  # need better model for pddl
-JSON_OUTPUT_PATH = "./tmp"
-ACTOR_OUTPUT_PATH = "./tmp"
+JSON_OUTPUT_PATH = "../../tmp"
+ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
 
@@ -59,9 +60,6 @@ def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
     """Extract Q/A pairs from AskBatchClarify tool calls and results."""
     qas: list[QnA] = []
     questions_by_id: dict[str, list[str]] = {}
-    print()
-    print("new messages:")
-    print(new_msgs)
 
     for m in new_msgs:
         if isinstance(m, AIMessage) and m.tool_calls:
@@ -75,7 +73,6 @@ def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
             answers = response_dict.get("answers", [])
             for q, a in zip(qs, answers):
                 qas.append({"question": q, "answer": a})
-    print(f"QAs: {qas}")
     return qas
 
 
@@ -105,6 +102,7 @@ def _extract(text: str, anchor: str) -> str:
     return text[start : end + 1]  # noqa E203
 
 
+# obsolete. remove later
 def _solve_pddl(
     domain_path,
     problem_path,
@@ -165,6 +163,10 @@ def _solve_pddl(
 
 
 # Schemas for controlling JSON format
+class CustomBaseModel(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
+
 class AgentInfo(BaseModel):
     private_information: list[str] = Field(
         default_factory=list, description="Private facts/constraints for the agent."
@@ -219,7 +221,7 @@ class WorkflowSpec(BaseModel):
     )
 
 
-class PlanSchema(BaseModel):
+class PlanSchema(CustomBaseModel):
     name: str = Field(..., description="Environment name.")
     author: Optional[str] = Field(None, description="Author metadata.")
     agents: AgentsSection = Field(
@@ -459,6 +461,7 @@ def agent_coder_json(state: State):
     plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}/{plan_name}_{timestamp}.json")
+    json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
     return {
@@ -626,18 +629,26 @@ def external_solver(state: State):
     domain_path = state["pddl"]["domain_path"]
     problem_path = state["pddl"]["problem_path"]
     # run fd
-    command = [
-        SOLVER_BINARY,
-        *SOLVER_ARGS,
-        str(base_dir / "sas_plan"),
-        domain_path,
-        problem_path,
-    ]
+
     if state["WSL"]:
-        command = ["wsl"] + command
+        command = (
+            ["wsl", "--"]
+            + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+            + [
+                _win_to_wsl_path(base_dir / "sas_plan"),
+                _win_to_wsl_path(domain_path),
+                _win_to_wsl_path(problem_path),
+            ]
+        )
+    else:
+        command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+            str(base_dir / "sas_plan"),
+            str(domain_path),
+            str(problem_path),
+        ]
 
     with open(base_dir / "logs.txt", "w") as logfile:
-        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT, text=True)
 
 
 def proceed_to_solver(
@@ -650,11 +661,13 @@ def proceed_to_solver(
     return "Workflow splitter"
 
 
-def refine_or_end(state: RefinerState):
+def refine_or_end(
+    state: RefinerState,
+) -> Literal["Select refiner"] | Any:
     if state["curr_refinement_iter"] < state["refinement_iters"]:
-        state["curr_refinement_iter"] += 1
         return "Select refiner"
-    return END
+    else:
+        return END
 
 
 def init_refiner_state(state: State):
@@ -687,7 +700,11 @@ def select_agent(state: RefinerState):
         # default to AgentDeepThinkPDDL if no class is found
         agent_name = "AgentDeepThinkPDDL"
 
-    return {"hypervisor": hypervisor, "acting_agent_name": agent_name}
+    return {
+        "hypervisor": hypervisor,
+        "acting_agent_name": agent_name,
+        "curr_refinement_iter": state["curr_refinement_iter"] + 1,
+    }
 
 
 def agent_refiner(state: RefinerState):
@@ -719,30 +736,37 @@ def agent_refiner(state: RefinerState):
         f.write(domain)
 
     # Launch the solver
-    command = [
-        SOLVER_BINARY,
-        *SOLVER_ARGS,
-        str(base_dir / "sas_plan"),
-        str(base_dir / "domain.pddl"),
-        str(base_dir / "problem.pddl"),
-    ]
     if state["WSL"]:
-        command = ["wsl"] + command
+        command = (
+            ["wsl", "--"]
+            + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+            + [
+                _win_to_wsl_path(base_dir / "sas_plan"),
+                _win_to_wsl_path(base_dir / "domain.pddl"),
+                _win_to_wsl_path(base_dir / "problem.pddl"),
+            ]
+        )
+    else:
+        command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+            str(base_dir / "sas_plan"),
+            str(base_dir / "domain.pddl"),
+            str(base_dir / "problem.pddl"),
+        ]
 
     with open(base_dir / "logs.txt", "w") as logfile:
         subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
 
     # Validate the plan with VAL
     if state["WSL"]:
-        command = f"wsl cd {UNIVERSAL_VALIDATOR} && ./Validate \
-        {base_dir / 'domain.pddl'} \
-        {base_dir / 'problem.pddl'} \
-        {base_dir / 'sas_plan'}"
+        command = f"wsl -- cd {str(PurePosixPath(UNIVERSAL_VALIDATOR))} && ./Validate \
+        {_win_to_wsl_path(base_dir / 'domain.pddl')} \
+        {_win_to_wsl_path(base_dir / 'problem.pddl')} \
+        {_win_to_wsl_path(base_dir / 'sas_plan')}"
     else:
         command = f"{UNIVERSAL_VALIDATOR_BIN} \
-        {base_dir / 'domain.pddl'} \
-        {base_dir / 'problem.pddl'} \
-        {base_dir / 'sas_plan'}"
+        {str(base_dir / 'domain.pddl')} \
+        {str(base_dir / 'problem.pddl')} \
+        {str(base_dir / 'sas_plan')}"
 
     out = subprocess.run(command, shell=True, capture_output=True, text=True)
 
@@ -795,10 +819,14 @@ def build_graph():
     builder.add_conditional_edges(
         "Workflow splitter", continue_to_workflow, ["Actor node"]
     )
-    builder.add_conditional_edges("Actor node", proceed_to_solver)
+    builder.add_conditional_edges(
+        "Actor node",
+        proceed_to_solver,
+        ["External solver", "Workflow splitter", "Init refiner state"],
+    )
     builder.add_edge("Init refiner state", "Select refiner")
     builder.add_edge("Select refiner", "Refiner")
-    builder.add_conditional_edges("Refiner", refine_or_end)
+    builder.add_conditional_edges("Refiner", refine_or_end, ["Select refiner", END])
     builder.add_edge("External solver", END)
 
     return builder

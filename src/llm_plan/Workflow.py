@@ -26,6 +26,7 @@ from pathlib import Path, PurePosixPath
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
+from llm_plan.agent import AgentNaturalLanguage
 from llm_plan.config import (
     UNIVERSAL_VALIDATOR_BIN,
     UNIVERSAL_VALIDATOR,
@@ -102,66 +103,6 @@ def _extract(text: str, anchor: str) -> str:
     return text[start : end + 1]  # noqa E203
 
 
-# obsolete. remove later
-def _solve_pddl(
-    domain_path,
-    problem_path,
-    plan_out_path,
-    fd_dir_wsl="~/fast-downward",
-    search="astar(blind())",
-):
-    """
-    Run Fast Downward via WSL. Re-implement this depending on your OS to call fast-downward or any other planner.
-    Ensure the output plan is in the same format as that of fast-downward.
-    Args:
-        domain_path (str): Windows path to domain.pddl
-        problem_path (str): Windows path to problem.pddl
-        plan_out_path (str): Windows path where plan file will be saved.
-        fd_dir_wsl (str): WSL directory where fast-downward.py resides (default: ~/fast-downward)
-        search (str): Fast Downward search spec, e.g. 'astar(lmcut())'
-    """
-    domain_path = Path(domain_path)
-    problem_path = Path(problem_path)
-    plan_out_path = Path(plan_out_path)
-
-    plan_out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    domain_wsl = _win_to_wsl_path(domain_path)
-    problem_wsl = _win_to_wsl_path(problem_path)
-    outdir_wsl = _win_to_wsl_path(plan_out_path)
-
-    # Build inner bash command:
-    run_cmd = " ".join(
-        [
-            "python3",
-            "fast-downward.py",
-            shlex.quote(domain_wsl),
-            shlex.quote(problem_wsl),
-            "--search",
-            shlex.quote(search),
-        ]
-    )
-    copy_cmd = (
-        "if ls sas_plan* >/dev/null 2>&1; then "
-        "mkdir -p " + shlex.quote(outdir_wsl) + " && "
-        "cp -f sas_plan* " + shlex.quote(outdir_wsl) + "/ && "
-        "rm -f sas_plan*; "
-        "fi"
-    )
-
-    inner_cmd = f"cd {fd_dir_wsl} && {run_cmd} && {copy_cmd}"
-
-    proc = subprocess.run(
-        ["wsl", "bash", "-lc", inner_cmd], capture_output=True, text=True
-    )
-
-    if proc.returncode != 0:
-        raise RuntimeError(
-            "Fast Downward failed.\n"
-            f"STDOUT:\n{proc.stdout}\n\nSTDERR:\n{proc.stderr}\n"
-        )
-
-
 # Schemas for controlling JSON format
 class CustomBaseModel(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
@@ -190,7 +131,7 @@ class Environment(BaseModel):
         ...,
         description="Initial world state, different depending on the planning task.",
     )
-    goal: dict = Field(
+    goal: str | dict = Field(
         ...,
         description="Goal state for the environment, different depending on the planning task.",
     )
@@ -457,10 +398,7 @@ def agent_coder_json(state: State):
             parsed_model = plan_parser.parse(assistant_text)
             parsed_plan = parsed_model.model_dump()
         except Exception as e:
-            return {
-                "messages": [out],
-                "json_error": str(e),
-            }
+            raise ValueError(f"Error parsing plan: {str(e)}")
 
     # write json to file, name with timestamp to avoid clash
     plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
@@ -668,11 +606,11 @@ def proceed_to_solver(
 
 def refine_or_end(
     state: RefinerState,
-) -> Literal["Select refiner"] | Any:
+) -> Literal["Select refiner", "NL converter"]:
     if state["curr_refinement_iter"] < state["refinement_iters"]:
         return "Select refiner"
     else:
-        return END
+        return "NL converter"
 
 
 def init_refiner_state(state: State):
@@ -798,6 +736,43 @@ def agent_refiner(state: RefinerState):
     return {"refiner_args": refiner_args}
 
 
+def agent_to_nl(state: State | RefinerState):
+    problem_name = state["problem_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
+
+    with open(base_dir / "problem.pddl", "r") as f:
+        problem = f.read()
+
+    with open(base_dir / "domain.pddl", "r") as f:
+        domain = f.read()
+    try:
+        with open(base_dir / "sas_plan", "r") as f:
+            plan = f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Plan file not found in {base_dir}. Ensure the solver ran successfully and produced a plan."
+        )
+
+    prompt_args = {
+        "pddl_domain": domain,
+        "pddl_problem": problem,
+        "pddl_plan": plan,
+    }
+    try:
+        prompt_args["specification"] = state["plan_json"]
+    except KeyError:
+        prompt_args["specification"] = state["refiner_args"]["specification"]
+
+    hypervisor_to_nl = AgentNaturalLanguage(llm=refiner_llm, prompt_args=prompt_args)
+
+    natural_plan = hypervisor_to_nl.run()
+
+    with open(base_dir / "refined_nl_plan.txt", "w") as f:
+        f.write(natural_plan)
+
+
 # build graph
 def build_graph():
     builder = StateGraph(State)
@@ -814,6 +789,7 @@ def build_graph():
     builder.add_node("Init refiner state", init_refiner_state)
     builder.add_node("Select refiner", select_agent)
     builder.add_node("Refiner", agent_refiner)
+    builder.add_node("NL converter", agent_to_nl)
 
     # edges
     builder.add_edge(START, "Oracle")
@@ -831,8 +807,11 @@ def build_graph():
     )
     builder.add_edge("Init refiner state", "Select refiner")
     builder.add_edge("Select refiner", "Refiner")
-    builder.add_conditional_edges("Refiner", refine_or_end, ["Select refiner", END])
-    builder.add_edge("External solver", END)
+    builder.add_conditional_edges(
+        "Refiner", refine_or_end, ["Select refiner", "NL converter"]
+    )
+    builder.add_edge("External solver", "NL converter")
+    builder.add_edge("NL converter", END)
 
     return builder
 

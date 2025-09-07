@@ -245,6 +245,9 @@ class State(TypedDict):
 
     mode: Literal["pddl", "direct"]
     multi_agent: bool  # whether it's a multi agent problem
+    enable_clarifications: bool = (
+        True  # whether to allow the oracle to ask clarifications
+    )
     messages: Annotated[list[AnyMessage], add_messages]
     initial_description: Annotated[
         str, _set_once
@@ -356,19 +359,21 @@ def agent_oracle(state: State):
         if human_texts:
             # first human message is used to invoke graph, should just be a single message with task desc.
             init["initial_description"] = human_texts[0]
-
-    inp = {"messages": state["messages"]}
-    out = oracle.invoke(inp)
-    return {
-        **init,
-        "messages": out["messages"],
-        "clarifications": _collect_qas(out["messages"][1:]),
-    }
+    if state["enable_clarifications"]:
+        inp = {"messages": state["messages"]}
+        out = oracle.invoke(inp)
+        return {
+            **init,
+            "messages": out["messages"],
+            "clarifications": _collect_qas(out["messages"][1:]),
+        }
+    else:
+        return init
 
 
 def agent_summarizer(state: State):
     sys_msg = (
-        "You are given the initial description of a planning task and subsequent clarifications."
+        "You are given the initial description of a planning task and subsequent clarifications (if any)."
         "Rewrite task descriptions into a crisp, structured brief. Prefer specifics from clarifications"
         "over the initial description."
     )

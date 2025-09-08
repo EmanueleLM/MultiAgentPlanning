@@ -43,7 +43,7 @@ JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
-TEMPORAL = False  # whether to use temporal planner POPF2. If False, use Fast Downward
+TEMPORAL = True  # whether to use temporal planner POPF2. If False, use Fast Downward
 
 
 # helper functions
@@ -574,10 +574,67 @@ def external_solver(state: State):
 
     domain_path = state["pddl"]["domain_path"]
     problem_path = state["pddl"]["problem_path"]
-    # run fd
+    # run solver
+    # if using temporal planner (popf2)
     if TEMPORAL:
+        base_dir.mkdir(parents=True, exist_ok=True)
+
         if state["WSL"]:
-            pass
+            command = ["wsl", "--", str(PurePosixPath(TEMPORAL_SOLVER_BINARY))] + [
+                _win_to_wsl_path(domain_path),
+                _win_to_wsl_path(problem_path),
+            ]
+        else:
+            command = [
+                str(Path(TEMPORAL_SOLVER_BINARY)),
+                str(domain_path),
+                str(problem_path),
+            ]
+        print("Running command:", " ".join(shlex.quote(arg) for arg in command))
+        # Capture combined stdout/stderr to parse
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+
+        output = result.stdout or ""
+        logs_path = base_dir / "logs.txt"
+        plan_path = base_dir / "sas_plan"
+
+        # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
+        plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
+        print("Solver output:\n", output)
+        if "Solution Found" in output:
+            lines = output.splitlines()
+
+            header_lines: list[str] = []
+            plan_lines: list[str] = []
+            plan_started = False
+
+            for line in lines:
+                if plan_line_re.match(line):
+                    plan_started = True
+                    plan_lines.append(line.strip())
+                else:
+                    if not plan_started:
+                        header_lines.append(line)
+
+            # Write header and summary to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write("\n".join(header_lines).rstrip() + "\n")
+
+            # Write the extracted plan only to sas_plan
+            with plan_path.open("w", encoding="utf-8") as pf:
+                pf.write("\n".join(plan_lines).rstrip() + ("\n" if plan_lines else ""))
+
+        else:
+            # No solution or error: everything goes to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write(output.strip())
+    # if using fd
     else:
         if state["WSL"]:
             command = (
@@ -685,25 +742,85 @@ def agent_refiner(state: RefinerState):
         f.write(domain)
 
     # Launch the solver
-    if state["WSL"]:
-        command = (
-            ["wsl", "--"]
-            + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
-            + [
-                _win_to_wsl_path(base_dir / "sas_plan"),
+    # if using temporal planner (popf2)
+    if TEMPORAL:
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        if state["WSL"]:
+            command = ["wsl", "--", str(PurePosixPath(TEMPORAL_SOLVER_BINARY))] + [
                 _win_to_wsl_path(base_dir / "domain.pddl"),
                 _win_to_wsl_path(base_dir / "problem.pddl"),
             ]
+        else:
+            command = [
+                str(Path(TEMPORAL_SOLVER_BINARY)),
+                str(base_dir / "domain.pddl"),
+                str(base_dir / "problem.pddl"),
+            ]
+        print("Running command:", " ".join(shlex.quote(arg) for arg in command))
+        # Capture combined stdout/stderr to parse
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
         )
-    else:
-        command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
-            str(base_dir / "sas_plan"),
-            str(base_dir / "domain.pddl"),
-            str(base_dir / "problem.pddl"),
-        ]
 
-    with open(base_dir / "logs.txt", "w") as logfile:
-        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+        output = result.stdout or ""
+        logs_path = base_dir / "logs.txt"
+        plan_path = base_dir / "sas_plan"
+
+        # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
+        plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
+        print("Solver output:\n", output)
+        if "Solution Found" in output:
+            lines = output.splitlines()
+
+            header_lines: list[str] = []
+            plan_lines: list[str] = []
+            plan_started = False
+
+            for line in lines:
+                if plan_line_re.match(line):
+                    plan_started = True
+                    plan_lines.append(line.strip())
+                else:
+                    if not plan_started:
+                        header_lines.append(line)
+
+            # Write header and summary to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write("\n".join(header_lines).rstrip() + "\n")
+
+            # Write the extracted plan only to sas_plan
+            with plan_path.open("w", encoding="utf-8") as pf:
+                pf.write("\n".join(plan_lines).rstrip() + ("\n" if plan_lines else ""))
+
+        else:
+            # No solution or error: everything goes to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write(output.strip())
+    else:
+        if state["WSL"]:
+            command = (
+                ["wsl", "--"]
+                + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+                + [
+                    _win_to_wsl_path(base_dir / "sas_plan"),
+                    _win_to_wsl_path(base_dir / "domain.pddl"),
+                    _win_to_wsl_path(base_dir / "problem.pddl"),
+                ]
+            )
+        else:
+            command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+                str(base_dir / "sas_plan"),
+                str(base_dir / "domain.pddl"),
+                str(base_dir / "problem.pddl"),
+            ]
+
+        with open(base_dir / "logs.txt", "w") as logfile:
+            subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
 
     # Validate the plan with VAL
     if state["WSL"]:

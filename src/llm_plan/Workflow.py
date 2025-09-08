@@ -31,6 +31,7 @@ from llm_plan.agent import AgentNaturalLanguage
 from llm_plan.config import (
     UNIVERSAL_VALIDATOR_BIN,
     UNIVERSAL_VALIDATOR,
+    TEMPORAL_SOLVER_BINARY,
     SOLVER_BINARY,
     SOLVER_ARGS,
 )
@@ -42,6 +43,7 @@ JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
+TEMPORAL = False  # whether to use temporal planner POPF2. If False, use Fast Downward
 
 
 # helper functions
@@ -573,26 +575,29 @@ def external_solver(state: State):
     domain_path = state["pddl"]["domain_path"]
     problem_path = state["pddl"]["problem_path"]
     # run fd
-
-    if state["WSL"]:
-        command = (
-            ["wsl", "--"]
-            + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
-            + [
-                _win_to_wsl_path(base_dir / "sas_plan"),
-                _win_to_wsl_path(domain_path),
-                _win_to_wsl_path(problem_path),
-            ]
-        )
+    if TEMPORAL:
+        if state["WSL"]:
+            pass
     else:
-        command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
-            str(base_dir / "sas_plan"),
-            str(domain_path),
-            str(problem_path),
-        ]
+        if state["WSL"]:
+            command = (
+                ["wsl", "--"]
+                + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+                + [
+                    _win_to_wsl_path(base_dir / "sas_plan"),
+                    _win_to_wsl_path(domain_path),
+                    _win_to_wsl_path(problem_path),
+                ]
+            )
+        else:
+            command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+                str(base_dir / "sas_plan"),
+                str(domain_path),
+                str(problem_path),
+            ]
 
-    with open(base_dir / "logs.txt", "w") as logfile:
-        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT, text=True)
+        with open(base_dir / "logs.txt", "w") as logfile:
+            subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT, text=True)
 
 
 def proceed_to_solver(
@@ -741,6 +746,22 @@ def agent_refiner(state: RefinerState):
     return {"refiner_args": refiner_args}
 
 
+def plan_produced(state: State):
+    # if plan file exists and is non-empty, go to meta analyst
+    problem_name = state["problem_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
+
+    if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
+        return "Meta analyst"
+    return refine_or_end(state)
+
+
+def agent_meta_analyst(state: State):
+    pass
+
+
 def agent_to_nl(state: State | RefinerState):
     problem_name = state["problem_name"]
     base_dir = (
@@ -795,6 +816,7 @@ def build_graph():
     builder.add_node("Select refiner", select_agent)
     builder.add_node("Refiner", agent_refiner)
     builder.add_node("NL converter", agent_to_nl)
+    builder.add_node("Meta analyst", agent_meta_analyst)
 
     # edges
     builder.add_edge(START, "Oracle")
@@ -813,7 +835,10 @@ def build_graph():
     builder.add_edge("Init refiner state", "Select refiner")
     builder.add_edge("Select refiner", "Refiner")
     builder.add_conditional_edges(
-        "Refiner", refine_or_end, ["Select refiner", "NL converter"]
+        "Refiner", plan_produced, ["Meta analyst", "Select refiner", "NL converter"]
+    )
+    builder.add_conditional_edges(
+        "Meta analyst", refine_or_end, ["Select refiner", "NL converter"]
     )
     builder.add_edge("External solver", "NL converter")
     builder.add_edge("NL converter", END)

@@ -26,6 +26,7 @@ ENVIRONMENTS_PYTHON_PATH_SAMPLE = Path(
     CONFIG.get("environments_python_path_sample", "")
 )
 SOLVER_BINARY = CONFIG.get("solver_binary", "")
+TEMPORAL_SOLVER_BINARY = CONFIG.get("temporal_solver_binary", "")
 SOLVER_ARGS = CONFIG.get("solver_args", [])
 UNIVERSAL_VALIDATOR = CONFIG.get("universal_validator", "")
 UNIVERSAL_VALIDATOR_BIN = CONFIG.get("universal_validator_bin", "")

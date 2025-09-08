@@ -21,8 +21,8 @@ class Hypervisor:
             "history": "(list[str]) The history of the agents picked up.",
         }
 
-        self.history: list[str] = (
-            []
+        self.history: list[str] = prompt_args.get(
+            "history", []
         )  # This contains the history of the agents picked up
 
         self.system_prompt = inspect.cleandoc(
@@ -90,7 +90,7 @@ class Hypervisor:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             # print(f"Module {module.__name__} loaded successfully!")
-        except Exception as e:
+        except Exception:
             # print(f"Error importing module {module_path}: {e}")
             return {}
 

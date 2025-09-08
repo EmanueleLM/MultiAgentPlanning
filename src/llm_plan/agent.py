@@ -295,8 +295,8 @@ class AgentEnforceMultiAgency(Agent):
                                       - The PDDL domain and plan correctly implement the specific as a multi-agent system.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - Actions have appropriate preconditions specifying which agent can perform them.
-                                      - If an action involves multiple agents, the preconditions prevent self-interaction, unless makes sense in the context of the problem. 
-                                      
+                                      - If an action involves multiple agents, the preconditions must prevent the same agent from performing more than one role, unless it makes sense in the context of the problem.
+
                                       You task is to fix all the issues mentioned above.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.

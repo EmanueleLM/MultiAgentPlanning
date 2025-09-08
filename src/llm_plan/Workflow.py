@@ -1,4 +1,5 @@
 import json
+import shlex
 import subprocess
 
 # import shlex
@@ -701,10 +702,14 @@ def agent_refiner(state: RefinerState):
 
     # Validate the plan with VAL
     if state["WSL"]:
-        command = f"wsl -- cd {str(PurePosixPath(UNIVERSAL_VALIDATOR))} && ./Validate \
-        {_win_to_wsl_path(base_dir / 'domain.pddl')} \
-        {_win_to_wsl_path(base_dir / 'problem.pddl')} \
-        {_win_to_wsl_path(base_dir / 'sas_plan')}"
+        cmd_body = (
+            f"cd {shlex.quote(str(PurePosixPath(UNIVERSAL_VALIDATOR)))} && "
+            f"./Validate "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'domain.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'problem.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'sas_plan'))}"
+        )
+        command = ["wsl", "bash", "-lc", cmd_body]
     else:
         command = f"{UNIVERSAL_VALIDATOR_BIN} \
         {str(base_dir / 'domain.pddl')} \

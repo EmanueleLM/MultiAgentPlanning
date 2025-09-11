@@ -17,8 +17,8 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 4. Install dependencies:
 - cd to the project folder
-- ``python3 -m venv .env``
-- ``source .env/bin/activate``
+- ``python3 -m venv .venv``
+- ``source .venv/bin/activate``
 - ``pip3 install -r requirements.txt``
 
 5. You can play with GPT now and call it via the APIs. Check playground.ipynb and /test

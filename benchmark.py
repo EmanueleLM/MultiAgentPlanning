@@ -9,171 +9,212 @@ If the plan succeeds in generating the pddl plan and the final naturalistic plan
 check if it is correct by comparing it to the "golden_plan".
 """
 
+import argparse
 import json
 from pathlib import Path
 import re
-import subprocess
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import (
-    ENVIRONMENTS_JSON_PATH,
-    UNIVERSAL_VALIDATOR_BIN,
-    SOLVER_BINARY,
-    SOLVER_ARGS,
-)
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.llm import ChatGPT
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
+from src.llm_plan.utils import run_pddl_popf2_and_Val
 
-format = "json"
-num_experiments = 10
-budget = 5
-model_json = ChatGPT("gpt-4o")
-model_plan = ChatGPT("gpt-4o")
 
-with open("./data/natural_plan/calendar_scheduling.json", "r") as f:
-    calendar_scheduling_data = json.load(f)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run experiments with PDDL and planning agents."
+    )
 
-for i in range(num_experiments):
-    k = f"calendar_scheduling_example_{i}"
-    data = calendar_scheduling_data[k]
-    environment_name = "".join([v.capitalize() for v in k.split("_")])
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="calendar_scheduling",
+        help="The dataset: calendar_scheduling, meeting_planning, trip_planning (default: calendar_scheduling)",
+    )
+    parser.add_argument(
+        "--num_experiments",
+        type=int,
+        default=10,
+        help="Number of experiments (default: 10)",
+    )
+    parser.add_argument(
+        "--budget", type=int, default=30, help="Budget value (default: 30)"
+    )
+    parser.add_argument(
+        "--model_json",
+        type=str,
+        default="gpt-5-mini",
+        help="Model for generating PDDL from JSON (default: gpt-5-mini)",
+    )
+    parser.add_argument(
+        "--model_plan",
+        type=str,
+        default="gpt-4o",
+        help="Model for planning and refinements (default: gpt-4o)",
+    )
+    parser.add_argument(
+        "--base_agent",
+        type=str,
+        default="AgentDeepThinkPDDL",
+        help="Base agent (default: AgentDeepThinkPDDL)",
+    )
 
-    planner = Planner()
-    plan_path = Path(f"{environment_name}.{format}")
-    full_path = ENVIRONMENTS_JSON_PATH / plan_path
+    return parser.parse_args()
 
-    # Skip if the plan already exists
-    if not full_path.exists():
-        planner.generate_representation(
-            model_plan, data["prompt_0shot"], environment_name, format=format
-        )
-    else:
-        print(f"{full_path} already exists. Skipping generation.")
-        print("[Warning]: The prompt `specific` will be ignored!")
 
-    env = Environment(f"./environments/static/{environment_name}.json")
-    print("Problem: ", calendar_scheduling_data)
-    print("Plan:\n", env.plan)
+if __name__ == "__main__":
+    args = parse_args()
 
-    BASE_FOLDER = Path(f"./tmp/{env.name}")
-    BASE_FOLDER.mkdir(parents=True, exist_ok=True)
+    # Argpasrse arguments
+    dataset_name = args.dataset
+    num_experiments = args.num_experiments
+    budget = args.budget
+    model_json = ChatGPT(args.model_json)
+    model_plan = ChatGPT(args.model_plan)
+    base_agent = args.base_agent
 
-    # Fist plan to collect domain and problem
+    format = "json"
     pddl_parser = PDDLParser()
-    print("Generating the first plan.")
-    responses = planner.plan(model_plan, env)
-    final_plan = responses["pddl_orchestrator"]
-    domain, problem = pddl_parser.parse(final_plan, from_file=False)
 
-    print("Generating the refinements...")
-    for _ in range(budget):
+    with open(f"./data/natural_plan/{args.dataset}.json", "r") as f:
+        calendar_scheduling_data = json.load(f)
+
+    for i in range(num_experiments):
+        k = f"calendar_scheduling_example_{i}"
+        data = calendar_scheduling_data[k]
+        environment_name = "".join([v.capitalize() for v in k.split("_")])
+
+        # Generate the first representation
+        planner = Planner()
+        plan_path = Path(f"{environment_name}.{format}")
+        full_path = ENVIRONMENTS_JSON_PATH / plan_path
+
+        # Skip if the plan already exists
+        if not full_path.exists():
+            planner.generate_representation(
+                model_json, data["prompt_0shot"], environment_name, format=format
+            )
+        else:
+            print(f"{full_path} already exists. Skipping generation.")
+            print("[Warning]: The prompt `specific` will be ignored!")
+
+        # Load the environment
+        env = Environment(f"./environments/static/{environment_name}.json")
+        print("Problem: ", data["prompt_0shot"])
+        print("Plan:\n", env.plan)
+
+        BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{env.name}")
+        BASE_FOLDER.mkdir(parents=True, exist_ok=True)
+
+        # Fist PDDL domain and problem
+        print("Generating the first plan.")
+        responses = planner.plan(model_plan, env)
+        final_plan = responses["pddl_orchestrator"]
+        domain, problem = pddl_parser.parse(final_plan, from_file=False)
+
+        # Start the refinement loop
+        print("Generating the refinements...")
+
+        # Hypervisor args
         prompt_args_hypervisor = {
+            "human_specification": data["prompt_0shot"],
             "plan": "No plan yet.",
             "specification": env.config_data,
             "pddl_domain": domain,
             "pddl_problem": problem,
+            "pddl_plan": "No plan yet.",
             "syntax_errors": "No error file yet.",
             "pddl_logs": "No log file yet.",
             "history": [],
         }
-        hypervisor = Hypervisor(prompt_args_hypervisor)
-        response = hypervisor.run(model_plan)
 
-        # Dynamically instantiate the agent class
-        match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
+        for j in range(budget):
+            hypervisor = Hypervisor(prompt_args_hypervisor)
+            response = hypervisor.run(model_plan)
 
-        if match:
-            agent_name = match.group(1).strip()
-        else:
-            print(
-                f"[Warning] No agent class found in the response ({agent_name}). Using default AgentDeepThinkPDDL."
+            # Dynamically instantiate the agent class
+            match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
+
+            if match:
+                agent_name = match.group(1).strip()
+            else:
+                print(
+                    f"[Warning] No agent class found in the response ({agent_name}). Using default {base_agent}."
+                )
+                agent_name = base_agent
+
+            print(f"Selected agent: {agent_name}")
+            agent_class = hypervisor.agents[agent_name]
+
+            # Generate the refined plan
+            required_args: dict[object] = {}
+            for arg in agent_class.required_args.keys():
+                agent_class.required_args[arg] = prompt_args_hypervisor[arg]
+
+            new_agent = agent_class(model_plan, agent_class.required_args)
+            response = new_agent.run()
+
+            # The plan is finished so we stop
+            if agent_name == "NoOpAgent":
+                break
+
+            # Get domain and plan and update the hypervisor args
+            domain, problem = pddl_parser.parse(response, from_file=False)
+            prompt_args_hypervisor["pddl_domain"] = domain
+            prompt_args_hypervisor["pddl_problem"] = problem
+
+            # Run the pddl planner
+            with open(BASE_FOLDER / f"problem_{j}.pddl", "w") as f:
+                f.write(str(problem))
+
+            with open(BASE_FOLDER / f"domain_{j}.pddl", "w") as f:
+                f.write(str(domain))
+
+            result = run_pddl_popf2_and_Val(
+                BASE_FOLDER,
+                BASE_FOLDER / f"domain_{j}.pddl",
+                BASE_FOLDER / f"problem_{j}.pddl",
+                BASE_FOLDER / f"sas_plan_{j}",
             )
-            agent_name = "AgentDeepThinkPDDL"
 
-        agent_class = hypervisor.agents[agent_name]
+            # Update the hypervisor args
+            for k, v in result.items():
+                prompt_args_hypervisor[k] = v
 
-        required_args = {}
-        for arg in agent_class.required_args.keys():
-            agent_class.required_args[arg] = prompt_args_hypervisor[arg]
+            # Update the history
+            hypervisor.history.append(agent_name)
+            prompt_args_hypervisor["history"] = hypervisor.history
 
-        new_agent = agent_class(model_plan, agent_class.required_args)
-        response = new_agent.run()
+        # Produce the natural language plan
+        if Path(BASE_FOLDER / "sas_plan").exists():
+            with open(BASE_FOLDER / f"domain_{j}.pddl", "r") as f:
+                domain = f.read()
 
-        # Get domain and plan
-        domain, problem = pddl_parser.parse(response, from_file=False)
-        prompt_args_hypervisor["pddl_domain"] = domain
-        prompt_args_hypervisor["pddl_problem"] = problem
+            with open(BASE_FOLDER / f"problem_{j}.pddl", "r") as f:
+                problem = f.read()
 
-        # Run the pddl planner
-        with open(BASE_FOLDER / "problem.pddl", "w") as f:
-            f.write(problem)
+            with open(BASE_FOLDER / f"sas_plan_{j}", "r") as f:
+                plan = f.read()
 
-        with open(BASE_FOLDER / "domain.pddl", "w") as f:
-            f.write(domain)
+            prompt_args = {
+                "specification": env.config_data,
+                "pddl_domain": domain,
+                "pddl_problem": problem,
+                "pddl_plan": plan,
+            }
 
-        # Launch the solver
-        command = [
-            SOLVER_BINARY,
-            *SOLVER_ARGS,
-            BASE_FOLDER / "sas_plan",
-            BASE_FOLDER / "domain.pddl",
-            BASE_FOLDER / "problem.pddl",
-        ]
+            hypervisor_to_nl = AgentNaturalLanguage(
+                llm=model_plan, prompt_args=prompt_args
+            )
 
-        with open(BASE_FOLDER / "logs.txt", "w") as logfile:
-            subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+            natural_plan = hypervisor_to_nl.run()
 
-        # Validate the plan with uVAL
-        command = f"{UNIVERSAL_VALIDATOR_BIN} -cv \
-        {BASE_FOLDER / 'domain.pddl'} \
-        {BASE_FOLDER / 'problem.pddl'} \
-        {BASE_FOLDER / 'sas_plan'}"
+            with open(BASE_FOLDER / "final_natural_plan.txt", "w") as f:
+                f.write(natural_plan)
 
-        out = subprocess.run(command, shell=True, capture_output=True, text=True)
-
-        # This part won't be printed at test time
-        if out.stderr:
-            pddl_error = out.stderr
-        else:
-            pddl_error = "No error found."
-
-        with open(BASE_FOLDER / "logs.txt", "r") as f:
-            pddl_logs = f.read()
-
-        # Syntax errors and logs
-        prompt_args_hypervisor["syntax_errors"] = pddl_error
-        prompt_args_hypervisor["pddl_logs"] = pddl_logs
-
-        # History
-        hypervisor.history.append(agent_name)
-        prompt_args_hypervisor["history"] = hypervisor.history
-
-    # Report the natural language plan
-    with open(BASE_FOLDER / "problem.pddl", "r") as f:
-        problem = f.read()
-
-    with open(BASE_FOLDER / "domain.pddl", "r") as f:
-        domain = f.read()
-
-    with open(BASE_FOLDER / "sas_plan", "r") as f:
-        plan = f.read()
-
-    prompt_args = {
-        "specification": env.config_data,
-        "pddl_domain": domain,
-        "pddl_problem": problem,
-        "pddl_plan": plan,
-    }
-
-    hypervisor_to_nl = AgentNaturalLanguage(llm=model_plan, prompt_args=prompt_args)
-
-    natural_plan = hypervisor_to_nl.run()
-
-    with open(BASE_FOLDER / "refined_nl_plan.txt", "w") as f:
-        f.write(natural_plan)
-
-    print()
+        print()

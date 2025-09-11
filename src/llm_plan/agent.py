@@ -70,107 +70,18 @@ class Agent(ABC):
         return Agent.required_args
 
 
-class AgentHallucinations(Agent):
-    required_args = {
-        "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
-        "plan": "(str) The plan to be checked for hallucinations.",
-    }  # Static!
-
-    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
-        """
-        This Agent detects and solves hallucinations.
-        It consists of two steps:
-        1. It Detects and marks all the hallucinations in the plan.
-        2. Solve the hallucinations whose severity is above a given threshold.
-
-        Input:
-            llm (LLM): The language model to use for detecting and mitigating hallucinations.
-            prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
-        """
-        super().__init__(prompt_args=prompt_args)
-
-        self.name = "AgentHallucinations"
-        self.llm = llm
-
-        # Prompts
-        self.system_prompt_detect = inspect.cleandoc("""\
-                                                    You are an agent that detects hallucinations. 
-                                                    Your task is to analyze a provided plan and its assumptions and detect any hallucinations or inconsistencies.
-                                                    """)
-        self.prompt_detect = inspect.cleandoc("""\
-                                             Analyze the following information and detect any hallucinations: 
-                                             <plan>{plan}</plan>
-                                             
-                                             For any potential hallucination, return a description of it and its severity, from 1 (low) to 5 (high).
-                                             If there are no evident hallucinations,there is no need to invent them.
-                                             """)
-
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an agent that mitigates hallucinations. 
-                                             Your task is to analyze a provided plan and a list of hallucinations, 
-                                             each flagged with a severity score, from 1 (low) to 5 (high), 
-                                             and solve them.
-                                             """)
-        self.prompt = inspect.cleandoc("""\
-                                      Given this plan:
-                                      <plan>{plan}</plan>
-                                      
-                                      And this list of hallucinations and their severity scores (from 1 (low) to 5 (high)):
-                                      {hallucinations}
-                                      
-                                      Return a plan where all the hallucinations whose severity is at least {threshold} have been solved or removed.
-                                      """)
-
-    def _detect_hallucinations(self) -> None:
-        """
-        Detect hallucinations in the given plan.
-
-        Input:
-            src (str): The plan to be checked for hallucinations.
-
-        Output:
-            str: The detected hallucinations.
-        """
-        self.prompt_args["hallucinations"] = self.llm.generate_sync(
-            system_prompt=self.system_prompt_detect,
-            prompt=self.prompt_detect.format(plan=self.prompt_args["plan"]),
-        )
-
-    def run(self) -> str:
-        """
-        Run the Agent to solve hallucinations in the plan.
-
-        Input:
-            src (str): The plan to be fixed for hallucinations.
-
-        Output:
-            str: The fixed plan.
-        """
-        self.upload_args(self.prompt_args)  # ensure args are uploaded
-        self._detect_hallucinations()  # detect hallucinations first
-
-        # Fix the plan
-        prompt = self.prompt.format(
-            hallucinations=self.prompt_args["hallucinations"],
-            threshold=self.prompt_args["threshold"],
-            plan=self.prompt_args["plan"],
-        )
-        return self.llm.generate_sync(
-            system_prompt=self.system_prompt,
-            prompt=prompt,
-        )
-
-
 class AgentDeepThinkPDDL(Agent):
     required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
-        This agent deeply evaluates each PDDL plan's step and identifies inconsistencies between the constraints, the goal, and the final plan.
+        This agent deeply evaluates the PDDL domain and problem and identifies inconsistencies between the constraints, the goal, and the final plan.
         In particular:
         - It checks whether the PDDL domain reflects the human specification.
         - It checks whether the PDDL problem reflects the particular instance of the specification.
@@ -186,26 +97,32 @@ class AgentDeepThinkPDDL(Agent):
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
-                                             You are an agent that evaluates each plan's step. 
                                              Your task is to analyze a provided plan against the human specifics, and identify all the possible inconsistencies. 
                                              You focus on the constraints of each action, and on the effects of each action.
                                              You aim is to return a plan that fixes all the inconsistencies and satisfies the goal.
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
-                                      Given this specification in JSON format:
+                                      Given this human specification of a task:
+                                      <human_specification>{human_specification}</human_specification>
+                                      
+                                      This is a plan specification, in JSON format, of the task:
                                       <specification>{specification}</specification>
                                       
-                                      And this PDDL domain that describes the specification:
+                                      Now, consider this PDDL domain that describes the specification:
                                       <domain>{pddl_domain}</domain>
                                       
-                                      And this PDDL problem that instatiates the specification:
+                                      And this is the PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      Think *very carefully* whether:
+                                      This is the best plan the solver could find (it may be empty if no plan was found):
+                                      <plan>{pddl_plan}</plan>
+                                      
+                                      Now, think *very carefully* whether:
                                       - the PDDL domain reflects the human specification.
                                       - the PDDL problem reflects the particular instance of the specification.
                                       - the PDDL domain and problem are consistent with the constraints of each agent.
+                                      - the PDDL plan, if present, satisfies the goal and the constraints of each agent.
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
@@ -225,6 +142,85 @@ class AgentDeepThinkPDDL(Agent):
 
         # Fix the plan
         prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_plan=self.prompt_args["pddl_plan"],
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentDeepThinkConstraints(Agent):
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        This agent deeply evaluates whether the PDDL domain and problem are consistent with the specification.
+        In particular:
+        - It checks whether the PDDL problem reflects the particular instance of the specification.
+        - It checks whether the PDDL problem defines all the constraints as they are described in the specification.
+
+        Input:
+            llm (LLM): The language model to use for detecting and mitigating hallucinations.
+            prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentDeepThinkConstraints"
+        self.llm = llm
+
+        # Prompts
+        self.system_prompt = inspect.cleandoc("""\
+                                             Your task is to analyze a provided problem against the human and JSON specifics. 
+                                             You focus on the constraints of each agent and whether they are expressed as proper PDDL formulae.
+                                             In particular, you focus on whether each agent's private information is expressed as constraints in the PDDL problem.
+                                             You aim is to return a PDDL domain and problem where all the constraints in the human specification are expressed.
+                                             You can think as much as you want before answering, and you can use as many steps as you want.
+                                             """)
+        self.prompt = inspect.cleandoc("""\
+                                      Given this human specification of a task:
+                                      <human_specification>{human_specification}</human_specification>
+                                      
+                                      This is a plan specification, in JSON format, of the task:
+                                      <specification>{specification}</specification>
+                                      
+                                      Now, consider this PDDL domain that describes the specification:
+                                      <domain>{pddl_domain}</domain>
+                                      
+                                      And this is the PDDL problem that instatiates the specification:
+                                      <problem>{pddl_problem}</problem>
+                                      
+                                      Now, think *very carefully* whether:
+                                      - the PDDL domain reflects the human and JSONM specifications.
+                                      - the PDDL problem expresses all the constraints as they are defined in the agents' provate information.
+                                      
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
+                                      Just return the PDDL code, do not add special characters or comments.
+                                      """)
+
+    def run(self) -> str:
+        """
+        Run the Agent to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        self.upload_args(self.prompt_args)  # ensure args are uploaded
+
+        # Fix the plan
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
@@ -237,6 +233,7 @@ class AgentDeepThinkPDDL(Agent):
 
 class AgentEnforceMultiAgency(Agent):
     required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
@@ -267,17 +264,20 @@ class AgentEnforceMultiAgency(Agent):
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
-                                      Given this specification in JSON format:
+                                      Given this human specification of a task:
+                                      <human_specification>{human_specification}</human_specification>
+                                      
+                                      This is a plan specification, in JSON format, of the task:
                                       <specification>{specification}</specification>
                                       
-                                      And this PDDL domain that describes the specification:
+                                      Now, consider this PDDL domain that describes the specification:
                                       <domain>{pddl_domain}</domain>
                                       
-                                      And this PDDL problem that instatiates the specification:
+                                      And this is the PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
                                       Think *very carefully* whether:
-                                      - The PDDL domain and plan correctly implement the specific as a multi-agent system.
+                                      - The PDDL domain and plan correctly implement the JSON specific as well as the human specification *as multi-agent system*.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
                                       
@@ -300,6 +300,7 @@ class AgentEnforceMultiAgency(Agent):
 
         # Fix the plan
         prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
@@ -310,7 +311,7 @@ class AgentEnforceMultiAgency(Agent):
         )
 
 
-class AgentFastDownwardAdapter(Agent):
+class AgentPOPF2Adapter(Agent):
     required_args = {
         "pddl_domain": "(str) The original PDDL domain.",
         "pddl_problem": "(str) The original PDDL problem.",
@@ -319,7 +320,7 @@ class AgentFastDownwardAdapter(Agent):
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
-        This agent adapts the PDDL domains and problems so that they are compatible with the Fast Downward solver.
+        This agent adapts the PDDL domains and problems so that they are compatible with the POPF2 Planner solver.
         In particular:
         - It replaces numeric fluents with predicates.
         - It precomputes arithmetic constraints as predicates in the problem.
@@ -333,17 +334,17 @@ class AgentFastDownwardAdapter(Agent):
             prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
         """
         super().__init__(prompt_args=prompt_args)
-        self.name = "AgentFastDownwardAdapter"
+        self.name = "AgentPOPF2Adapter"
         self.llm = llm
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
-            You are an agent that adapts PDDL domains and problems for Fast Downward. 
-            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs so that Fast Downward can plan with the domain. 
+            You are an agent that adapts PDDL domains and problems for POPF2 Planner. 
+            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs so that POPF2 Planner can plan with the domain. 
             Maintain as much of the original semantics as possible.
             """)
         self.prompt = inspect.cleandoc("""\
-            Given this specification in JSON format:
+            Given this specification, in JSON format:
             <specification>{specification}</specification>
 
             And this PDDL domain:
@@ -352,7 +353,7 @@ class AgentFastDownwardAdapter(Agent):
             And this PDDL problem:
             <problem>{pddl_problem}</problem>
 
-            Rewrite the domain and problem to be compatible with Fast Downward:
+            Rewrite the domain and problem to be compatible with POPF2 Planner:
             - Replace numeric fluents with predicates.
             - Precompute arithmetic constraints as predicates in the problem.
             - Discretize temporal/duration effects into sequences of instantaneous actions.
@@ -366,10 +367,10 @@ class AgentFastDownwardAdapter(Agent):
 
     def run(self) -> str:
         """
-        Run the Agent to adapt the PDDL domain and problem for Fast Downward.
+        Run the Agent to adapt the PDDL domain and problem for POPF2 Planner.
 
         Output:
-            str: The adapted PDDL domain and problem in Fast Downward-compatible form.
+            str: The adapted PDDL domain and problem in POPF2 Planner-compatible form.
         """
         self.upload_args(self.prompt_args)
 
@@ -390,7 +391,7 @@ class AgentSyntaxPDDL(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-        "pddl_logs": "(str) The logs of the attempted execution with Fast Downward.",
+        "pddl_logs": "(str) The logs of the attempted execution.",
         "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
     }  # Static!
 
@@ -411,11 +412,11 @@ class AgentSyntaxPDDL(Agent):
                                              You are an agent that evaluates each plan's step. 
                                              Your task is to analyze a provided plan against the human specifics,
                                              and identify all the possible inconsistencies with the PDDL syntax.
-                                             The PDDL syntax required is that used by *Fast Downward*. 
+                                             The PDDL syntax required is that used by *POPF2 Planner*. 
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
-                                      Given this specification in JSON format:
+                                      Given this specification of a plan, in JSON format:
                                       <specification>{specification}</specification>
                                       
                                       And this PDDL domain that describes the specification:
@@ -424,14 +425,14 @@ class AgentSyntaxPDDL(Agent):
                                       And this PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      These are the logs of the attempted execution with *Fast Downward*:
+                                      These are the logs of the attempted execution with *POPF2 Planner*:
                                       <logs>{pddl_logs}</logs>
                                       
                                       This is the error message returned by a PDDL validator (can be empty or successful):
                                       <errors>{syntax_errors}</errors>
                                       
-                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *Fast Downward*.
-                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *Fast Downward*. 
+                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *POPF2 Planner*.
+                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *POPF2 Planner*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
@@ -464,6 +465,39 @@ class AgentSyntaxPDDL(Agent):
         )
 
 
+class NoOpAgent(Agent):
+    required_args = {
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Initialize the Agent that terminates the planning procedure.
+        This agent is called only when the plan is deemed valid.
+        No more refinemenets will be performed and the final PDDL domain, problem and plan will be returned.
+
+        Input:
+            llm (LLM): The language model to use for fixing the syntax.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "NoOpAgent"
+        self.llm = None
+
+    def run(self) -> str:
+        """
+        Run the Agent to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        return "[Info] NoOpAgent called. No more refinements will be performed."
+
+
 class AgentNaturalLanguage(Agent):
     required_args = {
         "specification": "(str) The plan to be checked for improvement.",
@@ -491,7 +525,7 @@ class AgentNaturalLanguage(Agent):
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
-                                      Given this specification in JSON format:
+                                      Given this specification, in JSON format:
                                       <specification>{specification}</specification>
                                       
                                       And this PDDL domain that describes the specification:

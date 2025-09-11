@@ -22,6 +22,6 @@ ENVIRONMENTS_JSON_SAMPLE_PATH = Path(CONFIG.get("environments_json_sample_path",
 ENVIRONMENTS_PYTHON_PATH_SAMPLE = Path(
     CONFIG.get("environments_python_path_sample", "")
 )
-SOLVER_BINARY = Path(CONFIG.get("solver_binary", ""))
+SOLVER_BINARY = Path(CONFIG.get("solver_binary_popf2", ""))
 SOLVER_ARGS = CONFIG.get("solver_args", [])
-UNIVERSAL_VALIDATOR_BIN = CONFIG.get("universal_validator_bin", "")
+UNIVERSAL_VALIDATOR_BIN = CONFIG.get("validator_bin", "")

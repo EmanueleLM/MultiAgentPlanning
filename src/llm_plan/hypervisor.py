@@ -14,6 +14,7 @@ class Hypervisor:
         self.required_args = {
             "human_specification": "(str) The human specification of the task.",
             "specification": "(str) The specification of the task.",
+            "target_solver": "(str) The target PDDL solver.",
             "pddl_domain": "(str) The PDDL domain that describes the specification.",
             "pddl_plan": "(str) The PDDL plan that was generated.",
             "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
@@ -27,7 +28,8 @@ class Hypervisor:
         ] = []  # This contains the history of the agents picked up
 
         self.system_prompt = inspect.cleandoc("""\
-            You are a hypervisor that manages multiple agents. Each agent has a specific role and capabilities.
+            You are a hypervisor that manages multiple agents. 
+            Each agent has a specific role and capabilities.
             You will read the agents' descriptions and decide which agent is best suited to handle a given task.
             You return the class you selected between <class></class> tags. 
             You always discard abstract classes and classes with abstract methods.
@@ -37,7 +39,7 @@ class Hypervisor:
             
             Given this human specification of a task:
             <human_specification>{human_specification}</human_specification>
-                                      
+
             This is a plan specification, in JSON format, of the task:
             <specification>{specification}</specification>
             
@@ -47,7 +49,7 @@ class Hypervisor:
             And this PDDL problem that instatiates the JSON specification:
             <problem>{pddl_problem}</problem>
             
-            This is the PDDL plan generated for the task (the plan may be empty if no plan was found):
+            Now, for a {target_solver} PDDL solver, this is the PDDL plan generated for the task (the plan may be empty if no plan was found):
             <plan>{pddl_plan}</plan>
             
             These are the logs of the attempted execution with the solver:
@@ -143,6 +145,7 @@ class Hypervisor:
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"],
             pddl_plan=self.prompt_args["pddl_plan"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],

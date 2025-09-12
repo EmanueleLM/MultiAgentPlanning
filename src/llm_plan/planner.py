@@ -21,7 +21,7 @@ class Planner:
 
     @staticmethod
     def generate_representation(
-        model: LLM, specific: str, env_name: str, format: str = "json"
+        model: LLM, specific: str, env_name: str, format: str = "json", target_solver:str = "FastDownwards"
     ) -> Path:
         """Generate a new environment representation in the given format and save it
         in ENVIRONMENTS_JSON_PATH (for json).
@@ -41,7 +41,7 @@ class Planner:
 
         # 1. Prepare the prompts and the samples
         system_prompt = inspect.cleandoc("""\
-                                        You are an expert of {format} and also very knowledgable about PDDL plans. 
+                                        You are an expert of {format}.
                                         Your task is to return a valid {format} file that is compliant with the human specifics.
                                         """)
         prompt = inspect.cleandoc("""\
@@ -62,7 +62,7 @@ class Planner:
                                  - Remember to always add an "orchestrator" agent that will be in charge of planning the actions of the other agents. His name is "orchestrator".
                                  
                                  Further, the {format} that you return:
-                                 - Should include instructions that ask to generate PDDL domain and problem files.
+                                 - Should include instructions that ask to generate PDDL domain and problem files. The PDDL files should target {target_solver} PDDL solver.
                                  - Should not contain special characters like \\n, etc.
                                  - Should be properly formatted and indented. Don't wrap it between quotes.
                                  
@@ -83,6 +83,7 @@ class Planner:
             tag_begin=tag_begin,
             tag_end=tag_end,
             env_name=env_name,
+            target_solver=target_solver
         )
 
         # 2. Ask the llm to generate a representation of the new environment in the given format

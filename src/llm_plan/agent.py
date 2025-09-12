@@ -76,6 +76,7 @@ class AgentDeepThinkPDDL(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "target_solver": "(str) The target PDDL solver.",
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
     }  # Static!
 
@@ -160,6 +161,7 @@ class AgentDeepThinkConstraints(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "target_solver": "(str) The target PDDL solver.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -237,6 +239,7 @@ class AgentEnforceMultiAgency(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "target_solver": "(str) The target PDDL solver.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -276,7 +279,7 @@ class AgentEnforceMultiAgency(Agent):
                                       And this is the PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      Think *very carefully* whether:
+                                      Now, for the {target_solver} PDDL solver, think *very carefully* whether:
                                       - The PDDL domain and plan correctly implement the JSON specific as well as the human specification *as multi-agent system*.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
@@ -304,6 +307,7 @@ class AgentEnforceMultiAgency(Agent):
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"]
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,
@@ -311,7 +315,7 @@ class AgentEnforceMultiAgency(Agent):
         )
 
 
-class AgentPOPF2Adapter(Agent):
+class AgentFastDownwards2Adapter(Agent):
     required_args = {
         "pddl_domain": "(str) The original PDDL domain.",
         "pddl_problem": "(str) The original PDDL problem.",
@@ -320,7 +324,7 @@ class AgentPOPF2Adapter(Agent):
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
-        This agent adapts the PDDL domains and problems so that they are compatible with the POPF2 Planner solver.
+        This agent adapts the PDDL domains and problems so that they are compatible with the Fast Downwards Planner solver.
         In particular:
         - It replaces numeric fluents with predicates.
         - It precomputes arithmetic constraints as predicates in the problem.
@@ -328,19 +332,21 @@ class AgentPOPF2Adapter(Agent):
         - It uses symbolic ordering instead of numeric comparisons.
         - It encodes optimization via :action-costs only.
         - It keeps types, equality, and STRIPS/ADL features.
+        
+        *This agent should only be used if POPF2 PDDL solver is used, not any other!*
 
         Input:
             llm (LLM): The language model to use for rewriting/adapting PDDL.
             prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
         """
         super().__init__(prompt_args=prompt_args)
-        self.name = "AgentPOPF2Adapter"
+        self.name = "AgentFastDownwardsAdapter"
         self.llm = llm
 
         # Prompts
         self.system_prompt = inspect.cleandoc("""\
-            You are an agent that adapts PDDL domains and problems for POPF2 Planner. 
-            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs so that POPF2 Planner can plan with the domain. 
+            You are an agent that adapts PDDL domains and problems for Fast Downwards Planner. 
+            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs so that Fast Downwards Planner can plan with the domain. 
             Maintain as much of the original semantics as possible.
             """)
         self.prompt = inspect.cleandoc("""\
@@ -353,7 +359,7 @@ class AgentPOPF2Adapter(Agent):
             And this PDDL problem:
             <problem>{pddl_problem}</problem>
 
-            Rewrite the domain and problem to be compatible with POPF2 Planner:
+            Rewrite the domain and problem to be compatible with Fast Downwards Planner:
             - Replace numeric fluents with predicates.
             - Precompute arithmetic constraints as predicates in the problem.
             - Discretize temporal/duration effects into sequences of instantaneous actions.
@@ -367,10 +373,10 @@ class AgentPOPF2Adapter(Agent):
 
     def run(self) -> str:
         """
-        Run the Agent to adapt the PDDL domain and problem for POPF2 Planner.
+        Run the Agent to adapt the PDDL domain and problem for Fast Downwards Planner.
 
         Output:
-            str: The adapted PDDL domain and problem in POPF2 Planner-compatible form.
+            str: The adapted PDDL domain and problem in Fast Downwards Planner-compatible form.
         """
         self.upload_args(self.prompt_args)
 
@@ -391,6 +397,7 @@ class AgentSyntaxPDDL(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "target_solver": "(str) The target PDDL solver.",
         "pddl_logs": "(str) The logs of the attempted execution.",
         "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
     }  # Static!
@@ -412,7 +419,7 @@ class AgentSyntaxPDDL(Agent):
                                              You are an agent that evaluates each plan's step. 
                                              Your task is to analyze a provided plan against the human specifics,
                                              and identify all the possible inconsistencies with the PDDL syntax.
-                                             The PDDL syntax required is that used by *POPF2 Planner*. 
+                                             The PDDL syntax required is that used by *{target_solver} Planner*. 
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
@@ -425,14 +432,14 @@ class AgentSyntaxPDDL(Agent):
                                       And this PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      These are the logs of the attempted execution with *POPF2 Planner*:
+                                      These are the logs of the attempted execution with *{target_solver} Planner*:
                                       <logs>{pddl_logs}</logs>
                                       
                                       This is the error message returned by a PDDL validator (can be empty or successful):
                                       <errors>{syntax_errors}</errors>
                                       
-                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *POPF2 Planner*.
-                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *POPF2 Planner*. 
+                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *{target_solver} Planner*.
+                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *{target_solver} Planner*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
@@ -451,16 +458,20 @@ class AgentSyntaxPDDL(Agent):
         """
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
+        # Format the system prompt
+        system_prompt = self.system_prompt.format(target_solver=self.prompt_args["target_solver"])
+        
         # Fix the plan
         prompt = self.prompt.format(
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
         )
         return self.llm.generate_sync(
-            system_prompt=self.system_prompt,
+            system_prompt=system_prompt,
             prompt=prompt,
         )
 

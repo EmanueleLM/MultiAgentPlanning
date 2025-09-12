@@ -22,7 +22,12 @@ from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.llm import ChatGPT
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import run_pddl_popf2_and_Val
+from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal
+
+SOLVER = {
+    "POPF2": run_pddl_popf2_and_Val,
+    "FastDownwards": run_pddl_fast_downwards_and_uVal
+}
 
 
 def parse_args():
@@ -34,7 +39,8 @@ def parse_args():
         "--dataset",
         type=str,
         default="calendar_scheduling",
-        help="The dataset: calendar_scheduling, meeting_planning, trip_planning (default: calendar_scheduling)",
+        choices=["calendar_scheduling", "meeting_planning", "trip_planning"],
+        help="The dataset to choose from. Default: calendar_scheduling.",
     )
     parser.add_argument(
         "--num_experiments",
@@ -43,18 +49,20 @@ def parse_args():
         help="Number of experiments (default: 10)",
     )
     parser.add_argument(
-        "--budget", type=int, default=30, help="Budget value (default: 30)"
+        "--budget", type=int, default=5, help="Budget value (default: 5)"
     )
     parser.add_argument(
         "--model_json",
         type=str,
         default="gpt-5-mini",
+        choices=["gpt-4o", "gpt-5-mini"],
         help="Model for generating PDDL from JSON (default: gpt-5-mini)",
     )
     parser.add_argument(
         "--model_plan",
         type=str,
         default="gpt-4o",
+        choices=["gpt-4o", "gpt-5-mini"],
         help="Model for planning and refinements (default: gpt-4o)",
     )
     parser.add_argument(
@@ -62,6 +70,13 @@ def parse_args():
         type=str,
         default="AgentDeepThinkPDDL",
         help="Base agent (default: AgentDeepThinkPDDL)",
+    )
+    parser.add_argument(
+        "--target_solver",
+        type=str,
+        default="POPF2",
+        choices=SOLVER.keys(),
+        help="The PDDL solver used to generate a plan.",
     )
 
     return parser.parse_args()
@@ -77,6 +92,7 @@ if __name__ == "__main__":
     model_json = ChatGPT(args.model_json)
     model_plan = ChatGPT(args.model_plan)
     base_agent = args.base_agent
+    solver = SOLVER[args.target_solver]
 
     format = "json"
     pddl_parser = PDDLParser()
@@ -121,13 +137,20 @@ if __name__ == "__main__":
 
         else:
             print("Generating the first plan.")
-            responses = planner.plan(model_plan, env)
+            responses = planner.plan(model_first_plan, env)
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
             
+            # Save domain and problem
+            with open(BASE_FOLDER / f"domain_0.pddl", "w") as f:
+                f.write(domain)
+            with open(BASE_FOLDER / f"problem_0.pddl", "w") as f:
+                f.write(problem)
+            
             
         # Generate the first POPF2 and VAL plan and logs
-        result = run_pddl_popf2_and_Val(
+        result = solver(
+            BASE_FOLDER,
             BASE_FOLDER / f"domain_0.pddl",
             BASE_FOLDER / f"problem_0.pddl",
             BASE_FOLDER / f"sas_plan_0",
@@ -143,6 +166,7 @@ if __name__ == "__main__":
             "specification": env.config_data,
             "pddl_domain": domain,
             "pddl_problem": problem,
+            "target_solver": args.target_solver,
             "pddl_plan": result["pddl_plan"],
             "syntax_errors": result["syntax_errors"],
             "pddl_logs": result["pddl_logs"],

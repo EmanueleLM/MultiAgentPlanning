@@ -111,11 +111,27 @@ if __name__ == "__main__":
         BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{env.name}")
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
 
-        # Fist PDDL domain and problem
-        print("Generating the first plan.")
-        responses = planner.plan(model_plan, env)
-        final_plan = responses["pddl_orchestrator"]
-        domain, problem = pddl_parser.parse(final_plan, from_file=False)
+        # Generate the fist domain and problem (unless they already exist)
+        if (BASE_FOLDER / f"problem_0.pddl").exists() and (BASE_FOLDER / f"domain_0.pddl").exists():
+            print(f"A plan for {env.name} already exist. Loading domain and problem.")
+            with open(BASE_FOLDER / f"domain_0.pddl", "r") as f:
+                domain = f.read()
+            with open(BASE_FOLDER / f"problem_0.pddl", "r") as f:
+                problem = f.read()
+
+        else:
+            print("Generating the first plan.")
+            responses = planner.plan(model_plan, env)
+            final_plan = responses["pddl_orchestrator"]
+            domain, problem = pddl_parser.parse(final_plan, from_file=False)
+            
+            
+        # Generate the first POPF2 and VAL plan and logs
+        result = run_pddl_popf2_and_Val(
+            BASE_FOLDER / f"domain_0.pddl",
+            BASE_FOLDER / f"problem_0.pddl",
+            BASE_FOLDER / f"sas_plan_0",
+        )
 
         # Start the refinement loop
         print("Generating the refinements...")
@@ -127,13 +143,13 @@ if __name__ == "__main__":
             "specification": env.config_data,
             "pddl_domain": domain,
             "pddl_problem": problem,
-            "pddl_plan": "No plan yet.",
-            "syntax_errors": "No error file yet.",
-            "pddl_logs": "No log file yet.",
+            "pddl_plan": result["pddl_plan"],
+            "syntax_errors": result["syntax_errors"],
+            "pddl_logs": result["pddl_logs"],
             "history": [],
         }
 
-        for j in range(budget):
+        for j in range(1, budget+1):
             hypervisor = Hypervisor(prompt_args_hypervisor)
             response = hypervisor.run(model_plan)
 
@@ -159,7 +175,7 @@ if __name__ == "__main__":
             new_agent = agent_class(model_plan, agent_class.required_args)
             response = new_agent.run()
 
-            # The plan is finished so we stop
+            # The Hypervisor decides the plan is good
             if agent_name == "NoOpAgent":
                 break
 
@@ -176,7 +192,6 @@ if __name__ == "__main__":
                 f.write(str(domain))
 
             result = run_pddl_popf2_and_Val(
-                BASE_FOLDER,
                 BASE_FOLDER / f"domain_{j}.pddl",
                 BASE_FOLDER / f"problem_{j}.pddl",
                 BASE_FOLDER / f"sas_plan_{j}",
@@ -187,11 +202,10 @@ if __name__ == "__main__":
                 prompt_args_hypervisor[k] = v
 
             # Update the history
-            hypervisor.history.append(agent_name)
-            prompt_args_hypervisor["history"] = hypervisor.history
+            prompt_args_hypervisor["history"].append(hypervisor.history)
 
         # Produce the natural language plan
-        if Path(BASE_FOLDER / "sas_plan").exists():
+        if Path(BASE_FOLDER / f"sas_plan_{j}").exists():
             with open(BASE_FOLDER / f"domain_{j}.pddl", "r") as f:
                 domain = f.read()
 

@@ -4,9 +4,11 @@ from pathlib import Path
 from typing import Any, List, Dict
 
 from src.llm_plan.config import (
-    UNIVERSAL_VALIDATOR_BIN,
-    SOLVER_BINARY,
-    SOLVER_ARGS,
+    SOLVER_POPF2_BINARY,
+    SOLVER_FD_BINARY,
+    SOLVER_FD_ARGS,
+    VALIDATOR_BIN,
+    UNIVERSAL_VALIDATOR_BIN
 )
 
 
@@ -46,9 +48,9 @@ def run_pddl_fast_downwards_and_uVal(
 
     Args:
         base_folder (Path): the base folder to store temporary files
-        domain_path (str | Path): the path to the PDDL domain file
-        problem_path (str | Path): the path to the PDDL problem file
-        sas_plan_path (str | Path, optional): the path to the output plan file. Defaults to "sas_plan".
+        domain_path (Path): the path to the PDDL domain file
+        problem_path (Path): the path to the PDDL problem file
+        sas_plan_path (Path, optional): the path to the output plan file. Defaults to "sas_plan".
 
     Returns:
         dict[str, str]: a dictionary with keys:
@@ -64,8 +66,8 @@ def run_pddl_fast_downwards_and_uVal(
 
     # Launch the solver (Fast Downwards)
     command = [
-        SOLVER_BINARY,
-        *SOLVER_ARGS,
+        SOLVER_FD_BINARY,
+        *SOLVER_FD_ARGS,
         sas_plan_path,
         domain_path,
         problem_path,
@@ -77,8 +79,8 @@ def run_pddl_fast_downwards_and_uVal(
         logfile.seek(0)  # go back to the beginning
         result["pddl_logs"] = logfile.read()
 
-    if Path(base_folder / sas_plan_path).exists():
-        result["pddl_plan"] = open(Path(base_folder / sas_plan_path)).read()
+    if Path(sas_plan_path).exists():
+        result["pddl_plan"] = open(Path(sas_plan_path)).read()
 
     # Validate the plan with uVal
     command = f"{UNIVERSAL_VALIDATOR_BIN} -cv \
@@ -95,18 +97,16 @@ def run_pddl_fast_downwards_and_uVal(
 
 
 def run_pddl_popf2_and_Val(
-    base_folder: Path,
     domain_path: str | Path,
     problem_path: str | Path,
     sas_plan_path: str | Path = "sas_plan",
 ) -> dict[str, str]:
-    """Run Fast Downwards and uVal on the given domain and problem files.
+    """Run POPF2 and Val on the given domain and problem files.
 
     Args:
-        base_folder (Path): the base folder to store temporary files
-        domain_path (str | Path): the path to the PDDL domain file
-        problem_path (str | Path): the path to the PDDL problem file
-        sas_plan_path (str | Path, optional): the path to the output plan file. Defaults to "sas_plan".
+        domain_path (Path): the path to the PDDL domain file
+        problem_path (Path): the path to the PDDL problem file
+        sas_plan_path (Path, optional): the path to the output plan file. Defaults to "sas_plan".
 
     Returns:
         dict[str, str]: a dictionary with keys:
@@ -122,26 +122,35 @@ def run_pddl_popf2_and_Val(
 
     # Launch the solver (POPF2)
     command = [
-        SOLVER_BINARY,
-        *SOLVER_ARGS,
+        SOLVER_POPF2_BINARY,
         domain_path,
-        problem_path,
-        "&>",
-        sas_plan_path,
+        problem_path
     ]
 
-    # Write the plan and then read the logs file
-    subprocess.run(command, stderr=subprocess.STDOUT)
-
-    if Path(base_folder / sas_plan_path).exists():
-        result["pddl_plan"] = open(Path(base_folder / sas_plan_path)).read()
-
-    result["pddl_logs"] = (
-        "POPF2 does not generate a log file, so just ignore this message."
+    out = subprocess.run(
+        command,
+        capture_output=True,  # captures both stdout and stderr
+        text=True
     )
 
+    print("STDOUT:\n", out.stdout)
+    print("STDERR:\n", out.stderr)
+    print("Return Code:", out.returncode, type(out.returncode))
+    
+    # Store plan, errors and logs
+    if out.returncode == 0:  # Success
+        result["pddl_plan"] = out.stdout
+        with open(sas_plan_path, "w") as f:
+            f.write(out.stdout)
+    
+    result["pddl_logs"] = {
+        "stdout": out.stdout,
+        "stderr": out.stderr             
+    }
+    result["pddl_logs"] = str(result["pddl_logs"])  # Cast to string for compatibility with the prompt
+
     # Validate the plan with POPF2
-    command = f"{UNIVERSAL_VALIDATOR_BIN} \
+    command = f"{VALIDATOR_BIN} \
         {domain_path} \
         {problem_path} \
         {sas_plan_path}"

@@ -1,35 +1,31 @@
-(define (problem rearrange_blocks_multiagent)
-  (:domain blocks_multiagent)
+(define (problem rearrange-blocks)
+  (:domain blocksworld)
+
   (:objects
-    vowel_agent consonant_agent - agent
-    a b c o - block
+    A O B C - block
   )
+
   (:init
-    (vowel a)
-    (vowel o)
-    (consonant b)
-    (consonant c)
-    (can-manipulate vowel_agent a)
-    (can-manipulate vowel_agent o)
-    (can-manipulate consonant_agent b)
-    (can-manipulate consonant_agent c)
-    (handempty vowel_agent)
-    (handempty consonant_agent)
-    (ontable a)
-    (ontable b)
-    (ontable c)
-    (ontable o)
-    (clear a)
-    (clear b)
-    (clear c)
-    (clear o)
+    (ontable A)
+    (ontable O)
+    (ontable B)
+    (ontable C)
+    (clear A)
+    (clear O)
+    (clear B)
+    (clear C)
+    (handempty)
+    (vowel A)
+    (vowel O)
+    (consonant B)
+    (consonant C)
   )
-  (:goal
-    (and
-      (ontable a)
-      (ontable b)
-      (on c o)
-      (on o b)
-    )
-  )
+
+  (:goal (and
+    (ontable A)
+    (ontable B)
+    (on C O)
+    (on O B)
+  ))
+
 )

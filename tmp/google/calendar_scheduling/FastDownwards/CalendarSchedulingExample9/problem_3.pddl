@@ -1,0 +1,35 @@
+(define (problem schedule-meeting-problem)
+  (:domain calendar-scheduling)
+  (:objects
+    diane kelly deborah - person
+    t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 - time_slot
+  )
+  (:init
+    (busy diane t1)
+    (busy diane t4)
+    (busy diane t6)
+    (busy kelly t2)
+    (busy kelly t3)
+    (busy deborah t1)
+    (busy deborah t3)
+    (busy deborah t4)
+    (busy deborah t5)
+    (busy deborah t6)
+    (busy deborah t7)
+    (busy deborah t8)
+    (busy deborah t9)
+    (busy deborah t10)
+    (busy deborah t11)
+    (busy deborah t12)
+    (busy deborah t13)
+    (busy deborah t14)
+    (busy deborah t15)
+  )
+  (:goal
+    (exists (?t - time_slot) (and
+      (meeting-scheduled diane kelly ?t)
+      (meeting-scheduled diane deborah ?t)
+      (meeting-scheduled kelly deborah ?t)
+    ))
+  )
+)

@@ -1,0 +1,50 @@
+(define (domain integrated_schedule_meeting)
+  (:requirements :strips :typing)
+  
+  (:types person time-slot)
+  
+  (:predicates
+    (available ?p - person ?t - time-slot)
+    (meeting_scheduled ?t - time-slot)
+  )
+  
+  (:action schedule_meeting_kathryn
+    :parameters (?t - time-slot)
+    :precondition 
+      (and 
+        (available kathryn ?t)
+        (available charlotte ?t)
+        (available lauren ?t)
+        (not (meeting_scheduled ?t))
+      )
+    :effect
+      (meeting_scheduled ?t)
+  )
+
+  (:action schedule_meeting_charlotte
+    :parameters (?t - time-slot)
+    :precondition 
+      (and 
+        (available charlotte ?t)
+        (available kathryn ?t)
+        (available lauren ?t)
+        (not (meeting_scheduled ?t))
+        (not (and (>= (measure-time ?t) 810) (<= (measure-time ?t) 1020))) ;; convert 13:30 to 14:30 into minutes
+      )
+    :effect
+      (meeting_scheduled ?t)
+  )
+
+  (:action schedule_meeting_lauren
+    :parameters (?t - time-slot)
+    :precondition 
+      (and 
+        (available lauren ?t)
+        (available kathryn ?t)
+        (available charlotte ?t)
+        (not (meeting_scheduled ?t))
+      )
+    :effect
+      (meeting_scheduled ?t)
+  )
+)

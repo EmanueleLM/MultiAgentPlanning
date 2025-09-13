@@ -1,54 +1,62 @@
-(define (domain blocks_multiagent)
+(define (domain blocksworld)
   (:requirements :strips :typing)
-  (:types agent block)
+  (:types block)
   (:predicates
-    (on ?x - block ?y - block)
+    (on ?x ?y - block)
     (ontable ?x - block)
     (clear ?x - block)
-    (holding ?ag - agent ?x - block)
-    (handempty ?ag - agent)
-    (can-manipulate ?ag - agent ?x - block)
-    (vowel ?x - block)
+    (holding ?x - block)
+    (handempty)
     (consonant ?x - block)
+    (vowel ?x - block)
   )
-  (:action pick-up-vowel
-    :parameters (?ag - agent ?b - block)
-    :precondition (and (ontable ?b) (clear ?b) (handempty ?ag) (vowel ?b) (can-manipulate ?ag ?b))
-    :effect (and (not (ontable ?b)) (not (clear ?b)) (not (handempty ?ag)) (holding ?ag ?b))
+
+  ;; Vowel Agent Actions
+  (:action pick-up
+    :parameters (?b - block)
+    :precondition (and (vowel ?b) (ontable ?b) (clear ?b) (handempty))
+    :effect (and (holding ?b) (not (ontable ?b)) (not (clear ?b)) (not (handempty)))
   )
-  (:action unstack-vowel
-    :parameters (?ag - agent ?b - block ?c - block)
-    :precondition (and (on ?b ?c) (clear ?b) (handempty ?ag) (vowel ?b) (can-manipulate ?ag ?b))
-    :effect (and (not (on ?b ?c)) (not (clear ?b)) (clear ?c) (not (handempty ?ag)) (holding ?ag ?b))
+
+  (:action put-down
+    :parameters (?b - block)
+    :precondition (and (vowel ?b) (holding ?b))
+    :effect (and (ontable ?b) (clear ?b) (handempty) (not (holding ?b)))
   )
-  (:action put-down-vowel
-    :parameters (?ag - agent ?b - block)
-    :precondition (and (holding ?ag ?b) (vowel ?b) (can-manipulate ?ag ?b))
-    :effect (and (ontable ?b) (clear ?b) (handempty ?ag) (not (holding ?ag ?b)))
+
+  (:action stack
+    :parameters (?b - block ?under - block)
+    :precondition (and (vowel ?b) (holding ?b) (clear ?under))
+    :effect (and (on ?b ?under) (not (holding ?b)) (clear ?b) (handempty) (not (clear ?under)))
   )
-  (:action stack-vowel
-    :parameters (?ag - agent ?b - block ?c - block)
-    :precondition (and (holding ?ag ?b) (clear ?c) (vowel ?b) (can-manipulate ?ag ?b))
-    :effect (and (on ?b ?c) (clear ?b) (not (clear ?c)) (handempty ?ag) (not (holding ?ag ?b)))
+
+  (:action unstack
+    :parameters (?b - block ?under - block)
+    :precondition (and (vowel ?b) (on ?b ?under) (clear ?b) (handempty))
+    :effect (and (holding ?b) (clear ?under) (not (on ?b ?under)) (not (clear ?b)) (not (handempty)))
   )
-  (:action pick-up-consonant
-    :parameters (?ag - agent ?b - block)
-    :precondition (and (ontable ?b) (clear ?b) (handempty ?ag) (consonant ?b) (can-manipulate ?ag ?b))
-    :effect (and (not (ontable ?b)) (not (clear ?b)) (not (handempty ?ag)) (holding ?ag ?b))
+
+  ;; Consonant Agent Actions
+  (:action move
+    :parameters (?b - block ?from - block ?to - block)
+    :precondition (and (consonant ?b) (clear ?b) (clear ?to) (on ?b ?from))
+    :effect (and 
+             (not (on ?b ?from))
+             (on ?b ?to)
+             (clear ?from)
+             (not (clear ?to))
+             (clear ?from)
+    )
   )
-  (:action unstack-consonant
-    :parameters (?ag - agent ?b - block ?c - block)
-    :precondition (and (on ?b ?c) (clear ?b) (handempty ?ag) (consonant ?b) (can-manipulate ?ag ?b))
-    :effect (and (not (on ?b ?c)) (not (clear ?b)) (clear ?c) (not (handempty ?ag)) (holding ?ag ?b))
+
+  (:action move-to-table
+    :parameters (?b - block ?from - block)
+    :precondition (and (consonant ?b) (clear ?b) (on ?b ?from))
+    :effect (and 
+             (not (on ?b ?from))
+             (ontable ?b)
+             (clear ?from)
+    )
   )
-  (:action put-down-consonant
-    :parameters (?ag - agent ?b - block)
-    :precondition (and (holding ?ag ?b) (consonant ?b) (can-manipulate ?ag ?b))
-    :effect (and (ontable ?b) (clear ?b) (handempty ?ag) (not (holding ?ag ?b)))
-  )
-  (:action stack-consonant
-    :parameters (?ag - agent ?b - block ?c - block)
-    :precondition (and (holding ?ag ?b) (clear ?c) (consonant ?b) (can-manipulate ?ag ?b))
-    :effect (and (on ?b ?c) (clear ?b) (not (clear ?c)) (handempty ?ag) (not (holding ?ag ?b)))
-  )
+
 )

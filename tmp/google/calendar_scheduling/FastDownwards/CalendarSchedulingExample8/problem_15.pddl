@@ -1,0 +1,67 @@
+(define (problem find-meeting-schedule)
+    (:domain multi-agent-meeting-scheduling)
+
+    (:objects
+        time09h00 time09h30 time10h00 time10h30 time11h00 time11h30
+        time12h00 time12h30 time13h00 time13h30 time14h00 time14h30
+        time15h00 time15h30 time16h00 time16h30 time17h00 - time)
+
+    (:init
+        (before time09h00 time09h30)
+        (before time09h30 time10h00)
+        (before time10h00 time10h30)
+        (before time10h30 time11h00)
+        (before time11h00 time11h30)
+        (before time11h30 time12h00)
+        (before time12h00 time12h30)
+        (before time12h30 time13h00)
+        (before time13h00 time13h30)
+        (before time13h30 time14h00)
+        (before time14h00 time14h30)
+        (before time14h30 time15h00)
+        (before time15h00 time15h30)
+        (before time15h30 time16h00)
+        (before time16h00 time16h30)
+        (before time16h30 time17h00)
+        
+        (available adam time09h00)
+        (available adam time09h30)
+        (available adam time11h00)
+        (available adam time11h30)
+        (available adam time12h00)
+        (available adam time13h00)
+        (available adam time14h00)
+        (available adam time14h30)
+        (available adam time15h00)
+        (available adam time15h30)
+        (available adam time16h00)
+        (available adam time16h30)
+        
+        (available jerry time09h30)
+        (available jerry time10h00)
+        (available jerry time10h30)
+        (available jerry time11h00)
+        (available jerry time11h30)
+        (available jerry time12h30)
+        (available jerry time13h00)
+        (available jerry time13h30)
+        (available jerry time14h00)
+        (available jerry time14h30)
+        (available jerry time15h30)
+        (available jerry time16h00)
+        (available jerry time16h30)
+
+        (available matthew time11h00)
+        (available matthew time12h30)
+        (available matthew time13h30)
+        (available matthew time14h00))
+
+    (:goal
+        (exists (?t-start - time ?t-mid - time ?t-end - time)
+            (and 
+                (meeting-scheduled-start ?t-start) 
+                (meeting-scheduled-mid ?t-mid) 
+                (meeting-scheduled-end ?t-end)
+                (before ?t-start ?t-mid) 
+                (before ?t-mid ?t-end))))
+)

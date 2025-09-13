@@ -24,6 +24,7 @@ from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal
 
+
 SOLVER = {
     "POPF2": run_pddl_popf2_and_Val,
     "FastDownwards": run_pddl_fast_downwards_and_uVal
@@ -49,7 +50,7 @@ def parse_args():
         help="Number of experiments (default: 10)",
     )
     parser.add_argument(
-        "--budget", type=int, default=5, help="Budget value (default: 5)"
+        "--budget", type=int, default=20, help="Budget value (default: 20)"
     )
     parser.add_argument(
         "--model_json",
@@ -74,7 +75,7 @@ def parse_args():
     parser.add_argument(
         "--target_solver",
         type=str,
-        default="POPF2",
+        default="FastDownwards",
         choices=SOLVER.keys(),
         help="The PDDL solver used to generate a plan.",
     )
@@ -124,7 +125,7 @@ if __name__ == "__main__":
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 
-        BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{env.name}")
+        BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{args.target_solver}/{env.name}")
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
 
         # Generate the fist domain and problem (unless they already exist)
@@ -137,7 +138,7 @@ if __name__ == "__main__":
 
         else:
             print("Generating the first plan.")
-            responses = planner.plan(model_first_plan, env)
+            responses = planner.plan(model_plan, env)
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
             
@@ -215,7 +216,8 @@ if __name__ == "__main__":
             with open(BASE_FOLDER / f"domain_{j}.pddl", "w") as f:
                 f.write(str(domain))
 
-            result = run_pddl_popf2_and_Val(
+            result = solver(
+                BASE_FOLDER,
                 BASE_FOLDER / f"domain_{j}.pddl",
                 BASE_FOLDER / f"problem_{j}.pddl",
                 BASE_FOLDER / f"sas_plan_{j}",

@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class LLM:
@@ -35,8 +36,43 @@ class LLM:
         # This method should be implemented by subclasses
         return "Subclasses should implement this method."
 
+class GPT_OSS(LLM):
+    def __init__(self,
+                 model_name: str="openai/gpt-oss-120b", 
+                 map: str="auto", 
+                 reasoning: str | None = "Low"):
+        """
+        Initialize the GPT-OSS model.
 
-class GPT_Ollama(LLM):
+        Args:
+            map (str): The device map for the model, default is "auto". Other options are "cpu", "cuda", etc.
+            reasoning (str): The reasoning level for the model, default is "High". "Medium" and "Low" are also options.
+            Keep in mind that the reasoning level is passed via the system prompt.
+        """
+        super().__init__(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.reasoning = reasoning.lower() if reasoning else "medium"
+
+        # Load the model with CPU offloading
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            device_map={"": map},         # force everything on CPU
+            torch_dtype="auto",
+            offload_folder="./offload"       # optional: swap large tensors to disk
+        )
+
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            full_prompt = f"{system_prompt}\nReasoning: {self.reasoning}\n\nUser: {prompt}\nAssistant:"
+            inputs = self.tokenizer(full_prompt, return_tensors="pt").to(self.model.device)
+            outputs = self.model.generate(**inputs, max_new_tokens=2000)
+
+            return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        except Exception as e:
+            return f"Error while generating a response: {e}"
+
+class GPT_OSS_Ollama(LLM):
     def __init__(self, reasoning: str | None = "High"):
         """
         Initialize the GPT_Ollama model.

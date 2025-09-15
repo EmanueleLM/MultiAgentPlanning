@@ -12,6 +12,12 @@ from src.llm_plan.config import (
 )
 
 
+def collect_debug_logs(field_name:str, content:str):
+    highlight = "\n" + "-" * 30 + "\n"
+    separator = "\n" + "=" * 80 + "\n\n"
+    return field_name + highlight + content + separator
+
+
 def get_fields_in_formatted_string(formatted_string: str) -> list[str]:
     """Extract field names from a formatted string.
     Example:

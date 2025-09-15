@@ -19,15 +19,24 @@ from src.llm_plan.agent import AgentNaturalLanguage
 from src.llm_plan.config import ENVIRONMENTS_JSON_PATH
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
-from src.llm_plan.llm import ChatGPT
+from src.llm_plan.llm import ChatGPT, GPT_OSS
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal
+from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
 
 
 SOLVER = {
     "POPF2": run_pddl_popf2_and_Val,
     "FastDownwards": run_pddl_fast_downwards_and_uVal
+}
+
+MODELS = {
+    "gpt-4o": {"model": ChatGPT("gpt-4o"),
+               "persistent": False},
+    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"),
+               "persistent": False},
+    "gpt-oss-120B": {"model": GPT_OSS("gpt-oss-120B"),
+               "persistent": True},
 }
 
 
@@ -56,15 +65,15 @@ def parse_args():
         "--model_json",
         type=str,
         default="gpt-5-mini",
-        choices=["gpt-4o", "gpt-5-mini"],
+        choices=MODELS.keys(),
         help="Model for generating PDDL from JSON (default: gpt-5-mini)",
     )
     parser.add_argument(
         "--model_plan",
         type=str,
         default="gpt-4o",
-        choices=["gpt-4o", "gpt-5-mini"],
-        help="Model for planning and refinements (default: gpt-4o)",
+        choices=MODELS.keys(),
+        help="Model for planning and refinements (default: gpt-4o).",
     )
     parser.add_argument(
         "--base_agent",
@@ -79,6 +88,12 @@ def parse_args():
         choices=SOLVER.keys(),
         help="The PDDL solver used to generate a plan.",
     )
+    parser.add_argument(
+        "--debug",
+        type=bool,
+        default=True,
+        help="Outputs the full logs in a file named __full_logs.txt (default: True)",
+    )
 
     return parser.parse_args()
 
@@ -90,13 +105,15 @@ if __name__ == "__main__":
     dataset_name = args.dataset
     num_experiments = args.num_experiments
     budget = args.budget
-    model_json = ChatGPT(args.model_json)
-    model_plan = ChatGPT(args.model_plan)
+    model_json = MODELS[args.model_json]["model"]
+    model_plan = MODELS[args.model_plan]["model"]
     base_agent = args.base_agent
     solver = SOLVER[args.target_solver]
+    debug = args.debug
 
     format = "json"
     pddl_parser = PDDLParser()
+    full_debug_logs = ""
 
     with open(f"./data/natural_plan/{args.dataset}.json", "r") as f:
         calendar_scheduling_data = json.load(f)
@@ -105,6 +122,9 @@ if __name__ == "__main__":
         k = f"calendar_scheduling_example_{i}"
         data = calendar_scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
+
+        # Full logs
+        full_debug_logs += collect_debug_logs("PROBLEM", data["prompt_0shot"])
 
         # Generate the first representation
         planner = Planner()
@@ -125,8 +145,12 @@ if __name__ == "__main__":
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 
+        # Full logs
+        full_debug_logs += collect_debug_logs("ENVIRONMENT", data["prompt_0shot"])
+
         BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{args.target_solver}/{env.name}")
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
+        FULL_LOGS_PATH = BASE_FOLDER / "__full_logs.txt"
 
         # Generate the fist domain and problem (unless they already exist)
         if (BASE_FOLDER / f"problem_0.pddl").exists() and (BASE_FOLDER / f"domain_0.pddl").exists():
@@ -141,13 +165,19 @@ if __name__ == "__main__":
             responses = planner.plan(model_plan, env)
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
+
+            # Full logs
+            full_debug_logs += collect_debug_logs("FINAL-PLAN", final_plan)
             
             # Save domain and problem
             with open(BASE_FOLDER / f"domain_0.pddl", "w") as f:
                 f.write(domain)
             with open(BASE_FOLDER / f"problem_0.pddl", "w") as f:
                 f.write(problem)
-            
+
+        # Full logs
+        full_debug_logs += collect_debug_logs("DOMAIN", domain)
+        full_debug_logs += collect_debug_logs("PROBLEM", problem)
             
         # Generate the first POPF2 and VAL plan and logs
         result = solver(
@@ -173,6 +203,9 @@ if __name__ == "__main__":
             "pddl_logs": result["pddl_logs"],
             "history": [],
         }
+
+        # Full logs
+        full_debug_logs += collect_debug_logs("ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4))
 
         for j in range(1, budget+1):
             hypervisor = Hypervisor(prompt_args_hypervisor)
@@ -228,7 +261,10 @@ if __name__ == "__main__":
                 prompt_args_hypervisor[k] = v
 
             # Update the history
-            prompt_args_hypervisor["history"].append(hypervisor.history)
+            prompt_args_hypervisor["history"].append(agent_name)
+
+            # Full logs
+            full_debug_logs += collect_debug_logs(f"ITERATION {j}", json.dumps(prompt_args_hypervisor, indent=4))
 
         # Produce the natural language plan
         if Path(BASE_FOLDER / f"sas_plan_{j}").exists():
@@ -257,4 +293,12 @@ if __name__ == "__main__":
             with open(BASE_FOLDER / "final_natural_plan.txt", "w") as f:
                 f.write(natural_plan)
 
+            # Full logs
+            full_debug_logs += collect_debug_logs(f"NATURAL-PLAN {j}", natural_plan)
+
         print()
+        
+        # Write full logs
+        if debug:
+            with open(FULL_LOGS_PATH, "w") as f:
+                f.write(full_debug_logs)

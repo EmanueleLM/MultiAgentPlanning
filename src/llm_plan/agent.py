@@ -122,8 +122,7 @@ class AgentDeepThinkPDDL(Agent):
                                       Now, think *very carefully* whether:
                                       - the PDDL domain reflects the human specification.
                                       - the PDDL problem reflects the particular instance of the specification.
-                                      - the PDDL domain and problem are consistent with the constraints of each agent.
-                                      - the PDDL plan, if present, satisfies the goal and the constraints of each agent.
+                                      - the PDDL plan satisfies the goal and the constraints of the human specification! Be careful, the plan may be wrong!
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
@@ -161,6 +160,7 @@ class AgentDeepThinkConstraints(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
         "target_solver": "(str) The target PDDL solver.",
     }  # Static!
 
@@ -168,8 +168,8 @@ class AgentDeepThinkConstraints(Agent):
         """
         This agent deeply evaluates whether the PDDL domain and problem are consistent with the specification.
         In particular:
-        - It checks whether the PDDL problem reflects the particular instance of the specification.
-        - It checks whether the PDDL problem defines all the constraints as they are described in the specification.
+        - It checks whether the PDDL problem reflects the particular instance of the specification. In particular, that all the constraints are correctly specified.
+        - It checks whether the PDDL domain defines all the variables and the correct goal in the specification.
 
         Input:
             llm (LLM): The language model to use for detecting and mitigating hallucinations.
@@ -184,7 +184,6 @@ class AgentDeepThinkConstraints(Agent):
                                              Your task is to analyze a provided problem against the human and JSON specifics. 
                                              You focus on the constraints of each agent and whether they are expressed as proper PDDL formulae.
                                              In particular, you focus on whether each agent's private information is expressed as constraints in the PDDL problem.
-                                             You aim is to return a PDDL domain and problem where all the constraints in the human specification are expressed.
                                              You can think as much as you want before answering, and you can use as many steps as you want.
                                              """)
         self.prompt = inspect.cleandoc("""\
@@ -200,9 +199,13 @@ class AgentDeepThinkConstraints(Agent):
                                       And this is the PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
+                                      This is the best plan the solver could find (it may be empty if no plan was found):
+                                      <plan>{pddl_plan}</plan>
+                                      
                                       Now, think *very carefully* whether:
-                                      - the PDDL domain reflects the human and JSONM specifications.
-                                      - the PDDL problem expresses all the constraints as they are defined in the agents' provate information.
+                                      - the PDDL domain reflects the goal of the human and json specifications. Always consider the human specification and the ground truth.
+                                      - the PDDL problem correctly enumerates and expresses all the constraints in the specification. Put particular attention that all the constraints are expressed and none is missing or under-specified.
+                                      - the PDDL plan may be non-empty but wrong because the constraints are not correctly expressed in the PDDL problem.
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
@@ -226,6 +229,7 @@ class AgentDeepThinkConstraints(Agent):
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_plan=self.prompt_args["pddl_plan"],
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,

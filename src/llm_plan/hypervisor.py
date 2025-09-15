@@ -63,11 +63,11 @@ class Hypervisor:
             <agents>{agents}</agents>
             
             Also, here is the history of the agents you have already picked.
+            The history is useful as you want to have some diversity in the agents you pick.
             <history>{history}</history>
             
-            The history is useful as you want to have some diversity in the agents you pick.
-            For sure you want to ensure picking up at some point:
-            - an agent that checks whether all the agents' constraints in the specification, expressed as their private information, are satisfied by the plan.
+            For sure you want to ensure picking these agents (look at the history for what you have already picked):
+            - an agent that checks whether all the agents' constraints are satisfied by the plan. Be careful to check that *all* the constraints are correctly specified in the PDDL problem.
             - an agent that fixes the PDDL syntax inconsistencies.
             - an agent that adapts the domain and problem to the PDDL solver.
             - an agent that ensures the current domain and problem satisfy the specification as a *multi-agent* system, where each action referes to the agent that takes it.

@@ -1,44 +1,45 @@
-(define (domain CombinedMeetingScheduler)
-    (:requirements :strips :typing)
-    (:types participant time-slot hour)
+(define (domain multi-party-meeting-domain)
+  (:requirements :typing :strips)
+  (:types
+    person slot
+  )
 
-    (:predicates
-        (available ?p - participant ?t - time-slot)
-        (during-work-hours ?t - time-slot)
-        (blocked ?h - hour)
-        (meeting_scheduled ?t - time-slot)
-        (available_slot ?t - time-slot)
-        (available_time ?h - hour)
-        (successor ?h1 - hour ?h2 - hour)
-    )
+  (:predicates
+    (free-arthur ?s - slot)
+    (free-michael ?s - slot)
+    (free-samantha ?s - slot)
 
-    (:action participant1_schedule_meeting
-        :parameters (?t - time-slot)
-        :precondition (and
-            (during-work-hours ?t)
-            (available Arthur ?t)
-            (not (meeting_scheduled ?t))
-        )
-        :effect (meeting_scheduled ?t)
-    )
+    (scheduled-arthur ?s - slot)
+    (scheduled-michael ?s - slot)
+    (scheduled-samantha ?s - slot)
 
-    (:action participant2_schedule_meeting
-        :parameters (?s - time-slot)
-        :precondition (and
-            (available_slot ?s)
-            (not (meeting_scheduled ?s))
-        )
-        :effect (meeting_scheduled ?s)
-    )
+    (meeting-at ?s - slot)
+  )
 
-    (:action participant3_schedule_meeting
-        :parameters (?start - hour ?end - hour)
-        :precondition (and
-            (available_time ?start)
-            (successor ?start ?end)
-            (not (blocked ?start))
-            (not (blocked ?end))
-        )
-        :effect (meeting_scheduled ?start)
-    )
+  (:action schedule-arthur-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-arthur ?s)
+                        (not (scheduled-arthur ?s)))
+     :effect (and (not (free-arthur ?s))
+                  (scheduled-arthur ?s)
+                  (meeting-at ?s))
+  )
+
+  (:action schedule-michael-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-michael ?s)
+                        (not (scheduled-michael ?s)))
+     :effect (and (not (free-michael ?s))
+                  (scheduled-michael ?s)
+                  (meeting-at ?s))
+  )
+
+  (:action schedule-samantha-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-samantha ?s)
+                        (not (scheduled-samantha ?s)))
+     :effect (and (not (free-samantha ?s))
+                  (scheduled-samantha ?s)
+                  (meeting-at ?s))
+  )
 )

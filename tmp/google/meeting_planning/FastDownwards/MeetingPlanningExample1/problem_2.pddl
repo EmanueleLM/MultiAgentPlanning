@@ -1,16 +1,10 @@
-(define (problem coordinate_meeting_with_betty)
-  (:domain integrated_meeting_planner)
-  (:objects
-    richmond_district financial_district - location
-    you betty - person
-  )
+(define (problem meeting-problem-two-agents)
+  (:domain betty-meet-two-agents)
+
   (:init
-    (at you richmond_district)
-    (at betty financial_district)
-    (available_for_meeting betty)
-    (can-meet-betty you)
+     (at you Richmond)
+     (at betty Financial)
   )
-  (:goal
-    (meeting-minimum-time-satisfied)
-  )
+
+  (:goal (met))
 )

@@ -1,25 +1,45 @@
-(define (domain CombinedMeetingScheduler)
-    (:requirements :strips :typing)
-    (:types participant time-slot hour)
+(define (domain multi-party-meeting-domain)
+  (:requirements :typing :strips)
+  (:types
+    person slot
+  )
 
-    (:predicates
-        (available ?p - participant ?t - time-slot)
-        (during-work-hours ?t - time-slot)
-        (blocked ?p - participant ?h - hour)
-        (meeting_scheduled ?t - time-slot)
-        (available_slot ?t - time-slot)
-        (successor ?h1 - hour ?h2 - hour)
-    )
+  (:predicates
+    (free-arthur ?s - slot)
+    (free-michael ?s - slot)
+    (free-samantha ?s - slot)
 
-    (:action schedule_meeting
-        :parameters (?t - time-slot ?p1 - participant ?p2 - participant ?p3 - participant)
-        :precondition (and
-            (during-work-hours ?t)
-            (available ?p1 ?t)
-            (available_slot ?t)
-            (not (blocked ?p3 ?t))
-            (not (meeting_scheduled ?t))
-        )
-        :effect (meeting_scheduled ?t)
-    )
+    (scheduled-arthur ?s - slot)
+    (scheduled-michael ?s - slot)
+    (scheduled-samantha ?s - slot)
+
+    (meeting-at ?s - slot)
+  )
+
+  (:action schedule-arthur-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-arthur ?s)
+                        (not (scheduled-arthur ?s)))
+     :effect (and (not (free-arthur ?s))
+                  (scheduled-arthur ?s)
+                  (meeting-at ?s))
+  )
+
+  (:action schedule-michael-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-michael ?s)
+                        (not (scheduled-michael ?s)))
+     :effect (and (not (free-michael ?s))
+                  (scheduled-michael ?s)
+                  (meeting-at ?s))
+  )
+
+  (:action schedule-samantha-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-samantha ?s)
+                        (not (scheduled-samantha ?s)))
+     :effect (and (not (free-samantha ?s))
+                  (scheduled-samantha ?s)
+                  (meeting-at ?s))
+  )
 )

@@ -1,77 +1,91 @@
-(define (domain integrated-scheduling)
-  (:requirements :strips :typing)
-  (:types timeslot meeting)
-
+(define (domain monday-ensemble)
+  (:requirements :typing)
+  (:types slot)
   (:predicates
-    (time ?t - timeslot)
-    (next ?t1 ?t2 - timeslot)                    ; immediate next half-hour slot
-    (startable ?t - timeslot)                    ; valid meeting start (fits within 9:00-17:00)
-    (free-michelle ?t - timeslot)                ; Michelle is free for this half-hour slot
-    (free-steven-start ?t - timeslot)            ; Steven is free if meeting starts at ?t (60-min)
-    (free-jerry ?t - timeslot)                   ; Jerry is free for this half-hour slot
-    (meeting ?m - meeting)
-    (meeting-start ?m ?t - timeslot)             ; meeting m starts at timeslot t
-    (meeting-confirm-michelle ?m ?t - timeslot)  ; Michelle confirms meeting m if starting at t
-    (meeting-confirm-steven ?m ?t - timeslot)    ; Steven confirms meeting m if starting at t
-    (meeting-confirm-jerry ?m ?t - timeslot)     ; Jerry confirms meeting m if starting at t
-    (meeting-finalized ?m - meeting)
+     (free ?t - slot)
+     (meeting-scheduled)
   )
 
-  ;; Agent 1 (Michelle) schedules requiring Michelle be free for both consecutive half-hour slots.
-  (:action schedule-michelle
-    :parameters (?m - meeting ?t1 - timeslot ?t2 - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t1)
-      (next ?t1 ?t2)
-      (free-michelle ?t1)
-      (free-michelle ?t2)
-    )
-    :effect (and
-      (meeting-confirm-michelle ?m ?t1)
-    )
+  ; Time tokens (covering the times used by the agents)
+  (:constants
+     ; Agent 1 (hourly slots)
+     slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - slot
+
+     ; Agent 2 (15-minute granularity tokens used in their responses)
+     a2_s9_30 a2_s10_00 a2_s10_30 a2_s11_00 a2_s12_00 a2_s12_30
+     a2_s13_00 a2_s14_00 a2_s14_30 a2_s15_00 a2_s16_00 a2_s16_30 - slot
+
+     ; Agent 3 (15-minute granularity tokens for 14:30-15:30)
+     m14_30 m14_45 m15_00 m15_15 - slot
   )
 
-  ;; Agent 2 (Steven) schedules using start-based availability (precomputed free starts).
-  (:action schedule-steven
-    :parameters (?m - meeting ?t - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t)
-      (free-steven-start ?t)
-    )
-    :effect (and
-      (meeting-confirm-steven ?m ?t)
-    )
+  ; Agent 1 actions (distinct per slot)
+  (:action schedule-slot9
+     :precondition (free slot9)
+     :effect (and (not (free slot9)) (meeting-scheduled))
+  )
+  (:action schedule-slot10
+     :precondition (free slot10)
+     :effect (and (not (free slot10)) (meeting-scheduled))
+  )
+  (:action schedule-slot11
+     :precondition (free slot11)
+     :effect (and (not (free slot11)) (meeting-scheduled))
+  )
+  (:action schedule-slot12
+     :precondition (free slot12)
+     :effect (and (not (free slot12)) (meeting-scheduled))
+  )
+  (:action schedule-slot13
+     :precondition (free slot13)
+     :effect (and (not (free slot13)) (meeting-scheduled))
+  )
+  (:action schedule-slot14
+     :precondition (free slot14)
+     :effect (and (not (free slot14)) (meeting-scheduled))
+  )
+  (:action schedule-slot15
+     :precondition (free slot15)
+     :effect (and (not (free slot15)) (meeting-scheduled))
+  )
+  (:action schedule-slot16
+     :precondition (free slot16)
+     :effect (and (not (free slot16)) (meeting-scheduled))
   )
 
-  ;; Agent 3 (Jerry) schedules requiring Jerry be free for both consecutive half-hour slots.
-  (:action schedule-jerry
-    :parameters (?m - meeting ?t1 - timeslot ?t2 - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t1)
-      (next ?t1 ?t2)
-      (free-jerry ?t1)
-      (free-jerry ?t2)
-    )
-    :effect (and
-      (meeting-confirm-jerry ?m ?t1)
-    )
+  ; Agent 2 actions (distinct, time-pair based)
+  (:action schedule_9_30_10_30
+     :precondition (and (free a2_s9_30) (free a2_s10_00) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s9_30)) (not (free a2_s10_00)) (meeting-scheduled))
+  )
+  (:action schedule_10_00_10_30
+     :precondition (and (free a2_s10_00) (free a2_s10_30) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s10_00)) (not (free a2_s10_30)) (meeting-scheduled))
+  )
+  (:action schedule_12_00_12_30
+     :precondition (and (free a2_s12_00) (free a2_s12_30) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s12_00)) (not (free a2_s12_30)) (meeting-scheduled))
+  )
+  (:action schedule_14_00_14_30
+     :precondition (and (free a2_s14_00) (free a2_s14_30) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s14_00)) (not (free a2_s14_30)) (meeting-scheduled))
+  )
+  (:action schedule_14_30_15_00
+     :precondition (and (free a2_s14_30) (free a2_s15_00) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s14_30)) (not (free a2_s15_00)) (meeting-scheduled))
+  )
+  (:action schedule_16_00_16_30
+     :precondition (and (free a2_s16_00) (free a2_s16_30) (not (meeting-scheduled)))
+     :effect (and (not (free a2_s16_00)) (not (free a2_s16_30)) (meeting-scheduled))
   )
 
-  ;; Finalizing action: only when all three agents have confirmed the same start time do we finalize.
-  (:action finalize-meeting
-    :parameters (?m - meeting ?t - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (meeting-confirm-michelle ?m ?t)
-      (meeting-confirm-steven ?m ?t)
-      (meeting-confirm-jerry ?m ?t)
-    )
-    :effect (and
-      (meeting-finalized ?m)
-      (meeting-start ?m ?t)
-    )
+  ; Agent 3 action (the 14:30-15:30 window, represented as four 15-min slots)
+  (:action schedule-meeting-14-30
+     :precondition (and (free m14_30) (free m14_45) (free m15_00) (free m15_15)
+                      (not (meeting-scheduled)))
+     :effect (and
+               (not (free m14_30)) (not (free m14_45))
+               (not (free m15_00)) (not (free m15_15))
+               meeting-scheduled)
   )
 )

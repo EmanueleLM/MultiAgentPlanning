@@ -1,16 +1,11 @@
-(define (problem meet-schedule)
-  (:domain meeting-planning)
-  (:objects
-    visitor jessica - agent
-    Haight-Ashbury Sunset-District - location
-  )
+(define (problem day-schedule-merged)
+  (:domain combined-visit-meeting-domain)
+  (:objects you jessica - person)
+
   (:init
-    (at visitor Haight-Ashbury)
-    (at jessica Sunset-District)
-    (available visitor)
-    (available jessica)
+     (at you haight)
+     (at jessica haight)
   )
-  (:goal
-    (and (met visitor jessica))
-  )
+
+  (:goal (met))
 )

@@ -1,59 +1,50 @@
-(define (domain integrated_meeting)
-  (:requirements :strips :typing :action-costs)
+(define (domain travel_meet_coordinated)
+  (:requirements :typing)
+  (:types person location timepoint)
 
-  (:types 
-    location person
+  (:constants bayview golden_gate_park - location
+              t0 t1 t2 - timepoint)
+
+  (:predicates
+    (at ?p - person ?l - location ?t - timepoint)
+    (met ?p1 - person ?p2 - person)
   )
 
-  (:predicates 
-    (at ?person - person ?location - location)
-    (can_meet)
-    (can_meet_persons ?person1 - person ?person2 - person)
-    (meeting_planned ?person1 - person ?person2 - person)
+  ; Travel actions for traveler
+  (:action travel_traveler_BV_to_GGP_t0_t1
+     :parameters (?p - person)
+     :precondition (at ?p bayview t0)
+     :effect (and (not (at ?p bayview t0))
+                  (at ?p golden_gate_park t1))
   )
 
-  (:functions
-    (total-time) ;; current time in minutes since the start of the day
-    (meeting-time_so_far) ;; accumulated meeting time with Barbara
-    (travel-time ?from ?to - location)
+  (:action travel_traveler_GGP_to_BV_t1_t2
+     :parameters (?p - person)
+     :precondition (at ?p golden_gate_park t1)
+     :effect (and (not (at ?p golden_gate_park t1))
+                  (at ?p bayview t2))
   )
 
-  (:action travel_traveler
-    :parameters (?from ?to - location)
-    :precondition (at traveler ?from)
-    :effect (and
-      (not (at traveler ?from))
-      (at traveler ?to)
-      (increase (total-time) (travel-time ?from ?to))
-    )
+  ; Travel actions for Barbara
+  (:action travel_barbara_BV_to_GGP_t0_t1
+     :parameters (?p - person)
+     :precondition (at ?p bayview t0)
+     :effect (and (not (at ?p bayview t0))
+                  (at ?p golden_gate_park t1))
   )
 
-  (:action travel_barbara
-    :parameters (?from ?to - location)
-    :precondition (at barbara ?from)
-    :effect (and
-      (not (at barbara ?from))
-      (at barbara ?to)
-    )
+  (:action travel_barbara_GGP_to_BV_t1_t2
+     :parameters (?p - person)
+     :precondition (at ?p golden_gate_park t1)
+     :effect (and (not (at ?p golden_gate_park t1))
+                  (at ?p bayview t2))
   )
 
-  (:action meet_barbara
-    :parameters ()
-    :precondition (and
-      (at traveler golden_gate_park)
-      (>= (total-time) 540) ;; Barbara available start time
-      (<= (total-time) 660) ;; Barbara available end time - meeting duration
-      (can_meet)
-    )
-    :effect (and
-      (increase (meeting-time_so_far) 1)
-      (increase (total-time) 1)
-    )
-  )
-
-  (:action schedule_meeting
-    :parameters (?person1 - person ?person2 - person)
-    :precondition (can_meet_persons ?person1 ?person2)
-    :effect (meeting_planned ?person1 ?person2)
+  ; Meeting action
+  (:action meet_at_GGP_t2
+     :parameters (?p1 - person ?p2 - person)
+     :precondition (and (at ?p1 golden_gate_park t2)
+                        (at ?p2 golden_gate_park t2))
+     :effect (met ?p1 ?p2)
   )
 )

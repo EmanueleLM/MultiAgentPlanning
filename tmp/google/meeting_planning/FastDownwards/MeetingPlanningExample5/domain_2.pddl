@@ -1,30 +1,29 @@
-(define (domain coordinated-meeting)
-  (:requirements :strips :typing)
-  
-  (:types agent location time - object)
-
+(define (domain MeetingSF)
+  (:requirements :typing)
+  (:types person location)
+  (:constants NobHill TheCastro - location
+              visitor william - person)
   (:predicates
-    (available ?a - agent ?t - time)
-    (at ?a - agent ?l - location)
-    (connected ?l1 ?l2 - location)
-    (meeting-scheduled ?a1 ?a2 - agent ?t - time)
+     (at ?p - person ?l - location)
+     (met ?p - person ?w - person)
   )
-  
-  (:action agent1-move
-    :parameters (?a - agent ?from ?to - location)
-    :precondition (and (at ?a ?from) (connected ?from ?to))
-    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  (:action travel-nobToCastro
+     :parameters ()
+     :precondition (at visitor NobHill)
+     :effect (and
+        (not (at visitor NobHill))
+        (at visitor TheCastro))
   )
-  
-  (:action agent2-move
-    :parameters (?a - agent ?from ?to - location)
-    :precondition (and (at ?a ?from) (connected ?from ?to))
-    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  (:action travel-castroToNobHill
+     :parameters ()
+     :precondition (at visitor TheCastro)
+     :effect (and
+        (not (at visitor TheCastro))
+        (at visitor NobHill))
   )
-  
-  (:action schedule-meeting
-    :parameters (?a1 ?a2 - agent ?t - time)
-    :precondition (and (available ?a1 ?t) (available ?a2 ?t))
-    :effect (meeting-scheduled ?a1 ?a2 ?t)
+  (:action meet-william
+     :parameters ()
+     :precondition (and (at visitor TheCastro) (at william TheCastro))
+     :effect (met visitor william)
   )
 )

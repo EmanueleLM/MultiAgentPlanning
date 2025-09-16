@@ -11,15 +11,17 @@ check if it is correct by comparing it to the "golden_plan".
 
 import argparse
 import json
-from pathlib import Path
+import os
 import re
+from time import sleep
+from pathlib import Path
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
 from src.llm_plan.config import ENVIRONMENTS_JSON_PATH
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
-from src.llm_plan.llm import ChatGPT, GPT_OSS, Gemini
+from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
@@ -32,15 +34,23 @@ SOLVER = {
 
 MODELS = {
     "gpt-4o": {"model": ChatGPT("gpt-4o"),
-               "persistent": False},
+                "persistent": False,
+                "sleep": 0},
     "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"),
-               "persistent": False},
+                "persistent": False, 
+                "sleep": 0},
+    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"),
+                "persistent": False, 
+                "sleep": 0},
     "gemini-2.5-flash": {"model": Gemini("gemini-2.5-flash"),
-                "persistent": False},
+                "persistent": False,
+                "sleep": 10},
     "gemini-2.5-pro": {"model": Gemini("gemini-2.5-pro"),
-                "persistent": False},
+                "persistent": False,
+                "sleep": 20},
     # "gpt-oss-120b": {"model": GPT_OSS("gpt-oss-120b"),
-    #             "persistent": True},
+    #             "persistent": True,
+    #             "sleep": 0},  # this model won't be loaded until generate_sync is called
 }
 
 
@@ -120,6 +130,11 @@ if __name__ == "__main__":
     else:
         model_json = MODELS[args.model_json]["model"]
         model_plan = MODELS[args.model_plan]["model"]
+    
+    # Sleep time not to make the experiments with the APIs crash
+    sleep_time_json = (0 if args.model_json != args.model_plan else MODELS[args.model_json]["sleep"])
+    sleep_time_first_plan = 3*MODELS[args.model_json]["sleep"]
+    sleep_time_plan = MODELS[args.model_plan]["sleep"]
 
     format = "json"
     pddl_parser = PDDLParser()
@@ -148,6 +163,7 @@ if __name__ == "__main__":
             planner.generate_representation(
                 model_json, data["prompt_0shot"], environment_name, format=format
             )
+            sleep(sleep_time_json)
         else:
             print(f"{full_path} already exists. Skipping generation.")
             print("[Warning]: The prompt `specific` will be ignored!")
@@ -186,6 +202,8 @@ if __name__ == "__main__":
                 f.write(domain)
             with open(BASE_FOLDER / f"problem_0.pddl", "w") as f:
                 f.write(problem)
+                
+            sleep(sleep_time_first_plan)
 
         # Full logs
         full_debug_logs += collect_debug_logs("DOMAIN", domain)
@@ -277,16 +295,28 @@ if __name__ == "__main__":
 
             # Full logs
             full_debug_logs += collect_debug_logs(f"ITERATION {j}", json.dumps(prompt_args_hypervisor, indent=4))
+            
+            sleep(sleep_time_plan)
 
         # Produce the natural language plan
-        if Path(BASE_FOLDER / f"sas_plan_{j}").exists():
-            with open(BASE_FOLDER / f"domain_{j}.pddl", "r") as f:
+        plan_files = [f for f in os.listdir(BASE_FOLDER) if f.startswith("sas_plan_")]
+        if plan_files:
+            # Get the latest plan
+            numbers = []
+            for f in plan_files:
+                match = re.search(r'_(\d+)$', f)  # match number at the end
+                if match:
+                    numbers.append((f, int(match.group(1))))
+                
+                highest_file, highest_number = max(numbers, key=lambda x: x[1])
+        
+            with open(BASE_FOLDER / f"domain_{highest_number}.pddl", "r") as f:
                 domain = f.read()
 
-            with open(BASE_FOLDER / f"problem_{j}.pddl", "r") as f:
+            with open(BASE_FOLDER / f"problem_{highest_number}.pddl", "r") as f:
                 problem = f.read()
 
-            with open(BASE_FOLDER / f"sas_plan_{j}", "r") as f:
+            with open(BASE_FOLDER / highest_file, "r") as f:
                 plan = f.read()
 
             prompt_args = {
@@ -306,7 +336,7 @@ if __name__ == "__main__":
                 f.write(natural_plan)
 
             # Full logs
-            full_debug_logs += collect_debug_logs(f"NATURAL-PLAN {j}", natural_plan)
+            full_debug_logs += collect_debug_logs(f"NATURAL-PLAN {highest_file}", natural_plan)
 
         print()
         

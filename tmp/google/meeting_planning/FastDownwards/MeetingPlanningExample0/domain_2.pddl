@@ -1,60 +1,23 @@
-(define (domain coordinated-meeting)
-  (:requirements :strips :typing)
-  (:types person location time)
+(define (domain meet-steph-twoagents)
+
+  (:requirements :typing)
+
+  (:types person location)
+
   (:predicates
-    (at ?p - person ?l - location)
-    (available ?p - person ?t - time)
-    (met ?p1 - person ?p2 - person)
-    (time ?t - time)
-    (time-greater-equal ?t1 - time ?t2 - time)
+     (at ?p - person ?l - location)
+     (met ?pl - person ?sp - person)
   )
-  (:action travel-you
-    :parameters (?p - person ?from - location ?to - location ?start - time ?end - time)
-    :precondition (and
-      (at ?p ?from)
-      (time ?start)
-      (time ?end)
-    )
-    :effect (and
-      (not (at ?p ?from))
-      (at ?p ?to)
-    )
+
+  (:action travel
+     :parameters (?p - person ?from - location ?to - location)
+     :precondition (at ?p ?from)
+     :effect (and (not (at ?p ?from)) (at ?p ?to))
   )
-  (:action meet-you
-    :parameters (?p1 - person ?p2 - person ?loc - location ?start - time ?end - time)
-    :precondition (and
-      (at ?p1 ?loc)
-      (at ?p2 ?loc)
-      (available ?p1 ?start)
-      (available ?p2 ?end)
-      (time ?start)
-      (time ?end)
-      (time-greater-equal ?end ?start)
-    )
-    :effect (met ?p1 ?p2)
-  )
-  (:action travel-stephanie
-    :parameters (?p - person ?from - location ?to - location ?travel-time - time)
-    :precondition (and
-      (at ?p ?from)
-      (time ?travel-time)
-    )
-    :effect (and
-      (not (at ?p ?from))
-      (at ?p ?to)
-    )
-  )
-  (:action meet-stephanie
-    :parameters (?p1 - person ?p2 - person ?loc - location ?start ?end - time)
-    :precondition (and
-      (at ?p1 ?loc)
-      (at ?p2 ?loc)
-      (available ?p1 ?start)
-      (available ?p2 ?end)
-      (time ?start)
-      (time ?end)
-      (time-greater-equal ?end ?start)
-    )
-    :effect (met ?p1 ?p2)
+
+  (:action meet-steph
+     :parameters (?pl - person ?sp - person ?l - location)
+     :precondition (and (at ?pl ?l) (at ?sp ?l))
+     :effect (met ?pl ?sp)
   )
 )

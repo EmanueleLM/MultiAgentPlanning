@@ -1,17 +1,15 @@
-(define (problem integrated_meet_jessica)
-  (:domain integrated_meeting_schedule)
-  
+(define (problem marina-integrated-discretized)
+  (:domain integrated-meeting-discretized)
   (:objects
-    Presidio MarinaDistrict - location
-    visitor Jessica - person
+     Presidio MarinaDistrict - location
+     visitor jessica - person
   )
-  
+
   (:init
-    (= (current-time) 900)  ; 09:00 in minutes
-    (at visitor Presidio)
-    (at Jessica MarinaDistrict)
-    (can_meet Jessica)
+     (at visitor MarinaDistrict)
+     (at jessica Presidio)
+     (time-at t0)
   )
-  
-  (:goal (meeting_successful))
+
+  (:goal (met visitor jessica))
 )

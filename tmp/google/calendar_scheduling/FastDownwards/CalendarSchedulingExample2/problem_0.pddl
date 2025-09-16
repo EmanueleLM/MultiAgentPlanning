@@ -1,52 +1,51 @@
-(define (problem integrated_meeting_schedule)
-  (:domain integrated_meeting_scheduler)
-  
-  (:objects
-    slot9-930 slot930-10 slot10-1030 slot1030-11 slot11-1130
-    slot1130-12 slot12-1230 slot1230-13 slot13-1330 slot1330-14
-    slot14-1430 slot1430-15 slot15-1530 slot1530-16 slot16-1630
-  )
-  
-  (:init 
-    ;; Agent 1 available slots
-    (available slot930-10) 
-    (available slot1030-11) 
-    (available slot1130-12)
-    (available slot12-1230)
-    (available slot13-1330)
-    (available slot1330-14)
-    (available slot14-1430)
-    (available slot1430-15)
-    (available slot15-1530)
-    (available slot1530-16)
-    (available slot16-1630)
-    
-    ;; Agent 2 available slots
-    (available slot1)
-    (available slot3) (available slot4)
-    (available slot5) (available slot6)
-    (available slot7) (available slot8)
-    (available slot9) (available slot10)
-    (available slot11) (available slot12)
-    (available slot13) (available slot14)
+(define (problem monday-meeting)
+  (:domain multi-agent-meeting-scheduler)
 
-    ;; Agent 3 slots, setting preference and blocks
-    (blocked slot9-930) ;; 9:00 - 9:30
-    (blocked slot930-10) ;; 9:30 - 10:00
-    (blocked slot10-1030) ;; 10:00 - 10:30
-    (free slot14-1430) ;; 14:30 - 15:00
-    (free slot15-1530) ;; 15:00 - 15:30
-    (preferred slot14-1430)
-    (preferred slot15-1530)
+  (:objects
+     t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330
+     t1400 t1430 t1500 t1530 t1600 t1630 - timeSlot)
+
+  (:init
+     ;; Roy's free slots (as per Agent 1)
+     (free-roy t0930)
+     (free-roy t1030)
+     (free-roy t1130)
+     (free-roy t1200)
+     (free-roy t1300)
+     (free-roy t1330)
+     (free-roy t1400)
+     (free-roy t1430)
+     (free-roy t1500)
+     (free-roy t1530)
+     (free-roy t1600)
+     (free-roy t1630)
+
+     ;; Kathryn's free slots (as per Agent 2)
+     (free-kathryn t0900)
+     (free-kathryn t1000)
+     (free-kathryn t1030)
+     (free-kathryn t1100)
+     (free-kathryn t1130)
+     (free-kathryn t1200)
+     (free-kathryn t1230)
+     (free-kathryn t1300)
+     (free-kathryn t1330)
+     (free-kathryn t1400)
+     (free-kathryn t1430)
+     (free-kathryn t1500)
+     (free-kathryn t1530)
+     (free-kathryn t1600)
+
+     ;; Amy's free slots (as per Agent 3, hard constraint)
+     (free-amy t1430)
+     (free-amy t1600)
   )
-  
+
   (:goal
-    (or 
-      (exists (?slot - time-slot) (meeting-scheduled ?slot))
-      (exists (?t - time-slot) (scheduled ?t))
-      (exists (?slot - time-slot)
-        (and (free ?slot) (preferred ?slot) (not (blocked ?slot)))
-      )
-    )
+     (and
+        (scheduled-roy t1430)
+        (scheduled-kathryn t1430)
+        (scheduled-amy t1430)
+     )
   )
 )

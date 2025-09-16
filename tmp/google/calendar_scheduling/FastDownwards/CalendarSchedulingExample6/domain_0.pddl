@@ -1,50 +1,43 @@
-(define (domain meeting-scheduling)
-    (:requirements :strips :typing)
+(define (domain multi-agent-meeting)
+  (:requirements :typing)
+  (:types person time meeting)
 
-    (:types person time-slot)
+  ; Predicates
+  (:predicates
+     (free ?p - person ?t - time)
+     (meeting-scheduled ?t - time)
+  )
 
-    (:predicates
-        (available ?p - person ?t - time-slot)
-        (meeting-scheduled ?t - time-slot)
-    )
+  ; Agent 1 action: Thomas & Jerry
+  (:action schedule-meeting-A1
+     :parameters (?m - meeting ?t - time)
+     :precondition (and (not (meeting-scheduled ?t))
+                        (free Thomas ?t)
+                        (free Jerry ?t))
+     :effect (and (meeting-scheduled ?t)
+                  (not (free Thomas ?t))
+                  (not (free Jerry ?t)))
+  )
 
-    ;; Action for Thomas
-    (:action check-thomas-availability
-        :parameters (?t - time-slot)
-        :precondition
-        (available Thomas ?t)
-        :effect
-        (meeting-scheduled ?t)
-    )
+  ; Agent 2 action: Dylan, Thomas, Jerry
+  (:action schedule-meeting-A2
+     :parameters (?t - time)
+     :precondition (and (not (meeting-scheduled ?t))
+                        (free Dylan ?t)
+                        (free Thomas ?t)
+                        (free Jerry ?t))
+     :effect (and (meeting-scheduled ?t)
+                  (not (free Dylan ?t))
+                  (not (free Thomas ?t))
+                  (not (free Jerry ?t)))
+  )
 
-    ;; Action for Dylan
-    (:action check-dylan-availability
-        :parameters (?t - time-slot)
-        :precondition
-        (available Dylan ?t)
-        :effect
-        (meeting-scheduled ?t)
-    )
-
-    ;; Action for Jerry
-    (:action check-jerry-availability
-        :parameters (?t - time-slot)
-        :precondition
-        (available Jerry ?t)
-        :effect
-        (meeting-scheduled ?t)
-    )
-
-    ;; Combined action for scheduling meeting
-    (:action schedule-meeting
-        :parameters (?t - time-slot)
-        :precondition
-        (and
-            (available Thomas ?t)
-            (available Dylan ?t)
-            (available Jerry ?t)
-        )
-        :effect
-        (meeting-scheduled ?t)
-    )
+  ; Agent 3 action: any two attendees (keeps a distinct action)
+  (:action schedule-meeting-A3
+     :parameters (?p1 - person ?p2 - person ?ts - time)
+     :precondition (and (not (meeting-scheduled ?ts))
+                        (free ?p1 ?ts)
+                        (free ?p2 ?ts))
+     :effect (and (meeting-scheduled ?ts))
+  )
 )

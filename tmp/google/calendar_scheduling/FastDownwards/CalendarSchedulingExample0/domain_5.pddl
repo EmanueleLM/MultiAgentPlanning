@@ -1,75 +1,14 @@
-(define (domain integrated-scheduling)
-  (:requirements :strips :typing)
-  (:types timeslot meeting)
-
+(define (domain monday-ensemble)
+  (:requirements :typing)
+  (:types person slot)
   (:predicates
-    (time ?t - timeslot)
-    (next ?t1 ?t2 - timeslot)
-    (startable ?t - timeslot)
-    (free-michelle ?t - timeslot)
-    (free-steven ?t - timeslot)
-    (free-jerry ?t - timeslot)
-    (meeting ?m - meeting)
-    (meeting-start ?m ?t - timeslot)
-    (meeting-confirm-michelle ?m ?t - timeslot)
-    (meeting-confirm-steven ?m ?t - timeslot)
-    (meeting-confirm-jerry ?m ?t - timeslot)
-    (meeting-finalized ?m - meeting)
+     (free ?p - person ?t - slot)
+     (meeting_scheduled)
   )
-
-  (:action schedule-michelle
-    :parameters (?m - meeting ?t1 - timeslot ?t2 - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t1)
-      (next ?t1 ?t2)
-      (free-michelle ?t1)
-      (free-michelle ?t2)
-    )
-    :effect (and
-      (meeting-confirm-michelle ?m ?t1)
-    )
-  )
-
-  (:action schedule-steven
-    :parameters (?m - meeting ?t1 - timeslot ?t2 - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t1)
-      (next ?t1 ?t2)
-      (free-steven ?t1)
-      (free-steven ?t2)
-    )
-    :effect (and
-      (meeting-confirm-steven ?m ?t1)
-    )
-  )
-
-  (:action schedule-jerry
-    :parameters (?m - meeting ?t1 - timeslot ?t2 - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (startable ?t1)
-      (next ?t1 ?t2)
-      (free-jerry ?t1)
-      (free-jerry ?t2)
-    )
-    :effect (and
-      (meeting-confirm-jerry ?m ?t1)
-    )
-  )
-
-  (:action finalize-meeting
-    :parameters (?m - meeting ?t - timeslot)
-    :precondition (and
-      (meeting ?m)
-      (meeting-confirm-michelle ?m ?t)
-      (meeting-confirm-steven ?m ?t)
-      (meeting-confirm-jerry ?m ?t)
-    )
-    :effect (and
-      (meeting-finalized ?m)
-      (meeting-start ?m ?t)
-    )
+  (:constants michelle steven jerry - person)
+  (:action schedule_meeting
+     :parameters (?s - slot)
+     :precondition (and (free michelle ?s) (free steven ?s) (free jerry ?s) (not (meeting_scheduled)))
+     :effect (and (not (free michelle ?s)) (not (free steven ?s)) (not (free jerry ?s)) (meeting_scheduled))
   )
 )

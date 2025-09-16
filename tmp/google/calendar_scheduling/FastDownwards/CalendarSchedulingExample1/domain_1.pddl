@@ -1,37 +1,24 @@
-(define (domain meeting_schedule)
-  (:requirements :strips :multi-agent)
-  
+(define (domain calendar-scheduling)
+  (:requirements :typing)
+  (:types
+    person time
+  )
   (:predicates
-    (available ?agent ?time)
-    (meeting_scheduled ?time)
-    (attending ?agent ?time)
+    (blocked ?p - person ?t - time)
+    (meeting_at ?t - time)
+    (attends ?p - person ?t - time)
   )
-
-  (:action raymond_attend
-    :parameters (?time)
-    :precondition (available raymond ?time)
-    :effect (attending raymond ?time)
-  )
-  
-  (:action billy_attend
-    :parameters (?time)
-    :precondition (available billy ?time)
-    :effect (attending billy ?time)
-  )
-
-  (:action donald_attend
-    :parameters (?time)
-    :precondition (available donald ?time)
-    :effect (attending donald ?time)
-  )
-
-  (:action finalize_meeting
-    :parameters (?time)
-    :precondition (and 
-                    (attending raymond ?time)
-                    (attending billy ?time)
-                    (attending donald ?time)
-                  )
-    :effect (meeting_scheduled ?time)
+  (:action schedule_meeting
+    :parameters (?r - person ?b - person ?d - person ?t - time)
+    :precondition (and
+      (not (blocked ?r ?t))
+      (not (blocked ?b ?t))
+      (not (blocked ?d ?t))
+      (not (meeting_at ?t)))
+    :effect (and
+      (meeting_at ?t)
+      (attends ?r ?t)
+      (attends ?b ?t)
+      (attends ?d ?t))
   )
 )

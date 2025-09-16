@@ -1,36 +1,40 @@
-(define (domain integrated_meeting_planner)
-  (:requirements :strips :durative-actions :typing)
-  (:types location person)
+(define (domain betty-meet-two-agents)
+  (:requirements :typing)
+  (:types agent location)
+
+  (:constants
+     you betty - agent
+     Richmond Financial - location)
+
   (:predicates
-    (at ?p - person ?l - location)
-    (meeting-minimum-time-satisfied)
-    (can-meet-betty ?p - person)
-    (available_for_meeting ?p - person)
+     (at ?a - agent ?l - location)
+     (met)
   )
 
-  (:durative-action travel
-    :parameters (?p - person ?from - location ?to - location ?time - number)
-    :duration (= ?duration ?time)
-    :condition (and
-      (at start (at ?p ?from))
-    )
-    :effect (and
-      (at end (at ?p ?to))
-      (at end (not (at ?p ?from)))
-    )
-  )
-
-  (:durative-action meet-betty
-    :parameters (?p - person)
-    :duration (>= ?duration 60) ; At least 60 minutes
-    :condition (and
-      (at start (at ?p financial_district))
-      (at start (at betty financial_district))
-      (over (available_for_meeting betty))
-      (over (can-meet-betty ?p))
-    )
-    :effect (and
-      (at end (meeting-minimum-time-satisfied))
-    )
+  (:action travel-you-to-financial
+     :precondition (at you Richmond)
+     :effect (and
+               (not (at you Richmond))
+               (at you Financial)))
+  (:action travel-you-to-richmond
+     :precondition (at you Financial)
+     :effect (and
+               (not (at you Financial))
+               (at you Richmond)))
+  (:action travel-betty-to-financial
+     :precondition (at betty Richmond)
+     :effect (and
+               (not (at betty Richmond))
+               (at betty Financial)))
+  (:action travel-betty-to-richmond
+     :precondition (at betty Financial)
+     :effect (and
+               (not (at betty Financial))
+               (at betty Richmond)))
+  (:action meet-betty
+     :precondition (and
+       (at you Financial)
+       (at betty Financial))
+     :effect (met)
   )
 )

@@ -1,43 +1,42 @@
-```lisp
-(define (domain integrated_meeting_scheduler)
-    (:requirements :strips :typing)
-    
-    (:types person time-slot)
-    
-    (:predicates 
-        ;; Unified predicates
-        (free ?person - person ?slot - time-slot)
-        (available ?person - person ?slot - time-slot)
+(define (domain meeting-scheduler-integrated)
+  (:requirements :typing)
+  (:types person slot)
+  (:constants diane deborah - person)
+  (:predicates
+     (busy ?p - person ?t - slot)
+     (scheduled ?t - slot)
+     (free ?p - person ?s - slot)
+  )
 
-        ;; Meeting status
-        (meeting_scheduled)
+  ; Agent 1 style action (per-datetime, single time slot)
+  (:action schedule-meeting-A
+     :parameters (?t - slot)
+     :precondition (and (not (busy diane ?t))
+                        (not (busy deborah ?t))
+                        (not (scheduled ?t)))
+     :effect (and
+        (busy diane ?t)
+        (busy deborah ?t)
+        (scheduled ?t))
+  )
 
-        ;; Time slot scheduled
-        (scheduled ?slot - time-slot)
-    )
+  ; Agent 2 style action (two persons, one time)
+  (:action schedule-meeting-B
+     :parameters (?p1 - person ?p2 - person ?t - slot)
+     :precondition (and (not (busy ?p1 ?t))
+                        (not (busy ?p2 ?t))
+                        (not (scheduled ?t)))
+     :effect (scheduled ?t)
+  )
 
-    ;; Action from the first agent
-    (:action schedule_meeting_agent1
-        :parameters (?slot - time-slot)
-        :precondition (and (free diane ?slot) (free deborah ?slot) (not (meeting_scheduled)))
-        :effect (and (meeting_scheduled) (scheduled ?slot))
-    )
-
-    ;; Action from the second agent
-    (:action schedule_meeting_agent2
-        :parameters (?slot - time-slot)
-        :precondition (and (available Diane ?slot)
-                           (available Kelly ?slot)
-                           (available Deborah ?slot)
-                           (not (scheduled ?slot)))
-        :effect (and (meeting_scheduled) (scheduled ?slot))
-    )
-
-    ;; Action from the third agent
-    (:action schedule_meeting_agent3
-        :parameters (?p1 - person ?p2 - person ?slot - time-slot)
-        :precondition (and (available ?p1 ?slot) (available ?p2 ?slot) (not (meeting_scheduled)))
-        :effect (and (meeting_scheduled) (scheduled ?slot))
-    )
+  ; Agent 3 style action (two persons, one slot, using free predicate)
+  (:action schedule-meeting-C
+     :parameters (?p1 - person ?p2 - person ?s - slot)
+     :precondition (and (free ?p1 ?s)
+                        (free ?p2 ?s)
+                        (not (scheduled ?s)))
+     :effect (and (not (free ?p1 ?s))
+                  (not (free ?p2 ?s))
+                  (scheduled ?s))
+  )
 )
-```

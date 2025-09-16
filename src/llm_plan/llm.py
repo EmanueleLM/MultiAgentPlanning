@@ -1,42 +1,55 @@
 import os
+from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 from google import genai
 from openai import OpenAI
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-class LLM:
+class LLM(ABC):
     """
-    A class representing a Language Model (LLM) that can generate problems (e.g., pddl) based on observations and prompts.
+    Abstract base class representing a Language Model (LLM).
+    Subclasses must implement the generation methods.
     """
 
     def __init__(self, model_name: str = "LLM (Abstract)"):
         """
-        Initialize the LLM with a specific model.
-
-        Args:
-            model: The language model to be used for generating actions.
+        Initialize the LLM with a specific model name.
         """
         self.model_name = model_name
 
-    def generate_sync(
-        self,
-        system_prompt: str,
-        prompt: str,
-    ) -> str:
+    @abstractmethod
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
         """
-        Generate a reponse given a prompt.
+        Generate a response synchronously given a prompt.
 
         Args:
             system_prompt (str): The system prompt.
             prompt (str): The prompt.
 
         Returns:
-            The answer of the model. None if there is an error.
+            str: The model's response.
         """
-        # This method should be implemented by subclasses
-        return "Subclasses should implement this method."
+        pass
 
+    async def generate_async(self, system_prompt: str, prompt: str) -> str:
+        """
+        Generate a response asynchronously given a prompt.
+
+        Subclasses may override this for true async implementations.
+        By default, it runs the synchronous version in a thread.
+
+        Args:
+            system_prompt (str): The system prompt.
+            prompt (str): The prompt.
+
+        Returns:
+            str: The model's response.
+        """
+        import asyncio
+        return await asyncio.to_thread(self.generate_sync, system_prompt, prompt)
+    
+    
 class GPT_OSS(LLM):
     def __init__(self,
                  model_name: str="openai/gpt-oss-120b", 
@@ -53,17 +66,23 @@ class GPT_OSS(LLM):
         """
         super().__init__(model_name=model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.map = map
         self.reasoning = reasoning.lower() if reasoning else "medium"
 
-        # Load the model with CPU offloading
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            device_map={"": map},         # force everything on CPU
-            torch_dtype="auto",
-            offload_folder="./offload"       # optional: swap large tensors to disk
-        )
+        # This prevents importing the module from loading the actual model
+        self.model = None
 
     def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        
+        # Dynamically load the model (if not already loaded)
+        if self.model is None:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                device_map={"": map},
+                torch_dtype="auto",
+                offload_folder="./offload"
+            )
+        
         try:
             full_prompt = f"{system_prompt}\nReasoning: {self.reasoning}\n\nUser: {prompt}\nAssistant:"
             inputs = self.tokenizer(full_prompt, return_tensors="pt").to(self.model.device)
@@ -166,6 +185,26 @@ class ChatGPT(LLM):
         except Exception as e:
             return f"Error while generating a response: {e}"
         
+    async def generate_async(self, system_prompt: str, prompt: str) -> str:
+        """Asynchronous ChatGPT call."""
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": f"{system_prompt}"},
+                    {"role": "user", "content": f"{prompt}"},
+                ],
+            )
+
+            return (
+                "No response generated."
+                if response.choices[0].message.content is None
+                else response.choices[0].message.content
+            )
+
+        except Exception as e:
+            return f"Error while generating a response: {e}"
+        
 class Gemini(LLM):
     def __init__(self, model_name: str = "gemini-2.5-lite"):
         """Load a Gemini model.
@@ -196,5 +235,20 @@ class Gemini(LLM):
                 else response.text
             )
 
+        except Exception as e:
+            return f"Error while generating a response: {e}"
+        
+    async def generate_async(self, system_prompt: str, prompt: str) -> str:
+        """Asynchronous Gemini call."""
+        try:
+            response = await self.async_client.models.generate_content(
+                model=self.model_name, 
+                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
+            )
+            return (
+                "No response generated."
+                if response.text is None
+                else response.text
+            )
         except Exception as e:
             return f"Error while generating a response: {e}"

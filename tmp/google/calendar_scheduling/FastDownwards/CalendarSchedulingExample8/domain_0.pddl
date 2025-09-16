@@ -1,25 +1,30 @@
-(define (domain multi-agent-meeting-scheduling)
-    (:requirements :strips :typing)
+(define (domain meeting-planner-integrated)
+  (:requirements :typing)
+  (:types person time)
 
-    (:types person time)
+  (:constants Adam Jerry Matthew - person
+              t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time)
 
-    (:constants
-        Adam Jerry Matthew - person
-        time09:00 time09:30 time10:00 time10:30 time11:00 time11:30
-        time12:00 time12:30 time13:00 time13:30 time14:00 time14:30
-        time15:00 time15:30 time16:00 time16:30 time17:00 - time)
+  (:predicates
+     (free ?p - person ?t - time)
+     (scheduled ?t - time)
+  )
 
-    (:predicates
-        (available ?p - person ?t - time)
-        (meeting-scheduled ?t - time)
-        (before ?t1 ?t2 - time))
+  (:action schedule-meeting-Adam
+     :parameters (?t - time)
+     :precondition (and (free Adam ?t) (free Jerry ?t) (free Matthew ?t) (not (scheduled ?t)))
+     :effect (and (not (free Adam ?t)) (not (free Jerry ?t)) (not (free Matthew ?t)) (scheduled ?t))
+  )
 
-    (:action schedule-meeting
-        :parameters (?t - time)
-        :precondition (and
-            (available Adam ?t)
-            (available Jerry ?t)
-            (available Matthew ?t)
-            (not (meeting-scheduled ?t)))
-        :effect (meeting-scheduled ?t))
+  (:action schedule-meeting-Jerry
+     :parameters (?t - time)
+     :precondition (and (free Adam ?t) (free Jerry ?t) (free Matthew ?t) (not (scheduled ?t)))
+     :effect (and (not (free Adam ?t)) (not (free Jerry ?t)) (not (free Matthew ?t)) (scheduled ?t))
+  )
+
+  (:action schedule-meeting-Matthew
+     :parameters (?t - time)
+     :precondition (and (free Adam ?t) (free Jerry ?t) (free Matthew ?t) (not (scheduled ?t)))
+     :effect (and (not (free Adam ?t)) (not (free Jerry ?t)) (not (free Matthew ?t)) (scheduled ?t))
+  )
 )

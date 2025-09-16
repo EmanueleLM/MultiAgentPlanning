@@ -1,58 +1,22 @@
-(define (problem CombinedMeetingScheduling)
-    (:domain CombinedMeetingScheduler)
+(define (problem multi-party-meeting-problem)
+  (:domain multi-party-meeting-domain)
 
-    (:objects
-        arthur michael samantha - participant
-        slot-9-10 slot-10-11 slot-11-12 slot-12-13 slot-13-14 slot-14-15 slot-15-16 - time-slot
-        9 10 11 12 13 14 15 16 17 - hour
+  (:objects
+     slot_9_30_10_30 slot_12_00_13_00 slot_13_00_14_00 slot_14_00_15_00 slot_15_00_16_00 - slot
+  )
+
+  (:init
+    (free-arthur slot_9_30_10_30)
+    (free-michael slot_9_30_10_30)
+    (free-samantha slot_9_30_10_30)
+  )
+
+  (:goal
+    (and
+      (meeting-at slot_9_30_10_30)
+      (scheduled-arthur slot_9_30_10_30)
+      (scheduled-michael slot_9_30_10_30)
+      (scheduled-samantha slot_9_30_10_30)
     )
-
-    (:init
-        ;; Work hours
-        (during-work-hours slot-9-10)
-        (during-work-hours slot-10-11)
-        (during-work-hours slot-11-12)
-        (during-work-hours slot-12-13)
-        (during-work-hours slot-13-14)
-        (during-work-hours slot-14-15)
-        (during-work-hours slot-15-16)
-
-        ;; Arthur's availability
-        (available arthur slot-9-10)
-        (available arthur slot-12-13)
-        (available arthur slot-13-14)
-        (available arthur slot-14-15)
-        (available arthur slot-15-16)
-
-        ;; Michael's availability
-        (available_slot slot-9-10)
-        (available_slot slot-10-11)
-        (available_slot slot-11-12)
-        (available_slot slot-15-16)
-
-        ;; Samantha's blocked times
-        (blocked samantha 10)
-        (blocked samantha 11)
-        (blocked samantha 12)
-        (blocked samantha 13)
-        (blocked samantha 14)
-        (blocked samantha 15)
-        (blocked samantha 16)
-
-        ;; Define the successor relationship between hours
-        (successor 9 10)
-        (successor 10 11)
-        (successor 11 12)
-        (successor 12 13)
-        (successor 13 14)
-        (successor 14 15)
-        (successor 15 16)
-        (successor 16 17)
-    )
-
-    (:goal
-        (exists (?t - time-slot) 
-            (meeting_scheduled ?t)
-        )
-    )
+  )
 )

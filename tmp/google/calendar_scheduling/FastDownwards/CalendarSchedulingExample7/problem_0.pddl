@@ -1,50 +1,60 @@
-(define (problem integrated-scheduling-problem)
-  (:domain integrated-scheduling)
-  
+(define (problem meet_monday)
+  (:domain meeting-scheduler)
+
   (:objects
-    heather nicholas zachary - person
-    ts-0900 ts-0930 ts-1000 ts-1030 ts-1100 ts-1130 
-    ts-1200 ts-1230 ts-1300 ts-1330 ts-1400 ts-1430 
-    ts-1500 ts-1530 ts-1600 - time-slot
+     Heather Nicholas Zachary - person
+     t0930_1000 t1000_1030 t1100_1130 t1130_1200 t1200_1230 t1230_1300
+     t1400_1430 t1500_1530 t1530_1600 t1630_1700 - time
   )
-  
+
   (:init
-    ; Define available time slots for Heather
-    (available heather ts-0930) (available heather ts-1000)
-    (available heather ts-1100) (available heather ts-1130)
-    (available heather ts-1200) (available heather ts-1230)
-    (available heather ts-1300) (available heather ts-1330)
-    (available heather ts-1500) (available heather ts-1530)
-    (available heather ts-1600)
+     ;; Heather's free slots
+     (free_heather t0930_1000)
+     (free_heather t1000_1030)
+     (free_heather t1100_1130)
+     (free_heather t1130_1200)
+     (free_heather t1200_1230)
+     (free_heather t1230_1300)
+     (free_heather t1400_1430)
+     (free_heather t1500_1530)
+     (free_heather t1530_1600)
+     (free_heather t1630_1700)
 
-    ; Define available time slots for Nicholas
-    (available nicholas ts-0930) (available nicholas ts-1000)
-    (available nicholas ts-1030) (available nicholas ts-1100)
-    (available nicholas ts-1130) (available nicholas ts-1200)
-    (available nicholas ts-1300)
+     ;; Nicholas's free slots
+     (free_nicholas t0930_1000)
+     (free_nicholas t1000_1030)
+     (free_nicholas t1100_1130)
+     (free_nicholas t1130_1200)
+     (free_nicholas t1200_1230)
+     (free_nicholas t1230_1300)
+     (free_nicholas t1400_1430)
+     (free_nicholas t1500_1530)
+     (free_nicholas t1530_1600)
+     (free_nicholas t1630_1700)
 
-    ; Define available time slots for Zachary
-    (available zachary ts-1000) (available zachary ts-1030)
-    (available zachary ts-1100) (available zachary ts-1130)
-    (available zachary ts-1200) (available zachary ts-1300)
-
-    ; Define Zachary's preference
-    (time-slot-preference zachary ts-1030) (time-slot-preference zachary ts-1200)
-    
-    ; Define all time slots
-    (time-slot ts-0900) (time-slot ts-0930) (time-slot ts-1000)
-    (time-slot ts-1030) (time-slot ts-1100) (time-slot ts-1130)
-    (time-slot ts-1200) (time-slot ts-1230) (time-slot ts-1300)
-    (time-slot ts-1330) (time-slot ts-1400) (time-slot ts-1430)
-    (time-slot ts-1500) (time-slot ts-1530) (time-slot ts-1600)
+     ;; Zachary's free slots
+     (free_zachary t0930_1000)
+     (free_zachary t1000_1030)
+     (free_zachary t1100_1130)
+     (free_zachary t1130_1200)
+     (free_zachary t1200_1230)
+     (free_zachary t1230_1300)
+     (free_zachary t1400_1430)
+     (free_zachary t1500_1530)
+     (free_zachary t1530_1600)
+     (free_zachary t1630_1700)
   )
-  
-  (:goal
-    (exists (?s - time-slot)
-      (and
-        (meeting-scheduled ?s)
-        (time-slot-preference zachary ?s)
-      )
-    )
-  )
+  ;; The goal is existentially satisfied by scheduling at any one of the allowed slots.
+  (:goal (or
+     (meeting_at t0930_1000)
+     (meeting_at t1000_1030)
+     (meeting_at t1100_1130)
+     (meeting_at t1130_1200)
+     (meeting_at t1200_1230)
+     (meeting_at t1230_1300)
+     (meeting_at t1400_1430)
+     (meeting_at t1500_1530)
+     (meeting_at t1530_1600)
+     (meeting_at t1630_1700)
+  ))
 )

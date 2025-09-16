@@ -1,30 +1,41 @@
-(define (domain coordinated-meeting)
-  (:requirements :strips :typing)
-  
-  (:types agent location time - object)
-
+(define (domain MeetingSF)
+  (:requirements :durative-actions :typing)
+  (:types person location)
+  (:constants NobHill TheCastro - location
+              visitor william - person)
   (:predicates
-    (available ?a - agent ?t - time)
-    (at ?a - agent ?l - location)
-    (connected ?l1 ?l2 - location)
-    (meeting-scheduled ?a1 ?a2 - agent ?t - time)
+     (at ?p - person ?l - location)
+     (met ?p - person ?w - person)
+     (waited)
   )
-  
-  (:action agent1-move
-    :parameters (?a - agent ?from ?to - location)
-    :precondition (and (at ?a ?from) (connected ?from ?to))
-    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  (:durative-action travel-nobToCastro
+     :parameters ()
+     :duration 17
+     :condition (at start (at visitor NobHill))
+     :effect (and
+        (not (at visitor NobHill))
+        (at end (at visitor TheCastro))
+     )
   )
-  
-  (:action agent2-move
-    :parameters (?a - agent ?from ?to - location)
-    :precondition (and (at ?a ?from) (connected ?from ?to))
-    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  (:durative-action travel-castroToNobHill
+     :parameters ()
+     :duration 16
+     :condition (at start (at visitor TheCastro))
+     :effect (and
+        (not (at visitor TheCastro))
+        (at end (at visitor NobHill))
+     )
   )
-  
-  (:action schedule-meeting
-    :parameters (?a1 ?a2 - agent ?t - time)
-    :precondition (and (available ?a1 ?t) (available ?a2 ?t))
-    :effect (meeting-scheduled ?a1 ?a2 ?t)
+  (:durative-action wait-195
+     :parameters ()
+     :duration 195
+     :condition (at start (at visitor TheCastro))
+     :effect (waited)
+  )
+  (:durative-action meet-william
+     :parameters ()
+     :duration 75
+     :condition (and (at start (at visitor TheCastro)) (at start (at william TheCastro)) (waited))
+     :effect (met visitor william)
   )
 )

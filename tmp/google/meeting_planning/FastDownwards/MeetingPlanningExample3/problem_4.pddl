@@ -1,28 +1,13 @@
-(define (problem integrated_meeting_problem)
-  (:domain integrated_meeting)
-
-  (:objects 
-    barbara traveler - person
-    bayview golden_gate_park - location
+(define (problem travel_meet_coordinated_problem)
+  (:domain travel_meet_coordinated)
+  (:objects
+     traveler barbara - person
+     bayview golden_gate_park - location
+     t0 t1 t2 - timepoint
   )
-
-  (:init 
-    (at traveler bayview)
-    (at barbara golden_gate_park)
-    (= (total-time) 540) ;; Start time at Bayview: 09:00
-    (= (meeting-time_so_far) 0)
-    (= (travel-time bayview golden_gate_park) 22)
-    (= (travel-time golden_gate_park bayview) 23)
-    (can_meet)
-    (can_meet_persons barbara traveler)
+  (:init
+     (at traveler bayview t0)
+     (at barbara golden_gate_park t0)
   )
-
-  (:goal 
-    (and 
-      (meeting_planned barbara traveler)
-      (>= (meeting-time_so_far) 90) ;; Goal: Meet Barbara for at least 90 minutes
-    )
-  )
-
-  (:metric minimize (total-time))
+  (:goal (met traveler barbara))
 )

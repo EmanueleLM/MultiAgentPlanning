@@ -1,48 +1,27 @@
-(define (problem meeting-scheduling-problem)
-    (:domain meeting-scheduling)
-    
-    (:objects
-        Thomas Dylan Jerry - person
-        ts09-10 ts10-11 ts11-12 ts12-13 ts13-14 ts14-15 ts15-16 ts16-17 - time-slot
-    )
+(define (problem monday-meeting)
+  (:domain multi-agent-meeting)
 
-    (:init
-        ;; Thomas's availability
-        (available Thomas ts09-10)
-        (available Thomas ts10-11)
-        (available Thomas ts11-12)
-        (available Thomas ts12-13)
-        (available Thomas ts13-14)
-        (available Thomas ts14-15)
-        (available Thomas ts15-16)
-        (available Thomas ts16-17)
+  (:objects
+     Thomas Jerry Dylan - person
+     t9 t10 t11 t12 t13 t14 t15 t16 - time
+     m1 - meeting
+  )
 
-        ;; Dylan's availability
-        (available Dylan ts09-10)
-        ; Dylan is busy from 10:30 to 11:00
-        ; (available Dylan ts10-11)
-        (available Dylan ts11-12)
-        (available Dylan ts12-13)
-        ; Dylan is busy from 13:30 to 14:00
-        ; (available Dylan ts13-14)
-        (available Dylan ts14-15)
-        (available Dylan ts15-16)
-        (available Dylan ts16-17)
+  ; Initial state: assume all three participants are free across all slots
+  (:init
+     (free Thomas t9)  (free Thomas t10) (free Thomas t11) (free Thomas t12)
+     (free Thomas t13) (free Thomas t14) (free Thomas t15) (free Thomas t16)
 
-        ;; Jerry's availability
-        (available Jerry ts09-10)
-        (available Jerry ts10-11)
-        (available Jerry ts11-12)
-        (available Jerry ts12-13)
-        (available Jerry ts13-14)
-        (available Jerry ts14-15)
-        (available Jerry ts15-16)
-        (available Jerry ts16-17)
-    )
+     (free Jerry t9)   (free Jerry t10)  (free Jerry t11)  (free Jerry t12)
+     (free Jerry t13)  (free Jerry t14)  (free Jerry t15)  (free Jerry t16)
 
-    (:goal
-        (exists (?t - time-slot)
-            (meeting-scheduled ?t)
-        )
-    )
+     (free Dylan t9)   (free Dylan t10)  (free Dylan t11)  (free Dylan t12)
+     (free Dylan t13)  (free Dylan t14)  (free Dylan t15)  (free Dylan t16)
+
+     ; No meeting scheduled initially
+     ; (meeting-scheduled t*) is false by default
+  )
+
+  ; Goal: schedule a 60-minute meeting at 11:00-12:00 (t11)
+  (:goal (meeting-scheduled t11))
 )

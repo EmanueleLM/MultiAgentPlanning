@@ -1,56 +1,112 @@
-(define (domain integrated_meeting_schedule)
-  (:requirements :strips :fluents :durative-actions)
-
+(define (domain integrated-meeting)
+  (:requirements :typing :durative-actions :numeric-fluent)
   (:types location person)
 
+  ;; location constants (domain-level)
+  (:constants Presidio MarinaDistrict - location)
+
   (:predicates
-    (at ?person - person ?loc - location)
-    (can_meet ?person - person)
-    (meeting_successful)
+    (at ?p - person ?l - location)
+    (met ?p - person ?q - person)
+    (met-jessica) ; special predicate from Agent A's domain
   )
 
-  (:functions
-    (current-time)
+  (:functions (time) - number)
+
+  ;; Agent A: travel from Presidio to MarinaDistrict (durative, 10 minutes)
+  (:durative-action travel-presidio-to-marina-A
+     :parameters (?p - person)
+     :duration (= ?dur 10)
+     :condition (and
+       (at start (at ?p Presidio))
+     )
+     :effect (and
+       (at end (not (at ?p Presidio)))
+       (at end (at ?p MarinaDistrict))
+       (increase (time) by 10)
+     )
   )
 
-  ;; Agent 1 Actions
-  (:durative-action agent1-travel
-    :parameters (?from - location ?to - location)
-    :duration (= ?duration 10)
-    :condition (and (at start (>= (current-time) 0)) (at start (at visitor ?from)))
-    :effect (and 
-      (at start (decrease (current-time) 10))
-      (at end (not (at visitor ?from)))
-      (at end (at visitor ?to))
-    )
+  ;; Agent A: travel from MarinaDistrict to Presidio (durative, 10 minutes)
+  (:durative-action travel-marina-to-presidio-A
+     :parameters (?p - person)
+     :duration (= ?dur 10)
+     :condition (and
+       (at start (at ?p MarinaDistrict))
+     )
+     :effect (and
+       (at end (not (at ?p MarinaDistrict)))
+       (at end (at ?p Presidio))
+       (increase (time) by 10)
+     )
   )
 
-  (:durative-action agent1-meet
-    :parameters (?person - person ?loc - location)
-    :duration (>= ?duration 60)
-    :condition (and
-      (at start (can_meet ?person))
-      (at start (at visitor ?loc))
-      (at start (at ?person ?loc))
-    )
-    :effect (at end (meeting_successful))
+  ;; Agent A: wait 5 minutes at MarinaDistrict to align with Jessica's window
+  (:durative-action wait5-marina-A
+     :parameters (?p - person)
+     :duration (= ?dur 5)
+     :condition (and
+       (at start (at ?p MarinaDistrict))
+     )
+     :effect (increase (time) by 5)
   )
 
-  ;; Agent 2 Actions (Identified with Agent2 prefix)
-  (:durative-action agent2-travel
-    :parameters (?from - location ?to - location)
-    :duration (= ?duration 10)
-    :condition (and (at start (at Presidio)))
-    :effect (and 
-      (at end (not (at Presidio)))
-      (at end (at MarinaDistrict))
-    )
+  ;; Agent A: Meet Jessica for 60 minutes at MarinaDistrict with time window constraints
+  (:durative-action meet-jessica-A
+     :parameters (?p - person ?q - person)
+     :duration (= ?dur 60)
+     :condition (and
+        (at start (at ?p MarinaDistrict))
+        (at start (at ?q MarinaDistrict))
+        (over all (at ?p MarinaDistrict))
+        (over all (at ?q MarinaDistrict))
+        (at start (>= (time) 15))
+        (at start (<= (time) 465))
+     )
+     :effect (at end (met-jessica))
   )
 
-  (:durative-action agent2-meet
-    :parameters ()
-    :duration (>= ?duration 60)
-    :condition (and (at start (at MarinaDistrict)))
-    :effect (at end (meeting_successful))
+  ;; Agent B: travel from Presidio to MarinaDistrict (durative, 10 minutes)
+  (:durative-action travel-presidio-to-marina-B
+     :parameters (?p - person)
+     :duration (= ?dur 10)
+     :condition (and
+       (at start (at ?p Presidio))
+     )
+     :effect (and
+       (at end (not (at ?p Presidio)))
+       (at end (at ?p MarinaDistrict))
+       (increase (time) by 10)
+     )
+  )
+
+  ;; Agent B: travel from MarinaDistrict to Presidio (durative, 10 minutes)
+  (:durative-action travel-marina-to-presidio-B
+     :parameters (?p - person)
+     :duration (= ?dur 10)
+     :condition (and
+       (at start (at ?p MarinaDistrict))
+     )
+     :effect (and
+       (at end (not (at ?p MarinaDistrict)))
+       (at end (at ?p Presidio))
+       (increase (time) by 10)
+     )
+  )
+
+  ;; Agent B: Meeting action between two persons (durative, 60 minutes)
+  ;; This is kept distinct from Agent A's meet to preserve action distinction
+  (:durative-action meet-B
+     :parameters (?p - person ?q - person)
+     :duration (= ?dur 60)
+     :condition (and
+        (at start (at ?p MarinaDistrict))
+        (at start (at ?q MarinaDistrict))
+        (over all (at ?p MarinaDistrict))
+        (over all (at ?q MarinaDistrict))
+     )
+     :effect (and
+        (at end (met ?p ?q))
+     )
   )
 )

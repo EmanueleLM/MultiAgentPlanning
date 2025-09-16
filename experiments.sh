@@ -1,0 +1,8 @@
+#!/bin/bash
+
+datasets=("calendar_scheduling" "meeting_planning" "trip_planning")
+
+for data in "${datasets[@]}"; do
+    echo "Running benchmark.py with $data"
+    python benchmark.py --dataset "$data" --model_json gpt-5-mini --model_plan gpt-5-nano --num_experiments 30 --budget 5
+done

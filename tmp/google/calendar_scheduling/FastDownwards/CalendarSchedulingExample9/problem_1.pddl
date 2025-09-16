@@ -1,40 +1,33 @@
-(define (problem integrated_schedule_meeting_problem)
-    (:domain integrated_meeting_scheduler)
+(define (problem meeting-3way)
+  (:domain calendar-meeting)
+  (:objects diane kelly deborah - person
+            slot_0900_0930 slot_0930_1000 slot_1000_1030 slot_1030_1100
+            slot_1100_1130 slot_1130_1200 slot_1200_1230 slot_1230_1300
+            slot_1300_1330 slot_1330_1400 slot_1400_1430 slot_1430_1500
+            slot_1500_1530 slot_1530_1600 slot_1600_1630 slot_1630_1700 - slot)
+  (:init
+     (busy diane_slot_0900_0930)
+     (busy diane slot_1200_1230)
+     (busy diane slot_1430_1500)
+     (busy diane slot_1500_1530)
 
-    (:objects
-        diane deborah kelly - person
-        slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8 slot9 slot10 slot11 slot12 slot13 slot14 slot15 - time-slot
-    )
-    
-    (:init
-        (free diane slot1) (free deborah slot1)
-        (free diane slot2) (free deborah slot2)
-        (free diane slot3) (free deborah slot3)
-        (free diane slot4) (free deborah slot4)
-        (free diane slot5) (free deborah slot5)
-        (free diane slot6) (free deborah slot6)
-        (free diane slot7) (free deborah slot7)
-        (free diane slot8) (free deborah slot8)
-        (free diane slot9) (free deborah slot9)
-        (free diane slot10) (free deborah slot10)
-        (free diane slot11) (free deborah slot11)
-        (free diane slot12) (free deborah slot12)
+     (busy deborah slot_0900_0930)
+     (busy deborah slot_1000_1030)
+     (busy deborah slot_1030_1100)
+     (busy deborah slot_1100_1130)
+     (busy deborah slot_1130_1200)
+     (busy deborah slot_1200_1230)
+     (busy deborah slot_1230_1300)
+     (busy deborah slot_1300_1330)
+     (busy deborah slot_1330_1400)
+     (busy deborah slot_1430_1500)
+     (busy deborah slot_1500_1530)
+     (busy deborah slot_1530_1600)
+     (busy deborah slot_1600_1630)
+     (busy deborah slot_1630_1700)
 
-        (available diane slot1) (available kelly slot1) (available deborah slot1)
-        (available diane slot2) (available deborah slot2)
-        (available diane slot3) (available kelly slot3) (available deborah slot3)
-        (available deborah slot4) (available kelly slot5)
-        (available deborah slot5) (available kelly slot7)
-        (available deborah slot6) 
-        (available deborah slot7) (available kelly slot9)
-        (available deborah slot8) 
-        (available deborah slot9) (available kelly slot11)
-        (available deborah slot10) 
-        (available deborah slot11) 
-        (available deborah slot12) 
-    )
-    
-    (:goal
-        (meeting_scheduled)
-    )
+     (busy kelly slot_0930_1000)
+     (busy kelly slot_1030_1100)
+  )
+  (:goal (scheduled slot_1400_1430))
 )

@@ -1,39 +1,56 @@
-(define (domain CombinedMeetingScheduler)
-    (:requirements :strips :typing)
-    (:types participant time-slot hour)
-    
-    (:predicates
-        (available ?p - participant ?t - time-slot)
-        (during-work-hours ?t - time-slot)
-        (blocked ?h - hour)
-        (meeting_scheduled ?t - time-slot)
-    )
+(define (domain multi-party-meeting-domain)
+  ; Scheduling a 1-hour meeting on Monday for Arthur, Michael, and Samantha
+  ; Each participant has their own free slots and their own scheduling action.
+  (:requirements :typing :strips)
+  (:types
+    person slot
+  )
 
-    (:action participant1_schedule_meeting
-        :parameters (?t - time-slot)
-        :precondition (and
-            (during-work-hours ?t)
-            (available Arthur ?t)
-            (not (meeting_scheduled ?t))
-        )
-        :effect (meeting_scheduled ?t)
-    )
+  (:predicates
+    ; Free status per person and slot
+    (free-arthur ?s - slot)
+    (free-michael ?s - slot)
+    (free-samantha ?s - slot)
 
-    (:action participant2_schedule_meeting
-        :parameters (?s - time-slot)
-        :precondition (and
-            (available_slot ?s)
-            (not (meeting_scheduled ?s))
-        )
-        :effect (meeting_scheduled ?s)
-    )
+    ; Per-person scheduling flag for a given slot
+    (scheduled-arthur ?s - slot)
+    (scheduled-michael ?s - slot)
+    (scheduled-samantha ?s - slot)
 
-    (:action participant3_schedule_meeting
-        :parameters (?start - hour)
-        :precondition (and
-            (not (blocked ?start))
-            (not (blocked (+ ?start 1)))
-        )
-        :effect (meeting_scheduled ?start)
-    )
+    ; A meeting has been scheduled at a given slot (shared coordination)
+    (meeting-at ?s - slot)
+  )
+
+  ; Action: Arthur schedules a meeting at a given slot
+  (:action schedule-arthur-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-arthur ?s)
+                        (not (scheduled-arthur ?s))
+                        (not (meeting-at ?s)))
+     :effect (and (not (free-arthur ?s))
+                  (scheduled-arthur ?s)
+                  (meeting-at ?s))
+  )
+
+  ; Action: Michael schedules a meeting at a given slot
+  (:action schedule-michael-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-michael ?s)
+                        (not (scheduled-michael ?s))
+                        (not (meeting-at ?s)))
+     :effect (and (not (free-michael ?s))
+                  (scheduled-michael ?s)
+                  (meeting-at ?s))
+  )
+
+  ; Action: Samantha schedules a meeting at a given slot
+  (:action schedule-samantha-at-slot
+     :parameters (?s - slot)
+     :precondition (and (free-samantha ?s)
+                        (not (scheduled-samantha ?s))
+                        (not (meeting-at ?s)))
+     :effect (and (not (free-samantha ?s))
+                  (scheduled-samantha ?s)
+                  (meeting-at ?s))
+  )
 )

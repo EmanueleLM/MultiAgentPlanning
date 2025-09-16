@@ -1,39 +1,27 @@
-(define (domain integrated_meeting_scheduler)
-  (:requirements :strips :typing)
-  
-  (:types 
-    time-slot
-  )
-  
+(define (domain multi-agent-meeting-scheduler)
+  (:requirements :typing)
+  (:types timeSlot)
   (:predicates
-    ;; Agent 1 predicates
-    (available ?slot - time-slot)
-    (meeting-scheduled ?slot - time-slot)
-    
-    ;; Agent 2 predicates
-    (scheduled ?t - time-slot)
-    
-    ;; Agent 3 predicates
-    (free ?slot - time-slot)
-    (preferred ?slot - time-slot)
-    (blocked ?slot - time-slot)
+     (free-roy ?t - timeSlot)
+     (free-kathryn ?t - timeSlot)
+     (free-amy ?t - timeSlot)
+     (scheduled-roy ?t - timeSlot)
+     (scheduled-kathryn ?t - timeSlot)
+     (scheduled-amy ?t - timeSlot)
   )
-  
-  (:action schedule_agent1
-    :parameters (?slot - time-slot)
-    :precondition (available ?slot)
-    :effect (and (meeting-scheduled ?slot) (not (available ?slot)))
+  (:action schedule-roy
+     :parameters (?t - timeSlot)
+     :precondition (free-roy ?t)
+     :effect (and (not (free-roy ?t)) (scheduled-roy ?t))
   )
-  
-  (:action schedule_agent2
-    :parameters (?t - time-slot)
-    :precondition (available ?t)
-    :effect (and (scheduled ?t) (not (available ?t)))
+  (:action schedule-kathryn
+     :parameters (?t - timeSlot)
+     :precondition (free-kathryn ?t)
+     :effect (and (not (free-kathryn ?t)) (scheduled-kathryn ?t))
   )
-  
-  (:action schedule_agent3
-    :parameters (?slot - time-slot)
-    :precondition (and (free ?slot) (preferred ?slot))
-    :effect (not (free ?slot))
+  (:action schedule-amy
+     :parameters (?t - timeSlot)
+     :precondition (free-amy ?t)
+     :effect (and (not (free-amy ?t)) (scheduled-amy ?t))
   )
 )

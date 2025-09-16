@@ -1,0 +1,11 @@
+(define (problem monday-meeting-orchestrated)
+  (:domain calendar-scheduling)
+  (:init
+     (free billy t12_00)
+     (free maria t12_00)
+     (free william t12_00)
+     (not (meeting-at t12_00))
+     (not (meeting-scheduled))
+  )
+  (:goal (meeting-scheduled))
+)

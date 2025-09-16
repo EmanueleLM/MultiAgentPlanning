@@ -1,25 +1,14 @@
-```lisp
-(define (problem coordinate_meeting_with_betty)
-  (:domain integrated_meeting_planner)
+(define (problem meeting-problem-two-agents)
+  (:domain betty-meet-two-agents)
 
-  (:objects
-    richmond_district financial_district - location
-    you betty - person
-  )
+  ; No explicit objects section is needed if constants are used in the domain.
+  ; The domain defines constants: you, betty (agents) and Richmond, Financial (locations).
 
   (:init
-    (at you richmond_district)
-    (at betty financial_district)
-    (available_for_meeting betty)
-    (can-meet-betty you)
-    ;; Maintain travel and meeting constraints 
-    ;; Treat the meeting from travel times given in both agents’ inputs
+     (at you Richmond)      ; You start at Richmond
+     (at betty Financial)   ; Betty starts at Financial
+     (= (time) 540)          ; Start at 09:00 (540 minutes after midnight)
   )
 
-  (:goal
-    (meeting-minimum-time-satisfied)
-  )
-  
-  (:metric minimize (total-time))
+  (:goal (met))
 )
-```

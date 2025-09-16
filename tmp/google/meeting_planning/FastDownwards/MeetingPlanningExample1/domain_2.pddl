@@ -1,29 +1,45 @@
-(define (domain integrated_meeting_planner)
-  (:requirements :strips :typing)
-  (:types location person)
+(define (domain betty-meet-two-agents)
+  (:requirements :typing)
+  (:types agent location)
+
+  (:constants
+     you betty - agent
+     Richmond Financial - location)
+
   (:predicates
-    (at ?p - person ?l - location)
-    (meeting-minimum-time-satisfied)
-    (can-meet-betty ?p - person)
-    (available_for_meeting ?p - person)
+     (at ?a - agent ?l - location)
+     (met)
   )
-  (:action travel
-    :parameters (?p - person ?from - location ?to - location)
-    :precondition (at ?p ?from)
-    :effect (and
-      (at ?p ?to)
-      (not (at ?p ?from))
-    )
-  )
-  
+
+  (:action travel-you-to-financial
+     :parameters ()
+     :precondition (at you Richmond)
+     :effect (and
+               (not (at you Richmond))
+               (at you Financial)))
+  (:action travel-you-to-richmond
+     :parameters ()
+     :precondition (at you Financial)
+     :effect (and
+               (not (at you Financial))
+               (at you Richmond)))
+  (:action travel-betty-to-financial
+     :parameters ()
+     :precondition (at betty Richmond)
+     :effect (and
+               (not (at betty Richmond))
+               (at betty Financial)))
+  (:action travel-betty-to-richmond
+     :parameters ()
+     :precondition (at betty Financial)
+     :effect (and
+               (not (at betty Financial))
+               (at betty Richmond)))
   (:action meet-betty
-    :parameters (?p - person)
-    :precondition (and
-      (at ?p financial_district)
-      (at betty financial_district)
-      (available_for_meeting betty)
-      (can-meet-betty ?p)
-    )
-    :effect (meeting-minimum-time-satisfied)
+     :parameters ()
+     :precondition (and
+       (at you Financial)
+       (at betty Financial))
+     :effect (met)
   )
 )

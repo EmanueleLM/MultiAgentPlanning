@@ -50,8 +50,8 @@ class PDDLParser(Parser):
         Parse either from a file path (default) or directly from a PDDL string.
 
         Args:
-            source: Either a file path (if from_file=True) or a PDDL text string.
-            from_file: If True, treat `source` as a path to read from disk.
+            source (str): Either a file path (if from_file=True) or a PDDL text string.
+            from_file (bool): If True, treat `source` as a path to read from disk.
                        If False, treat `source` as raw PDDL text.
 
         Returns:

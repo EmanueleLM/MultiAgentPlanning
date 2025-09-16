@@ -1,0 +1,70 @@
+(define (problem schedule-meeting-multiagent)
+  (:domain calendar-scheduling)
+
+  (:objects t09_00 t09_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30
+            t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 - slot)
+
+  (:init
+     ;; Joyce availability
+     (joyce_available t09_00)
+     (joyce_available t09_30)
+     (joyce_available t10_00)
+     (joyce_available t10_30)
+     (joyce_available t11_30)
+     (joyce_available t12_00)
+     (joyce_available t12_30)
+     (joyce_available t13_00)
+     (joyce_available t14_00)
+     (joyce_available t16_30)
+
+     (not (joyce_available t11_00))
+     (not (joyce_available t13_30))
+     (not (joyce_available t14_30))
+     (not (joyce_available t15_00))
+     (not (joyce_available t15_30))
+     (not (joyce_available t16_00))
+
+     ;; Christine cannot meet before 12:00
+     (christine_available t12_00)
+     (christine_available t12_30)
+     (christine_available t13_00)
+     (christine_available t13_30)
+     (christine_available t14_00)
+     (christine_available t14_30)
+     (christine_available t15_00)
+     (christine_available t15_30)
+     (christine_available t16_00)
+     (christine_available t16_30)
+
+     (not (christine_available t09_00))
+     (not (christine_available t09_30))
+     (not (christine_available t10_00))
+     (not (christine_available t10_30))
+     (not (christine_available t11_00))
+     (not (christine_available t11_30))
+
+     ;; Alexander availability (based on provided busy times)
+     (alexander_available t11_00)
+     (alexander_available t11_30)
+     (alexander_available t12_30)
+     (alexander_available t13_00)
+     (alexander_available t15_00)
+     (alexander_available t16_00)
+
+     (not (alexander_available t09_00))
+     (not (alexander_available t09_30))
+     (not (alexander_available t10_00))
+     (not (alexander_available t10_30))
+     (not (alexander_available t12_00))
+     (not (alexander_available t13_30))
+     (not (alexander_available t14_00))
+     (not (alexander_available t14_30))
+     (not (alexander_available t15_30))
+     (not (alexander_available t16_30))
+  )
+
+  (:goal (or
+     (meeting_at t12_30)
+     (meeting_at t13_00)
+  ))
+)

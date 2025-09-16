@@ -1,15 +1,49 @@
-(define (problem calendar-problem)
-  (:domain calendar-scheduling)
-  (:objects 
-    heather nicholas zachary - agent
-    9-9:30 9:30-10 10-10:30 10:30-11 11-11:30 11:30-12 12-12:30 12:30-1 1-1:30 1:30-2 2-2:30 2:30-3 3-3:30 3:30-4 4-4:30 4:30-5 - time)
-  (:init 
-    (available nicholas 9-9:30) (available zackary 10-10:30) (available zachary 11-11:30)
-    ;; Add predicates for available times based on agent knowledge
+(define (problem meet_monday)
+  (:domain meeting-scheduler)
+
+  (:objects
+     Heather Nicholas Zachary - person
+     t0930_1000 t1000_1030 t1100_1130 t1130_1200 t1200_1230 t1230_1300
+     t1400_1430 t1500_1530 t1530_1600 t1630_1700 - time
   )
-  (:goal 
-    (and (meeting-scheduled heather)
-         (meeting-scheduled nicholas)
-         (meeting-scheduled zachary))
+
+  (:init
+     ;; Heather's free slots
+     (free_heather t0930_1000)
+     (free_heather t1000_1030)
+     (free_heather t1100_1130)
+     (free_heather t1130_1200)
+     (free_heather t1200_1230)
+     (free_heather t1230_1300)
+     (free_heather t1400_1430)
+     (free_heather t1500_1530)
+     (free_heather t1530_1600)
+     (free_heather t1630_1700)
+
+     ;; Nicholas's free slots
+     (free_nicholas t0930_1000)
+     (free_nicholas t1000_1030)
+     (free_nicholas t1100_1130)
+     (free_nicholas t1130_1200)
+     (free_nicholas t1200_1230)
+     (free_nicholas t1230_1300)
+     (free_nicholas t1400_1430)
+     (free_nicholas t1500_1530)
+     (free_nicholas t1530_1600)
+     (free_nicholas t1630_1700)
+
+     ;; Zachary's free slots
+     (free_zachary t0930_1000)
+     (free_zachary t1000_1030)
+     (free_zachary t1100_1130)
+     (free_zachary t1130_1200)
+     (free_zachary t1200_1230)
+     (free_zachary t1230_1300)
+     (free_zachary t1400_1430)
+     (free_zachary t1500_1530)
+     (free_zachary t1530_1600)
+     (free_zachary t1630_1700)
   )
+
+  (:goal (meeting_at t1630_1700))
 )

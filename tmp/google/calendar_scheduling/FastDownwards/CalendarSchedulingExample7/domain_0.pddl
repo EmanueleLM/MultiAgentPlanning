@@ -1,48 +1,40 @@
-(define (domain integrated-scheduling)
-  (:requirements :strips :typing)
-  
-  (:types person time-slot)
-  
-  (:predicates
-    (available ?p - person ?s - time-slot)
-    (meeting-scheduled ?s - time-slot)
-    (time-slot ?s - time-slot)
-    (time-slot-preference ?p - person ?s - time-slot)
-  )
-  
+(define (domain meeting-scheduler)
+  (:requirements :typing)
+  (:types person time)
+
+  ;; Predicates to model each person's availability and the scheduled meeting
+  (free_heather ?t - time)
+  (free_nicholas ?t - time)
+  (free_zachary ?t - time)
+  (meeting_at ?t - time)
+
+  ;; Heather's scheduling action
   (:action schedule-meeting-heather
-    :parameters (?s - time-slot)
-    :precondition
-      (and
-        (available heather ?s)
-        (available nicholas ?s)
-        (available zachary ?s)
-        (not (meeting-scheduled ?s))
-      )
-    :effect (meeting-scheduled ?s)
+    :parameters (?t - time)
+    :precondition (and (not (meeting_at ?t))
+                       (free_heather ?t)
+                       (free_nicholas ?t)
+                       (free_zachary ?t))
+    :effect (meeting_at ?t)
   )
 
+  ;; Nicholas's scheduling action
   (:action schedule-meeting-nicholas
-    :parameters (?s - time-slot)
-    :precondition
-      (and
-        (available heather ?s)
-        (available nicholas ?s)
-        (available zachary ?s)
-        (not (meeting-scheduled ?s))
-      )
-    :effect (meeting-scheduled ?s)
+    :parameters (?t - time)
+    :precondition (and (not (meeting_at ?t))
+                       (free_heather ?t)
+                       (free_nicholas ?t)
+                       (free_zachary ?t))
+    :effect (meeting_at ?t)
   )
 
+  ;; Zachary's scheduling action
   (:action schedule-meeting-zachary
-    :parameters (?s - time-slot)
-    :precondition
-      (and
-        (available heather ?s)
-        (available nicholas ?s)
-        (available zachary ?s)
-        (not (meeting-scheduled ?s))
-      )
-    :effect (meeting-scheduled ?s)
+    :parameters (?t - time)
+    :precondition (and (not (meeting_at ?t))
+                       (free_heather ?t)
+                       (free_nicholas ?t)
+                       (free_zachary ?t))
+    :effect (meeting_at ?t)
   )
 )

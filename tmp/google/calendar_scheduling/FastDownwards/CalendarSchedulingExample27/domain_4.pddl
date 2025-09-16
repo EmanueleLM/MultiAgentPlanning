@@ -1,0 +1,30 @@
+(define (domain integrated-meeting-domain)
+  (:requirements :typing :negative-preconditions)
+  (:types person slot)
+
+  (:predicates
+    (free_A1_p1 ?s - slot)
+    (free_A1_p2 ?s - slot)
+    (slot_free ?s - slot)
+    (available_A2_alice ?s - slot)
+    (available_A2_bob ?s - slot)
+    (free_A3_p1 ?s - slot)
+    (free_A3_p2 ?s - slot)
+    (joint_meeting_slot ?s - slot)
+  )
+
+  (:action schedule_meeting
+     :parameters (?s - slot)
+     :precondition (and
+        (free_A1_p1 ?s)
+        (free_A1_p2 ?s)
+        (slot_free ?s)
+        (available_A2_alice ?s)
+        (available_A2_bob ?s)
+        (free_A3_p1 ?s)
+        (free_A3_p2 ?s)
+        (not (joint_meeting_slot ?s))
+     )
+     :effect (joint_meeting_slot ?s)
+  )
+)

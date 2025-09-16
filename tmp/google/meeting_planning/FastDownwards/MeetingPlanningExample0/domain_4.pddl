@@ -1,43 +1,23 @@
-(define (domain coordinated-meeting)
-  (:requirements :strips :typing)
-  (:types person location time)
+(define (domain meet-steph-twoagents)
+
+  (:requirements :typing)
+
+  (:types person location)
+
   (:predicates
-    (at ?p - person ?l - location)
-    (available ?p - person ?t - time)
-    (met-for-minimum-time ?p1 - person ?p2 - person)
-    (time ?t - time)
-    (time-greater-equal ?t1 - time ?t2 - time)
-    (travel-time-you ?from - location ?to - location ?start - time ?end - time)
-    (travel-time-stephanie ?from - location ?to - location ?start - time ?end - time)
+     (at ?p - person ?l - location)
+     (met ?pl - person ?sp - person)
   )
+
   (:action travel
-    :parameters (?p - person ?from - location ?to - location ?start - time ?end - time)
-    :precondition (and
-      (at ?p ?from)
-      (time ?start)
-      (time ?end)
-      (time-greater-equal ?end ?start)
-      (or (and (travel-time-you ?from ?to ?start ?end) (= ?p you))
-          (and (travel-time-stephanie ?from ?to ?start ?end) (= ?p stephanie)))
-    )
-    :effect (and
-      (not (at ?p ?from))
-      (at ?p ?to)
-    )
+     :parameters (?p - person ?from - location ?to - location)
+     :precondition (at ?p ?from)
+     :effect (and (not (at ?p ?from)) (at ?p ?to))
   )
-  (:action meet
-    :parameters (?p1 - person ?p2 - person ?loc - location ?start - time ?end - time)
-    :precondition (and
-      (at ?p1 ?loc)
-      (at ?p2 ?loc)
-      (available ?p1 ?start)
-      (available ?p2 ?end)
-      (time ?start)
-      (time ?end)
-      (time-greater-equal ?end ?start)
-      (= ?p1 you)
-      (= ?p2 stephanie)
-    )
-    :effect (met-for-minimum-time ?p1 ?p2)
+
+  (:action meet-steph
+     :parameters (?pl - person ?sp - person ?l - location)
+     :precondition (and (at ?pl ?l) (at ?sp ?l))
+     :effect (met ?pl ?sp)
   )
 )

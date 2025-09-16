@@ -1,38 +1,20 @@
-(define (problem meeting-scheduling-problem)
-    (:domain meeting-scheduling)
-    
-    (:objects
-        Thomas Dylan Jerry - person
-        ts09-10 ts10-11 ts11-12 ts12-13 ts13-14 ts14-15 ts15-16 ts16-17 - time-slot
-    )
+(define (problem monday-meeting)
+  (:domain multi-agent-meeting)
 
-    (:init
-        ;; Thomas's availability
-        (available Thomas ts09-10)
-        (available Thomas ts10-11)
-        (available Thomas ts11-12)
-        (available Thomas ts12-13)
-        (available Thomas ts13-14)
-        (available Thomas ts14-15)
-        (available Thomas ts15-16)
-        (available Thomas ts16-17)
+  (:objects
+     t9 t10 t11 t12 t13 t14 t15 t16 - time
+  )
 
-        ;; Dylan's availability
-        (available Dylan ts09-10)
-        (available Dylan ts11-12)
-        (available Dylan ts12-13)
-        (available Dylan ts14-15)
-        (available Dylan ts15-16)
-        (available Dylan ts16-17)
+  (:init
+     (free thomas t9)  (free thomas t10) (free thomas t11) (free thomas t12)
+     (free thomas t13) (free thomas t14) (free thomas t15) (free thomas t16)
 
-        ;; Jerry's availability
-        (available Jerry ts11-12)
-        (available Jerry ts14-15)
-    )
+     (free jerry t9)   (free jerry t10)  (free jerry t11)  (free jerry t12)
+     (free jerry t13)  (free jerry t14)  (free jerry t15)  (free jerry t16)
 
-    (:goal
-        (exists (?t - time-slot)
-            (meeting-scheduled ?t)
-        )
-    )
+     (free dylan t9)   (free dylan t10)  (free dylan t11)  (free dylan t12)
+     (free dylan t13)  (free dylan t14)  (free dylan t15)  (free dylan t16)
+  )
+
+  (:goal (meeting-scheduled t11))
 )

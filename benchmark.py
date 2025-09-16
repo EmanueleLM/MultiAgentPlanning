@@ -10,6 +10,7 @@ check if it is correct by comparing it to the "golden_plan".
 """
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -190,7 +191,7 @@ if __name__ == "__main__":
 
         else:
             print("Generating the first plan.")
-            responses = planner.plan(model_plan, env)
+            responses = asyncio.run(planner.plan(model_plan, env))
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
 

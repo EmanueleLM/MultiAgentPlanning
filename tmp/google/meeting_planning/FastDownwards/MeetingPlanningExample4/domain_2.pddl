@@ -1,0 +1,52 @@
+(define (domain integrated_meeting_schedule)
+  (:requirements :strips :typing)
+
+  (:types location person)
+
+  (:predicates
+    (at ?person - person ?loc - location)
+    (can_meet ?person - person)
+    (meeting_successful)
+  )
+
+  (:functions
+    (current-time)
+  )
+
+  ;; Agent 1 Actions
+  (:action agent1-travel
+    :parameters (?from - location ?to - location)
+    :precondition (and (>= (current-time) 10) (at visitor ?from))
+    :effect (and 
+      (assign (current-time) (- (current-time) 10))
+      (not (at visitor ?from))
+      (at visitor ?to)
+    )
+  )
+
+  (:action agent1-meet
+    :parameters (?person - person ?loc - location)
+    :precondition (and
+      (can_meet ?person)
+      (at visitor ?loc)
+      (at ?person ?loc)
+    )
+    :effect (meeting_successful)
+  )
+
+  ;; Agent 2 Actions (Identified with Agent2 prefix)
+  (:action agent2-travel
+    :parameters (?from - location ?to - location)
+    :precondition (at Presidio)
+    :effect (and 
+      (not (at Presidio))
+      (at MarinaDistrict)
+    )
+  )
+
+  (:action agent2-meet
+    :parameters ()
+    :precondition (at MarinaDistrict)
+    :effect (meeting_successful)
+  )
+)

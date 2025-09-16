@@ -19,7 +19,7 @@ from src.llm_plan.agent import AgentNaturalLanguage
 from src.llm_plan.config import ENVIRONMENTS_JSON_PATH
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
-from src.llm_plan.llm import ChatGPT, GPT_OSS
+from src.llm_plan.llm import ChatGPT, GPT_OSS, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
@@ -35,8 +35,12 @@ MODELS = {
                "persistent": False},
     "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"),
                "persistent": False},
-    "gpt-oss-120B": {"model": GPT_OSS("gpt-oss-120B"),
-               "persistent": True},
+    "gemini-2.5-flash": {"model": Gemini("gemini-2.5-flash"),
+                "persistent": False},
+    "gemini-2.5-pro": {"model": Gemini("gemini-2.5-pro"),
+                "persistent": False},
+    # "gpt-oss-120b": {"model": GPT_OSS("gpt-oss-120b"),
+    #             "persistent": True},
 }
 
 
@@ -105,22 +109,30 @@ if __name__ == "__main__":
     dataset_name = args.dataset
     num_experiments = args.num_experiments
     budget = args.budget
-    model_json = MODELS[args.model_json]["model"]
-    model_plan = MODELS[args.model_plan]["model"]
     base_agent = args.base_agent
     solver = SOLVER[args.target_solver]
     debug = args.debug
+    
+    # Init LLMs
+    if args.model_json ==  args.model_plan:
+        model_json = MODELS[args.model_json]["model"]
+        model_plan = model_json
+    else:
+        model_json = MODELS[args.model_json]["model"]
+        model_plan = MODELS[args.model_plan]["model"]
 
     format = "json"
     pddl_parser = PDDLParser()
     full_debug_logs = ""
 
     with open(f"./data/natural_plan/{args.dataset}.json", "r") as f:
-        calendar_scheduling_data = json.load(f)
+        scheduling_data = json.load(f)
+    
+    problem_name = list(scheduling_data.keys())[0][:-1]
 
     for i in range(num_experiments):
-        k = f"calendar_scheduling_example_{i}"
-        data = calendar_scheduling_data[k]
+        k = f"{problem_name}{i}"
+        data = scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
 
         # Full logs

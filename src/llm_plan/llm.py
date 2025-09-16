@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from google import genai
 from openai import OpenAI
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -45,11 +46,12 @@ class GPT_OSS(LLM):
         Initialize the GPT-OSS model.
 
         Args:
+            model_name (str): The model name as it appears in the HuggingFace models. Defaults to "openai/gpt-oss-120b".
             map (str): The device map for the model, default is "auto". Other options are "cpu", "cuda", etc.
             reasoning (str): The reasoning level for the model, default is "High". "Medium" and "Low" are also options.
             Keep in mind that the reasoning level is passed via the system prompt.
         """
-        super().__init__(model_name)
+        super().__init__(model_name=model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.reasoning = reasoning.lower() if reasoning else "medium"
 
@@ -71,19 +73,23 @@ class GPT_OSS(LLM):
 
         except Exception as e:
             return f"Error while generating a response: {e}"
+        
 
 class GPT_OSS_Ollama(LLM):
-    def __init__(self, reasoning: str | None = "High"):
+    def __init__(self, 
+                 model_name: str = "gpt-oss-20b", 
+                 reasoning: str | None = "High"):
         """
         Initialize the GPT_Ollama model.
         Instructions can be found here to init the model:
         https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
         Args:
+            model_name (str): The model name as it appears in the Ollama models. Defaults to "gpt-oss-20b".
             reasoning (str): The reasoning level for the model, default is "High". "Medium" and "Low" are also options.
             Keep in mind that the reasoning level is passed via the system prompt.
         """
-        super().__init__("gpt-oss-20B-ollama")
+        super().__init__(model_name=model_name)
         _url = "https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama"
         self.reasoning = (
             "Reasoning: " + reasoning + "\n"
@@ -155,6 +161,39 @@ class ChatGPT(LLM):
                 "No response generated."
                 if response.choices[0].message.content is None
                 else response.choices[0].message.content
+            )
+
+        except Exception as e:
+            return f"Error while generating a response: {e}"
+        
+class Gemini(LLM):
+    def __init__(self, model_name: str = "gemini-2.5-lite"):
+        """Load a Gemini model.
+
+        Args:
+            model_name (str, optional): The model as it appears on the Gemini APIs. Defaults to "gemini-2.5-lite".
+        """
+        super().__init__(model_name=model_name)
+
+        load_dotenv()
+        api_key = os.getenv("GEMINI_API_KEY")
+
+        try:
+            self.client = genai.Client()
+        except Exception as e:
+            print(f"Something went wrong with {model_name} initialization:\n{e}")
+
+    def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name, 
+                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
+            )
+
+            return (
+                "No response generated."
+                if response.text is None
+                else response.text
             )
 
         except Exception as e:

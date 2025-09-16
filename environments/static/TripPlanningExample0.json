@@ -1,0 +1,81 @@
+{
+    "name": "TripPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit three European cities: Florence, Barcelona, and Helsinki.",
+                "I have 14 days in total for the trip.",
+                "I would like to spend 6 days in Florence.",
+                "I want to meet a friend in Florence between day 9 and day 14.",
+                "I would like to spend 5 days in Barcelona.",
+                "I would like to spend 5 days in Helsinki."
+            ],
+            "goal": "Find a trip schedule of 14 days visiting Florence, Barcelona, and Helsinki satisfying my day allocation preferences and meeting constraint."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Direct flights exist between Barcelona and Florence.",
+                "Direct flights exist between Helsinki and Barcelona.",
+                "No direct flight exists between Helsinki and Florence."
+            ],
+            "goal": "Provide feasible sequences of direct flights and city visit order that allow visiting the three cities within 14 days and respecting traveler preferences. Only direct flights are allowed to commute between cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler and flight_planner PDDL outputs to produce a combined PDDL domain and problem for FastDownward that yields a valid 14-day trip plan using only direct flights and satisfying visit duration and meeting constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "visibility": 1
+        },
+        "public_information": [
+            "The trip duration is 14 days in total.",
+            "Cities in the itinerary are Florence, Barcelona, and Helsinki.",
+            "Only direct flights are allowed between cities.",
+            "Direct flight connections are Barcelona-Florence and Helsinki-Barcelona.",
+            "There is no direct flight between Helsinki and Florence."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_traveler",
+                "system_prompt": "You are an expert with PDDL problems targeting the FastDownward solver. You always provide a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make sure actions represent traveler stays and movements and time is modeled as days for planning.",
+                "prompt": "Your name is traveler. You are in an environment with the following public information: {environment->public_information} You have the following private knowledge: {agents->traveler->private_information} This is your planning goal: {agents->traveler->goal} Think step by step and provide a PDDL domain and a PDDL problem file that model days, city visits, durations in days, and the meeting constraint. Target FastDownward. If some information is missing, do not invent new facts, restrict the plan to the information you have. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "flight_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flight_planner",
+                "system_prompt": "You are an expert with PDDL problems targeting the FastDownward solver. You always provide a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Model flight connections as actions that require direct connectivity.",
+                "prompt": "Your name is flight_planner. You are in an environment with the following public information: {environment->public_information} You have the following private knowledge: {agents->flight_planner->private_information} This is your planning goal: {agents->flight_planner->goal} Think step by step and provide a PDDL domain and a PDDL problem file that model direct flights as actions and allowable city-to-city commutes for the traveler. Target FastDownward. If some information is missing, do not assume additional flight links. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_traveler",
+                    "pddl_flight_planner"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward solver. You always provide a PDDL domain and a PDDL problem file. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. If there are multiple agents, keep their actions distinct and clearly attributed. Integrate partial or ambiguous PDDL inputs from the agents and resolve naming mismatches without inventing facts that are not supported by the agents and public information.",
+                "prompt": "There are two agents planning to solve a trip scheduling task. You will receive their PDDL domains and problems. You have to orchestrate them to solve the following task: {agents->orchestrator->goal} Keep in mind that the PDDL they send you may be partial or contain ambiguities. A partial PDDL may partially solve a planning problem but require integration. Ambiguities may include different names for the same object. Here is the first agent's PDDL response: {pddl_traveler} Here is the second agent's PDDL response: {pddl_flight_planner} Integrate the PDDL responses to produce a combined domain and problem suitable for FastDownward. Preserve distinct actions for each agent and resolve incompatible names using the public information. Think step by step and provide a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.pddl->orchestrator.pddl",
+            "flight_planner.pddl->orchestrator.pddl"
+        ]
+    }
+}

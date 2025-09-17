@@ -188,9 +188,11 @@ class Planner:
             Tuple[str, str]: A (variable_output, result) pair.
         """
         if hasattr(model, "generate_async"):
+            print(f"[Async] Generating action for agent {variable_output}...")
             result = await model.generate_async(system_prompt=system_prompt, prompt=prompt)
         else:
             # Fallback: run sync version in a thread
+            print(f"[Sync] Generating action for agent {variable_output}...")
             result = await asyncio.to_thread(
                 model.generate_sync, system_prompt=system_prompt, prompt=prompt
             )

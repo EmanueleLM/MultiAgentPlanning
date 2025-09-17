@@ -1,1 +1,0 @@
-<domain>multi-agent-meeting-scheduler

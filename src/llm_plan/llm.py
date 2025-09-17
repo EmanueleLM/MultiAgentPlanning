@@ -145,20 +145,21 @@ class GPT_OSS_Ollama(LLM):
             return f"Error while generating a response: {e}"
 
 
+from openai import OpenAI, AsyncOpenAI
+
 class ChatGPT(LLM):
     def __init__(self, model_name: str = "gpt-4o"):
-        """Load a ChatGPT model.
-
-        Args:
-            model_name (str, optional): The model as it appears on the ChatGPT APIs. Defaults to "gpt-4o".
-        """
         super().__init__(model_name=model_name)
 
         load_dotenv()
         api_key = os.getenv("OPENAI_API_KEY")
 
         try:
+            # Sync client
             self.client = OpenAI(api_key=api_key)
+            # Async client
+            self.async_client = AsyncOpenAI(api_key=api_key)
+
             self._available_models = [m.id for m in self.client.models.list().data]
             assert model_name in self._available_models, (
                 f"Model {model_name} not found in OpenAI models."
@@ -167,44 +168,34 @@ class ChatGPT(LLM):
             print(f"Something went wrong with {model_name} initialization:\n{e}")
 
     def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        """Synchronous ChatGPT call."""
         try:
             response = self.client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": f"{system_prompt}"},
-                    {"role": "user", "content": f"{prompt}"},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
                 ],
             )
-
-            return (
-                "No response generated."
-                if response.choices[0].message.content is None
-                else response.choices[0].message.content
-            )
-
+            return response.choices[0].message.content or "No response generated."
         except Exception as e:
             return f"Error while generating a response: {e}"
-        
+
     async def generate_async(self, system_prompt: str, prompt: str) -> str:
         """Asynchronous ChatGPT call."""
         try:
-            response = await self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": f"{system_prompt}"},
-                    {"role": "user", "content": f"{prompt}"},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
                 ],
             )
-
-            return (
-                "No response generated."
-                if response.choices[0].message.content is None
-                else response.choices[0].message.content
-            )
-
+            return response.choices[0].message.content or "No response generated."
         except Exception as e:
             return f"Error while generating a response: {e}"
-        
+
+
 class Gemini(LLM):
     def __init__(self, model_name: str = "gemini-2.5-lite"):
         """Load a Gemini model.
@@ -218,37 +209,32 @@ class Gemini(LLM):
         api_key = os.getenv("GEMINI_API_KEY")
 
         try:
-            self.client = genai.Client()
+            # Sync client
+            self.client = genai.Client(api_key=api_key)
+            # Async client
+            self.async_client = genai.AsyncClient(api_key=api_key)
         except Exception as e:
             print(f"Something went wrong with {model_name} initialization:\n{e}")
 
     def generate_sync(self, system_prompt: str, prompt: str) -> str:
+        """Synchronous Gemini call."""
         try:
             response = self.client.models.generate_content(
-                model=self.model_name, 
-                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
+                model=self.model_name,
+                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:",
             )
-
-            return (
-                "No response generated."
-                if response.text is None
-                else response.text
-            )
-
+            return response.text or "No response generated."
         except Exception as e:
             return f"Error while generating a response: {e}"
-        
+
     async def generate_async(self, system_prompt: str, prompt: str) -> str:
         """Asynchronous Gemini call."""
         try:
             response = await self.async_client.models.generate_content(
-                model=self.model_name, 
-                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
+                model=self.model_name,
+                contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:",
             )
-            return (
-                "No response generated."
-                if response.text is None
-                else response.text
-            )
+            return response.text or "No response generated."
         except Exception as e:
             return f"Error while generating a response: {e}"
+

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-datasets=("calendar_scheduling" "meeting_planning" "trip_planning")
+# datasets=("calendar_scheduling" "meeting_planning" "trip_planning")
+datasets=("calendar_scheduling" "trip_planning")
 
 for data in "${datasets[@]}"; do
     echo "Running benchmark.py with $data"

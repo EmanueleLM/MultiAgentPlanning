@@ -13,10 +13,13 @@ class Hypervisor:
         self.agents = self.get_classes_from_agents()
 
         self.required_args = {
+            "human_specification": "(str) The human specification of the task.",
             "specification": "(str) The specification of the task.",
+            "target_solver": "(str) The target PDDL solver.",
             "pddl_domain": "(str) The PDDL domain that describes the specification.",
+            "pddl_plan": "(str) The PDDL plan that was generated.",
             "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-            "pddl_logs": "(str) The logs of the attempted execution with Fast Downward.",
+            "pddl_logs": "(str) The logs of the attempted execution with the solver.",
             "syntax_errors": "(str) The error message returned by a PDDL validator.",
             "history": "(list[str]) The history of the agents picked up.",
         }
@@ -27,7 +30,8 @@ class Hypervisor:
 
         self.system_prompt = inspect.cleandoc(
             """\
-            You are a hypervisor that manages multiple agents. Each agent has a specific role and capabilities.
+            You are a hypervisor that manages multiple agents. 
+            Each agent has a specific role and capabilities.
             You will read the agents' descriptions and decide which agent is best suited to handle a given task.
             You return the class you selected between <class></class> tags. 
             You always discard abstract classes and classes with abstract methods. Also, NEVER call AgentNaturalLanguage.
@@ -37,16 +41,22 @@ class Hypervisor:
             """\
             You are a hypervisor that manages multiple agents and decides which one is best suited to improve a given plan.
             
-            Given this specification in JSON format:
+            Given this human specification of a task:
+            <human_specification>{human_specification}</human_specification>
+
+            This is a plan specification, in JSON format, of the task:
             <specification>{specification}</specification>
             
-            And this PDDL domain that describes the specification:
+            Now, this PDDL domain that describes the JSON specification:
             <domain>{pddl_domain}</domain>
             
-            And this PDDL problem that instatiates the specification:
+            And this PDDL problem that instatiates the JSON specification:
             <problem>{pddl_problem}</problem>
             
-            These are the logs of the attempted execution with *Fast Downward*:
+            Now, for a {target_solver} PDDL solver, this is the PDDL plan generated for the task (the plan may be empty if no plan was found):
+            <plan>{pddl_plan}</plan>
+            
+            These are the logs of the attempted execution with the solver:
             <logs>{pddl_logs}</logs>
             
             This is the error message returned by a PDDL validator (can be empty or successful):
@@ -57,15 +67,17 @@ class Hypervisor:
             <agents>{agents}</agents>
             
             Also, here is the history of the agents you have already picked.
+            The history is useful as you want to have some diversity in the agents you pick.
             <history>{history}</history>
             
-            The history is useful as you want to have some diversity in the agents you pick.
-            For sure you want to ensure picking up at some point:
-            - an agent that fixes the syntax inconsistencies.
-            - an agent that adapts the domain and problem to the solver.
+            For sure you want to ensure picking these agents (look at the history for what you have already picked):
+            - an agent that checks whether all the agents' constraints are satisfied by the plan. Be careful to check that *all* the constraints are correctly specified in the PDDL problem.
+            - an agent that fixes the PDDL syntax inconsistencies.
+            - an agent that adapts the domain and problem to the PDDL solver.
             - an agent that ensures the current domain and problem satisfy the specification as a *multi-agent* system, where each action referes to the agent that takes it.
             
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
+            If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".
             """
         )
 
@@ -135,9 +147,12 @@ class Hypervisor:
         # Fix the plan
         print(self.agents)
         prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"],
+            pddl_plan=self.prompt_args["pddl_plan"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
             agents="\n".join(

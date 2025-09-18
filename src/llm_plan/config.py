@@ -15,11 +15,14 @@ else:
         "Configuration file 'config.json' not found in the current directory."
     )
 
+# Project folders
 PROJECT_ROOT = Path(CONFIG.get("project_root", ""))
 PACKAGE_FOLDER = Path(CONFIG.get("package_folder", ""))
 ENVIRONMENTS_PATH = Path(CONFIG.get("environments_path", ""))
 RESULTS_FOLDER = Path(CONFIG.get("results_folder", ""))
 AGENT_PYTHON_PATH = Path(CONFIG.get("agent_python_path", ""))
+
+# json paths
 ENVIRONMENTS_JSON_PATH = Path(CONFIG.get("environments_json_path", ""))
 ENVIRONMENTS_JSON_SAMPLE_PATH = Path(CONFIG.get("environments_json_sample_path", ""))
 ENVIRONMENTS_PYTHON_PATH_SAMPLE = Path(

@@ -70,105 +70,105 @@ class Agent(ABC):
         return Agent.required_args
 
 
-class AgentHallucinations(Agent):
-    required_args = {
-        "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
-        "plan": "(str) The plan to be checked for hallucinations.",
-    }
+# class AgentHallucinations(Agent):
+#     required_args = {
+#         "threshold": "(int) The severity threshold above which a hallucination is considered critical.",
+#         "plan": "(str) The plan to be checked for hallucinations.",
+#     }
 
-    def __init__(self, llm: ChatOpenAI, prompt_args: dict[str, str]):
-        """
-        This Agent detects and solves hallucinations.
-        It consists of two steps:
-        1. It Detects and marks all the hallucinations in the plan.
-        2. Solve the hallucinations whose severity is above a given threshold.
+#     def __init__(self, llm: ChatOpenAI, prompt_args: dict[str, str]):
+#         """
+#         This Agent detects and solves hallucinations.
+#         It consists of two steps:
+#         1. It Detects and marks all the hallucinations in the plan.
+#         2. Solve the hallucinations whose severity is above a given threshold.
 
-        Input:
-            llm (ChatOpenAI): The language model to use for detecting and mitigating hallucinations.
-            prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
-        """
-        super().__init__(prompt_args=prompt_args)
+#         Input:
+#             llm (ChatOpenAI): The language model to use for detecting and mitigating hallucinations.
+#             prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
+#         """
+#         super().__init__(prompt_args=prompt_args)
 
-        self.name = "AgentHallucinations"
-        self.llm = llm
+#         self.name = "AgentHallucinations"
+#         self.llm = llm
 
-        # Prompts
-        self.system_prompt_detect = inspect.cleandoc(
-            """\
-                                                    You are an agent that detects hallucinations. 
-                                                    Your task is to analyze a provided plan and its assumptions and detect any hallucinations or inconsistencies.
-                                                    """
-        )
-        self.prompt_detect = inspect.cleandoc(
-            """\
-                                             Analyze the following information and detect any hallucinations: 
-                                             <plan>{plan}</plan>
-                                             
-                                             For any potential hallucination, return a description of it and its severity, from 1 (low) to 5 (high).
-                                             If there are no evident hallucinations,there is no need to invent them.
-                                             """
-        )
+#         # Prompts
+#         self.system_prompt_detect = inspect.cleandoc(
+#             """\
+#                                                     You are an agent that detects hallucinations.
+#                                                     Your task is to analyze a provided plan and its assumptions and detect any hallucinations or inconsistencies.
+#                                                     """
+#         )
+#         self.prompt_detect = inspect.cleandoc(
+#             """\
+#                                             Analyze the following information and detect any hallucinations:
+#                                             <plan>{plan}</plan>
 
-        self.system_prompt = inspect.cleandoc(
-            """\
-                                             You are an agent that mitigates hallucinations. 
-                                             Your task is to analyze a provided plan and a list of hallucinations, 
-                                             each flagged with a severity score, from 1 (low) to 5 (high), 
-                                             and solve them.
-                                             """
-        )
-        self.prompt = inspect.cleandoc(
-            """\
-                                      Given this plan:
-                                      <plan>{plan}</plan>
-                                      
-                                      And this list of hallucinations and their severity scores (from 1 (low) to 5 (high)):
-                                      {hallucinations}
-                                      
-                                      Return a plan where all the hallucinations whose severity is at least {threshold} have been solved or removed.
-                                      """
-        )
+#                                             For any potential hallucination, return a description of it and its severity, from 1 (low) to 5 (high).
+#                                             If there are no evident hallucinations,there is no need to invent them.
+#                                             """
+#         )
 
-    def _detect_hallucinations(self) -> None:
-        """
-        Detect hallucinations in the given plan.
+#         self.system_prompt = inspect.cleandoc(
+#             """\
+#                                             You are an agent that mitigates hallucinations.
+#                                             Your task is to analyze a provided plan and a list of hallucinations,
+#                                             each flagged with a severity score, from 1 (low) to 5 (high),
+#                                             and solve them.
+#                                             """
+#         )
+#         self.prompt = inspect.cleandoc(
+#             """\
+#                                     Given this plan:
+#                                     <plan>{plan}</plan>
 
-        Input:
-            src (str): The plan to be checked for hallucinations.
+#                                     And this list of hallucinations and their severity scores (from 1 (low) to 5 (high)):
+#                                     {hallucinations}
 
-        Output:
-            str: The detected hallucinations.
-        """
-        inp = [
-            SystemMessage(content=self.system_prompt_detect),
-            HumanMessage(
-                content=self.prompt_detect.format(plan=self.prompt_args["plan"])
-            ),
-        ]
-        self.prompt_args["hallucinations"] = self.llm.invoke(inp).content
+#                                     Return a plan where all the hallucinations whose severity is at least {threshold} have been solved or removed.
+#                                     """
+#         )
 
-    def run(self) -> str:
-        """
-        Run the Agent to solve hallucinations in the plan.
+#     def _detect_hallucinations(self) -> None:
+#         """
+#         Detect hallucinations in the given plan.
 
-        Input:
-            src (str): The plan to be fixed for hallucinations.
+#         Input:
+#             src (str): The plan to be checked for hallucinations.
 
-        Output:
-            str: The fixed plan.
-        """
-        self.upload_args(self.prompt_args)  # ensure args are uploaded
-        self._detect_hallucinations()  # detect hallucinations first
+#         Output:
+#             str: The detected hallucinations.
+#         """
+#         inp = [
+#             SystemMessage(content=self.system_prompt_detect),
+#             HumanMessage(
+#                 content=self.prompt_detect.format(plan=self.prompt_args["plan"])
+#             ),
+#         ]
+#         self.prompt_args["hallucinations"] = self.llm.invoke(inp).content
 
-        # Fix the plan
-        prompt = self.prompt.format(
-            hallucinations=self.prompt_args["hallucinations"],
-            threshold=self.prompt_args["threshold"],
-            plan=self.prompt_args["plan"],
-        )
+#     def run(self) -> str:
+#         """
+#         Run the Agent to solve hallucinations in the plan.
 
-        inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+#         Input:
+#             src (str): The plan to be fixed for hallucinations.
+
+#         Output:
+#             str: The fixed plan.
+#         """
+#         self.upload_args(self.prompt_args)  # ensure args are uploaded
+#         self._detect_hallucinations()  # detect hallucinations first
+
+#         # Fix the plan
+#         prompt = self.prompt.format(
+#             hallucinations=self.prompt_args["hallucinations"],
+#             threshold=self.prompt_args["threshold"],
+#             plan=self.prompt_args["plan"],
+#         )
+
+#         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
+#         return self.llm.invoke(inp).content
 
 
 class AgentDeepThinkPDDL(Agent):

@@ -80,7 +80,7 @@ class AgentDeepThinkPDDL(Agent):
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
     }  # Static!
 
-    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+    def __init__(self, llm: ChatOpenAI, prompt_args: dict[str, str]):
         """
         This agent deeply evaluates the PDDL domain and problem and identifies inconsistencies between the constraints, the goal, and the final plan.
         In particular:
@@ -493,7 +493,7 @@ class AgentSyntaxPDDL(Agent):
             syntax_errors=self.prompt_args["syntax_errors"],
         )
 
-        inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
+        inp = [SystemMessage(content=system_prompt), HumanMessage(content=prompt)]
         return self.llm.invoke(inp).content
 
 
@@ -504,14 +504,14 @@ class NoOpAgent(Agent):
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
     }  # Static!
 
-    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+    def __init__(self, llm: ChatOpenAI, prompt_args: dict[str, str]):
         """
         Initialize the Agent that terminates the planning procedure.
         This agent is called only when the plan is deemed valid.
-        No more refinemenets will be performed and the final PDDL domain, problem and plan will be returned.
+        No more refinements will be performed and the final PDDL domain, problem and plan will be returned.
 
         Input:
-            llm (LLM): The language model to use for fixing the syntax.
+            llm (ChatOpenAI): The language model to use for fixing the syntax.
         """
         super().__init__(prompt_args=prompt_args)
         self.name = "NoOpAgent"

@@ -1,0 +1,36 @@
+(define (problem schedule-diane-deborah-integrated)
+  (:domain meeting-scheduling-integrated)
+  (:objects
+    diane_kelly deborah - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - slot
+  )
+  (:init
+    (fits_all_exists)
+    (fits_all t1400)
+    (free_a1 diane_kelly t1400)
+    (free_a3 deborah t0930)
+    (free_a3 deborah t1400)
+    (available diane_kelly t0900)
+    (available diane_kelly t1000)
+    (available diane_kelly t1100)
+    (available diane_kelly t1130)
+    (available diane_kelly t1200)
+    (available diane_kelly t1230)
+    (available diane_kelly t1300)
+    (available diane_kelly t1330)
+    (available diane_kelly t1400)
+    (available diane_kelly t1430)
+    (available diane_kelly t1500)
+    (available diane_kelly t1530)
+    (available diane_kelly t1600)
+    (available diane_kelly t1630)
+    (available deborah t1400)
+    (no_meeting_made)
+  )
+  (:goal (and
+           (meeting_made)
+           (meeting_with deborah diane_kelly t1400)
+           (scheduled_a1 t1400)
+         ))
+)

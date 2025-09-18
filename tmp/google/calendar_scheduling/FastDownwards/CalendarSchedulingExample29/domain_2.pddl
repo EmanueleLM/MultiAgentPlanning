@@ -1,0 +1,78 @@
+(define (domain combined-meeting-scheduling)
+  (:requirements :typing :strips)
+  (:types person timeslot)
+
+  (:constants madison diana shirley - person)
+
+  (:predicates
+    (next ?t1 - timeslot ?t2 - timeslot)
+    (available ?p - person ?t - timeslot)
+    (free ?p - person ?t - timeslot)
+    (meeting-scheduled)
+    (meeting-start ?t - timeslot)
+    (attends ?p - person)
+  )
+
+  (:action schedule-by-madison
+    :parameters (?s - timeslot ?n - timeslot)
+    :precondition (and
+      (next ?s ?n)
+      (free madison ?s) (free madison ?n)
+      (free diana ?s) (free diana ?n)
+      (free shirley ?s) (free shirley ?n)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (attends madison) (attends diana) (attends shirley)
+      (not (free madison ?s)) (not (free madison ?n))
+      (not (free diana ?s)) (not (free diana ?n))
+      (not (free shirley ?s)) (not (free shirley ?n))
+      (not (available madison ?s)) (not (available madison ?n))
+      (not (available diana ?s)) (not (available diana ?n))
+      (not (available shirley ?s)) (not (available shirley ?n))
+    )
+  )
+
+  (:action schedule-by-diana
+    :parameters (?s - timeslot ?s2 - timeslot)
+    :precondition (and
+      (next ?s ?s2)
+      (available madison ?s) (available madison ?s2)
+      (available diana ?s) (available diana ?s2)
+      (available shirley ?s) (available shirley ?s2)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (attends madison) (attends diana) (attends shirley)
+      (not (available madison ?s)) (not (available madison ?s2))
+      (not (available diana ?s)) (not (available diana ?s2))
+      (not (available shirley ?s)) (not (available shirley ?s2))
+      (not (free madison ?s)) (not (free madison ?s2))
+      (not (free diana ?s)) (not (free diana ?s2))
+      (not (free shirley ?s)) (not (free shirley ?s2))
+    )
+  )
+
+  (:action schedule-by-shirley
+    :parameters (?s - timeslot ?s2 - timeslot)
+    :precondition (and
+      (next ?s ?s2)
+      (available madison ?s) (available madison ?s2)
+      (available diana ?s) (available diana ?s2)
+      (available shirley ?s) (available shirley ?s2)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (attends madison) (attends diana) (attends shirley)
+      (not (available madison ?s)) (not (available madison ?s2))
+      (not (available diana ?s)) (not (available diana ?s2))
+      (not (available shirley ?s)) (not (available shirley ?s2))
+      (not (free madison ?s)) (not (free madison ?s2))
+      (not (free diana ?s)) (not (free diana ?s2))
+      (not (free shirley ?s)) (not (free shirley ?s2))
+    )
+  )
+)

@@ -19,6 +19,9 @@ ENVIRONMENTS_PATH = Path(CONFIG.get("environments_path", ""))
 RESULTS_FOLDER = Path(CONFIG.get("results_folder", ""))
 AGENT_PYTHON_PATH = Path(CONFIG.get("agent_python_path", ""))
 
+# Benchmarks and data
+DATA_PATH = Path(CONFIG.get("data_folder", ""))
+
 # json paths
 ENVIRONMENTS_JSON_PATH = Path(CONFIG.get("environments_json_path", ""))
 ENVIRONMENTS_JSON_SAMPLE_PATH = Path(CONFIG.get("environments_json_sample_path", ""))

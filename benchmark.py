@@ -19,14 +19,34 @@ from pathlib import Path
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
+from src.llm_plan.utils import (
+    run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
+    )
 
+DATASET = {
+    "calendar_scheduling": {
+        "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
+        "results": Path("./tmp/google")
+        },
+    "meeting_planning": {
+        "data": DATA_PATH / "natural_plan/meeting_planning.json",
+        "results": Path("./tmp/google")
+        },
+    "trip_planning": {
+        "data": DATA_PATH / "natural_plan/trip_planning.json",
+        "results": Path("./tmp/google")
+        },
+    "blocksworld": {
+        "data": DATA_PATH / "blocksworld/blocksworld.json",
+        "results": Path("./tmp/blocksworld")
+        }
+}
 
 SOLVER = {
     "POPF2": run_pddl_popf2_and_Val,
@@ -141,7 +161,7 @@ if __name__ == "__main__":
     pddl_parser = PDDLParser()
     full_debug_logs = ""
 
-    with open(f"./data/natural_plan/{args.dataset}.json", "r") as f:
+    with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
     
     problem_name = list(scheduling_data.keys())[0][:-1]
@@ -177,7 +197,7 @@ if __name__ == "__main__":
         # Full logs
         full_debug_logs += collect_debug_logs("ENVIRONMENT", data["prompt_0shot"])
 
-        BASE_FOLDER = Path(f"./tmp/google/{dataset_name}/{args.target_solver}/{env.name}")
+        BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/{args.target_solver}/{env.name}"
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
         FULL_LOGS_PATH = BASE_FOLDER / "__full_logs.txt"
 

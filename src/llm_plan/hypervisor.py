@@ -34,7 +34,7 @@ class Hypervisor:
             Each agent has a specific role and capabilities.
             You will read the agents' descriptions and decide which agent is best suited to handle a given task.
             You return the class you selected between <class></class> tags. 
-            You always discard abstract classes and classes with abstract methods. Also, NEVER call AgentNaturalLanguage.
+            You always discard abstract classes and classes with abstract methods.
             """
         )
         self.prompt = inspect.cleandoc(

@@ -27,13 +27,13 @@ from pathlib import Path, PurePosixPath
 from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
-from llm_plan.agent import AgentNaturalLanguage
+from llm_plan.agent_nl import AgentNaturalLanguage
 from llm_plan.config import (
-    UNIVERSAL_VALIDATOR_BIN,
-    UNIVERSAL_VALIDATOR,
-    TEMPORAL_SOLVER_BINARY,
-    SOLVER_BINARY,
-    SOLVER_ARGS,
+    VALIDATOR,
+    VALIDATOR_BIN,
+    SOLVER_FD_BINARY,
+    SOLVER_POPF2_BINARY,
+    SOLVER_FD_ARGS,
 )
 from llm_plan.parser import PDDLParser
 
@@ -44,6 +44,10 @@ ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
 TEMPORAL = True  # whether to use temporal planner POPF2. If False, use Fast Downward
+if TEMPORAL:
+    PLANNER = "popf2"
+else:
+    PLANNER = "fast-downward"
 
 
 # helper functions
@@ -580,13 +584,13 @@ def external_solver(state: State):
         base_dir.mkdir(parents=True, exist_ok=True)
 
         if state["WSL"]:
-            command = ["wsl", "--", str(PurePosixPath(TEMPORAL_SOLVER_BINARY))] + [
+            command = ["wsl", "--", str(PurePosixPath(SOLVER_POPF2_BINARY))] + [
                 _win_to_wsl_path(domain_path),
                 _win_to_wsl_path(problem_path),
             ]
         else:
             command = [
-                str(Path(TEMPORAL_SOLVER_BINARY)),
+                str(Path(SOLVER_POPF2_BINARY)),
                 str(domain_path),
                 str(problem_path),
             ]
@@ -639,7 +643,7 @@ def external_solver(state: State):
         if state["WSL"]:
             command = (
                 ["wsl", "--"]
-                + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+                + [str(PurePosixPath(SOLVER_FD_BINARY)), *SOLVER_FD_ARGS]
                 + [
                     _win_to_wsl_path(base_dir / "sas_plan"),
                     _win_to_wsl_path(domain_path),
@@ -647,7 +651,7 @@ def external_solver(state: State):
                 ]
             )
         else:
-            command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+            command = [Path(SOLVER_FD_BINARY), *SOLVER_FD_ARGS] + [
                 str(base_dir / "sas_plan"),
                 str(domain_path),
                 str(problem_path),
@@ -747,13 +751,13 @@ def agent_refiner(state: RefinerState):
         base_dir.mkdir(parents=True, exist_ok=True)
 
         if state["WSL"]:
-            command = ["wsl", "--", str(PurePosixPath(TEMPORAL_SOLVER_BINARY))] + [
+            command = ["wsl", "--", str(PurePosixPath(SOLVER_POPF2_BINARY))] + [
                 _win_to_wsl_path(base_dir / "domain.pddl"),
                 _win_to_wsl_path(base_dir / "problem.pddl"),
             ]
         else:
             command = [
-                str(Path(TEMPORAL_SOLVER_BINARY)),
+                str(Path(SOLVER_POPF2_BINARY)),
                 str(base_dir / "domain.pddl"),
                 str(base_dir / "problem.pddl"),
             ]
@@ -805,7 +809,7 @@ def agent_refiner(state: RefinerState):
         if state["WSL"]:
             command = (
                 ["wsl", "--"]
-                + [str(PurePosixPath(SOLVER_BINARY)), *SOLVER_ARGS]
+                + [str(PurePosixPath(SOLVER_FD_BINARY)), *SOLVER_FD_ARGS]
                 + [
                     _win_to_wsl_path(base_dir / "sas_plan"),
                     _win_to_wsl_path(base_dir / "domain.pddl"),
@@ -813,7 +817,7 @@ def agent_refiner(state: RefinerState):
                 ]
             )
         else:
-            command = [Path(SOLVER_BINARY), *SOLVER_ARGS] + [
+            command = [Path(SOLVER_FD_BINARY), *SOLVER_FD_ARGS] + [
                 str(base_dir / "sas_plan"),
                 str(base_dir / "domain.pddl"),
                 str(base_dir / "problem.pddl"),
@@ -825,7 +829,7 @@ def agent_refiner(state: RefinerState):
     # Validate the plan with VAL
     if state["WSL"]:
         cmd_body = (
-            f"cd {shlex.quote(str(PurePosixPath(UNIVERSAL_VALIDATOR)))} && "
+            f"cd {shlex.quote(str(PurePosixPath(VALIDATOR)))} && "
             f"./Validate "
             f"{shlex.quote(_win_to_wsl_path(base_dir / 'domain.pddl'))} "
             f"{shlex.quote(_win_to_wsl_path(base_dir / 'problem.pddl'))} "
@@ -833,7 +837,7 @@ def agent_refiner(state: RefinerState):
         )
         command = ["wsl", "bash", "-lc", cmd_body]
     else:
-        command = f"{UNIVERSAL_VALIDATOR_BIN} \
+        command = f"{VALIDATOR_BIN} \
         {str(base_dir / 'domain.pddl')} \
         {str(base_dir / 'problem.pddl')} \
         {str(base_dir / 'sas_plan')}"

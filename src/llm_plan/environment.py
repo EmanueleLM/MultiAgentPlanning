@@ -69,7 +69,7 @@ class Environment:
         for a in actions:
             add_action(a)
 
-        # peek constraints to discover actions
+        # Parse constraints and discover actions
         parsed_edges = []  # list of (src, dst)
         for c in constraints:
             c = c.strip()
@@ -81,8 +81,7 @@ class Environment:
                 add_action(dst)
                 parsed_edges.append((src, dst))
             else:
-                # track singleton, will have indegree 0
-                add_action(c)
+                add_action(c)  # singleton node
 
         graph = defaultdict(list)
         indegree = {a: 0 for a in ordered_actions}
@@ -91,26 +90,25 @@ class Environment:
             graph[src].append(dst)
             indegree[dst] += 1
 
-        # Ensure all nodes exist in adjacency list
         for a in ordered_actions:
             graph.setdefault(a, [])
 
-        # Kahn’s algorithm with level collection (preserve stable order)
+        # Kahn’s algorithm with level collection (stable order)
         queue = deque([a for a in ordered_actions if indegree[a] == 0])
         result: List[List[str]] = []
 
         while queue:
-            # Current parallelizable layer (preserve order of insertion)
-            level = list(queue)
-            result.append(level)
-
-            for _ in range(len(queue)):
+            layer_size = len(queue)
+            level: List[str] = []
+            for _ in range(layer_size):
                 node = queue.popleft()
-                level.append(node)
+                level.append(node)  # <-- add once
                 for nei in graph[node]:
                     indegree[nei] -= 1
                     if indegree[nei] == 0:
                         queue.append(nei)
+            result.append(level)
+
         if any(indegree[a] > 0 for a in ordered_actions):
             raise ValueError("Cycle detected in order constraints!")
 

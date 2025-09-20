@@ -76,7 +76,6 @@ class AgentDeepThinkConstraints(Agent):
         "specification": "(str) The plan to be checked for improvement.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-        "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
         "target_solver": "(str) The target PDDL solver.",
     }  # Static!
 
@@ -118,13 +117,9 @@ class AgentDeepThinkConstraints(Agent):
                                       And this is the PDDL problem that instatiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      This is the best plan the solver could find (it may be empty if no plan was found):
-                                      <plan>{pddl_plan}</plan>
-                                      
                                       Now, think *very carefully* whether:
                                       - the PDDL domain reflects the goal of the human and json specifications. Always consider the human specification and the ground truth.
                                       - the PDDL problem correctly enumerates and expresses all the constraints in the specification. Put particular attention that all the constraints are expressed and none is missing or under-specified.
-                                      - the PDDL plan may be non-empty but wrong because the constraints are not correctly expressed in the PDDL problem.
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
@@ -149,7 +144,6 @@ class AgentDeepThinkConstraints(Agent):
             specification=self.prompt_args["specification"],
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
-            pddl_plan=self.prompt_args["pddl_plan"],
         )
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
         return self.llm.invoke(inp).content
@@ -413,7 +407,6 @@ class NoOpAgent(Agent):
     required_args = {
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
-        "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
     }  # Static!
 
     def __init__(self, llm: ChatOpenAI, prompt_args: dict[str, str]):

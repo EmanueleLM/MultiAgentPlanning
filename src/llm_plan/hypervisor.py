@@ -17,7 +17,6 @@ class Hypervisor:
             "specification": "(str) The specification of the task.",
             "target_solver": "(str) The target PDDL solver.",
             "pddl_domain": "(str) The PDDL domain that describes the specification.",
-            "pddl_plan": "(str) The PDDL plan that was generated.",
             "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
             "pddl_logs": "(str) The logs of the attempted execution with the solver.",
             "syntax_errors": "(str) The error message returned by a PDDL validator.",
@@ -52,9 +51,6 @@ class Hypervisor:
             
             And this PDDL problem that instatiates the JSON specification:
             <problem>{pddl_problem}</problem>
-            
-            Now, for a {target_solver} PDDL solver, this is the PDDL plan generated for the task (the plan may be empty if no plan was found):
-            <plan>{pddl_plan}</plan>
             
             These are the logs of the attempted execution with the solver:
             <logs>{pddl_logs}</logs>
@@ -152,7 +148,6 @@ class Hypervisor:
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             target_solver=self.prompt_args["target_solver"],
-            pddl_plan=self.prompt_args["pddl_plan"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
             agents="\n".join(

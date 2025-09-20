@@ -28,6 +28,7 @@ from llm_plan.environment import Environment as TaskEnvironment
 from llm_plan.utils import get_fields_in_formatted_string, get_json_nested_fields
 from llm_plan.hypervisor import Hypervisor
 from llm_plan.agent_nl import AgentNaturalLanguage
+from llm_plan.meta_analyzer import MetaAnalyzer
 from llm_plan.config import (
     VALIDATOR,
     VALIDATOR_BIN,
@@ -38,12 +39,13 @@ from llm_plan.config import (
 from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-4o"  # use 4o for everything else
-MODEL_PDDL = "gpt-4o"  # need better model for pddl
+MODEL_PDDL = "gpt-4o"  # need better model for pddl?
+MODEL_META_ANALYZER = "gpt-4o"  # need reasoning model for meta analysis?
 JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
-TEMPORAL = True  # whether to use temporal planner POPF2. If False, use Fast Downward
+TEMPORAL = False  # whether to use temporal planner POPF2. If False, use Fast Downward
 if TEMPORAL:
     PLANNER = "popf2"
 else:
@@ -194,7 +196,7 @@ class State(TypedDict):
     mode: Literal["pddl", "direct"]
     multi_agent: bool  # whether it's a multi agent problem
     enable_clarifications: bool = (
-        True  # whether to allow the oracle to ask clarifications
+        True  # whether to allow the clarifier to ask clarifications
     )
     messages: Annotated[list[AnyMessage], add_messages]
     initial_description: Annotated[
@@ -270,16 +272,17 @@ def ask_batch_clarify(questions: list[str]) -> dict:
 
 
 # define llms
-oracle_llm = ChatOpenAI(model=MODEL, temperature=0)
+clarifier_llm = ChatOpenAI(model=MODEL, temperature=0)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
 pddl_llm = ChatOpenAI(model=MODEL_PDDL, temperature=0)
 refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
+meta_analyzer_llm = ChatOpenAI(model=MODEL_META_ANALYZER, temperature=0)
 
 
 # define agents
-oracle_sys_msg = (
+clarifier_sys_msg = (
     "You are an expert in planning. Your job is only to decide whether there is "
     "enough info to make a plan. If more than one clarification is needed, "
     "call AskBatchClarify with a list of questions (one call per turn). Then wait for answers."
@@ -287,15 +290,15 @@ oracle_sys_msg = (
     "Do not ask questions for the sake of asking. Only ask if something is unclear or unspecified in the task description."
 )
 
-oracle = create_react_agent(
-    model=oracle_llm.bind_tools([ask_batch_clarify], parallel_tool_calls=False),
+clarifier = create_react_agent(
+    model=clarifier_llm.bind_tools([ask_batch_clarify], parallel_tool_calls=False),
     tools=[ask_batch_clarify],
-    prompt=oracle_sys_msg,
+    prompt=clarifier_sys_msg,
     tool_choice="auto",
 )
 
 
-def agent_oracle(state: State):
+def agent_clarifier(state: State):
     # validate fields
     _validate_initial_state_fields(state)
 
@@ -309,7 +312,7 @@ def agent_oracle(state: State):
             init["initial_description"] = human_texts[0]
     if state["enable_clarifications"]:
         inp = {"messages": state["messages"]}
-        out = oracle.invoke(inp)
+        out = clarifier.invoke(inp)
         return {
             **init,
             "messages": out["messages"],
@@ -329,7 +332,7 @@ def agent_summarizer(state: State):
     if state["clarifications"]:
         task_info += f"clarifications: {'\n'.join([f'{pair["question"]} - {pair["answer"]}' for pair in state["clarifications"]])}"
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
-    out = oracle_llm.invoke(inp)
+    out = clarifier_llm.invoke(inp)
     return {"messages": [out], "revised_description": out.content}
 
 
@@ -570,6 +573,118 @@ def generic_actor(state: AgentState):
     return {}
 
 
+def run_planner(base_dir: Path, wsl: bool):
+    if PLANNER == "popf2":
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        if wsl:
+            command = ["wsl", "--", str(PurePosixPath(SOLVER_POPF2_BINARY))] + [
+                _win_to_wsl_path(base_dir / "domain.pddl"),
+                _win_to_wsl_path(base_dir / "problem.pddl"),
+            ]
+        else:
+            command = [
+                str(Path(SOLVER_POPF2_BINARY)),
+                str(base_dir / "domain.pddl"),
+                str(base_dir / "problem.pddl"),
+            ]
+        print("Running command:", " ".join(shlex.quote(arg) for arg in command))
+        # Capture combined stdout/stderr to parse
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+
+        output = result.stdout or ""
+        logs_path = base_dir / "logs.txt"
+        plan_path = base_dir / "sas_plan"
+
+        # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
+        plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
+        print("Solver output:\n", output)
+        if "Solution Found" in output:
+            lines = output.splitlines()
+
+            header_lines: list[str] = []
+            plan_lines: list[str] = []
+            plan_started = False
+
+            for line in lines:
+                if plan_line_re.match(line):
+                    plan_started = True
+                    plan_lines.append(line.strip())
+                else:
+                    if not plan_started:
+                        header_lines.append(line)
+
+            # Write header and summary to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write("\n".join(header_lines).rstrip() + "\n")
+
+            # Write the extracted plan only to sas_plan
+            with plan_path.open("w", encoding="utf-8") as pf:
+                pf.write("\n".join(plan_lines).rstrip() + ("\n" if plan_lines else ""))
+
+        else:
+            # No solution or error: everything goes to logs.txt
+            with logs_path.open("w", encoding="utf-8") as lf:
+                lf.write(output.strip())
+    elif PLANNER == "fast-downward":
+        if wsl:
+            command = (
+                ["wsl", "--"]
+                + [str(PurePosixPath(SOLVER_FD_BINARY)), *SOLVER_FD_ARGS]
+                + [
+                    _win_to_wsl_path(base_dir / "sas_plan"),
+                    _win_to_wsl_path(base_dir / "domain.pddl"),
+                    _win_to_wsl_path(base_dir / "problem.pddl"),
+                ]
+            )
+        else:
+            command = [Path(SOLVER_FD_BINARY), *SOLVER_FD_ARGS] + [
+                str(base_dir / "sas_plan"),
+                str(base_dir / "domain.pddl"),
+                str(base_dir / "problem.pddl"),
+            ]
+
+        with open(base_dir / "logs.txt", "w") as logfile:
+            subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+    else:
+        raise ValueError(f"Unknown planner: {PLANNER}")
+
+    # Validate the plan with VAL
+    if wsl:
+        cmd_body = (
+            f"cd {shlex.quote(str(PurePosixPath(VALIDATOR)))} && "
+            f"./Validate "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'domain.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'problem.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / 'sas_plan'))}"
+        )
+        command = ["wsl", "bash", "-lc", cmd_body]
+    else:
+        command = f"{VALIDATOR_BIN} \
+        {str(base_dir / 'domain.pddl')} \
+        {str(base_dir / 'problem.pddl')} \
+        {str(base_dir / 'sas_plan')}"
+
+    out = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+    # This part won't be printed at test time
+    if out.stderr:
+        pddl_error = out.stderr
+        # print(f"The validation found a problem with the plan: {out.stderr}")
+    else:
+        pddl_error = "No error found."
+        # print("The plan is valid.")
+        # print("[stdout]", out.stdout)
+    return pddl_error
+
+
+# This is just a shortcut branch if don't want to do refinement
 def external_solver(state: State):
     problem_name = state["problem_name"]
     base_dir = (
@@ -580,7 +695,7 @@ def external_solver(state: State):
     problem_path = state["pddl"]["problem_path"]
     # run solver
     # if using temporal planner (popf2)
-    if TEMPORAL:
+    if PLANNER == "popf2":
         base_dir.mkdir(parents=True, exist_ok=True)
 
         if state["WSL"]:
@@ -639,7 +754,7 @@ def external_solver(state: State):
             with logs_path.open("w", encoding="utf-8") as lf:
                 lf.write(output.strip())
     # if using fd
-    else:
+    elif PLANNER == "fast-downward":
         if state["WSL"]:
             command = (
                 ["wsl", "--"]
@@ -659,6 +774,8 @@ def external_solver(state: State):
 
         with open(base_dir / "logs.txt", "w") as logfile:
             subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT, text=True)
+    else:
+        raise ValueError(f"Unknown planner: {PLANNER}")
 
 
 def proceed_to_solver(
@@ -684,10 +801,12 @@ def init_refiner_state(state: State):
     return {
         "refinement_iters": state["refinement_iters"],
         "refiner_args": {
-            "plan": "No plan yet.",
+            "target_solver": PLANNER,
+            "human_specification": state["revised_description"],
             "specification": state["environment"].config_data,
             "pddl_domain": state["pddl"]["domain"],
             "pddl_problem": state["pddl"]["problem"],
+            "pddl_plan": "No plan yet.",
             "syntax_errors": "No error file yet.",
             "pddl_logs": "No log file yet.",
             "history": [],
@@ -715,6 +834,13 @@ def select_agent(state: RefinerState):
         "acting_agent_name": agent_name,
         "curr_refinement_iter": state["curr_refinement_iter"] + 1,
     }
+
+
+def break_loop(state: RefinerState) -> Literal["NL converter", "Refiner"]:
+    if state["acting_agent_name"] == "NoOpAgent":
+        return "NL converter"
+    else:
+        return "Refiner"
 
 
 def agent_refiner(state: RefinerState):
@@ -746,112 +872,8 @@ def agent_refiner(state: RefinerState):
         f.write(domain)
 
     # Launch the solver
-    # if using temporal planner (popf2)
-    if TEMPORAL:
-        base_dir.mkdir(parents=True, exist_ok=True)
-
-        if state["WSL"]:
-            command = ["wsl", "--", str(PurePosixPath(SOLVER_POPF2_BINARY))] + [
-                _win_to_wsl_path(base_dir / "domain.pddl"),
-                _win_to_wsl_path(base_dir / "problem.pddl"),
-            ]
-        else:
-            command = [
-                str(Path(SOLVER_POPF2_BINARY)),
-                str(base_dir / "domain.pddl"),
-                str(base_dir / "problem.pddl"),
-            ]
-        print("Running command:", " ".join(shlex.quote(arg) for arg in command))
-        # Capture combined stdout/stderr to parse
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=False,
-        )
-
-        output = result.stdout or ""
-        logs_path = base_dir / "logs.txt"
-        plan_path = base_dir / "sas_plan"
-
-        # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
-        plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
-        print("Solver output:\n", output)
-        if "Solution Found" in output:
-            lines = output.splitlines()
-
-            header_lines: list[str] = []
-            plan_lines: list[str] = []
-            plan_started = False
-
-            for line in lines:
-                if plan_line_re.match(line):
-                    plan_started = True
-                    plan_lines.append(line.strip())
-                else:
-                    if not plan_started:
-                        header_lines.append(line)
-
-            # Write header and summary to logs.txt
-            with logs_path.open("w", encoding="utf-8") as lf:
-                lf.write("\n".join(header_lines).rstrip() + "\n")
-
-            # Write the extracted plan only to sas_plan
-            with plan_path.open("w", encoding="utf-8") as pf:
-                pf.write("\n".join(plan_lines).rstrip() + ("\n" if plan_lines else ""))
-
-        else:
-            # No solution or error: everything goes to logs.txt
-            with logs_path.open("w", encoding="utf-8") as lf:
-                lf.write(output.strip())
-    else:
-        if state["WSL"]:
-            command = (
-                ["wsl", "--"]
-                + [str(PurePosixPath(SOLVER_FD_BINARY)), *SOLVER_FD_ARGS]
-                + [
-                    _win_to_wsl_path(base_dir / "sas_plan"),
-                    _win_to_wsl_path(base_dir / "domain.pddl"),
-                    _win_to_wsl_path(base_dir / "problem.pddl"),
-                ]
-            )
-        else:
-            command = [Path(SOLVER_FD_BINARY), *SOLVER_FD_ARGS] + [
-                str(base_dir / "sas_plan"),
-                str(base_dir / "domain.pddl"),
-                str(base_dir / "problem.pddl"),
-            ]
-
-        with open(base_dir / "logs.txt", "w") as logfile:
-            subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
-
-    # Validate the plan with VAL
-    if state["WSL"]:
-        cmd_body = (
-            f"cd {shlex.quote(str(PurePosixPath(VALIDATOR)))} && "
-            f"./Validate "
-            f"{shlex.quote(_win_to_wsl_path(base_dir / 'domain.pddl'))} "
-            f"{shlex.quote(_win_to_wsl_path(base_dir / 'problem.pddl'))} "
-            f"{shlex.quote(_win_to_wsl_path(base_dir / 'sas_plan'))}"
-        )
-        command = ["wsl", "bash", "-lc", cmd_body]
-    else:
-        command = f"{VALIDATOR_BIN} \
-        {str(base_dir / 'domain.pddl')} \
-        {str(base_dir / 'problem.pddl')} \
-        {str(base_dir / 'sas_plan')}"
-
-    out = subprocess.run(command, shell=True, capture_output=True, text=True)
-
-    # This part won't be printed at test time
-    if out.stderr:
-        pddl_error = out.stderr
-        # print(f"The validation found a problem with the plan: {out.stderr}")
-    else:
-        pddl_error = "No error found."
-        # print("The plan is valid.")
-        # print("[stdout]", out.stdout)
+    # Planner output files: sas_plan, logs.txt. Returns pddl_error string
+    pddl_error = run_planner(base_dir, state["WSL"])
 
     with open(base_dir / "logs.txt", "r") as f:
         pddl_logs = f.read()
@@ -867,7 +889,9 @@ def agent_refiner(state: RefinerState):
     return {"refiner_args": refiner_args}
 
 
-def plan_produced(state: State):
+def plan_produced(
+    state: RefinerState,
+) -> Literal["Meta analyst", "Select refiner", "NL converter"]:
     # if plan file exists and is non-empty, go to meta analyst
     problem_name = state["problem_name"]
     base_dir = (
@@ -879,8 +903,44 @@ def plan_produced(state: State):
     return refine_or_end(state)
 
 
-def agent_meta_analyst(state: State):
-    pass
+def agent_meta_analyst(state: RefinerState):
+
+    refiner_args = state["refiner_args"]
+    problem_name = state["problem_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+    ).resolve()
+
+    pddl_parser = PDDLParser()
+    for arg in MetaAnalyzer.required_args.keys():
+        MetaAnalyzer.required_args[arg] = refiner_args[arg]
+
+    analyzer = MetaAnalyzer(meta_analyzer_llm, MetaAnalyzer.required_args)
+    response = analyzer.run()
+
+    # Get domain and plan
+    domain, problem = pddl_parser.parse(response, from_file=False)
+    refiner_args["pddl_domain"] = domain
+    refiner_args["pddl_problem"] = problem
+
+    with open(base_dir / "problem.pddl", "w") as f:
+        f.write(problem)
+
+    with open(base_dir / "domain.pddl", "w") as f:
+        f.write(domain)
+
+    # Launch the solver
+    # Planner output files: sas_plan, logs.txt. Returns pddl_error string
+    pddl_error = run_planner(base_dir, state["WSL"])
+
+    with open(base_dir / "logs.txt", "r") as f:
+        pddl_logs = f.read()
+
+    # Syntax errors and logs
+    refiner_args["syntax_errors"] = pddl_error
+    refiner_args["pddl_logs"] = pddl_logs
+
+    return {"refiner_args": refiner_args}
 
 
 def agent_to_nl(state: State | RefinerState):
@@ -925,7 +985,7 @@ def build_graph():
     builder = StateGraph(State)
 
     # nodes
-    builder.add_node("Oracle", agent_oracle)
+    builder.add_node("Clarifier", agent_clarifier)
     # builder.add_node("Tool: ask_clarify", ToolNode([ask_clarify]))
     builder.add_node("Reworder", agent_summarizer)
     builder.add_node("JSON coder", agent_coder_json)
@@ -940,8 +1000,8 @@ def build_graph():
     builder.add_node("Meta analyst", agent_meta_analyst)
 
     # edges
-    builder.add_edge(START, "Oracle")
-    builder.add_edge("Oracle", "Reworder")
+    builder.add_edge(START, "Clarifier")
+    builder.add_edge("Clarifier", "Reworder")
     builder.add_edge("Reworder", "JSON coder")
     builder.add_edge("JSON coder", "Task Environment Constructor")
     builder.add_edge("Task Environment Constructor", "Workflow splitter")
@@ -954,7 +1014,9 @@ def build_graph():
         ["External solver", "Workflow splitter", "Init refiner state"],
     )
     builder.add_edge("Init refiner state", "Select refiner")
-    builder.add_edge("Select refiner", "Refiner")
+    builder.add_conditional_edges(
+        "Select refiner", break_loop, ["Refiner", "NL converter"]
+    )
     builder.add_conditional_edges(
         "Refiner", plan_produced, ["Meta analyst", "Select refiner", "NL converter"]
     )

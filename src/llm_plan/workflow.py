@@ -407,7 +407,7 @@ def agent_coder_json(state: State):
 
     json_path = Path(f"{JSON_OUTPUT_PATH}/{folder_name}/{folder_name}.json")
     json_path.parent.mkdir(parents=True, exist_ok=True)
-    json_path.write_text(json.dumps(parsed_plan, indent=2))
+    json_path.write_text(json.dumps(parsed_plan, indent=2), encoding="utf-8")
 
     return {
         "messages": [out],
@@ -857,10 +857,10 @@ def agent_refiner(state: RefinerState):
     refiner_args["pddl_domain"] = domain
     refiner_args["pddl_problem"] = problem
 
-    with open(base_dir / "problem.pddl", "w") as f:
+    with open(base_dir / "problem.pddl", "w", encoding="utf-8") as f:
         f.write(problem)
 
-    with open(base_dir / "domain.pddl", "w") as f:
+    with open(base_dir / "domain.pddl", "w", encoding="utf-8") as f:
         f.write(domain)
 
     # Launch the solver
@@ -917,10 +917,10 @@ def agent_meta_analyst(state: RefinerState):
     refiner_args["pddl_domain"] = domain
     refiner_args["pddl_problem"] = problem
 
-    with open(base_dir / "problem.pddl", "w") as f:
+    with open(base_dir / "problem.pddl", "w", encoding="utf-8") as f:
         f.write(problem)
 
-    with open(base_dir / "domain.pddl", "w") as f:
+    with open(base_dir / "domain.pddl", "w", encoding="utf-8") as f:
         f.write(domain)
 
     # Launch the solver
@@ -970,7 +970,7 @@ def agent_to_nl(state: State | RefinerState):
 
     natural_plan = hypervisor_to_nl.run()
 
-    with open(base_dir / "refined_nl_plan.txt", "w") as f:
+    with open(base_dir / "refined_nl_plan.txt", "w", encoding="utf-8") as f:
         f.write(natural_plan)
 
 

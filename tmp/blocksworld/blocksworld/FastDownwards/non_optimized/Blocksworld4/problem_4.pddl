@@ -1,0 +1,55 @@
+(define (problem multi_agent_blocks_problem)
+  (:domain multi_agent_blocks)
+  (:objects
+    A B C D E F G H I J K - block
+    vowel_agent consonant_agent orchestrator - agent
+  )
+  (:init
+    (vowel_actor vowel_agent)
+    (consonant_actor consonant_agent)
+
+    (vowel A)
+    (vowel E)
+    (vowel I)
+
+    (consonant B)
+    (consonant C)
+    (consonant D)
+    (consonant F)
+    (consonant G)
+    (consonant H)
+    (consonant J)
+    (consonant K)
+
+    (ontable D)
+    (ontable A)
+    (ontable J)
+    (ontable I)
+
+    (on K D)
+    (on H K)
+    (on B A)
+    (on C J)
+    (on F C)
+    (on G F)
+    (on E I)
+
+    (clear H)
+    (clear B)
+    (clear G)
+    (clear E)
+  )
+  (:goal (and
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J K)
+    (ontable K)
+  ))
+)

@@ -33,5 +33,6 @@ ENVIRONMENTS_PYTHON_PATH_SAMPLE = Path(
 SOLVER_POPF2_BINARY = Path(CONFIG.get("solver_popf2_binary", ""))
 SOLVER_FD_BINARY = Path(CONFIG.get("solver_fd_binary", ""))
 SOLVER_FD_ARGS = CONFIG.get("solver_fd_args", [])
+SOLVER_FD_OPTIMIZE_ARGS = CONFIG.get("solver_fd_optimize_args", [])
 VALIDATOR_BIN = CONFIG.get("validator_bin", "")
 UNIVERSAL_VALIDATOR_BIN = CONFIG.get("universal_validator_bin", "")

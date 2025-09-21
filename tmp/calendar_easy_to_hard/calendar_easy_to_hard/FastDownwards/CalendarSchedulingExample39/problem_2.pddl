@@ -1,0 +1,38 @@
+(define (problem schedule-meeting-monday-integrated)
+  (:domain meeting-scheduling-integrated)
+  (:objects
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230
+    s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    meeting1 - meeting
+  )
+  (:init
+    ;; nicholas free all day
+    (free nicholas s0900) (free nicholas s0930) (free nicholas s1000) (free nicholas s1030)
+    (free nicholas s1100) (free nicholas s1130) (free nicholas s1200) (free nicholas s1230)
+    (free nicholas s1300) (free nicholas s1330) (free nicholas s1400) (free nicholas s1430)
+    (free nicholas s1500) (free nicholas s1530) (free nicholas s1600) (free nicholas s1630)
+
+    ;; emma free all day
+    (free emma s0900) (free emma s0930) (free emma s1000) (free emma s1030)
+    (free emma s1100) (free emma s1130) (free emma s1200) (free emma s1230)
+    (free emma s1300) (free emma s1330) (free emma s1400) (free emma s1430)
+    (free emma s1500) (free emma s1530) (free emma s1600) (free emma s1630)
+
+    ;; catherine busy 09:00-09:30 (s0900), 11:30-12:00 (s1130), 13:30-14:00 (s1330), 15:30-16:00 (s1530)
+    (free catherine s0930) (free catherine s1000) (free catherine s1030) (free catherine s1100)
+    (free catherine s1200) (free catherine s1230) (free catherine s1300) (free catherine s1400)
+    (free catherine s1430) (free catherine s1500) (free catherine s1600) (free catherine s1630)
+
+    ;; steven busy 09:00-09:30 (s0900) and 10:00-16:30 (s1000..s1600)
+    (free steven s0930) (free steven s1630)
+
+    ;; adam busy 09:00-10:00 (s0900,s0930), 10:30-13:00 (s1030,s1100,s1130,s1200,s1230),
+    ;; 13:30-14:00 (s1330), 14:30-16:30 (s1430,s1500,s1530,s1600)
+    (free adam s1000) (free adam s1300) (free adam s1400) (free adam s1630)
+
+    ;; lori busy 09:00-11:30 (s0900..s1100), 12:30-13:30 (s1230,s1300), 16:00-16:30 (s1600)
+    (free lori s1130) (free lori s1200) (free lori s1330) (free lori s1400)
+    (free lori s1430) (free lori s1500) (free lori s1530) (free lori s1630)
+  )
+  (:goal (and (scheduled meeting1 s1630)))
+)

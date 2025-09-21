@@ -1,0 +1,103 @@
+(define (domain integrated-meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person slot)
+  (:constants ronald stephen brittany dorothy rebecca jordan - person)
+  (:predicates
+    (busy ?p - person ?s - slot)
+    (free ?p - person ?s - slot)
+    (work-slot ?s - slot)
+    (scheduled)
+    (meeting-at ?s - slot)
+    (attends ?p - person ?s - slot)
+  )
+
+  (:action schedule_by_ronald
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy ronald ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+
+  (:action schedule_by_stephen
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy stephen ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+
+  (:action schedule_by_brittany
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy brittany ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+
+  (:action schedule_by_dorothy
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy dorothy ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+
+  (:action schedule_by_rebecca
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy rebecca ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+
+  (:action schedule_by_jordan
+    :parameters (?s - slot)
+    :precondition (and (work-slot ?s) (not (busy jordan ?s)) (not (scheduled)))
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+      (attends ronald ?s)
+      (attends stephen ?s)
+      (attends brittany ?s)
+      (attends dorothy ?s)
+      (attends rebecca ?s)
+      (attends jordan ?s)
+    )
+  )
+)

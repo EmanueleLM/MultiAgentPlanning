@@ -1,0 +1,75 @@
+(define (domain meeting-scheduling-combined)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot)
+
+  (:predicates
+    (next ?s1 - slot ?s2 - slot)
+    (free ?p - participant ?s - slot)
+    (busy ?p - participant ?s - slot)
+    (meeting-scheduled)
+    (meeting-start ?s - slot)
+  )
+
+  (:action schedule_madison
+    :parameters (?s ?s2 - slot)
+    :precondition (and
+      (next ?s ?s2)
+      (not (meeting-scheduled))
+      (free madison ?s) (free madison ?s2)
+      (free diana ?s) (free diana ?s2)
+      (free shirley ?s) (free shirley ?s2)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (not (free madison ?s)) (not (free madison ?s2))
+      (not (free diana ?s)) (not (free diana ?s2))
+      (not (free shirley ?s)) (not (free shirley ?s2))
+      (busy madison ?s) (busy madison ?s2)
+      (busy diana ?s) (busy diana ?s2)
+      (busy shirley ?s) (busy shirley ?s2)
+    )
+  )
+
+  (:action schedule_diana
+    :parameters (?s ?s2 - slot)
+    :precondition (and
+      (next ?s ?s2)
+      (not (meeting-scheduled))
+      (free madison ?s) (free madison ?s2)
+      (free diana ?s) (free diana ?s2)
+      (free shirley ?s) (free shirley ?s2)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (not (free madison ?s)) (not (free madison ?s2))
+      (not (free diana ?s)) (not (free diana ?s2))
+      (not (free shirley ?s)) (not (free shirley ?s2))
+      (busy madison ?s) (busy madison ?s2)
+      (busy diana ?s) (busy diana ?s2)
+      (busy shirley ?s) (busy shirley ?s2)
+    )
+  )
+
+  (:action schedule_shirley
+    :parameters (?s ?s2 - slot)
+    :precondition (and
+      (next ?s ?s2)
+      (not (meeting-scheduled))
+      (free madison ?s) (free madison ?s2)
+      (free diana ?s) (free diana ?s2)
+      (free shirley ?s) (free shirley ?s2)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-start ?s)
+      (not (free madison ?s)) (not (free madison ?s2))
+      (not (free diana ?s)) (not (free diana ?s2))
+      (not (free shirley ?s)) (not (free shirley ?s2))
+      (busy madison ?s) (busy madison ?s2)
+      (busy diana ?s) (busy diana ?s2)
+      (busy shirley ?s) (busy shirley ?s2)
+    )
+  )
+)

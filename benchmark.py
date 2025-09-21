@@ -1,8 +1,4 @@
-"""Benchmark NATURAL PLAN
-It consists of three datasets:
-- calendar scheduling
-- meeting planning
-- trip planning
+"""Benchmark an existing dataset in a given format.
 
 We take the "prompt_0shot" and give it as natural language plan to our system.
 If the plan succeeds in generating the pddl plan and the final naturalistic plan, we ask an LLM to
@@ -43,14 +39,26 @@ DATASET = {
         "results": Path("./tmp/google")
         },
     "blocksworld": {
-        "data": DATA_PATH / "blocksworld/blocksworld.json",
+        "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
         "results": Path("./tmp/blocksworld")
+        },
+    "calendar_easy_to_hard": {
+        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
+        "results": Path("./tmp/calendar_easy_to_hard")
         }
 }
 
 SOLVER = {
-    "POPF2": run_pddl_popf2_and_Val,
-    "FastDownwards": run_pddl_fast_downwards_and_uVal
+    "POPF2": {
+        "solver": run_pddl_popf2_and_Val,
+        "support_optimization": False,
+        "timeout": 0,
+        },
+    "FastDownwards": {
+        "solver": run_pddl_fast_downwards_and_uVal,
+        "support_optimization": True,
+        "timeout": 60,
+        }
 }
 
 MODELS = {
@@ -84,7 +92,7 @@ def parse_args():
         "--dataset",
         type=str,
         default="calendar_scheduling",
-        choices=["calendar_scheduling", "meeting_planning", "trip_planning"],
+        choices=DATASET.keys(),
         help="The dataset to choose from. Default: calendar_scheduling.",
     )
     parser.add_argument(
@@ -124,6 +132,13 @@ def parse_args():
         help="The PDDL solver used to generate a plan.",
     )
     parser.add_argument(
+        "--optimize_plan",
+        type=bool,
+        default=True,
+        choices=[True, False],
+        help="The PDDL solver tries to further minimize the plan cost.",
+    )
+    parser.add_argument(
         "--debug",
         type=bool,
         default=True,
@@ -141,7 +156,9 @@ if __name__ == "__main__":
     num_experiments = args.num_experiments
     budget = args.budget
     base_agent = args.base_agent
-    solver = SOLVER[args.target_solver]
+    solver = SOLVER[args.target_solver]["solver"]
+    support_optimization = SOLVER[args.target_solver]["support_optimization"]
+    optimize_plan = args.optimize_plan
     debug = args.debug
     
     # Init LLMs
@@ -164,6 +181,7 @@ if __name__ == "__main__":
     with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
     
+    # TODO: This line is very brittle, fix it
     problem_name = list(scheduling_data.keys())[0][:-1]
 
     for i in range(num_experiments):
@@ -231,11 +249,14 @@ if __name__ == "__main__":
         full_debug_logs += collect_debug_logs("PROBLEM", problem)
             
         # Generate the first POPF2 and VAL plan and logs
+        optimization_log = ("no optimization" if not optimize_plan else f"optimization={SOLVER[args.target_solver]['timeout']} [s]")
+        print(f"Running {args.target_solver} with {optimization_log}")
         result = solver(
             BASE_FOLDER,
             BASE_FOLDER / f"domain_0.pddl",
             BASE_FOLDER / f"problem_0.pddl",
             BASE_FOLDER / f"sas_plan_0",
+            (SOLVER[args.target_solver]["timeout"] if optimize_plan and support_optimization else 0),
         )
 
         # Start the refinement loop
@@ -300,11 +321,14 @@ if __name__ == "__main__":
             with open(BASE_FOLDER / f"domain_{j}.pddl", "w") as f:
                 f.write(str(domain))
 
+            optimization_log = ("no optimization" if not optimize_plan else f"optimization={SOLVER[args.target_solver]['timeout']} [s]")
+            print(f"Running {args.target_solver} with {optimization_log}")
             result = solver(
                 BASE_FOLDER,
                 BASE_FOLDER / f"domain_{j}.pddl",
                 BASE_FOLDER / f"problem_{j}.pddl",
                 BASE_FOLDER / f"sas_plan_{j}",
+                (SOLVER[args.target_solver]["timeout"] if optimize_plan and support_optimization else 0),
             )
 
             # Update the hypervisor args

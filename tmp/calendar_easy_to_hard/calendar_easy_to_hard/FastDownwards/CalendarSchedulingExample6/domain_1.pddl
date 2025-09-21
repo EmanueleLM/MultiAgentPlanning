@@ -1,0 +1,72 @@
+(define (domain meeting-scheduling-integrated)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types person timeslot day)
+
+  (:predicates
+    (participant ?p - person)
+    (is-timeslot ?t - timeslot)
+    (day ?d - day)
+    (on-day ?t - timeslot ?d - day)
+    (within-workhours ?t - timeslot)
+    (startable ?t - timeslot)
+    (available ?p - person ?t - timeslot)
+    (free ?p - person ?t - timeslot)
+    (proposed ?t - timeslot)
+    (unscheduled)
+    (meeting-unscheduled)
+    (scheduled)
+    (meeting-scheduled ?t - timeslot)
+    (starts-at ?t - timeslot)
+    (feasible-for-all ?t - timeslot)
+  )
+
+  (:action propose-thomas
+    :parameters (?p - person ?t - timeslot ?d - day)
+    :precondition (and
+      (participant ?p)
+      (is-timeslot ?t)
+      (day ?d)
+      (on-day ?t ?d)
+      (within-workhours ?t)
+      (available ?p ?t)
+      (not (proposed ?t))
+      (not (meeting-scheduled ?t))
+    )
+    :effect (proposed ?t)
+  )
+
+  (:action schedule-30min
+    :parameters (?t - timeslot)
+    :precondition (and
+      (is-timeslot ?t)
+      (unscheduled)
+      (available thomas ?t)
+      (available dylan ?t)
+      (available jerry ?t)
+      (not (meeting-scheduled ?t))
+    )
+    :effect (and
+      (not (unscheduled))
+      (scheduled)
+      (starts-at ?t)
+      (meeting-scheduled ?t)
+    )
+  )
+
+  (:action schedule-feasible
+    :parameters (?t - timeslot ?p - person)
+    :precondition (and
+      (startable ?t)
+      (feasible-for-all ?t)
+      (free ?p ?t)
+      (meeting-unscheduled)
+      (not (meeting-scheduled ?t))
+    )
+    :effect (and
+      (not (meeting-unscheduled))
+      (meeting-scheduled ?t)
+      (scheduled)
+      (starts-at ?t)
+    )
+  )
+)

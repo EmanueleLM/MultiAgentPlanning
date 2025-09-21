@@ -1,0 +1,29 @@
+(define (domain meeting-scheduler)
+  (:requirements :typing :negative-preconditions :existential-preconditions :universal-preconditions)
+  (:types person timeslot meeting)
+  (:predicates
+    (scheduled ?m - meeting ?t - timeslot)
+    (participant ?p - person ?m - meeting)
+    (busy ?p - person ?t - timeslot)
+    (prefers ?p - person ?t - timeslot)
+  )
+  (:action schedule-meeting
+    :parameters (?m - meeting ?t - timeslot)
+    :precondition (and
+      (not (exists (?tt - timeslot) (scheduled ?m ?tt)))
+      (forall (?p - person)
+        (or
+          (not (participant ?p ?m))
+          (and
+            (not (busy ?p ?t))
+            (or
+              (not (exists (?pt - timeslot) (prefers ?p ?pt)))
+              (prefers ?p ?t)
+            )
+          )
+        )
+      )
+    )
+    :effect (and (scheduled ?m ?t))
+  )
+)

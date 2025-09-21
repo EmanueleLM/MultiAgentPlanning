@@ -1,0 +1,35 @@
+(define (domain combined-schedule)
+  (:requirements :typing :negative-preconditions)
+  (:types slot person)
+
+  (:predicates
+    (within-work-hours ?s - slot)
+    (slot-free ?s - slot)
+    (busy ?p - person ?s - slot)
+    (meeting-booked)
+    (meeting-at ?s - slot)
+    (attends ?p - person ?s - slot)
+  )
+
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (within-work-hours ?s)
+      (slot-free ?s)
+      (not (meeting-booked))
+      (not (busy lisa ?s))
+      (not (busy dorothy ?s))
+      (not (busy anthony ?s))
+      (not (busy ryan ?s))
+    )
+    :effect (and
+      (meeting-booked)
+      (meeting-at ?s)
+      (attends lisa ?s)
+      (attends dorothy ?s)
+      (attends anthony ?s)
+      (attends ryan ?s)
+      (not (slot-free ?s))
+    )
+  )
+)

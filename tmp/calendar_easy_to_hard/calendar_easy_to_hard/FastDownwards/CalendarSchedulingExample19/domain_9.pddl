@@ -1,0 +1,30 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types person cslot)
+  (:constants stephen edward angela orchestrator - person)
+  (:predicates
+    (free ?p - person ?c - cslot)
+    (allowed_start ?c - cslot)
+    (confirmed ?p - person ?c - cslot)
+    (scheduled ?c - cslot)
+    (meeting_scheduled)
+  )
+  (:action confirm
+    :parameters (?p - person ?c - cslot)
+    :precondition (free ?p ?c)
+    :effect (confirmed ?p ?c)
+  )
+  (:action orchestrator_schedule
+    :parameters (?c - cslot)
+    :precondition (and
+      (allowed_start ?c)
+      (confirmed stephen ?c)
+      (confirmed edward ?c)
+      (confirmed angela ?c)
+    )
+    :effect (and
+      (scheduled ?c)
+      (meeting_scheduled)
+    )
+  )
+)

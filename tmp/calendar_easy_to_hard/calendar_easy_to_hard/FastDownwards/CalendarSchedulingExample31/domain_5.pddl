@@ -1,0 +1,27 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :equality)
+  (:types person slot)
+  (:predicates
+    (free ?p - person ?s - slot)
+    (participant ?p - person)
+    (meeting-scheduled)
+    (scheduled-at ?s - slot)
+  )
+  (:action schedule-meeting-for-all
+    :parameters (?s - slot ?a - person ?b - person ?c - person ?d - person ?e - person ?f - person)
+    :precondition (and
+      (not (meeting-scheduled))
+      (participant ?a) (participant ?b) (participant ?c) (participant ?d) (participant ?e) (participant ?f)
+      (free ?a ?s) (free ?b ?s) (free ?c ?s) (free ?d ?s) (free ?e ?s) (free ?f ?s)
+      (not (= ?a ?b)) (not (= ?a ?c)) (not (= ?a ?d)) (not (= ?a ?e)) (not (= ?a ?f))
+      (not (= ?b ?c)) (not (= ?b ?d)) (not (= ?b ?e)) (not (= ?b ?f))
+      (not (= ?c ?d)) (not (= ?c ?e)) (not (= ?c ?f))
+      (not (= ?d ?e)) (not (= ?d ?f))
+      (not (= ?e ?f))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled-at ?s)
+    )
+  )
+)

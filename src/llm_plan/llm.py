@@ -1,8 +1,9 @@
+import asyncio
 import os
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
 from google import genai
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -46,7 +47,6 @@ class LLM(ABC):
         Returns:
             str: The model's response.
         """
-        import asyncio
         return await asyncio.to_thread(self.generate_sync, system_prompt, prompt)
     
     
@@ -143,9 +143,7 @@ class GPT_OSS_Ollama(LLM):
 
         except Exception as e:
             return f"Error while generating a response: {e}"
-
-
-from openai import OpenAI, AsyncOpenAI
+        
 
 class ChatGPT(LLM):
     def __init__(self, model_name: str = "gpt-4o"):

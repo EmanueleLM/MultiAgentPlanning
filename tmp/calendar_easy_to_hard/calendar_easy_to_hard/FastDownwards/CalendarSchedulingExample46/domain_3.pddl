@@ -1,0 +1,42 @@
+(define (domain integrated-meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person slot)
+  (:constants alan michael michelle roy judy natalie brian orchestrator - person)
+  (:predicates
+    (work-slot ?s - slot)
+    (available ?p - person ?s - slot)
+    (confirmed ?p - person ?s - slot)
+    (is-orchestrator ?p - person)
+    (meeting-scheduled)
+    (scheduled-at ?s - slot)
+  )
+  (:action confirm-attendance
+    :parameters (?p - person ?s - slot)
+    :precondition (and
+      (available ?p ?s)
+      (not (is-orchestrator ?p))
+    )
+    :effect (and
+      (confirmed ?p ?s)
+    )
+  )
+  (:action orchestrator-schedule
+    :parameters (?o - person ?s - slot)
+    :precondition (and
+      (is-orchestrator ?o)
+      (work-slot ?s)
+      (not (meeting-scheduled))
+      (confirmed alan ?s)
+      (confirmed michael ?s)
+      (confirmed michelle ?s)
+      (confirmed roy ?s)
+      (confirmed judy ?s)
+      (confirmed natalie ?s)
+      (confirmed brian ?s)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled-at ?s)
+    )
+  )
+)

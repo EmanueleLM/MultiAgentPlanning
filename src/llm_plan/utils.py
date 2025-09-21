@@ -1,3 +1,5 @@
+import os
+import re
 import string
 import subprocess
 from pathlib import Path
@@ -7,6 +9,7 @@ from src.llm_plan.config import (
     SOLVER_POPF2_BINARY,
     SOLVER_FD_BINARY,
     SOLVER_FD_ARGS,
+    SOLVER_FD_OPTIMIZE_ARGS,
     VALIDATOR_BIN,
     UNIVERSAL_VALIDATOR_BIN
 )
@@ -43,12 +46,45 @@ def get_json_nested_fields(data: Dict[str, Any], keys: List[str]) -> Any:
         data = data[k]
     return data
 
+def get_latest_file(
+    folder: str | Path, 
+    prefix: str, 
+    regexp: str = r'(\d+)$'
+    ) -> tuple[str, int] | None:
+    """_summary_
+
+    Args:
+        folder (str | Path): _description_
+        prefix (str): _description_
+        regexp (str, optional): _description_. Defaults to r'(\d+)$'.
+
+    Returns:
+        str | None: _description_
+    """
+    # Produce the natural language plan
+    plan_files = [f for f in os.listdir(folder) if f.startswith(prefix)]
+    
+    if not plan_files:
+        return None, None  # No plan files found
+        # Get the latest plan
+        
+    numbers = []
+    for f in plan_files:
+        match = re.search(regexp, f)  # match number at the end
+        if match:
+            numbers.append((f, int(match.group(1))))
+        
+        highest_file, highest_number = max(numbers, key=lambda x: x[1])
+    
+    return highest_file, highest_number
+
 
 def run_pddl_fast_downwards_and_uVal(
     base_folder: Path,
     domain_path: str | Path,
     problem_path: str | Path,
     sas_plan_path: str | Path,
+    optimize: int = 0,
 ) -> dict[str, str]:
     """Run Fast Downwards and uVal on the given domain and problem files.
 
@@ -57,7 +93,8 @@ def run_pddl_fast_downwards_and_uVal(
         domain_path (Path): the path to the PDDL domain file.
         problem_path (Path): the path to the PDDL problem file.
         sas_plan_path (Path, optional): the path to the output plan file. Defaults to "sas_plan".
-
+        optimize (int, optional): the optimization level for Fast Downwards. Defaults to 0.
+        
     Returns:
         dict[str, str]: a dictionary with keys:
             - "pddl_plan": the plan found by Fast Downwards, or a message if no plan was found.
@@ -71,20 +108,60 @@ def run_pddl_fast_downwards_and_uVal(
         "syntax_errors": "No syntax error log was generated.",
         "pddl_logs": "No log was generated.",
     }
-
-    # Launch the solver (Fast Downwards)
-    command = [
-        SOLVER_FD_BINARY,
-        *SOLVER_FD_ARGS,
-        sas_plan_path,
-        domain_path,
-        problem_path,
-    ]
-
-    # Write and then read the logs file
+        
     with open(base_folder / "logs.txt", "w+") as logfile:
-        subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
-        logfile.seek(0)  # go back to the beginning
+        # No optimization
+        if optimize == 0:
+            print("Running command with no optimization.")
+            command = [
+                SOLVER_FD_BINARY,
+                *SOLVER_FD_ARGS,
+                sas_plan_path,
+                domain_path,
+                problem_path,
+            ]
+            subprocess.run(
+                command,
+                stdout=logfile,
+                stderr=subprocess.STDOUT,
+                timeout=optimize
+            )
+        # Optimization for int(optimize) seconds
+        else:
+            try:
+                print(f"Running command with optimization timeout = {optimize} [s].")
+                command = [
+                    SOLVER_FD_BINARY,
+                    *SOLVER_FD_OPTIMIZE_ARGS,
+                    sas_plan_path,
+                    domain_path,
+                    problem_path,
+                ]
+                subprocess.run(
+                    command,
+                    stdout=logfile,
+                    stderr=subprocess.STDOUT,
+                    timeout=optimize
+                )
+                print("Optimization completed successfully!")
+                
+            # If the optimization times out, run without optimization  
+            except subprocess.TimeoutExpired:
+                print("Optimization timed out, running without optimization.")
+                command = [
+                    SOLVER_FD_BINARY,
+                    *SOLVER_FD_ARGS,
+                    sas_plan_path,
+                    domain_path,
+                    problem_path,
+                ]
+                subprocess.run(
+                    command,
+                    stdout=logfile,
+                    stderr=subprocess.STDOUT
+                )
+
+        logfile.seek(0)
         result["pddl_logs"] = logfile.read()
 
     if Path(sas_plan_path).exists():
@@ -109,6 +186,7 @@ def run_pddl_popf2_and_Val(
     domain_path: str | Path,
     problem_path: str | Path,
     sas_plan_path: str | Path,
+    optimize: int = 0,
 ) -> dict[str, str]:
     """Run POPF2 and Val on the given domain and problem files.
 
@@ -117,7 +195,8 @@ def run_pddl_popf2_and_Val(
         domain_path (Path): the path to the PDDL domain file.
         problem_path (Path): the path to the PDDL problem file.
         sas_plan_path (Path, optional): the path to the output plan file. Defaults to "sas_plan".
-
+        optimize (int, optional): the optimization level for POPF2. Defaults to 0. Kept for compatibility.
+        
     Returns:
         dict[str, str]: a dictionary with keys:
             - "pddl_plan": the plan found by POPF2, or a message if no plan was found.

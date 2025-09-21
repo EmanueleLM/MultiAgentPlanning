@@ -1,0 +1,46 @@
+(define (problem orchestrated-problem)
+  (:domain orchestrated-blocks)
+  (:objects A B C D E F G H I J - block)
+
+  (:init
+    (vowel A)
+    (vowel E)
+    (vowel I)
+
+    (consonant B)
+    (consonant C)
+    (consonant D)
+    (consonant F)
+    (consonant G)
+    (consonant H)
+    (consonant J)
+
+    (ontable J)
+    (on I J)
+    (on H I)
+    (on G H)
+    (on F G)
+    (on E F)
+    (on D E)
+    (on C D)
+    (on B C)
+
+    (ontable A)
+
+    (clear B)
+    (clear A)
+  )
+
+  (:goal (and
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (ontable J)
+  ))
+)

@@ -1,0 +1,28 @@
+(define (domain integrated-meeting-scheduler)
+  (:requirements :typing :negative-preconditions)
+  (:types person timeslot)
+  (:predicates
+    (busy ?p - person ?t - timeslot)
+    (within-work ?t - timeslot)
+    (meeting-scheduled)
+    (meeting-at ?t - timeslot)
+    (attending ?p - person)
+  )
+  (:action schedule_meeting
+    :parameters (?a - person ?b - person ?c - person ?t - timeslot)
+    :precondition (and
+      (within-work ?t)
+      (not (busy ?a ?t))
+      (not (busy ?b ?t))
+      (not (busy ?c ?t))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-at ?t)
+      (attending ?a)
+      (attending ?b)
+      (attending ?c)
+    )
+  )
+)

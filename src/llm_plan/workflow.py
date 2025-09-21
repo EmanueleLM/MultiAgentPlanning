@@ -5,6 +5,9 @@ import subprocess
 # import shlex
 import ast
 import re
+import requests
+from bs4 import BeautifulSoup
+from typing import Type
 from datetime import datetime
 from langchain_core.messages import (
     SystemMessage,
@@ -13,14 +16,14 @@ from langchain_core.messages import (
     ToolMessage,
     AnyMessage,
 )
-from langchain_core.tools import tool
+from langchain_core.tools import tool, BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import tools_condition, ToolNode, create_react_agent
+from langgraph.prebuilt import create_react_agent
 from langgraph.constants import Send
 from langchain.output_parsers import PydanticOutputParser
-from typing import Annotated, TypedDict, Literal, Optional, Any, Union
+from typing import Annotated, TypedDict, Literal, Optional, Any
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 from pathlib import Path, PurePosixPath
@@ -43,11 +46,24 @@ JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
-TEMPORAL = False  # whether to use temporal planner POPF2. If False, use Fast Downward
+TEMPORAL = True  # whether to use temporal planner POPF2. If False, use Fast Downward
 if TEMPORAL:
     PLANNER = "popf2"
 else:
     PLANNER = "fast-downward"
+
+# pages for the planning.wiki search tool
+VALID_PAGES = [
+    "/pddl",
+    "/pddl/requirements",
+    "/pddl/domain",
+    "/pddl/problem",
+    "/pddl21",
+    "/pddl21/req",
+    "/pddl21/domain",
+    "/pddl21/problem",
+    "/pddl22",
+]
 
 
 # helper functions
@@ -261,12 +277,59 @@ def _validate_initial_state_fields(state: State):
         raise ValueError("If 'multi_agent' is False then 'mode' must be 'direct'.")
 
 
+# tools
 @tool("AskBatchClarify")
 def ask_batch_clarify(questions: list[str]) -> dict:
     """Ask multiple clarifications at once. Return a dict mapping to answers."""
     answers = interrupt({"purpose": "clarifications_batch", "questions": questions})
     # Expect resume payload like: {"answers": ["ans1","ans2",...]} or dict
     return {"answers": answers}
+
+
+class PlanningWikiInput(BaseModel):
+    """Input for the PlanningWikiTool."""
+
+    page_suffix: str = Field(
+        description=f"The specific page to retrieve from planning.wiki/ref. Must be one of {VALID_PAGES}"
+    )
+
+
+class PlanningWikiTool(BaseTool):
+    """
+    A tool to retrieve PDDL syntax and requirements documentation
+    from specific pages on planning.wiki/ref.
+    """
+
+    name: str = "planning_wiki_lookup"
+    description: str = (
+        "Useful for when you need to verify the correct PDDL syntax, especially for specific versions "
+        "like PDDL2.1 or features like durative-actions, numeric fluents or requirements."
+        "Use it to look up the authoritative syntax before making corrections."
+    )
+    args_schema: Type[BaseModel] = PlanningWikiInput
+
+    def _run(self, page_suffix: str) -> str:
+        """Use the tool."""
+        if page_suffix not in VALID_PAGES:
+            return f"Error: Invalid page '{page_suffix}'. Please use one of the following valid pages: {VALID_PAGES}"
+
+        url = f"https://planning.wiki/ref{page_suffix}"
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()  # raise an exception for bad status codes
+
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            # find the main content div, which seems to have the role 'main'
+            main_content = soup.find("div", role="main")
+            if main_content:
+                # get text and clean it up a bit
+                return " ".join(main_content.get_text().split())
+            else:
+                return "Error: Could not find the main content of the page."
+
+        except requests.exceptions.RequestException as e:
+            return f"Error: Could not retrieve the page. Reason: {e}"
 
 
 # define llms

@@ -5,9 +5,6 @@ import subprocess
 # import shlex
 import ast
 import re
-import requests
-from bs4 import BeautifulSoup
-from typing import Type
 from datetime import datetime
 from langchain_core.messages import (
     SystemMessage,
@@ -16,7 +13,7 @@ from langchain_core.messages import (
     ToolMessage,
     AnyMessage,
 )
-from langchain_core.tools import tool, BaseTool
+from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
@@ -51,19 +48,6 @@ if TEMPORAL:
     PLANNER = "popf2"
 else:
     PLANNER = "fast-downward"
-
-# pages for the planning.wiki search tool
-VALID_PAGES = [
-    "/pddl",
-    "/pddl/requirements",
-    "/pddl/domain",
-    "/pddl/problem",
-    "/pddl21",
-    "/pddl21/req",
-    "/pddl21/domain",
-    "/pddl21/problem",
-    "/pddl22",
-]
 
 
 # helper functions
@@ -284,52 +268,6 @@ def ask_batch_clarify(questions: list[str]) -> dict:
     answers = interrupt({"purpose": "clarifications_batch", "questions": questions})
     # Expect resume payload like: {"answers": ["ans1","ans2",...]} or dict
     return {"answers": answers}
-
-
-class PlanningWikiInput(BaseModel):
-    """Input for the PlanningWikiTool."""
-
-    page_suffix: str = Field(
-        description=f"The specific page to retrieve from planning.wiki/ref. Must be one of {VALID_PAGES}"
-    )
-
-
-class PlanningWikiTool(BaseTool):
-    """
-    A tool to retrieve PDDL syntax and requirements documentation
-    from specific pages on planning.wiki/ref.
-    """
-
-    name: str = "planning_wiki_lookup"
-    description: str = (
-        "Useful for when you need to verify the correct PDDL syntax, especially for specific versions "
-        "like PDDL2.1 or features like durative-actions, numeric fluents or requirements."
-        "Use it to look up the authoritative syntax before making corrections."
-    )
-    args_schema: Type[BaseModel] = PlanningWikiInput
-
-    def _run(self, page_suffix: str) -> str:
-        """Use the tool."""
-        if page_suffix not in VALID_PAGES:
-            return f"Error: Invalid page '{page_suffix}'. Please use one of the following valid pages: {VALID_PAGES}"
-
-        url = f"https://planning.wiki/ref{page_suffix}"
-        try:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()  # raise an exception for bad status codes
-
-            soup = BeautifulSoup(response.content, "html.parser")
-
-            # find the main content div, which seems to have the role 'main'
-            main_content = soup.find("div", role="main")
-            if main_content:
-                # get text and clean it up a bit
-                return " ".join(main_content.get_text().split())
-            else:
-                return "Error: Could not find the main content of the page."
-
-        except requests.exceptions.RequestException as e:
-            return f"Error: Could not retrieve the page. Reason: {e}"
 
 
 # define llms
@@ -853,6 +791,17 @@ def refine_or_end(
 
 
 def init_refiner_state(state: State):
+    # first pass through planner, before refinement
+    wsl = state["WSL"]
+    folder_name = state["folder_name"]
+    base_dir = (
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
+    ).resolve()
+
+    pddl_error = run_planner(base_dir, wsl)
+    with open(base_dir / "logs.txt", "r") as f:
+        pddl_logs = f.read()
+
     return {
         "refinement_iters": state["refinement_iters"],
         "refiner_args": {
@@ -862,13 +811,13 @@ def init_refiner_state(state: State):
             "pddl_domain": state["pddl"]["domain"],
             "pddl_problem": state["pddl"]["problem"],
             "pddl_plan": "No plan yet.",
-            "syntax_errors": "No error file yet.",
-            "pddl_logs": "No log file yet.",
+            "syntax_errors": pddl_error,
+            "pddl_logs": pddl_logs,
             "history": [],
         },
         "folder_name": state["folder_name"],
         "curr_refinement_iter": 0,
-        "WSL": state["WSL"],
+        "WSL": wsl,
     }
 
 
@@ -1015,9 +964,10 @@ def agent_to_nl(state: State | RefinerState):
         with open(base_dir / "sas_plan", "r") as f:
             plan = f.read()
     except FileNotFoundError:
-        raise FileNotFoundError(
+        print(
             f"Plan file not found in {base_dir}. Ensure the solver ran successfully and produced a plan."
         )
+        return {}
 
     prompt_args = {
         "pddl_domain": domain,

@@ -18,14 +18,77 @@ This class implements methods to check if:
 """
 
 import inspect
+import requests
+from bs4 import BeautifulSoup
+from typing import Type
 from abc import ABC, abstractmethod
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import AgentExecutor, create_react_agent
+from pydantic import BaseModel, Field
+
+
+# pages for the planning.wiki search tool
+VALID_PAGES = [
+    "/pddl",
+    "/pddl/requirements",
+    "/pddl/domain",
+    "/pddl/problem",
+    "/pddl21",
+    "/pddl21/req",
+    "/pddl21/domain",
+    "/pddl21/problem",
+    "/pddl22",
+]
+
 
 # tool for AgentPDDLSyntax to search the wiki
-from llm_plan.workflow import PlanningWikiTool
+class PlanningWikiInput(BaseModel):
+    """Input for the PlanningWikiTool."""
+
+    page_suffix: str = Field(
+        description=f"The specific page to retrieve from planning.wiki/ref. Must be one of {VALID_PAGES}"
+    )
+
+
+class PlanningWikiTool(BaseTool):
+    """
+    A tool to retrieve PDDL syntax and requirements documentation
+    from specific pages on planning.wiki/ref.
+    """
+
+    name: str = "planning_wiki_lookup"
+    description: str = (
+        "Useful for when you need to verify the correct PDDL syntax, especially for specific versions "
+        "like PDDL2.1 or features like durative-actions, numeric fluents or requirements."
+        "Use it to look up the authoritative syntax before making corrections."
+    )
+    args_schema: Type[BaseModel] = PlanningWikiInput
+
+    def _run(self, page_suffix: str) -> str:
+        """Use the tool."""
+        if page_suffix not in VALID_PAGES:
+            return f"Error: Invalid page '{page_suffix}'. Please use one of the following valid pages: {VALID_PAGES}"
+
+        url = f"https://planning.wiki/ref{page_suffix}"
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()  # raise an exception for bad status codes
+
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            # find the main content div, which seems to have the role 'main'
+            main_content = soup.find("div", role="main")
+            if main_content:
+                # get text and clean it up a bit
+                return " ".join(main_content.get_text().split())
+            else:
+                return "Error: Could not find the main content of the page."
+
+        except requests.exceptions.RequestException as e:
+            return f"Error: Could not retrieve the page. Reason: {e}"
 
 
 class Agent(ABC):
@@ -276,6 +339,7 @@ class AgentSyntaxPDDL(Agent):
                         """
                 You are an expert PDDL syntax corrector. Your task is to analyze the provided PDDL domain and problem files,
                 considering any syntax errors or logs, and fix them to be compliant with the target solver.
+                You have access to the following tools to help you:{tools}. The tools have names [{tool_names}].
 
                 **Key Instructions:**
                 1. The PDDL syntax required is that used by **{target_solver} Planner**.
@@ -283,7 +347,7 @@ class AgentSyntaxPDDL(Agent):
                    you **MUST** use the `planning_wiki_lookup` tool to get the authoritative syntax. This is crucial for accuracy.
                 3. First, reason about the error. Then, decide if you need to use a tool. If so, use it.
                 4. After gathering information, produce the final corrected PDDL files.
-                5. If there are no errors, return the original PDDL domain and problem.
+                5. If there are no errors, return the exact phrase "<<PASS>>".
 
                 **Solver-Specific PDDL Guidance:**
                 Use the following information to guide your syntax corrections and to select the correct pages with the `planning_wiki_lookup` tool.
@@ -338,6 +402,7 @@ class AgentSyntaxPDDL(Agent):
                 <errors>{syntax_errors}</errors>
 
                 Please analyze and fix any PDDL syntax errors based on the context and your available tools.
+                Remember to simply return "<<PASS>>" if there are no errors.
                 """
                     ),
                 ),
@@ -365,7 +430,11 @@ class AgentSyntaxPDDL(Agent):
         }
 
         result = agent_executor.invoke(input_data)
-        return result["output"]
+        result_text = result["output"].strip()
+        if "<PASS>" in result_text:
+            return f"<domain>{self.prompt_args['pddl_domain']}</domain>\n<problem>{self.prompt_args['pddl_problem']}</problem>"
+        else:
+            return result_text
 
 
 class NoOpAgent(Agent):

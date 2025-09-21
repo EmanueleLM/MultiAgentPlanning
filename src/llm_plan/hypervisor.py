@@ -157,6 +157,6 @@ class Hypervisor:
         )
 
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        response = model.invoke(inp).content
+        response = model.invoke(inp).text()
 
         return response

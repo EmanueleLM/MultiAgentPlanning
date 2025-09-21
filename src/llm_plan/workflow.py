@@ -38,9 +38,7 @@ from llm_plan.config import (
 )
 from llm_plan.parser import PDDLParser
 
-MODEL = "gpt-4o"  # use 4o for everything else
-MODEL_PDDL = "gpt-4o"  # need better model for pddl?
-MODEL_META_ANALYZER = "gpt-4o"  # need reasoning model for meta analysis?
+MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effort.
 JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
@@ -79,7 +77,7 @@ def _collect_qas(new_msgs: list[AnyMessage]) -> list[QnA]:
 
         elif isinstance(m, ToolMessage) and m.name == "AskBatchClarify":
             qs = questions_by_id.get(m.tool_call_id, [])
-            response_dict = ast.literal_eval(m.content)
+            response_dict = ast.literal_eval(m.text())
             answers = response_dict.get("answers", [])
             for q, a in zip(qs, answers):
                 qas.append({"question": q, "answer": a})
@@ -207,7 +205,7 @@ class State(TypedDict):
     ]  # sequence of interactions for clarification
     revised_description: str  # revised, structured description of the task
     plan_json: dict[str, Any]  # parsed_model.model_dump() -> dict[str, Any]
-    problem_name: str  # name of the planning problem
+    folder_name: str  # folder to save outputs for this problem
     environment: TaskEnvironment  # environment object for the problem
     workflow: list[list[str]]  # environment.plan
     current_step: int = 0
@@ -223,7 +221,7 @@ class State(TypedDict):
 
 # state for a generic agent, including actors and orchestrator
 class AgentState(TypedDict):
-    problem_name: str  # problem name, to save output in correct folder
+    folder_name: str  # folder name, to save output in correct folder
     name: str  # agent name
     task: Literal["pddl"]  # task mode, e.g. pddl. Can add others in future
     sys_msg: str
@@ -234,7 +232,7 @@ class AgentState(TypedDict):
 
 
 class RefinerState(TypedDict):
-    problem_name: str  # problem name, to save output in correct folder
+    folder_name: str  # folder name, to save output in correct folder
     refinement_iters: int  # number of refinement iterations by the hypervisor
     curr_refinement_iter: int = 0
     hypervisor: Hypervisor
@@ -272,13 +270,17 @@ def ask_batch_clarify(questions: list[str]) -> dict:
 
 
 # define llms
-clarifier_llm = ChatOpenAI(model=MODEL, temperature=0)
+default_reasoning = {"effort": "low", "summary": None}
+medium_reasoning = {"effort": "medium", "summary": None}
+high_reasoning = {"effort": "high", "summary": None}
+
+clarifier_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
-coder_json_llm = ChatOpenAI(model=MODEL, temperature=0)
-pddl_llm = ChatOpenAI(model=MODEL_PDDL, temperature=0)
-refiner_llm = ChatOpenAI(model=MODEL, temperature=0)
-meta_analyzer_llm = ChatOpenAI(model=MODEL_META_ANALYZER, temperature=0)
+coder_json_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
+pddl_llm = ChatOpenAI(model=MODEL, reasoning=medium_reasoning)
+refiner_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
+meta_analyzer_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 
 
 # define agents
@@ -305,7 +307,7 @@ def agent_clarifier(state: State):
     init = {}
     if not state.get("initial_description"):
         human_texts = [
-            m.content for m in state["messages"] if getattr(m, "type", "") == "human"
+            m.text() for m in state["messages"] if getattr(m, "type", "") == "human"
         ]
         if human_texts:
             # first human message is used to invoke graph, should just be a single message with task desc.
@@ -333,7 +335,7 @@ def agent_summarizer(state: State):
         task_info += f"clarifications: {'\n'.join([f'{pair["question"]} - {pair["answer"]}' for pair in state["clarifications"]])}"
     inp = [SystemMessage(content=sys_msg), HumanMessage(content=task_info)]
     out = clarifier_llm.invoke(inp)
-    return {"messages": [out], "revised_description": out.content}
+    return {"messages": [out], "revised_description": out.text()}
 
 
 def agent_coder_json(state: State):
@@ -384,43 +386,33 @@ def agent_coder_json(state: State):
     out = coder_json_llm.invoke(inp)
 
     parsed_plan = None
-    if isinstance(out, dict):
-        # in case the output is structured in a specific way
-        for key in ("parsed", "structured", "structured_output", "parsed_output"):
-            if key in out:
-                parsed_plan = out[key]
-                break
 
-    # extract json depending on the output structure. Extra safety checks
-    if parsed_plan is None:
-        assistant_text = ""
-        if isinstance(out, dict) and out.get("messages"):
-            for m in out["messages"]:
-                if getattr(m, "type", "") == "ai":
-                    assistant_text = m.content
-                    break
-        elif hasattr(out, "content"):
-            assistant_text = out.content
-        else:
-            assistant_text = str(out)
+    # extract json depending on the output structure.
+    assistant_text = ""
+    if hasattr(out, "content"):
+        assistant_text = out.text()
+    else:
+        assistant_text = out.text()
 
-        try:
-            parsed_model = plan_parser.parse(assistant_text)
-            parsed_plan = parsed_model.model_dump()
-        except Exception as e:
-            raise ValueError(f"Error parsing plan: {str(e)}")
+    try:
+        parsed_model = plan_parser.parse(assistant_text)
+        parsed_plan = parsed_model.model_dump()
+    except Exception as e:
+        raise ValueError(f"Error parsing plan: {str(e)}")
 
     # write json to file, name with timestamp to avoid clash
     plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_path = Path(f"{JSON_OUTPUT_PATH}/{plan_name}/{plan_name}_{timestamp}.json")
+    folder_name = f"{timestamp}_{plan_name}"
+
+    json_path = Path(f"{JSON_OUTPUT_PATH}/{folder_name}/{folder_name}.json")
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(parsed_plan, indent=2))
 
     return {
         "messages": [out],
         "plan_json": parsed_plan,
-        "problem_name": plan_name,
+        "folder_name": folder_name,
     }
 
 
@@ -484,7 +476,7 @@ def continue_to_workflow(state: State):
         Send(
             "Actor node",
             {
-                "problem_name": state["problem_name"],
+                "folder_name": state["folder_name"],
                 "name": agent_name,
                 "task": task,
                 "sys_msg": sys_msg,
@@ -499,7 +491,7 @@ def continue_to_workflow(state: State):
 
 
 def generic_actor(state: AgentState):
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     name = state["name"]
     sys_msg = state["sys_msg"]
     prompt = state["prompt"]
@@ -507,7 +499,7 @@ def generic_actor(state: AgentState):
     output = state["output"]
 
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
     formatted_parts: list[str] = []
@@ -536,7 +528,7 @@ def generic_actor(state: AgentState):
     response = pddl_llm.invoke(
         [SystemMessage(content=sys_msg), HumanMessage(content=prompt_with_inputs)]
     )
-    response_text = response.content
+    response_text = response.text()
 
     # if task mode is pddl:
     if state["task"] == "pddl":
@@ -686,9 +678,9 @@ def run_planner(base_dir: Path, wsl: bool):
 
 # This is just a shortcut branch if don't want to do refinement
 def external_solver(state: State):
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
     domain_path = state["pddl"]["domain_path"]
@@ -811,7 +803,7 @@ def init_refiner_state(state: State):
             "pddl_logs": "No log file yet.",
             "history": [],
         },
-        "problem_name": state["problem_name"],
+        "folder_name": state["folder_name"],
         "curr_refinement_iter": 0,
         "WSL": state["WSL"],
     }
@@ -847,9 +839,9 @@ def agent_refiner(state: RefinerState):
     hypervisor = state["hypervisor"]
     acting_agent_name = state["acting_agent_name"]
     refiner_args = state["refiner_args"]
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
     pddl_parser = PDDLParser()
@@ -893,9 +885,9 @@ def plan_produced(
     state: RefinerState,
 ) -> Literal["Meta analyst", "Select refiner", "NL converter"]:
     # if plan file exists and is non-empty, go to meta analyst
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
     if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
@@ -906,10 +898,12 @@ def plan_produced(
 def agent_meta_analyst(state: RefinerState):
 
     refiner_args = state["refiner_args"]
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
+    with open(base_dir / "sas_plan", "r") as f:
+        refiner_args["pddl_plan"] = f.read()
 
     pddl_parser = PDDLParser()
     for arg in MetaAnalyzer.required_args.keys():
@@ -944,9 +938,9 @@ def agent_meta_analyst(state: RefinerState):
 
 
 def agent_to_nl(state: State | RefinerState):
-    problem_name = state["problem_name"]
+    folder_name = state["folder_name"]
     base_dir = (
-        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{problem_name}")
+        Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
     with open(base_dir / "problem.pddl", "r") as f:

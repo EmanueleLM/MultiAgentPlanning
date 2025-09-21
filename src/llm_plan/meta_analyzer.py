@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 class MetaAnalyzer(Agent):
     required_args = {
         "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The JSON specification of the task.",
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "target_solver": "(str) The target PDDL solver.",
@@ -108,7 +109,7 @@ class MetaAnalyzer(Agent):
         )
 
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        analyzer_out = self.llm.invoke(inp).content
+        analyzer_out = self.llm.invoke(inp).text()
 
         if "<PASS>" in analyzer_out:
             return "<domain>{}</domain><problem>{}</problem>".format(
@@ -126,5 +127,5 @@ class MetaAnalyzer(Agent):
                 SystemMessage(content=self.editor_system_prompt),
                 HumanMessage(content=editor_prompt),
             ]
-            editor_out = self.llm.invoke(editor_inp).content
+            editor_out = self.llm.invoke(editor_inp).text()
             return editor_out

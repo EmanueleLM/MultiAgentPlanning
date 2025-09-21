@@ -75,4 +75,4 @@ class AgentNaturalLanguage(Agent):
             pddl_plan=self.prompt_args["pddl_plan"],
         )
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+        return self.llm.invoke(inp).text()

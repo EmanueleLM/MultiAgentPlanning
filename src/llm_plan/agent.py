@@ -146,7 +146,7 @@ class AgentDeepThinkConstraints(Agent):
             pddl_problem=self.prompt_args["pddl_problem"],
         )
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+        return self.llm.invoke(inp).text()
 
 
 class AgentEnforceMultiAgency(Agent):
@@ -232,7 +232,7 @@ class AgentEnforceMultiAgency(Agent):
             target_solver=self.prompt_args["target_solver"],
         )
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+        return self.llm.invoke(inp).text()
 
 
 class AgentFastDownwards2Adapter(Agent):
@@ -311,7 +311,7 @@ class AgentFastDownwards2Adapter(Agent):
         )
 
         inp = [SystemMessage(content=self.system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+        return self.llm.invoke(inp).text()
 
 
 class AgentSyntaxPDDL(Agent):
@@ -400,7 +400,7 @@ class AgentSyntaxPDDL(Agent):
         )
 
         inp = [SystemMessage(content=system_prompt), HumanMessage(content=prompt)]
-        return self.llm.invoke(inp).content
+        return self.llm.invoke(inp).text()
 
 
 class NoOpAgent(Agent):

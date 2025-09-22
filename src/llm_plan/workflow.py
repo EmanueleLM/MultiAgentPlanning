@@ -39,6 +39,9 @@ from llm_plan.config import (
 from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effort.
+MODEL_FAST = (
+    "gpt-5-nano"  # faster but less capable model for refinements to speed things up
+)
 JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
@@ -275,12 +278,12 @@ default_reasoning = {"effort": "low", "summary": None}
 medium_reasoning = {"effort": "medium", "summary": None}
 high_reasoning = {"effort": "high", "summary": None}
 
-clarifier_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
+clarifier_llm = ChatOpenAI(model=MODEL_FAST, reasoning=default_reasoning)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 pddl_llm = ChatOpenAI(model=MODEL, reasoning=medium_reasoning)
-refiner_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
+refiner_llm = ChatOpenAI(model=MODEL_FAST, reasoning=default_reasoning)
 meta_analyzer_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 
 

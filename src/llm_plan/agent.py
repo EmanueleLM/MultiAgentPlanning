@@ -416,9 +416,6 @@ class AgentSyntaxPDDL(Agent):
         Run the Agent to fix PDDL syntax errors using a ReAct loop.
         """
         agent = create_react_agent(self.llm, self.tools, self.react_prompt)
-        agent_executor = AgentExecutor(
-            agent=agent, tools=self.tools, verbose=True
-        )  # verbose=True shows the reasoning steps
 
         input_data = {
             "specification": self.prompt_args["specification"],
@@ -429,8 +426,9 @@ class AgentSyntaxPDDL(Agent):
             "syntax_errors": self.prompt_args["syntax_errors"],
         }
 
-        result = agent_executor.invoke(input_data)
-        result_text = result["output"].strip()
+        result = agent.invoke(input_data)
+        last = result["messages"][-1]  # BaseMessage
+        result_text = getattr(last, "content", "")
         if "<PASS>" in result_text:
             return f"<domain>{self.prompt_args['pddl_domain']}</domain>\n<problem>{self.prompt_args['pddl_problem']}</problem>"
         else:

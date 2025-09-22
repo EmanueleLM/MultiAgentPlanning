@@ -26,7 +26,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain.tools.render import render_text_description
+from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 
 
@@ -331,104 +332,102 @@ class AgentSyntaxPDDL(Agent):
         self.tools = [PlanningWikiTool()]
 
         # A new prompt designed for a ReAct agent. Note the instruction to use tools.
-        self.react_prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    inspect.cleandoc(
-                        """
-                You are an expert PDDL syntax corrector. Your task is to analyze the provided PDDL domain and problem files,
-                considering any syntax errors or logs, and fix them to be compliant with the target solver.
-                You have access to the following tools to help you:{tools}. The tools have names [{tool_names}].
+        system_template = inspect.cleandoc(
+            """\
+                    You are an expert PDDL syntax corrector. Your task is to analyze the provided PDDL domain and problem files,
+                    considering any syntax errors or logs, and fix them to be compliant with the target solver.
+                    You have access to the following tools to help you:{tools}. The tools have names [{tool_names}].
 
-                **Key Instructions:**
-                1. The PDDL syntax required is that used by **{target_solver} Planner**.
-                2. If you encounter syntax you are unsure about (e.g., durative-actions, timed initial literals, specific requirements),
-                   you **MUST** use the `planning_wiki_lookup` tool to get the authoritative syntax. This is crucial for accuracy.
-                3. First, reason about the error. Then, decide if you need to use a tool. If so, use it.
-                4. After gathering information, produce the final corrected PDDL files.
-                5. If there are no errors, return the exact phrase "<<PASS>>".
+                    **Key Instructions:**
+                    1. The PDDL syntax required is that used by **{target_solver} Planner**.
+                    2. If you encounter syntax you are unsure about (e.g., durative-actions, timed initial literals, specific requirements),
+                        you **MUST** use the `planning_wiki_lookup` tool to get the authoritative syntax. This is crucial for accuracy.
+                    3. First, reason about the error. Then, decide if you need to use a tool. If so, use it.
+                    4. After gathering information, produce the final corrected PDDL files.
+                    5. If there are no errors, return the exact phrase "<<PASS>>".
 
-                **Solver-Specific PDDL Guidance:**
-                Use the following information to guide your syntax corrections and to select the correct pages with the `planning_wiki_lookup` tool.
-                For `target_solver: popf2`:
-                POPF2 is a temporal planner that works with the semantics of **PDDL 2.1**. Your corrections should adhere to this standard.
+                    **Solver-Specific PDDL Guidance:**
+                    Use the following information to guide your syntax corrections and to select the correct pages with the `planning_wiki_lookup` tool.
+                    For `target_solver: popf2`:
+                    POPF2 is a temporal planner that works with the semantics of **PDDL 2.1**. Your corrections should adhere to this standard.
 
-                Key Supported Features:
-                    - Durative Actions: This is the core of PDDL 2.1. 
-                    - Numeric Fluents: POPF2 supports instantaneous numeric effects and linear continuous numeric effects that change a variable over the duration of an action.
-                For syntax questions on these features, use the tool to check pages like `/pddl21`, `/pddl21/req`, `/pddl21/domain`, `/pddl21/problem`.
+                    Key Supported Features:
+                        - Durative Actions: This is the core of PDDL 2.1. 
+                        - Numeric Fluents: POPF2 supports instantaneous numeric effects and linear continuous numeric effects that change a variable over the duration of an action.
+                    For syntax questions on these features, use the tool to check pages like `/pddl21`, `/pddl21/req`, `/pddl21/domain`, `/pddl21/problem`.
 
-                Key Unsupported Features:
-                    - It does not support features from PDDL 3.0+ like preferences or soft goals. Focus strictly on PDDL 2.1.
-                    - It does not support parts of ADL. Look at the pddl_logs to identify unsupported features or errors.
+                    Key Unsupported Features:
+                        - It does not support features from PDDL 3.0+ like preferences or soft goals. Focus strictly on PDDL 2.1.
+                        - It does not support parts of ADL. Look at the pddl_logs to identify unsupported features or errors.
 
-                ***
+                    ***
 
-                For `target_solver: fast-downward`:
-                Fast Downward is primarily a non-temporal, non-numeric planner, but it supports some specific features.
+                    For `target_solver: fast-downward`:
+                    Fast Downward is primarily a non-temporal, non-numeric planner, but it supports some specific features.
 
-                Key Supported Features:
-                    - STRIPS + ADL: Supports advanced features like conditional effects, quantified preconditions (`forall`, `exists`), and disjunctions.
-                    - Axioms / Derived Predicates: Supports PDDL 2.2 derived predicates.
-                    - Action Costs: Supports `:action-costs` from PDDL 3.1, but costs must be non-negative integers.
-                    - For syntax on these features, use the tool to check pages like `/pddl`, `/pddl/requirements`, `/pddl/domain`, `/pddl/problem`, and `/pddl22`.
+                    Key Supported Features:
+                        - STRIPS + ADL: Supports advanced features like conditional effects, quantified preconditions (`forall`, `exists`), and disjunctions.
+                        - Axioms / Derived Predicates: Supports PDDL 2.2 derived predicates.
+                        - Action Costs: Supports `:action-costs` from PDDL 3.1, but costs must be non-negative integers.
+                        - For syntax on these features, use the tool to check pages like `/pddl`, `/pddl/requirements`, `/pddl/domain`, `/pddl/problem`, and `/pddl22`.
 
-                Key Unsupported Features:
-                    - No Temporal Planning: Does not support durative actions or any PDDL 2.1 temporal features.
-                    - No General Numeric Planning: Does not support numeric preconditions or effects, except for the specific `(increase (total-cost) ...)` syntax for action costs.
-                    - No Object Fluents or Preferences: Does not support PDDL 3.0+ features.
+                    Key Unsupported Features:
+                        - No Temporal Planning: Does not support durative actions or any PDDL 2.1 temporal features.
+                        - No General Numeric Planning: Does not support numeric preconditions or effects, except for the specific `(increase (total-cost) ...)` syntax for action costs.
+                        - No Object Fluents or Preferences: Does not support PDDL 3.0+ features.
 
-                **Output Format:**
-                Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                Do not add any other text, comments, or explanations outside of these tags.
-                """
-                    ),
-                ),
-                (
-                    "user",
-                    inspect.cleandoc(
-                        """
-                Here is the context for the task:
+                    **Output Format:**
+                    Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                    Do not add any other text, comments, or explanations outside of these tags.
+                    """
+        )
+        self.system_prompt = system_template.format(
+            tools=render_text_description(self.tools),
+            tool_names=", ".join(t.name for t in self.tools),
+            target_solver=self.prompt_args["target_solver"],
+        )
 
-                <specification>{specification}</specification>
+        self.prompt = inspect.cleandoc(
+            """\
+                    Here is the context for the task:
 
-                <domain>{pddl_domain}</domain>
+                    <specification>{specification}</specification>
 
-                <problem>{pddl_problem}</problem>
+                    <domain>{pddl_domain}</domain>
 
-                <logs>{pddl_logs}</logs>
+                    <problem>{pddl_problem}</problem>
 
-                <errors>{syntax_errors}</errors>
+                    <logs>{pddl_logs}</logs>
 
-                Please analyze and fix any PDDL syntax errors based on the context and your available tools.
-                Remember to simply return "<<PASS>>" if there are no errors.
-                """
-                    ),
-                ),
-                # agent's internal thoughts and tool calls.
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ]
+                    <errors>{syntax_errors}</errors>
+
+                    Please analyze and fix any PDDL syntax errors based on the context and your available tools.
+                    Remember to simply return "<<PASS>>" if there are no errors.
+                    """
+        )
+
+        self.agent = create_react_agent(
+            model=self.llm,
+            tools=self.tools,
+            prompt=self.system_prompt,
         )
 
     def run(self) -> str:
         """
         Run the Agent to fix PDDL syntax errors using a ReAct loop.
         """
-        agent = create_react_agent(self.llm, self.tools, self.react_prompt)
 
-        input_data = {
-            "specification": self.prompt_args["specification"],
-            "pddl_domain": self.prompt_args["pddl_domain"],
-            "pddl_problem": self.prompt_args["pddl_problem"],
-            "target_solver": self.prompt_args["target_solver"],
-            "pddl_logs": self.prompt_args["pddl_logs"],
-            "syntax_errors": self.prompt_args["syntax_errors"],
-        }
+        prompt = self.prompt.format(
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_logs=self.prompt_args["pddl_logs"],
+            syntax_errors=self.prompt_args["syntax_errors"],
+        )
 
-        result = agent.invoke(input_data)
-        last = result["messages"][-1]  # BaseMessage
-        result_text = getattr(last, "content", "")
+        result = self.agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        result_text = result["messages"][-1].get("content", "").strip()
+
         if "<PASS>" in result_text:
             return f"<domain>{self.prompt_args['pddl_domain']}</domain>\n<problem>{self.prompt_args['pddl_problem']}</problem>"
         else:

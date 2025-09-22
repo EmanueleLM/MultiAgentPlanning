@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents import AgentExecutor, create_react_agent
 from pydantic import BaseModel, Field
 
@@ -406,8 +406,8 @@ class AgentSyntaxPDDL(Agent):
                 """
                     ),
                 ),
-                # This placeholder is where the agent's internal thoughts and tool calls go.
-                ("placeholder", "{agent_scratchpad}"),
+                # agent's internal thoughts and tool calls.
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
             ]
         )
 

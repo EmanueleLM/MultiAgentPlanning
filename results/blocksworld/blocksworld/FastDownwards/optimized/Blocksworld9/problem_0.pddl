@@ -1,0 +1,66 @@
+(define (problem multi-agent-blocks-problem)
+  (:domain multi-agent-blocks)
+  (:objects
+    a b c d e f g h i j k l m n - block
+  )
+
+  (:init
+    ;; initial stacks (both agents reported the same initial configuration)
+    ;; stack1: d on table; a on d; f on a; l on f; k on l; n on k; b on n; i on b
+    (ontable d)
+    (on a d)
+    (on f a)
+    (on l f)
+    (on k l)
+    (on n k)
+    (on b n)
+    (on i b)
+
+    ;; stack2: h on table; m on h; g on m; e on g; c on e; j on c
+    (ontable h)
+    (on m h)
+    (on g m)
+    (on e g)
+    (on c e)
+    (on j c)
+
+    ;; clear (tops)
+    (clear i)
+    (clear j)
+
+    ;; Vowel capability (vowel_agent)
+    (vowel a)
+    (vowel e)
+    (vowel i)
+
+    ;; Consonant capability (consonant_agent)
+    (consonant d)
+    (consonant f)
+    (consonant l)
+    (consonant k)
+    (consonant n)
+    (consonant b)
+    (consonant h)
+    (consonant m)
+    (consonant g)
+    (consonant c)
+    (consonant j)
+  )
+
+  (:goal (and
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (on e f)
+    (on f g)
+    (on g h)
+    (on h i)
+    (on i j)
+    (on j k)
+    (on k l)
+    (on l m)
+    (on m n)
+    (ontable n)
+  ))
+)

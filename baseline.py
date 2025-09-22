@@ -13,45 +13,45 @@ from time import sleep
 from pathlib import Path
 
 
-from src.llm_plan.config import DATA_PATH
+from src.llm_plan.config import DATA_PATH, RESULTS_FOLDER
 from src.llm_plan.llm import ChatGPT, Gemini
 
 DATASET = {
     "calendar_scheduling": {
         "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "meeting_planning": {
         "data": DATA_PATH / "natural_plan/meeting_planning.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "trip_planning": {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": Path("./tmp/blocksworld")
+        "results": RESULTS_FOLDER / "blocksworld"
         },
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
-        "results": Path("./tmp/calendar_easy_to_hard")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard"
         },
     "calendar_easy_to_hard_shifted": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted.json",
-        "results": Path("./tmp/calendar_easy_to_hard_shifted")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted"
         },
     "calendar_easy_to_hard_shifted_noise": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted_noise.json",
-        "results": Path("./tmp/calendar_easy_to_hard_shifted_noise")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted_noise"
         },
     "calendar_easy_to_hard_analogy": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_analogy.json",
-        "results": Path("./tmp/calendar_easy_to_hard_analogy")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_analogy"
         },
     "calendar_easy_to_hard_analogy_shifted": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_analogy_shifted.json",
-        "results": Path("./tmp/calendar_easy_to_hard_analogy_shifted")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_analogy_shifted"
         }
 }
 
@@ -81,7 +81,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Run experiments with PDDL and planning agents."
     )
-
+    
     parser.add_argument(
         "--dataset",
         type=str,
@@ -128,8 +128,15 @@ if __name__ == "__main__":
     
     with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
-    
-    problem_name = list(scheduling_data.keys())[0][:-1]
+
+    # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
+    key = list(scheduling_data.keys())[0]
+    match = re.match(r'^(.*)_(\d+)$', key)
+    if match:
+        problem_name, _ = match.groups()
+    else:
+        problem_name = key
+        
     BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/zero_shot"
     
     system_prompt = "You are an expert planner and scheduling assistant."

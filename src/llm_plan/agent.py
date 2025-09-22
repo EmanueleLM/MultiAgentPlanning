@@ -409,6 +409,8 @@ class AgentSyntaxPDDL(Agent):
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
         This agent evaluates the PDDL syntax generated.
+        It performs type-checks and fixes syntax errors in the PDDL domain and problem.
+        This agent does not target a specific PDDL solver: it fixes generic PDDL syntax errors.
 
         Input:
             llm (LLM): The language model to use for fixing the syntax.
@@ -445,6 +447,93 @@ class AgentSyntaxPDDL(Agent):
                                       Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *{target_solver} Planner*.
                                       Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *{target_solver} Planner*. 
                                       In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
+                                      
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
+                                      Just return the PDDL code, do not add special characters or comments.
+                                      """)
+
+    def run(self) -> str:
+        """
+        Run the Agent to solve hallucinations in the plan.
+
+        Input:
+            src (str): The plan to be fixed for hallucinations.
+
+        Output:
+            str: The fixed plan.
+        """
+        self.upload_args(self.prompt_args)  # ensure args are uploaded
+
+        # Format the system prompt
+        system_prompt = self.system_prompt.format(target_solver=self.prompt_args["target_solver"])
+        
+        # Fix the plan
+        prompt = self.prompt.format(
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"],
+            pddl_logs=self.prompt_args["pddl_logs"],
+            syntax_errors=self.prompt_args["syntax_errors"],
+        )
+        return self.llm.generate_sync(
+            system_prompt=system_prompt,
+            prompt=prompt,
+        )
+    
+class AgentAsynchronicity(Agent):
+    required_args = {
+        "specification": "(str) The plan to be checked for improvement.",
+        "pddl_domain": "(str) The PDDL domain that describes the specification.",
+        "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
+        "target_solver": "(str) The target PDDL solver.",
+        "pddl_logs": "(str) The logs of the attempted execution.",
+        "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        This agent optimizes the plan so that asynchronous actions are executed at the same time-step, if possible.
+        In a multi-agent framework, agents can execute actions at the same time-step if they do not interfere with each other.
+        In this sense, this agent introduces a timestep variable that, for each action, identifies the time-step at which the action is executed.
+        Actions with the same timesteps are meant to be executed at the same time.
+
+        Input:
+            llm (LLM): The language model to use for fixing the syntax.
+            prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentSyntaxPDDL"
+        self.llm = llm
+
+        # Prompts
+        self.system_prompt = inspect.cleandoc("""\
+                                             You are an agent that evaluates each plan's step. 
+                                             Your task is to analyze a provided plan against the human specifics,
+                                             and introduce a variable, namely timestep, that indicates at what timestep an action is performed by an agent.
+                                             This is useful to optimize the plan so that asynchronous actions are executed at the same time-step, if possible.
+                                             The PDDL syntax required is that used by *{target_solver} Planner*. 
+                                             You can think as much as you want before answering, and you can use as many steps as you want.
+                                             """)
+        self.prompt = inspect.cleandoc("""\
+                                      Given this specification of a plan, in JSON format:
+                                      <specification>{specification}</specification>
+                                      
+                                      And this PDDL domain that describes the specification:
+                                      <domain>{pddl_domain}</domain>
+                                      
+                                      And this PDDL problem that instatiates the specification:
+                                      <problem>{pddl_problem}</problem>
+                                      
+                                      These are the logs of the attempted execution with *{target_solver} Planner*:
+                                      <logs>{pddl_logs}</logs>
+                                      
+                                      This is the error message returned by a PDDL validator (can be empty or successful):
+                                      <errors>{syntax_errors}</errors>
+                                      
+                                      Your task is to analyze a provided plan against the human specifics, and introduce a variable, namely timestep, that indicates at what timestep an action is performed by an agent.
+                                      This is useful to optimize the plan so that asynchronous actions are executed at the same time-step, if possible.
+                                      The PDDL syntax required is that used by *{target_solver} Planner*. 
                                       
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.

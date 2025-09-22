@@ -66,11 +66,13 @@ class Hypervisor:
             The history is useful as you want to have some diversity in the agents you pick.
             <history>{history}</history>
             
-            For sure you want to ensure picking these agents (look at the history for what you have already picked):
-            - an agent that checks whether all the agents' constraints are satisfied by the plan. Be careful to check that *all* the constraints are correctly specified in the PDDL problem.
-            - an agent that fixes the PDDL syntax inconsistencies.
-            - an agent that adapts the domain and problem to the PDDL solver.
-            - an agent that ensures the current domain and problem satisfy the specification as a *multi-agent* system, where each action referes to the agent that takes it.
+            When you select an agent to improve the domain and problem, first identify potential issues with the current domain and problem, but also consider that a plan may already exist but be suboptimal. 
+            These are some common issues in PDDL multi-agent planning that you want to mitigate.
+            - syntax: the PDDL syntax must be correct and compliant with the solver you are going to use.
+            - constraints: all the agents' constraints must be satisfied by the PDDL domain and problem.
+            - multi-agency: the domain and problem must be adapted to a multi-agent setting, where each action refers to the agent that takes it.
+            - ambiguities: the PDDL domain and problem must be unambiguous and clearly reflect the specification.
+            - asynchronicity: the PDDL domain and problem must allow for asynchronous actions, where agents can act independently at the same time or at different time-steps.
             
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
             If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".

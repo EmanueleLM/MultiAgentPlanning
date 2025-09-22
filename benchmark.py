@@ -15,36 +15,38 @@ from pathlib import Path
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH, RESULTS_FOLDER
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
-    run_pddl_popf2_and_Val, run_pddl_fast_downwards_and_uVal, collect_debug_logs
+    run_pddl_popf2_and_Val, 
+    run_pddl_fast_downwards_and_uVal, 
+    collect_debug_logs
     )
 
 DATASET = {
     "calendar_scheduling": {
         "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "meeting_planning": {
         "data": DATA_PATH / "natural_plan/meeting_planning.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "trip_planning": {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
-        "results": Path("./tmp/google")
+        "results": RESULTS_FOLDER / "google"
         },
     "blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": Path("./tmp/blocksworld")
+        "results": RESULTS_FOLDER / "blocksworld"
         },
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
-        "results": Path("./tmp/calendar_easy_to_hard")
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard"
         }
 }
 
@@ -174,22 +176,30 @@ if __name__ == "__main__":
     sleep_time_first_plan = 3*MODELS[args.model_json]["sleep"]
     sleep_time_plan = MODELS[args.model_plan]["sleep"]
 
+    # Other initializations
     format = "json"
     pddl_parser = PDDLParser()
     full_debug_logs = ""
 
+    # Read the dataset
     with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
     
-    # TODO: This line is very brittle, fix it
-    problem_name = list(scheduling_data.keys())[0][:-1]
+    # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
+    key = list(scheduling_data.keys())[0]
+    match = re.match(r'^(.*)_(\d+)$', key)
+    if match:
+        problem_name, _ = match.groups()
+    else:
+        problem_name = key
 
+    # Start the experiments
     for i in range(num_experiments):
         k = f"{problem_name}{i}"
         data = scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
 
-        # Full logs
+        # Collect the full logs (default -> __full_logs.txt)
         full_debug_logs += collect_debug_logs("PROBLEM", data["prompt_0shot"])
 
         # Generate the first representation
@@ -212,7 +222,7 @@ if __name__ == "__main__":
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 
-        # Full logs
+        # Collect the full logs (default -> __full_logs.txt)
         full_debug_logs += collect_debug_logs("ENVIRONMENT", data["prompt_0shot"])
 
         BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/{args.target_solver}/{env.name}"
@@ -233,7 +243,7 @@ if __name__ == "__main__":
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
 
-            # Full logs
+            # Collect the full logs (default -> __full_logs.txt)
             full_debug_logs += collect_debug_logs("FINAL-PLAN", final_plan)
             
             # Save domain and problem
@@ -244,7 +254,7 @@ if __name__ == "__main__":
                 
             sleep(sleep_time_first_plan)
 
-        # Full logs
+        # Collect the full logs (default -> __full_logs.txt)
         full_debug_logs += collect_debug_logs("DOMAIN", domain)
         full_debug_logs += collect_debug_logs("PROBLEM", problem)
             
@@ -276,7 +286,7 @@ if __name__ == "__main__":
             "history": [],
         }
 
-        # Full logs
+        # Collect the full logs (default -> __full_logs.txt)
         full_debug_logs += collect_debug_logs("ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4))
 
         for j in range(1, budget+1):
@@ -338,7 +348,7 @@ if __name__ == "__main__":
             # Update the history
             prompt_args_hypervisor["history"].append(agent_name)
 
-            # Full logs
+            # Collect the full logs (default -> __full_logs.txt)
             full_debug_logs += collect_debug_logs(f"ITERATION {j}", json.dumps(prompt_args_hypervisor, indent=4))
             
             sleep(sleep_time_plan)
@@ -380,12 +390,12 @@ if __name__ == "__main__":
             with open(BASE_FOLDER / "final_natural_plan.txt", "w") as f:
                 f.write(natural_plan)
 
-            # Full logs
+            # Collect the full logs (default -> __full_logs.txt)
             full_debug_logs += collect_debug_logs(f"NATURAL-PLAN {highest_file}", natural_plan)
 
         print()
         
-        # Write full logs
+        # Write the full logs in a file
         if debug:
             with open(FULL_LOGS_PATH, "w") as f:
                 f.write(full_debug_logs)

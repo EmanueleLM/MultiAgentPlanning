@@ -237,11 +237,12 @@ class AgentState(TypedDict):
 class RefinerState(TypedDict):
     folder_name: str  # folder name, to save output in correct folder
     refinement_iters: int  # number of refinement iterations by the hypervisor
-    curr_refinement_iter: int = 0
+    curr_refinement_iter: int
     hypervisor: Hypervisor
     acting_agent_name: str  # current refinement agent name
     refiner_args: dict[str, Any]  # arguments to pass to the refiner agent
     WSL: bool
+    MetaPass: bool  # whether the meta analyzer passed
 
 
 def _validate_initial_state_fields(state: State):
@@ -794,6 +795,8 @@ def proceed_to_solver(
 def refine_or_end(
     state: RefinerState,
 ) -> Literal["Select refiner", "NL converter"]:
+    if state["MetaPass"] and state["acting_agent_name"] == "NoOpAgent":
+        return "NL converter"
     if state["curr_refinement_iter"] < state["refinement_iters"]:
         return "Select refiner"
     else:
@@ -828,31 +831,50 @@ def init_refiner_state(state: State):
         "folder_name": state["folder_name"],
         "curr_refinement_iter": 0,
         "WSL": wsl,
+        "MetaPass": False,
     }
 
 
 def select_agent(state: RefinerState):
+    # If chose no-op but ended up here again, means meta analyzer did not pass, so must choose another agent
+    nudge = ""
+    if state.get("acting_agent_name") == "NoOpAgent":
+        nudge = (
+            "Last time you chose NoOpAgent, but the planner has still not produced a plan yet. "
+            "You must choose a different agent this time. Look carefully at the errors in the logs.txt file and "
+            "choose an agent that can address those issues."
+        )
 
-    hypervisor = Hypervisor(state["refiner_args"])
+    hypervisor = Hypervisor(state["refiner_args"], nudge=nudge)
     response = hypervisor.run(refiner_llm)
 
     match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
     if match:
         agent_name = match.group(1).strip()
     else:
-        # default to AgentDeepThinkPDDL if no class is found
-        agent_name = "AgentDeepThinkPDDL"
+        # default to AgentSyntaxPDDL if no class is found
+        agent_name = "AgentSyntaxPDDL"
 
+    if agent_name == "NoOpAgent":
+        increment = 0
+    else:
+        increment = 1
+    # Choosing no-op agent does not count as an iteration
     return {
         "hypervisor": hypervisor,
         "acting_agent_name": agent_name,
-        "curr_refinement_iter": state["curr_refinement_iter"] + 1,
+        "curr_refinement_iter": state["curr_refinement_iter"] + increment,
     }
 
 
-def break_loop(state: RefinerState) -> Literal["NL converter", "Refiner"]:
+def break_loop(
+    state: RefinerState,
+) -> Literal["NL converter", "Refiner", "Select refiner", "Meta analyst"]:
+    # from select refiner, if NoOpAgent chosen, check if plan was produced. If so, go to meta analyst. If meta analyst passed, go to nl converter.
+    # If no plan produced, go to nl converter if out of iters, else to select refiner.
     if state["acting_agent_name"] == "NoOpAgent":
-        return "NL converter"
+        return plan_produced(state)
+    # otherwise go to refiner
     else:
         return "Refiner"
 
@@ -914,6 +936,7 @@ def plan_produced(
 
     if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
         return "Meta analyst"
+    # if no plan, go back to select refiner if have remaining iters, else to nl converter. Disregards if hypervisor chose NoOpAgent
     return refine_or_end(state)
 
 
@@ -955,8 +978,11 @@ def agent_meta_analyst(state: RefinerState):
     # Syntax errors and logs
     refiner_args["syntax_errors"] = pddl_error
     refiner_args["pddl_logs"] = pddl_logs
+    metapass = False
+    if "<PASS>" in response:
+        metapass = True
 
-    return {"refiner_args": refiner_args}
+    return {"refiner_args": refiner_args, "MetaPass": metapass}
 
 
 def agent_to_nl(state: State | RefinerState):
@@ -1032,7 +1058,9 @@ def build_graph():
     )
     builder.add_edge("Init refiner state", "Select refiner")
     builder.add_conditional_edges(
-        "Select refiner", break_loop, ["Refiner", "NL converter"]
+        "Select refiner",
+        break_loop,
+        ["Refiner", "NL converter", "Meta analyst", "Select refiner"],
     )
     builder.add_conditional_edges(
         "Refiner", plan_produced, ["Meta analyst", "Select refiner", "NL converter"]

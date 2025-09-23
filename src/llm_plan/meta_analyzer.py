@@ -112,7 +112,7 @@ class MetaAnalyzer(Agent):
         analyzer_out = self.llm.invoke(inp).text()
 
         if "<PASS>" in analyzer_out:
-            return "<domain>{}</domain><problem>{}</problem>".format(
+            return "<domain>{}</domain><problem>{}</problem><PASS>".format(
                 self.prompt_args["pddl_domain"], self.prompt_args["pddl_problem"]
             )
         else:

@@ -8,9 +8,10 @@ from llm_plan.config import AGENT_PYTHON_PATH
 
 
 class Hypervisor:
-    def __init__(self, prompt_args: dict[str, str]):
+    def __init__(self, prompt_args: dict[str, str], nudge: str = ""):
         self.prompt_args = prompt_args
         self.agents = self.get_classes_from_agents()
+        self.nudge = nudge
 
         self.required_args = {
             "human_specification": "(str) The human specification of the task.",
@@ -67,12 +68,15 @@ class Hypervisor:
             <history>{history}</history>
             
             However, syntax always takes priority. If the logs suggest syntax errors, you must pick the agent that can fix syntax errors.
-            Only if there are no syntax errors, you can pick other agents.
+            Only if there are no syntax errors, you can pick other agents. 
+            The problem is definitely solvable, so if the logs say the problem is unsolvable, you must pick an agent that can address this.
             
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
             If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".
             """
         )
+        if self.nudge:
+            self.prompt += "\n" + self.nudge
 
     @staticmethod
     def get_classes_from_agents():

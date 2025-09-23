@@ -2,6 +2,10 @@ import re
 import typing as T
 from abc import ABC, abstractmethod
 
+# regexes to strip leading/trailing code fences.
+_FENCE_START_RE = re.compile(r"^\s*```[^\n]*\n")
+_FENCE_END_RE = re.compile(r"\n?```\s*$")
+
 
 class Parser(ABC):
     """
@@ -20,6 +24,86 @@ class Parser(ABC):
             A structured representation of the parsed text.
         """
         pass
+
+
+class PDDLParserv2(Parser):
+    """
+    PDDL parser from text. First tries to extract PDDL between <domain>...</domain> and <problem>...</problem> tags.
+    If that fails, falls back to a heuristic parser that looks for balanced (define (domain ...)) and (define (problem ...)) s-expressions.
+    Automatically tries to fix unbalanced parentheses by adding missing closing parentheses at the end.
+    Strips code fences (```...```) and labels if present around the PDDL code.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.domain_tag_begin, self.domain_tag_end = ("<domain>", "</domain>")
+        self.problem_tag_begin, self.problem_tag_end = ("<problem>", "</problem>")
+
+    def _strip_code_fences(self, s: str) -> str:
+        """Remove a leading ```[label]\\n and a trailing ``` if present."""
+        s = s.strip()
+        s = _FENCE_START_RE.sub("", s)
+        s = _FENCE_END_RE.sub("", s)
+        return s
+
+    def _extract(self, text: str, anchor: str) -> str:
+        """
+        Extracts a balanced S-expression beginning at `anchor`:
+        1) Strips surrounding triple backticks (``` or ```lisp, etc.) if present.
+        2) Finds `anchor` and scans forward, counting parentheses.
+        3) If the end is missing, appends the required number of ')' to balance.
+        """
+        cleaned = self._strip_code_fences(text)
+
+        start = cleaned.find(anchor)
+        if start == -1:
+            raise ValueError(f"Anchor not found: {anchor!r}")
+
+        depth = 0
+        end = None
+        for i, c in enumerate(cleaned[start:], start):
+            if c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+
+        if end is not None:
+            # already balanced
+            return cleaned[start : end + 1]  # noqa E203
+
+        # if missing closing brackets).
+        if depth > 0:
+            fragment = cleaned[start:].rstrip()
+            return fragment + (")" * depth)
+
+        # if depth < 0, there were more ')' than '(', i.e. more closing than opening brackets
+        raise ValueError(
+            f"Unbalanced parentheses for anchor {anchor!r} (too many ')')."
+        )
+
+    def parse(self, source: str) -> T.Tuple[str, str]:
+        """
+        Parse from source string.
+        Args:
+            source (str): The PDDL text to parse.
+
+        Returns:
+            A tuple containing the domain and problem definitions.
+        """
+        domain = source.split(self.domain_tag_begin)[1].split(self.domain_tag_end)[0]
+        problem = source.split(self.problem_tag_begin)[1].split(self.problem_tag_end)[0]
+
+        try:
+            domain_text = self._extract(domain, "(define (domain")
+            problem_text = self._extract(problem, "(define (problem")
+        except ValueError as e:
+            print(f"Warning: Issue with PDDL brackets: {e}.")
+            domain_text = domain
+            problem_text = problem
+        return domain_text, problem_text
 
 
 class PDDLParser(Parser):
@@ -128,7 +212,8 @@ class _EmergencyPDDLParser(Parser):
 
     def _read_symbol(self, text: str, i: int) -> T.Tuple[T.Optional[str], int]:
         """Read a symbol starting at i (assumes whitespace/comments already skipped).
-        Symbol ends at whitespace or '(' or ')' or ';' or '\"'. Returns (symbol, next_index)."""
+        Symbol ends at whitespace or '(' or ')' or ';' or '\"'. Returns (symbol, next_index).
+        """
         n = len(text)
         if i >= n:
             return None, i
@@ -141,7 +226,8 @@ class _EmergencyPDDLParser(Parser):
 
     def _extract_balanced(self, text: str, start: int) -> T.Tuple[str, int]:
         """Given start index pointing to '(', extract the full balanced s-expression.
-        Returns (s_expr_text, end_index). Raises ValueError on unbalanced parentheses."""
+        Returns (s_expr_text, end_index). Raises ValueError on unbalanced parentheses.
+        """
         n = len(text)
         assert start < n and text[start] == "("
         i = start
@@ -174,7 +260,7 @@ class _EmergencyPDDLParser(Parser):
             elif ch == ")":
                 depth -= 1
                 if depth == 0:
-                    return text[start : i + 1], i
+                    return text[start : i + 1], i  # noqa E203
             i += 1
 
         raise ValueError(f"Unbalanced parentheses starting at index {start}")

@@ -426,7 +426,9 @@ class AgentSyntaxPDDL(Agent):
         )
 
         result = self.agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        result_text = result["messages"][-1].get("content", "").strip()
+        print(f"AgentSyntaxPDDL result: {result}")
+        print(f"messages: {result['messages']}")
+        result_text = result["messages"][-1].text()
 
         if "<PASS>" in result_text:
             return f"<domain>{self.prompt_args['pddl_domain']}</domain>\n<problem>{self.prompt_args['pddl_problem']}</problem>"

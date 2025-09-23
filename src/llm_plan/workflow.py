@@ -40,7 +40,7 @@ from llm_plan.parser import PDDLParser
 
 MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effort.
 MODEL_FAST = (
-    "gpt-5-nano"  # faster but less capable model for refinements to speed things up
+    "gpt-4o"  # faster but less capable model for refinements to speed things up
 )
 JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
@@ -278,12 +278,12 @@ default_reasoning = {"effort": "low", "summary": None}
 medium_reasoning = {"effort": "medium", "summary": None}
 high_reasoning = {"effort": "high", "summary": None}
 
-clarifier_llm = ChatOpenAI(model=MODEL_FAST, reasoning=default_reasoning)
+clarifier_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
-coder_json_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
-pddl_llm = ChatOpenAI(model=MODEL, reasoning=medium_reasoning)
-refiner_llm = ChatOpenAI(model=MODEL_FAST, reasoning=default_reasoning)
+coder_json_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
+pddl_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
+refiner_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
 meta_analyzer_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 
 
@@ -542,8 +542,15 @@ def generic_actor(state: AgentState):
         problem = response_text.split("<problem>")[1].split("</problem>")[0]
 
         # another safety net to ensure only raw pddl is extracted
-        domain_text = _extract(domain, "(define (domain")
-        problem_text = _extract(problem, "(define (problem")
+        try:
+            domain_text = _extract(domain, "(define (domain")
+            problem_text = _extract(problem, "(define (problem")
+        except ValueError:
+            print(
+                f"Warning: could not extract PDDL from {name} response due to bracket imbalance; saving full response between tags."
+            )
+            domain_text = domain
+            problem_text = problem
 
         domain_path = base_dir / f"{output}_domain.pddl"
         problem_path = base_dir / f"{output}_problem.pddl"
@@ -584,7 +591,7 @@ def run_planner(base_dir: Path, wsl: bool):
                 str(base_dir / "domain.pddl"),
                 str(base_dir / "problem.pddl"),
             ]
-        print("Running command:", " ".join(shlex.quote(arg) for arg in command))
+        # print("Running command:", " ".join(shlex.quote(arg) for arg in command))
         # Capture combined stdout/stderr to parse
         result = subprocess.run(
             command,
@@ -594,13 +601,13 @@ def run_planner(base_dir: Path, wsl: bool):
             check=False,
         )
 
-        output = result.stdout or ""
+        output = result.stdout  # or ""
         logs_path = base_dir / "logs.txt"
         plan_path = base_dir / "sas_plan"
 
         # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
         plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
-        print("Solver output:\n", output)
+        # print("Solver output:\n", output)
         if "Solution Found" in output:
             lines = output.splitlines()
 

@@ -37,20 +37,24 @@ from llm_plan.config import (
     SOLVER_FD_ARGS,
 )
 from llm_plan.parser import PDDLParserv2
+import unified_planning as up
+from unified_planning.io import PDDLReader
+from unified_planning.shortcuts import OneshotPlanner
+
+up.shortcuts.get_environment().credits_stream = None
 
 MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effort.
 MODEL_FAST = (
-    "gpt-4o"  # faster but less capable model for refinements to speed things up
+    "gpt-5-nano"  # faster but less capable model for refinements to speed things up
 )
 JSON_OUTPUT_PATH = "../../tmp"
 ACTOR_OUTPUT_PATH = "../../tmp"
 EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
-TEMPORAL = True  # whether to use temporal planner POPF2. If False, use Fast Downward
-if TEMPORAL:
-    PLANNER = "popf2"
-else:
-    PLANNER = "fast-downward"
+DEBUG = True  # whether to print debug info
+# PLANNER = "popf2"
+PLANNER = "fast-downward"
+# PLANNER = "lpg"
 
 
 # helper functions
@@ -263,7 +267,7 @@ high_reasoning = {"effort": "high", "summary": None}
 clarifier_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
-coder_json_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
+coder_json_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 pddl_llm = ChatOpenAI(model=MODEL, reasoning=medium_reasoning)
 refiner_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 meta_analyzer_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
@@ -372,7 +376,8 @@ def agent_coder_json(state: State):
     out = coder_json_llm.invoke(inp)
 
     parsed_plan = None
-
+    if DEBUG:
+        print(f"DEBUG: JSON output from coder_json_llm:\n{out.text()}\n")
     # extract json depending on the output structure.
     assistant_text = ""
     if hasattr(out, "content"):
@@ -510,13 +515,17 @@ def generic_actor(state: AgentState):
     if inputs:
         formatted_inputs = "[Inputs]:\n" + "".join(formatted_parts)
 
+    if DEBUG:
+        print(f"DEBUG: Actor {name} invoked, is_final: {state['is_final']}")
+        print(f"DEBUG: Formatted inputs for actor {name}:\n{formatted_inputs}\n")
     # Invoke the PDDL LLM with system message and a human message containing the prompt + formatted inputs
     prompt_with_inputs = prompt + "\n\n" + formatted_inputs
     response = pddl_llm.invoke(
         [SystemMessage(content=sys_msg), HumanMessage(content=prompt_with_inputs)]
     )
     response_text = response.text()
-
+    if DEBUG:
+        print(f"DEBUG: Actor {name} response:\n{response_text}\n")
     # if task mode is pddl:
     if state["task"] == "pddl":
         # extract domain and problem from pddl
@@ -527,12 +536,21 @@ def generic_actor(state: AgentState):
         problem_path = base_dir / f"{output}_problem.pddl"
         # create directory if doesn't exist
         base_dir.mkdir(parents=True, exist_ok=True)
+        if DEBUG:
+            print(f"DEBUG: Extracted domain:\n{domain_text}\n")
+            print(f"DEBUG: Extracted problem:\n{problem_text}\n")
 
         domain_path.write_text(domain_text, encoding="utf-8")
         problem_path.write_text(problem_text, encoding="utf-8")
 
     # If final step and orchestrator, store the final domain and problem content
     if name == "orchestrator" and state["is_final"]:
+        if DEBUG:
+            print("DEBUG: Final orchestrator reached.")
+            print(
+                f"DEBUG: Initial orchestrator PDDL domain:\n{domain_text}\n"
+                f"DEBUG: Initial orchestrator PDDL problem:\n{problem_text}\n"
+            )
         return {
             "pddl": {
                 "domain": domain_text,
@@ -571,12 +589,15 @@ def run_planner(base_dir: Path, wsl: bool):
             text=True,
             check=False,
         )
-        print(f"RESULT: {result}")
-        print(f"STDOUT: {result.stdout}")
-        print()
+        # print(f"RESULT: {result}")
+        # print(f"STDOUT: {result.stdout}")
+        # print()
         output = result.stdout  # or ""
         logs_path = base_dir / "logs.txt"
         plan_path = base_dir / "sas_plan"
+
+        if DEBUG:
+            print(f"DEBUG: POPF2 solver result.stdout:\n{output.strip()}\n")
 
         # Match plan lines that typically look like: "0.000: (action arg...)  [duration]"
         plan_line_re = re.compile(r"^\s*\d+(?:\.\d+)?:\s*\(", re.ASCII)
@@ -628,6 +649,39 @@ def run_planner(base_dir: Path, wsl: bool):
 
         with open(base_dir / "logs.txt", "w") as logfile:
             subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT)
+
+    elif PLANNER == "lpg":
+        base_dir.mkdir(parents=True, exist_ok=True)
+        dom = base_dir / "domain.pddl"
+        prob = base_dir / "problem.pddl"
+        log_path = base_dir / "logs.txt"
+        plan_path = base_dir / "sas_plan"
+        try:
+            problem = PDDLReader().parse_problem(dom, prob)
+        except Exception as e:
+            log_path.write_text(f"[PARSER ERROR] {e}\n")
+        else:
+            # take the output stream to logs.txt
+            with (
+                log_path.open("w", encoding="utf-8") as log,
+                OneshotPlanner(name="lpg") as planner,
+            ):
+                try:
+                    result = planner.solve(problem, output_stream=log, timeout=100)
+                except Exception as e:
+                    log.write(f"[ENGINE EXCEPTION] {e}\n")
+                else:
+                    log.write(f"[STATUS] {result.status}\n")
+                    # if plan found, write to sas_plan
+                    if result.plan is not None:
+                        txt = str(result.plan)
+                        plan_path.write_text(txt, encoding="utf-8")
+                        log.write(
+                            f"[PLAN] Plan found. ({len(txt.splitlines())} lines)\n"
+                        )
+                    else:
+                        log.write("[PLAN] No plan.\n")
+
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
 
@@ -653,6 +707,8 @@ def run_planner(base_dir: Path, wsl: bool):
     if out.stderr:
         pddl_error = out.stderr
         # print(f"The validation found a problem with the plan: {out.stderr}")
+        if DEBUG:
+            print(f"DEBUG: VAL stderr:\n{pddl_error}\n")
     else:
         pddl_error = "No error found."
         # print("The plan is valid.")
@@ -750,6 +806,39 @@ def external_solver(state: State):
 
         with open(base_dir / "logs.txt", "w") as logfile:
             subprocess.run(command, stdout=logfile, stderr=subprocess.STDOUT, text=True)
+
+    elif PLANNER == "lpg":
+        base_dir.mkdir(parents=True, exist_ok=True)
+        dom = domain_path
+        prob = problem_path
+        log_path = base_dir / "logs.txt"
+        plan_path = base_dir / "sas_plan"
+        try:
+            problem = PDDLReader().parse_problem(dom, prob)
+        except Exception as e:
+            log_path.write_text(f"[PARSER ERROR] {e}\n")
+        else:
+            # take the output stream to logs.txt
+            with (
+                log_path.open("w", encoding="utf-8") as log,
+                OneshotPlanner(name="lpg") as planner,
+            ):
+                try:
+                    result = planner.solve(problem, output_stream=log, timeout=100)
+                except Exception as e:
+                    log.write(f"[ENGINE EXCEPTION] {e}\n")
+                else:
+                    log.write(f"[STATUS] {result.status}\n")
+                    # if plan found, write to sas_plan
+                    if result.plan is not None:
+                        txt = str(result.plan)
+                        plan_path.write_text(txt, encoding="utf-8")
+                        log.write(
+                            f"[PLAN] Plan found. ({len(txt.splitlines())} lines)\n"
+                        )
+                    else:
+                        log.write("[PLAN] No plan.\n")
+
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
 
@@ -832,6 +921,8 @@ def select_agent(state: RefinerState):
     else:
         increment = 1
     # Choosing no-op agent does not count as an iteration
+    if DEBUG:
+        print(f"DEBUG: Hypervisor chose agent: {agent_name}")
     return {
         "hypervisor": hypervisor,
         "acting_agent_name": agent_name,
@@ -865,6 +956,8 @@ def agent_refiner(state: RefinerState):
     for arg in agent_class.required_args.keys():
         agent_class.required_args[arg] = refiner_args[arg]
 
+    if DEBUG:
+        print(f"DEBUG: Starting refinement with {acting_agent_name}.")
     new_agent = agent_class(refiner_llm, agent_class.required_args)
     response = new_agent.run()
 
@@ -879,12 +972,18 @@ def agent_refiner(state: RefinerState):
     with open(base_dir / "domain.pddl", "w", encoding="utf-8") as f:
         f.write(domain)
 
+    if DEBUG:
+        print(
+            f"Refinement iteration {state['curr_refinement_iter']} done. Moving to planner."
+        )
     # Launch the solver
     # Planner output files: sas_plan, logs.txt. Returns pddl_error string
     pddl_error = run_planner(base_dir, state["WSL"])
 
     with open(base_dir / "logs.txt", "r") as f:
         pddl_logs = f.read()
+    if DEBUG:
+        print(f"DEBUG: Planner logs after refinement:\n{pddl_logs.strip()}\n")
 
     # Syntax errors and logs
     refiner_args["syntax_errors"] = pddl_error
@@ -907,6 +1006,8 @@ def plan_produced(
     ).resolve()
 
     if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
+        if DEBUG:
+            print(f"DEBUG: Plan file found in {base_dir}. Proceeding to Meta analyst.")
         return "Meta analyst"
     # if no plan, go back to select refiner if have remaining iters, else to nl converter. Disregards if hypervisor chose NoOpAgent
     return refine_or_end(state)
@@ -926,6 +1027,8 @@ def agent_meta_analyst(state: RefinerState):
     for arg in MetaAnalyzer.required_args.keys():
         MetaAnalyzer.required_args[arg] = refiner_args[arg]
 
+    if DEBUG:
+        print("DEBUG: Starting meta analysis of plan.")
     analyzer = MetaAnalyzer(meta_analyzer_llm, MetaAnalyzer.required_args)
     response = analyzer.run()
 
@@ -940,6 +1043,8 @@ def agent_meta_analyst(state: RefinerState):
     with open(base_dir / "domain.pddl", "w", encoding="utf-8") as f:
         f.write(domain)
 
+    if DEBUG:
+        print("DEBUG: Meta analysis done. Moving to planner.")
     # Launch the solver
     # Planner output files: sas_plan, logs.txt. Returns pddl_error string
     pddl_error = run_planner(base_dir, state["WSL"])
@@ -953,6 +1058,10 @@ def agent_meta_analyst(state: RefinerState):
     metapass = False
     if "<PASS>" in response:
         metapass = True
+
+    if DEBUG:
+        print(f"DEBUG: Planner logs after meta analysis:\n{pddl_logs.strip()}\n")
+        print(f"DEBUG: Meta analyst pass status: {metapass}\n")
 
     return {"refiner_args": refiner_args, "MetaPass": metapass}
 

@@ -36,7 +36,7 @@ from llm_plan.config import (
     SOLVER_POPF2_BINARY,
     SOLVER_FD_ARGS,
 )
-from llm_plan.parser import PDDLParser
+from llm_plan.parser import PDDLParserv2
 
 MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effort.
 MODEL_FAST = (
@@ -92,25 +92,6 @@ def _win_to_wsl_path(p: Path) -> str:
     p = p.resolve()
     drive = p.drive.rstrip(":").lower()
     return f"/mnt/{drive}" + "/" + "/".join(p.parts[1:])
-
-
-def _extract(text: str, anchor: str) -> str:
-    start = text.find(anchor)
-    if start == -1:
-        raise ValueError(f"Anchor not found: {anchor!r}")
-    depth = 0
-    end = None
-    for i, c in enumerate(text[start:], start):
-        if c == "(":
-            depth += 1
-        elif c == ")":
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
-    if end is None:
-        raise ValueError(f"Unbalanced parentheses for anchor {anchor!r}")
-    return text[start : end + 1]  # noqa E203
 
 
 # Schemas for controlling JSON format
@@ -283,8 +264,8 @@ clarifier_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
 # use schema to enforce json structure to some extent
 # somehow ChatOpenAI doesn't like .with_structured_output, so have to put format instructions in agent
 coder_json_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
-pddl_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
-refiner_llm = ChatOpenAI(model=MODEL_FAST)  # , reasoning=default_reasoning)
+pddl_llm = ChatOpenAI(model=MODEL, reasoning=medium_reasoning)
+refiner_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 meta_analyzer_llm = ChatOpenAI(model=MODEL, reasoning=default_reasoning)
 
 
@@ -503,6 +484,7 @@ def generic_actor(state: AgentState):
     inputs = state["inputs"]
     output = state["output"]
 
+    pddl_parser = PDDLParserv2()
     base_dir = (
         Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
@@ -539,19 +521,7 @@ def generic_actor(state: AgentState):
     if state["task"] == "pddl":
         # extract domain and problem from pddl
         # assume system message instructed agent to enclose <> tags
-        domain = response_text.split("<domain>")[1].split("</domain>")[0]
-        problem = response_text.split("<problem>")[1].split("</problem>")[0]
-
-        # another safety net to ensure only raw pddl is extracted
-        try:
-            domain_text = _extract(domain, "(define (domain")
-            problem_text = _extract(problem, "(define (problem")
-        except ValueError:
-            print(
-                f"Warning: could not extract PDDL from {name} response due to bracket imbalance; saving full response between tags."
-            )
-            domain_text = domain
-            problem_text = problem
+        domain_text, problem_text = pddl_parser.parse(response_text)
 
         domain_path = base_dir / f"{output}_domain.pddl"
         problem_path = base_dir / f"{output}_problem.pddl"
@@ -601,7 +571,9 @@ def run_planner(base_dir: Path, wsl: bool):
             text=True,
             check=False,
         )
-
+        print(f"RESULT: {result}")
+        print(f"STDOUT: {result.stdout}")
+        print()
         output = result.stdout  # or ""
         logs_path = base_dir / "logs.txt"
         plan_path = base_dir / "sas_plan"
@@ -888,7 +860,7 @@ def agent_refiner(state: RefinerState):
         Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
-    pddl_parser = PDDLParser()
+    pddl_parser = PDDLParserv2()
     agent_class = hypervisor.agents[acting_agent_name]
     for arg in agent_class.required_args.keys():
         agent_class.required_args[arg] = refiner_args[arg]
@@ -897,7 +869,7 @@ def agent_refiner(state: RefinerState):
     response = new_agent.run()
 
     # Get domain and plan
-    domain, problem = pddl_parser.parse(response, from_file=False)
+    domain, problem = pddl_parser.parse(response)
     refiner_args["pddl_domain"] = domain
     refiner_args["pddl_problem"] = problem
 
@@ -950,7 +922,7 @@ def agent_meta_analyst(state: RefinerState):
     with open(base_dir / "sas_plan", "r") as f:
         refiner_args["pddl_plan"] = f.read()
 
-    pddl_parser = PDDLParser()
+    pddl_parser = PDDLParserv2()
     for arg in MetaAnalyzer.required_args.keys():
         MetaAnalyzer.required_args[arg] = refiner_args[arg]
 
@@ -958,7 +930,7 @@ def agent_meta_analyst(state: RefinerState):
     response = analyzer.run()
 
     # Get domain and plan
-    domain, problem = pddl_parser.parse(response, from_file=False)
+    domain, problem = pddl_parser.parse(response)
     refiner_args["pddl_domain"] = domain
     refiner_args["pddl_problem"] = problem
 

@@ -426,8 +426,6 @@ class AgentSyntaxPDDL(Agent):
         )
 
         result = self.agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        print(f"AgentSyntaxPDDL result: {result}")
-        print(f"messages: {result['messages']}")
         result_text = result["messages"][-1].text()
 
         if "<PASS>" in result_text:

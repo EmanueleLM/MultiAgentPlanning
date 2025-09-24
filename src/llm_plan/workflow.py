@@ -53,8 +53,8 @@ EXAMPLE_JSON = "./example_json"
 ENVIRONMENT_CLASS = "./environment.py"
 DEBUG = True  # whether to print debug info
 # PLANNER = "popf2"
-PLANNER = "fast-downward"
-# PLANNER = "lpg"
+# PLANNER = "fast-downward"
+PLANNER = "lpg"
 
 
 # helper functions
@@ -482,10 +482,13 @@ def continue_to_workflow(state: State):
 
 
 def generic_actor(state: AgentState):
+    # This is a pddl specific formatting reminder appended to prompts in case it was not inferred from the example.
+    # If supporting other modes in the future, might want to change this.
+    tag_reminder = "You MUST enclose the domain in the tags <domain> ... </domain> and problem in the tags <problem> ... </problem>!"
     folder_name = state["folder_name"]
     name = state["name"]
-    sys_msg = state["sys_msg"]
-    prompt = state["prompt"]
+    sys_msg = state["sys_msg"] + tag_reminder
+    prompt = state["prompt"] + tag_reminder
     inputs = state["inputs"]
     output = state["output"]
 

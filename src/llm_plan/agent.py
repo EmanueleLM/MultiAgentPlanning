@@ -18,14 +18,13 @@ This class implements methods to check if:
 """
 
 import inspect
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from typing import Type
 from abc import ABC, abstractmethod
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import BaseTool
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.tools.render import render_text_description
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
@@ -42,6 +41,9 @@ VALID_PAGES = [
     "/pddl21/domain",
     "/pddl21/problem",
     "/pddl22",
+    "/pddl22/requirements",
+    "/pddl22/domain",
+    "/pddl22/problem",
 ]
 
 
@@ -55,41 +57,38 @@ class PlanningWikiInput(BaseModel):
 
 
 class PlanningWikiTool(BaseTool):
-    """
-    A tool to retrieve PDDL syntax and requirements documentation
-    from specific pages on planning.wiki/ref.
-    """
-
     name: str = "planning_wiki_lookup"
     description: str = (
-        "Useful for when you need to verify the correct PDDL syntax, especially for specific versions "
-        "like PDDL2.1 or features like durative-actions, numeric fluents or requirements."
-        "Use it to look up the authoritative syntax before making corrections."
+        "Useful for verifying PDDL syntax for versions/features (e.g., PDDL2.1 durative-actions, numeric fluents). "
+        "Looks up documentation from planning.wiki/ref."
     )
     args_schema: Type[BaseModel] = PlanningWikiInput
 
-    def _run(self, page_suffix: str) -> str:
-        """Use the tool."""
+    # async path
+    async def _arun(self, page_suffix: str) -> str:
         if page_suffix not in VALID_PAGES:
-            return f"Error: Invalid page '{page_suffix}'. Please use one of the following valid pages: {VALID_PAGES}"
+            return f"Error: Invalid page '{page_suffix}'. Valid pages: {VALID_PAGES}"
 
         url = f"https://planning.wiki/ref{page_suffix}"
-        try:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()  # raise an exception for bad status codes
+        timeout = httpx.Timeout(connect=5.0, read=5.0)
+        headers = {"User-Agent": "MA-Planning/1.0 (+https://example.org)"}
 
-            soup = BeautifulSoup(response.content, "html.parser")
+        async with httpx.AsyncClient(
+            timeout=timeout, headers=headers, follow_redirects=True
+        ) as client:
+            try:
+                resp = await client.get(url)
+                resp.raise_for_status()
+            except httpx.HTTPError as e:
+                return f"Error: Could not retrieve the page. Reason: {e}"
 
-            # find the main content div, which seems to have the role 'main'
-            main_content = soup.find("div", role="main")
-            if main_content:
-                # get text and clean it up a bit
-                return " ".join(main_content.get_text().split())
-            else:
-                return "Error: Could not find the main content of the page."
-
-        except requests.exceptions.RequestException as e:
-            return f"Error: Could not retrieve the page. Reason: {e}"
+        soup = BeautifulSoup(resp.text, "html.parser")
+        main = soup.find("div", role="main") or soup.find("main")
+        return (
+            " ".join(main.get_text().split())
+            if main
+            else "Error: Could not find the main content of the page."
+        )
 
 
 class Agent(ABC):
@@ -329,9 +328,79 @@ class AgentSyntaxPDDL(Agent):
         self.name = "AgentSyntaxPDDL"
         self.llm = llm
         self.prompt_args = prompt_args
+        self.target_solver = prompt_args["target_solver"]
         self.tools = [PlanningWikiTool()]
 
         # A new prompt designed for a ReAct agent. Note the instruction to use tools.
+        instructions_fd = inspect.cleandoc(
+            """\
+                    Fast Downward is primarily a non-temporal, non-numeric planner, but it supports some specific features.
+
+                    Key Supported Features:
+                        - STRIPS + ADL: Supports advanced features like conditional effects, quantified preconditions (`forall`, `exists`), and disjunctions.
+                        - Axioms / Derived Predicates: Supports PDDL 2.2 derived predicates.
+                        - Action Costs: Supports `:action-costs` from PDDL 3.1, but costs must be non-negative integers.
+                        - For syntax on these features, use the tool to check pages like `/pddl`, `/pddl/requirements`, `/pddl/domain`, `/pddl/problem`, and `/pddl22`.
+
+                    Key Unsupported Features:
+                        - No Temporal Planning: Does not support durative actions or any PDDL 2.1 temporal features.
+                        - No General Numeric Planning: Does not support numeric preconditions or effects, except for the specific `(increase (total-cost) ...)` syntax for action costs.
+                        - No Object Fluents or Preferences: Does not support PDDL 3.0+ features.
+            """
+        )
+        instructions_popf2 = inspect.cleandoc(
+            """\
+                    POPF2 is a temporal planner that works with the semantics of **PDDL 2.1**. Your corrections should adhere to this standard.
+
+                    Key Supported Features:
+                        - Durative Actions: This is the core of PDDL 2.1. 
+                        - Numeric Fluents: POPF2 supports instantaneous numeric effects and linear continuous numeric effects that change a variable over the duration of an action.
+                    For syntax questions on these features, use the tool to check pages like `/pddl21`, `/pddl21/req`, `/pddl21/domain`, `/pddl21/problem`.
+
+                    Key Unsupported Features:
+                        - It does not support features from PDDL 3.0+ like preferences or soft goals. Focus strictly on PDDL 2.1.
+                        - It does not support parts of ADL. Look at the pddl_logs to identify unsupported features or errors.
+            """
+        )
+        instructions_lpg = inspect.cleandoc(
+            """\
+                    LPG is a local-search planner targeting PDDL 2.1/2.2 (classical, numeric, temporal). It adds support for PDDL 2.2 features: Derived Predicates (DPs) + Timed Initial Literals (TILs).
+
+                    Key Supported Features:
+                    - STRIPS + ADL:
+                        Disjunctions in preconditions
+                        Conditional effects
+                        Quantified preconditions/effects (forall/exists)
+                    - Numeric planning (PDDL 2.1):
+                        Numeric fluents, numeric preconditions/effects
+                        Plan metrics (minimize/maximize cost, makespan)
+                    - Temporal planning (PDDL 2.1):
+                        Durative actions per standard syntax/semantics
+                    - PDDL 2.2 extensions:
+                        Derived Predicates (:derived ...)
+                        Timed Initial Literals in the problem (:init contains (at <time> <literal>))
+                    You can use the tool to check pages like `/pddl21/req`, `/pddl22/req` to help you.
+
+                    Key Unsupported:
+                    - No PDDL+ (processes, events, continuous change)
+                    - No PDDL 3.x preferences / trajectory :constraints / object fluents
+                    - Exotic/engine-specific extensions beyond PDDL 2.2
+
+                    Common Parser Issues:
+                    - Object names in (:objects ...) must be identifiers, not bare numbers.
+                    - Keep a consistent :requirements line that matches what you actually use.
+                    - Avoid (either A B) in predicate argument positions;
+                        replace with a supertype for portability.
+                    - Place TILs only in the problem's :init as (at <time> <literal>).
+                    - Ensure types are declared before use; add :equality if using (= ...).
+
+                    Safe "works-with-LPG" :requirements template (tweak as needed):
+                    :strips :typing :negative-preconditions :equality
+                    :conditional-effects :quantified-preconditions :disjunctive-preconditions
+                    :numeric-fluents :durative-actions
+                    (+ :derived-predicates if using)
+            """
+        )
         system_template = inspect.cleandoc(
             """\
                     You are an expert PDDL syntax corrector. Your task is to analyze the provided PDDL domain and problem files,
@@ -348,43 +417,26 @@ class AgentSyntaxPDDL(Agent):
 
                     **Solver-Specific PDDL Guidance:**
                     Use the following information to guide your syntax corrections and to select the correct pages with the `planning_wiki_lookup` tool.
-                    For `target_solver: popf2`:
-                    POPF2 is a temporal planner that works with the semantics of **PDDL 2.1**. Your corrections should adhere to this standard.
-
-                    Key Supported Features:
-                        - Durative Actions: This is the core of PDDL 2.1. 
-                        - Numeric Fluents: POPF2 supports instantaneous numeric effects and linear continuous numeric effects that change a variable over the duration of an action.
-                    For syntax questions on these features, use the tool to check pages like `/pddl21`, `/pddl21/req`, `/pddl21/domain`, `/pddl21/problem`.
-
-                    Key Unsupported Features:
-                        - It does not support features from PDDL 3.0+ like preferences or soft goals. Focus strictly on PDDL 2.1.
-                        - It does not support parts of ADL. Look at the pddl_logs to identify unsupported features or errors.
-
-                    ***
-
-                    For `target_solver: fast-downward`:
-                    Fast Downward is primarily a non-temporal, non-numeric planner, but it supports some specific features.
-
-                    Key Supported Features:
-                        - STRIPS + ADL: Supports advanced features like conditional effects, quantified preconditions (`forall`, `exists`), and disjunctions.
-                        - Axioms / Derived Predicates: Supports PDDL 2.2 derived predicates.
-                        - Action Costs: Supports `:action-costs` from PDDL 3.1, but costs must be non-negative integers.
-                        - For syntax on these features, use the tool to check pages like `/pddl`, `/pddl/requirements`, `/pddl/domain`, `/pddl/problem`, and `/pddl22`.
-
-                    Key Unsupported Features:
-                        - No Temporal Planning: Does not support durative actions or any PDDL 2.1 temporal features.
-                        - No General Numeric Planning: Does not support numeric preconditions or effects, except for the specific `(increase (total-cost) ...)` syntax for action costs.
-                        - No Object Fluents or Preferences: Does not support PDDL 3.0+ features.
+                    {instructions}
 
                     **Output Format:**
                     Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                     Do not add any other text, comments, or explanations outside of these tags.
                     """
         )
+        if self.target_solver == "fast-downwards":
+            instructions = instructions_fd
+        elif self.target_solver == "popf2":
+            instructions = instructions_popf2
+        elif self.target_solver == "lpg":
+            instructions = instructions_lpg
+        else:
+            instructions = "No specific instructions."
         self.system_prompt = system_template.format(
             tools=render_text_description(self.tools),
             tool_names=", ".join(t.name for t in self.tools),
-            target_solver=self.prompt_args["target_solver"],
+            target_solver=self.target_solver,
+            instructions=instructions,
         )
 
         self.prompt = inspect.cleandoc(

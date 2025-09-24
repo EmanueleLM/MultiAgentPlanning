@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
     # Start the experiments
     for i in range(num_experiments):
-        k = f"{problem_name}{i}"
+        k = f"{problem_name}_{i}"
         data = scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
 

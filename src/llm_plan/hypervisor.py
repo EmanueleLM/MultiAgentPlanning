@@ -27,57 +27,57 @@ class Hypervisor:
             str
         ] = []  # This contains the history of the agents picked up
 
-        self.system_prompt = inspect.cleandoc("""\
-            You are a hypervisor that manages multiple agents. 
-            Each agent has a specific role and capabilities.
-            You will read the agents' descriptions and decide which agent is best suited to handle a given task.
-            You also have access to the current domain, problem and plan, as well as the history of the agents you have already picked.
-            You return the class you selected between <class></class> tags. 
-            You always discard abstract classes and classes with abstract methods.
-            """)
-        self.prompt = inspect.cleandoc("""\
-            You are a hypervisor that manages multiple agents and decides which one is best suited to improve a given plan.
-            
-            Given this human specification of a task:
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a hypervisor that coordinates multiple specialised agents.
+            Each agent has a defined role. Read their descriptions, examine the current planning artefacts, and
+            decide which agent is best suited to act next.
+            Always discard abstract classes or classes with abstract methods and report the selected class name
+            between <class></class> tags.
+            """
+        )
+        self.prompt = inspect.cleandoc(
+            """\
+            You are choosing the next agent to improve the current PDDL artefacts.
+
+            Human specification of the task:
             <human_specification>{human_specification}</human_specification>
 
-            This is a plan specification, in JSON format, of the task:
+            JSON plan specification of the task:
             <specification>{specification}</specification>
-            
-            Now, this PDDL domain that describes the JSON specification:
+
+            Current PDDL domain:
             <domain>{pddl_domain}</domain>
-            
-            And this PDDL problem that describes the specific problem in the JSON specification:
+
+            Current PDDL problem:
             <problem>{pddl_problem}</problem>
-            
-            Now, for a {target_solver} PDDL solver, this is the PDDL plan generated for the task (the plan may be empty if no plan was found):
+
+            Plan produced for the {target_solver} solver (may be empty):
             <plan>{pddl_plan}</plan>
-            
-            These are the logs of the attempted execution with the solver:
+
+            Logs from the solver execution:
             <logs>{pddl_logs}</logs>
-            
-            This is the error message returned by a PDDL validator (can be empty or successful):
+
+            Validator feedback (may be empty):
             <errors>{syntax_errors}</errors>
-            
-            These are the agents available to improve the plan, along with their capabilities.
-            Ignore abstract classes and classes with abstract methods.
+
+            Available agents and their capabilities (exclude abstract classes):
             <agents>{agents}</agents>
-            
-            Also, here is the history of the agents you have already picked.
-            The history is useful as you want to have some diversity in the agents you pick.
+
+            Agents previously selected (helps maintain diversity):
             <history>{history}</history>
-            
-            When you select an agent to improve the domain and problem, you should check first that the PDDL domain and problem correctly express the human specification.
-            Then, you should check if the plan is syntactically valid for the target solver.
-            Remember to select the agent based on the information you have, i.e., the current domain, problem, plan and logs, and select to fix the issues in this order:
-            - constraints: all the agents' constraints must be satisfied by the PDDL domain and problem.
-            - multi-agency: the domain and problem must be adapted to a multi-agent setting, where each action refers to the agent that takes it.
-            - asynchronicity: the PDDL domain and problem must allow for asynchronous actions, where agents can act independently at the same time or at different time-steps.
-            - syntax: the PDDL syntax must be correct and compliant with the solver you are going to use.
-            
-            Return the name of the class best suited to improve the plan between <class> and </class> tags.
-            If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".
-            """)
+
+            Consider this priority when choosing the next agent:
+            1. Constraints — ensure the domain and problem satisfy every agent's constraints.
+            2. Multi-agency — verify the modelling distinguishes each agent's actions appropriately.
+            3. Asynchronicity — confirm the domain/problem allow independent concurrent actions when needed.
+            4. Syntax — enforce compliance with the target solver's PDDL requirements.
+
+            Select the class best positioned to address the most pressing issue given the current artefacts. If
+            you believe the domain, problem, and plan already satisfy the specification, respond with
+            <class>NoOpAgent</class>.
+            """
+        )
 
     @staticmethod
     def get_classes_from_agents():
@@ -120,7 +120,7 @@ class Hypervisor:
 
     def upload_args(self, prompt_args: dict[str, str]) -> None:
         """
-        Upload the arguments to the Agent.
+        Upload the arguments required by the hypervisor.
 
         Input:
             prompt_args (dict): A dictionary containing the arguments.
@@ -132,17 +132,17 @@ class Hypervisor:
 
     def run(self, model: LLM) -> str:
         """
-        Run the Agent to solve hallucinations in the plan.
+        Run the hypervisor to select the next agent.
 
         Input:
-            src (str): The plan to be fixed for hallucinations.
+            model (LLM): The language model used to evaluate the prompt and return the agent class name.
 
         Output:
-            str: The fixed plan.
+            str: The selected agent class wrapped in <class></class> tags.
         """
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
-        # Fix the plan
+        # Prepare the selection prompt
         prompt = self.prompt.format(
             human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
@@ -157,10 +157,7 @@ class Hypervisor:
             ),
             history=self.history,
         )
-
-        response = model.generate_sync(
+        return model.generate_sync(
             system_prompt=self.system_prompt,
             prompt=prompt,
         )
-
-        return response

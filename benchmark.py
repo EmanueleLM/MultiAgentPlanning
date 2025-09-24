@@ -210,7 +210,10 @@ if __name__ == "__main__":
         # Skip if the plan already exists
         if not full_path.exists():
             planner.generate_representation(
-                model_json, data["prompt_0shot"], environment_name, format=format
+                model_json,
+                data["prompt_0shot"],
+                environment_name,
+                file_format=format,
             )
             sleep(sleep_time_json)
         else:

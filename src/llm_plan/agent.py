@@ -71,6 +71,89 @@ class Agent(ABC):
         return Agent.required_args
 
 
+class AgentHallucinations(Agent):
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The structured description of the task (JSON).",
+        "pddl_domain": "(str) The PDDL domain authored by the model.",
+        "pddl_problem": "(str) The PDDL problem authored by the model.",
+        "pddl_plan": "(str) The PDDL plan produced so far (may be empty).",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Agent that detects and fixes hallucinations in the authored PDDL domain and problem.
+        It compares the artifacts against the human and JSON specifications (and optional hallucination
+        reports) to remove unsupported predicates, objects, or goals while preserving legitimate content.
+
+        Input:
+            llm (LLM): The language model used to rewrite the PDDL artifacts.
+            prompt_args (dict[str, str]): Arguments to be injected in the prompts.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentHallucinations"
+        self.llm = llm
+
+        # Prompts
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a meticulous multi-agent planning engineer. You specialize in eliminating hallucinations
+            from PDDL domains and problems by checking every predicate, object, and goal against the ground
+            specification. Preserve valid constructs, repair or remove unsupported ones, and keep the
+            syntax compliant with classical PDDL.
+            """
+        )
+
+        self.prompt = inspect.cleandoc(
+            """\
+            Human specification of the task:
+            <human_specification>{human_specification}</human_specification>
+
+            JSON specification (ground truth facts and workflow):
+            <specification>{specification}</specification>
+
+            Current PDDL domain authored by the model:
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem authored by the model:
+            <problem>{pddl_problem}</problem>
+
+            PDDL plan generated with the current artifacts (may be empty):
+            <plan>{pddl_plan}</plan>
+
+            Hallucination report or validator feedback (optional, can be empty):
+            <hallucinations>{hallucination_report}</hallucinations>
+
+            Think carefully about inconsistencies or invented elements in the PDDL domain or problem.
+            Remove predicates, actions, objects, or goals that are not grounded in the specifications.
+            Align action preconditions and effects, object declarations, the initial state, and the goal facts
+            with the provided specifications. Preserve the multi-agent structure and solver compatibility.
+            When uncertain, prefer conservative edits instead of introducing new abstractions.
+
+            Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
+            <problem></problem>. Output only raw PDDL code inside the tags.
+            """
+        )
+
+    def run(self) -> str:
+        """Run the agent to eliminate hallucinations from the PDDL domain and problem."""
+        self.upload_args(self.prompt_args)
+
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_plan=self.prompt_args.get("pddl_plan", ""),
+            hallucination_report=self.prompt_args.get("hallucination_report", ""),
+        )
+
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
 class AgentDeepThinkPDDL(Agent):
     required_args = {
         "human_specification": "(str) The human-readable specification of the task.",
@@ -98,11 +181,13 @@ class AgentDeepThinkPDDL(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an expert Planning Domain Definition Language (PDDL) programmer. 
-                                             You analyze a provided plan against the human specifics, identify and fix all the possible inconsistencies. 
-                                             Your aim is to return a plan that fixes all the inconsistencies and satisfies the goal.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an expert Planning Domain Definition Language (PDDL) programmer.
+            You analyze the provided domain, problem, and plan against the human specification, identify every
+            inconsistency, and return corrected PDDL artifacts that satisfy the goal.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this human specification of a task:
                                       <human_specification>{human_specification}</human_specification>
@@ -119,13 +204,13 @@ class AgentDeepThinkPDDL(Agent):
                                       This is the best plan the solver could find (it may be empty if no plan was found):
                                       <plan>{pddl_plan}</plan>
                                       
-                                      Now, think *very carefully* whether:
-                                      - the PDDL domain reflects the human specification.
-                                      - the PDDL problem reflects the particular instance of the specification.
-                                      - the PDDL plan satisfies the goal and the constraints of the human specification! Be careful, the plan may be wrong!
-                                      
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
-                                      As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+                                      Think very carefully about whether:
+                                      - The PDDL domain reflects the human specification.
+                                      - The PDDL problem reflects the particular instance of the specification.
+                                      - The PDDL plan satisfies the goal and the constraints of the human specification. Be careful: the plan may be wrong.
+
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
                                       """)
 
     def run(self) -> str:
@@ -180,12 +265,14 @@ class AgentDeepThinkConstraints(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an expert Planning Domain Definition Language (PDDL) programmer.
-                                             Your task is to analyze a PDDL problem against a natural language and JSON specification. 
-                                             You focus on the constraints of each agent and whether they are expressed as proper PDDL formulae.
-                                             In particular, you focus on whether each agent's private information is expressed as constraints in the PDDL problem.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an expert Planning Domain Definition Language (PDDL) programmer.
+            Analyze the PDDL domain and problem against the natural-language and JSON specifications.
+            Focus on whether each agent's constraints are correctly captured as PDDL formulae, particularly when
+            they rely on private information.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this human specification of a task:
                                       <human_specification>{human_specification}</human_specification>
@@ -202,13 +289,13 @@ class AgentDeepThinkConstraints(Agent):
                                       This is the best plan the solver could find (it may be empty if no plan was found):
                                       <plan>{pddl_plan}</plan>
                                       
-                                      Now, think *very carefully* whether:
-                                      - the PDDL domain reflects the goal of the human and json specifications. Always consider the human specification and the ground truth.
-                                      - the PDDL problem correctly enumerates and expresses all the constraints in the specification. Put particular attention that all the constraints are expressed and none is missing or under-specified.
-                                      - the PDDL plan may be non-empty but wrong because the constraints are not correctly expressed in the PDDL problem.
-                                      
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
-                                      As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+                                      Think very carefully about whether:
+                                      - The PDDL domain reflects the goals described in the human and JSON specifications. Always consider the human specification as the ground truth.
+                                      - The PDDL problem correctly enumerates and expresses every constraint in the specification. Pay close attention to missing or underspecified constraints.
+                                      - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
+
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
                                       """)
 
     def run(self) -> str:
@@ -248,9 +335,9 @@ class AgentEnforceMultiAgency(Agent):
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
         """
-        This agent identifies inconsistencies between the specific and the requirements in the context of a multi-agent system.
+        This agent identifies inconsistencies between the specification and the requirements in the context of a multi-agent system.
         In particular:
-        - It checks whether the PDDL domain and plan correctly implement the specific as a multi-agent system.
+        - It checks whether the PDDL domain and plan correctly implement the specification as a multi-agent system.
         - It checks whether the PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
         - Fixes all the issues mentioned above.
 
@@ -263,10 +350,12 @@ class AgentEnforceMultiAgency(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an expert Planning Domain Definition Language (PDDL) programmer.
-                                             You focus on whether a PDDL domain and problem correctly specify each agent's action and express them as distinct variables.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an expert Planning Domain Definition Language (PDDL) programmer.
+            Ensure that the PDDL domain and problem correctly represent each agent's actions as distinct entities.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this human specification of a task:
                                       <human_specification>{human_specification}</human_specification>
@@ -280,14 +369,14 @@ class AgentEnforceMultiAgency(Agent):
                                       And this is the PDDL problem that instantiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      Now, for the {target_solver} PDDL solver, think *very carefully* whether:
-                                      - The PDDL domain and plan correctly implement the JSON specific as well as the human specification *as multi-agent system*.
+                                      Now, for the {target_solver} PDDL solver, think *very carefully* about whether:
+                                      - The PDDL domain and plan correctly implement the JSON specification as well as the human specification within a multi-agent system.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
-                                      
-                                      You task is to fix all the issues mentioned above.
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
-                                      As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+
+                                      Your task is to fix all the issues mentioned above.
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
                                       """)
 
     def run(self) -> str:
@@ -345,11 +434,13 @@ class AgentFastDownwardsAdapter(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-            You are an agent that adapts PDDL domains and problems for Fast Downwards Planner. 
-            Your task is to convert numeric, temporal, or durative features into classical STRIPS/ADL style constructs so that Fast Downwards Planner can plan with the domain. 
-            Maintain as much of the original semantics as possible.
-            """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an agent that adapts PDDL domains and problems for the Fast Downward planner.
+            Convert numeric, temporal, or durative features into classical STRIPS/ADL-style constructs so the
+            solver can operate on the domain while preserving as much of the original semantics as possible.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
             Given this specification, in JSON format:
             <specification>{specification}</specification>
@@ -369,7 +460,7 @@ class AgentFastDownwardsAdapter(Agent):
             - Keep types, equality, and STRIPS/ADL features.
             
             Return the domain between <domain></domain> and the problem between <problem></problem>.
-            As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+            Return only raw PDDL code inside the tags; do not add comments or extra characters.
             """)
 
     def run(self) -> str:
@@ -418,12 +509,13 @@ class AgentSyntaxPDDL(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an agent that evaluates each plan's step. 
-                                             Your task is to analyze a provided plan against the human specifics,
-                                             and identify all the possible inconsistencies with the PDDL syntax.
-                                             The PDDL syntax required is that used by *{target_solver} Planner*.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an agent that evaluates each step of a plan.
+            Analyze the provided plan against the human specification and identify every inconsistency with the
+            PDDL syntax expected by the *{target_solver}* planner.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this specification of a plan, in JSON format:
                                       <specification>{specification}</specification>
@@ -434,18 +526,17 @@ class AgentSyntaxPDDL(Agent):
                                       And this PDDL problem that instantiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      These are the logs of the attempted execution with *{target_solver} Planner*:
+                                      These are the logs of the attempted execution with the *{target_solver}* planner:
                                       <logs>{pddl_logs}</logs>
                                       
                                       This is the error message returned by a PDDL validator (can be empty or successful):
                                       <errors>{syntax_errors}</errors>
                                       
-                                      Fix eventual errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by *{target_solver} Planner*.
-                                      Remember that the PDDL domain and problem must be compliant with the PDDL syntax required by *{target_solver} Planner*. 
-                                      In case anything does not satisfy the specification, return a fixed version of the PDDL domain and problem. Otherwise, return the original ones.
-                                      
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
-                                      As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+                                      Fix any errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by the *{target_solver}* planner.
+                                      If anything does not satisfy the specification, return a corrected version of the PDDL domain and problem; otherwise, return the originals.
+
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
                                       """)
 
     def run(self) -> str:
@@ -460,7 +551,7 @@ class AgentSyntaxPDDL(Agent):
         """
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
-        # Format the system prompt
+        # Format the system prompt
         system_prompt = self.system_prompt.format(target_solver=self.prompt_args["target_solver"])
         
         # Fix the plan
@@ -499,18 +590,19 @@ class AgentAsynchronicity(Agent):
             prompt_args: (dict[str, str]): A dictionary containing the arguments for each prompt.
         """
         super().__init__(prompt_args=prompt_args)
-        self.name = "AgentSyntaxPDDL"
+        self.name = "AgentAsynchronicity"
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an agent that evaluates each plan's step. 
-                                             Your task is to analyze a provided plan against the human specifics,
-                                             and introduce a variable, namely timestamp, that indicates at what timestamp an action is performed by an agent.
-                                             This is useful to optimize the plan so that asynchronous actions are executed at the same time-step, if possible.
-                                             The PDDL syntax required is that used by *{target_solver} Planner*. 
-                                             You can think as much as you want before answering, and you can use as many steps as you want.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an agent that optimizes plans for asynchronicity.
+            Analyze the provided plan against the human specification and introduce a timestamp variable that
+            marks when each agent performs an action. Use it to schedule independent actions concurrently while
+            keeping compatibility with the *{target_solver}* planner.
+            You may think through the problem in as many steps as needed.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this specification of a plan, in JSON format:
                                       <specification>{specification}</specification>
@@ -521,18 +613,17 @@ class AgentAsynchronicity(Agent):
                                       And this PDDL problem that instantiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
-                                      These are the logs of the attempted execution with *{target_solver} Planner*:
+                                      These are the logs of the attempted execution with the *{target_solver}* planner:
                                       <logs>{pddl_logs}</logs>
                                       
                                       This is the error message returned by a PDDL validator (can be empty or successful):
                                       <errors>{syntax_errors}</errors>
                                       
-                                      Your task is to analyze a provided plan against the human specifics, and introduce a variable, namely timestamp, that indicates at what timestamp an action is performed by an agent.
-                                      This is useful to optimize the plan so that asynchronous actions are executed at the same time-step, if possible.
-                                      The PDDL syntax required is that used by *{target_solver} Planner*. 
-                                      
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
-                                      As regards the PDDL domain and problem, just return the code; do not add special characters or comments.
+                                      Introduce or refine a `timestamp` variable that indicates when each agent performs an action so that compatible actions can execute concurrently when possible.
+                                      Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner.
+
+                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
+                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
                                       """)
 
     def run(self) -> str:
@@ -547,7 +638,7 @@ class AgentAsynchronicity(Agent):
         """
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
-        # Format the system prompt
+        # Format the system prompt
         system_prompt = self.system_prompt.format(target_solver=self.prompt_args["target_solver"])
         
         # Fix the plan
@@ -618,12 +709,14 @@ class AgentNaturalLanguage(Agent):
         self.llm = llm
 
         # Prompts
-        self.system_prompt = inspect.cleandoc("""\
-                                             You are an agent that translates PDDL into natural language. 
-                                             Your task is to turn a specific in JSON, a PDDL problem, a PDDL domain, and a PDDL plan, into a set of actions that is readable by humans. 
-                                             You follow closely the plan provided within <plan></plan> tags. 
-                                             You can think as much as you want before answering, and you can use as many steps as you want.
-                                             """)
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an agent that translates PDDL artifacts into natural language instructions.
+            Turn the JSON specification, PDDL problem, PDDL domain, and PDDL plan into a clear sequence of
+            human-readable actions. Follow the plan provided within the <plan></plan> tags closely.
+            You may think through the conversion in as many steps as needed.
+            """
+        )
         self.prompt = inspect.cleandoc("""\
                                       Given this specification, in JSON format:
                                       <specification>{specification}</specification>
@@ -637,7 +730,7 @@ class AgentNaturalLanguage(Agent):
                                       This is the PDDL plan that correctly solves the task:
                                       <plan>{pddl_plan}</plan>
                                       
-                                      Your task is to output a set of actions that is readable by humans and that satisfies the final goal.
+                                      Your task is to output a set of actions that is readable by humans and satisfies the final goal.
                                       Remember that your output:
                                       - Must match closely each action in the plan. Do not add more or delete any.
                                       - Must report each step clearly.

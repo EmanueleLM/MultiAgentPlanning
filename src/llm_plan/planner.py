@@ -3,7 +3,7 @@ import inspect
 import json
 
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Tuple
 
 from src.llm_plan.config import (
     ENVIRONMENTS_JSON_PATH,
@@ -17,59 +17,43 @@ from src.llm_plan.utils import get_fields_in_formatted_string, get_json_nested_f
 
 class Planner:
     def __init__(self):
-        """This class uses a workflow in an environment to plan with LLMs."""
+        """Plan actions for an environment by orchestrating LLM-powered workflows."""
         self.environment: Environment
         self.format_fields: dict[str, str] = {}
 
     @staticmethod
     def generate_representation(
-        model: LLM, specific: str, env_name: str, format: str = "json", target_solver:str = "FastDownwards"
+        model: LLM,
+        specific: str,
+        env_name: str,
+        file_format: str = "json",
+        target_solver: str = "FastDownwards",
     ) -> Path:
-        """Generate a new environment representation in the given format and save it
-        in ENVIRONMENTS_JSON_PATH (for json).
+        """Generate a new environment description and save it to disk.
 
         Args:
-            specific (str): The human description of the planning task.
-            env_name (str): The name of the task, in PascalCase.
-            format (str, optional): The target format of the environment. Defaults to "json".
+            model (LLM): The language model that will craft the representation.
+            specific (str): Human description of the planning task.
+            env_name (str): Name of the task (PascalCase) to embed in the output.
+            file_format (str, optional): Desired output format. Currently only "json" is supported.
+            target_solver (str, optional): Solver that the environment should target when generating PDDL.
 
         Returns:
-            str: The path where the plan is saved in the desired format.
+            Path: Location of the saved environment file.
         """
-        if format == "json":
+        file_format = file_format.lower()
+        if file_format == "json":
             tag_begin, tag_end = "<json>", "</json>"
         else:
-            raise NotImplementedError(f"Format {format} not supported.")
+            raise NotImplementedError(f"Format {file_format} not supported.")
 
-        # 1. Prepare the prompts and the samples
-        system_prompt = inspect.cleandoc("""\
-                                        You are an expert of {format}.
-                                        Your task is to return a valid {format} file that is compliant with the human specifics.
-                                        """)
-        prompt = inspect.cleandoc("""\
-                                 Here's an example of a {format} file that describes an environment:
-                                 <environment-{format}>{sample_environment}</environment-{format}>
-                                 
-                                 This is the code of the Environment class that describes the structure of the environment:
-                                 <code>{environment_class}</code>
-                                 
-                                 Your task is to generate a new {format} file that describes an environment for the following human specifics:
-                                 <use-case>{specific}</use-case>
-                                 
-                                 Think carefully about the entities, their attributes, and the relationships between them.
-                                 When generating it, consider the following:
-                                 - Make sure the {format} file is valid and can be parsed without errors.
-                                 - Make also sure that the primary keys in the {format} file are the same as those in the <environment-{format}></environment-{format}>.
-                                 - Make sure that the field "name" is "{env_name}".
-                                 - Remember to always add an "orchestrator" agent that will be in charge of planning the actions of the other agents. His name is "orchestrator".
-                                 
-                                 Further, the {format} that you return:
-                                 - Should include instructions that ask to generate PDDL domain and problem files. The PDDL files should target {target_solver} PDDL solver.
-                                 - Should not contain special characters like \\n, etc.
-                                 - Should be properly formatted and indented. Don't wrap it between quotes.
-                                 
-                                 Think step by step and return the {format} file within {tag_begin}{tag_end} tags.
-                                 """)
+        # 1. Prepare prompts and samples
+        system_prompt = inspect.cleandoc(
+            f"""\
+            You are an expert in writing {file_format.upper()} environment specifications.
+            Produce a valid {file_format} file that reflects the human description of the task.
+            """
+        )
 
         with open(ENVIRONMENTS_JSON_SAMPLE_PATH, "r") as f:
             sample_environment = json.load(f)
@@ -77,18 +61,38 @@ class Planner:
         with open(ENVIRONMENTS_PYTHON_PATH_SAMPLE, "r") as f:
             environment_class = f.read()
 
-        prompt = prompt.format(
-            format=format,
-            sample_environment=sample_environment,
-            environment_class=environment_class,
-            specific=specific,
-            tag_begin=tag_begin,
-            tag_end=tag_end,
-            env_name=env_name,
-            target_solver=target_solver
+        sample_environment_json = json.dumps(sample_environment, indent=4)
+
+        prompt = inspect.cleandoc(
+            f"""\
+            Example {file_format.upper()} environment:
+            <environment-{file_format}>
+            {sample_environment_json}
+            </environment-{file_format}>
+
+            Environment class definition (structure reference):
+            <code>
+            {environment_class}
+            </code>
+
+            Generate a new {file_format} environment for the following human specification:
+            <use-case>{specific}</use-case>
+
+            Think carefully about the entities, their attributes, and the relationships between them. Follow these requirements:
+            - Ensure the {file_format} file parses without errors.
+            - Keep the primary keys consistent with those in the sample environment.
+            - Set the "name" field to "{env_name}".
+            - Include an "orchestrator" agent that coordinates the other agents (use the exact name "orchestrator").
+            - Provide context for each agent without requesting them to emit PDDL directly.
+            - Ensure the orchestrator action produces the final PDDL domain and problem targeting the {target_solver} solver.
+            - Avoid inserting escape sequences such as \n inside string literals.
+            - Present clean indentation and do not wrap the output in quotes.
+
+            Return the final {file_format} file between {tag_begin}{tag_end} tags.
+            """
         )
 
-        # 2. Ask the llm to generate a representation of the new environment in the given format
+        # 2. Ask the LLM to generate the representation
         response = model.generate_sync(system_prompt=system_prompt, prompt=prompt)
         # print(response)
 
@@ -98,25 +102,122 @@ class Planner:
         formatted_environment = response[format_start:format_end].strip()
 
         # 4. Save the representation in the correct folder
-        filename = env_name + "." + format
+        filename = f"{env_name}.{file_format}"
         try:
-            if format == "json":
+            if file_format == "json":
                 formatted_environment = json.loads(formatted_environment)
             else:
-                raise NotImplementedError(f"Format {format} not supported.")
+                raise NotImplementedError(f"Format {file_format} not supported.")
         except json.JSONDecodeError as e:
-            print(f"!: The generated environment is not a valid {format}.")
+            print(f"!: The generated environment is not a valid {file_format}.")
             print(f"[ERROR]: {e}")
             print(
-                f"The file will be saved in {filename} but you have to fix the {format} errors manually."
+                f"The file will be saved in {filename} but you have to fix the {file_format} errors manually."
             )
 
         with open(ENVIRONMENTS_JSON_PATH / filename, "w") as f:
             json.dump(formatted_environment, f, indent=4)
 
         # 5. Return its path
-        return ENVIRONMENTS_JSON_PATH / env_name
-    
+        return ENVIRONMENTS_JSON_PATH / filename
+
+    def _infer_orchestrator_name(self) -> str:
+        """Determine which agent acts as the orchestrator in the workflow."""
+        if getattr(self.environment, "orchestrator", None):
+            return self.environment.orchestrator
+
+        if hasattr(self.environment, "workflow"):
+            for candidate in self.environment.workflow.keys():
+                if candidate == "constraints":
+                    continue
+                if "orchestrator" in candidate.lower():
+                    return candidate
+
+        agent_names = []
+        if getattr(self.environment, "agents", None):
+            agent_names = self.environment.agents.get("names", []) or []
+            for candidate in agent_names:
+                if "orchestrator" in candidate.lower():
+                    return candidate
+
+        if agent_names:
+            return agent_names[-1]
+
+        return "orchestrator"
+
+    def _stringify_value(self, value: Any) -> str:
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, indent=2)
+        return "" if value is None else str(value)
+
+    def _resolve_field_value(self, field: str) -> str:
+        if "->" in field:
+            value = get_json_nested_fields(
+                self.environment.config_data, field.split("->")
+            )
+        else:
+            if field not in self.format_fields:
+                raise KeyError(f"Missing value for field '{field}' in format_fields")
+            value = self.format_fields[field]
+        return self._stringify_value(value)
+
+    def _fill_template(self, template: str | None) -> str:
+        if not template:
+            return ""
+
+        filled = template
+        for field in set(get_fields_in_formatted_string(template)):
+            value = self._resolve_field_value(field)
+            filled = filled.replace(f"{{{field}}}", value)
+
+        return filled
+
+    def _build_agent_context(
+        self, agent_name: str, filled_prompt: str, system_prompt: str
+    ) -> str:
+        lines: list[str] = [f"Agent name: {agent_name}"]
+
+        agent_data = {}
+        if getattr(self.environment, "agents", None):
+            agent_data = self.environment.agents.get(agent_name, {}) or {}
+
+        goal = agent_data.get("goal")
+        if goal:
+            lines.append(f"Goal: {goal}")
+
+        private_info = agent_data.get("private_information")
+        if private_info:
+            lines.append("Private information:")
+            for item in private_info:
+                lines.append(f"- {item}")
+
+        additional_keys = [
+            key for key in agent_data.keys() if key not in {"goal", "private_information"}
+        ]
+        for key in sorted(additional_keys):
+            value = agent_data[key]
+            lines.append(f"{key.capitalize()}: {self._stringify_value(value)}")
+
+        shared_info = {}
+        if getattr(self.environment, "environment", None):
+            shared_info = self.environment.environment or {}
+
+        public_information = shared_info.get("public_information") if shared_info else None
+        if public_information:
+            lines.append("Shared public information:")
+            for item in public_information:
+                lines.append(f"- {item}")
+
+        if system_prompt:
+            lines.append("System guidance:")
+            lines.append(system_prompt.strip())
+
+        if filled_prompt:
+            lines.append("Task briefing:")
+            lines.append(filled_prompt.strip())
+
+        return "\n".join(lines)
+
     async def plan(self, model: LLM, environment: Environment) -> dict[str, str]:
         """
         Generate a sequential plan using the LLM.
@@ -134,40 +235,74 @@ class Planner:
             dict[str, str]: Mapping of variable names to outputs generated by the LLM.
         """
         self.environment = environment
+        self.format_fields = {}
         assert self.environment.plan is not None, (
             "Environment must have an instantiated plan method."
         )
+
+        orchestrator_name = self._infer_orchestrator_name()
 
         for sequence in self.environment.plan:
             tasks = []
             for action in sequence:
                 agent_name, action_name = action.split(".")
 
-                agent_workflow = self.environment.workflow[agent_name]
-                prompt = agent_workflow[action_name].get("prompt")
-                system_prompt = agent_workflow[action_name].get("system_prompt")
-                variables_input = agent_workflow[action_name].get("input")
-                variable_output = agent_workflow[action_name].get("output")
+                agent_workflow = self.environment.workflow.get(agent_name, {})
+                action_config = agent_workflow.get(action_name, {})
 
-                prompt_fields_to_fill = get_fields_in_formatted_string(prompt)
+                prompt_template = action_config.get("prompt")
+                system_template = action_config.get("system_prompt")
+                variable_output = action_config.get("output")
 
-                for field in prompt_fields_to_fill:
-                    if "->" in field:
-                        v = get_json_nested_fields(
-                            self.environment.config_data, field.split("->")
-                        )
-                        prompt = prompt.replace(f"{{{field}}}", str(v))
-                    else:
-                        prompt = prompt.replace(f"{{{field}}}", self.format_fields[field])
+                if not variable_output:
+                    continue
 
-                tasks.append(self.run_action(model, system_prompt, prompt, variable_output))
+                filled_prompt = self._fill_template(prompt_template)
+                filled_system_prompt = self._fill_template(system_template)
 
-            # Wait for all parallelizable actions in this sequence
-            results = await asyncio.gather(*tasks)
+                if agent_name != orchestrator_name:
+                    summary = self._build_agent_context(
+                        agent_name,
+                        filled_prompt,
+                        filled_system_prompt,
+                    )
+                    self.format_fields[variable_output] = summary
+                    continue
 
-            # Update format_fields after all actions finish
-            for variable_output, result in results:
-                self.format_fields[variable_output] = result
+                orchestrator_prompt = filled_prompt.strip()
+                note = (
+                    "Note: The agent inputs above describe capabilities, goals, and constraints. "
+                    "They are not valid PDDL artefacts. Derive a consistent multi-agent PDDL domain "
+                    "and problem that satisfy the specification and remain compatible with the target solver."
+                )
+                if orchestrator_prompt:
+                    orchestrator_prompt += f"\n\n{note}"
+                else:
+                    orchestrator_prompt = note
+
+                orchestrator_system_prompt = filled_system_prompt.strip()
+                system_note = (
+                    "Agent inputs are descriptive summaries rather than executable PDDL."
+                )
+                if orchestrator_system_prompt:
+                    orchestrator_system_prompt += f"\n{system_note}"
+                else:
+                    orchestrator_system_prompt = system_note
+
+                tasks.append(
+                    self.run_action(
+                        model,
+                        orchestrator_system_prompt,
+                        orchestrator_prompt,
+                        variable_output,
+                    )
+                )
+
+            if tasks:
+                results = await asyncio.gather(*tasks)
+
+                for variable_output, result in results:
+                    self.format_fields[variable_output] = result
 
         return self.format_fields
 

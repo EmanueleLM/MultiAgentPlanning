@@ -31,6 +31,7 @@ class Hypervisor:
             You are a hypervisor that manages multiple agents. 
             Each agent has a specific role and capabilities.
             You will read the agents' descriptions and decide which agent is best suited to handle a given task.
+            You also have access to the current domain, problem and plan, as well as the history of the agents you have already picked.
             You return the class you selected between <class></class> tags. 
             You always discard abstract classes and classes with abstract methods.
             """)
@@ -46,7 +47,7 @@ class Hypervisor:
             Now, this PDDL domain that describes the JSON specification:
             <domain>{pddl_domain}</domain>
             
-            And this PDDL problem that instatiates the JSON specification:
+            And this PDDL problem that describes the specific problem in the JSON specification:
             <problem>{pddl_problem}</problem>
             
             Now, for a {target_solver} PDDL solver, this is the PDDL plan generated for the task (the plan may be empty if no plan was found):
@@ -66,13 +67,13 @@ class Hypervisor:
             The history is useful as you want to have some diversity in the agents you pick.
             <history>{history}</history>
             
-            When you select an agent to improve the domain and problem, first identify potential issues with the current domain and problem, but also consider that a plan may already exist but be suboptimal. 
-            These are some common issues in PDDL multi-agent planning that you want to mitigate.
-            - syntax: the PDDL syntax must be correct and compliant with the solver you are going to use.
+            When you select an agent to improve the domain and problem, you should check first that the PDDL domain and problem correctly express the human specification.
+            Then, you should check if the plan is syntactically valid for the target solver.
+            Remember to select the agent based on the information you have, i.e., the current domain, problem, plan and logs, and select to fix the issues in this order:
             - constraints: all the agents' constraints must be satisfied by the PDDL domain and problem.
             - multi-agency: the domain and problem must be adapted to a multi-agent setting, where each action refers to the agent that takes it.
-            - ambiguities: the PDDL domain and problem must be unambiguous and clearly reflect the specification.
             - asynchronicity: the PDDL domain and problem must allow for asynchronous actions, where agents can act independently at the same time or at different time-steps.
+            - syntax: the PDDL syntax must be correct and compliant with the solver you are going to use.
             
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
             If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".

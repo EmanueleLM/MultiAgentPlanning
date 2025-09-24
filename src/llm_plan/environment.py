@@ -32,7 +32,7 @@ class Environment:
         This method creates the graph of the constraints and sets up the prompts
         """
         # Map additional fields that are not defined in the abstract Environment class
-        # 1. Envrionment constants
+        # 1. Environment constants
         for arg in args:
             self.environment.get("init").get(arg)
 

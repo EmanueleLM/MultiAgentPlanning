@@ -19,6 +19,7 @@ This class implements methods to check if:
 
 import inspect
 import httpx
+import asyncio
 from bs4 import BeautifulSoup
 from typing import Type
 from abc import ABC, abstractmethod
@@ -88,6 +89,11 @@ class PlanningWikiTool(BaseTool):
             " ".join(main.get_text().split())
             if main
             else "Error: Could not find the main content of the page."
+        )
+
+    def _run(self, page_suffix: str) -> str:
+        raise NotImplementedError(
+            "planning_wiki_lookup supports async only; call with ainvoke"
         )
 
 
@@ -477,7 +483,9 @@ class AgentSyntaxPDDL(Agent):
             syntax_errors=self.prompt_args["syntax_errors"],
         )
 
-        result = self.agent.invoke({"messages": [{"role": "user", "content": prompt}]})
+        result = asyncio.run(
+            self.agent.ainvoke({"messages": [{"role": "user", "content": prompt}]})
+        )
         result_text = result["messages"][-1].text()
 
         if "<PASS>" in result_text:

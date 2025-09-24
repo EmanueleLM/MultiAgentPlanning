@@ -73,6 +73,7 @@ class Hypervisor:
             
             Return the name of the class best suited to improve the plan between <class> and </class> tags.
             If you think that the domain and problem are correct and that the plan is optimal, return the class "NoOpAgent".
+            Note that PlanningWikiTool and PlanningWikiInput are NOT agents! Do not choose them.
             """
         )
         if self.nudge:

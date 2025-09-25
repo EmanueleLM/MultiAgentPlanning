@@ -1,66 +1,52 @@
-(define (problem schedule-integrated-monday)
-  (:domain meeting-scheduling-integrated)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
 
   (:objects
-    ;; Persons (three participants)
-    katherine nicole kevin - person
-
-    ;; Meeting to schedule (one-hour = two consecutive half-hour slots)
-    meeting1 - meeting
-
-    ;; 16 half-hour slots from 09:00-09:30 (s0) ... 16:30-17:00 (s15)
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+    katherine nicole kevin - agent
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 - slot
   )
 
   (:init
-    ;; slot declarations (for agent3's slot predicate)
-    (slot s0) (slot s1) (slot s2) (slot s3) (slot s4) (slot s5) (slot s6) (slot s7)
-    (slot s8) (slot s9) (slot s10) (slot s11) (slot s12) (slot s13) (slot s14) (slot s15)
+    ;; Successor relation for 30-minute consecutive slots between 09:00 and 17:00
+    (succ t0 t1)   ;; 09:00-09:30 -> 09:30-10:00
+    (succ t1 t2)   ;; 09:30-10:00 -> 10:00-10:30
+    (succ t2 t3)   ;; 10:00-10:30 -> 10:30-11:00
+    (succ t3 t4)   ;; 10:30-11:00 -> 11:00-11:30
+    (succ t4 t5)   ;; 11:00-11:30 -> 11:30-12:00
+    (succ t5 t6)   ;; 11:30-12:00 -> 12:00-12:30
+    (succ t6 t7)   ;; 12:00-12:30 -> 12:30-13:00
+    (succ t7 t8)   ;; 12:30-13:00 -> 13:00-13:30
+    (succ t8 t9)   ;; 13:00-13:30 -> 13:30-14:00
+    (succ t9 t10)  ;; 13:30-14:00 -> 14:00-14:30
+    (succ t10 t11) ;; 14:00-14:30 -> 14:30-15:00
+    (succ t11 t12) ;; 14:30-15:00 -> 15:00-15:30
+    (succ t12 t13) ;; 15:00-15:30 -> 15:30-16:00
+    (succ t13 t14) ;; 15:30-16:00 -> 16:00-16:30
+    (succ t14 t15) ;; 16:00-16:30 -> 16:30-17:00
 
-    ;; Consecutive-slot relations (30-min resolution). Meeting requires two consecutive slots.
-    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4)
-    (next s4 s5) (next s5 s6) (next s6 s7) (next s7 s8)
-    (next s8 s9) (next s9 s10) (next s10 s11) (next s11 s12)
-    (next s12 s13) (next s13 s14) (next s14 s15)
+    ;; Public/shared info is encoded via the slot set above (09:00-17:00, 30-min slots)
+    ;; Private availability for each agent encoded with (free <agent> <slot>)
 
-    ;; Work hours: all 16 slots are within 09:00-17:00 (used by agent2)
-    (within-work-hours s0) (within-work-hours s1) (within-work-hours s2) (within-work-hours s3)
-    (within-work-hours s4) (within-work-hours s5) (within-work-hours s6) (within-work-hours s7)
-    (within-work-hours s8) (within-work-hours s9) (within-work-hours s10) (within-work-hours s11)
-    (within-work-hours s12) (within-work-hours s13) (within-work-hours s14) (within-work-hours s15)
+    ;; Katherine: free all Monday 09:00-17:00 (all slots)
+    (free katherine t0) (free katherine t1) (free katherine t2) (free katherine t3)
+    (free katherine t4) (free katherine t5) (free katherine t6) (free katherine t7)
+    (free katherine t8) (free katherine t9) (free katherine t10) (free katherine t11)
+    (free katherine t12) (free katherine t13) (free katherine t14) (free katherine t15)
 
-    ;; Agent1 (Katherine) availability: free entire day (private info provided by agent1)
-    (free katherine s0) (free katherine s1) (free katherine s2) (free katherine s3)
-    (free katherine s4) (free katherine s5) (free katherine s6) (free katherine s7)
-    (free katherine s8) (free katherine s9) (free katherine s10) (free katherine s11)
-    (free katherine s12) (free katherine s13) (free katherine s14) (free katherine s15)
+    ;; Nicole: free all Monday 09:00-17:00 (all slots)
+    (free nicole t0) (free nicole t1) (free nicole t2) (free nicole t3)
+    (free nicole t4) (free nicole t5) (free nicole t6) (free nicole t7)
+    (free nicole t8) (free nicole t9) (free nicole t10) (free nicole t11)
+    (free nicole t12) (free nicole t13) (free nicole t14) (free nicole t15)
 
-    ;; Agent2 (Nicole) availability: free entire day (private info provided by agent2)
-    (free nicole s0) (free nicole s1) (free nicole s2) (free nicole s3)
-    (free nicole s4) (free nicole s5) (free nicole s6) (free nicole s7)
-    (free nicole s8) (free nicole s9) (free nicole s10) (free nicole s11)
-    (free nicole s12) (free nicole s13) (free nicole s14) (free nicole s15)
-
-    ;; Agent3 (Kevin) private calendar has been pre-processed by agent3 into allowed start slots.
-    ;; According to agent3, only start slot s13 (15:30) is allowed so a 60-minute meeting fits Kevin.
-    (start-allowed s13)
-
-    ;; Unscheduled flags for each agent (they will be consumed when that agent schedules)
-    (unscheduled_a1 meeting1)
-    (unscheduled_a2 meeting1)
-    (unscheduled_a3 meeting1)
+    ;; Kevin: busy on several intervals. We encode free only for slots that are available.
+    ;; Kevin busy: 09:00-10:00 (t0,t1), 10:30-11:30 (t3,t4), 12:00-15:30 (t6..t12), 16:30-17:00 (t15)
+    ;; Therefore free slots for Kevin are t2 (10:00-10:30), t5 (11:30-12:00), t13 (15:30-16:00), t14 (16:00-16:30)
+    (free kevin t2) (free kevin t5) (free kevin t13) (free kevin t14)
   )
 
-  ;; Goal: meeting must be scheduled compatibly with all three agents' assertions.
-  ;; We require that:
-  ;;  - agent1 records the meeting and its start slot (meeting_at_a1 ...)
-  ;;  - agent2 records the meeting starting at the same chosen slot
-  ;;  - agent3 records the meeting starting at the same chosen slot
-  ;; Together this guarantees the chosen start slot is acceptable to all participants.
-  (:goal (and
-    (scheduled_a1 meeting1)
-    (meeting_at_a1 meeting1 s13)
-    (scheduled_a2 meeting1 s13)
-    (scheduled_a3 meeting1 s13)
-  ))
+  ;; Goal: schedule a 60-minute (two consecutive 30-min slots) meeting that fits everyone's calendar.
+  ;; Given the combined availability, the only consecutive free pair for Kevin is t13 + t14 (15:30-16:30),
+  ;; so the planner should arrive at meeting-scheduled t13 t14.
+  (:goal (meeting-scheduled t13 t14))
 )

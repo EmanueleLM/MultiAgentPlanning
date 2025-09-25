@@ -1,141 +1,70 @@
-(define (domain orchestrated-meeting)
-  (:requirements :typing :strips :negative-preconditions :fluents)
-  (:types participant time)
+(define (domain multiagent-meeting)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types person slot)
 
   (:predicates
-    (free ?p - participant ?t - time)      ; participant is free at start time ?t for a 30-min slot
-    (preferred ?t - time)                 ; a time that Brandon prefers (>= 14:30)
-    (meeting-scheduled)                   ; a meeting has been scheduled
-    (scheduled-at ?t - time)              ; meeting scheduled at time ?t
+    (available ?p - person ?s - slot)   ; person p is available to start a 30-min meeting at slot s
+    (preferred ?s - slot)              ; Brandon prefers meetings starting at or after 14:30
+    (scheduled ?s - slot)              ; meeting scheduled at slot s
+    (attends ?p - person ?s - slot)    ; person p attends meeting at slot s
+    (meeting-scheduled)                ; a meeting has been scheduled
   )
 
-  (:functions
-    (total-cost)                          ; cost to minimize: 0 for preferred slots, 1 otherwise
-  )
-
-  ;; We keep scheduling actions distinct per agent (initiator) as requested.
-  ;; For each initiating agent we provide two actions:
-  ;;  - schedule-preferred-<initiator>  : for times marked preferred (cost 0)
-  ;;  - schedule-nonpreferred-<initiator> : for other times (cost 1)
-
-  ;; Brandon-initiated scheduling (preferred)
-  (:action schedule-preferred-brandon
-    :parameters (?t - time)
+  ;; Three distinct scheduling actions (keeps agents' actions distinct).
+  ;; All scheduling actions require that all participants are available for that slot
+  ;; and that the slot matches Brandon's preference (preferred). Requiring preferred
+  ;; enforces Brandon's stated preference (avoid before 14:30).
+  (:action brandon-schedule
+    :parameters (?s - slot)
     :precondition (and
-                    (not (meeting-scheduled))
-                    (preferred ?t)
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
     :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 0)
-            )
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
   )
 
-  ;; Brandon-initiated scheduling (non-preferred)
-  (:action schedule-nonpreferred-brandon
-    :parameters (?t - time)
+  (:action jerry-schedule
+    :parameters (?s - slot)
     :precondition (and
-                    (not (meeting-scheduled))
-                    (not (preferred ?t))
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
     :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 1)
-            )
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
   )
 
-  ;; Jerry-initiated scheduling (preferred)
-  (:action schedule-preferred-jerry
-    :parameters (?t - time)
+  (:action bradley-schedule
+    :parameters (?s - slot)
     :precondition (and
-                    (not (meeting-scheduled))
-                    (preferred ?t)
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
     :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 0)
-            )
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
   )
-
-  ;; Jerry-initiated scheduling (non-preferred)
-  (:action schedule-nonpreferred-jerry
-    :parameters (?t - time)
-    :precondition (and
-                    (not (meeting-scheduled))
-                    (not (preferred ?t))
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
-    :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 1)
-            )
-  )
-
-  ;; Bradley-initiated scheduling (preferred)
-  (:action schedule-preferred-bradley
-    :parameters (?t - time)
-    :precondition (and
-                    (not (meeting-scheduled))
-                    (preferred ?t)
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
-    :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 0)
-            )
-  )
-
-  ;; Bradley-initiated scheduling (non-preferred)
-  (:action schedule-nonpreferred-bradley
-    :parameters (?t - time)
-    :precondition (and
-                    (not (meeting-scheduled))
-                    (not (preferred ?t))
-                    (free brandon ?t)
-                    (free jerry ?t)
-                    (free bradley ?t)
-                  )
-    :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free brandon ?t))
-              (not (free jerry ?t))
-              (not (free bradley ?t))
-              (increase (total-cost) 1)
-            )
-  )
-
 )

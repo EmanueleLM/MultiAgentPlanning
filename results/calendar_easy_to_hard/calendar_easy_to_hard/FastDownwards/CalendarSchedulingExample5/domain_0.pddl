@@ -1,73 +1,37 @@
-(define (domain integrated-scheduling)
-  (:requirements :typing :strips :negative-preconditions)
-  (:types person time meeting)
-
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types agent slot)
   (:predicates
-    (available ?p - person ?t - time)       ; person is available at a 30-min start time
-    (not-scheduled)                         ; no meeting has been scheduled yet (Kathryn-style)
-    (meeting-scheduled)                     ; a meeting has been scheduled (Charlotte-style)
-    (meeting-at ?t - time)                  ; meeting scheduled at start time
-    (scheduled ?m - meeting ?t - time)      ; meeting object m scheduled at time t (Lauren-style)
-    (unscheduled ?m - meeting)              ; meeting object m is unscheduled (Lauren-style)
+    (agent ?a - agent)
+    (slot ?s - slot)
+    (available ?a - agent ?s - slot)
+    (agreed ?a - agent ?s - slot)
+    (meeting-scheduled)
   )
 
-  ;; Action provided by Kathryn (renamed to keep actions distinct)
-  (:action schedule-kathryn
-    :parameters (?m - meeting ?t - time)
-    :precondition (and
-      (unscheduled ?m)                     ; lauren-style unscheduled meeting object
-      (not (meeting-scheduled))            ; charlotte-style negative precondition
-      (not-scheduled)                      ; kathryn-style flag
-      (available kathryn ?t)
-      (available charlotte ?t)
-      (available lauren ?t)
-    )
-    :effect (and
-      (scheduled ?m ?t)
-      (not (unscheduled ?m))
-      (meeting-scheduled)
-      (meeting-at ?t)
-      (not (not-scheduled))
-    )
+  ;; Actions distinct per agent for recording agreement on a slot
+  (:action agree-kathryn
+    :parameters (?s - slot)
+    :precondition (available kathryn ?s)
+    :effect (agreed kathryn ?s)
   )
 
-  ;; Action provided by Charlotte (renamed to keep actions distinct)
-  (:action schedule-charlotte
-    :parameters (?m - meeting ?t - time)
-    :precondition (and
-      (unscheduled ?m)
-      (not (meeting-scheduled))
-      (not-scheduled)
-      (available charlotte ?t)
-      (available kathryn ?t)
-      (available lauren ?t)
-    )
-    :effect (and
-      (scheduled ?m ?t)
-      (not (unscheduled ?m))
-      (meeting-scheduled)
-      (meeting-at ?t)
-      (not (not-scheduled))
-    )
+  (:action agree-charlotte
+    :parameters (?s - slot)
+    :precondition (available charlotte ?s)
+    :effect (agreed charlotte ?s)
   )
 
-  ;; Action provided by Lauren (renamed to keep actions distinct)
-  (:action schedule-lauren
-    :parameters (?m - meeting ?t - time)
-    :precondition (and
-      (unscheduled ?m)
-      (not (meeting-scheduled))
-      (not-scheduled)
-      (available lauren ?t)
-      (available kathryn ?t)
-      (available charlotte ?t)
-    )
-    :effect (and
-      (scheduled ?m ?t)
-      (not (unscheduled ?m))
-      (meeting-scheduled)
-      (meeting-at ?t)
-      (not (not-scheduled))
-    )
+  (:action agree-lauren
+    :parameters (?s - slot)
+    :precondition (available lauren ?s)
+    :effect (agreed lauren ?s)
+  )
+
+  ;; Finalize the meeting when all three have agreed on the same slot
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and (agreed kathryn ?s) (agreed charlotte ?s) (agreed lauren ?s))
+    :effect (meeting-scheduled)
   )
 )

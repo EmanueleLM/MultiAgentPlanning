@@ -1,34 +1,41 @@
-(define (domain meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
+(define (domain meeting-scheduling-multiagent)
+  (:requirements :typing :strips)
   (:types agent slot)
   (:predicates
-    (busy ?a - agent ?s - slot)
-    (agreed ?a - agent ?s - slot)
-    (scheduled_slot ?s - slot)
-    (meeting_scheduled)
+    (available ?a - agent ?s - slot)
+    (approved ?a - agent ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
   )
 
-  (:action agree-margaret
+  (:action margaret-approve
     :parameters (?s - slot)
-    :precondition (and (not (busy margaret ?s)) (not (agreed margaret ?s)) (not (meeting_scheduled)))
-    :effect (agreed margaret ?s)
+    :precondition (available margaret ?s)
+    :effect (approved margaret ?s)
   )
 
-  (:action agree-donna
+  (:action donna-approve
     :parameters (?s - slot)
-    :precondition (and (not (busy donna ?s)) (not (agreed donna ?s)) (not (meeting_scheduled)))
-    :effect (agreed donna ?s)
+    :precondition (available donna ?s)
+    :effect (approved donna ?s)
   )
 
-  (:action agree-helen
+  (:action helen-approve
     :parameters (?s - slot)
-    :precondition (and (not (busy helen ?s)) (not (agreed helen ?s)) (not (meeting_scheduled)))
-    :effect (agreed helen ?s)
+    :precondition (available helen ?s)
+    :effect (approved helen ?s)
   )
 
-  (:action finalize
+  (:action schedule-meeting
     :parameters (?s - slot)
-    :precondition (and (agreed margaret ?s) (agreed donna ?s) (agreed helen ?s) (not (meeting_scheduled)))
-    :effect (and (meeting_scheduled) (scheduled_slot ?s))
+    :precondition (and
+      (approved margaret ?s)
+      (approved donna ?s)
+      (approved helen ?s)
+    )
+    :effect (and
+      (scheduled ?s)
+      (meeting-scheduled)
+    )
   )
 )

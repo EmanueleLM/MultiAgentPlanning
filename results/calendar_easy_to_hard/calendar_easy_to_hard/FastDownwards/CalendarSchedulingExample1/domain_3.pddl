@@ -1,43 +1,58 @@
-(define (domain meeting-domain)
-  (:requirements :strips :typing)
+(define (domain multi-agent-meeting)
+  (:requirements :strips :typing :negative-preconditions :action-costs :fluents :adl)
   (:types agent slot)
-  (:constants raymond billy donald - agent)
 
   (:predicates
     (available ?a - agent ?s - slot)
     (preferred ?a - agent ?s - slot)
-    (work-slot ?s - slot)
-    (chosen ?a - agent ?s - slot)
-    (scheduled ?s - slot)
     (attending ?a - agent ?s - slot)
-    (meeting-scheduled)
+    (meeting-scheduled ?s - slot)
+    (in-work-hours ?s - slot)
+    (free ?a - agent)
+    (meeting-open)
   )
 
-  (:action choose-raymond
+  (:functions (total-cost))
+
+  (:action attend-raymond-preferred
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available raymond ?s))
-    :effect (chosen raymond ?s)
+    :precondition (and (available raymond ?s) (preferred raymond ?s) (in-work-hours ?s) (free raymond))
+    :effect (and (attending raymond ?s) (not (free raymond)) (increase (total-cost) 0))
   )
 
-  (:action choose-billy
+  (:action attend-raymond
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available billy ?s))
-    :effect (chosen billy ?s)
+    :precondition (and (available raymond ?s) (in-work-hours ?s) (not (preferred raymond ?s)) (free raymond))
+    :effect (and (attending raymond ?s) (not (free raymond)) (increase (total-cost) 1))
   )
 
-  (:action choose-donald
+  (:action attend-billy-preferred
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available donald ?s))
-    :effect (chosen donald ?s)
+    :precondition (and (available billy ?s) (preferred billy ?s) (in-work-hours ?s) (free billy))
+    :effect (and (attending billy ?s) (not (free billy)) (increase (total-cost) 0))
+  )
+
+  (:action attend-billy
+    :parameters (?s - slot)
+    :precondition (and (available billy ?s) (in-work-hours ?s) (not (preferred billy ?s)) (free billy))
+    :effect (and (attending billy ?s) (not (free billy)) (increase (total-cost) 1))
+  )
+
+  (:action attend-donald-preferred
+    :parameters (?s - slot)
+    :precondition (and (available donald ?s) (preferred donald ?s) (in-work-hours ?s) (free donald))
+    :effect (and (attending donald ?s) (not (free donald)) (increase (total-cost) 0))
+  )
+
+  (:action attend-donald
+    :parameters (?s - slot)
+    :precondition (and (available donald ?s) (in-work-hours ?s) (not (preferred donald ?s)) (free donald))
+    :effect (and (attending donald ?s) (not (free donald)) (increase (total-cost) 1))
   )
 
   (:action finalize-meeting
     :parameters (?s - slot)
-    :precondition (and (chosen raymond ?s) (chosen billy ?s) (chosen donald ?s))
-    :effect (and (scheduled ?s)
-                 (attending raymond ?s)
-                 (attending billy ?s)
-                 (attending donald ?s)
-                 (meeting-scheduled))
+    :precondition (and (attending raymond ?s) (attending billy ?s) (attending donald ?s) (meeting-open) (in-work-hours ?s) (not (meeting-scheduled ?s)))
+    :effect (and (meeting-scheduled ?s) (not (meeting-open)) (increase (total-cost) 0))
   )
 )

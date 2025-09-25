@@ -1,40 +1,41 @@
-(define (problem schedule-monday)
-  (:domain meeting-scheduling)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling-multiagent)
   (:objects
-    gerald roy barbara - person
-    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
-    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
+    gerald roy barbara - agent
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - timeslot
   )
   (:init
-    (participant gerald) (participant roy) (participant barbara)
-
-    (slot s09_00) (slot s09_30) (slot s10_00) (slot s10_30)
-    (slot s11_00) (slot s11_30) (slot s12_00) (slot s12_30)
-    (slot s13_00) (slot s13_30) (slot s14_00) (slot s14_30)
-    (slot s15_00) (slot s15_30) (slot s16_00) (slot s16_30)
-
-    ;; Roy: free all day (09:00-17:00)
-    (free-slot roy s09_00) (free-slot roy s09_30) (free-slot roy s10_00) (free-slot roy s10_30)
-    (free-slot roy s11_00) (free-slot roy s11_30) (free-slot roy s12_00) (free-slot roy s12_30)
-    (free-slot roy s13_00) (free-slot roy s13_30) (free-slot roy s14_00) (free-slot roy s14_30)
-    (free-slot roy s15_00) (free-slot roy s15_30) (free-slot roy s16_00) (free-slot roy s16_30)
-
-    ;; Gerald private constraints: busy 09:00-09:30, 13:00-14:00, 15:00-15:30, 16:00-17:00
-    ;; therefore free slots are: 09:30,10:00,10:30,11:00,11:30,12:00,12:30,14:00,14:30,15:30
-    (free-slot gerald s09_30) (free-slot gerald s10_00) (free-slot gerald s10_30)
-    (free-slot gerald s11_00) (free-slot gerald s11_30) (free-slot gerald s12_00)
-    (free-slot gerald s12_30) (free-slot gerald s14_00) (free-slot gerald s14_30)
-    (free-slot gerald s15_30)
-
-    ;; Barbara private constraints: busy 09:30-10:00, 11:30-14:00, 14:30-15:00, 15:30-17:00
-    ;; therefore free slots are: 09:00,10:00,10:30,11:00,14:00,15:00
-    (free-slot barbara s09_00) (free-slot barbara s10_00) (free-slot barbara s10_30)
-    (free-slot barbara s11_00) (free-slot barbara s14_00) (free-slot barbara s15_00)
+    (free gerald t0930)
+    (free gerald t1000)
+    (free gerald t1030)
+    (free gerald t1100)
+    (free gerald t1130)
+    (free gerald t1200)
+    (free gerald t1230)
+    (free gerald t1400)
+    (free gerald t1530)
+    (free roy t0900) (free roy t0930) (free roy t1000) (free roy t1030)
+    (free roy t1100) (free roy t1130) (free roy t1200) (free roy t1230)
+    (free roy t1300) (free roy t1330) (free roy t1400) (free roy t1430)
+    (free roy t1500) (free roy t1530) (free roy t1600) (free roy t1630)
+    (free barbara t0900)
+    (free barbara t1000)
+    (free barbara t1030)
+    (free barbara t1100)
+    (free barbara t1400)
+    (free barbara t1500)
+    (gerald-pref t1300) (gerald-pref t1330) (gerald-pref t1400) (gerald-pref t1430)
+    (gerald-pref t1500) (gerald-pref t1530) (gerald-pref t1600) (gerald-pref t1630)
+    (gerald-nonpref t0900) (gerald-nonpref t0930) (gerald-nonpref t1000) (gerald-nonpref t1030)
+    (gerald-nonpref t1100) (gerald-nonpref t1130) (gerald-nonpref t1200) (gerald-nonpref t1230)
   )
-  (:goal (and
-    (meeting-scheduled)
-    (meeting-with gerald)
-    (meeting-with roy)
-    (meeting-with barbara)
-  ))
+  (:goal
+    (or
+      (meeting-scheduled t0900) (meeting-scheduled t0930) (meeting-scheduled t1000) (meeting-scheduled t1030)
+      (meeting-scheduled t1100) (meeting-scheduled t1130) (meeting-scheduled t1200) (meeting-scheduled t1230)
+      (meeting-scheduled t1300) (meeting-scheduled t1330) (meeting-scheduled t1400) (meeting-scheduled t1430)
+      (meeting-scheduled t1500) (meeting-scheduled t1530) (meeting-scheduled t1600) (meeting-scheduled t1630)
+    )
+  )
 )

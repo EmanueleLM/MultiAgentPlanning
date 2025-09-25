@@ -1,84 +1,50 @@
-(define (domain integrated-meeting-scheduling)
-  (:requirements :typing :negative-preconditions :adl :action-costs)
-  (:types participant slot)
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :adl :action-costs)
+  (:types slot)
 
   (:predicates
-    (busy ?p - participant ?s - slot)
-    (occupied ?s - slot)
-    (unscheduled)
-    (scheduled)
-    (meeting-scheduled ?p1 - participant ?p2 - participant ?s - slot)
-    (meeting-with ?p - participant)
-    (meeting-at ?s - slot)
-    (preferred ?p - participant ?s - slot)
-    (early ?s - slot)
+    (available-ralph ?s - slot)
+    (available-peter ?s - slot)
+    (available-daniel ?s - slot)
+    (ralph-ok ?s - slot)
+    (peter-ok ?s - slot)
+    (daniel-ok ?s - slot)
+    (after-preferred ?s - slot)
+    (meeting-scheduled)
   )
 
-  (:action schedule_three
-    :parameters (?s - slot ?p1 - participant ?p2 - participant ?p3 - participant)
-    :precondition (and
-      (unscheduled)
-      (not (occupied ?s))
-      (not (busy ?p1 ?s))
-      (not (busy ?p2 ?s))
-      (not (busy ?p3 ?s))
-    )
-    :effect (and
-      (occupied ?s)
-      (meeting-at ?s)
-      (meeting-with ?p1) (meeting-with ?p2) (meeting-with ?p3)
-      (meeting-scheduled ?p1 ?p2 ?s)
-      (meeting-scheduled ?p1 ?p3 ?s)
-      (meeting-scheduled ?p2 ?p3 ?s)
-      (scheduled)
-      (not (unscheduled))
-    )
-    :cost 1
-  )
-
-  (:action schedule_preferred
-    :parameters (?s - slot ?p1 - participant ?p2 - participant ?p3 - participant ?pref - participant)
-    :precondition (and
-      (unscheduled)
-      (not (occupied ?s))
-      (preferred ?pref ?s)
-      (not (busy ?p1 ?s))
-      (not (busy ?p2 ?s))
-      (not (busy ?p3 ?s))
-    )
-    :effect (and
-      (occupied ?s)
-      (meeting-at ?s)
-      (meeting-with ?p1) (meeting-with ?p2) (meeting-with ?p3)
-      (meeting-scheduled ?p1 ?p2 ?s)
-      (meeting-scheduled ?p1 ?p3 ?s)
-      (meeting-scheduled ?p2 ?p3 ?s)
-      (scheduled)
-      (not (unscheduled))
-    )
+  (:action ralph-confirm
+    :parameters (?s - slot)
+    :precondition (available-ralph ?s)
+    :effect (and (ralph-ok ?s))
     :cost 0
   )
 
-  (:action schedule_early
-    :parameters (?s - slot ?p1 - participant ?p2 - participant ?p3 - participant)
-    :precondition (and
-      (unscheduled)
-      (early ?s)
-      (not (occupied ?s))
-      (not (busy ?p1 ?s))
-      (not (busy ?p2 ?s))
-      (not (busy ?p3 ?s))
-    )
-    :effect (and
-      (occupied ?s)
-      (meeting-at ?s)
-      (meeting-with ?p1) (meeting-with ?p2) (meeting-with ?p3)
-      (meeting-scheduled ?p1 ?p2 ?s)
-      (meeting-scheduled ?p1 ?p3 ?s)
-      (meeting-scheduled ?p2 ?p3 ?s)
-      (scheduled)
-      (not (unscheduled))
-    )
+  (:action peter-confirm
+    :parameters (?s - slot)
+    :precondition (available-peter ?s)
+    :effect (and (peter-ok ?s))
+    :cost 0
+  )
+
+  (:action daniel-confirm-preferred
+    :parameters (?s - slot)
+    :precondition (and (available-daniel ?s) (not (after-preferred ?s)))
+    :effect (and (daniel-ok ?s))
+    :cost 0
+  )
+
+  (:action daniel-confirm-after
+    :parameters (?s - slot)
+    :precondition (and (available-daniel ?s) (after-preferred ?s))
+    :effect (and (daniel-ok ?s))
+    :cost 1
+  )
+
+  (:action finalize-meeting
+    :parameters (?s - slot)
+    :precondition (and (ralph-ok ?s) (peter-ok ?s) (daniel-ok ?s) (not (meeting-scheduled)))
+    :effect (meeting-scheduled)
     :cost 0
   )
 )

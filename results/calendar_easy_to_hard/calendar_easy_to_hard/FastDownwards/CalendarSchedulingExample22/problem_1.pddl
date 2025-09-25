@@ -1,43 +1,59 @@
 (define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
+
   (:objects
-    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230
-    s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    theresa charles betty - agent
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 - slot
   )
+
   (:init
-    ;; Lawrence: no meetings the whole day => available all slots
-    (available_lawrence s0900) (available_lawrence s0930) (available_lawrence s1000) (available_lawrence s1030)
-    (available_lawrence s1100) (available_lawrence s1130) (available_lawrence s1200) (available_lawrence s1230)
-    (available_lawrence s1300) (available_lawrence s1330) (available_lawrence s1400) (available_lawrence s1430)
-    (available_lawrence s1500) (available_lawrence s1530) (available_lawrence s1600) (available_lawrence s1630)
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
+    (next s5 s6)
+    (next s6 s7)
+    (next s7 s8)
+    (next s8 s9)
+    (next s9 s10)
+    (next s10 s11)
+    (next s11 s12)
+    (next s12 s13)
+    (next s13 s14)
+    (next s14 s15)
+    (next s15 s16)
 
-    ;; Christine: busy 09:00-09:30 (s0900) and 12:30-13:00 (s1230)
-    (available_christine s0930) (available_christine s1000) (available_christine s1030) (available_christine s1100)
-    (available_christine s1130) (available_christine s1200) (available_christine s1300) (available_christine s1330)
-    (available_christine s1400) (available_christine s1430) (available_christine s1500) (available_christine s1530)
-    (available_christine s1600) (available_christine s1630)
+    (free theresa s2)
+    (free theresa s3)
+    (free theresa s4)
+    (free theresa s5)
+    (free theresa s6)
+    (free theresa s7)
+    (free theresa s10)
+    (free theresa s13)
+    (free theresa s14)
+    (free theresa s15)
 
-    ;; Barbara: busy 10:30-11:30 (s1030,s1100), 12:00-12:30 (s1200), 13:00-13:30 (s1300), 14:00-14:30 (s1400), 15:30-16:00 (s1530)
-    (available_barbara s0900) (available_barbara s0930) (available_barbara s1000)
-    (available_barbara s1130) (available_barbara s1230) (available_barbara s1330)
-    (available_barbara s1430) (available_barbara s1500) (available_barbara s1600) (available_barbara s1630)
+    (free charles s1)
+    (free charles s2)
+    (free charles s4)
+    (free charles s5)
+    (free charles s8)
+    (free charles s9)
+    (free charles s10)
+    (free charles s14)
+    (free charles s15)
+    (free charles s16)
 
-    ;; Stephanie: busy 10:00-11:00 (s1000,s1030), 11:30-12:00 (s1130), 12:30-13:30 (s1230,s1300),
-    ;; 14:30-15:00 (s1430), 15:30-16:00 (s1530), 16:30-17:00 (s1630)
-    (available_stephanie s0900) (available_stephanie s0930)
-    (available_stephanie s1100) (available_stephanie s1200) (available_stephanie s1330)
-    (available_stephanie s1400) (available_stephanie s1500) (available_stephanie s1600)
-
-    ;; Hannah: busy 09:00-10:00 (s0900,s0930), 10:30-12:00 (s1030,s1100,s1130), 12:30-13:00 (s1230),
-    ;; 14:00-15:30 (s1400,s1430,s1500), 16:00-16:30 (s1600)
-    (available_hannah s1000) (available_hannah s1200) (available_hannah s1300)
-    (available_hannah s1330) (available_hannah s1530) (available_hannah s1630)
+    (free betty s4)
+    (free betty s5)
+    (free betty s6)
+    (free betty s8)
+    (free betty s11)
+    (free betty s12)
+    (free betty s15)
+    (free betty s16)
   )
-  (:goal (and
-    (meeting_scheduled_lawrence)
-    (meeting_scheduled_christine)
-    (meeting_scheduled_barbara)
-    (meeting_scheduled_stephanie)
-    (meeting_scheduled_hannah)
-  ))
+
+  (:goal (meeting-scheduled s4))
 )

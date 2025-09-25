@@ -1,93 +1,48 @@
-(define (problem schedule-meeting-integrated-monday)
-  (:domain meeting-scheduling-integrated)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
 
   (:objects
     thomas dylan jerry - person
 
-    ;; 30-minute start slots between 09:00 and 16:00 (a 60-minute meeting starting at these times fits into 09:00-17:00)
-    t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30
-    t_12_00 t_12_30 t_13_00 t_13_30 t_14_00 t_14_30
-    t_15_00 t_15_30 t_16_00 - timeslot
-
-    monday - day
+    s9_00  s9_30  s10_00 s10_30 s11_00 s11_30 s12_00 s12_30 s13_00
+    s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 - slot
   )
 
   (:init
-    ;; participants
-    (participant thomas) (participant dylan) (participant jerry)
+    ;; next relations (30-minute granularity)
+    (next s9_00  s9_30)  (next s9_30  s10_00) (next s10_00 s10_30)
+    (next s10_30 s11_00) (next s11_00 s11_30) (next s11_30 s12_00)
+    (next s12_00 s12_30) (next s12_30 s13_00) (next s13_00 s13_30)
+    (next s13_30 s14_00) (next s14_00 s14_30) (next s14_30 s15_00)
+    (next s15_00 s15_30) (next s15_30 s16_00)
 
-    ;; day and timeslot membership
-    (day monday)
-    (timeslot t_09_00) (timeslot t_09_30) (timeslot t_10_00) (timeslot t_10_30)
-    (timeslot t_11_00) (timeslot t_11_30) (timeslot t_12_00) (timeslot t_12_30)
-    (timeslot t_13_00) (timeslot t_13_30) (timeslot t_14_00) (timeslot t_14_30)
-    (timeslot t_15_00) (timeslot t_15_30) (timeslot t_16_00)
+    ;; Availability per participant (30-min slots). Thomas is free all work slots.
+    ;; Thomas: free 09:00-16:00 start times (all slots listed)
+    (available thomas s9_00)  (available thomas s9_30)  (available thomas s10_00)
+    (available thomas s10_30) (available thomas s11_00) (available thomas s11_30)
+    (available thomas s12_00) (available thomas s12_30) (available thomas s13_00)
+    (available thomas s13_30) (available thomas s14_00) (available thomas s14_30)
+    (available thomas s15_00) (available thomas s15_30) (available thomas s16_00)
 
-    ;; all these slots occur on Monday and are within workhours / startable for a 60-minute meeting
-    (on-day t_09_00 monday) (on-day t_09_30 monday) (on-day t_10_00 monday) (on-day t_10_30 monday)
-    (on-day t_11_00 monday) (on-day t_11_30 monday) (on-day t_12_00 monday) (on-day t_12_30 monday)
-    (on-day t_13_00 monday) (on-day t_13_30 monday) (on-day t_14_00 monday) (on-day t_14_30 monday)
-    (on-day t_15_00 monday) (on-day t_15_30 monday) (on-day t_16_00 monday)
+    ;; Dylan: busy 10:30-11:00 (s10_30) and 13:30-14:00 (s13_30)
+    ;; so available on all other listed slots
+    (available dylan s9_00)  (available dylan s9_30)  (available dylan s10_00)
+    ;; s10_30 is busy for Dylan -> omitted
+    (available dylan s11_00) (available dylan s11_30) (available dylan s12_00)
+    (available dylan s12_30) (available dylan s13_00)
+    ;; s13_30 omitted (busy)
+    (available dylan s14_00) (available dylan s14_30) (available dylan s15_00)
+    (available dylan s15_30) (available dylan s16_00)
 
-    (within-workhours t_09_00) (within-workhours t_09_30) (within-workhours t_10_00) (within-workhours t_10_30)
-    (within-workhours t_11_00) (within-workhours t_11_30) (within-workhours t_12_00) (within-workhours t_12_30)
-    (within-workhours t_13_00) (within-workhours t_13_30) (within-workhours t_14_00) (within-workhours t_14_30)
-    (within-workhours t_15_00) (within-workhours t_15_30) (within-workhours t_16_00)
-
-    (startable t_09_00) (startable t_09_30) (startable t_10_00) (startable t_10_30)
-    (startable t_11_00) (startable t_11_30) (startable t_12_00) (startable t_12_30)
-    (startable t_13_00) (startable t_13_30) (startable t_14_00) (startable t_14_30)
-    (startable t_15_00) (startable t_15_30) (startable t_16_00)
-
-    ;; Bookkeeping bits initially: meeting unscheduled according to both agent conventions
-    (unscheduled)
-    (meeting-unscheduled)
-
-    ;; -------------------------
-    ;; Availability integrated from agents:
-    ;; - Thomas (Agent 1): known free entire workday -> available/free for all start slots.
-    ;; - Dylan (Agent 2): busy 10:30-11:00 and 13:30-14:00, hence available only for start times that do not overlap those busy windows.
-    ;; - Jerry (Agent 3): busy windows given; only t_14_30 and t_15_00 are free for a 60-min meeting according to agent 3.
-    ;; We include both 'available' and 'free' facts as different agents use different predicates.
-    ;; -------------------------
-
-    ;; Thomas: available and free for all start times
-    (available thomas t_09_00) (available thomas t_09_30) (available thomas t_10_00) (available thomas t_10_30)
-    (available thomas t_11_00) (available thomas t_11_30) (available thomas t_12_00) (available thomas t_12_30)
-    (available thomas t_13_00) (available thomas t_13_30) (available thomas t_14_00) (available thomas t_14_30)
-    (available thomas t_15_00) (available thomas t_15_30) (available thomas t_16_00)
-
-    (free thomas t_09_00) (free thomas t_09_30) (free thomas t_10_00) (free thomas t_10_30)
-    (free thomas t_11_00) (free thomas t_11_30) (free thomas t_12_00) (free thomas t_12_30)
-    (free thomas t_13_00) (free thomas t_13_30) (free thomas t_14_00) (free thomas t_14_30)
-    (free thomas t_15_00) (free thomas t_15_30) (free thomas t_16_00)
-
-    ;; Dylan: according to Agent 2, busy 10:30-11:00 and 13:30-14:00 -> exclude starts that would overlap those busy intervals.
-    ;; Allowed start times for Dylan (computed to avoid overlap with busy intervals for a 60-min meeting):
-    (available dylan t_09_00) (available dylan t_09_30)
-    (available dylan t_11_00) (available dylan t_11_30)
-    (available dylan t_12_00) (available dylan t_12_30)
-    (available dylan t_14_00) (available dylan t_14_30)
-    (available dylan t_15_00) (available dylan t_15_30)
-    (available dylan t_16_00)
-
-    (free dylan t_09_00) (free dylan t_09_30)
-    (free dylan t_11_00) (free dylan t_11_30)
-    (free dylan t_12_00) (free dylan t_12_30)
-    (free dylan t_14_00) (free dylan t_14_30)
-    (free dylan t_15_00) (free dylan t_15_30)
-    (free dylan t_16_00)
-
-    ;; Jerry: according to Agent 3, Jerry is only free for starts that do not overlap his busy windows;
-    ;; Agent 3 provided that t_14_30 is feasible-for-all and Jerry is free at t_14_30 and t_15_00.
-    (available jerry t_14_30) (available jerry t_15_00)
-    (free jerry t_14_30) (free jerry t_15_00)
-
-    ;; Public fact from Agent 3: a feasible-for-all time exists (use the known feasible time)
-    (feasible-for-all t_14_30)
+    ;; Jerry: busy 09:00-11:00 (s9_00,s9_30,s10_00,s10_30),
+    ;; busy 11:30-14:30 (s11_30,s12_00,s12_30,s13_00,s13_30,s14_00),
+    ;; busy 16:00-17:00 (s16_00).
+    ;; Therefore Jerry is available only at s11_00 and s14_30, s15_00, s15_30 in our discretization.
+    (available jerry s11_00)
+    (available jerry s14_30) (available jerry s15_00) (available jerry s15_30)
   )
 
-  ;; Goal: schedule the 60-minute meeting at the integrated feasible time where all reported availabilities align:
-  ;; we target t_14_30 (14:30 start -> 14:30-15:30 meeting within 9:00-17:00).
-  (:goal (meeting-scheduled t_14_30))
+  ;; Goal: a meeting of 60 minutes (two consecutive 30-min slots) has been scheduled.
+  ;; The scheduling action will assert (meeting-scheduled) and (meeting-start ?s).
+  (:goal (meeting-scheduled))
 )

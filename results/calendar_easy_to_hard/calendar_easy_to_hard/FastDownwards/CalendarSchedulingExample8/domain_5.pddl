@@ -1,75 +1,36 @@
-(define (domain integrated-meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types person slot day)
-  (:constants adam jerry matthew - person)
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :adl :action-costs)
+  (:types agent slot day)
+  (:constants adam jerry matthew - agent)
   (:predicates
-    (work-slot ?s - slot)
-    (busy ?p - person ?s - slot)
-    (meeting-scheduled)
-    (meeting-at ?s - slot)
-    (attending ?p - person ?d - day ?s - slot)
+    (free ?a - agent ?s - slot)
+    (agreed ?a - agent ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-duration-30)
+    (within-work-hours ?s - slot)
   )
-
-  (:action schedule-by-adam
-    :parameters (?d - day ?s - slot)
-    :precondition (and
-      (work-slot ?s)
-      (not (busy adam ?s))
-      (not (busy jerry ?s))
-      (not (busy matthew ?s))
-      (not (meeting-scheduled))
-    )
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (attending adam ?d ?s)
-      (attending jerry ?d ?s)
-      (attending matthew ?d ?s)
-      (busy adam ?s)
-      (busy jerry ?s)
-      (busy matthew ?s)
-    )
+  (:action agree-adam
+    :parameters (?s - slot)
+    :precondition (and (free adam ?s) (not (agreed adam ?s)) (within-work-hours ?s))
+    :effect (and (agreed adam ?s))
+    :cost 1
   )
-
-  (:action schedule-by-jerry
-    :parameters (?d - day ?s - slot)
-    :precondition (and
-      (work-slot ?s)
-      (not (busy adam ?s))
-      (not (busy jerry ?s))
-      (not (busy matthew ?s))
-      (not (meeting-scheduled))
-    )
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (attending adam ?d ?s)
-      (attending jerry ?d ?s)
-      (attending matthew ?d ?s)
-      (busy adam ?s)
-      (busy jerry ?s)
-      (busy matthew ?s)
-    )
+  (:action agree-jerry
+    :parameters (?s - slot)
+    :precondition (and (free jerry ?s) (not (agreed jerry ?s)) (within-work-hours ?s))
+    :effect (and (agreed jerry ?s))
+    :cost 1
   )
-
-  (:action schedule-by-matthew
-    :parameters (?d - day ?s - slot)
-    :precondition (and
-      (work-slot ?s)
-      (not (busy adam ?s))
-      (not (busy jerry ?s))
-      (not (busy matthew ?s))
-      (not (meeting-scheduled))
-    )
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (attending adam ?d ?s)
-      (attending jerry ?d ?s)
-      (attending matthew ?d ?s)
-      (busy adam ?s)
-      (busy jerry ?s)
-      (busy matthew ?s)
-    )
+  (:action agree-matthew
+    :parameters (?s - slot)
+    :precondition (and (free matthew ?s) (not (agreed matthew ?s)) (within-work-hours ?s))
+    :effect (and (agreed matthew ?s))
+    :cost 1
+  )
+  (:action finalize
+    :parameters (?s - slot)
+    :precondition (and (agreed adam ?s) (agreed jerry ?s) (agreed matthew ?s) (not (scheduled ?s)))
+    :effect (and (scheduled ?s))
+    :cost 0
   )
 )

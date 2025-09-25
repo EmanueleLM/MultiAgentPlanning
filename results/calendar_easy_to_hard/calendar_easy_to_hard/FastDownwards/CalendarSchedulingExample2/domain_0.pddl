@@ -1,71 +1,44 @@
 (define (domain multi-agent-scheduling)
   (:requirements :strips :typing :negative-preconditions)
-  (:types slot)
+  (:types agent slot)
+
+  (:constants roy kathryn amy - agent)
+
   (:predicates
-    (monday)                       ; it's Monday
-    (free-roy ?s - slot)           ; Roy considers slot available
-    (free-kathryn ?s - slot)       ; Kathryn considers slot available
-    (free-amy ?s - slot)           ; Amy considers slot available
-    (scheduled ?s - slot)          ; meeting scheduled in a slot
-    (meeting-scheduled)            ; a meeting has been scheduled
-    (preferred-amy ?s - slot)      ; Amy's preferred slot(s)
+    (free ?a - agent ?s - slot)            ; agent is free at slot
+    (accepted ?a - agent ?s - slot)        ; agent has accepted this slot
+    (meeting-scheduled ?s - slot)          ; meeting has been scheduled at slot
+    (finalized)                            ; meeting finalized
   )
 
-  ;; Distinct agent actions. Each agent may perform a scheduling action,
-  ;; but all scheduling actions require that the chosen slot is free for
-  ;; Roy, Kathryn and Amy, and that no meeting has already been scheduled.
-  ;; This guarantees a meeting is only scheduled in a slot acceptable to all.
-  (:action schedule-roy
+  ;; Roy's action to accept a slot (distinct action per agent)
+  (:action roy-accept
     :parameters (?s - slot)
-    :precondition (and
-      (monday)
-      (not (meeting-scheduled))
-      (free-roy ?s)
-      (free-kathryn ?s)
-      (free-amy ?s)
-    )
-    :effect (and
-      (scheduled ?s)
-      (meeting-scheduled)
-      (not (free-roy ?s))
-      (not (free-kathryn ?s))
-      (not (free-amy ?s))
-    )
+    :precondition (and (free roy ?s))
+    :effect (and (accepted roy ?s)
+                 (not (free roy ?s)))
   )
 
-  (:action schedule-kathryn
+  ;; Kathryn's action to accept a slot
+  (:action kathryn-accept
     :parameters (?s - slot)
-    :precondition (and
-      (monday)
-      (not (meeting-scheduled))
-      (free-roy ?s)
-      (free-kathryn ?s)
-      (free-amy ?s)
-    )
-    :effect (and
-      (scheduled ?s)
-      (meeting-scheduled)
-      (not (free-roy ?s))
-      (not (free-kathryn ?s))
-      (not (free-amy ?s))
-    )
+    :precondition (and (free kathryn ?s))
+    :effect (and (accepted kathryn ?s)
+                 (not (free kathryn ?s)))
   )
 
-  (:action schedule-amy
+  ;; Amy's action to accept a slot
+  (:action amy-accept
     :parameters (?s - slot)
-    :precondition (and
-      (monday)
-      (not (meeting-scheduled))
-      (free-roy ?s)
-      (free-kathryn ?s)
-      (free-amy ?s)
-    )
-    :effect (and
-      (scheduled ?s)
-      (meeting-scheduled)
-      (not (free-roy ?s))
-      (not (free-kathryn ?s))
-      (not (free-amy ?s))
-    )
+    :precondition (and (free amy ?s))
+    :effect (and (accepted amy ?s)
+                 (not (free amy ?s)))
+  )
+
+  ;; Finalize only when all three have accepted the same slot
+  (:action finalize-meeting
+    :parameters (?s - slot)
+    :precondition (and (accepted roy ?s) (accepted kathryn ?s) (accepted amy ?s) (not (finalized)))
+    :effect (and (meeting-scheduled ?s) (finalized))
   )
 )

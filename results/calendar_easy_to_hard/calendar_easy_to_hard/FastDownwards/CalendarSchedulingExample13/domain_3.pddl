@@ -1,26 +1,116 @@
-(define (domain meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types person slot)
+(define (domain meeting-scheduling-multiagent)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types agent timeslot)
   (:predicates
-    (participant ?p - person)
-    (slot ?s - slot)
-    (free-slot ?p - person ?s - slot)
-    (meeting-scheduled)
-    (scheduled-slot ?s - slot)
-    (meeting-with ?p - person)
+    (free ?a - agent ?t - timeslot)
+    (gerald-pref ?t - timeslot)
+    (gerald-nonpref ?t - timeslot)
+    (meeting-scheduled ?t - timeslot)
+    (meeting-scheduled-flag)
+    (scheduled-by-gerald ?t - timeslot)
+    (scheduled-by-roy ?t - timeslot)
+    (scheduled-by-barbara ?t - timeslot)
   )
-  (:action schedule-meeting
-    :parameters (?s - slot ?p1 - person ?p2 - person ?p3 - person)
+
+  (:action schedule-by-gerald-pref
+    :parameters (?t - timeslot)
     :precondition (and
-      (slot ?s)
-      (participant ?p1) (participant ?p2) (participant ?p3)
-      (free-slot ?p1 ?s) (free-slot ?p2 ?s) (free-slot ?p3 ?s)
-      (not (meeting-scheduled))
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-pref ?t)
     )
     :effect (and
-      (meeting-scheduled)
-      (scheduled-slot ?s)
-      (meeting-with ?p1) (meeting-with ?p2) (meeting-with ?p3)
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-gerald ?t)
     )
+    :costs 0
+  )
+
+  (:action schedule-by-gerald-nonpref
+    :parameters (?t - timeslot)
+    :precondition (and
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-nonpref ?t)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-gerald ?t)
+    )
+    :costs 1
+  )
+
+  (:action schedule-by-roy-pref
+    :parameters (?t - timeslot)
+    :precondition (and
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-pref ?t)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-roy ?t)
+    )
+    :costs 0
+  )
+
+  (:action schedule-by-roy-nonpref
+    :parameters (?t - timeslot)
+    :precondition (and
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-nonpref ?t)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-roy ?t)
+    )
+    :costs 1
+  )
+
+  (:action schedule-by-barbara-pref
+    :parameters (?t - timeslot)
+    :precondition (and
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-pref ?t)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-barbara ?t)
+    )
+    :costs 0
+  )
+
+  (:action schedule-by-barbara-nonpref
+    :parameters (?t - timeslot)
+    :precondition (and
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
+      (gerald-nonpref ?t)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-barbara ?t)
+    )
+    :costs 1
   )
 )

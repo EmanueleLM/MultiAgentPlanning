@@ -1,53 +1,39 @@
 (define (domain meeting-scheduling)
-  (:requirements :strips :typing)
-  (:types slot)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent slot)
+
+  (:constants theresa charles betty - agent)
+
   (:predicates
+    (free ?a - agent ?s - slot)
+    (next ?s1 - slot ?s2 - slot)
     (proposed ?s - slot)
-    (available_lawrence ?s - slot)
-    (available_christine ?s - slot)
-    (available_barbara ?s - slot)
-    (available_stephanie ?s - slot)
-    (available_hannah ?s - slot)
-    (meeting_scheduled_lawrence)
-    (meeting_scheduled_christine)
-    (meeting_scheduled_barbara)
-    (meeting_scheduled_stephanie)
-    (meeting_scheduled_hannah)
+    (approved-charles ?s - slot)
+    (approved-betty ?s - slot)
+    (meeting-scheduled ?s - slot)
   )
 
-  (:action propose_orchestrator
-    :parameters (?s - slot)
-    :precondition ()
+  (:action propose-theresa
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (next ?s ?s2) (free theresa ?s) (free theresa ?s2) (not (proposed ?s)))
     :effect (proposed ?s)
   )
 
-  (:action accept_lawrence
-    :parameters (?s - slot)
-    :precondition (and (proposed ?s) (available_lawrence ?s))
-    :effect (meeting_scheduled_lawrence)
+  (:action approve-charles
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s) (next ?s ?s2) (free charles ?s) (free charles ?s2) (not (approved-charles ?s)))
+    :effect (approved-charles ?s)
   )
 
-  (:action accept_christine
-    :parameters (?s - slot)
-    :precondition (and (proposed ?s) (available_christine ?s))
-    :effect (meeting_scheduled_christine)
+  (:action approve-betty
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s) (next ?s ?s2) (free betty ?s) (free betty ?s2) (not (approved-betty ?s)))
+    :effect (approved-betty ?s)
   )
 
-  (:action accept_barbara
-    :parameters (?s - slot)
-    :precondition (and (proposed ?s) (available_barbara ?s))
-    :effect (meeting_scheduled_barbara)
-  )
-
-  (:action accept_stephanie
-    :parameters (?s - slot)
-    :precondition (and (proposed ?s) (available_stephanie ?s))
-    :effect (meeting_scheduled_stephanie)
-  )
-
-  (:action accept_hannah
-    :parameters (?s - slot)
-    :precondition (and (proposed ?s) (available_hannah ?s))
-    :effect (meeting_scheduled_hannah)
+  (:action finalize-theresa
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s) (approved-charles ?s) (approved-betty ?s) (next ?s ?s2) (free theresa ?s) (free theresa ?s2) (not (meeting-scheduled ?s)))
+    :effect (meeting-scheduled ?s)
   )
 )

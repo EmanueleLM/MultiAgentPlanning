@@ -1,134 +1,92 @@
-(define (domain integrated-meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions :fluents)
-  (:types person time slot)
+(define (domain meeting-scheduling-multiagent)
+  (:requirements :strips :typing :negative-preconditions :adl :fluents)
+  (:types agent timeslot)
 
   (:predicates
-    ;; Time/slot availability
-    (free ?p - person ?t - time)            ; agent-1 style availability (time typed)
-    (free-slot ?p - person ?s - slot)      ; agent-2 style availability (slot typed)
-    (available ?p - person ?t - time)      ; agent-3 style availability (time typed)
-
-    ;; Slot / time bookkeeping
-    (slot ?s - slot)
-    (slot-time ?s - slot ?t - time)        ; bridges a slot to a time
-
-    ;; Agent/participant markers
-    (participant ?p - person)
-    (is-host ?p - person)
-    (can-schedule)
-
-    ;; Scheduling state (kept distinct where agents used different predicates)
-    (meeting-scheduled)
-    (scheduled-time ?t - time)              ; produced by agent-1 actions
-    (scheduled-slot ?s - slot)              ; produced by agent-2 actions
-    (meeting-at-time ?t - time)
-    (meeting-at-slot ?s - slot)
-
-    ;; Meeting membership: two different shapes used by different agents
-    (meeting-with ?p - person)              ; agent-3 unary meeting-with
-    (meeting-with-2 ?s - slot ?p1 - person ?p2 - person) ; agent-2 binary form
-
-    ;; Agent-2 feasible-slot marker
-    (feasible ?s - slot)
-
-    ;; Preference marker from agent-1
-    (before13 ?t - time)
+    (agent ?a - agent)
+    (timeslot ?t - timeslot)
+    (free ?a - agent ?t - timeslot)                 ; agent is free at time slot
+    (gerald-pref ?t - timeslot)                     ; Gerald prefers this slot (>= 13:00)
+    (meeting-scheduled ?t - timeslot)               ; meeting scheduled at this slot
+    (meeting-scheduled-flag)                        ; a meeting has been scheduled (global flag)
+    (scheduled-by-gerald ?t - timeslot)
+    (scheduled-by-roy ?t - timeslot)
+    (scheduled-by-barbara ?t - timeslot)
   )
 
-  (:functions (total-cost))
+  (:functions
+    (total-cost)                                    ; numeric cost to encode Gerald's soft preference
+  )
 
-  ;; ------------------------
-  ;; Agent 1 actions (kept distinct)
-  ;; ------------------------
-  (:action schedule-before
-    :parameters (?t - time ?g - person ?r - person ?b - person)
+  ; Action for Gerald to schedule (keeps actions distinct per agent)
+  (:action schedule-by-gerald
+    :parameters (?t - timeslot)
     :precondition (and
-      (before13 ?t)
-      (free ?g ?t) (free ?r ?t) (free ?b ?t)
-      (not (meeting-scheduled))
+      (agent gerald)
+      (agent roy)
+      (agent barbara)
+      (timeslot ?t)
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
     )
     :effect (and
-      (meeting-scheduled)
-      (scheduled-time ?t)
-      (meeting-at-time ?t)
-      (increase (total-cost) 1)
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-gerald ?t)
+
+      ; increase total-cost by 0 if preferred for Gerald, otherwise by 1
+      (when (gerald-pref ?t) (increase (total-cost) 0))
+      (when (not (gerald-pref ?t)) (increase (total-cost) 1))
     )
   )
 
-  (:action schedule-after
-    :parameters (?t - time ?g - person ?r - person ?b - person)
+  ; Action for Roy to schedule (distinct)
+  (:action schedule-by-roy
+    :parameters (?t - timeslot)
     :precondition (and
-      (not (before13 ?t))
-      (free ?g ?t) (free ?r ?t) (free ?b ?t)
-      (not (meeting-scheduled))
+      (agent gerald)
+      (agent roy)
+      (agent barbara)
+      (timeslot ?t)
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
     )
     :effect (and
-      (meeting-scheduled)
-      (scheduled-time ?t)
-      (meeting-at-time ?t)
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-roy ?t)
+
+      ; preference is Gerald's; apply same cost logic regardless of who schedules
+      (when (gerald-pref ?t) (increase (total-cost) 0))
+      (when (not (gerald-pref ?t)) (increase (total-cost) 1))
     )
   )
 
-  ;; ------------------------
-  ;; Agent 2 actions (kept distinct; renamed slightly to avoid predicate name clash)
-  ;; ------------------------
-  (:action schedule-meeting-2
-    :parameters (?s - slot ?p1 - person ?p2 - person)
+  ; Action for Barbara to schedule (distinct)
+  (:action schedule-by-barbara
+    :parameters (?t - timeslot)
     :precondition (and
-      (slot ?s)
-      (participant ?p1) (participant ?p2)
-      (free-slot roy ?s)         ; agent-2 required roy to be free at the chosen slot
-      (feasible ?s)
-      (not (scheduled-slot ?s))
+      (agent gerald)
+      (agent roy)
+      (agent barbara)
+      (timeslot ?t)
+      (free gerald ?t)
+      (free roy ?t)
+      (free barbara ?t)
+      (not (meeting-scheduled-flag))
     )
     :effect (and
-      (scheduled-slot ?s)
-      (meeting-at-slot ?s)
-      (meeting-with-2 ?s ?p1 ?p2)
-      (meeting-scheduled)
+      (meeting-scheduled ?t)
+      (meeting-scheduled-flag)
+      (scheduled-by-barbara ?t)
+
+      ; preference is Gerald's; apply same cost logic regardless of who schedules
+      (when (gerald-pref ?t) (increase (total-cost) 0))
+      (when (not (gerald-pref ?t)) (increase (total-cost) 1))
     )
   )
-
-  ;; ------------------------
-  ;; Agent 3 actions (kept distinct)
-  ;; ------------------------
-  (:action schedule-meeting-3
-    :parameters (?host - person ?t - time)
-    :precondition (and
-      (can-schedule)
-      (is-host ?host)
-      (available ?host ?t)
-    )
-    :effect (and
-      (not (can-schedule))
-      (meeting-scheduled)
-      (meeting-at-time ?t)
-      (meeting-with gerald)
-      (meeting-with roy)
-    )
-  )
-
-  ;; ------------------------
-  ;; Orchestrator bridging action:
-  ;; If an agent-1 time is scheduled and it corresponds to a slot,
-  ;; annotate the slot-based meeting-with facts so the agent-2/agent-3 meeting membership goals can be satisfied.
-  ;; Keeps agents' actions distinct while allowing integration.
-  ;; ------------------------
-  (:action bridge-time-to-slot
-    :parameters (?t - time ?s - slot ?p1 - person ?p2 - person)
-    :precondition (and
-      (scheduled-time ?t)
-      (slot-time ?s ?t)
-      (participant ?p1) (participant ?p2)
-      (not (meeting-with ?p1))
-    )
-    :effect (and
-      (meeting-with ?p1)
-      (meeting-with ?p2)
-      (meeting-with-2 ?s ?p1 ?p2)
-      (scheduled-slot ?s)
-      (meeting-at-slot ?s)
-    )
-  )
-
 )

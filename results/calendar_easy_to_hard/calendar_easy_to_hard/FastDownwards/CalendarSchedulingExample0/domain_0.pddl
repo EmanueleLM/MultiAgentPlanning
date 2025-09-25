@@ -1,85 +1,45 @@
-(define (domain orchestrated-scheduling)
-  (:requirements :strips)
+(define (domain meeting-scheduling-multiagent)
+  (:requirements :typing :strips :quantified-preconditions)
+  (:types agent halfslot start - halfslot)
+
   (:predicates
-    (person ?p)
-    (slot ?s)
-    (next ?s1 ?s2)                          ; consecutive half-hour slots
-    (free ?p ?s)                            ; person ?p is free during slot ?s
-    (duration-60 ?m)                        ; meeting requires 60 minutes
-    (scheduled-michelle ?m ?s)              ; michelle scheduled for meeting ?m starting at ?s (her view)
-    (scheduled-steven ?m ?s)                ; steven scheduled for meeting ?m starting at ?s (his view)
-    (scheduled-jerry ?m ?s)                 ; jerry scheduled for meeting ?m starting at ?s (his view)
-    (meeting-finalized ?m)                  ; meeting has been finalized (agreed by all)
-    (meeting-time ?m ?s)                    ; meeting ?m scheduled to start at slot ?s (global record)
+    (next ?s - start ?h - halfslot)        ; mapping from a start halfslot to the next halfslot (meeting occupies both)
+    (free ?a - agent ?h - halfslot)        ; agent a is free during halfslot h
+    (confirmed ?a - agent ?s - start)      ; agent a has confirmed availability for meeting starting at s (s and its next halfslot)
+    (meeting-scheduled ?s - start)         ; meeting scheduled starting at s (length = 60 minutes)
   )
 
-  ;; Michelle's scheduling action (keeps agent action distinct)
-  (:action schedule-michelle
-    :parameters (?m ?s1 ?s2 ?p)
-    :precondition (and
-      (person ?p)
-      (next ?s1 ?s2)
-      (free ?p ?s1)
-      (free ?p ?s2)
-      (duration-60 ?m)
-      ;; we expect ?p to be michelle when used in the problem instance
-    )
-    :effect (and
-      (scheduled-michelle ?m ?s1)
-      (not (free ?p ?s1))
-      (not (free ?p ?s2))
-    )
+  ; Each agent has its own distinct confirm action
+  (:action michelle_confirm
+    :parameters (?s - start ?h2 - halfslot)
+    :precondition (and (next ?s ?h2)
+                       (free michelle ?s)
+                       (free michelle ?h2))
+    :effect (confirmed michelle ?s)
   )
 
-  ;; Steven's scheduling action (keeps agent action distinct)
-  (:action schedule-steven
-    :parameters (?m ?p ?s1 ?s2)
-    :precondition (and
-      (person ?p)
-      (next ?s1 ?s2)
-      (free ?p ?s1)
-      (free ?p ?s2)
-      (duration-60 ?m)
-      ;; we expect ?p to be steven when used in the problem instance
-    )
-    :effect (and
-      (scheduled-steven ?m ?s1)
-      (not (free ?p ?s1))
-      (not (free ?p ?s2))
-    )
+  (:action steven_confirm
+    :parameters (?s - start ?h2 - halfslot)
+    :precondition (and (next ?s ?h2)
+                       (free steven ?s)
+                       (free steven ?h2))
+    :effect (confirmed steven ?s)
   )
 
-  ;; Jerry's scheduling action (keeps agent action distinct)
-  (:action schedule-jerry
-    :parameters (?m ?p ?s1 ?s2)
-    :precondition (and
-      (person ?p)
-      (next ?s1 ?s2)
-      (free ?p ?s1)
-      (free ?p ?s2)
-      (duration-60 ?m)
-      ;; we expect ?p to be jerry when used in the problem instance
-    )
-    :effect (and
-      (scheduled-jerry ?m ?s1)
-      (not (free ?p ?s1))
-      (not (free ?p ?s2))
-    )
+  (:action jerry_confirm
+    :parameters (?s - start ?h2 - halfslot)
+    :precondition (and (next ?s ?h2)
+                       (free jerry ?s)
+                       (free jerry ?h2))
+    :effect (confirmed jerry ?s)
   )
 
-  ;; Finalization action: requires all three agents to have scheduled the same start slot.
-  (:action finalize-meeting
-    :parameters (?m ?s1 ?s2)
-    :precondition (and
-      (next ?s1 ?s2)
-      (scheduled-michelle ?m ?s1)
-      (scheduled-steven ?m ?s1)
-      (scheduled-jerry ?m ?s1)
-      (duration-60 ?m)
-    )
-    :effect (and
-      (meeting-finalized ?m)
-      (meeting-time ?m ?s1)
-    )
+  ; A single scheduling action that requires all three confirmations for the same start
+  (:action schedule_meeting
+    :parameters (?s - start)
+    :precondition (and (confirmed michelle ?s)
+                       (confirmed steven ?s)
+                       (confirmed jerry ?s))
+    :effect (meeting-scheduled ?s)
   )
 )

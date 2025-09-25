@@ -1,71 +1,29 @@
-(define (problem integrated-schedule-meeting-monday)
-  (:domain integrated-meeting-scheduling)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
 
   (:objects
-    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8
-    slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - slot
-    peter daniel ralph - participant
+    t09_00 t09_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30
+    t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 - slot
   )
 
   (:init
-    (slot slot1) (slot slot2) (slot slot3) (slot slot4)
-    (slot slot5) (slot slot6) (slot slot7) (slot slot8)
-    (slot slot9) (slot slot10) (slot slot11) (slot slot12)
-    (slot slot13) (slot slot14) (slot slot15) (slot slot16)
+    (available-ralph t09_00) (available-ralph t09_30) (available-ralph t10_00) (available-ralph t10_30)
+    (available-ralph t11_00) (available-ralph t11_30) (available-ralph t12_00) (available-ralph t12_30)
+    (available-ralph t13_00) (available-ralph t14_00)
+    (available-ralph t15_00) (available-ralph t15_30) (available-ralph t16_00) (available-ralph t16_30)
 
-    (participant peter) (participant daniel) (participant ralph)
+    (available-peter t09_30) (available-peter t10_00) (available-peter t10_30) (available-peter t13_00) (available-peter t13_30)
+    (available-peter t14_00) (available-peter t14_30) (available-peter t15_00) (available-peter t15_30) (available-peter t16_30)
 
-    (unscheduled)
+    (available-daniel t10_00) (available-daniel t15_30)
 
-    (busy ralph slot10)
-    (busy ralph slot12)
+    (after-preferred t14_00) (after-preferred t14_30) (after-preferred t15_00)
+    (after-preferred t15_30) (after-preferred t16_00) (after-preferred t16_30)
 
-    (busy daniel slot1)
-    (busy daniel slot2)
-    (busy daniel slot4)
-    (busy daniel slot5)
-    (busy daniel slot6)
-    (busy daniel slot7)
-    (busy daniel slot8)
-    (busy daniel slot9)
-    (busy daniel slot10)
-    (busy daniel slot11)
-    (busy daniel slot12)
-    (busy daniel slot13)
-    (busy daniel slot15)
-    (busy daniel slot16)
-
-    (free peter slot2) (free peter slot3) (free peter slot4)
-    (free peter slot9) (free peter slot10) (free peter slot11)
-    (free peter slot12) (free peter slot13) (free peter slot14)
-    (free peter slot16)
-
-    (busy peter slot1) (busy peter slot5) (busy peter slot6) (busy peter slot7) (busy peter slot8) (busy peter slot15)
-
-    (free ralph slot1) (free ralph slot2) (free ralph slot3) (free ralph slot4)
-    (free ralph slot5) (free ralph slot6) (free ralph slot7) (free ralph slot8)
-    (free ralph slot9) (free ralph slot10) (free ralph slot11) (free ralph slot12)
-    (free ralph slot13) (free ralph slot14) (free ralph slot15) (free ralph slot16)
-
-    (free daniel slot1) (free daniel slot2) (free daniel slot3) (free daniel slot4)
-    (free daniel slot5) (free daniel slot6) (free daniel slot7) (free daniel slot8)
-    (free daniel slot9) (free daniel slot10) (free daniel slot11) (free daniel slot12)
-    (free daniel slot13) (free daniel slot14) (free daniel slot15) (free daniel slot16)
-
-    (early slot1) (early slot2) (early slot3) (early slot4) (early slot5)
-    (early slot6) (early slot7) (early slot8) (early slot9)
+    (= (total-cost) 0)
   )
 
-  (:goal (and
-           (scheduled)
-           (meeting-with peter)
-           (meeting-with ralph)
-           (meeting-with daniel)
-           (or
-             (meeting-at slot1) (meeting-at slot2) (meeting-at slot3) (meeting-at slot4)
-             (meeting-at slot5) (meeting-at slot6) (meeting-at slot7) (meeting-at slot8)
-             (meeting-at slot9) (meeting-at slot10) (meeting-at slot11) (meeting-at slot12)
-             (meeting-at slot13) (meeting-at slot14) (meeting-at slot15) (meeting-at slot16)
-           )
-         )
-  )
+  (:metric minimize (total-cost))
+
+  (:goal (meeting-scheduled))
+)

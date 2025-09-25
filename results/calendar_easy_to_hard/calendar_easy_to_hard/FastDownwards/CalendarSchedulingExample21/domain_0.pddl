@@ -1,85 +1,57 @@
-(define (domain combined-meeting-schedule)
-  (:requirements :typing :strips)
-  (:types participant slot)
+(define (domain meeting-scheduling-multiagent)
+  (:requirements :strips :typing)
+  (:types agent time)
 
   (:predicates
-    ;; temporal adjacency for 30-minute slots
-    (next ?s1 - slot ?s2 - slot)
-
-    ;; agent-specific availability predicates (kept distinct per-agent)
-    (avail_bobby ?s - slot)        ; agent1's "available"
-    (free_scott ?s - slot)         ; agent2's "free"
-    (free_kimberly ?s - slot)      ; agent3's "free"
-
-    ;; per-agent scheduling markers (actions remain distinct)
-    (scheduled_a1 ?s1 - slot ?s2 - slot)
-    (scheduled_a2 ?s1 - slot ?s2 - slot)
-    (scheduled_a3 ?s1 - slot ?s2 - slot)
-
-    ;; agent2 bookkeeping predicate (keeps agent2 semantics)
-    (unscheduled)
-
-    ;; final confirmed meeting marker (goal)
-    (meeting_confirmed)
+    (available ?ag - agent ?t - time)            ; agent is free for this 30-min slot
+    (succ ?t - time ?t2 - time)                  ; t2 is the next 30-min slot after t
+    (reserved-by-bobby ?t - time)                ; bobby reserved meeting starting at t
+    (reserved-by-scott ?t - time)                ; scott reserved meeting starting at t
+    (reserved-by-kimberly ?t - time)             ; kimberly reserved meeting starting at t
+    (meeting-scheduled)
   )
 
-  ;; Agent 1's scheduling action (derived from first agent).
-  ;; Agent 1 only knows about its own participant (Bobby); we keep its action distinct.
-  (:action schedule_a1
-    :parameters (?s1 - slot ?s2 - slot)
+  ;; Bobby chooses a start time (requires he is available in both consecutive 30-min slots)
+  (:action bobby-select
+    :parameters (?t - time ?t2 - time)
     :precondition (and
-      (next ?s1 ?s2)
-      (avail_bobby ?s1)
-      (avail_bobby ?s2)
+      (available bobby ?t)
+      (available bobby ?t2)
+      (succ ?t ?t2)
     )
-    :effect (and
-      (scheduled_a1 ?s1 ?s2)
-    )
+    :effect (reserved-by-bobby ?t)
   )
 
-  ;; Agent 2's scheduling action (derived from second agent).
-  ;; Requires Scott to be free in both slots and that the meeting is not yet scheduled by agent2.
-  (:action schedule_a2
-    :parameters (?s1 - slot ?s2 - slot)
+  ;; Scott chooses a start time (requires he is available in both consecutive 30-min slots)
+  (:action scott-select
+    :parameters (?t - time ?t2 - time)
     :precondition (and
-      (next ?s1 ?s2)
-      (free_scott ?s1)
-      (free_scott ?s2)
-      (unscheduled)
+      (available scott ?t)
+      (available scott ?t2)
+      (succ ?t ?t2)
     )
-    :effect (and
-      (scheduled_a2 ?s1 ?s2)
-      (not (unscheduled))
-    )
+    :effect (reserved-by-scott ?t)
   )
 
-  ;; Agent 3's scheduling action (derived from third agent).
-  ;; Kimberly's local semantics: consumes her free slots when she schedules.
-  (:action schedule_a3
-    :parameters (?s1 - slot ?s2 - slot)
+  ;; Kimberly chooses a start time (requires she is available in both consecutive 30-min slots)
+  (:action kimberly-select
+    :parameters (?t - time ?t2 - time)
     :precondition (and
-      (next ?s1 ?s2)
-      (free_kimberly ?s1)
-      (free_kimberly ?s2)
+      (available kimberly ?t)
+      (available kimberly ?t2)
+      (succ ?t ?t2)
     )
-    :effect (and
-      (scheduled_a3 ?s1 ?s2)
-      (not (free_kimberly ?s1))
-      (not (free_kimberly ?s2))
-    )
+    :effect (reserved-by-kimberly ?t)
   )
 
-  ;; Finalizer/coordinator action: only succeeds if all three agents have scheduled the same two consecutive slots.
-  ;; When executed it marks the meeting as confirmed (the overall goal).
-  (:action finalize_meeting
-    :parameters (?s1 - slot ?s2 - slot)
+  ;; Confirm the meeting once all three agents reserved the same start time
+  (:action confirm-meeting
+    :parameters (?t - time)
     :precondition (and
-      (scheduled_a1 ?s1 ?s2)
-      (scheduled_a2 ?s1 ?s2)
-      (scheduled_a3 ?s1 ?s2)
+      (reserved-by-bobby ?t)
+      (reserved-by-scott ?t)
+      (reserved-by-kimberly ?t)
     )
-    :effect (and
-      (meeting_confirmed)
-    )
+    :effect (meeting-scheduled)
   )
 )

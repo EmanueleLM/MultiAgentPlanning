@@ -1,91 +1,45 @@
-(define (problem integrated-schedule-monday)
-  (:domain integrated-scheduling)
+(define (problem schedule-meeting-all)
+  (:domain meeting-scheduling)
 
   (:objects
-    ;; single named person known by agent1
-    scott - person
-
-    ;; day
-    monday - day
-
-    ;; unified slot names for 30-minute granularity 09:00-17:00
-    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230
-    s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
   )
 
   (:init
-    ;; --- Agent1 (scott) knowledge ---
-    ;; declare agent1's view of valid slots
-    (a1_slot s0900) (a1_slot s0930) (a1_slot s1000) (a1_slot s1030)
-    (a1_slot s1100) (a1_slot s1130) (a1_slot s1200) (a1_slot s1230)
-    (a1_slot s1300) (a1_slot s1330) (a1_slot s1400) (a1_slot s1430)
-    (a1_slot s1500) (a1_slot s1530) (a1_slot s1600) (a1_slot s1630)
+    ; slots covering Monday 09:00-17:00 in 30-minute granularity
+    (slot t0900) (slot t0930) (slot t1000) (slot t1030)
+    (slot t1100) (slot t1130) (slot t1200) (slot t1230)
+    (slot t1300) (slot t1330) (slot t1400) (slot t1430)
+    (slot t1500) (slot t1530) (slot t1600) (slot t1630)
 
-    ;; scott's availability (derived from agent1 input; busy slots omitted)
-    (a1_available scott s0900)
-    (a1_available scott s1030)
-    (a1_available scott s1100)
-    (a1_available scott s1130)
-    (a1_available scott s1200)
-    (a1_available scott s1230)
-    (a1_available scott s1300)
-    (a1_available scott s1400)
-    (a1_available scott s1500)
-    (a1_available scott s1600)
+    ; scott's private busy times (from input)
+    ; Busy Monday 09:30-10:30 -> t0930, t1000
+    (scott-busy t0930) (scott-busy t1000)
+    ; Busy Monday 13:30-14:00 -> t1330
+    (scott-busy t1330)
+    ; Busy Monday 14:30-15:00 -> t1430
+    (scott-busy t1430)
+    ; Busy Monday 15:30-16:00 -> t1530
+    (scott-busy t1530)
+    ; Busy Monday 16:30-17:00 -> t1630
+    (scott-busy t1630)
 
-    ;; --- Agent2 (public/work-hour/day) knowledge ---
-    ;; every slot belongs to monday (agent2's view)
-    (a2_slot_of s0900 monday)
-    (a2_slot_of s0930 monday)
-    (a2_slot_of s1000 monday)
-    (a2_slot_of s1030 monday)
-    (a2_slot_of s1100 monday)
-    (a2_slot_of s1130 monday)
-    (a2_slot_of s1200 monday)
-    (a2_slot_of s1230 monday)
-    (a2_slot_of s1300 monday)
-    (a2_slot_of s1330 monday)
-    (a2_slot_of s1400 monday)
-    (a2_slot_of s1430 monday)
-    (a2_slot_of s1500 monday)
-    (a2_slot_of s1530 monday)
-    (a2_slot_of s1600 monday)
-    (a2_slot_of s1630 monday)
+    ; gabriel's private info: "No meetings on Monday" -> no busy facts declared for gabriel
+    ; (no gabriel-busy facts)
 
-    ;; agent2 work-hour facts (valid start times within 09:00-17:00)
-    (a2_work_hour s0900) (a2_work_hour s0930) (a2_work_hour s1000) (a2_work_hour s1030)
-    (a2_work_hour s1100) (a2_work_hour s1130) (a2_work_hour s1200) (a2_work_hour s1230)
-    (a2_work_hour s1300) (a2_work_hour s1330) (a2_work_hour s1400) (a2_work_hour s1430)
-    (a2_work_hour s1500) (a2_work_hour s1530) (a2_work_hour s1600) (a2_work_hour s1630)
-
-    ;; agent2's known constraint: "no meetings on monday" (keeps agent2's original knowledge,
-    ;; but the orchestrator action intentionally does not require this predicate)
-    (a2_no_meetings monday)
-
-    ;; --- Agent3 (Christine) knowledge ---
-    ;; declare agent3's view of valid slots
-    (a3_slot s0900) (a3_slot s0930) (a3_slot s1000) (a3_slot s1030)
-    (a3_slot s1100) (a3_slot s1130) (a3_slot s1200) (a3_slot s1230)
-    (a3_slot s1300) (a3_slot s1330) (a3_slot s1400) (a3_slot s1430)
-    (a3_slot s1500) (a3_slot s1530) (a3_slot s1600) (a3_slot s1630)
-
-    ;; Christine's busy times (agent3 input)
-    ;; Busy Monday 09:00-10:00 -> s0900, s0930
-    (a3_busy s0900) (a3_busy s0930)
-
-    ;; Busy Monday 10:30-12:30 -> s1030, s1100, s1130, s1200
-    (a3_busy s1030) (a3_busy s1100) (a3_busy s1130) (a3_busy s1200)
-
-    ;; Busy Monday 13:00-17:00 -> s1300, s1330, s1400, s1430, s1500, s1530, s1600, s1630
-    (a3_busy s1300) (a3_busy s1330) (a3_busy s1400) (a3_busy s1430)
-    (a3_busy s1500) (a3_busy s1530) (a3_busy s1600) (a3_busy s1630)
+    ; christine's private busy times (from input)
+    ; Busy Monday 09:00-10:00 -> t0900, t0930
+    (christine-busy t0900) (christine-busy t0930)
+    ; Busy Monday 10:30-12:30 -> t1030, t1100, t1130, t1200
+    (christine-busy t1030) (christine-busy t1100) (christine-busy t1130) (christine-busy t1200)
+    ; Busy Monday 13:00-17:00 -> t1300, t1330, t1400, t1430, t1500, t1530, t1600, t1630
+    (christine-busy t1300) (christine-busy t1330) (christine-busy t1400)
+    (christine-busy t1430) (christine-busy t1500) (christine-busy t1530)
+    (christine-busy t1600) (christine-busy t1630)
   )
 
-  ;; Goal: get a meeting scheduled that fits both agent1's and agent3's constraints.
-  ;; We require both agents to acknowledge that a meeting is scheduled.
-  (:goal (and
-            (a1_meeting_scheduled)
-            (a3_meeting_scheduled)
-         )
-  )
+  ; Goal: schedule a 30-minute meeting (one 30-min slot) that fits all participants.
+  ; Based on the agents' stated constraints, t1230 (12:30-13:00) is the shared free slot.
+  (:goal (meeting-scheduled t1230))
 )

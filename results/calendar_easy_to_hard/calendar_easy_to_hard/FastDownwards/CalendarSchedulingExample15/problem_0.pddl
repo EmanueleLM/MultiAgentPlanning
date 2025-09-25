@@ -1,77 +1,51 @@
-(define (problem schedule-monday-integrated)
-  (:domain integrated-scheduling)
+(define (problem schedule-meeting-monday)
+  (:domain multi-agent-meeting)
 
-  ;; Objects: canonical half-hour slots Monday 09:00-16:30, persons and one meeting.
+  ;; Time slots are 30-minute start times between 09:00 and 16:30 (meeting duration 30 minutes).
   (:objects
-    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130
-    slot-1200 slot-1230 slot-1300 slot-1330 slot-1400 slot-1430
-    slot-1500 slot-1530 slot-1600 slot-1630 - slot
-
-    joyce christine alexander - person
-    m1 - meeting
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630
+    - slot
   )
 
   (:init
-    ;; Declare meeting and slots
-    (meeting m1)
+    ;; declare slots
+    (slot s0900) (slot s0930) (slot s1000) (slot s1030)
+    (slot s1100) (slot s1130) (slot s1200) (slot s1230)
+    (slot s1300) (slot s1330) (slot s1400) (slot s1430)
+    (slot s1500) (slot s1530) (slot s1600) (slot s1630)
 
-    (slot slot-0900) (slot slot-0930) (slot slot-1000) (slot slot-1030)
-    (slot slot-1100) (slot slot-1130) (slot slot-1200) (slot slot-1230)
-    (slot slot-1300) (slot slot-1330) (slot slot-1400) (slot slot-1430)
-    (slot slot-1500) (slot slot-1530) (slot slot-1600) (slot slot-1630)
+    ;; Joyce's private availability derived from:
+    ;; busy 11:00-11:30 -> s1100 busy
+    ;; busy 13:30-14:00 -> s1330 busy
+    ;; busy 14:30-16:30 -> s1430, s1500, s1530, s1600 busy
+    ;; Therefore free slots for Joyce:
+    (free-joyce s0900) (free-joyce s0930) (free-joyce s1000) (free-joyce s1030)
+    (free-joyce s1130) (free-joyce s1200) (free-joyce s1230) (free-joyce s1300)
+    (free-joyce s1400) (free-joyce s1630)
 
-    ;; Initially all slots are presumed available for scheduling (will be consumed on confirm)
-    (slot-available slot-0900) (slot-available slot-0930) (slot-available slot-1000)
-    (slot-available slot-1030) (slot-available slot-1100) (slot-available slot-1130)
-    (slot-available slot-1200) (slot-available slot-1230) (slot-available slot-1300)
-    (slot-available slot-1330) (slot-available slot-1400) (slot-available slot-1430)
-    (slot-available slot-1500) (slot-available slot-1530) (slot-available slot-1600)
-    (slot-available slot-1630)
+    ;; Christine's private information:
+    ;; "I have no meetings on Monday" but "I cannot meet before 12:00"
+    ;; So Christine is free for all slots at or after 12:00:
+    (free-christine s1200) (free-christine s1230) (free-christine s1300) (free-christine s1330)
+    (free-christine s1400) (free-christine s1430) (free-christine s1500) (free-christine s1530)
+    (free-christine s1600) (free-christine s1630)
 
-    ;; Attendance as in Joyce's model: these are the meeting participants
-    (attends joyce m1)
-    (attends christine m1)
-    (attends alexander m1)
+    ;; Alexander's private availability derived from:
+    ;; busy 09:00-11:00 -> s0900,s0930,s1000,s1030 busy
+    ;; busy 12:00-12:30 -> s1200 busy
+    ;; busy 13:30-15:00 -> s1330,s1400,s1430 busy
+    ;; busy 15:30-16:00 -> s1530 busy
+    ;; busy 16:30-17:00 -> s1630 busy
+    ;; Therefore free slots for Alexander:
+    (free-alexander s1100) (free-alexander s1130) (free-alexander s1230)
+    (free-alexander s1300) (free-alexander s1500) (free-alexander s1600)
 
-    ;; ---------- Integrated availability knowledge ----------
-    ;; We integrate each agent's provided information, preserving agent-specific facts.
-    ;; Where agents provided conflicting facts, we keep each agent's own assertions (no cross-agent overwrites)
-    ;; and rely on the confirmation step to require agreement.
-
-    ;; Joyce's known free slots (from agent 1). Mapping s1..s16 -> canonical times:
-    ;; s1=09:00, s2=09:30, s3=10:00, s4=10:30, s5=11:00 (busy), s6=11:30, s7=12:00, s8=12:30,
-    ;; s9=13:00, s10=13:30 (busy), s11=14:00, s12=14:30 (busy), s13=15:00 (busy), s14=15:30 (busy),
-    ;; s15=16:00 (busy), s16=16:30
-    (free-joyce slot-0900) (free-joyce slot-0930) (free-joyce slot-1000) (free-joyce slot-1030)
-    ;; slot-1100 omitted (Joyce busy)
-    (free-joyce slot-1130) (free-joyce slot-1200) (free-joyce slot-1230) (free-joyce slot-1300)
-    ;; slot-1330 omitted (Joyce busy)
-    (free-joyce slot-1400)
-    ;; slot-1430, slot-1500, slot-1530, slot-1600 omitted (Joyce busy)
-    (free-joyce slot-1630)
-
-    ;; Christine's own knowledge (agent 2): cannot meet before 12:00; free from 12:00 onward.
-    ;; We adopt Christine's self-reported availability as authoritative for Christine.
-    (free-christine slot-1200) (free-christine slot-1230) (free-christine slot-1300)
-    (free-christine slot-1330) (free-christine slot-1400) (free-christine slot-1430)
-    (free-christine slot-1500) (free-christine slot-1530) (free-christine slot-1600)
-    (free-christine slot-1630)
-
-    ;; Alexander's own knowledge (agent 3): explicit busy intervals converted to free slots that remain.
-    ;; Agent 3 provided explicit free slots: 11:00, 11:30, 12:30, 13:00, 15:00, 16:00
-    (free-alexander slot-1100) (free-alexander slot-1130) (free-alexander slot-1230)
-    (free-alexander slot-1300) (free-alexander slot-1500) (free-alexander slot-1600)
-
-    ;; Note: Agent 2's public statement asserted a common free slot at 12:00.
-    ;; Agent 3 (Alexander) explicitly marked 12:00 busy. To avoid inconsistency we preserve each agent's own facts:
-    ;; - Christine is free at 12:00 (per Christine)
-    ;; - Joyce is also free at 12:00 (per Joyce)
-    ;; - Alexander does not assert free at 12:00 (and his own model marks 12:00 busy), so Alexander will not acknowledge 12:00.
-    ;; Therefore the final confirmation requires ack from all three agents and will only succeed for slots all three have free assertions for.
-
-    ;; -----------------------------------------------------
+    ;; Public/shared information (encoded as facts where helpful)
+    ;; Meeting must be on Monday between 09:00 and 17:00 and duration is 30 minutes.
+    ;; (These are not used as explicit predicates here beyond the slot definitions
+    ;;  and the 30-minute slot granularity chosen above.)
   )
 
-  ;; Goal: find a slot and confirm the meeting where all three agents have acknowledged the same slot.
-  (:goal (meeting-confirmed m1))
+  ;; The planning goal is simply that a meeting is scheduled (at least one slot).
+  (:goal (scheduled))
 )

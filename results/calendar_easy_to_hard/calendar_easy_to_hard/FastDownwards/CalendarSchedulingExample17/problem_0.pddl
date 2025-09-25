@@ -1,98 +1,57 @@
-(define (problem orchestrated-schedule-monday)
-  (:domain multi-agent-meeting)
+(define (problem schedule-monday-meeting)
+  (:domain meeting-scheduling-multiagent)
 
   (:objects
-    ;; Canonical slot names (30-minute slots / block starts)
-    slot-09:00 slot-10:00 slot-10:30 slot-11:00 slot-11:30 slot-13:00 slot-14:30 slot-16:00 - slot
+    margaret donna helen - agent
+
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - slot
   )
+
+  ;; Initial facts:
+  ;; Agents' availability is derived from their private calendar blocks and Helen's preference
+  ;; (Helen: do not meet after 13:30). Only those slots that are free for an agent are listed.
 
   (:init
-    ;; ========================
-    ;; Agent 1 knowledge (from first agent)
-    ;; Agent1 reported blocks that can fit a 30-min meeting and are on Monday within 09-17.
-    ;; Mapping block1..block5 to canonical start slots (interpreted from comments)
-    ;; block1 -> slot-09:00, block2 -> slot-10:30, block3 -> slot-11:30,
-    ;; block4 -> slot-13:00, block5 -> slot-15:00 (15:00 not represented as canonical here; 14:30 used for agent2)
-    (available_a1 slot-09:00)    ;; block1: 09:00-10:00 (can accommodate 30min)
-    (fits_duration_a1 slot-09:00)
-    (on_monday_a1 slot-09:00)
-    (within_window_a1 slot-09:00)
+    ;; Margaret's availability (blocked: 09:00-10:00 => t0900,t0930;
+    ;; 10:30-11:00 => t1030; 11:30-12:00 => t1130; 13:00-13:30 => t1300; 15:00-15:30 => t1500)
+    (available margaret t1000)
+    (available margaret t1100)
+    (available margaret t1200)
+    (available margaret t1230)
+    (available margaret t1330)
+    (available margaret t1400)
+    (available margaret t1430)
+    (available margaret t1530)
+    (available margaret t1600)
+    (available margaret t1630)
 
-    (available_a1 slot-10:30)    ;; block2: 10:30-11:00
-    (fits_duration_a1 slot-10:30)
-    (on_monday_a1 slot-10:30)
-    (within_window_a1 slot-10:30)
+    ;; Donna's availability (blocked: 14:30-15:00 => t1430; 16:00-16:30 => t1600)
+    (available donna t0900)
+    (available donna t0930)
+    (available donna t1000)
+    (available donna t1030)
+    (available donna t1100)
+    (available donna t1130)
+    (available donna t1200)
+    (available donna t1230)
+    (available donna t1300)
+    (available donna t1330)
+    (available donna t1400)
+    (available donna t1500)
+    (available donna t1530)
+    (available donna t1630)
 
-    (available_a1 slot-11:30)    ;; block3: 11:30-12:00
-    (fits_duration_a1 slot-11:30)
-    (on_monday_a1 slot-11:30)
-    (within_window_a1 slot-11:30)
-
-    (available_a1 slot-13:00)    ;; block4: 13:00-13:30 (ends by 13:30)
-    (fits_duration_a1 slot-13:00)
-    (on_monday_a1 slot-13:00)
-    (within_window_a1 slot-13:00)
-
-    ;; Agent1 also listed a 15:00 slot; keep agent1's knowledge explicit but note agent3 forbids after 13:30
-    ;; We include slot-14:30 as agent2's known slot below (agent1 did not list it as available).
-
-    ;; ========================
-    ;; Agent 2 knowledge (from second agent)
-    ;; Agent2 reported two available 30-min slots (partial knowledge): mon-14-30 and mon-16-00.
-    ;; Because agent2's PDDL was partial, we augment common candidate slots (09:00,10:30,13:00)
-    ;; to allow orchestration where agent2's calendar also fits those times (partial knowledge interpretation).
-    ;; Known/explicit agent2 facts:
-    (available_a2 slot-14:30)   ;; mon-14-30
-    (fits_a2 slot-14:30)
-    (within_hours_a2 slot-14:30)
-    (duration30_a2 slot-14:30)
-
-    (available_a2 slot-16:00)   ;; mon-16-00
-    (fits_a2 slot-16:00)
-    (within_hours_a2 slot-16:00)
-    (duration30_a2 slot-16:00)
-
-    ;; Augmented/merged knowledge: mark the common candidate slots as also fitting agent2 (partial info resolution).
-    ;; This allows agent2's constraint "fits" to be satisfied for candidate slots that are known to be available to
-    ;; other agents and that meet the duration and within-hours requirements.
-    (available_a2 slot-09:00)
-    (fits_a2 slot-09:00)
-    (within_hours_a2 slot-09:00)
-    (duration30_a2 slot-09:00)
-
-    (available_a2 slot-10:30)
-    (fits_a2 slot-10:30)
-    (within_hours_a2 slot-10:30)
-    (duration30_a2 slot-10:30)
-
-    (available_a2 slot-13:00)
-    (fits_a2 slot-13:00)
-    (within_hours_a2 slot-13:00)
-    (duration30_a2 slot-13:00)
-
-    ;; ========================
-    ;; Agent 3 knowledge and preference (from third agent)
-    ;; Agent3 hard preference interpreted as: meeting must end by 13:30 (no meeting after 13:30).
-    ;; Agent3 enumerated allowed start slots that satisfy the preference: 09:00, 10:00, 10:30, 11:00, 13:00.
-    (unscheduled_a3)
-    (available_a3 slot-09:00)
-    (available_a3 slot-10:00)
-    (available_a3 slot-10:30)
-    (available_a3 slot-11:00)
-    (available_a3 slot-13:00)
-
-    ;; ========================
-    ;; Additional bookkeeping: ensure the canonical slots are understood to be within Monday 09:00-17:00.
-    ;; (These are used by agents' within-window / within-hours predicates above as appropriate.)
-    ;; Note: we used agent-specific predicates rather than a single shared predicate to preserve each agent's model.
-
-    ;; No meeting scheduled yet globally.
+    ;; Helen's availability (private blocks: 09:00-09:30 => t0900;
+    ;; 10:00-11:30 => t1000,t1030,t1100; 13:00-14:00 => t1300,t1330;
+    ;; 14:30-15:00 => t1430; 15:30-17:00 => t1530,t1600,t1630)
+    ;; plus preference: do not meet after 13:30, so only slots that start at or before 13:30 are allowed.
+    (available helen t0930)
+    (available helen t1130)
+    (available helen t1200)
+    (available helen t1230)
   )
 
-  ;; The goal is to produce a plan that results in a single agreed meeting slot
-  ;; that satisfies all agents' constraints (each agent's scheduling action must be applied
-  ;; to the same slot), and then finalize the meeting globally.
-  (:goal
-    (meeting_scheduled_global)
-  )
+  ;; Goal: have the meeting scheduled (any slot that satisfies all constraints)
+  (:goal (meeting-scheduled))
 )

@@ -1,67 +1,50 @@
-(define (domain meeting-scheduling-integrated)
-  (:requirements :typing :negative-preconditions)
-  (:types person timeslot meeting)
-
+(define (domain meeting_multia)
+  (:requirements :strips :adl)
   (:predicates
-    (free ?p - person ?t - timeslot)
-    (within-work-hours ?t - timeslot)
-    (meeting-exists ?m - meeting)
-    (scheduled ?m - meeting)
-    (scheduled-for ?p - person ?t - timeslot)
-    (meeting-scheduled ?t - timeslot)
-    (meeting-at ?t - timeslot)
-    (meeting-confirmed)
+    (free ?person ?slot)
+    (meeting-scheduled ?slot)
+    (attending ?person ?slot)
   )
 
-  (:action agent1-schedule-meeting
-    :parameters (?t - timeslot)
-    :precondition (and
-      (free dianekelly ?t)
-      (free deborah ?t)
-      (not (meeting-confirmed))
-    )
+  (:action diane-schedule
+    :parameters (?slot)
+    :precondition (and (free diane ?slot) (free kelly ?slot) (free deborah ?slot))
     :effect (and
-      (meeting-at ?t)
-      (meeting-confirmed)
+      (meeting-scheduled ?slot)
+      (attending diane ?slot)
+      (attending kelly ?slot)
+      (attending deborah ?slot)
+      (not (free diane ?slot))
+      (not (free kelly ?slot))
+      (not (free deborah ?slot))
     )
   )
 
-  (:action agent2-schedule
-    :parameters (?m - meeting ?t - timeslot)
-    :precondition (and
-      (meeting-exists ?m)
-      (not (scheduled ?m))
-      (free dianekelly ?t)
-      (free deborah ?t)
-    )
+  (:action kelly-schedule
+    :parameters (?slot)
+    :precondition (and (free diane ?slot) (free kelly ?slot) (free deborah ?slot))
     :effect (and
-      (scheduled ?m)
-      (meeting-confirmed)
+      (meeting-scheduled ?slot)
+      (attending diane ?slot)
+      (attending kelly ?slot)
+      (attending deborah ?slot)
+      (not (free diane ?slot))
+      (not (free kelly ?slot))
+      (not (free deborah ?slot))
     )
   )
 
-  (:action agent3-schedule
-    :parameters (?p1 - person ?p2 - person ?t - timeslot)
-    :precondition (and
-      (free ?p1 ?t)
-      (free ?p2 ?t)
-      (within-work-hours ?t)
-    )
+  (:action deborah-schedule
+    :parameters (?slot)
+    :precondition (and (free diane ?slot) (free kelly ?slot) (free deborah ?slot))
     :effect (and
-      (scheduled-for ?p1 ?t)
-      (scheduled-for ?p2 ?t)
-      (meeting-scheduled ?t)
-      (not (free ?p1 ?t))
-      (not (free ?p2 ?t))
+      (meeting-scheduled ?slot)
+      (attending diane ?slot)
+      (attending kelly ?slot)
+      (attending deborah ?slot)
+      (not (free diane ?slot))
+      (not (free kelly ?slot))
+      (not (free deborah ?slot))
     )
-  )
-
-  (:action agent3-declare-meeting-diane-deborah
-    :parameters (?t - timeslot)
-    :precondition (and
-      (scheduled-for dianekelly ?t)
-      (scheduled-for deborah ?t)
-    )
-    :effect (meeting-confirmed)
   )
 )

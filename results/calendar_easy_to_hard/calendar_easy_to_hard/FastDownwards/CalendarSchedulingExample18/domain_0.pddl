@@ -1,90 +1,43 @@
-(define (domain combined-schedule)
-  (:requirements :typing :negative-preconditions :preferences)
-  (:types slot person)
-
+(define (domain meeting-schedule-multiagent)
+  (:requirements :strips :typing)
   (:predicates
-    ;; slot and hour predicates
-    (slot ?s - slot)
-    (within-work-hours ?s - slot)
-    (slot-free ?s - slot)
-    (late ?s - slot)                       ; for a soft preference (after 15:30)
-
-    ;; per-agent availability / busy facts (keeps agent information distinct)
-    (available-brian ?s - slot)
-    (busy-billy ?s - slot)
-    (busy-patricia ?s - slot)
-
-    ;; meeting state and attendance recorded per participant
-    (meeting-booked)
-    (meeting-at ?s - slot)
-    (attends-brian ?s - slot)
-    (attends-billy ?s - slot)
-    (attends-patricia ?s - slot)
+    (slot ?s)
+    (available-brian ?s)
+    (available-billy ?s)
+    (available-patricia ?s)
+    (accepted-brian ?s)
+    (accepted-billy ?s)
+    (accepted-patricia ?s)
+    (brian-unassigned)
+    (billy-unassigned)
+    (patricia-unassigned)
+    (no-meeting)
+    (meeting-scheduled ?s)
   )
 
-  ;; Three distinct scheduling actions (one per participant) to keep agent actions separate.
-  ;; Each action encodes the agent's role in scheduling but all require the meeting slot to be free
-  ;; and that no participant is busy at that slot. Effects are identical: book the meeting.
-  (:action schedule-by-brian
-    :parameters (?s - slot)
-    :precondition (and
-      (slot ?s)
-      (within-work-hours ?s)
-      (slot-free ?s)
-      (available-brian ?s)            ; Brian's asserted availability (his knowledge)
-      (not (busy-billy ?s))          ; respect Billy's known busy times
-      (not (busy-patricia ?s))       ; respect Patricia's known busy times
-      (not (meeting-booked))
-    )
-    :effect (and
-      (meeting-booked)
-      (meeting-at ?s)
-      (attends-brian ?s)
-      (attends-billy ?s)
-      (attends-patricia ?s)
-      (not (slot-free ?s))
-    )
+  ; Actions are kept distinct per participant to model individual acceptance.
+  (:action brian-accept
+    :parameters (?s)
+    :precondition (and (slot ?s) (available-brian ?s) (brian-unassigned))
+    :effect (and (accepted-brian ?s) (not (brian-unassigned)))
   )
 
-  (:action schedule-by-billy
-    :parameters (?s - slot)
-    :precondition (and
-      (slot ?s)
-      (within-work-hours ?s)
-      (slot-free ?s)
-      (not (busy-billy ?s))          ; Billy's asserted hard constraint
-      (not (busy-patricia ?s))       ; Patricia's asserted constraints must be respected
-      (available-brian ?s)           ; require Brian's availability
-      (not (meeting-booked))
-    )
-    :effect (and
-      (meeting-booked)
-      (meeting-at ?s)
-      (attends-brian ?s)
-      (attends-billy ?s)
-      (attends-patricia ?s)
-      (not (slot-free ?s))
-    )
+  (:action billy-accept
+    :parameters (?s)
+    :precondition (and (slot ?s) (available-billy ?s) (billy-unassigned))
+    :effect (and (accepted-billy ?s) (not (billy-unassigned)))
   )
 
-  (:action schedule-by-patricia
-    :parameters (?s - slot)
-    :precondition (and
-      (slot ?s)
-      (within-work-hours ?s)
-      (slot-free ?s)
-      (not (busy-patricia ?s))       ; Patricia's asserted busy times
-      (not (busy-billy ?s))          ; Billy's asserted busy times must be respected
-      (available-brian ?s)           ; Brian's availability (known)
-      (not (meeting-booked))
-    )
-    :effect (and
-      (meeting-booked)
-      (meeting-at ?s)
-      (attends-brian ?s)
-      (attends-billy ?s)
-      (attends-patricia ?s)
-      (not (slot-free ?s))
-    )
+  (:action patricia-accept
+    :parameters (?s)
+    :precondition (and (slot ?s) (available-patricia ?s) (patricia-unassigned))
+    :effect (and (accepted-patricia ?s) (not (patricia-unassigned)))
+  )
+
+  ; Finalize a meeting at a slot once all participants have accepted that slot.
+  (:action finalize-meeting
+    :parameters (?s)
+    :precondition (and (accepted-brian ?s) (accepted-billy ?s) (accepted-patricia ?s) (no-meeting))
+    :effect (and (meeting-scheduled ?s) (not (no-meeting)))
   )
 )

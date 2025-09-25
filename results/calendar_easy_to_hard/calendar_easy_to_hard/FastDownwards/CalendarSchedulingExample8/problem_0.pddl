@@ -1,75 +1,54 @@
-(define (problem integrated-schedule-monday)
-  (:domain integrated-meeting-scheduling)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
 
+  ;; Agents and 30-minute slots from 09:00 to 16:30 (inclusive).
+  ;; Slot naming convention: sHH_MM corresponds to HH:MM - HH:MM+30min
   (:objects
-    adam jerry matthew - person
-    monday - day
-    slot0900 slot0930 slot1000 slot1030 slot1100 slot1130 slot1200 slot1230
-    slot1300 slot1330 slot1400 slot1430 slot1500 slot1530 slot1600 slot1630 - slot
+    adam jerry matthew - agent
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
   )
 
   (:init
-    ; the day
-    (day monday)
+    ;; Declare agents and slots
+    (agent adam) (agent jerry) (agent matthew)
+    (slot s09_00) (slot s09_30) (slot s10_00) (slot s10_30)
+    (slot s11_00) (slot s11_30) (slot s12_00) (slot s12_30)
+    (slot s13_00) (slot s13_30) (slot s14_00) (slot s14_30)
+    (slot s15_00) (slot s15_30) (slot s16_00) (slot s16_30)
 
-    ; declare all time start slots (09:00-16:30) and mark them as work slots (09:00-17:00)
-    (slot slot0900) (slot slot0930) (slot slot1000) (slot slot1030)
-    (slot slot1100) (slot slot1130) (slot slot1200) (slot slot1230)
-    (slot slot1300) (slot slot1330) (slot slot1400) (slot slot1430)
-    (slot slot1500) (slot slot1530) (slot slot1600) (slot slot1630)
+    ;; Public information (implicitly represented by available slot set and problem constraints):
+    ;; - Meeting duration: 30 minutes (slots represent 30-minute blocks)
+    ;; - Day: Monday
+    ;; - Work hours: 09:00-17:00 (slots cover the range)
+    ;; The busy intervals below come from each agent's private information.
+    ;; We encode free slots (not busy) for each agent based only on the provided private info.
 
-    (work-slot slot0900) (work-slot slot0930) (work-slot slot1000) (work-slot slot1030)
-    (work-slot slot1100) (work-slot slot1130) (work-slot slot1200) (work-slot slot1230)
-    (work-slot slot1300) (work-slot slot1330) (work-slot slot1400) (work-slot slot1430)
-    (work-slot slot1500) (work-slot slot1530) (work-slot slot1600) (work-slot slot1630)
+    ;; ADAM's private busy: 10:00-10:30 (s10_00), 12:30-13:00 (s12_30), 13:30-14:30 (s13_30 and s14_00)
+    ;; Therefore Adam is free at all other listed slots:
+    (free adam s09_00) (free adam s09_30) (free adam s10_30)
+    (free adam s11_00) (free adam s11_30) (free adam s12_00)
+    (free adam s13_00)
+    (free adam s14_30) (free adam s15_00) (free adam s15_30)
+    (free adam s16_00) (free adam s16_30)
 
-    ; -----------------------
-    ; Agent 1 knowledge about Adam (from agent1):
-    ; Adam is busy at these slots:
-    (busy adam slot1000)
-    (busy adam slot1230)
-    (busy adam slot1330)
-    (busy adam slot1400)
-    ; Adam is known free at many others (we include at least the target slot1100)
-    (free adam slot0900) (free adam slot0930) (free adam slot1030)
-    (free adam slot1100) (free adam slot1130) (free adam slot1200)
-    (free adam slot1300) (free adam slot1430) (free adam slot1500)
-    (free adam slot1530) (free adam slot1600) (free adam slot1630)
+    ;; JERRY's private busy: 09:00-09:30 (s09_00), 12:00-12:30 (s12_00), 15:00-16:00 (s15_00, s15_30)
+    ;; Therefore Jerry is free at:
+    (free jerry s09_30) (free jerry s10_00) (free jerry s10_30)
+    (free jerry s11_00) (free jerry s11_30) (free jerry s12_30)
+    (free jerry s13_00) (free jerry s13_30) (free jerry s14_00)
+    (free jerry s14_30) (free jerry s16_00) (free jerry s16_30)
 
-    ; -----------------------
-    ; Agent 2 knowledge about Jerry (from agent2):
-    ; Jerry is busy at:
-    (busy jerry slot0900)
-    (busy jerry slot1200)
-    (busy jerry slot1500)
-    (busy jerry slot1530)
-    ; From agent3 we will ensure Jerry is free at the target slot1100:
-    (free jerry slot1100)
-
-    ; -----------------------
-    ; Agent 3 knowledge about Matthew (from agent3):
-    ; Matthew is free only at these specific slots (computed from his busy intervals)
-    (free matthew slot0900)
-    (free matthew slot1100)
-    (free matthew slot1230)
-    (free matthew slot1400)
-
-    ; Note: We intentionally included the above busy/free facts aggregated from the three agents.
-    ; Busy facts take precedence where agents reported a conflict (to avoid contradictions).
-    ; The combination yields a common feasible time at slot1100 where all three are free.
-
-    ; No meeting is scheduled initially (meeting-scheduled absent => negative preconditions allow scheduling)
+    ;; MATTHEW's private busy:
+    ;; 09:30-11:00 (s09_30, s10_00, s10_30),
+    ;; 11:30-12:30 (s11_30, s12_00),
+    ;; 13:00-14:00 (s13_00, s13_30),
+    ;; 14:30-17:00 (s14_30, s15_00, s15_30, s16_00, s16_30)
+    ;; Therefore Matthew is free at:
+    (free matthew s09_00) (free matthew s11_00) (free matthew s12_30) (free matthew s14_00)
   )
 
-  ; Goal: schedule a 30-minute meeting on Monday between 09:00 and 17:00 with Adam, Jerry and Matthew.
-  ; We require that the meeting is scheduled and recorded at the selected slot, and that attending facts
-  ; for Monday are present for all three attendees. Agent1's action produces attending facts that include the day,
-  ; so the planner will use the corresponding action to satisfy the goal.
-  (:goal (and
-    (meeting-scheduled)
-    (meeting-at slot1100)
-    (attending adam monday slot1100)
-    (attending jerry monday slot1100)
-    (attending matthew monday slot1100)
-  ))
+  ;; Goal: schedule the 30-minute meeting (i.e., some slot is scheduled) where all three agents must agree.
+  ;; We use an existential goal: there exists some slot that becomes scheduled.
+  (:goal (exists (?s - slot) (scheduled ?s)))
 )

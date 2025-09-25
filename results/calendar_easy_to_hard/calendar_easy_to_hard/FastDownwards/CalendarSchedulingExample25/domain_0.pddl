@@ -1,73 +1,81 @@
-(define (domain multiagent-scheduling)
-  (:requirements :strips :typing)
-  (:types person slot)
+(define (domain multi-agent-meeting)
+  (:requirements :typing :strips)
+  (:types agent time)
+
   (:predicates
-    (free ?p - person ?s - slot)           ; person is free in a 30-min slot
-    (next ?s1 - slot ?s2 - slot)          ; successor slot (30 min later)
-    (start_allowed ?s - slot)             ; allowed start slots (Pamela's preference)
-    (unscheduled)                         ; meeting not scheduled yet
-    (confirmed-anthony ?s - slot)         ; anthony confirmed start ?s (covers ?s and next ?s)
-    (confirmed-pamela ?s - slot)          ; pamela confirmed start ?s
-    (confirmed-zachary ?s - slot)         ; zachary confirmed start ?s
-    (meeting-scheduled)                   ; meeting scheduled
-    (meeting-start ?s - slot)             ; meeting start slot
+    (unscheduled)                       ; true until a meeting is scheduled
+    (meeting-scheduled)                 ; becomes true when meeting scheduled
+    (scheduled-at ?t - time)            ; records start time of scheduled meeting
+    (succ ?t1 - time ?t2 - time)        ; successor half-hour timepoint
+    (free ?a - agent ?t - time)         ; agent is free at this half-hour slot
+    (pamela-accepts-start ?t - time)    ; pamela allows a meeting to start at ?t (preference)
   )
 
-  ;; Anthony confirms his availability for a candidate start (requires both slots free)
-  (:action anthony-confirm
-    :parameters (?s - slot ?s2 - slot)
+  ;; Three distinct scheduling actions (one per agent identity).
+  ;; All require both consecutive half-hour slots to be free for every participant,
+  ;; and require the meeting is still unscheduled. They also require Pamela's
+  ;; preference predicate for the chosen start time.
+  (:action schedule-anthony
+    :parameters (?t - time ?t2 - time)
     :precondition (and
       (unscheduled)
-      (next ?s ?s2)
-      (free anthony ?s)
-      (free anthony ?s2)
-    )
-    :effect (confirmed-anthony ?s)
-  )
-
-  ;; Pamela confirms (requires her availability and that start is allowed per her preference)
-  (:action pamela-confirm
-    :parameters (?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled)
-      (next ?s ?s2)
-      (start_allowed ?s)
-      (free pamela ?s)
-      (free pamela ?s2)
-    )
-    :effect (confirmed-pamela ?s)
-  )
-
-  ;; Zachary confirms his availability
-  (:action zachary-confirm
-    :parameters (?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled)
-      (next ?s ?s2)
-      (free zachary ?s)
-      (free zachary ?s2)
-    )
-    :effect (confirmed-zachary ?s)
-  )
-
-  ;; Orchestrator schedules the meeting once all agents have confirmed the same start
-  (:action orchestrator-schedule
-    :parameters (?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled)
-      (next ?s ?s2)
-      (confirmed-anthony ?s)
-      (confirmed-pamela ?s)
-      (confirmed-zachary ?s)
+      (succ ?t ?t2)
+      (free anthony ?t) (free anthony ?t2)
+      (free pamela ?t)  (free pamela ?t2)
+      (free zachary ?t) (free zachary ?t2)
+      (pamela-accepts-start ?t)
     )
     :effect (and
       (not (unscheduled))
       (meeting-scheduled)
-      (meeting-start ?s)
-      ;; occupy both slots for each participant (remove free facts if present)
-      (not (free anthony ?s)) (not (free anthony ?s2))
-      (not (free pamela  ?s)) (not (free pamela  ?s2))
-      (not (free zachary ?s)) (not (free zachary ?s2))
+      (scheduled-at ?t)
+
+      (not (free anthony ?t)) (not (free anthony ?t2))
+      (not (free pamela ?t))  (not (free pamela ?t2))
+      (not (free zachary ?t)) (not (free zachary ?t2))
     )
   )
+
+  (:action schedule-pamela
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (unscheduled)
+      (succ ?t ?t2)
+      (free anthony ?t) (free anthony ?t2)
+      (free pamela ?t)  (free pamela ?t2)
+      (free zachary ?t) (free zachary ?t2)
+      (pamela-accepts-start ?t)
+    )
+    :effect (and
+      (not (unscheduled))
+      (meeting-scheduled)
+      (scheduled-at ?t)
+
+      (not (free anthony ?t)) (not (free anthony ?t2))
+      (not (free pamela ?t))  (not (free pamela ?t2))
+      (not (free zachary ?t)) (not (free zachary ?t2))
+    )
+  )
+
+  (:action schedule-zachary
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (unscheduled)
+      (succ ?t ?t2)
+      (free anthony ?t) (free anthony ?t2)
+      (free pamela ?t)  (free pamela ?t2)
+      (free zachary ?t) (free zachary ?t2)
+      (pamela-accepts-start ?t)
+    )
+    :effect (and
+      (not (unscheduled))
+      (meeting-scheduled)
+      (scheduled-at ?t)
+
+      (not (free anthony ?t)) (not (free anthony ?t2))
+      (not (free pamela ?t))  (not (free pamela ?t2))
+      (not (free zachary ?t)) (not (free zachary ?t2))
+    )
+  )
+
 )

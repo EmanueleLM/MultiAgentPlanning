@@ -1,0 +1,26 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :adl :negative-preconditions :action-costs)
+  (:types person time)
+  (:predicates
+    (free ?p - person ?t - time)
+    (succ ?t - time ?t2 - time)
+    (scheduled ?t - time)
+  )
+  (:action schedule-meeting
+    :parameters (?a - person ?b - person ?c - person ?t - time ?t2 - time)
+    :precondition (and
+      (succ ?t ?t2)
+      (free ?a ?t) (free ?a ?t2)
+      (free ?b ?t) (free ?b ?t2)
+      (free ?c ?t) (free ?c ?t2)
+      (not (scheduled ?t))
+    )
+    :effect (and
+      (scheduled ?t)
+      (not (free ?a ?t)) (not (free ?a ?t2))
+      (not (free ?b ?t)) (not (free ?b ?t2))
+      (not (free ?c ?t)) (not (free ?c ?t2))
+    )
+    :cost 1
+  )
+)

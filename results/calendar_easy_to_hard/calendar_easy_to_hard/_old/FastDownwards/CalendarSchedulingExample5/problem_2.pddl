@@ -1,0 +1,45 @@
+(define (problem schedule-meeting-integrated-monday)
+  (:domain integrated-scheduling)
+  (:objects
+    m1 - meeting
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
+  )
+  (:init
+    ;; Kathryn availability (blocked: 09:00-09:30,10:30-11:00,11:30-12:00,13:30-14:30,16:30-17:00)
+    (available kathryn t0930)
+    (available kathryn t1000)
+    (available kathryn t1100)
+    (available kathryn t1200)
+    (available kathryn t1230)
+    (available kathryn t1300)
+    (available kathryn t1430)
+    (available kathryn t1500)
+    (available kathryn t1530)
+    (available kathryn t1600)
+
+    ;; Charlotte availability (blocked: 12:00-12:30,16:00-16:30; preference: no meeting after 13:30 -> last start t1300)
+    (available charlotte t0900)
+    (available charlotte t0930)
+    (available charlotte t1000)
+    (available charlotte t1030)
+    (available charlotte t1100)
+    (available charlotte t1130)
+    (available charlotte t1230)
+    (available charlotte t1300)
+
+    ;; Lauren availability (blocked: 09:00-10:00,12:00-12:30,13:30-14:30,15:00-16:00,16:30-17:00)
+    (available lauren t1000)
+    (available lauren t1030)
+    (available lauren t1100)
+    (available lauren t1130)
+    (available lauren t1230)
+    (available lauren t1300)
+    (available lauren t1430)
+    (available lauren t1600)
+
+    (not-scheduled)
+    (unscheduled m1)
+  )
+  (:goal (meeting-scheduled))
+)

@@ -1,62 +1,31 @@
-(define (problem integrated-schedule-monday)
-  (:domain integrated-meeting-scheduling)
-
-  ;; 30-minute start slots from 09:00 to 16:30
+(define (problem schedule-meeting-monday)
+  (:domain multi-agent-scheduling)
   (:objects
-    slot9_00  slot9_30  slot10_00 slot10_30 slot11_00 slot11_30
-    slot12_00 slot12_30 slot13_00 slot13_30 slot14_00 slot14_30
-    slot15_00 slot15_30 slot16_00 slot16_30 - slot
+    donna john billy - agent
+    t_0900 t_0930 t_1000 t_1030 t_1100 t_1130 t_1200 t_1230
+    t_1300 t_1330 t_1400 t_1430 t_1500 t_1530 t_1600 t_1630 - time
   )
 
   (:init
-    ;; Agent 1 provided: all these are within Monday 09:00-17:00
-    (within-work-hours slot9_00)  (within-work-hours slot9_30)
-    (within-work-hours slot10_00) (within-work-hours slot10_30)
-    (within-work-hours slot11_00) (within-work-hours slot11_30)
-    (within-work-hours slot12_00) (within-work-hours slot12_30)
-    (within-work-hours slot13_00) (within-work-hours slot13_30)
-    (within-work-hours slot14_00) (within-work-hours slot14_30)
-    (within-work-hours slot15_00) (within-work-hours slot15_30)
-    (within-work-hours slot16_00) (within-work-hours slot16_30)
+    ;; Donna is busy at 14:00-14:30 (t_1400) and 15:30-16:00 (t_1530); free at all other half-hour slots
+    (free donna t_0900) (free donna t_0930) (free donna t_1000) (free donna t_1030)
+    (free donna t_1100) (free donna t_1130) (free donna t_1200) (free donna t_1230)
+    (free donna t_1300) (free donna t_1330) ; not t_1400
+    (free donna t_1430) (free donna t_1500) ; not t_1530
+    (free donna t_1600) (free donna t_1630)
 
-    ;; Agent 1's known free slots (agent1 busy: 14:00 and 15:30)
-    (free_a1 slot9_00)  (free_a1 slot9_30)
-    (free_a1 slot10_00) (free_a1 slot10_30)
-    (free_a1 slot11_00) (free_a1 slot11_30)
-    (free_a1 slot12_00) (free_a1 slot12_30)
-    (free_a1 slot13_00) (free_a1 slot13_30)
-    ;; slot14_00 is busy for agent1 -> not free_a1
-    (free_a1 slot14_30)
-    (free_a1 slot15_00)
-    ;; slot15_30 is busy for agent1 -> not free_a1
-    (free_a1 slot16_00) (free_a1 slot16_30)
+    ;; John is busy at 11:00-11:30 (t_1100) and 16:30-17:00 (t_1630); free at other slots
+    (free john t_0900) (free john t_0930) (free john t_1000) (free john t_1030)
+    ; not t_1100
+    (free john t_1130) (free john t_1200) (free john t_1230)
+    (free john t_1300) (free john t_1330) (free john t_1400) (free john t_1430)
+    (free john t_1500) (free john t_1530) (free john t_1600) ; not t_1630
 
-    ;; Agent 2's available slots (agent2 busy: 11:00 and 16:30)
-    (free_a2 slot9_00)  (free_a2 slot9_30)
-    (free_a2 slot10_00) (free_a2 slot10_30)
-    ;; slot11_00 busy for agent2 -> not free_a2
-    (free_a2 slot11_30) (free_a2 slot12_00) (free_a2 slot12_30)
-    (free_a2 slot13_00) (free_a2 slot13_30)
-    (free_a2 slot14_00) (free_a2 slot14_30)
-    (free_a2 slot15_00) (free_a2 slot15_30)
-    (free_a2 slot16_00)
-    ;; slot16_30 busy for agent2 -> not free_a2
-
-    ;; Agent 3's known free slots (agent3 reported only 10:00 and 14:00 free)
-    (free_a3 slot10_00)
-    (free_a3 slot14_00)
+    ;; Billy is busy 9:00-10:00 (t_0900,t_0930), 10:30-14:00 (t_1030..t_1330), and 14:30-17:00 (t_1430..t_1630).
+    ;; Thus Billy is free only at 10:00-10:30 (t_1000) and 14:00-14:30 (t_1400).
+    (free billy t_1000) (free billy t_1400)
   )
 
-  ;; Goal: schedule the meeting at any slot such that all agents have it scheduled.
-  ;; We express it as a disjunction over all possible start slots.
-  (:goal (or
-    (meeting_scheduled slot9_00)  (meeting_scheduled slot9_30)
-    (meeting_scheduled slot10_00) (meeting_scheduled slot10_30)
-    (meeting_scheduled slot11_00) (meeting_scheduled slot11_30)
-    (meeting_scheduled slot12_00) (meeting_scheduled slot12_30)
-    (meeting_scheduled slot13_00) (meeting_scheduled slot13_30)
-    (meeting_scheduled slot14_00) (meeting_scheduled slot14_30)
-    (meeting_scheduled slot15_00) (meeting_scheduled slot15_30)
-    (meeting_scheduled slot16_00) (meeting_scheduled slot16_30)
-  ))
+  ;; Goal: schedule the meeting. From integrated schedules the only feasible common slot is t_1000 (10:00-10:30).
+  (:goal (meeting-scheduled t_1000))
 )

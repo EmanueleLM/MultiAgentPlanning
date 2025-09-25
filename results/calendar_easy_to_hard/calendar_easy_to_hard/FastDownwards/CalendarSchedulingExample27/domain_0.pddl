@@ -1,34 +1,21 @@
-(define (domain multi-agent-meeting)
-  (:requirements :typing :strips :negative-preconditions :equality :quantified-preconditions)
-  (:types participant slot)
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent slot)
 
   (:predicates
-    (participant ?p - participant)
+    (agent ?a - agent)
     (slot ?s - slot)
-    (before ?s1 - slot ?s2 - slot)     ; s1 is earlier than s2
-    (free ?p - participant ?s - slot)  ; participant p is free at slot s
-    (slot-free ?s - slot)              ; slot s is free (no meeting scheduled)
-    (scheduled)                        ; a meeting has been scheduled
-    (scheduled-at ?s - slot)           ; meeting scheduled at slot s
+    (free ?a - agent ?s - slot)          ; agent is free at slot
+    (all-free ?s - slot)                 ; all participants free at slot
+    (candidate ?s - slot)                ; earliest available-all-free slot candidate
+    (scheduled ?s - slot)                ; meeting scheduled at slot
+    (meeting-scheduled)
   )
 
-  ;; Schedule the meeting at a given slot if:
-  ;; - the slot exists and is currently slot-free
-  ;; - every participant is free at that slot
-  ;; - there does NOT exist any earlier slot that is still slot-free
-  ;;   (this enforces the "earliest available" preference)
-  (:action schedule-at
+  ; Schedule a single 30-minute meeting at a slot that is marked candidate
+  (:action schedule-meeting
     :parameters (?s - slot)
-    :precondition (and
-      (slot ?s)
-      (slot-free ?s)
-      (forall (?p - participant) (free ?p ?s))
-      (not (exists (?ear - slot) (and (before ?ear ?s) (slot-free ?ear))))
-    )
-    :effect (and
-      (not (slot-free ?s))
-      (scheduled)
-      (scheduled-at ?s)
-    )
+    :precondition (and (slot ?s) (candidate ?s) (all-free ?s) (not (meeting-scheduled)))
+    :effect (and (scheduled ?s) (meeting-scheduled))
   )
 )

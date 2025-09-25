@@ -1,74 +1,58 @@
-(define (domain multiagent-meeting)
-  (:requirements :strips :typing)
-  (:types slot)
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent slot)
 
   (:predicates
-    ;; global temporal adjacency (30-min increments)
-    (next ?s - slot ?t - slot)        ;; used by agent1 and agent3
-    (consecutive ?s - slot ?t - slot) ;; used by agent2 (mirrors next)
-
-    ;; agent-specific availability predicates (keeps agents' actions distinct)
-    (available_a1 ?s - slot)  ;; agent1's "available"
-    (free_a2 ?s - slot)       ;; agent2's "free"
-    (free_a3 ?s - slot)       ;; agent3's "free"
-
-    ;; proposal/coordination predicates
-    (proposed ?s - slot)
-
-    ;; per-agent confirmation that they accept the proposed meeting
-    (meeting_scheduled_a1)
-    (meeting_scheduled_a2)
-    (meeting_scheduled_a3)
+    (free ?a - agent ?s - slot)               ; agent is free in slot
+    (next ?s1 - slot ?s2 - slot)             ; s2 immediately follows s1 (30-min increments)
+    (proposed ?s - slot)                     ; a proposal exists to start meeting at slot s
+    (approved-charles ?s - slot)             ; Charles approved proposal at slot s
+    (approved-betty ?s - slot)               ; Betty approved proposal at slot s
+    (meeting-scheduled ?s - slot)            ; meeting scheduled starting at slot s
   )
 
-  ;; Agent 1: uses 'next' and 'available'
-  (:action propose_a1
-    :parameters (?s - slot ?t - slot)
-    :precondition (and (available_a1 ?s) (available_a1 ?t) (next ?s ?t))
-    :effect (proposed ?s)
+  ; Theresa proposes a 60-minute meeting starting at ?s (requires both ?s and its next slot free for Theresa)
+  (:action propose-theresa
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (next ?s ?s2)
+                       (free theresa ?s)
+                       (free theresa ?s2)
+                       (not (proposed ?s)))
+    :effect (and (proposed ?s))
   )
 
-  (:action confirm_a1
-    :parameters (?s - slot ?t - slot)
-    :precondition (and (proposed ?s) (available_a1 ?s) (available_a1 ?t) (next ?s ?t))
-    :effect (and
-              (meeting_scheduled_a1)
-              (not (available_a1 ?s))
-              (not (available_a1 ?t))
-            )
+  ; Charles approves a proposed start ?s (requires both ?s and next slot free for Charles)
+  (:action approve-charles
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s)
+                       (next ?s ?s2)
+                       (free charles ?s)
+                       (free charles ?s2)
+                       (not (approved-charles ?s)))
+    :effect (and (approved-charles ?s))
   )
 
-  ;; Agent 2: uses 'consecutive' and 'free_a2'
-  (:action propose_a2
-    :parameters (?s - slot ?n - slot)
-    :precondition (and (free_a2 ?s) (free_a2 ?n) (consecutive ?s ?n))
-    :effect (proposed ?s)
+  ; Betty approves a proposed start ?s (requires both ?s and next slot free for Betty)
+  (:action approve-betty
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s)
+                       (next ?s ?s2)
+                       (free betty ?s)
+                       (free betty ?s2)
+                       (not (approved-betty ?s)))
+    :effect (and (approved-betty ?s))
   )
 
-  (:action confirm_a2
-    :parameters (?s - slot ?n - slot)
-    :precondition (and (proposed ?s) (free_a2 ?s) (free_a2 ?n) (consecutive ?s ?n))
-    :effect (and
-              (meeting_scheduled_a2)
-              (not (free_a2 ?s))
-              (not (free_a2 ?n))
-            )
-  )
-
-  ;; Agent 3: uses 'next' and 'free_a3'
-  (:action propose_a3
-    :parameters (?s1 - slot ?s2 - slot)
-    :precondition (and (free_a3 ?s1) (free_a3 ?s2) (next ?s1 ?s2))
-    :effect (proposed ?s1)
-  )
-
-  (:action confirm_a3
-    :parameters (?s1 - slot ?s2 - slot)
-    :precondition (and (proposed ?s1) (free_a3 ?s1) (free_a3 ?s2) (next ?s1 ?s2))
-    :effect (and
-              (meeting_scheduled_a3)
-              (not (free_a3 ?s1))
-              (not (free_a3 ?s2))
-            )
+  ; Theresa finalizes the meeting once both other participants have approved and Theresa is free
+  (:action finalize-theresa
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (proposed ?s)
+                       (approved-charles ?s)
+                       (approved-betty ?s)
+                       (next ?s ?s2)
+                       (free theresa ?s)
+                       (free theresa ?s2)
+                       (not (meeting-scheduled ?s)))
+    :effect (and (meeting-scheduled ?s))
   )
 )

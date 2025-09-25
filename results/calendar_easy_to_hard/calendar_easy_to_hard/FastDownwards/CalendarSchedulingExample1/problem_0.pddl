@@ -1,37 +1,59 @@
-(define (problem meeting-problem)
-  (:domain meeting-domain)
+(define (problem find-common-meeting)
+  (:domain multi-agent-meeting)
+
   (:objects
     raymond billy donald - agent
-    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8 - slot
+    9_10 10_11 11_12 13_14 14_15 15_16 16_17 - slot
   )
 
-  ;; Work hours are slot1..slot8 (e.g., 9:00-17:00 broken into hourly slots)
   (:init
-    (work-slot slot1) (work-slot slot2) (work-slot slot3) (work-slot slot4)
-    (work-slot slot5) (work-slot slot6) (work-slot slot7) (work-slot slot8)
+    ;; Work-hour slots are defined as objects above. Availabilities:
+    ;; Raymond is available in the morning and early afternoon
+    (available raymond 9_10)
+    (available raymond 10_11)
+    (available raymond 11_12)
+    (available raymond 13_14)
 
-    ;; Availability
-    (available raymond slot2) (available raymond slot3) (available raymond slot4)
-    (available billy  slot1) (available billy  slot3) (available billy  slot5)
-    (available donald slot3) (available donald slot4) (available donald slot6)
+    ;; Billy is available mid-morning through mid-afternoon
+    (available billy 10_11)
+    (available billy 11_12)
+    (available billy 13_14)
+    (available billy 14_15)
 
-    ;; Preferences (if possible, planner can pick a slot satisfying preferences)
-    (preferred raymond slot3)
-    (preferred billy  slot3)
-    (preferred donald slot3)
+    ;; Donald is available late morning through mid-afternoon
+    (available donald 11_12)
+    (available donald 13_14)
+    (available donald 14_15)
+    (available donald 15_16)
+
+    ;; Preferences (softly preferred slots for each agent)
+    ;; Raymond prefers 11-12
+    (preferred raymond 11_12)
+
+    ;; Billy prefers 13-14
+    (preferred billy 13_14)
+
+    ;; Donald prefers 11-12
+    (preferred donald 11_12)
+
+    ;; initial score
+    (= (score) 0)
   )
 
-  ;; Goal: schedule a meeting in any work slot (scheduled implies attending by finalize-meeting)
+  ;; The goal: find any slot during which the meeting is scheduled.
+  ;; Using an OR over all defined work slots; the planner will pick one.
   (:goal
     (or
-      (scheduled slot1)
-      (scheduled slot2)
-      (scheduled slot3)
-      (scheduled slot4)
-      (scheduled slot5)
-      (scheduled slot6)
-      (scheduled slot7)
-      (scheduled slot8)
+      (meeting-scheduled 9_10)
+      (meeting-scheduled 10_11)
+      (meeting-scheduled 11_12)
+      (meeting-scheduled 13_14)
+      (meeting-scheduled 14_15)
+      (meeting-scheduled 15_16)
+      (meeting-scheduled 16_17)
     )
   )
+
+  ;; Try to maximize the number of satisfied preferences (score).
+  (:metric maximize (score))
 )

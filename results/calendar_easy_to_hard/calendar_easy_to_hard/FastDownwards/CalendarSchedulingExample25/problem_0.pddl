@@ -1,46 +1,54 @@
 (define (problem schedule-meeting-monday)
-  (:domain multiagent-scheduling)
+  (:domain multi-agent-meeting)
+
   (:objects
-    anthony pamela zachary - person
-    slot0 slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8 slot9 slot10 slot11 slot12 slot13 slot14 slot15 - slot
+    anthony pamela zachary - agent
+
+    t09_00 t09_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30
+    t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 - time
   )
 
   (:init
-    ;; successor relations (30-minute steps from 09:00..17:00)
-    (next slot0 slot1) (next slot1 slot2) (next slot2 slot3) (next slot3 slot4)
-    (next slot4 slot5) (next slot5 slot6) (next slot6 slot7) (next slot7 slot8)
-    (next slot8 slot9) (next slot9 slot10) (next slot10 slot11) (next slot11 slot12)
-    (next slot12 slot13) (next slot13 slot14) (next slot14 slot15)
+    ;; time successor relations (half-hour granularity)
+    (succ t09_00 t09_30) (succ t09_30 t10_00) (succ t10_00 t10_30) (succ t10_30 t11_00)
+    (succ t11_00 t11_30) (succ t11_30 t12_00) (succ t12_00 t12_30) (succ t12_30 t13_00)
+    (succ t13_00 t13_30) (succ t13_30 t14_00) (succ t14_00 t14_30) (succ t14_30 t15_00)
+    (succ t15_00 t15_30) (succ t15_30 t16_00) (succ t16_00 t16_30)
 
-    ;; Pamela's allowed meeting start slots (preference: meeting must end by 14:30 -> latest start slot9)
-    (start_allowed slot0) (start_allowed slot1) (start_allowed slot2)
-    (start_allowed slot3) (start_allowed slot4) (start_allowed slot5)
-    (start_allowed slot6) (start_allowed slot7) (start_allowed slot8)
-    (start_allowed slot9)
-
-    ;; Known frees (encode only facts we know from the three agents' provided data)
-    ;; Anthony's free slots (from first input; busy at slot1, slot6&7, slot14)
-    (free anthony slot0) (free anthony slot2) (free anthony slot3)
-    (free anthony slot4) (free anthony slot5) (free anthony slot8)
-    (free anthony slot9) (free anthony slot10) (free anthony slot11)
-    (free anthony slot12) (free anthony slot13) (free anthony slot15)
-
-    ;; Pamela's free slots (from second input; busy at slot1 and slot15)
-    (free pamela slot0) (free pamela slot2) (free pamela slot3)
-    (free pamela slot4) (free pamela slot5) (free pamela slot6)
-    (free pamela slot7) (free pamela slot8) (free pamela slot9)
-    (free pamela slot10) (free pamela slot11) (free pamela slot12)
-    (free pamela slot13) (free pamela slot14)
-
-    ;; Zachary's known free slots (from third input)
-    (free zachary slot5) (free zachary slot7)
-    (free zachary slot9) (free zachary slot10)
-    (free zachary slot12) (free zachary slot13)
-
-    ;; meeting initially unscheduled
+    ;; initial scheduling flag
     (unscheduled)
+
+    ;; Pamela's preference: no meetings starting after 13:30 (so meeting must start at or before 13:30).
+    ;; We encode allowed start times for Pamela as pamela-accepts-start on times <= 13:30.
+    (pamela-accepts-start t09_00) (pamela-accepts-start t09_30) (pamela-accepts-start t10_00)
+    (pamela-accepts-start t10_30) (pamela-accepts-start t11_00) (pamela-accepts-start t11_30)
+    (pamela-accepts-start t12_00) (pamela-accepts-start t12_30) (pamela-accepts-start t13_00)
+    (pamela-accepts-start t13_30)
+
+    ;; Free slots for each agent (only those slots not privately busy).
+    ;; Anthony busy: 09:30, 12:00-13:00 (12:00 & 12:30), 16:00
+    ;; So anthony is free at all other half-hour slots:
+    (free anthony t09_00) (free anthony t10_00) (free anthony t10_30)
+    (free anthony t11_00) (free anthony t11_30)
+    (free anthony t13_00) (free anthony t13_30) (free anthony t14_00)
+    (free anthony t14_30) (free anthony t15_00) (free anthony t15_30) (free anthony t16_30)
+
+    ;; Pamela busy: 09:30, 16:30
+    ;; Pamela free at other times (but starts constrained via pamela-accepts-start)
+    (free pamela t09_00) (free pamela t10_00) (free pamela t10_30) (free pamela t11_00)
+    (free pamela t11_30) (free pamela t12_00) (free pamela t12_30) (free pamela t13_00)
+    (free pamela t13_30) (free pamela t14_00) (free pamela t14_30) (free pamela t15_00)
+    (free pamela t15_30) (free pamela t16_00)
+
+    ;; Zachary busy: 09:00-11:30 (t09_00,t09_30,t10_00,t10_30,t11_00,t11_30),
+    ;; 12:00-12:30 (t12_00),
+    ;; 13:00-13:30 (t13_00),
+    ;; 14:30-15:00 (t14_30),
+    ;; 16:00-17:00 (t16_00,t16_30)
+    ;; So zachary is free at the remaining slots:
+    (free zachary t12_30) (free zachary t13_30)
+    (free zachary t14_00) (free zachary t15_00) (free zachary t15_30)
   )
 
-  ;; Goal: meeting scheduled (the start slot will be chosen by the planner)
   (:goal (meeting-scheduled))
 )

@@ -1,51 +1,37 @@
-(define (problem integrated-schedule-monday)
-  (:domain integrated-meeting-scheduling)
-
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
   (:objects
-    adam jerry matthew - person
+    adam jerry matthew - agent
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
     monday - day
-    slot0900 slot0930 slot1000 slot1030 slot1100 slot1130 slot1200 slot1230
-    slot1300 slot1330 slot1400 slot1430 slot1500 slot1530 slot1600 slot1630 - slot
   )
-
   (:init
-    (work-slot slot0900) (work-slot slot0930) (work-slot slot1000) (work-slot slot1030)
-    (work-slot slot1100) (work-slot slot1130) (work-slot slot1200) (work-slot slot1230)
-    (work-slot slot1300) (work-slot slot1330) (work-slot slot1400) (work-slot slot1430)
-    (work-slot slot1500) (work-slot slot1530) (work-slot slot1600) (work-slot slot1630)
+    (= (total-cost) 0)
+    (day monday)
+    (meeting-duration-30)
 
-    ;; Adam busy: 10:00-10:30, 12:30-13:00, 13:30-14:30
-    (busy adam slot1000)
-    (busy adam slot1230)
-    (busy adam slot1330)
-    (busy adam slot1400)
+    (within-work-hours s09_00) (within-work-hours s09_30) (within-work-hours s10_00) (within-work-hours s10_30)
+    (within-work-hours s11_00) (within-work-hours s11_30) (within-work-hours s12_00) (within-work-hours s12_30)
+    (within-work-hours s13_00) (within-work-hours s13_30) (within-work-hours s14_00) (within-work-hours s14_30)
+    (within-work-hours s15_00) (within-work-hours s15_30) (within-work-hours s16_00) (within-work-hours s16_30)
 
-    ;; Jerry busy: 09:00-09:30, 12:00-12:30, 15:00-16:00
-    (busy jerry slot0900)
-    (busy jerry slot1200)
-    (busy jerry slot1500)
-    (busy jerry slot1530)
+    (free adam s09_00) (free adam s09_30) (free adam s10_30)
+    (free adam s11_00) (free adam s11_30) (free adam s12_00)
+    (free adam s13_00)
+    (free adam s14_30) (free adam s15_00) (free adam s15_30)
+    (free adam s16_00) (free adam s16_30)
 
-    ;; Matthew busy: 09:30-11:00, 11:30-12:30, 13:00-14:00, 14:30-17:00
-    (busy matthew slot0930)
-    (busy matthew slot1000)
-    (busy matthew slot1030)
-    (busy matthew slot1130)
-    (busy matthew slot1200)
-    (busy matthew slot1300)
-    (busy matthew slot1330)
-    (busy matthew slot1430)
-    (busy matthew slot1500)
-    (busy matthew slot1530)
-    (busy matthew slot1600)
-    (busy matthew slot1630)
+    (free jerry s09_30) (free jerry s10_00) (free jerry s10_30)
+    (free jerry s11_00) (free jerry s11_30) (free jerry s12_30)
+    (free jerry s13_00) (free jerry s13_30) (free jerry s14_00)
+    (free jerry s14_30) (free jerry s16_00) (free jerry s16_30)
+
+    (free matthew s09_00) (free matthew s11_00) (free matthew s12_30) (free matthew s14_00)
   )
-
-  (:goal (and
-    (meeting-scheduled)
-    (meeting-at slot1100)
-    (attending adam monday slot1100)
-    (attending jerry monday slot1100)
-    (attending matthew monday slot1100)
-  ))
+  (:goal (or (scheduled s09_00) (scheduled s09_30) (scheduled s10_00) (scheduled s10_30)
+             (scheduled s11_00) (scheduled s11_30) (scheduled s12_00) (scheduled s12_30)
+             (scheduled s13_00) (scheduled s13_30) (scheduled s14_00) (scheduled s14_30)
+             (scheduled s15_00) (scheduled s15_30) (scheduled s16_00) (scheduled s16_30)))
+  (:metric minimize (total-cost))
 )

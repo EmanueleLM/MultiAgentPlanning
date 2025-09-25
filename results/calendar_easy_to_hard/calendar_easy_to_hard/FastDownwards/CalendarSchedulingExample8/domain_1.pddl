@@ -1,59 +1,33 @@
-(define (domain integrated-meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types person slot day)
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types agent slot)
   (:predicates
-    (work-slot ?s - slot)
-    (free ?p - person ?s - slot)
-    (busy ?p - person ?s - slot)
-    (meeting-scheduled)
-    (meeting-at ?s - slot)
-    (attending ?p - person ?d - day ?s - slot)
+    (free ?a - agent ?s - slot)
+    (agreed ?a - agent ?s - slot)
+    (scheduled ?s - slot)
   )
 
-  (:action schedule-meeting-agent1
-    :parameters (?d - day ?s - slot ?a - person ?j - person ?m - person)
-    :precondition (and (work-slot ?s) (free ?a ?s))
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (attending ?a ?d ?s)
-      (attending ?j ?d ?s)
-      (attending ?m ?d ?s)
-      (not (free ?a ?s))
-    )
+  (:action agree-adam
+    :parameters (?s - slot)
+    :precondition (and (free adam ?s) (not (agreed adam ?s)))
+    :effect (agreed adam ?s)
   )
 
-  (:action schedule-meeting-agent2
-    :parameters (?s - slot ?a - person ?j - person ?m - person)
-    :precondition (and
-      (not (busy ?a ?s))
-      (not (busy ?j ?s))
-      (not (busy ?m ?s))
-      (not (meeting-scheduled))
-    )
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (busy ?a ?s)
-      (busy ?j ?s)
-      (busy ?m ?s)
-    )
+  (:action agree-jerry
+    :parameters (?s - slot)
+    :precondition (and (free jerry ?s) (not (agreed jerry ?s)))
+    :effect (agreed jerry ?s)
   )
 
-  (:action schedule-meeting-agent3
-    :parameters (?d - day ?s - slot ?a - person ?j - person ?m - person)
-    :precondition (and
-      (not (meeting-scheduled))
-      (free ?a ?s)
-      (free ?j ?s)
-      (free ?m ?s)
-    )
-    :effect (and
-      (meeting-scheduled)
-      (meeting-at ?s)
-      (not (free ?a ?s))
-      (not (free ?j ?s))
-      (not (free ?m ?s))
-    )
+  (:action agree-matthew
+    :parameters (?s - slot)
+    :precondition (and (free matthew ?s) (not (agreed matthew ?s)))
+    :effect (agreed matthew ?s)
+  )
+
+  (:action finalize
+    :parameters (?s - slot)
+    :precondition (and (agreed adam ?s) (agreed jerry ?s) (agreed matthew ?s) (not (scheduled ?s)))
+    :effect (scheduled ?s)
   )
 )

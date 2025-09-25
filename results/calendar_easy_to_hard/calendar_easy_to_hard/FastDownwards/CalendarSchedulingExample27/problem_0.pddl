@@ -1,132 +1,49 @@
-(define (problem schedule-meeting-monday)
-  (:domain multi-agent-meeting)
+(define (problem schedule-meeting-problem)
+  (:domain meeting-scheduling)
 
-  ;; Canonical 30-minute slots from 09:00 to 17:00 on Monday (16 slots)
   (:objects
-    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230
-    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot
-
-    agent1 kathryn megan - participant
+    jesse kathryn megan - agent
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 - slot
   )
 
   (:init
-    ;; participants exist (kept distinct)
-    (participant agent1) (participant kathryn) (participant megan)
+    ; Agents and slots
+    (agent jesse) (agent kathryn) (agent megan)
+    (slot s1) (slot s2) (slot s3) (slot s4) (slot s5) (slot s6) (slot s7) (slot s8)
+    (slot s9) (slot s10) (slot s11) (slot s12) (slot s13) (slot s14) (slot s15) (slot s16)
 
-    ;; slots exist
-    (slot slot-0900) (slot slot-0930) (slot slot-1000) (slot slot-1030)
-    (slot slot-1100) (slot slot-1130) (slot slot-1200) (slot slot-1230)
-    (slot slot-1300) (slot slot-1330) (slot slot-1400) (slot slot-1430)
-    (slot slot-1500) (slot slot-1530) (slot slot-1600) (slot slot-1630)
+    ; Free/busy encoded as free facts for each agent and slot.
+    ; Time slots are 30-minute increments from 09:00 (s1) to 16:30-17:00 (s16).
+    ; Jesse is busy on Monday 10:00-10:30 (s3) and 15:30-16:00 (s14).
+    ; Kathryn is free all day.
+    ; Megan is busy on 10:30-11:00 (s4), 11:30-12:30 (s6,s7), 13:30-14:30 (s10,s11),
+    ; and 15:00-16:30 (s13,s14,s15).
 
-    ;; all slots initially marked free (no meeting scheduled yet)
-    (slot-free slot-0900) (slot-free slot-0930) (slot-free slot-1000) (slot-free slot-1030)
-    (slot-free slot-1100) (slot-free slot-1130) (slot-free slot-1200) (slot-free slot-1230)
-    (slot-free slot-1300) (slot-free slot-1330) (slot-free slot-1400) (slot-free slot-1430)
-    (slot-free slot-1500) (slot-free slot-1530) (slot-free slot-1600) (slot-free slot-1630)
+    ; Kathryn free all slots
+    (free kathryn s1) (free kathryn s2) (free kathryn s3) (free kathryn s4)
+    (free kathryn s5) (free kathryn s6) (free kathryn s7) (free kathryn s8)
+    (free kathryn s9) (free kathryn s10) (free kathryn s11) (free kathryn s12)
+    (free kathryn s13) (free kathryn s14) (free kathryn s15) (free kathryn s16)
 
-    ;; --------------------------
-    ;; Participant availability
-    ;; --------------------------
-    ;; Agent1 (from first agent's info)
-    ;; First agent reported busy at:
-    ;;   10:00-10:30  => slot-1000
-    ;;   15:30-16:00  => slot-1530
-    ;; Therefore agent1 is free in all other slots:
-    (free agent1 slot-0900) (free agent1 slot-0930) (free agent1 slot-1030) (free agent1 slot-1100)
-    (free agent1 slot-1130) (free agent1 slot-1200) (free agent1 slot-1230) (free agent1 slot-1300)
-    (free agent1 slot-1330) (free agent1 slot-1400) (free agent1 slot-1430) (free agent1 slot-1500)
-    (free agent1 slot-1600) (free agent1 slot-1630)
+    ; Jesse free except s3 and s14
+    (free jesse s1) (free jesse s2) (free jesse s4) (free jesse s5)
+    (free jesse s6) (free jesse s7) (free jesse s8) (free jesse s9)
+    (free jesse s10) (free jesse s11) (free jesse s12) (free jesse s13)
+    (free jesse s15) (free jesse s16)
 
-    ;; Kathryn (from second agent's info) is free all day
-    (free kathryn slot-0900) (free kathryn slot-0930) (free kathryn slot-1000) (free kathryn slot-1030)
-    (free kathryn slot-1100) (free kathryn slot-1130) (free kathryn slot-1200) (free kathryn slot-1230)
-    (free kathryn slot-1300) (free kathryn slot-1330) (free kathryn slot-1400) (free kathryn slot-1430)
-    (free kathryn slot-1500) (free kathryn slot-1530) (free kathryn slot-1600) (free kathryn slot-1630)
+    ; Megan free except s4, s6, s7, s10, s11, s13, s14, s15
+    (free megan s1) (free megan s2) (free megan s3) (free megan s5)
+    (free megan s8) (free megan s9) (free megan s12) (free megan s16)
 
-    ;; Megan (from third agent's info) — she asserted only the free slots below.
-    ;; Megan's busy slots (in that agent's mapping) were:
-    ;;  10:30-11:00 => slot-1030
-    ;;  11:30-12:30 => slot-1130, slot-1200
-    ;;  13:30-14:30 => slot-1330, slot-1400
-    ;;  15:00-16:30 => slot-1500, slot-1530, slot-1600
-    ;; Megan's free slots (explicitly asserted by her):
-    (free megan slot-0900)  ; s0
-    (free megan slot-0930)  ; s1
-    (free megan slot-1000)  ; s2
-    (free megan slot-1100)  ; s4
-    (free megan slot-1230)  ; s7
-    (free megan slot-1300)  ; s8
-    (free megan slot-1430)  ; s11
-    (free megan slot-1630)  ; s15
+    ; all-free denotes slots where all agents are free simultaneously.
+    ; Computed from the above private availability:
+    ; all-free slots: s1 (09:00), s2 (09:30), s5 (11:00), s8 (12:30), s9 (13:00), s12 (14:30), s16 (16:30)
+    (all-free s1) (all-free s2) (all-free s5) (all-free s8) (all-free s9) (all-free s12) (all-free s16)
 
-    ;; --------------------------
-    ;; Temporal ordering relations (before): for every strictly earlier -> later pair
-    ;; used to check whether any earlier slot remains free (enforcing earliest choice)
-    ;; (This list covers all strict order pairs. A compact encoding would be possible,
-    ;; but we spell them out for clarity and FastDownward compatibility.)
-    (before slot-0900 slot-0930) (before slot-0900 slot-1000) (before slot-0900 slot-1030)
-    (before slot-0900 slot-1100) (before slot-0900 slot-1130) (before slot-0900 slot-1200)
-    (before slot-0900 slot-1230) (before slot-0900 slot-1300) (before slot-0900 slot-1330)
-    (before slot-0900 slot-1400) (before slot-0900 slot-1430) (before slot-0900 slot-1500)
-    (before slot-0900 slot-1530) (before slot-0900 slot-1600) (before slot-0900 slot-1630)
-
-    (before slot-0930 slot-1000) (before slot-0930 slot-1030) (before slot-0930 slot-1100)
-    (before slot-0930 slot-1130) (before slot-0930 slot-1200) (before slot-0930 slot-1230)
-    (before slot-0930 slot-1300) (before slot-0930 slot-1330) (before slot-0930 slot-1400)
-    (before slot-0930 slot-1430) (before slot-0930 slot-1500) (before slot-0930 slot-1530)
-    (before slot-0930 slot-1600) (before slot-0930 slot-1630)
-
-    (before slot-1000 slot-1030) (before slot-1000 slot-1100) (before slot-1000 slot-1130)
-    (before slot-1000 slot-1200) (before slot-1000 slot-1230) (before slot-1000 slot-1300)
-    (before slot-1000 slot-1330) (before slot-1000 slot-1400) (before slot-1000 slot-1430)
-    (before slot-1000 slot-1500) (before slot-1000 slot-1530) (before slot-1000 slot-1600)
-    (before slot-1000 slot-1630)
-
-    (before slot-1030 slot-1100) (before slot-1030 slot-1130) (before slot-1030 slot-1200)
-    (before slot-1030 slot-1230) (before slot-1030 slot-1300) (before slot-1030 slot-1330)
-    (before slot-1030 slot-1400) (before slot-1030 slot-1430) (before slot-1030 slot-1500)
-    (before slot-1030 slot-1530) (before slot-1030 slot-1600) (before slot-1030 slot-1630)
-
-    (before slot-1100 slot-1130) (before slot-1100 slot-1200) (before slot-1100 slot-1230)
-    (before slot-1100 slot-1300) (before slot-1100 slot-1330) (before slot-1100 slot-1400)
-    (before slot-1100 slot-1430) (before slot-1100 slot-1500) (before slot-1100 slot-1530)
-    (before slot-1100 slot-1600) (before slot-1100 slot-1630)
-
-    (before slot-1130 slot-1200) (before slot-1130 slot-1230) (before slot-1130 slot-1300)
-    (before slot-1130 slot-1330) (before slot-1130 slot-1400) (before slot-1130 slot-1430)
-    (before slot-1130 slot-1500) (before slot-1130 slot-1530) (before slot-1130 slot-1600)
-    (before slot-1130 slot-1630)
-
-    (before slot-1200 slot-1230) (before slot-1200 slot-1300) (before slot-1200 slot-1330)
-    (before slot-1200 slot-1400) (before slot-1200 slot-1430) (before slot-1200 slot-1500)
-    (before slot-1200 slot-1530) (before slot-1200 slot-1600) (before slot-1200 slot-1630)
-
-    (before slot-1230 slot-1300) (before slot-1230 slot-1330) (before slot-1230 slot-1400)
-    (before slot-1230 slot-1430) (before slot-1230 slot-1500) (before slot-1230 slot-1530)
-    (before slot-1230 slot-1600) (before slot-1230 slot-1630)
-
-    (before slot-1300 slot-1330) (before slot-1300 slot-1400) (before slot-1300 slot-1430)
-    (before slot-1300 slot-1500) (before slot-1300 slot-1530) (before slot-1300 slot-1600)
-    (before slot-1300 slot-1630)
-
-    (before slot-1330 slot-1400) (before slot-1330 slot-1430) (before slot-1330 slot-1500)
-    (before slot-1330 slot-1530) (before slot-1330 slot-1600) (before slot-1330 slot-1630)
-
-    (before slot-1400 slot-1430) (before slot-1400 slot-1500) (before slot-1400 slot-1530)
-    (before slot-1400 slot-1600) (before slot-1400 slot-1630)
-
-    (before slot-1430 slot-1500) (before slot-1430 slot-1530) (before slot-1430 slot-1600)
-    (before slot-1430 slot-1630)
-
-    (before slot-1500 slot-1530) (before slot-1500 slot-1600) (before slot-1500 slot-1630)
-
-    (before slot-1530 slot-1600) (before slot-1530 slot-1630)
-
-    (before slot-1600 slot-1630)
+    ; candidate marks the earliest slot that is all-free (to enforce "earliest available").
+    ; Based on the combined calendars the earliest common free slot is s1 (09:00-09:30).
+    (candidate s1)
   )
 
-  ;; Goal: schedule a single meeting at the earliest slot that fits all participant calendars.
-  ;; Given the availability above, the earliest slot where all three participants are free is slot-0900.
-  (:goal (and (scheduled) (scheduled-at slot-0900)))
+  (:goal (meeting-scheduled))
 )

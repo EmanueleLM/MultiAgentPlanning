@@ -1,45 +1,53 @@
-(define (problem orchestrate-meeting)
-  (:domain orchestrated-scheduling)
+(define (problem schedule-monday-9-17)
+  (:domain meeting-scheduling-multiagent)
 
   (:objects
-    michelle steven jerry - person
-    m1 - meeting
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+    michelle steven jerry - agent
+    t9_00 t9_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30 t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 - start
+    t16_30 - halfslot
   )
 
   (:init
-    (duration-60 m1)
-    (person michelle) (person steven) (person jerry)
+    (next t9_00 t9_30)
+    (next t9_30 t10_00)
+    (next t10_00 t10_30)
+    (next t10_30 t11_00)
+    (next t11_00 t11_30)
+    (next t11_30 t12_00)
+    (next t12_00 t12_30)
+    (next t12_30 t13_00)
+    (next t13_00 t13_30)
+    (next t13_30 t14_00)
+    (next t14_00 t14_30)
+    (next t14_30 t15_00)
+    (next t15_00 t15_30)
+    (next t15_30 t16_00)
+    (next t16_00 t16_30)
 
-    (slot s0) (slot s1) (slot s2) (slot s3) (slot s4) (slot s5) (slot s6) (slot s7)
-    (slot s8) (slot s9) (slot s10) (slot s11) (slot s12) (slot s13) (slot s14) (slot s15)
+    (free michelle t9_00) (free michelle t9_30)
+    (free michelle t10_00) (free michelle t10_30)
+    (free michelle t12_00) (free michelle t12_30)
+    (free michelle t13_00) (free michelle t13_30)
+    (free michelle t14_00) (free michelle t14_30)
+    (free michelle t15_00) (free michelle t15_30)
+    (free michelle t16_00) (free michelle t16_30)
 
-    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4)
-    (next s4 s5) (next s5 s6) (next s6 s7) (next s7 s8)
-    (next s8 s9) (next s9 s10) (next s10 s11) (next s11 s12)
-    (next s12 s13) (next s13 s14) (next s14 s15)
+    (free steven t9_30)
+    (free steven t10_00) (free steven t10_30)
+    (free steven t11_00)
+    (free steven t12_00) (free steven t12_30)
+    (free steven t13_00)
+    (free steven t14_00) (free steven t14_30)
+    (free steven t15_00)
+    (free steven t16_00) (free steven t16_30)
 
-    (free michelle s0) (free michelle s1)
-    (free michelle s2) (free michelle s3)
-    (free michelle s6) (free michelle s7)
-    (free michelle s8) (free michelle s9)
-    (free michelle s10) (free michelle s11)
-    (free michelle s12) (free michelle s13)
-    (free michelle s14) (free michelle s15)
-
-    (free steven s1) (free steven s2) (free steven s3) (free steven s4)
-    (free steven s6) (free steven s7) (free steven s8)
-    (free steven s10) (free steven s11) (free steven s12)
-    (free steven s14) (free steven s15)
-
-    (free jerry s1)
-    (free jerry s4)
-    (free jerry s7)
-    (free jerry s11)
-    (free jerry s12)
-    (free jerry s14)
+    (free jerry t9_30)
+    (free jerry t11_00)
+    (free jerry t12_30)
+    (free jerry t14_30)
+    (free jerry t15_00)
+    (free jerry t16_00)
   )
 
-  (:goal (meeting-finalized m1))
-  (:metric minimize (total-cost))
+  (:goal (goal-achieved))
 )

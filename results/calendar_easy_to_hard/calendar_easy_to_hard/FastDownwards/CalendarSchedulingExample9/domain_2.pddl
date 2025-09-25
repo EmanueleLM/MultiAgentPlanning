@@ -1,62 +1,51 @@
-(define (domain meeting-scheduling-integrated)
-  (:requirements :typing :negative-preconditions)
-  (:types person timeslot)
-
+(define (domain meeting_multia)
+  (:requirements :strips :typing)
+  (:types person slot)
   (:predicates
-    (free ?p - person ?t - timeslot)
-    (within-work-hours ?t - timeslot)
-    (proposed-diane ?t - timeslot)
-    (proposed-kelly ?t - timeslot)
-    (proposed-deborah ?t - timeslot)
-    (meeting-confirmed)
-    (meeting-at ?t - timeslot)
+    (free ?person - person ?slot - slot)
+    (meeting-scheduled ?slot - slot)
+    (attending ?person - person ?slot - slot)
   )
 
-  (:action diane-propose
-    :parameters (?t - timeslot)
-    :precondition (and
-      (free diane ?t)
-      (within-work-hours ?t)
-      (not (meeting-confirmed))
-    )
-    :effect (proposed-diane ?t)
-  )
-
-  (:action kelly-propose
-    :parameters (?t - timeslot)
-    :precondition (and
-      (free kelly ?t)
-      (within-work-hours ?t)
-      (not (meeting-confirmed))
-    )
-    :effect (proposed-kelly ?t)
-  )
-
-  (:action deborah-propose
-    :parameters (?t - timeslot)
-    :precondition (and
-      (free deborah ?t)
-      (within-work-hours ?t)
-      (not (meeting-confirmed))
-    )
-    :effect (proposed-deborah ?t)
-  )
-
-  (:action orchestrator-confirm
-    :parameters (?t - timeslot)
-    :precondition (and
-      (proposed-diane ?t)
-      (proposed-kelly ?t)
-      (proposed-deborah ?t)
-      (within-work-hours ?t)
-      (not (meeting-confirmed))
-    )
+  (:action diane-schedule
+    :parameters (?s - slot)
+    :precondition (and (free diane ?s) (free kelly ?s) (free deborah ?s))
     :effect (and
-      (meeting-confirmed)
-      (meeting-at ?t)
-      (not (free diane ?t))
-      (not (free kelly ?t))
-      (not (free deborah ?t))
+      (meeting-scheduled ?s)
+      (attending diane ?s)
+      (attending kelly ?s)
+      (attending deborah ?s)
+      (not (free diane ?s))
+      (not (free kelly ?s))
+      (not (free deborah ?s))
+    )
+  )
+
+  (:action kelly-schedule
+    :parameters (?s - slot)
+    :precondition (and (free diane ?s) (free kelly ?s) (free deborah ?s))
+    :effect (and
+      (meeting-scheduled ?s)
+      (attending diane ?s)
+      (attending kelly ?s)
+      (attending deborah ?s)
+      (not (free diane ?s))
+      (not (free kelly ?s))
+      (not (free deborah ?s))
+    )
+  )
+
+  (:action deborah-schedule
+    :parameters (?s - slot)
+    :precondition (and (free diane ?s) (free kelly ?s) (free deborah ?s))
+    :effect (and
+      (meeting-scheduled ?s)
+      (attending diane ?s)
+      (attending kelly ?s)
+      (attending deborah ?s)
+      (not (free diane ?s))
+      (not (free kelly ?s))
+      (not (free deborah ?s))
     )
   )
 )

@@ -1,48 +1,54 @@
-(define (problem orchestrated-schedule-30min-monday)
-  (:domain orchestrated-meeting)
+(define (problem schedule-meeting-monday)
+  (:domain multiagent-meeting)
 
   (:objects
-    brandon jerry bradley - participant
-
-    t09_00 t09_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30
-    t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 - time
+    brandon jerry bradley - person
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
   )
 
   (:init
-    ;; numeric cost initial
-    (= (total-cost) 0)
+    ;; Brandon's availability:
+    ;; Brandon has meetings on Monday 13:00-14:00 (blocks s1300 and s1330),
+    ;; 15:30-16:00 (blocks s1530), and 16:30-17:00 (blocks s1630).
+    ;; He prefers to avoid meetings before 14:30 (we encode preferred slots >= 14:30).
+    (available brandon s0900)
+    (available brandon s0930)
+    (available brandon s1000)
+    (available brandon s1030)
+    (available brandon s1100)
+    (available brandon s1130)
+    (available brandon s1200)
+    (available brandon s1230)
+    (available brandon s1400)
+    (available brandon s1430)
+    (available brandon s1500)
+    (available brandon s1600)
+    ;; Note: s1300, s1330, s1530, s1630 are not marked available (busy).
 
-    ;; Preferred times according to Brandon's stated preference (>= 14:30)
-    (preferred t14_30)
-    (preferred t15_00)
-    (preferred t15_30)
-    (preferred t16_00)
-    (preferred t16_30)
+    ;; Jerry's availability: no meetings on Monday => available all slots
+    (available jerry s0900) (available jerry s0930) (available jerry s1000) (available jerry s1030)
+    (available jerry s1100) (available jerry s1130) (available jerry s1200) (available jerry s1230)
+    (available jerry s1300) (available jerry s1330) (available jerry s1400) (available jerry s1430)
+    (available jerry s1500) (available jerry s1530) (available jerry s1600) (available jerry s1630)
 
-    ;; Jerry: all-day free (all agents agree Jerry has no known meetings)
-    (free jerry t09_00) (free jerry t09_30) (free jerry t10_00) (free jerry t10_30)
-    (free jerry t11_00) (free jerry t11_30) (free jerry t12_00) (free jerry t12_30)
-    (free jerry t13_00) (free jerry t13_30) (free jerry t14_00) (free jerry t14_30)
-    (free jerry t15_00) (free jerry t15_30) (free jerry t16_00) (free jerry t16_30)
+    ;; Bradley's availability:
+    ;; Bradley has meetings 09:00-11:30 (blocks s0900,s0930,s1000,s1030,s1100),
+    ;; 12:00-15:00 (blocks s1200,s1230,s1300,s1330,s1400,s1430), and 16:00-16:30 (blocks s1600).
+    ;; So Bradley is free at s1130, s1500, s1530, s1630.
+    (available bradley s1130)
+    (available bradley s1500)
+    (available bradley s1530)
+    (available bradley s1630)
 
-    ;; Brandon: use the more specific availability reported by the first agent
-    ;; (busy: 13:00-14:00 => blocks t13_00 and t13_30; busy: 15:30-16:00 => blocks t15_30;
-    ;; busy: 16:30-17:00 => blocks t16_30). All other listed slots are free per agent1.
-    (free brandon t09_00) (free brandon t09_30) (free brandon t10_00) (free brandon t10_30)
-    (free brandon t11_00) (free brandon t11_30) (free brandon t12_00) (free brandon t12_30)
-    (free brandon t14_00) (free brandon t14_30) (free brandon t15_00) (free brandon t16_00)
-
-    ;; Bradley: use the specific availability provided by the third agent (more detailed busy intervals).
-    ;; Bradley is free only at these slots according to that report:
-    (free bradley t11_30)
-    (free bradley t15_00)
-    (free bradley t15_30)
-    (free bradley t16_30)
+    ;; Brandon's preference encoded: prefer slots starting at or after 14:30
+    (preferred s1430)
+    (preferred s1500)
+    (preferred s1530)
+    (preferred s1600)
+    (preferred s1630)
   )
 
-  ;; Goal: schedule exactly one 30-minute meeting (one start slot) that all attend.
+  ;; Goal: a 30-minute meeting between 09:00 and 17:00 on Monday scheduled and attended by all.
+  ;; Because slots represent 30-minute start times between 09:00 and 16:30, scheduling any slot yields a 30-minute meeting.
   (:goal (meeting-scheduled))
-
-  ;; Minimize total cost to respect Brandon's time preferences.
-  (:metric minimize (total-cost))
 )

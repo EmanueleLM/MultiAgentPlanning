@@ -1,36 +1,45 @@
-(define (problem schedule-monday)
-  (:domain meeting-scheduling)
+(define (problem schedule-monday-meeting)
+  (:domain meeting-scheduling-multiagent)
+
   (:objects
     margaret donna helen - agent
-    slot-09_00 slot-09_30 slot-10_00 slot-10_30 slot-11_00 slot-11_30 slot-12_00 slot-12_30
-    slot-13_00 slot-13_30 slot-14_00 slot-14_30 slot-15_00 slot-15_30 slot-16_00 slot-16_30 - slot
+
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - slot
   )
 
   (:init
-    ;; Margaret busy blocks (private information)
-    (busy margaret slot-09_00)
-    (busy margaret slot-09_30)
-    (busy margaret slot-10_30)
-    (busy margaret slot-11_30)
-    (busy margaret slot-13_00)
-    (busy margaret slot-15_00)
+    (available margaret t1000)
+    (available margaret t1100)
+    (available margaret t1200)
+    (available margaret t1230)
+    (available margaret t1330)
+    (available margaret t1400)
+    (available margaret t1430)
+    (available margaret t1530)
+    (available margaret t1600)
+    (available margaret t1630)
 
-    ;; Donna busy blocks (private information)
-    (busy donna slot-14_30)
-    (busy donna slot-16_00)
+    (available donna t0900)
+    (available donna t0930)
+    (available donna t1000)
+    (available donna t1030)
+    (available donna t1100)
+    (available donna t1130)
+    (available donna t1200)
+    (available donna t1230)
+    (available donna t1300)
+    (available donna t1330)
+    (available donna t1400)
+    (available donna t1500)
+    (available donna t1530)
+    (available donna t1630)
 
-    ;; Helen busy blocks and hard preference "Do not meet on Monday after 13:30" (private information)
-    (busy helen slot-09_00)
-    (busy helen slot-10_00)
-    (busy helen slot-10_30)
-    (busy helen slot-11_00)
-    (busy helen slot-13_00)
-    (busy helen slot-13_30)
-    (busy helen slot-14_30)
-    (busy helen slot-15_30)
-    (busy helen slot-16_00)
-    (busy helen slot-16_30)
+    (available helen t0930)
+    (available helen t1130)
+    (available helen t1200)
+    (available helen t1230)
   )
 
-  (:goal (meeting_scheduled))
+  (:goal (meeting-scheduled))
 )

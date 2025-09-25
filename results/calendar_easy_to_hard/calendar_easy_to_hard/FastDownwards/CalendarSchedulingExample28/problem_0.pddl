@@ -1,85 +1,40 @@
-(define (problem schedule-meeting-integrated)
-  (:domain merged-meeting-scheduling)
-
+(define (problem schedule-meeting)
+  (:domain meeting-domain)
   (:objects
-    brittany emily doris - person
-    meet1 - meeting
-    slot-0900 slot-0930 slot-1000 slot-1030
-    slot-1100 slot-1130 slot-1200 slot-1230
-    slot-1300 slot-1330 slot-1400 slot-1430
-    slot-1500 slot-1530 slot-1600 slot-1630 - slot
+    brittany emily doris - agent
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
   )
-
   (:init
-    ;; identity/type facts
-    (person brittany) (person emily) (person doris)
-    (meeting meet1)
+    ;; meeting not yet scheduled
+    (unscheduled)
 
-    ;; declare slots and work hours (09:00-17:00; 30-minute granularity; last start 16:30)
-    (slot slot-0900) (slot slot-0930) (slot slot-1000) (slot slot-1030)
-    (slot slot-1100) (slot slot-1130) (slot slot-1200) (slot slot-1230)
-    (slot slot-1300) (slot slot-1330) (slot slot-1400) (slot slot-1430)
-    (slot slot-1500) (slot slot-1530) (slot slot-1600) (slot slot-1630)
+    ;; work hours (all 30-min slots between 09:00 and 17:00)
+    (work s09_00) (work s09_30) (work s10_00) (work s10_30)
+    (work s11_00) (work s11_30) (work s12_00) (work s12_30)
+    (work s13_00) (work s13_30) (work s14_00) (work s14_30)
+    (work s15_00) (work s15_30) (work s16_00) (work s16_30)
 
-    (work-slot slot-0900) (work-slot slot-0930) (work-slot slot-1000) (work-slot slot-1030)
-    (work-slot slot-1100) (work-slot slot-1130) (work-slot slot-1200) (work-slot slot-1230)
-    (work-slot slot-1300) (work-slot slot-1330) (work-slot slot-1400) (work-slot slot-1430)
-    (work-slot slot-1500) (work-slot slot-1530) (work-slot slot-1600) (work-slot slot-1630)
+    ;; Emily: free all day (all slots)
+    (free emily s09_00) (free emily s09_30) (free emily s10_00) (free emily s10_30)
+    (free emily s11_00) (free emily s11_30) (free emily s12_00) (free emily s12_30)
+    (free emily s13_00) (free emily s13_30) (free emily s14_00) (free emily s14_30)
+    (free emily s15_00) (free emily s15_30) (free emily s16_00) (free emily s16_30)
 
-    ;; Integrated availability information (merged conservatively across agents):
-    ;; - Emily: available all work slots (agents 1 & 2 said "all day").
-    ;; - Brittany: busy at 13:00 (slot-1300) and 16:00 (slot-1600) per agent1; available at other work slots.
-    ;; - Doris: agent3 provided explicit busy intervals resulting in availability only at slot-1100 and slot-1430.
-    ;; We therefore mark "available" and also set the "free" facts (used by agent2) consistently.
+    ;; Brittany: busy 13:00-13:30 and 16:00-16:30 -> not free at s13_00 and s16_00
+    ;; therefore free at all other slots
+    (free brittany s09_00) (free brittany s09_30) (free brittany s10_00) (free brittany s10_30)
+    (free brittany s11_00) (free brittany s11_30) (free brittany s12_00) (free brittany s12_30)
+    (free brittany s13_30) (free brittany s14_00) (free brittany s14_30)
+    (free brittany s15_00) (free brittany s15_30) (free brittany s16_30)
 
-    ;; Emily available/free all slots
-    (available emily slot-0900) (free emily slot-0900)
-    (available emily slot-0930) (free emily slot-0930)
-    (available emily slot-1000) (free emily slot-1000)
-    (available emily slot-1030) (free emily slot-1030)
-    (available emily slot-1100) (free emily slot-1100)
-    (available emily slot-1130) (free emily slot-1130)
-    (available emily slot-1200) (free emily slot-1200)
-    (available emily slot-1230) (free emily slot-1230)
-    (available emily slot-1300) (free emily slot-1300)
-    (available emily slot-1330) (free emily slot-1330)
-    (available emily slot-1400) (free emily slot-1400)
-    (available emily slot-1430) (free emily slot-1430)
-    (available emily slot-1500) (free emily slot-1500)
-    (available emily slot-1530) (free emily slot-1530)
-    (available emily slot-1600) (free emily slot-1600)
-    (available emily slot-1630) (free emily slot-1630)
-
-    ;; Brittany: available at all work slots except 13:00 (slot-1300) and 16:00 (slot-1600)
-    (available brittany slot-0900) (free brittany slot-0900)
-    (available brittany slot-0930) (free brittany slot-0930)
-    (available brittany slot-1000) (free brittany slot-1000)
-    (available brittany slot-1030) (free brittany slot-1030)
-    (available brittany slot-1100) (free brittany slot-1100)
-    (available brittany slot-1130) (free brittany slot-1130)
-    (available brittany slot-1200) (free brittany slot-1200)
-    (available brittany slot-1230) (free brittany slot-1230)
-    ;; (available brittany slot-1300)  ;; busy per agent1 => do not mark available/free
-    (available brittany slot-1330) (free brittany slot-1330)
-    (available brittany slot-1400) (free brittany slot-1400)
-    (available brittany slot-1430) (free brittany slot-1430)
-    (available brittany slot-1500) (free brittany slot-1500)
-    (available brittany slot-1530) (free brittany slot-1530)
-    ;; (available brittany slot-1600)  ;; busy per agent1 => do not mark available/free
-    (available brittany slot-1630) (free brittany slot-1630)
-
-    ;; Doris: according to agent3's busy intervals, Doris is available only at 11:00 and 14:30
-    (available doris slot-1100) (free doris slot-1100)
-    (available doris slot-1430) (free doris slot-1430)
-    ;; other slots for Doris are intentionally NOT marked available/free (treated as busy)
-
-    ;; No slots are booked initially
-    ;; (booked ...) none asserted
+    ;; Doris: busy 09:00-11:00, 11:30-14:30, 15:00-17:00
+    ;; => free only at s11_00 and s14_30 within work hours
+    (free doris s11_00)
+    (free doris s14_30)
   )
 
-  ;; Goal: schedule the 30-minute meeting for Brittany, Emily and Doris at the earliest possible time
-  ;; given the integrated knowledge. With Doris restricted to 11:00 and 14:30 and Brittany busy at 13:00/16:00,
-  ;; the earliest common slot is 11:00 (slot-1100). Agent3's scheduling action produces scheduled-at for meet1,
-  ;; so the goal asks that the meeting is scheduled-at slot-1100.
-  (:goal (and (scheduled-at meet1 slot-1100)))
+  ;; Goal: schedule the 30-minute meeting at the earliest possible time.
+  ;; Given the agents' availabilities above, the earliest slot when all are free is s11_00.
+  (:goal (meeting-at s11_00))
 )

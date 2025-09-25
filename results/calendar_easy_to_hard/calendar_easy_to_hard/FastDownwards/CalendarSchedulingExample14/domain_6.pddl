@@ -1,31 +1,66 @@
-(define (domain meeting-scheduling)
+(define (domain multiagent-meeting)
   (:requirements :typing :strips :negative-preconditions)
-  (:types participant time)
-
-  (:constants karen brandon donald kelly - participant)
+  (:types person slot)
 
   (:predicates
-    (free ?p - participant ?t - time)
+    (available ?p - person ?s - slot)
+    (preferred ?s - slot)
+    (scheduled ?s - slot)
+    (attends ?p - person ?s - slot)
     (meeting-scheduled)
-    (scheduled-at ?t - time)
   )
 
-  (:action schedule-meeting
-    :parameters (?t - time)
+  (:action brandon-schedule
+    :parameters (?s - slot)
     :precondition (and
-                    (not (meeting-scheduled))
-                    (free karen ?t)
-                    (free brandon ?t)
-                    (free donald ?t)
-                    (free kelly ?t)
-                  )
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
     :effect (and
-              (meeting-scheduled)
-              (scheduled-at ?t)
-              (not (free karen ?t))
-              (not (free brandon ?t))
-              (not (free donald ?t))
-              (not (free kelly ?t))
-            )
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
+  )
+
+  (:action jerry-schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
+  )
+
+  (:action bradley-schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (available brandon ?s)
+      (available jerry ?s)
+      (available bradley ?s)
+      (preferred ?s)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (scheduled ?s)
+      (attends brandon ?s)
+      (attends jerry ?s)
+      (attends bradley ?s)
+      (meeting-scheduled)
+    )
   )
 )

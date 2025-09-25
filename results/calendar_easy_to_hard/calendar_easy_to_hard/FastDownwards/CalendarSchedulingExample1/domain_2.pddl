@@ -1,41 +1,54 @@
-(define (domain meeting-domain)
-  (:requirements :strips :typing :negative-preconditions :disjunctive-preconditions)
+(define (domain multi-agent-meeting)
+  (:requirements :strips :typing :negative-preconditions)
   (:types agent slot)
-  (:constants raymond billy donald - agent)
 
   (:predicates
     (available ?a - agent ?s - slot)
     (preferred ?a - agent ?s - slot)
-    (work-slot ?s - slot)
-    (chosen ?a - agent ?s - slot)
-    (scheduled ?s - slot)
     (attending ?a - agent ?s - slot)
+    (meeting-scheduled ?s - slot)
+    (in-work-hours ?s - slot)
   )
 
-  (:action choose-raymond
+  (:action attend-raymond-preferred
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available raymond ?s) (not (chosen raymond ?s)))
-    :effect (chosen raymond ?s)
+    :precondition (and (available raymond ?s) (preferred raymond ?s) (in-work-hours ?s) (not (attending raymond ?s)))
+    :effect (and (attending raymond ?s))
   )
 
-  (:action choose-billy
+  (:action attend-raymond
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available billy ?s) (not (chosen billy ?s)))
-    :effect (chosen billy ?s)
+    :precondition (and (available raymond ?s) (in-work-hours ?s) (not (preferred raymond ?s)) (not (attending raymond ?s)))
+    :effect (and (attending raymond ?s))
   )
 
-  (:action choose-donald
+  (:action attend-billy-preferred
     :parameters (?s - slot)
-    :precondition (and (work-slot ?s) (available donald ?s) (not (chosen donald ?s)))
-    :effect (chosen donald ?s)
+    :precondition (and (available billy ?s) (preferred billy ?s) (in-work-hours ?s) (not (attending billy ?s)))
+    :effect (and (attending billy ?s))
+  )
+
+  (:action attend-billy
+    :parameters (?s - slot)
+    :precondition (and (available billy ?s) (in-work-hours ?s) (not (preferred billy ?s)) (not (attending billy ?s)))
+    :effect (and (attending billy ?s))
+  )
+
+  (:action attend-donald-preferred
+    :parameters (?s - slot)
+    :precondition (and (available donald ?s) (preferred donald ?s) (in-work-hours ?s) (not (attending donald ?s)))
+    :effect (and (attending donald ?s))
+  )
+
+  (:action attend-donald
+    :parameters (?s - slot)
+    :precondition (and (available donald ?s) (in-work-hours ?s) (not (preferred donald ?s)) (not (attending donald ?s)))
+    :effect (and (attending donald ?s))
   )
 
   (:action finalize-meeting
     :parameters (?s - slot)
-    :precondition (and (chosen raymond ?s) (chosen billy ?s) (chosen donald ?s) (not (scheduled ?s)))
-    :effect (and (scheduled ?s)
-                 (attending raymond ?s)
-                 (attending billy ?s)
-                 (attending donald ?s))
+    :precondition (and (attending raymond ?s) (attending billy ?s) (attending donald ?s) (not (meeting-scheduled ?s)))
+    :effect (and (meeting-scheduled ?s))
   )
 )

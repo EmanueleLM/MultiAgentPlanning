@@ -1,71 +1,30 @@
-(define (problem schedule-meeting-integrated-monday)
-  (:domain meeting-scheduling-integrated)
-
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
   (:objects
     thomas dylan jerry - person
-    t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30
-    t_12_00 t_12_30 t_13_00 t_13_30 t_14_00 t_14_30
-    t_15_00 t_15_30 t_16_00 - timeslot
-    monday - day
+    s9_00 s9_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30 s13_00
+    s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 - slot
   )
-
   (:init
-    (participant thomas) (participant dylan) (participant jerry)
+    (next s9_00 s9_30) (next s9_30 s10_00) (next s10_00 s10_30)
+    (next s10_30 s11_00) (next s11_00 s11_30) (next s11_30 s12_00)
+    (next s12_00 s12_30) (next s12_30 s13_00) (next s13_00 s13_30)
+    (next s13_30 s14_00) (next s14_00 s14_30) (next s14_30 s15_00)
+    (next s15_00 s15_30) (next s15_30 s16_00)
 
-    (is-day monday)
+    (available thomas s9_00) (available thomas s9_30) (available thomas s10_00)
+    (available thomas s10_30) (available thomas s11_00) (available thomas s11_30)
+    (available thomas s12_00) (available thomas s12_30) (available thomas s13_00)
+    (available thomas s13_30) (available thomas s14_00) (available thomas s14_30)
+    (available thomas s15_00) (available thomas s15_30) (available thomas s16_00)
 
-    (is-timeslot t_09_00) (is-timeslot t_09_30) (is-timeslot t_10_00) (is-timeslot t_10_30)
-    (is-timeslot t_11_00) (is-timeslot t_11_30) (is-timeslot t_12_00) (is-timeslot t_12_30)
-    (is-timeslot t_13_00) (is-timeslot t_13_30) (is-timeslot t_14_00) (is-timeslot t_14_30)
-    (is-timeslot t_15_00) (is-timeslot t_15_30) (is-timeslot t_16_00)
+    (available dylan s9_00) (available dylan s9_30) (available dylan s10_00)
+    (available dylan s11_00) (available dylan s11_30) (available dylan s12_00)
+    (available dylan s12_30) (available dylan s13_00) (available dylan s14_00)
+    (available dylan s14_30) (available dylan s15_00) (available dylan s15_30)
+    (available dylan s16_00)
 
-    (on-day t_09_00 monday) (on-day t_09_30 monday) (on-day t_10_00 monday) (on-day t_10_30 monday)
-    (on-day t_11_00 monday) (on-day t_11_30 monday) (on-day t_12_00 monday) (on-day t_12_30 monday)
-    (on-day t_13_00 monday) (on-day t_13_30 monday) (on-day t_14_00 monday) (on-day t_14_30 monday)
-    (on-day t_15_00 monday) (on-day t_15_30 monday) (on-day t_16_00 monday)
-
-    (within-workhours t_09_00) (within-workhours t_09_30) (within-workhours t_10_00) (within-workhours t_10_30)
-    (within-workhours t_11_00) (within-workhours t_11_30) (within-workhours t_12_00) (within-workhours t_12_30)
-    (within-workhours t_13_00) (within-workhours t_13_30) (within-workhours t_14_00) (within-workhours t_14_30)
-    (within-workhours t_15_00) (within-workhours t_15_30) (within-workhours t_16_00)
-
-    (startable t_09_00) (startable t_09_30) (startable t_10_00) (startable t_10_30)
-    (startable t_11_00) (startable t_11_30) (startable t_12_00) (startable t_12_30)
-    (startable t_13_00) (startable t_13_30) (startable t_14_00) (startable t_14_30)
-    (startable t_15_00) (startable t_15_30) (startable t_16_00)
-
-    (unscheduled)
-    (meeting-unscheduled)
-
-    (available thomas t_09_00) (available thomas t_09_30) (available thomas t_10_00) (available thomas t_10_30)
-    (available thomas t_11_00) (available thomas t_11_30) (available thomas t_12_00) (available thomas t_12_30)
-    (available thomas t_13_00) (available thomas t_13_30) (available thomas t_14_00) (available thomas t_14_30)
-    (available thomas t_15_00) (available thomas t_15_30) (available thomas t_16_00)
-
-    (free thomas t_09_00) (free thomas t_09_30) (free thomas t_10_00) (free thomas t_10_30)
-    (free thomas t_11_00) (free thomas t_11_30) (free thomas t_12_00) (free thomas t_12_30)
-    (free thomas t_13_00) (free thomas t_13_30) (free thomas t_14_00) (free thomas t_14_30)
-    (free thomas t_15_00) (free thomas t_15_30) (free thomas t_16_00)
-
-    (available dylan t_09_00) (available dylan t_09_30)
-    (available dylan t_11_00) (available dylan t_11_30)
-    (available dylan t_12_00) (available dylan t_12_30)
-    (available dylan t_14_00) (available dylan t_14_30)
-    (available dylan t_15_00) (available dylan t_15_30)
-    (available dylan t_16_00)
-
-    (free dylan t_09_00) (free dylan t_09_30)
-    (free dylan t_11_00) (free dylan t_11_30)
-    (free dylan t_12_00) (free dylan t_12_30)
-    (free dylan t_14_00) (free dylan t_14_30)
-    (free dylan t_15_00) (free dylan t_15_30)
-    (free dylan t_16_00)
-
-    (available jerry t_14_30) (available jerry t_15_00)
-    (free jerry t_14_30) (free jerry t_15_00)
-
-    (feasible-for-all t_14_30)
+    (available jerry s11_00) (available jerry s14_30) (available jerry s15_00) (available jerry s15_30)
   )
-
-  (:goal (meeting-scheduled t_14_30))
+  (:goal (meeting-scheduled))
 )

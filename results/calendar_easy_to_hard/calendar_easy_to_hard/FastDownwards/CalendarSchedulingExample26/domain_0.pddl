@@ -1,82 +1,56 @@
-(define (domain meeting-scheduling-integrated)
-  (:requirements :strips :typing)
-  (:types meeting slot person)
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent slot)
 
   (:predicates
-    ;; Common/time predicates
-    (slot ?s - slot)
-    (next ?s1 - slot ?s2 - slot)            ; s2 follows s1 (consecutive 30-min slots)
-    (within-work-hours ?s - slot)           ; slot is within allowed work hours
-    (start-allowed ?s - slot)               ; a start slot allowed by a participant's private calendar
-
-    ;; Availability per person (each agent uses the free predicate)
-    (free ?p - person ?s - slot)            ; person is free at slot
-
-    ;; Per-agent unscheduled flags (used instead of negative preconditions)
-    (unscheduled_a1 ?m - meeting)
-    (unscheduled_a2 ?m - meeting)
-    (unscheduled_a3 ?m - meeting)
-
-    ;; Per-agent scheduling outcomes so we can map which agent scheduled the meeting and the chosen slot
-    (scheduled_a1 ?m - meeting)             ; agent1 (Katherine) has scheduled meeting (declarative flag)
-    (meeting_at_a1 ?m - meeting ?s - slot)  ; agent1 records meeting start slot
-    (scheduled_a2 ?m - meeting ?s - slot)   ; agent2 (Nicole) records meeting start slot
-    (meeting_scheduled_a2)                  ; agent2's boolean flag (keeps original agent2 flavor)
-    (scheduled_a3 ?m - meeting ?s - slot)   ; agent3 (Kevin) records meeting start slot
+    (free ?a - agent ?s - slot)
+    (reserved-katherine ?s1 - slot ?s2 - slot)
+    (reserved-nicole ?s1 - slot ?s2 - slot)
+    (reserved-kevin ?s1 - slot ?s2 - slot)
+    (succ ?s1 - slot ?s2 - slot)
+    (meeting-scheduled ?s1 - slot ?s2 - slot)
   )
 
-  ;; Action from agent 1 (based on the first agent's description)
-  (:action schedule_a1
-    :parameters (?m - meeting ?p - person ?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled_a1 ?m)
-      (next ?s ?s2)
-      (free ?p ?s)
-      (free ?p ?s2)
-    )
+  ;; Katherine makes a reservation for two consecutive slots
+  (:action reserve-katherine
+    :parameters (?s1 - slot ?s2 - slot)
+    :precondition (and (succ ?s1 ?s2) (free katherine ?s1) (free katherine ?s2))
     :effect (and
-      (scheduled_a1 ?m)
-      (meeting_at_a1 ?m ?s)
-      (not (unscheduled_a1 ?m))
-      (not (free ?p ?s))
-      (not (free ?p ?s2))
+      (reserved-katherine ?s1 ?s2)
+      (not (free katherine ?s1))
+      (not (free katherine ?s2))
     )
   )
 
-  ;; Action from agent 2 (based on the second agent's description)
-  (:action schedule_a2
-    :parameters (?m - meeting ?p - person ?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled_a2 ?m)
-      (free ?p ?s)
-      (free ?p ?s2)
-      (next ?s ?s2)
-      (within-work-hours ?s)
-      (within-work-hours ?s2)
-    )
+  ;; Nicole makes a reservation for two consecutive slots
+  (:action reserve-nicole
+    :parameters (?s1 - slot ?s2 - slot)
+    :precondition (and (succ ?s1 ?s2) (free nicole ?s1) (free nicole ?s2))
     :effect (and
-      (meeting_scheduled_a2)
-      (scheduled_a2 ?m ?s)
-      (not (unscheduled_a2 ?m))
-      (not (free ?p ?s))
-      (not (free ?p ?s2))
+      (reserved-nicole ?s1 ?s2)
+      (not (free nicole ?s1))
+      (not (free nicole ?s2))
     )
   )
 
-  ;; Action from agent 3 (based on the third agent's description)
-  (:action schedule_a3
-    :parameters (?m - meeting ?s - slot ?s2 - slot)
-    :precondition (and
-      (unscheduled_a3 ?m)
-      (slot ?s)
-      (slot ?s2)
-      (next ?s ?s2)
-      (start-allowed ?s)
-    )
+  ;; Kevin makes a reservation for two consecutive slots
+  (:action reserve-kevin
+    :parameters (?s1 - slot ?s2 - slot)
+    :precondition (and (succ ?s1 ?s2) (free kevin ?s1) (free kevin ?s2))
     :effect (and
-      (scheduled_a3 ?m ?s)
-      (not (unscheduled_a3 ?m))
-      (not (start-allowed ?s))
+      (reserved-kevin ?s1 ?s2)
+      (not (free kevin ?s1))
+      (not (free kevin ?s2))
     )
+  )
+
+  ;; Confirm meeting once all participants reserved the same consecutive pair
+  (:action confirm-meeting
+    :parameters (?s1 - slot ?s2 - slot)
+    :precondition (and (reserved-katherine ?s1 ?s2)
+                       (reserved-nicole ?s1 ?s2)
+                       (reserved-kevin ?s1 ?s2)
+                       (not (meeting-scheduled ?s1 ?s2)))
+    :effect (and (meeting-scheduled ?s1 ?s2))
   )
 )

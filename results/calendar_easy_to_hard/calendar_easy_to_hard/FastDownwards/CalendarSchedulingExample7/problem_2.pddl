@@ -1,45 +1,24 @@
-(define (problem schedule-integrated-monday)
-  (:domain integrated-meeting-scheduler)
-
+(define (problem schedule-meeting-monday)
+  (:domain schedule-meeting)
   (:objects
-    meeting1 - meeting
-    slot-09-00 slot-09-30 slot-10-00 slot-10-30
-    slot-11-00 slot-11-30 slot-12-00 slot-12-30
-    slot-13-00 slot-13-30 slot-14-00 slot-14-30
-    slot-15-00 slot-15-30 slot-16-00 slot-16-30 - slot
+    heather nicholas zachary - person
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
   )
-
   (:init
-    ;; Heather availability (blocked: 09:00,10:30,13:00-13:30,14:30,16:00)
-    (available heather slot-09-30)
-    (available heather slot-10-00)
-    (available heather slot-11-00)
-    (available heather slot-11-30)
-    (available heather slot-12-00)
-    (available heather slot-12-30)
-    (available heather slot-14-00)
-    (available heather slot-15-00)
-    (available heather slot-15-30)
-    (available heather slot-16-30)
-
-    ;; Nicholas has no meetings the whole day
-    (available nicholas slot-09-00) (available nicholas slot-09-30)
-    (available nicholas slot-10-00) (available nicholas slot-10-30)
-    (available nicholas slot-11-00) (available nicholas slot-11-30)
-    (available nicholas slot-12-00) (available nicholas slot-12-30)
-    (available nicholas slot-13-00) (available nicholas slot-13-30)
-    (available nicholas slot-14-00) (available nicholas slot-14-30)
-    (available nicholas slot-15-00) (available nicholas slot-15-30)
-    (available nicholas slot-16-00) (available nicholas slot-16-30)
-
-    ;; Zachary availability based on blocked intervals (preference: avoid after 14:00 -> treated as unavailable after 14:00)
-    ;; Blocked intervals: 09:00-10:30 (blocks 09:00,09:30,10:00), 11:00-12:00 (blocks 11:00,11:30),
-    ;; 12:30-13:00 (blocks 12:30), 13:30-16:30 (blocks 13:30,14:00,14:30,15:00,15:30,16:00)
-    ;; Available starts that do not overlap blocked times and respecting preference: 10:30,12:00,13:00
-    (available zachary slot-10-30)
-    (available zachary slot-12-00)
-    (available zachary slot-13-00)
+    (meeting-unscheduled)
+    (free nicholas s09_00) (free nicholas s09_30) (free nicholas s10_00) (free nicholas s10_30)
+    (free nicholas s11_00) (free nicholas s11_30) (free nicholas s12_00) (free nicholas s12_30)
+    (free nicholas s13_00) (free nicholas s13_30) (free nicholas s14_00) (free nicholas s14_30)
+    (free nicholas s15_00) (free nicholas s15_30) (free nicholas s16_00) (free nicholas s16_30)
+    (free heather s09_30) (free heather s10_00)
+    (free heather s11_00) (free heather s11_30)
+    (free heather s12_00) (free heather s12_30)
+    (free heather s13_30) (free heather s14_00)
+    (free heather s15_00) (free heather s15_30)
+    (free heather s16_30)
+    (free zachary s10_30) (free zachary s12_00) (free zachary s13_00) (free zachary s16_30)
+    (preferred s10_30) (preferred s12_00) (preferred s13_00)
   )
-
-  (:goal (meeting-scheduled meeting1))
+  (:goal (meeting-scheduled))
 )

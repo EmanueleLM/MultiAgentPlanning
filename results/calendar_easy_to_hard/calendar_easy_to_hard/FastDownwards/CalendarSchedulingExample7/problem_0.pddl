@@ -1,55 +1,46 @@
-(define (problem schedule-integrated-monday)
-  (:domain integrated-meeting-scheduler)
-
+(define (problem schedule-meeting-monday)
+  (:domain schedule-meeting)
   (:objects
-    meeting1 - meeting
     heather nicholas zachary - person
-    slot-09-00 slot-09-30 slot-10-00 slot-10-30
-    slot-11-00 slot-11-30 slot-12-00 slot-12-30
-    slot-13-00 slot-13-30 slot-14-00 slot-14-30
-    slot-15-00 slot-15-30 slot-16-00 slot-16-30 - slot
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
   )
 
+  ;; Initial state: meeting not yet scheduled, and per-person free/blocked slots.
+  ;; Work hours: slots defined from 09:00 start to 16:30 start (30-min slots).
+  ;; Heather private blocks: 09:00, 10:30, 13:00, 14:30, 16:00
+  ;; Zachary private blocks: 09:00-10:30 (blocks 09:00,09:30,10:00),
+  ;;                         11:00-12:00 (11:00,11:30),
+  ;;                         12:30-13:00 (12:30),
+  ;;                         13:30-16:30 (13:30,14:00,14:30,15:00,15:30,16:00)
+  ;; Zachary preference: would rather not meet after 14:00 (marked as preferred slots before/at 14:00 when offered)
   (:init
-    ;; Declare persons and slots
-    (person heather) (person nicholas) (person zachary)
+    (meeting-unscheduled)
 
-    (slot slot-09-00) (slot slot-09-30) (slot slot-10-00) (slot slot-10-30)
-    (slot slot-11-00) (slot slot-11-30) (slot slot-12-00) (slot slot-12-30)
-    (slot slot-13-00) (slot slot-13-30) (slot slot-14-00) (slot slot-14-30)
-    (slot slot-15-00) (slot slot-15-30) (slot slot-16-00) (slot slot-16-30)
+    ;; Nicholas: (no private blocks provided) free all slots
+    (free nicholas s09_00) (free nicholas s09_30) (free nicholas s10_00) (free nicholas s10_30)
+    (free nicholas s11_00) (free nicholas s11_30) (free nicholas s12_00) (free nicholas s12_30)
+    (free nicholas s13_00) (free nicholas s13_30) (free nicholas s14_00) (free nicholas s14_30)
+    (free nicholas s15_00) (free nicholas s15_30) (free nicholas s16_00) (free nicholas s16_30)
 
-    ;; Heather's availability (from Heather's input, converted to unified slot names)
-    (available heather slot-09-30)
-    (available heather slot-10-00)
-    (available heather slot-11-00)
-    (available heather slot-11-30)
-    (available heather slot-12-00)
-    (available heather slot-12-30)
-    (available heather slot-14-00)
-    (available heather slot-15-00)
-    (available heather slot-15-30)
-    (available heather slot-16-30)
+    ;; Heather: free except blocked at 09:00, 10:30, 13:00, 14:30, 16:00
+    (free heather s09_30) (free heather s10_00)
+    (free heather s11_00) (free heather s11_30)
+    (free heather s12_00) (free heather s12_30)
+    (free heather s13_30) (free heather s14_00)
+    (free heather s15_00) (free heather s15_30)
+    (free heather s16_30)
 
-    ;; Nicholas's availability: per Nicholas's input, all work-hour slots are available.
-    (available nicholas slot-09-00) (available nicholas slot-09-30)
-    (available nicholas slot-10-00) (available nicholas slot-10-30)
-    (available nicholas slot-11-00) (available nicholas slot-11-30)
-    (available nicholas slot-12-00) (available nicholas slot-12-30)
-    (available nicholas slot-13-00) (available nicholas slot-13-30)
-    (available nicholas slot-14-00) (available nicholas slot-14-30)
-    (available nicholas slot-15-00) (available nicholas slot-15-30)
-    (available nicholas slot-16-00) (available nicholas slot-16-30)
+    ;; Zachary: free slots computed from his blocked ranges:
+    ;; Free: s10_30, s12_00, s13_00, s16_30
+    (free zachary s10_30) (free zachary s12_00) (free zachary s13_00) (free zachary s16_30)
 
-    ;; Zachary's known availability (converted from Zachary's s-notation to unified slot names).
-    ;; Zachary's free slots from his input: s3 -> slot-10-30, s6 -> slot-12-00, s8 -> slot-13-00, s15 -> slot-16-30
-    (available zachary slot-10-30)
-    (available zachary slot-12-00)
-    (available zachary slot-13-00)
-    (available zachary slot-16-30)
+    ;; Mark preferred slots (Zachary's preference "would rather not meet after 14:00").
+    ;; These preferred marks are informational (planner may use them if preferences supported).
+    (preferred s10_30) (preferred s12_00) (preferred s13_00)
   )
 
-  ;; Goal: schedule meeting1 (a single 30-minute meeting involving Heather, Nicholas and Zachary
-  ;; must be produced by one of the agent-specific schedule actions).
-  (:goal (meeting-scheduled meeting1))
+  ;; Goal: a meeting has been scheduled (at some slot). The three distinct schedule actions
+  ;; will enforce that the chosen slot is free for all participants.
+  (:goal (meeting-scheduled))
 )

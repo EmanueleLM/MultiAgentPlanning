@@ -1,0 +1,52 @@
+(define (domain multi-agent-meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent time)
+  (:constants michelle steven jerry - agent)
+  (:predicates
+    (busy ?a - agent ?t - time)
+    (confirmed ?a - agent ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (meeting-finalized ?t - time)
+  )
+  (:action confirm-michelle
+    :parameters (?t ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (not (busy michelle ?t))
+      (not (busy michelle ?t2))
+      (not (confirmed michelle ?t))
+    )
+    :effect (confirmed michelle ?t)
+  )
+  (:action confirm-steven
+    :parameters (?t ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (not (busy steven ?t))
+      (not (busy steven ?t2))
+      (not (confirmed steven ?t))
+    )
+    :effect (confirmed steven ?t)
+  )
+  (:action confirm-jerry
+    :parameters (?t ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (not (busy jerry ?t))
+      (not (busy jerry ?t2))
+      (not (confirmed jerry ?t))
+    )
+    :effect (confirmed jerry ?t)
+  )
+  (:action finalize-meeting
+    :parameters (?t ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (confirmed michelle ?t)
+      (confirmed steven ?t)
+      (confirmed jerry ?t)
+      (not (meeting-finalized ?t))
+    )
+    :effect (meeting-finalized ?t)
+  )
+)

@@ -205,7 +205,7 @@ if __name__ == "__main__":
         # Generate the first representation
         planner = Planner()
         plan_path = Path(f"{environment_name}.{format}")
-        full_path = ENVIRONMENTS_JSON_PATH / plan_path
+        full_path = ENVIRONMENTS_JSON_PATH / problem_name / plan_path
 
         # Skip if the plan already exists
         if not full_path.exists():
@@ -221,7 +221,7 @@ if __name__ == "__main__":
             print("[Warning]: The prompt `specific` will be ignored!")
 
         # Load the environment
-        env = Environment(f"./environments/static/{environment_name}.json")
+        env = Environment(plan_path)
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 

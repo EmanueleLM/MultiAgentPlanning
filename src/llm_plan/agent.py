@@ -100,7 +100,8 @@ class AgentHallucinations(Agent):
             You are a meticulous multi-agent planning engineer. You specialize in eliminating hallucinations
             from PDDL domains and problems by checking every predicate, object, and goal against the ground
             specification. Preserve valid constructs, repair or remove unsupported ones, and keep the
-            syntax compliant with classical PDDL.
+            syntax compliant with classical PDDL. Always encode stated busy intervals and preferences
+            (e.g., "avoid", "would rather not", "earliest") as hard constraints in the resulting PDDL.
             """
         )
 
@@ -128,7 +129,8 @@ class AgentHallucinations(Agent):
             Remove predicates, actions, objects, or goals that are not grounded in the specifications.
             Align action preconditions and effects, object declarations, the initial state, and the goal facts
             with the provided specifications. Preserve the multi-agent structure and solver compatibility.
-            When uncertain, prefer conservative edits instead of introducing new abstractions.
+            Explicitly encode availability and preference constraints so that disallowed time windows cannot be
+            selected. When uncertain, prefer conservative edits instead of introducing new abstractions.
 
             Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
             <problem></problem>. Output only raw PDDL code inside the tags.
@@ -185,7 +187,9 @@ class AgentDeepThinkPDDL(Agent):
             """\
             You are an expert Planning Domain Definition Language (PDDL) programmer.
             You analyze the provided domain, problem, and plan against the human specification, identify every
-            inconsistency, and return corrected PDDL artifacts that satisfy the goal.
+            inconsistency, and return corrected PDDL artifacts that satisfy the goal. Treat all stated busy
+            intervals and temporal preferences as hard constraints and ensure only feasible time windows remain
+            selectable.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -207,7 +211,7 @@ class AgentDeepThinkPDDL(Agent):
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the human specification.
                                       - The PDDL problem reflects the particular instance of the specification.
-                                      - The PDDL plan satisfies the goal and the constraints of the human specification. Be careful: the plan may be wrong.
+                                      - The PDDL plan satisfies the goal and the constraints of the human specification, including every availability or temporal preference mentioned. Be careful: the plan may be wrong.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                                       Return only raw PDDL code inside the tags; do not add comments or extra characters.
@@ -269,8 +273,8 @@ class AgentDeepThinkConstraints(Agent):
             """\
             You are an expert Planning Domain Definition Language (PDDL) programmer.
             Analyze the PDDL domain and problem against the natural-language and JSON specifications.
-            Focus on whether each agent's constraints are correctly captured as PDDL formulae, particularly when
-            they rely on private information.
+            Focus on whether each agent's constraints are correctly captured as PDDL formulae, especially
+            calendar availability, meeting durations, and any natural-language preferences that must be enforced.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -291,7 +295,7 @@ class AgentDeepThinkConstraints(Agent):
                                       
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the goals described in the human and JSON specifications. Always consider the human specification as the ground truth.
-                                      - The PDDL problem correctly enumerates and expresses every constraint in the specification. Pay close attention to missing or underspecified constraints.
+                                      - The PDDL problem correctly enumerates and expresses every constraint in the specification, including preferences that restrict certain times. Pay close attention to missing or underspecified constraints.
                                       - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -354,6 +358,8 @@ class AgentEnforceMultiAgency(Agent):
             """\
             You are an expert Planning Domain Definition Language (PDDL) programmer.
             Ensure that the PDDL domain and problem correctly represent each agent's actions as distinct entities.
+            Encode every stated constraint or preference as a structural restriction so that no agent executes
+            an action that violates availability or timing requirements.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -439,6 +445,7 @@ class AgentFastDownwardsAdapter(Agent):
             You are an agent that adapts PDDL domains and problems for the Fast Downward planner.
             Convert numeric, temporal, or durative features into classical STRIPS/ADL-style constructs so the
             solver can operate on the domain while preserving as much of the original semantics as possible.
+            Never relax calendar availability, duration requirements, or stated preferences when adapting.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -513,7 +520,8 @@ class AgentSyntaxPDDL(Agent):
             """\
             You are an agent that evaluates each step of a plan.
             Analyze the provided plan against the human specification and identify every inconsistency with the
-            PDDL syntax expected by the *{target_solver}* planner.
+            PDDL syntax expected by the *{target_solver}* planner. Confirm that availability and preference
+            constraints remain encoded correctly after your edits.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -533,6 +541,7 @@ class AgentSyntaxPDDL(Agent):
                                       <errors>{syntax_errors}</errors>
                                       
                                       Fix any errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by the *{target_solver}* planner.
+                                      Ensure that no constraint (availability, duration, preference) is lost during the fix.
                                       If anything does not satisfy the specification, return a corrected version of the PDDL domain and problem; otherwise, return the originals.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -599,7 +608,8 @@ class AgentAsynchronicity(Agent):
             You are an agent that optimizes plans for asynchronicity.
             Analyze the provided plan against the human specification and introduce a timestamp variable that
             marks when each agent performs an action. Use it to schedule independent actions concurrently while
-            keeping compatibility with the *{target_solver}* planner.
+            keeping compatibility with the *{target_solver}* planner. Do not violate any availability or
+            preference constraint while reshaping the schedule.
             You may think through the problem in as many steps as needed.
             """
         )
@@ -620,7 +630,7 @@ class AgentAsynchronicity(Agent):
                                       <errors>{syntax_errors}</errors>
                                       
                                       Introduce or refine a `timestamp` variable that indicates when each agent performs an action so that compatible actions can execute concurrently when possible.
-                                      Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner.
+                                      Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner and that all availability and preference constraints remain satisfied.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                                       Return only raw PDDL code inside the tags; do not add comments or extra characters.

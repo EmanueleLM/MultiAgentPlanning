@@ -185,11 +185,17 @@ class Planner:
         if goal:
             lines.append(f"Goal: {goal}")
 
-        private_info = agent_data.get("private_information")
+        private_info = agent_data.get("private_information") or []
         if private_info:
-            lines.append("Private information:")
+            lines.append("Private constraints and preferences (treat as hard constraints):")
             for item in private_info:
-                lines.append(f"- {item}")
+                emphasis = item
+                lowered = item.lower()
+                if any(keyword in lowered for keyword in ["avoid", "prefer", "rather not", "no meeting", "must not"]):
+                    emphasis = f"[PREFERENCE→HARD] {item}"
+                elif any(keyword in lowered for keyword in ["busy", "blocked", "unavailable", "not free"]):
+                    emphasis = f"[UNAVAILABLE] {item}"
+                lines.append(f"- {emphasis}")
 
         additional_keys = [
             key for key in agent_data.keys() if key not in {"goal", "private_information"}
@@ -208,6 +214,11 @@ class Planner:
             for item in public_information:
                 lines.append(f"- {item}")
 
+        lines.append(
+            "Interpret every busy/blocked interval as unavailable in the PDDL initial state. "
+            "Convert natural-language preferences (e.g., avoid/only/earliest) into explicit temporal constraints."
+        )
+
         if system_prompt:
             lines.append("System guidance:")
             lines.append(system_prompt.strip())
@@ -215,6 +226,10 @@ class Planner:
         if filled_prompt:
             lines.append("Task briefing:")
             lines.append(filled_prompt.strip())
+
+        lines.append(
+            "Always prefer the earliest feasible meeting slot that satisfies all hard constraints and encoded preferences."
+        )
 
         return "\n".join(lines)
 
@@ -273,7 +288,9 @@ class Planner:
                 note = (
                     "Note: The agent inputs above describe capabilities, goals, and constraints. "
                     "They are not valid PDDL artefacts. Derive a consistent multi-agent PDDL domain "
-                    "and problem that satisfy the specification and remain compatible with the target solver."
+                    "and problem that satisfy the specification and remain compatible with the target solver. "
+                    "Treat natural-language preferences (avoid / would rather / earliest) as hard temporal constraints and "
+                    "ensure no unavailable slot is marked free. Prioritise the earliest time that respects every constraint."
                 )
                 if orchestrator_prompt:
                     orchestrator_prompt += f"\n\n{note}"
@@ -282,7 +299,8 @@ class Planner:
 
                 orchestrator_system_prompt = filled_system_prompt.strip()
                 system_note = (
-                    "Agent inputs are descriptive summaries rather than executable PDDL."
+                    "Agent inputs are descriptive summaries rather than executable PDDL. "
+                    "Do not invent availability beyond the provided data, and encode preferences as strict constraints."
                 )
                 if orchestrator_system_prompt:
                     orchestrator_system_prompt += f"\n{system_note}"

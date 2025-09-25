@@ -26,6 +26,7 @@ class Planner:
         model: LLM,
         specific: str,
         env_name: str,
+        subfolder: str = "examples",
         file_format: str = "json",
         target_solver: str = "FastDownwards",
     ) -> Path:
@@ -35,6 +36,7 @@ class Planner:
             model (LLM): The language model that will craft the representation.
             specific (str): Human description of the planning task.
             env_name (str): Name of the task (PascalCase) to embed in the output.
+            subfolder (str, optional): Subfolder inside the environments folder to save the file. Defaults to "examples".
             file_format (str, optional): Desired output format. Currently only "json" is supported.
             target_solver (str, optional): Solver that the environment should target when generating PDDL.
 
@@ -115,11 +117,14 @@ class Planner:
                 f"The file will be saved in {filename} but you have to fix the {file_format} errors manually."
             )
 
-        with open(ENVIRONMENTS_JSON_PATH / filename, "w") as f:
+        if subfolder:
+            (ENVIRONMENTS_JSON_PATH / subfolder).mkdir(parents=True, exist_ok=True)
+            
+        with open(ENVIRONMENTS_JSON_PATH / subfolder / filename, "w") as f:
             json.dump(formatted_environment, f, indent=4)
 
         # 5. Return its path
-        return ENVIRONMENTS_JSON_PATH / filename
+        return ENVIRONMENTS_JSON_PATH / subfolder / filename
 
     def _infer_orchestrator_name(self) -> str:
         """Determine which agent acts as the orchestrator in the workflow."""

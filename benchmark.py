@@ -153,7 +153,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    # Argpasrse arguments
+    # Argparse arguments
     dataset_name = args.dataset
     num_experiments = args.num_experiments
     budget = args.budget
@@ -213,15 +213,16 @@ if __name__ == "__main__":
                 model_json,
                 data["prompt_0shot"],
                 environment_name,
+                problem_name,
                 file_format=format,
             )
             sleep(sleep_time_json)
         else:
             print(f"{full_path} already exists. Skipping generation.")
             print("[Warning]: The prompt `specific` will be ignored!")
-
+        
         # Load the environment
-        env = Environment(plan_path)
+        env = Environment(full_path)
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 

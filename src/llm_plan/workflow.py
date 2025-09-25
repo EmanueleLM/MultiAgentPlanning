@@ -1,6 +1,7 @@
 import json
 import shlex
 import subprocess
+import io
 
 # import shlex
 import ast
@@ -520,7 +521,8 @@ def generic_actor(state: AgentState):
 
     if DEBUG:
         print(f"DEBUG: Actor {name} invoked, is_final: {state['is_final']}")
-        print(f"DEBUG: Formatted inputs for actor {name}:\n{formatted_inputs}\n")
+        if inputs:
+            print(f"DEBUG: Formatted inputs for actor {name}:\n{formatted_inputs}\n")
     # Invoke the PDDL LLM with system message and a human message containing the prompt + formatted inputs
     prompt_with_inputs = prompt + "\n\n" + formatted_inputs
     response = pddl_llm.invoke(
@@ -568,20 +570,25 @@ def generic_actor(state: AgentState):
     return {}
 
 
-def run_planner(base_dir: Path, wsl: bool):
+def run_planner(
+    base_dir: Path,
+    wsl: bool,
+    domain_name: str = "domain",
+    problem_name: str = "problem",
+) -> str:
     if PLANNER == "popf2":
         base_dir.mkdir(parents=True, exist_ok=True)
 
         if wsl:
             command = ["wsl", "--", str(PurePosixPath(SOLVER_POPF2_BINARY))] + [
-                _win_to_wsl_path(base_dir / "domain.pddl"),
-                _win_to_wsl_path(base_dir / "problem.pddl"),
+                _win_to_wsl_path(base_dir / f"{domain_name}.pddl"),
+                _win_to_wsl_path(base_dir / f"{problem_name}.pddl"),
             ]
         else:
             command = [
                 str(Path(SOLVER_POPF2_BINARY)),
-                str(base_dir / "domain.pddl"),
-                str(base_dir / "problem.pddl"),
+                str(base_dir / f"{domain_name}.pddl"),
+                str(base_dir / f"{problem_name}.pddl"),
             ]
         # print("Running command:", " ".join(shlex.quote(arg) for arg in command))
         # Capture combined stdout/stderr to parse
@@ -639,15 +646,15 @@ def run_planner(base_dir: Path, wsl: bool):
                 + [str(PurePosixPath(SOLVER_FD_BINARY)), *SOLVER_FD_ARGS]
                 + [
                     _win_to_wsl_path(base_dir / "sas_plan"),
-                    _win_to_wsl_path(base_dir / "domain.pddl"),
-                    _win_to_wsl_path(base_dir / "problem.pddl"),
+                    _win_to_wsl_path(base_dir / f"{domain_name}.pddl"),
+                    _win_to_wsl_path(base_dir / f"{problem_name}.pddl"),
                 ]
             )
         else:
             command = [Path(SOLVER_FD_BINARY), *SOLVER_FD_ARGS] + [
                 str(base_dir / "sas_plan"),
-                str(base_dir / "domain.pddl"),
-                str(base_dir / "problem.pddl"),
+                str(base_dir / f"{domain_name}.pddl"),
+                str(base_dir / f"{problem_name}.pddl"),
             ]
 
         with open(base_dir / "logs.txt", "w") as logfile:
@@ -655,35 +662,33 @@ def run_planner(base_dir: Path, wsl: bool):
 
     elif PLANNER == "lpg":
         base_dir.mkdir(parents=True, exist_ok=True)
-        dom = base_dir / "domain.pddl"
-        prob = base_dir / "problem.pddl"
+        dom = base_dir / f"{domain_name}.pddl"
+        prob = base_dir / f"{problem_name}.pddl"
         log_path = base_dir / "logs.txt"
         plan_path = base_dir / "sas_plan"
         try:
             problem = PDDLReader().parse_problem(dom, prob)
         except Exception as e:
             log_path.write_text(f"[PARSER ERROR] {e}\n")
-        else:
-            # take the output stream to logs.txt
-            with (
-                log_path.open("w", encoding="utf-8") as log,
-                OneshotPlanner(name="lpg") as planner,
-            ):
-                try:
-                    result = planner.solve(problem, output_stream=log, timeout=100)
-                except Exception as e:
-                    log.write(f"[ENGINE EXCEPTION] {e}\n")
+            return
+
+        buffer = io.StringIO()  # need buffer to avoid sync issues.
+        with OneshotPlanner(name="lpg") as planner:
+            try:
+                result = planner.solve(problem, output_stream=buffer, timeout=100)
+            except Exception as e:
+                log_path.write_text(f"[ENGINE EXCEPTION] {e}\n" + buffer.getvalue())
+            else:
+                status = result.status
+                if result.plan is not None:
+                    plan = str(result.plan)
+                    plan_path.write_text(plan, encoding="utf-8")
+                    log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
                 else:
-                    log.write(f"[STATUS] {result.status}\n")
-                    # if plan found, write to sas_plan
-                    if result.plan is not None:
-                        txt = str(result.plan)
-                        plan_path.write_text(txt, encoding="utf-8")
-                        log.write(
-                            f"[PLAN] Plan found. ({len(txt.splitlines())} lines)\n"
-                        )
-                    else:
-                        log.write("[PLAN] No plan.\n")
+                    # dump planner output to help debugging if no plan
+                    log_path.write_text(
+                        f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
+                    )
 
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
@@ -693,15 +698,15 @@ def run_planner(base_dir: Path, wsl: bool):
         cmd_body = (
             f"cd {shlex.quote(str(PurePosixPath(VALIDATOR)))} && "
             f"./Validate "
-            f"{shlex.quote(_win_to_wsl_path(base_dir / 'domain.pddl'))} "
-            f"{shlex.quote(_win_to_wsl_path(base_dir / 'problem.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / f'{domain_name}.pddl'))} "
+            f"{shlex.quote(_win_to_wsl_path(base_dir / f'{problem_name}.pddl'))} "
             f"{shlex.quote(_win_to_wsl_path(base_dir / 'sas_plan'))}"
         )
         command = ["wsl", "bash", "-lc", cmd_body]
     else:
         command = f"{VALIDATOR_BIN} \
-        {str(base_dir / 'domain.pddl')} \
-        {str(base_dir / 'problem.pddl')} \
+        {str(base_dir / f'{domain_name}.pddl')} \
+        {str(base_dir / f'{problem_name}.pddl')} \
         {str(base_dir / 'sas_plan')}"
 
     out = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -820,27 +825,25 @@ def external_solver(state: State):
             problem = PDDLReader().parse_problem(dom, prob)
         except Exception as e:
             log_path.write_text(f"[PARSER ERROR] {e}\n")
+            return
+        buffer = io.StringIO()  # need buffer to avoid sync issues.
+        with OneshotPlanner(name="lpg") as planner:
+            try:
+                result = planner.solve(problem, output_stream=buffer, timeout=100)
+            except Exception as e:
+                log_path.write_text(f"[ENGINE EXCEPTION] {e}\n" + buffer.getvalue())
+                return
+
+        status = result.status
+        if result.plan is not None:
+            plan = str(result.plan)
+            plan_path.write_text(plan, encoding="utf-8")
+            log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
         else:
-            # take the output stream to logs.txt
-            with (
-                log_path.open("w", encoding="utf-8") as log,
-                OneshotPlanner(name="lpg") as planner,
-            ):
-                try:
-                    result = planner.solve(problem, output_stream=log, timeout=100)
-                except Exception as e:
-                    log.write(f"[ENGINE EXCEPTION] {e}\n")
-                else:
-                    log.write(f"[STATUS] {result.status}\n")
-                    # if plan found, write to sas_plan
-                    if result.plan is not None:
-                        txt = str(result.plan)
-                        plan_path.write_text(txt, encoding="utf-8")
-                        log.write(
-                            f"[PLAN] Plan found. ({len(txt.splitlines())} lines)\n"
-                        )
-                    else:
-                        log.write("[PLAN] No plan.\n")
+            # dump planner output to help debugging if no plan
+            log_path.write_text(
+                f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
+            )
 
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
@@ -875,7 +878,9 @@ def init_refiner_state(state: State):
         Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")
     ).resolve()
 
-    pddl_error = run_planner(base_dir, wsl)
+    pddl_error = run_planner(
+        base_dir, wsl, "pddl_orchestrator_domain", "pddl_orchestrator_problem"
+    )
     with open(base_dir / "logs.txt", "r") as f:
         pddl_logs = f.read()
 
@@ -981,7 +986,15 @@ def agent_refiner(state: RefinerState):
         )
     # Launch the solver
     # Planner output files: sas_plan, logs.txt. Returns pddl_error string
+    # if plan produced, save the domain and problem as last successful in case next refinement breaks something
     pddl_error = run_planner(base_dir, state["WSL"])
+    if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
+        with open(base_dir / "domain_last_successful.pddl", "w", encoding="utf-8") as f:
+            f.write(domain)
+        with open(
+            base_dir / "problem_last_successful.pddl", "w", encoding="utf-8"
+        ) as f:
+            f.write(problem)
 
     with open(base_dir / "logs.txt", "r") as f:
         pddl_logs = f.read()

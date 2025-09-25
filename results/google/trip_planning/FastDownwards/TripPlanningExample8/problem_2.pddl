@@ -1,0 +1,20 @@
+(define (problem trip-scheduling-problem)
+  (:domain trip-scheduling)
+  (:init
+    (at krakow)
+    (available day1) (available day2) (available day3) (available day4) (available day5) (available day6) (available day7)
+    (available day8) (available day9) (available day10) (available day11) (available day12) (available day13)
+    (available day14) (available day15) (available day16) (available day17) (available day18)
+  )
+  (:goal
+    (and
+      (visited krakow)
+      (visited athens)
+      (visited zurich)
+      (relatives-visited)
+      (not (available day1)) (not (available day2)) (not (available day3)) (not (available day4)) (not (available day5)) (not (available day6)) (not (available day7))
+      (not (available day8)) (not (available day9)) (not (available day10)) (not (available day11)) (not (available day12)) (not (available day13))
+      (not (available day14)) (not (available day15)) (not (available day16)) (not (available day17)) (not (available day18))
+    )
+  )
+)

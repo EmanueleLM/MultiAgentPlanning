@@ -1,0 +1,26 @@
+(define (domain travel-integrated)
+  (:requirements :strips :typing)
+  (:types city day)
+  (:predicates
+    (at ?c - city)
+    (direct ?from - city ?to - city)
+    (checked ?from - city ?to - city)
+    (day-free ?d - day)
+    (assigned ?d - day ?c - city)
+  )
+  (:action traveler_fly
+    :parameters (?from - city ?to - city)
+    :precondition (and (at ?from) (direct ?from ?to))
+    :effect (and (not (at ?from)) (at ?to))
+  )
+  (:action traveler_stay
+    :parameters (?c - city ?d - day)
+    :precondition (and (at ?c) (day-free ?d))
+    :effect (and (assigned ?d ?c) (not (day-free ?d)))
+  )
+  (:action flight_checker_check_direct
+    :parameters (?from - city ?to - city)
+    :precondition (direct ?from ?to)
+    :effect (checked ?from ?to)
+  )
+)

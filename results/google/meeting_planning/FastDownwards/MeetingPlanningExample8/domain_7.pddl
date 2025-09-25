@@ -1,0 +1,31 @@
+(define (domain multi-agent-meeting)
+  (:requirements :typing :adl :action-costs)
+  (:types agent location time)
+  (:constants traveler stephanie - agent chinatown marina - location)
+  (:predicates
+    (at ?a - agent ?l - location ?t - time)
+    (travel-duration-traveler ?t1 - time ?t2 - time)
+    (travel-duration-stephanie ?t1 - time ?t2 - time)
+    (meeting-duration ?t1 - time ?t2 - time)
+    (available-interval ?a - agent ?t1 - time ?t2 - time)
+    (met)
+  )
+  (:action travel-traveler
+    :parameters (?t1 - time ?t2 - time)
+    :precondition (and (at traveler chinatown ?t1) (travel-duration-traveler ?t1 ?t2))
+    :effect (and (not (at traveler chinatown ?t1)) (at traveler marina ?t2))
+    :cost 12
+  )
+  (:action travel-stephanie
+    :parameters (?t1 - time ?t2 - time)
+    :precondition (and (at stephanie marina ?t1) (travel-duration-stephanie ?t1 ?t2))
+    :effect (and (not (at stephanie marina ?t1)) (at stephanie chinatown ?t2))
+    :cost 16
+  )
+  (:action start-meeting
+    :parameters (?ts - time ?te - time)
+    :precondition (and (at traveler marina ?ts) (available-interval stephanie ?ts ?te) (meeting-duration ?ts ?te))
+    :effect (and (not (at traveler marina ?ts)) (not (at stephanie marina ?ts)) (at traveler marina ?te) (at stephanie marina ?te) (met))
+    :cost 0
+  )
+)

@@ -1,0 +1,26 @@
+(define (domain meeting-scheduler)
+  (:requirements :typing :strips)
+  (:types agent slot)
+  (:predicates
+    (free ?a - agent ?s - slot)
+    (busy ?a - agent ?s - slot)
+    (startable ?s - slot)
+    (next ?s - slot ?s2 - slot)
+    (attending ?a - agent ?s - slot)
+  )
+  (:action attend-katherine
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (startable ?s) (next ?s ?s2) (free katherine ?s) (free katherine ?s2))
+    :effect (and (attending katherine ?s) (busy katherine ?s) (busy katherine ?s2) (not (free katherine ?s)) (not (free katherine ?s2)))
+  )
+  (:action attend-nicole
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (startable ?s) (next ?s ?s2) (free nicole ?s) (free nicole ?s2))
+    :effect (and (attending nicole ?s) (busy nicole ?s) (busy nicole ?s2) (not (free nicole ?s)) (not (free nicole ?s2)))
+  )
+  (:action attend-kevin
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and (startable ?s) (next ?s ?s2) (free kevin ?s) (free kevin ?s2))
+    :effect (and (attending kevin ?s) (busy kevin ?s) (busy kevin ?s2) (not (free kevin ?s)) (not (free kevin ?s2)))
+  )
+)

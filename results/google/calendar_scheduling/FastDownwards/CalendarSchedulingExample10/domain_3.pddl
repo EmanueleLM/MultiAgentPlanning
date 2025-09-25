@@ -1,0 +1,32 @@
+(define (domain meeting-domain)
+  (:requirements :strips :negative-preconditions)
+  (:constants diana ethan janet)
+  (:predicates
+    (agent ?a)
+    (slot ?s)
+    (free ?a ?s)
+    (accepted ?a ?s)
+    (meeting-scheduled)
+    (scheduled-at ?s)
+  )
+  (:action accept-diana
+    :parameters (?s)
+    :precondition (and (slot ?s) (free diana ?s) (not (accepted diana ?s)))
+    :effect (and (accepted diana ?s))
+  )
+  (:action accept-ethan
+    :parameters (?s)
+    :precondition (and (slot ?s) (free ethan ?s) (not (accepted ethan ?s)))
+    :effect (and (accepted ethan ?s))
+  )
+  (:action accept-janet
+    :parameters (?s)
+    :precondition (and (slot ?s) (free janet ?s) (not (accepted janet ?s)))
+    :effect (and (accepted janet ?s))
+  )
+  (:action finalize-meeting
+    :parameters (?s)
+    :precondition (and (slot ?s) (accepted diana ?s) (accepted ethan ?s) (accepted janet ?s) (not (meeting-scheduled)))
+    :effect (and (meeting-scheduled) (scheduled-at ?s))
+  )
+)

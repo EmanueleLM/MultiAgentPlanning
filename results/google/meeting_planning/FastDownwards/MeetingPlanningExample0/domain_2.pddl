@@ -1,0 +1,27 @@
+(define (domain meetup-classical)
+  (:requirements :typing :negative-preconditions :equality)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (current-time ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (can-travel ?a - agent ?from - location ?to - location ?s - time ?e - time)
+    (can-meet ?s - time ?e - time)
+    (met ?a - agent ?b - agent)
+  )
+  (:action travel
+    :parameters (?a - agent ?from - location ?to - location ?s - time ?e - time)
+    :precondition (and (current-time ?s) (at ?a ?from) (can-travel ?a ?from ?to ?s ?e))
+    :effect (and (not (current-time ?s)) (current-time ?e) (not (at ?a ?from)) (at ?a ?to))
+  )
+  (:action wait
+    :parameters (?s - time ?e - time)
+    :precondition (and (current-time ?s) (next ?s ?e))
+    :effect (and (not (current-time ?s)) (current-time ?e))
+  )
+  (:action meet
+    :parameters (?s - time ?e - time ?loc - location ?a - agent ?b - agent)
+    :precondition (and (current-time ?s) (at ?a ?loc) (at ?b ?loc) (can-meet ?s ?e))
+    :effect (and (not (current-time ?s)) (current-time ?e) (met ?a ?b))
+  )
+)

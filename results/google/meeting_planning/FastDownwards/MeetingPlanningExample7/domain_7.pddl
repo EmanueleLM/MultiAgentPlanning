@@ -1,0 +1,33 @@
+(define (domain meeting-domain)
+  (:requirements :typing :adl :negative-preconditions)
+  (:types agent location time)
+  (:constants you john - agent richmond north-beach - location)
+  (:predicates
+    (at ?a - agent ?l - location ?t - time)
+    (succ ?t1 - time ?t2 - time)
+    (plus17 ?t1 - time ?t2 - time)
+    (plus18 ?t1 - time ?t2 - time)
+    (meeting-slot ?t1 - time ?t2 - time)
+    (met-you-john)
+  )
+  (:action travel-you-richmond-to-northbeach
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (at you richmond ?t) (plus17 ?t ?t2))
+    :effect (and (not (at you richmond ?t)) (at you north-beach ?t2))
+  )
+  (:action travel-you-northbeach-to-richmond
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (at you north-beach ?t) (plus18 ?t ?t2))
+    :effect (and (not (at you north-beach ?t)) (at you richmond ?t2))
+  )
+  (:action wait-one-minute-you
+    :parameters (?l - location ?t - time ?t2 - time)
+    :precondition (and (at you ?l ?t) (succ ?t ?t2))
+    :effect (and (not (at you ?l ?t)) (at you ?l ?t2))
+  )
+  (:action meet-you-john
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (at you north-beach ?t) (at john north-beach ?t) (meeting-slot ?t ?t2) (not (met-you-john)))
+    :effect (and (met-you-john) (not (at you north-beach ?t)) (at you north-beach ?t2))
+  )
+)

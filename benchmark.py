@@ -8,10 +8,12 @@ check if it is correct by comparing it to the "golden_plan".
 import argparse
 import asyncio
 import json
+import logging
 import os
 import re
-from time import sleep
+import sys
 from pathlib import Path
+from time import sleep
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
@@ -22,32 +24,32 @@ from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
-    run_pddl_popf2_and_Val, 
-    run_pddl_fast_downwards_and_uVal, 
-    collect_debug_logs
-    )
+    run_pddl_popf2_and_Val,
+    run_pddl_fast_downwards_and_uVal,
+    collect_debug_logs,
+)
 
 DATASET = {
     "calendar_scheduling": {
         "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
     "meeting_planning": {
         "data": DATA_PATH / "natural_plan/meeting_planning.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
     "trip_planning": {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
     "blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "blocksworld"
-        },
+        "results": RESULTS_FOLDER / "blocksworld",
+    },
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard"
-        }
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard",
+    },
 }
 
 SOLVER = {
@@ -55,30 +57,28 @@ SOLVER = {
         "solver": run_pddl_popf2_and_Val,
         "support_optimization": False,
         "timeout": 0,
-        },
+    },
     "FastDownwards": {
         "solver": run_pddl_fast_downwards_and_uVal,
         "support_optimization": True,
         "timeout": 60,
-        }
+    },
 }
 
 MODELS = {
-    "gpt-4o": {"model": ChatGPT("gpt-4o"),
-                "persistent": False,
-                "sleep": 0},
-    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"),
-                "persistent": False, 
-                "sleep": 0},
-    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"),
-                "persistent": False, 
-                "sleep": 0},
-    "gemini-2.5-flash": {"model": Gemini("gemini-2.5-flash"),
-                "persistent": False,
-                "sleep": 10},
-    "gemini-2.5-pro": {"model": Gemini("gemini-2.5-pro"),
-                "persistent": False,
-                "sleep": 20},
+    "gpt-4o": {"model": ChatGPT("gpt-4o"), "persistent": False, "sleep": 0},
+    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
+    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
+    "gemini-2.5-flash": {
+        "model": Gemini("gemini-2.5-flash"),
+        "persistent": False,
+        "sleep": 10,
+    },
+    "gemini-2.5-pro": {
+        "model": Gemini("gemini-2.5-pro"),
+        "persistent": False,
+        "sleep": 20,
+    },
     # "gpt-oss-120b": {"model": GPT_OSS("gpt-oss-120b"),
     #             "persistent": True,
     #             "sleep": 0},  # this model won't be loaded until generate_sync is called
@@ -150,6 +150,35 @@ def parse_args():
     return parser.parse_args()
 
 
+def setup_logging(results_root: Path, dataset: str, solver_name: str) -> logging.Logger:
+    log_dir = results_root / dataset / solver_name
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "benchmark.log"
+
+    logger = logging.getLogger("benchmark")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    if logger.handlers:
+        return logger
+
+    formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+
+    file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
+
+    logger.info("Logging initialized. Writing detailed output to %s", log_path)
+    return logger
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -162,32 +191,38 @@ if __name__ == "__main__":
     support_optimization = SOLVER[args.target_solver]["support_optimization"]
     optimize_plan = args.optimize_plan
     debug = args.debug
-    
+
+    logger = setup_logging(
+        DATASET[dataset_name]["results"], dataset_name, args.target_solver
+    )
+
     # Init LLMs
-    if args.model_json ==  args.model_plan:
+    if args.model_json == args.model_plan:
         model_json = MODELS[args.model_json]["model"]
         model_plan = model_json
     else:
         model_json = MODELS[args.model_json]["model"]
         model_plan = MODELS[args.model_plan]["model"]
-    
+
     # Sleep time not to make the experiments with the APIs crash
-    sleep_time_json = (0 if args.model_json != args.model_plan else MODELS[args.model_json]["sleep"])
-    sleep_time_first_plan = 3*MODELS[args.model_json]["sleep"]
+    sleep_time_json = (
+        0 if args.model_json != args.model_plan else MODELS[args.model_json]["sleep"]
+    )
+    sleep_time_first_plan = 3 * int(MODELS[args.model_json]["sleep"])
     sleep_time_plan = MODELS[args.model_plan]["sleep"]
 
     # Other initializations
     format = "json"
     pddl_parser = PDDLParser()
-    full_debug_logs = ""
+    full_debug_logs: list[str] = []
 
     # Read the dataset
     with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
-    
+
     # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
     key = list(scheduling_data.keys())[0]
-    match = re.match(r'^(.*)_(\d+)$', key)
+    match = re.match(r"^(.*)_(\d+)$", key)
     if match:
         problem_name, _ = match.groups()
     else:
@@ -199,16 +234,13 @@ if __name__ == "__main__":
         data = scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
 
-        # Collect the full logs (default -> __full_logs.txt)
-        full_debug_logs += collect_debug_logs("PROBLEM", data["prompt_0shot"])
-
         # Generate the first representation
         planner = Planner()
         plan_path = Path(f"{environment_name}.{format}")
         full_path = ENVIRONMENTS_JSON_PATH / problem_name / plan_path
 
-        # Skip if the plan already exists
         if not full_path.exists():
+            logger.info("Generating representation for %s", environment_name)
             planner.generate_representation(
                 model_json,
                 data["prompt_0shot"],
@@ -218,65 +250,105 @@ if __name__ == "__main__":
             )
             sleep(sleep_time_json)
         else:
-            print(f"{full_path} already exists. Skipping generation.")
-            print("[Warning]: The prompt `specific` will be ignored!")
-        
-        # Load the environment
+            logger.info(
+                "%s already exists. Skipping generation (prompt specific ignored).",
+                full_path,
+            )
+
         env = Environment(full_path)
-        print(f"\n=== Experiment {i+1}/{num_experiments} ===")
-        print("Problem name:", k)
-        print("Problem: ", data["prompt_0shot"])
-        print("Plan:\n", env.plan)
+        logger.info(
+            "=== Experiment %s/%s: problem=%s env=%s ===",
+            i + 1,
+            num_experiments,
+            k,
+            environment_name,
+        )
+        logger.info("Problem prompt: %s", data["prompt_0shot"])
+        logger.info("Initial plan structure: %s", env.plan)
 
-        # Collect the full logs (default -> __full_logs.txt)
-        full_debug_logs += collect_debug_logs("ENVIRONMENT", data["prompt_0shot"])
-
-        BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/{args.target_solver}/{env.name}"
+        BASE_FOLDER = (
+            DATASET[args.dataset]["results"]
+            / f"{dataset_name}/{args.target_solver}/{env.name}"
+        )
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
         FULL_LOGS_PATH = BASE_FOLDER / "__full_logs.txt"
 
+        if debug:
+            with open(FULL_LOGS_PATH, "w", encoding="utf-8") as log_seed:
+                log_seed.write("")
+
+        def append_debug_log(field: str, content: str) -> None:
+            entry = collect_debug_logs(field, content)
+            full_debug_logs.append(entry)
+            if debug:
+                try:
+                    with open(FULL_LOGS_PATH, "a", encoding="utf-8") as log_file:
+                        log_file.write(entry)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to append debug log '%s' to %s: %s",
+                        field,
+                        FULL_LOGS_PATH,
+                        exc,
+                    )
+
+        append_debug_log("PROBLEM", data["prompt_0shot"])
+        append_debug_log("ENVIRONMENT", data["prompt_0shot"])
+
         # Generate the fist domain and problem (unless they already exist)
-        if (BASE_FOLDER / f"problem_0.pddl").exists() and (BASE_FOLDER / f"domain_0.pddl").exists():
-            print(f"A plan for {env.name} already exist. Loading domain and problem.")
-            with open(BASE_FOLDER / f"domain_0.pddl", "r") as f:
+        if (BASE_FOLDER / "problem_0.pddl").exists() and (
+            BASE_FOLDER / "domain_0.pddl"
+        ).exists():
+            logger.info("Existing domain/problem detected for %s. Reusing.", env.name)
+            with open(BASE_FOLDER / "domain_0.pddl", "r") as f:
                 domain = f.read()
-            with open(BASE_FOLDER / f"problem_0.pddl", "r") as f:
+            with open(BASE_FOLDER / "problem_0.pddl", "r") as f:
                 problem = f.read()
 
         else:
-            print("Generating the first plan.")
+            logger.info("Generating initial plan via planner agent.")
             responses = asyncio.run(planner.plan(model_plan, env))
             final_plan = responses["pddl_orchestrator"]
             domain, problem = pddl_parser.parse(final_plan, from_file=False)
 
             # Collect the full logs (default -> __full_logs.txt)
-            full_debug_logs += collect_debug_logs("FINAL-PLAN", final_plan)
-            
+            append_debug_log("FINAL-PLAN", final_plan)
+
             # Save domain and problem
-            with open(BASE_FOLDER / f"domain_0.pddl", "w") as f:
+            with open(BASE_FOLDER / "domain_0.pddl", "w") as f:
                 f.write(domain)
-            with open(BASE_FOLDER / f"problem_0.pddl", "w") as f:
+            with open(BASE_FOLDER / "problem_0.pddl", "w") as f:
                 f.write(problem)
-                
+
+            logger.info("Initial domain/problem saved under %s", BASE_FOLDER)
+
             sleep(sleep_time_first_plan)
 
         # Collect the full logs (default -> __full_logs.txt)
-        full_debug_logs += collect_debug_logs("DOMAIN", domain)
-        full_debug_logs += collect_debug_logs("PROBLEM", problem)
-            
+        append_debug_log("DOMAIN", domain)
+        append_debug_log("PROBLEM", problem)
+
         # Generate the first POPF2 and VAL plan and logs
-        optimization_log = ("no optimization" if not optimize_plan else f"optimization={SOLVER[args.target_solver]['timeout']} [s]")
-        print(f"Running {args.target_solver} with {optimization_log}")
+        optimization_log = (
+            "no optimization"
+            if not optimize_plan
+            else f"optimization={SOLVER[args.target_solver]['timeout']} [s]"
+        )
+        logger.info("Running %s with %s", args.target_solver, optimization_log)
         result = solver(
             BASE_FOLDER,
-            BASE_FOLDER / f"domain_0.pddl",
-            BASE_FOLDER / f"problem_0.pddl",
-            BASE_FOLDER / f"sas_plan_0",
-            (SOLVER[args.target_solver]["timeout"] if optimize_plan and support_optimization else 0),
+            BASE_FOLDER / "domain_0.pddl",
+            BASE_FOLDER / "problem_0.pddl",
+            BASE_FOLDER / "sas_plan_0",
+            (
+                SOLVER[args.target_solver]["timeout"]
+                if optimize_plan and support_optimization
+                else 0
+            ),
         )
 
         # Start the refinement loop
-        print("Generating the refinements...")
+        logger.info("Starting refinement loop with budget=%s", budget)
 
         # Hypervisor args
         prompt_args_hypervisor = {
@@ -292,10 +364,11 @@ if __name__ == "__main__":
             "history": [],
         }
 
-        # Collect the full logs (default -> __full_logs.txt)
-        full_debug_logs += collect_debug_logs("ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4))
+        append_debug_log(
+            "ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4)
+        )
 
-        for j in range(1, budget+1):
+        for j in range(1, budget + 1):
             hypervisor = Hypervisor(prompt_args_hypervisor)
             response = hypervisor.run(model_plan)
 
@@ -305,12 +378,14 @@ if __name__ == "__main__":
             if match:
                 agent_name = match.group(1).strip()
             else:
-                print(
-                    f"[Warning] No agent class found in the response ({agent_name}). Using default {base_agent}."
+                logger.warning(
+                    "No agent class found in response. Falling back to %s. Response snippet: %s",
+                    base_agent,
+                    response[:200],
                 )
                 agent_name = base_agent
 
-            print(f"Selected agent: {agent_name}")
+            logger.info("Selected agent: %s", agent_name)
             agent_class = hypervisor.agents[agent_name]
 
             # Generate the refined plan
@@ -323,6 +398,9 @@ if __name__ == "__main__":
 
             # The Hypervisor decides the plan is good
             if agent_name == "NoOpAgent":
+                logger.info(
+                    "NoOpAgent selected; stopping refinements at iteration %s.", j
+                )
                 break
 
             # Get domain and plan and update the hypervisor args
@@ -337,14 +415,31 @@ if __name__ == "__main__":
             with open(BASE_FOLDER / f"domain_{j}.pddl", "w") as f:
                 f.write(str(domain))
 
-            optimization_log = ("no optimization" if not optimize_plan else f"optimization={SOLVER[args.target_solver]['timeout']} [s]")
-            print(f"Running {args.target_solver} with {optimization_log}")
+            logger.debug(
+                "Iteration %s: saved domain/problem to %s", j, BASE_FOLDER
+            )
+
+            optimization_log = (
+                "no optimization"
+                if not optimize_plan
+                else f"optimization={SOLVER[args.target_solver]['timeout']} [s]"
+            )
+            logger.info(
+                "Iteration %s: running %s with %s",
+                j,
+                args.target_solver,
+                optimization_log,
+            )
             result = solver(
                 BASE_FOLDER,
                 BASE_FOLDER / f"domain_{j}.pddl",
                 BASE_FOLDER / f"problem_{j}.pddl",
                 BASE_FOLDER / f"sas_plan_{j}",
-                (SOLVER[args.target_solver]["timeout"] if optimize_plan and support_optimization else 0),
+                (
+                    SOLVER[args.target_solver]["timeout"]
+                    if optimize_plan and support_optimization
+                    else 0
+                ),
             )
 
             # Update the hypervisor args
@@ -354,9 +449,10 @@ if __name__ == "__main__":
             # Update the history
             prompt_args_hypervisor["history"].append(agent_name)
 
-            # Collect the full logs (default -> __full_logs.txt)
-            full_debug_logs += collect_debug_logs(f"ITERATION {j}", json.dumps(prompt_args_hypervisor, indent=4))
-            
+            append_debug_log(
+                f"ITERATION {j}", json.dumps(prompt_args_hypervisor, indent=4)
+            )
+
             sleep(sleep_time_plan)
 
         # Produce the natural language plan
@@ -365,12 +461,12 @@ if __name__ == "__main__":
             # Get the latest plan
             numbers = []
             for f in plan_files:
-                match = re.search(r'_(\d+)$', f)  # match number at the end
+                match = re.search(r"_(\d+)$", f)  # match number at the end
                 if match:
                     numbers.append((f, int(match.group(1))))
-                
+
                 highest_file, highest_number = max(numbers, key=lambda x: x[1])
-        
+
             with open(BASE_FOLDER / f"domain_{highest_number}.pddl", "r") as f:
                 domain = f.read()
 
@@ -395,13 +491,21 @@ if __name__ == "__main__":
 
             with open(BASE_FOLDER / "final_natural_plan.txt", "w") as f:
                 f.write(natural_plan)
+            logger.info(
+                "Natural language plan saved to %s",
+                BASE_FOLDER / "final_natural_plan.txt",
+            )
 
-            # Collect the full logs (default -> __full_logs.txt)
-            full_debug_logs += collect_debug_logs(f"NATURAL-PLAN {highest_file}", natural_plan)
+            append_debug_log(f"NATURAL-PLAN {highest_file}", natural_plan)
 
-        print()
-        
-        # Write the full logs in a file
+        else:
+            logger.warning("No plan files produced for %s", env.name)
+
         if debug:
             with open(FULL_LOGS_PATH, "w") as f:
-                f.write(full_debug_logs)
+                f.write("\n".join(full_debug_logs))
+            logger.info(
+                "Experiment %s complete. Logs written to %s", i + 1, FULL_LOGS_PATH
+            )
+        else:
+            logger.info("Experiment %s complete. Debug log writing disabled.", i + 1)

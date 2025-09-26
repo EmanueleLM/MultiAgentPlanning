@@ -156,14 +156,19 @@ class Planner:
         return "" if value is None else str(value)
 
     def _resolve_field_value(self, field: str) -> str:
-        if "->" in field:
+        normalized = field.strip()
+        normalized = normalized.strip('"')
+
+        if "->" in normalized:
             value = get_json_nested_fields(
-                self.environment.config_data, field.split("->")
+                self.environment.config_data, normalized.split("->")
             )
         else:
-            if field not in self.format_fields:
-                raise KeyError(f"Missing value for field '{field}' in format_fields")
-            value = self.format_fields[field]
+            value = self.format_fields.get(normalized)
+            if value is None and normalized != field:
+                value = self.format_fields.get(field)
+            if value is None:
+                return ""
         return self._stringify_value(value)
 
     def _fill_template(self, template: str | None) -> str:

@@ -93,8 +93,19 @@ class PDDLParserv2(Parser):
         Returns:
             A tuple containing the domain and problem definitions.
         """
-        domain = source.split(self.domain_tag_begin)[1].split(self.domain_tag_end)[0]
-        problem = source.split(self.problem_tag_begin)[1].split(self.problem_tag_end)[0]
+        try:
+            domain = source.split(self.domain_tag_begin)[1].split(self.domain_tag_end)[
+                0
+            ]
+            problem = source.split(self.problem_tag_begin)[1].split(
+                self.problem_tag_end
+            )[0]
+        except IndexError:
+            print(
+                "Warning: Could not find <domain> or <problem> tags. Falling back to secondary parser."
+            )
+            delim = "(define (problem"
+            domain, problem = re.split(rf"(?={re.escape(delim)})", source, maxsplit=1)
 
         try:
             domain_text = self._extract(domain, "(define (domain")

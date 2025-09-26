@@ -6,7 +6,8 @@ import io
 # import shlex
 import ast
 import re
-from datetime import datetime
+
+# from datetime import datetime
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
@@ -48,10 +49,18 @@ MODEL = "gpt-5-mini"  # Use same model for everything but adjust reasoning effor
 MODEL_FAST = (
     "gpt-5-nano"  # faster but less capable model for refinements to speed things up
 )
-JSON_OUTPUT_PATH = "../../tmp"
-ACTOR_OUTPUT_PATH = "../../tmp"
-EXAMPLE_JSON = "./example_json"
-ENVIRONMENT_CLASS = "./environment.py"
+# tmp for testing
+# JSON_OUTPUT_PATH = "../../tmp"
+# ACTOR_OUTPUT_PATH = "../../tmp"
+BASE_DIR = Path(__file__).resolve().parent  # directory of *this* file
+EXAMPLE_JSON = str(BASE_DIR / "example_json")
+ENVIRONMENT_CLASS = str(BASE_DIR / "environment.py")
+JSON_OUTPUT_PATH = str(
+    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "str"
+)
+ACTOR_OUTPUT_PATH = str(
+    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "str"
+)
 DEBUG = True  # whether to print debug info
 # PLANNER = "popf2"
 # PLANNER = "fast-downward"
@@ -97,6 +106,50 @@ def _win_to_wsl_path(p: Path) -> str:
     p = p.resolve()
     drive = p.drive.rstrip(":").lower()
     return f"/mnt/{drive}" + "/" + "/".join(p.parts[1:])
+
+
+def _extract_lpg_plan_block(log_text: str) -> str | None:
+    """
+    Return the longest contiguous block of plan lines from an LPG log, or None if not found.
+    Matches:
+      - temporal + D/C:  Time: (act args) [D:float; C:float]
+      - temporal plain:  Time: (act args) [float]
+      - sequential:      (act args)
+    """
+    pat_dc = re.compile(
+        r"^\s*\d+(?:\.\d+)?\s*:\s*\([^)]+\)\s*\[\s*D\s*:\s*[\d.]+\s*;\s*C\s*:\s*[\d.]+\s*\]\s*$",
+        re.I,
+    )
+    pat_temp = re.compile(r"^\s*\d+(?:\.\d+)?\s*:\s*\([^)]+\)\s*\[\s*[\d.]+\s*\]\s*$")
+    pat_seq = re.compile(r"^\s*\([^)]+\)\s*$")
+
+    lines = log_text.splitlines()
+    best_block = []
+    i = 0
+    while i < len(lines):
+        if (
+            pat_dc.match(lines[i])
+            or pat_temp.match(lines[i])
+            or pat_seq.match(lines[i])
+        ):
+            j = i
+            block = []
+            while j < len(lines) and (
+                pat_dc.match(lines[j])
+                or pat_temp.match(lines[j])
+                or pat_seq.match(lines[j])
+            ):
+                block.append(lines[j].strip())
+                j += 1
+            if len(block) > len(best_block):
+                best_block = block
+            i = j
+        else:
+            i += 1
+
+    if not best_block:
+        return None
+    return "\n".join(best_block)
 
 
 # Schemas for controlling JSON format
@@ -316,6 +369,8 @@ def agent_clarifier(state: State):
 
 
 def agent_summarizer(state: State):
+    if not state["enable_clarifications"]:
+        return {"revised_description": state["initial_description"]}
     sys_msg = (
         "You are given the initial description of a planning task and subsequent clarifications (if any)."
         "Rewrite task descriptions into a crisp, structured brief. Prefer specifics from clarifications"
@@ -335,6 +390,8 @@ def agent_coder_json(state: State):
         "generate a comprehensive JSON representation of the planning problem, following the example given. "
         "The JSON should include a breakdown of tasks and knowledge for each agent and the orchestrator (also an agent). "
         "Depending on the problem, the structure of the init and goal fields of the environment may vary. "
+        "Ensure you do not directly include information in the prompts, but instead use the syntax {field1->field2} to reference fields, as in the example."
+        "Do not use 'null' or 'None' for any fields to avoid parsing issues. For example, substitute with 'Nothing' or 'Empty'."
     )
     sys_msg_direct = (
         "The orchestrator will be the only participant in the workflow, prompted with initial information about the environment and the goal,"
@@ -387,15 +444,21 @@ def agent_coder_json(state: State):
         assistant_text = out.text()
 
     try:
+        if assistant_text.lower() in ("", "null") and DEBUG:
+            print(
+                f"\n\nNULL ERROR:\n\nOut:{out}\n\nOut.text():{out.text()}\n\nAssistant_text:{assistant_text}\n\n"
+            )
         parsed_model = plan_parser.parse(assistant_text)
         parsed_plan = parsed_model.model_dump()
     except Exception as e:
         raise ValueError(f"Error parsing plan: {str(e)}")
 
     # write json to file, name with timestamp to avoid clash
-    plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_name = f"{timestamp}_{plan_name}"
+    # plan_name = parsed_plan.get("name", "unnamed_plan").replace(" ", "_")
+    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # folder_name = f"{timestamp}_{plan_name}"
+    folder_name = state["folder_name"]
 
     json_path = Path(f"{JSON_OUTPUT_PATH}/{folder_name}/{folder_name}.json")
     json_path.parent.mkdir(parents=True, exist_ok=True)
@@ -673,22 +736,32 @@ def run_planner(
             return
 
         buffer = io.StringIO()  # need buffer to avoid sync issues.
-        with OneshotPlanner(name="lpg") as planner:
-            try:
-                result = planner.solve(problem, output_stream=buffer, timeout=100)
-            except Exception as e:
-                log_path.write_text(f"[ENGINE EXCEPTION] {e}\n" + buffer.getvalue())
+        result = None
+        try:
+            with OneshotPlanner(name="lpg") as planner:
+                result = planner.solve(problem, output_stream=buffer, timeout=120)
+        except Exception as e:
+            # try to salvage the plan from the raw buffer since UP parser can't seem to handle temporal plan format
+            log_text = buffer.getvalue()
+            plan_text = _extract_lpg_plan_block(log_text) or ""
+            if plan_text:
+                plan_path.write_text(plan_text, encoding="utf-8")
+                log = "[PLAN] Plan found by engine."
             else:
-                status = result.status
-                if result.plan is not None:
-                    plan = str(result.plan)
-                    plan_path.write_text(plan, encoding="utf-8")
-                    log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
-                else:
-                    # dump planner output to help debugging if no plan
-                    log_path.write_text(
-                        f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
-                    )
+                log = f"[PLAN] No plan text found in engine output.\n [EXCEPTION] {e}\n\n=== ENGINE OUTPUT ===\n{log_text}"
+            log_path.write_text(log)
+        else:
+            log_text = buffer.getvalue()
+            status = result.status
+            if result.plan is not None:
+                plan = str(result.plan)
+                plan_path.write_text(plan, encoding="utf-8")
+                log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
+            else:
+                # dump planner output to help debugging if no plan
+                log_path.write_text(
+                    f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
+                )
 
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
@@ -826,24 +899,34 @@ def external_solver(state: State):
         except Exception as e:
             log_path.write_text(f"[PARSER ERROR] {e}\n")
             return
-        buffer = io.StringIO()  # need buffer to avoid sync issues.
-        with OneshotPlanner(name="lpg") as planner:
-            try:
-                result = planner.solve(problem, output_stream=buffer, timeout=100)
-            except Exception as e:
-                log_path.write_text(f"[ENGINE EXCEPTION] {e}\n" + buffer.getvalue())
-                return
 
-        status = result.status
-        if result.plan is not None:
-            plan = str(result.plan)
-            plan_path.write_text(plan, encoding="utf-8")
-            log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
+        buffer = io.StringIO()  # need buffer to avoid sync issues.
+        result = None
+        try:
+            with OneshotPlanner(name="lpg") as planner:
+                result = planner.solve(problem, output_stream=buffer, timeout=100)
+        except Exception as e:
+            # try to salvage the plan from the raw buffer since UP parser can't seem to handle temporal plan format
+            log_text = buffer.getvalue()
+            plan_text = _extract_lpg_plan_block(log_text) or ""
+            if plan_text:
+                plan_path.write_text(plan_text, encoding="utf-8")
+                log = "[PLAN] Plan found by engine."
+            else:
+                log = f"[PLAN] No plan text found in engine output.\n [EXCEPTION] {e}\n\n=== ENGINE OUTPUT ===\n{log_text}"
+            log_path.write_text(log)
         else:
-            # dump planner output to help debugging if no plan
-            log_path.write_text(
-                f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
-            )
+            log_text = buffer.getvalue()
+            status = result.status
+            if result.plan is not None:
+                plan = str(result.plan)
+                plan_path.write_text(plan, encoding="utf-8")
+                log_path.write_text(f"[STATUS] {status}\n[PLAN] Plan found. \n")
+            else:
+                # dump planner output to help debugging if no plan
+                log_path.write_text(
+                    f"[STATUS] {status}\n[PLAN] No plan.\n\n=== ENGINE OUTPUT ===\n{buffer.getvalue()}"
+                )
 
     else:
         raise ValueError(f"Unknown planner: {PLANNER}")
@@ -881,6 +964,14 @@ def init_refiner_state(state: State):
     pddl_error = run_planner(
         base_dir, wsl, "pddl_orchestrator_domain", "pddl_orchestrator_problem"
     )
+    # if plan produced, save the domain and problem as last successful in case next refinement breaks something
+    if (base_dir / "sas_plan").exists() and (base_dir / "sas_plan").stat().st_size > 0:
+        with open(base_dir / "domain_last_successful.pddl", "w", encoding="utf-8") as f:
+            f.write(state["pddl"]["domain"])
+        with open(
+            base_dir / "problem_last_successful.pddl", "w", encoding="utf-8"
+        ) as f:
+            f.write(state["pddl"]["problem"])
     with open(base_dir / "logs.txt", "r") as f:
         pddl_logs = f.read()
 
@@ -920,6 +1011,16 @@ def select_agent(state: RefinerState):
     match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
     if match:
         agent_name = match.group(1).strip()
+        if agent_name not in hypervisor.agents or agent_name in [
+            "PlanningWikiTool",
+            "PlanningWikiInput",
+            "Agent",
+        ]:
+            if DEBUG:
+                print(
+                    f"DEBUG: Hypervisor returned unknown agent class '{agent_name}'. Defaulting to 'AgentSyntaxPDDL'."
+                )
+            agent_name = "AgentSyntaxPDDL"
     else:
         # default to AgentSyntaxPDDL if no class is found
         agent_name = "AgentSyntaxPDDL"

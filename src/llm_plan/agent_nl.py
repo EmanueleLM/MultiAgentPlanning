@@ -1,6 +1,6 @@
 import inspect
 from llm_plan.agent import Agent
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 

@@ -1,0 +1,37 @@
+(define (problem CalendarSchedulingExample45-prob)
+  (:domain CalendarSchedulingExample45)
+  (:objects
+    emily brian gerald julia logan judith michael - person
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+  )
+  (:init
+    (not-scheduled)
+    ;; emily available slots
+    (available emily s1) (available emily s2) (available emily s3) (available emily s5)
+    (available emily s6) (available emily s7) (available emily s8) (available emily s9)
+    (available emily s11) (available emily s12) (available emily s13) (available emily s14)
+    ;; brian available slots
+    (available brian s0) (available brian s2) (available brian s3) (available brian s4)
+    (available brian s5) (available brian s6) (available brian s7) (available brian s8)
+    (available brian s9) (available brian s10) (available brian s13) (available brian s14)
+    ;; gerald available all slots
+    (available gerald s0) (available gerald s1) (available gerald s2) (available gerald s3)
+    (available gerald s4) (available gerald s5) (available gerald s6) (available gerald s7)
+    (available gerald s8) (available gerald s9) (available gerald s10) (available gerald s11)
+    (available gerald s12) (available gerald s13) (available gerald s14) (available gerald s15)
+    ;; julia available all slots
+    (available julia s0) (available julia s1) (available julia s2) (available julia s3)
+    (available julia s4) (available julia s5) (available julia s6) (available julia s7)
+    (available julia s8) (available julia s9) (available julia s10) (available julia s11)
+    (available julia s12) (available julia s13) (available julia s14) (available julia s15)
+    ;; logan available slots
+    (available logan s2) (available logan s3) (available logan s10) (available logan s11)
+    (available logan s12) (available logan s13)
+    ;; judith available slots
+    (available judith s4) (available judith s8) (available judith s9) (available judith s10)
+    (available judith s11) (available judith s13)
+    ;; michael available slots
+    (available michael s1) (available michael s4) (available michael s7) (available michael s13)
+  )
+  (:goal (meeting-at s13))
+)

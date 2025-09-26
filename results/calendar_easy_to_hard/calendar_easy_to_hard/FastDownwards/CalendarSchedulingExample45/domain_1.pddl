@@ -1,0 +1,26 @@
+(define (domain CalendarSchedulingExample45)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (not-scheduled)
+    (meeting-at ?s - slot)
+  )
+  (:action schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (not-scheduled)
+      (available emily ?s)
+      (available brian ?s)
+      (available gerald ?s)
+      (available julia ?s)
+      (available logan ?s)
+      (available judith ?s)
+      (available michael ?s)
+    )
+    :effect (and
+      (meeting-at ?s)
+      (not (not-scheduled))
+    )
+  )
+)

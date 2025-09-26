@@ -1,0 +1,30 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :action-costs)
+  (:types slot participant)
+  (:predicates
+    (slot ?s - slot)
+    (participant ?p - participant)
+    (free ?p - participant ?s - slot)
+    (scheduled)
+    (meeting-at ?s - slot)
+  )
+
+  (:action schedule
+     :parameters (?s - slot)
+     :precondition (and
+       (slot ?s)
+       (not (scheduled))
+       (free Alan ?s)
+       (free Michael ?s)
+       (free Michelle ?s)
+       (free Roy ?s)
+       (free Judy ?s)
+       (free Natalie ?s)
+       (free Brian ?s)
+     )
+     :effect (and
+       (scheduled)
+       (meeting-at ?s)
+     )
+  )
+)

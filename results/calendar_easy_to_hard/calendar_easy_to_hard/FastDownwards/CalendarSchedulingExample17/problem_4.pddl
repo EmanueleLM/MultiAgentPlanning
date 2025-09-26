@@ -5,6 +5,8 @@
     ts1 ts2 ts3 ts4 ts5 ts6 ts7 ts8 ts9 ts10 ts11 ts12 ts13 ts14 ts15 ts16 - timeslot
   )
   (:init
+    (= (total-cost) 0)
+
     (busy peter ts1)
     (busy peter ts4)
     (busy peter ts6)
@@ -32,10 +34,8 @@
     (busy evelyn ts13)
     (busy evelyn ts16)
 
-    (allow ts9)
-
-    (= (total-cost) 0)
+    (allow ts15)
   )
-  (:goal (scheduled ts9))
+  (:goal (scheduled ts15))
   (:metric minimize (total-cost))
 )

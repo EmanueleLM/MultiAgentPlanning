@@ -1,0 +1,36 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types agent slot)
+  (:predicates
+    (agent ?a - agent)
+    (slot ?s - slot)
+    (required ?a - agent)
+    (available ?a - agent ?s - slot)
+    (unavailable ?a - agent ?s - slot)
+    (earliest-feasible ?s - slot)
+    (meeting-scheduled ?s - slot)
+  )
+
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (slot ?s)
+      (earliest-feasible ?s)
+      ;; all required attendees must be available at the chosen slot
+      (available jesse ?s)
+      (available nancy ?s)
+      (available isabella ?s)
+      (available harold ?s)
+      (available linda ?s)
+    )
+    :effect (and
+      (meeting-scheduled ?s)
+      ;; consume availability at that slot (meeting occupies attendees)
+      (not (available jesse ?s))
+      (not (available nancy ?s))
+      (not (available isabella ?s))
+      (not (available harold ?s))
+      (not (available linda ?s))
+    )
+  )
+)

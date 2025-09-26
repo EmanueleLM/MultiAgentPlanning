@@ -2,8 +2,11 @@
   (:requirements :typing :adl)
   (:types participant slot meeting)
   (:predicates
+    (participant ?p - participant)
+    (slot ?s - slot)
+    (meeting ?m - meeting)
     (free ?p - participant ?s - slot)
-    (assigned ?m - meeting)
+    (assigned ?m - meeting)           ; meeting has been scheduled (assigned to some slot)
     (scheduled ?m - meeting ?s - slot)
   )
 

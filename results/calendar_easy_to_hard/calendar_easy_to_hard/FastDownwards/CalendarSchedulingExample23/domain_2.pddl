@@ -1,11 +1,15 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing :adl :action-costs)
+  (:requirements :typing :adl)
   (:types participant slot meeting)
   (:predicates
+    (participant ?p - participant)
+    (slot ?s - slot)
+    (meeting ?m - meeting)
     (free ?p - participant ?s - slot)
     (assigned ?m - meeting)
     (scheduled ?m - meeting ?s - slot)
   )
+
   (:action schedule
     :parameters (?m - meeting ?s - slot)
     :precondition (and
@@ -17,6 +21,5 @@
       (scheduled ?m ?s)
       (forall (?p - participant) (not (free ?p ?s)))
     )
-    :cost 1
   )
 )

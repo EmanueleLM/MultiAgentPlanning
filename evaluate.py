@@ -206,7 +206,6 @@ def main() -> None:
         dataset_name,
         total,
         evaluated,
-        total - evaluated,
         accuracy,
         accuracy_evaluated,
         args.model

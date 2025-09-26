@@ -1,5 +1,5 @@
 (define (domain meeting-scheduler)
-  (:requirements :typing :negative-preconditions :universal-preconditions :action-costs :fluents :adl)
+  (:requirements :strips :typing :negative-preconditions :fluents)
   (:types participant timeslot)
   (:predicates
     (busy ?p - participant ?t - timeslot)
@@ -9,15 +9,19 @@
   )
   (:functions (total-cost))
   (:action schedule-meeting
-    :parameters (?t - timeslot)
+    :parameters (?t - timeslot ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant)
     :precondition (and
       (allow ?t)
       (not (meeting-scheduled))
-      (forall (?p - participant) (not (busy ?p ?t)))
+      (not (busy ?p1 ?t))
+      (not (busy ?p2 ?t))
+      (not (busy ?p3 ?t))
+      (not (busy ?p4 ?t))
     )
     :effect (and
       (scheduled ?t)
       (meeting-scheduled)
+      (not (allow ?t))
       (increase (total-cost) 1)
     )
   )

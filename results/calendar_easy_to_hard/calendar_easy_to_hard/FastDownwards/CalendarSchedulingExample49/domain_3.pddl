@@ -1,0 +1,51 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types participant time)
+  (:predicates
+    (meeting-scheduled)
+    (meeting-at ?t - time)
+    (available ?p - participant ?t - time)
+    (penalized ?t - time)
+    (valid-start ?t - time)
+  )
+  (:action schedule
+    :parameters (?t - time)
+    :precondition (and
+      (not (meeting-scheduled))
+      (valid-start ?t)
+      (available alan ?t)
+      (available mason ?t)
+      (available dennis ?t)
+      (available theresa ?t)
+      (available brenda ?t)
+      (available juan ?t)
+      (available angela ?t)
+      (not (penalized ?t))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-at ?t)
+    )
+    :cost 0
+  )
+  (:action schedule-penalized
+    :parameters (?t - time)
+    :precondition (and
+      (not (meeting-scheduled))
+      (valid-start ?t)
+      (available alan ?t)
+      (available mason ?t)
+      (available dennis ?t)
+      (available theresa ?t)
+      (available brenda ?t)
+      (available juan ?t)
+      (available angela ?t)
+      (penalized ?t)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (meeting-at ?t)
+    )
+    :cost 1
+  )
+)

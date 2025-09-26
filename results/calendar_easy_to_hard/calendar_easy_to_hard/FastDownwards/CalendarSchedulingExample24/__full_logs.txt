@@ -1,0 +1,91 @@
+PROBLEM
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:
+
+TASK: You need to schedule a meeting for Benjamin, Juan, Heather, Nathan and Jacob for half an hour between the work hours of 9:00 to 17:00 on Monday. 
+
+Here are the existing schedules for everyone during the day: 
+Benjamin has blocked their calendar on Monday during 10:00 to 10:30, 11:30 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 15:00 to 15:30, 16:00 to 16:30; 
+Juan has meetings on Monday during 10:00 to 10:30, 11:00 to 11:30, 12:00 to 12:30, 14:30 to 16:00; 
+Heather has meetings on Monday during 9:00 to 9:30, 10:00 to 10:30, 12:30 to 13:00, 14:00 to 14:30; 
+Nathan is busy on Monday during 9:00 to 11:00, 11:30 to 12:30, 14:00 to 14:30, 15:00 to 16:00, 16:30 to 17:00; 
+Jacob is busy on Monday during 9:00 to 9:30, 10:00 to 10:30, 11:00 to 13:00, 13:30 to 15:00, 15:30 to 17:00; 
+
+Find a time that works for everyone's schedule and constraints. 
+SOLUTION: 
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:
+
+TASK: You need to schedule a meeting for Benjamin, Juan, Heather, Nathan and Jacob for half an hour between the work hours of 9:00 to 17:00 on Monday. 
+
+Here are the existing schedules for everyone during the day: 
+Benjamin has blocked their calendar on Monday during 10:00 to 10:30, 11:30 to 12:00, 12:30 to 13:00, 13:30 to 14:00, 15:00 to 15:30, 16:00 to 16:30; 
+Juan has meetings on Monday during 10:00 to 10:30, 11:00 to 11:30, 12:00 to 12:30, 14:30 to 16:00; 
+Heather has meetings on Monday during 9:00 to 9:30, 10:00 to 10:30, 12:30 to 13:00, 14:00 to 14:30; 
+Nathan is busy on Monday during 9:00 to 11:00, 11:30 to 12:30, 14:00 to 14:30, 15:00 to 16:00, 16:30 to 17:00; 
+Jacob is busy on Monday during 9:00 to 9:30, 10:00 to 10:30, 11:00 to 13:00, 13:30 to 15:00, 15:30 to 17:00; 
+
+Find a time that works for everyone's schedule and constraints. 
+SOLUTION: 
+================================================================================
+
+FINAL-PLAN
+------------------------------
+I don't yet have the participants' availability summaries, so I cannot compute the earliest common 30-minute slot or produce the final problem instance without inventing data. Please provide each participant's availability (free slots) between Monday 09:00 and 17:00 in 30‑minute increments. I will then produce a Fast Downward–compatible PDDL domain and a matching problem whose goal encodes the chosen slot and shows each participant attending.
+
+Below is a generic domain (Fast Downwards compatible, STRIPS + typing) that I will use to build the problem once you give availabilities. It models 30-minute slots and distinct attend actions (parameterized by person and slot) so the resulting plan makes clear who attends which slot. After you supply availability, I will (1) compute the earliest slot that all participants are free, (2) instantiate the problem with free predicates only where participants are actually free, and (3) set the goal to require that chosen slot and that every participant has attended that slot.
+
+Please send availabilities in this exact format (example):
+- Participants: alice, bob, carol
+- alice free: 09:00-09:30, 09:30-10:00, 11:00-11:30, ...
+- bob free:   09:30-10:00, 10:00-10:30, 11:00-11:30, ...
+- carol free: 09:00-09:30, 09:30-10:00, 10:00-10:30, ...
+
+Notes:
+- I will treat any phrasing like "avoid", "would rather", "earliest" as strict constraints (i.e., not allowed unless listed as free).
+- I will not invent any availability.
+- I will compute the earliest 30-min slot (from 09:00 onward) that is common to all participants and set the problem goal to require that slot is chosen and that each participant attends that slot.
+- Use 30-minute slots: 09:00-09:30, 09:30-10:00, ..., 16:30-17:00.
+
+<domain>
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:predicates
+    (free ?p - person ?s - slot)        ; participant ?p is free at slot ?s (initial-state encoded)
+    (attended ?p - person ?s - slot)    ; participant ?p attends meeting at slot ?s (set by actions)
+    (chosen ?s - slot)                  ; the planner chooses slot ?s (goal will require this)
+    (person ?p - person)
+    (slot ?s - slot)
+  )
+
+  ;; Action to mark that a participant attends the meeting in a given slot.
+  ;; Precondition enforces participant is free in that slot (hard constraint).
+  (:action attend
+    :parameters (?p - person ?s - slot)
+    :precondition (free ?p ?s)
+    :effect (attended ?p ?s)
+  )
+
+  ;; Action to choose a slot as the meeting time. The problem goal will require
+  ;; the chosen slot and attendance by every participant at that same slot.
+  ;; No preconditions here; the goal will force chosen slot to match the attended slot(s).
+  (:action choose
+    :parameters (?s - slot)
+    :precondition ()
+    :effect (chosen ?s)
+  )
+)
+</domain>
+
+Once you provide the participant availability lists (in the format above), I'll produce the problem file that:
+- lists all slot objects (09:00-09:30 ... 16:30-17:00),
+- lists person objects,
+- includes only the (free person slot) facts that are given,
+- sets the goal to require (chosen <earliest-common-slot>) and (attended <person> <earliest-common-slot>) for every person,
+- thereby enforcing the earliest feasible 30-minute meeting for everyone.
+================================================================================
+

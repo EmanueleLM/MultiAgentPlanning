@@ -179,6 +179,22 @@ def setup_logging(results_root: Path, dataset: str, solver_name: str) -> logging
     return logger
 
 
+def append_debug_log(field: str, content: str) -> None:
+    entry = collect_debug_logs(field, content)
+    full_debug_logs.append(entry)
+    if debug:
+        try:
+            with open(FULL_LOGS_PATH, "a", encoding="utf-8") as log_file:
+                log_file.write(entry)
+        except Exception as exc:
+            logger.warning(
+                "Failed to append debug log '%s' to %s: %s",
+                field,
+                FULL_LOGS_PATH,
+                exc,
+            )
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -230,6 +246,7 @@ if __name__ == "__main__":
 
     # Start the experiments
     for i in range(num_experiments):
+        # Problem name and full path
         k = f"{problem_name}_{i}"
         data = scheduling_data[k]
         environment_name = "".join([v.capitalize() for v in k.split("_")])
@@ -272,25 +289,19 @@ if __name__ == "__main__":
         )
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
         FULL_LOGS_PATH = BASE_FOLDER / "__full_logs.txt"
+        
+        # If the natural plan already exists, skip
+        if (BASE_FOLDER / "final_natural_plan.txt").exists():
+            logger.info(
+                "Natural plan already exists for %s. Skipping experiment.",
+                environment_name,
+            )
+            print(f"Skipping {environment_name} as final_natural_plan.txt exists.")
+            continue
 
         if debug:
             with open(FULL_LOGS_PATH, "w", encoding="utf-8") as log_seed:
                 log_seed.write("")
-
-        def append_debug_log(field: str, content: str) -> None:
-            entry = collect_debug_logs(field, content)
-            full_debug_logs.append(entry)
-            if debug:
-                try:
-                    with open(FULL_LOGS_PATH, "a", encoding="utf-8") as log_file:
-                        log_file.write(entry)
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to append debug log '%s' to %s: %s",
-                        field,
-                        FULL_LOGS_PATH,
-                        exc,
-                    )
 
         append_debug_log("PROBLEM", data["prompt_0shot"])
         append_debug_log("ENVIRONMENT", data["prompt_0shot"])
@@ -307,9 +318,23 @@ if __name__ == "__main__":
 
         else:
             logger.info("Generating initial plan via planner agent.")
-            responses = asyncio.run(planner.plan(model_plan, env))
-            final_plan = responses["pddl_orchestrator"]
-            domain, problem = pddl_parser.parse(final_plan, from_file=False)
+            try:
+                responses = asyncio.run(planner.plan(model_plan, env))
+            except Exception as exc:
+                logger.error("Planning failed for %s: %s", env.name, exc)
+                append_debug_log("PLANNING-ERROR", str(exc))
+                continue
+            
+            # Generate the plan
+            try:
+                final_plan = responses["pddl_orchestrator"]
+                domain, problem = pddl_parser.parse(final_plan, from_file=False)
+            except Exception as exc:
+                logger.error("Failed to parse final plan for %s: %s", env.name, exc)
+                append_debug_log("FINAL-PLAN-ERROR", str(exc))
+                domain = "No domain was generated. The error was: " + str(exc)
+                problem = "No problem was generated. The error was: " + str(exc)
+                final_plan = "No plan was generated. The error was: " + str(exc)
 
             # Collect the full logs (default -> __full_logs.txt)
             append_debug_log("FINAL-PLAN", final_plan)

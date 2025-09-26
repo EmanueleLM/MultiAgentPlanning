@@ -1,0 +1,1350 @@
+PROBLEM
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:
+
+TASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. 
+
+Here are the existing schedules for everyone during the day: 
+Elijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; 
+Janet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; 
+Brianhas no meetings the whole day.
+Carl has meetings on Monday during 9:30 to 16:30; 
+Timothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; 
+
+Find a time that works for everyone's schedule and constraints. 
+SOLUTION: 
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:
+
+TASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. 
+
+Here are the existing schedules for everyone during the day: 
+Elijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; 
+Janet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; 
+Brianhas no meetings the whole day.
+Carl has meetings on Monday during 9:30 to 16:30; 
+Timothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; 
+
+Find a time that works for everyone's schedule and constraints. 
+SOLUTION: 
+================================================================================
+
+DOMAIN
+------------------------------
+(define (domain meeting-scheduling)
+  (:requirements :typing :adl)
+  (:types participant slot meeting)
+  (:predicates
+    (participant ?p - participant)
+    (slot ?s - slot)
+    (meeting ?m - meeting)
+    (free ?p - participant ?s - slot)
+    (assigned ?m - meeting)           ; meeting has been scheduled (assigned to some slot)
+    (scheduled ?m - meeting ?s - slot)
+  )
+
+  (:action schedule
+    :parameters (?m - meeting ?s - slot)
+    :precondition (and
+      (not (assigned ?m))
+      (forall (?p - participant) (free ?p ?s))
+    )
+    :effect (and
+      (assigned ?m)
+      (scheduled ?m ?s)
+      (forall (?p - participant) (not (free ?p ?s)))
+    )
+  )
+)
+================================================================================
+
+PROBLEM
+------------------------------
+(define (problem schedule-monday-30min)
+  (:domain meeting-scheduling)
+
+  (:objects
+    ; participants
+    elijah janet brian carl timothy - participant
+    ; 30-minute slots from 09:00 to 17:00
+    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230
+    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot
+    meeting1 - meeting
+  )
+
+  (:init
+    ; declare types
+    (participant elijah) (participant janet) (participant brian) (participant carl) (participant timothy)
+    (slot slot-0900) (slot slot-0930) (slot slot-1000) (slot slot-1030) (slot slot-1100) (slot slot-1130)
+    (slot slot-1200) (slot slot-1230) (slot slot-1300) (slot slot-1330) (slot slot-1400) (slot slot-1430)
+    (slot slot-1500) (slot slot-1530) (slot slot-1600) (slot slot-1630)
+    (meeting meeting1)
+
+    ; Availability (free) facts derived strictly from participants' stated busy intervals.
+    ; Elijah busy: 10:00-11:00 (slot-1000, slot-1030), 12:00-12:30 (slot-1200), 15:00-15:30 (slot-1500)
+    ; Elijah free slots:
+    (free elijah slot-0900) (free elijah slot-0930)
+    (free elijah slot-1100) (free elijah slot-1130)
+    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330)
+    (free elijah slot-1400) (free elijah slot-1430)
+    (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)
+
+    ; Janet busy: 09:30-10:30 (slot-0930, slot-1000), 13:30-15:30 (slot-1330, slot-1400, slot-1430, slot-1500)
+    ; Janet free slots:
+    (free janet slot-0900)
+    (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)
+    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300)
+    (free janet slot-1530) (free janet slot-1600) (free janet slot-1630)
+
+    ; Brian: "No meetings on Monday" -> no free slots are asserted for Brian (treated as hard constraint)
+
+    ; Carl busy: 09:30-16:30 (slots starting at 0930 up to 1600 are unavailable)
+    ; Carl free slots:
+    (free carl slot-0900) (free carl slot-1630)
+
+    ; Timothy busy: 10:30-12:00 (slot-1030, slot-1100, slot-1130), 13:30-14:00 (slot-1330),
+    ; 14:30-16:00 (slot-1430, slot-1500, slot-1530), 16:30-17:00 (slot-1630)
+    ; Timothy free slots:
+    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)
+    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)
+    (free timothy slot-1400) (free timothy slot-1600)
+  )
+
+  ; Goal: schedule the single meeting (meeting1) (i.e., assign it to some slot).
+  ; The action enforces that all participants must be free at the chosen slot.
+  (:goal (assigned meeting1))
+
+  (:metric maximize (total-time)) ; placeholder metric (ignored by planners that don't use it)
+)
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl)\n  (:types participant slot meeting)\n  (:predicates\n    (participant ?p - participant)\n    (slot ?s - slot)\n    (meeting ?m - meeting)\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)           ; meeting has been scheduled (assigned to some slot)\n    (scheduled ?m - meeting ?s - slot)\n  )\n\n  (:action schedule\n    :parameters (?m - meeting ?s - slot)\n    :precondition (and\n      (not (assigned ?m))\n      (forall (?p - participant) (free ?p ?s))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (forall (?p - participant) (not (free ?p ?s)))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    ; participants\n    elijah janet brian carl timothy - participant\n    ; 30-minute slots from 09:00 to 17:00\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    ; declare types\n    (participant elijah) (participant janet) (participant brian) (participant carl) (participant timothy)\n    (slot slot-0900) (slot slot-0930) (slot slot-1000) (slot slot-1030) (slot slot-1100) (slot slot-1130)\n    (slot slot-1200) (slot slot-1230) (slot slot-1300) (slot slot-1330) (slot slot-1400) (slot slot-1430)\n    (slot slot-1500) (slot slot-1530) (slot slot-1600) (slot slot-1630)\n    (meeting meeting1)\n\n    ; Availability (free) facts derived strictly from participants' stated busy intervals.\n    ; Elijah busy: 10:00-11:00 (slot-1000, slot-1030), 12:00-12:30 (slot-1200), 15:00-15:30 (slot-1500)\n    ; Elijah free slots:\n    (free elijah slot-0900) (free elijah slot-0930)\n    (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330)\n    (free elijah slot-1400) (free elijah slot-1430)\n    (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    ; Janet busy: 09:30-10:30 (slot-0930, slot-1000), 13:30-15:30 (slot-1330, slot-1400, slot-1430, slot-1500)\n    ; Janet free slots:\n    (free janet slot-0900)\n    (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300)\n    (free janet slot-1530) (free janet slot-1600) (free janet slot-1630)\n\n    ; Brian: \"No meetings on Monday\" -> no free slots are asserted for Brian (treated as hard constraint)\n\n    ; Carl busy: 09:30-16:30 (slots starting at 0930 up to 1600 are unavailable)\n    ; Carl free slots:\n    (free carl slot-0900) (free carl slot-1630)\n\n    ; Timothy busy: 10:30-12:00 (slot-1030, slot-1100, slot-1130), 13:30-14:00 (slot-1330),\n    ; 14:30-16:00 (slot-1430, slot-1500, slot-1530), 16:30-17:00 (slot-1630)\n    ; Timothy free slots:\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n  )\n\n  ; Goal: schedule the single meeting (meeting1) (i.e., assign it to some slot).\n  ; The action enforces that all participants must be free at the chosen slot.\n  (:goal (assigned meeting1))\n\n  (:metric maximize (total-time)) ; placeholder metric (ignored by planners that don't use it)\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "METRIC only defined for temporal actions or actions with costs!\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_0.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_0.pddl --sas-file output.sas\nParsing...\nParsing task\n\t->Parsing metric\nInvalid metric definition.\nSyntax: (:metric minimize (total-cost))\nGot: [':metric', 'maximize', ['total-time']]\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": []
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n  )\n\n  (:action schedule\n    :parameters (?m - meeting ?s - slot)\n    :precondition (and\n      (not (assigned ?m))\n      (forall (?p - participant) (free ?p ?s))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (forall (?p - participant) (not (free ?p ?s)))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n  )\n\n  (:goal (assigned meeting1))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_1'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_1.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_1.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 10 rules.\nComputing model... [0.000s CPU, 0.001s wall-clock]\n244 relevant atoms\n38 auxiliary atoms\n282 final queue length\n361 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.002s wall-clock]\nInstantiating: [0.000s CPU, 0.004s wall-clock]\nComputing fact groups...\nFinding invariants...\n8 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.001s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n81 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.002s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 60\nProcessing axioms: [0.000s CPU, 0.001s wall-clock]\nTranslating task: [0.000s CPU, 0.002s wall-clock]\n48 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n22 of 81 variables necessary.\n0 of 0 mutex groups necessary.\n16 of 16 operators necessary.\n20 of 20 axiom rules necessary.\nReordering and filtering variables: [0.010s CPU, 0.001s wall-clock]\nTranslator variables: 22\nTranslator derived variables: 16\nTranslator facts: 44\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 16\nTranslator axioms: 20\nTranslator task size: 161\nTranslator peak memory: 31564 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.010s CPU, 0.012s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_1 < output.sas\n[t=0.000238s, 9964 KB] reading input...\n[t=0.000681s, 9964 KB] done reading input!\nThis configuration does not support axioms!\nTerminating.\nTried to use unsupported feature.\nPeak memory: 10228 KB\nRemove intermediate file output.sas\nsearch exit code: 34\n\nDriver aborting after search\nINFO     Planner time: 0.12s\n",
+    "history": [
+        "AgentDeepThinkConstraints"
+    ]
+}
+================================================================================
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl :action-costs)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n  )\n  (:action schedule\n    :parameters (?m - meeting ?s - slot)\n    :precondition (and\n      (not (assigned ?m))\n      (forall (?p - participant) (free ?p ?s))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (forall (?p - participant) (not (free ?p ?s)))\n    )\n    :cost 1\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n  )\n\n  (:goal (assigned meeting1))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::ExpectedToken'\n  what():  ) expected\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_2.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_2.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing 1. axiom/action entry\n\t->Parsing 1. action\n\t->Parsing action 'schedule'\nToo many fields. Expecting (:action NAME [:parameters PARAMETERS]? [:precondition PRECONDITION]? :effect EFFECT)\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n  )\n  (:action schedule\n    :parameters (?m - meeting ?s - slot)\n    :precondition (and\n      (not (assigned ?m))\n      (forall (?p - participant) (free ?p ?s))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (forall (?p - participant) (not (free ?p ?s)))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n  )\n\n  (:goal (assigned meeting1))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_3'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_3.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_3.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 10 rules.\nComputing model... [0.000s CPU, 0.001s wall-clock]\n244 relevant atoms\n38 auxiliary atoms\n282 final queue length\n361 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.001s wall-clock]\nInstantiating: [0.000s CPU, 0.004s wall-clock]\nComputing fact groups...\nFinding invariants...\n8 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.001s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n81 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.002s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 60\nProcessing axioms: [0.000s CPU, 0.001s wall-clock]\nTranslating task: [0.000s CPU, 0.002s wall-clock]\n48 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n22 of 81 variables necessary.\n0 of 0 mutex groups necessary.\n16 of 16 operators necessary.\n20 of 20 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 22\nTranslator derived variables: 16\nTranslator facts: 44\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 16\nTranslator axioms: 20\nTranslator task size: 161\nTranslator peak memory: 31564 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.010s CPU, 0.012s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_3 < output.sas\n[t=0.000211s, 9964 KB] reading input...\n[t=0.000617s, 9964 KB] done reading input!\nThis configuration does not support axioms!\nTerminating.\nTried to use unsupported feature.\nPeak memory: 10228 KB\nRemove intermediate file output.sas\nsearch exit code: 34\n\nDriver aborting after search\nINFO     Planner time: 0.11s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 4
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl :action-costs :negative-preconditions :equality)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n    (cost1 ?s - slot)\n    (cost2 ?s - slot)\n    (cost3 ?s - slot)\n    (cost4 ?s - slot)\n    (cost5 ?s - slot)\n    (cost6 ?s - slot)\n    (cost7 ?s - slot)\n    (cost8 ?s - slot)\n    (cost9 ?s - slot)\n    (cost10 ?s - slot)\n    (cost11 ?s - slot)\n    (cost12 ?s - slot)\n    (cost13 ?s - slot)\n    (cost14 ?s - slot)\n    (cost15 ?s - slot)\n    (cost16 ?s - slot)\n  )\n  (:functions (total-cost))\n  (:action schedule\n    :parameters (?m - meeting ?s - slot)\n    :precondition (and\n      (not (assigned ?m))\n      (forall (?p - participant) (free ?p ?s))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (forall (?p - participant) (not (free ?p ?s)))\n      (when (cost1 ?s)   (increase (total-cost) 1))\n      (when (cost2 ?s)   (increase (total-cost) 2))\n      (when (cost3 ?s)   (increase (total-cost) 3))\n      (when (cost4 ?s)   (increase (total-cost) 4))\n      (when (cost5 ?s)   (increase (total-cost) 5))\n      (when (cost6 ?s)   (increase (total-cost) 6))\n      (when (cost7 ?s)   (increase (total-cost) 7))\n      (when (cost8 ?s)   (increase (total-cost) 8))\n      (when (cost9 ?s)   (increase (total-cost) 9))\n      (when (cost10 ?s)  (increase (total-cost) 10))\n      (when (cost11 ?s)  (increase (total-cost) 11))\n      (when (cost12 ?s)  (increase (total-cost) 12))\n      (when (cost13 ?s)  (increase (total-cost) 13))\n      (when (cost14 ?s)  (increase (total-cost) 14))\n      (when (cost15 ?s)  (increase (total-cost) 15))\n      (when (cost16 ?s)  (increase (total-cost) 16))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n\n    (= (total-cost) 0)\n\n    (cost1 slot-0900)\n    (cost2 slot-0930)\n    (cost3 slot-1000)\n    (cost4 slot-1030)\n    (cost5 slot-1100)\n    (cost6 slot-1130)\n    (cost7 slot-1200)\n    (cost8 slot-1230)\n    (cost9 slot-1300)\n    (cost10 slot-1330)\n    (cost11 slot-1400)\n    (cost12 slot-1430)\n    (cost13 slot-1500)\n    (cost14 slot-1530)\n    (cost15 slot-1600)\n    (cost16 slot-1630)\n  )\n\n  (:goal (assigned meeting1))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_4'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_4.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_4.pddl --sas-file output.sas\nParsing...\nb'Traceback (most recent call last):\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py\", line 747, in <module>\\n    main()\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py\", line 705, in main\\n    task = pddl_parser.open(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/pddl_file.py\", line 39, in open\\n    return parsing_functions.parse_task(domain_pddl, task_pddl)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 630, in parse_task\\n    domain_name, domain_requirements, types, type_dict, constants, predicates, \\\\\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 733, in parse_domain_pddl\\n    the_axioms, the_actions = parse_axioms_and_actions(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 569, in parse_axioms_and_actions\\n    action = parse_action(context, entry, type_dict, predicate_dict)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 523, in parse_action\\n    cost = parse_effects(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 335, in parse_effects\\n    add_effect(rest_effect, result)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 348, in add_effect\\n    add_effect(effect, result)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 364, in add_effect\\n    assert isinstance(tmp_effect.effect, pddl.SimpleEffect)\\nAssertionError\\n'\ntranslate exit code: 30\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+ITERATION 5
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl :fluents :action-costs :negative-preconditions :equality)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n    (cost1 ?s - slot)\n    (cost2 ?s - slot)\n    (cost3 ?s - slot)\n    (cost4 ?s - slot)\n    (cost5 ?s - slot)\n    (cost6 ?s - slot)\n    (cost7 ?s - slot)\n    (cost8 ?s - slot)\n    (cost9 ?s - slot)\n    (cost10 ?s - slot)\n    (cost11 ?s - slot)\n    (cost12 ?s - slot)\n    (cost13 ?s - slot)\n    (cost14 ?s - slot)\n    (cost15 ?s - slot)\n    (cost16 ?s - slot)\n  )\n  (:functions (total-cost))\n  (:action schedule\n    :parameters (?m - meeting ?s - slot ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 ?s) (free ?p2 ?s) (free ?p3 ?s) (free ?p4 ?s) (free ?p5 ?s)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (not (free ?p1 ?s)) (not (free ?p2 ?s)) (not (free ?p3 ?s)) (not (free ?p4 ?s)) (not (free ?p5 ?s))\n      (when (cost1 ?s)   (increase (total-cost) 1))\n      (when (cost2 ?s)   (increase (total-cost) 2))\n      (when (cost3 ?s)   (increase (total-cost) 3))\n      (when (cost4 ?s)   (increase (total-cost) 4))\n      (when (cost5 ?s)   (increase (total-cost) 5))\n      (when (cost6 ?s)   (increase (total-cost) 6))\n      (when (cost7 ?s)   (increase (total-cost) 7))\n      (when (cost8 ?s)   (increase (total-cost) 8))\n      (when (cost9 ?s)   (increase (total-cost) 9))\n      (when (cost10 ?s)  (increase (total-cost) 10))\n      (when (cost11 ?s)  (increase (total-cost) 11))\n      (when (cost12 ?s)  (increase (total-cost) 12))\n      (when (cost13 ?s)  (increase (total-cost) 13))\n      (when (cost14 ?s)  (increase (total-cost) 14))\n      (when (cost15 ?s)  (increase (total-cost) 15))\n      (when (cost16 ?s)  (increase (total-cost) 16))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n\n    (= (total-cost) 0)\n\n    (cost1 slot-0900)\n    (cost2 slot-0930)\n    (cost3 slot-1000)\n    (cost4 slot-1030)\n    (cost5 slot-1100)\n    (cost6 slot-1130)\n    (cost7 slot-1200)\n    (cost8 slot-1230)\n    (cost9 slot-1300)\n    (cost10 slot-1330)\n    (cost11 slot-1400)\n    (cost12 slot-1430)\n    (cost13 slot-1500)\n    (cost14 slot-1530)\n    (cost15 slot-1600)\n    (cost16 slot-1630)\n  )\n\n  (:goal (assigned meeting1))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_5'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_5.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_5.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 6
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl :action-costs :negative-preconditions :equality)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n    (cost1 ?s - slot)\n    (cost2 ?s - slot)\n    (cost3 ?s - slot)\n    (cost4 ?s - slot)\n    (cost5 ?s - slot)\n    (cost6 ?s - slot)\n    (cost7 ?s - slot)\n    (cost8 ?s - slot)\n    (cost9 ?s - slot)\n    (cost10 ?s - slot)\n    (cost11 ?s - slot)\n    (cost12 ?s - slot)\n    (cost13 ?s - slot)\n    (cost14 ?s - slot)\n    (cost15 ?s - slot)\n    (cost16 ?s - slot)\n  )\n  (:functions (total-cost))\n  (:action schedule\n    :parameters (?m - meeting ?s - slot ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 ?s) (free ?p2 ?s) (free ?p3 ?s) (free ?p4 ?s) (free ?p5 ?s)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m ?s)\n      (not (free ?p1 ?s)) (not (free ?p2 ?s)) (not (free ?p3 ?s)) (not (free ?p4 ?s)) (not (free ?p5 ?s))\n      (when (cost1 ?s)   (increase (total-cost) 1))\n      (when (cost2 ?s)   (increase (total-cost) 2))\n      (when (cost3 ?s)   (increase (total-cost) 3))\n      (when (cost4 ?s)   (increase (total-cost) 4))\n      (when (cost5 ?s)   (increase (total-cost) 5))\n      (when (cost6 ?s)   (increase (total-cost) 6))\n      (when (cost7 ?s)   (increase (total-cost) 7))\n      (when (cost8 ?s)   (increase (total-cost) 8))\n      (when (cost9 ?s)   (increase (total-cost) 9))\n      (when (cost10 ?s)  (increase (total-cost) 10))\n      (when (cost11 ?s)  (increase (total-cost) 11))\n      (when (cost12 ?s)  (increase (total-cost) 12))\n      (when (cost13 ?s)  (increase (total-cost) 13))\n      (when (cost14 ?s)  (increase (total-cost) 14))\n      (when (cost15 ?s)  (increase (total-cost) 15))\n      (when (cost16 ?s)  (increase (total-cost) 16))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n\n    (= (total-cost) 0)\n\n    (cost1 slot-0900)\n    (cost2 slot-0930)\n    (cost3 slot-1000)\n    (cost4 slot-1030)\n    (cost5 slot-1100)\n    (cost6 slot-1130)\n    (cost7 slot-1200)\n    (cost8 slot-1230)\n    (cost9 slot-1300)\n    (cost10 slot-1330)\n    (cost11 slot-1400)\n    (cost12 slot-1430)\n    (cost13 slot-1500)\n    (cost14 slot-1530)\n    (cost15 slot-1600)\n    (cost16 slot-1630)\n  )\n\n  (:goal (assigned meeting1))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/sas_plan_6'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_6.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_6.pddl --sas-file output.sas\nParsing...\nb'Traceback (most recent call last):\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py\", line 747, in <module>\\n    main()\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py\", line 705, in main\\n    task = pddl_parser.open(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/pddl_file.py\", line 39, in open\\n    return parsing_functions.parse_task(domain_pddl, task_pddl)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 630, in parse_task\\n    domain_name, domain_requirements, types, type_dict, constants, predicates, \\\\\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 733, in parse_domain_pddl\\n    the_axioms, the_actions = parse_axioms_and_actions(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 569, in parse_axioms_and_actions\\n    action = parse_action(context, entry, type_dict, predicate_dict)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 523, in parse_action\\n    cost = parse_effects(\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 335, in parse_effects\\n    add_effect(rest_effect, result)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 348, in add_effect\\n    add_effect(effect, result)\\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/pddl_parser/parsing_functions.py\", line 364, in add_effect\\n    assert isinstance(tmp_effect.effect, pddl.SimpleEffect)\\nAssertionError\\n'\ntranslate exit code: 30\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 7
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Elijah, Janet, Brian, Carl and Timothy for half an hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nElijah is busy on Monday during 10:00 to 11:00, 12:00 to 12:30, 15:00 to 15:30; \nJanet has meetings on Monday during 9:30 to 10:30, 13:30 to 15:30; \nBrianhas no meetings the whole day.\nCarl has meetings on Monday during 9:30 to 16:30; \nTimothy is busy on Monday during 10:30 to 12:00, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "CalendarSchedulingExample23",
+        "author": "Human",
+        "agents": {
+            "number": 6,
+            "names": [
+                "Elijah",
+                "Janet",
+                "Brian",
+                "Carl",
+                "Timothy",
+                "orchestrator"
+            ],
+            "Elijah": {
+                "private_information": [
+                    "Busy Monday 10:00-11:00",
+                    "Busy Monday 12:00-12:30",
+                    "Busy Monday 15:00-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Janet": {
+                "private_information": [
+                    "Busy Monday 09:30-10:30",
+                    "Busy Monday 13:30-15:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Brian": {
+                "private_information": [
+                    "No meetings on Monday"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Carl": {
+                "private_information": [
+                    "Busy Monday 09:30-16:30"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "Timothy": {
+                "private_information": [
+                    "Busy Monday 10:30-12:00",
+                    "Busy Monday 13:30-14:00",
+                    "Busy Monday 14:30-16:00",
+                    "Busy Monday 16:30-17:00"
+                ],
+                "goal": "Participate in a 30-minute meeting on Monday between 09:00 and 17:00."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Coordinate participants' availabilities and produce a PDDL domain and problem for FastDownward that schedules a 30-minute meeting on Monday between 09:00 and 17:00."
+            }
+        },
+        "environment": {
+            "init": {
+                "day": "Monday",
+                "work_hours_start": "09:00",
+                "work_hours_end": "17:00",
+                "meeting_duration_minutes": 30,
+                "time_slot_resolution_minutes": 30
+            },
+            "public_information": [
+                "Meeting day: Monday.",
+                "Work hours: 09:00 to 17:00.",
+                "Meeting duration: 30 minutes.",
+                "Time resolution: 30-minute slots.",
+                "Participants: Elijah, Janet, Brian, Carl, Timothy."
+            ]
+        },
+        "workflow": {
+            "Elijah": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Elijah",
+                    "system_prompt": "You are a calendar participant named Elijah. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots (e.g., \"09:00-09:30\", \"11:30-12:00\"). Do not emit PDDL.",
+                    "prompt": "Your name is Elijah. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Elijah->private_information}\nYour goal:\n{agents->Elijah->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Janet": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Janet",
+                    "system_prompt": "You are a calendar participant named Janet. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Janet. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Janet->private_information}\nYour goal:\n{agents->Janet->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Brian": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Brian",
+                    "system_prompt": "You are a calendar participant named Brian. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Brian. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Brian->private_information}\nYour goal:\n{agents->Brian->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Carl": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Carl",
+                    "system_prompt": "You are a calendar participant named Carl. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Carl. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Carl->private_information}\nYour goal:\n{agents->Carl->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "Timothy": {
+                "availability": {
+                    "input": [],
+                    "output": "availability_Timothy",
+                    "system_prompt": "You are a calendar participant named Timothy. Provide your free time windows within the public work hours given your private busy times. Return a concise structured list of available 30-minute slots. Do not emit PDDL.",
+                    "prompt": "Your name is Timothy. Public information:\n{environment->public_information}\nYour private schedule:\n{agents->Timothy->private_information}\nYour goal:\n{agents->Timothy->goal}\nProvide your available 30-minute time slots on Monday between the work hours, considering your busy intervals. Output should be a simple list of time ranges."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "availability_Elijah",
+                        "availability_Janet",
+                        "availability_Brian",
+                        "availability_Carl",
+                        "availability_Timothy"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate participants' availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30-minute meeting on Monday between 09:00 and 17:00 for all participants. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use discrete 30-minute time slots matching the environment's resolution. Ensure the PDDL is compatible with FastDownward (STRIPS/adl as appropriate) and clearly models participants, time slots, availability constraints, and a single meeting assignment.",
+                    "prompt": "You are the orchestrator. You will receive availability lists from each participant:\n{availability_Elijah}\n{availability_Janet}\n{availability_Brian}\n{availability_Carl}\n{availability_Timothy}\nYour task is to find a 30-minute slot within the public work hours that is free for every participant and produce a PDDL domain and PDDL problem for FastDownward that encodes this scheduling instance. Represent time as discrete 30-minute slots from 09:00 to 17:00 on Monday. Model participant availability as preconditions that disallow scheduling during busy slots. Ensure the output contains both <domain>...</domain> and <problem>...</problem> sections. Do not assume additional hidden constraints; use only the provided public information and availabilities."
+                }
+            },
+            "constraints": [
+                "Elijah.availability->orchestrator.pddl",
+                "Janet.availability->orchestrator.pddl",
+                "Brian.availability->orchestrator.pddl",
+                "Carl.availability->orchestrator.pddl",
+                "Timothy.availability->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :adl :action-costs :negative-preconditions :equality)\n  (:types participant slot meeting)\n  (:predicates\n    (free ?p - participant ?s - slot)\n    (assigned ?m - meeting)\n    (scheduled ?m - meeting ?s - slot)\n  )\n  (:functions (total-cost))\n\n  (:action schedule-0900\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-0900) (free ?p2 slot-0900) (free ?p3 slot-0900) (free ?p4 slot-0900) (free ?p5 slot-0900)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-0900)\n      (not (free ?p1 slot-0900)) (not (free ?p2 slot-0900)) (not (free ?p3 slot-0900)) (not (free ?p4 slot-0900)) (not (free ?p5 slot-0900))\n    )\n    :cost 1\n  )\n\n  (:action schedule-0930\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-0930) (free ?p2 slot-0930) (free ?p3 slot-0930) (free ?p4 slot-0930) (free ?p5 slot-0930)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-0930)\n      (not (free ?p1 slot-0930)) (not (free ?p2 slot-0930)) (not (free ?p3 slot-0930)) (not (free ?p4 slot-0930)) (not (free ?p5 slot-0930))\n    )\n    :cost 2\n  )\n\n  (:action schedule-1000\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1000) (free ?p2 slot-1000) (free ?p3 slot-1000) (free ?p4 slot-1000) (free ?p5 slot-1000)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1000)\n      (not (free ?p1 slot-1000)) (not (free ?p2 slot-1000)) (not (free ?p3 slot-1000)) (not (free ?p4 slot-1000)) (not (free ?p5 slot-1000))\n    )\n    :cost 3\n  )\n\n  (:action schedule-1030\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1030) (free ?p2 slot-1030) (free ?p3 slot-1030) (free ?p4 slot-1030) (free ?p5 slot-1030)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1030)\n      (not (free ?p1 slot-1030)) (not (free ?p2 slot-1030)) (not (free ?p3 slot-1030)) (not (free ?p4 slot-1030)) (not (free ?p5 slot-1030))\n    )\n    :cost 4\n  )\n\n  (:action schedule-1100\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1100) (free ?p2 slot-1100) (free ?p3 slot-1100) (free ?p4 slot-1100) (free ?p5 slot-1100)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1100)\n      (not (free ?p1 slot-1100)) (not (free ?p2 slot-1100)) (not (free ?p3 slot-1100)) (not (free ?p4 slot-1100)) (not (free ?p5 slot-1100))\n    )\n    :cost 5\n  )\n\n  (:action schedule-1130\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1130) (free ?p2 slot-1130) (free ?p3 slot-1130) (free ?p4 slot-1130) (free ?p5 slot-1130)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1130)\n      (not (free ?p1 slot-1130)) (not (free ?p2 slot-1130)) (not (free ?p3 slot-1130)) (not (free ?p4 slot-1130)) (not (free ?p5 slot-1130))\n    )\n    :cost 6\n  )\n\n  (:action schedule-1200\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1200) (free ?p2 slot-1200) (free ?p3 slot-1200) (free ?p4 slot-1200) (free ?p5 slot-1200)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1200)\n      (not (free ?p1 slot-1200)) (not (free ?p2 slot-1200)) (not (free ?p3 slot-1200)) (not (free ?p4 slot-1200)) (not (free ?p5 slot-1200))\n    )\n    :cost 7\n  )\n\n  (:action schedule-1230\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1230) (free ?p2 slot-1230) (free ?p3 slot-1230) (free ?p4 slot-1230) (free ?p5 slot-1230)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1230)\n      (not (free ?p1 slot-1230)) (not (free ?p2 slot-1230)) (not (free ?p3 slot-1230)) (not (free ?p4 slot-1230)) (not (free ?p5 slot-1230))\n    )\n    :cost 8\n  )\n\n  (:action schedule-1300\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1300) (free ?p2 slot-1300) (free ?p3 slot-1300) (free ?p4 slot-1300) (free ?p5 slot-1300)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1300)\n      (not (free ?p1 slot-1300)) (not (free ?p2 slot-1300)) (not (free ?p3 slot-1300)) (not (free ?p4 slot-1300)) (not (free ?p5 slot-1300))\n    )\n    :cost 9\n  )\n\n  (:action schedule-1330\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1330) (free ?p2 slot-1330) (free ?p3 slot-1330) (free ?p4 slot-1330) (free ?p5 slot-1330)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1330)\n      (not (free ?p1 slot-1330)) (not (free ?p2 slot-1330)) (not (free ?p3 slot-1330)) (not (free ?p4 slot-1330)) (not (free ?p5 slot-1330))\n    )\n    :cost 10\n  )\n\n  (:action schedule-1400\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1400) (free ?p2 slot-1400) (free ?p3 slot-1400) (free ?p4 slot-1400) (free ?p5 slot-1400)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1400)\n      (not (free ?p1 slot-1400)) (not (free ?p2 slot-1400)) (not (free ?p3 slot-1400)) (not (free ?p4 slot-1400)) (not (free ?p5 slot-1400))\n    )\n    :cost 11\n  )\n\n  (:action schedule-1430\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1430) (free ?p2 slot-1430) (free ?p3 slot-1430) (free ?p4 slot-1430) (free ?p5 slot-1430)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1430)\n      (not (free ?p1 slot-1430)) (not (free ?p2 slot-1430)) (not (free ?p3 slot-1430)) (not (free ?p4 slot-1430)) (not (free ?p5 slot-1430))\n    )\n    :cost 12\n  )\n\n  (:action schedule-1500\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1500) (free ?p2 slot-1500) (free ?p3 slot-1500) (free ?p4 slot-1500) (free ?p5 slot-1500)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1500)\n      (not (free ?p1 slot-1500)) (not (free ?p2 slot-1500)) (not (free ?p3 slot-1500)) (not (free ?p4 slot-1500)) (not (free ?p5 slot-1500))\n    )\n    :cost 13\n  )\n\n  (:action schedule-1530\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1530) (free ?p2 slot-1530) (free ?p3 slot-1530) (free ?p4 slot-1530) (free ?p5 slot-1530)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1530)\n      (not (free ?p1 slot-1530)) (not (free ?p2 slot-1530)) (not (free ?p3 slot-1530)) (not (free ?p4 slot-1530)) (not (free ?p5 slot-1530))\n    )\n    :cost 14\n  )\n\n  (:action schedule-1600\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1600) (free ?p2 slot-1600) (free ?p3 slot-1600) (free ?p4 slot-1600) (free ?p5 slot-1600)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1600)\n      (not (free ?p1 slot-1600)) (not (free ?p2 slot-1600)) (not (free ?p3 slot-1600)) (not (free ?p4 slot-1600)) (not (free ?p5 slot-1600))\n    )\n    :cost 15\n  )\n\n  (:action schedule-1630\n    :parameters (?m - meeting ?p1 - participant ?p2 - participant ?p3 - participant ?p4 - participant ?p5 - participant)\n    :precondition (and\n      (not (assigned ?m))\n      (free ?p1 slot-1630) (free ?p2 slot-1630) (free ?p3 slot-1630) (free ?p4 slot-1630) (free ?p5 slot-1630)\n      (not (= ?p1 ?p2)) (not (= ?p1 ?p3)) (not (= ?p1 ?p4)) (not (= ?p1 ?p5))\n      (not (= ?p2 ?p3)) (not (= ?p2 ?p4)) (not (= ?p2 ?p5))\n      (not (= ?p3 ?p4)) (not (= ?p3 ?p5))\n      (not (= ?p4 ?p5))\n    )\n    :effect (and\n      (assigned ?m)\n      (scheduled ?m slot-1630)\n      (not (free ?p1 slot-1630)) (not (free ?p2 slot-1630)) (not (free ?p3 slot-1630)) (not (free ?p4 slot-1630)) (not (free ?p5 slot-1630))\n    )\n    :cost 16\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday-30min)\n  (:domain meeting-scheduling)\n\n  (:objects\n    elijah janet brian carl timothy - participant\n    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230\n    slot-1300 slot-1330 slot-1400 slot-1430 slot-1500 slot-1530 slot-1600 slot-1630 - slot\n    meeting1 - meeting\n  )\n\n  (:init\n    (free elijah slot-0900) (free elijah slot-0930) (free elijah slot-1100) (free elijah slot-1130)\n    (free elijah slot-1230) (free elijah slot-1300) (free elijah slot-1330) (free elijah slot-1400)\n    (free elijah slot-1430) (free elijah slot-1530) (free elijah slot-1600) (free elijah slot-1630)\n\n    (free janet slot-0900) (free janet slot-1030) (free janet slot-1100) (free janet slot-1130)\n    (free janet slot-1200) (free janet slot-1230) (free janet slot-1300) (free janet slot-1530)\n    (free janet slot-1600) (free janet slot-1630)\n\n    (free brian slot-0900) (free brian slot-0930) (free brian slot-1000) (free brian slot-1030)\n    (free brian slot-1100) (free brian slot-1130) (free brian slot-1200) (free brian slot-1230)\n    (free brian slot-1300) (free brian slot-1330) (free brian slot-1400) (free brian slot-1430)\n    (free brian slot-1500) (free brian slot-1530) (free brian slot-1600) (free brian slot-1630)\n\n    (free carl slot-0900) (free carl slot-1630)\n\n    (free timothy slot-0900) (free timothy slot-0930) (free timothy slot-1000)\n    (free timothy slot-1200) (free timothy slot-1230) (free timothy slot-1300)\n    (free timothy slot-1400) (free timothy slot-1600)\n\n    (= (total-cost) 0)\n  )\n\n  (:goal (assigned meeting1))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  SLOT-0900 does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/domain_7.pddl results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/CalendarSchedulingExample23/problem_7.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing 1. axiom/action entry\n\t->Parsing 1. action\n\t->Parsing action 'schedule-0900'\nToo many fields. Expecting (:action NAME [:parameters PARAMETERS]? [:precondition PRECONDITION]? :effect EFFECT)\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentDeepThinkConstraints",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+

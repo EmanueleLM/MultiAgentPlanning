@@ -20,6 +20,32 @@ LLM_FACTORIES: dict[str, Callable[[], LLM]] = {
     "gemini-2.5-pro": lambda: Gemini("gemini-2.5-pro"),
 }
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Evaluate natural plans against golden plans using an LLM judge.\nExample usage: python3 evaluate.py ./data/miscellanea/calendar_easy_to_hard.json ./results/calendar_easy_to_hard/calendar_easy_to_hard/FastDownwards/ --model gpt-5-nano"
+    )
+    parser.add_argument(
+        "data_file",
+        type=Path,
+        help="Path to the dataset JSON (e.g., ./data/<dataset-name>/data.json).",
+    )
+    parser.add_argument(
+        "experiments_root",
+        type=Path,
+        help="Root folder containing experiment outputs (e.g., ./results/<dataset-name>/FastDownwards/).",
+    )
+    parser.add_argument(
+        "--model",
+        default="gpt-5-nano",
+        choices=LLM_FACTORIES.keys(),
+        help="LLM used for semantic comparison (default: gpt-4o).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log per-example evaluation details.",
+    )
+    return parser.parse_args()
 
 @dataclass
 class ExampleResult:
@@ -75,6 +101,7 @@ def evaluate_dataset(
     results: list[ExampleResult] = []
 
     for key, payload in sorted_items:
+        print(f"Evaluating {key}...")
         golden = payload.get("golden_plan", "").strip()
         parts = key.split("_")
         env_name = "".join(part.capitalize() for part in parts[:-1]) + parts[-1]
@@ -118,42 +145,16 @@ def summarize(results: list[ExampleResult]) -> tuple[int, int, float]:
     total = len(results)
     evaluated = sum(1 for r in results if r.natural_plan is not None)
     correct = sum(1 for r in results if r.correct)
-    accuracy = correct / evaluated if evaluated else 0.0
+    accuracy = correct / total if evaluated else 0.0
+    accuracy_evaluated = correct / evaluated if evaluated else 0.0
 
     logging.info("================ Evaluation Summary ================")
     logging.info("Total examples          : %s", total)
     logging.info("With natural plan output: %s", evaluated)
     logging.info("Correct matches         : %s", correct)
-    logging.info("Accuracy (evaluated)    : %.2f%%", accuracy * 100)
-    return total, evaluated, accuracy
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Evaluate natural plans against golden plans using an LLM judge."
-    )
-    parser.add_argument(
-        "data_file",
-        type=Path,
-        help="Path to the dataset JSON file inside data/<folder>.",
-    )
-    parser.add_argument(
-        "experiments_root",
-        type=Path,
-        help="Root folder containing experiment outputs.",
-    )
-    parser.add_argument(
-        "--model",
-        default="gpt-4o",
-        choices=LLM_FACTORIES.keys(),
-        help="LLM used for semantic comparison (default: gpt-4o).",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Log per-example evaluation details.",
-    )
-    return parser.parse_args()
+    logging.info("Accuracy (total)    : %.2f%%", accuracy * 100)
+    logging.info("Accuracy (evaluated)    : %.2f%%", accuracy_evaluated * 100)
+    return total, evaluated, accuracy, accuracy_evaluated
 
 
 def main() -> None:
@@ -170,12 +171,12 @@ def main() -> None:
         llm,
         verbose=args.verbose,
     )
-    total, evaluated, accuracy = summarize(results)
+    total, evaluated, accuracy, accuracy_evaluated = summarize(results)
 
     dataset_name = args.data_file.stem
     accuracy_dir = Path("results") / "_accuracies" / dataset_name
     accuracy_dir.mkdir(parents=True, exist_ok=True)
-    accuracy_file = accuracy_dir / "accuracy.txt"
+    accuracy_file = accuracy_dir / "accuracy.json"
     with open(accuracy_file, "w", encoding="utf-8") as f:
         f.write(
             json.dumps(
@@ -184,6 +185,7 @@ def main() -> None:
                     "total_examples": total,
                     "evaluated_examples": evaluated,
                     "accuracy": accuracy,
+                    "accuracy_evaluated": accuracy_evaluated,
                     "model": args.model,
                 },
                 indent=2,

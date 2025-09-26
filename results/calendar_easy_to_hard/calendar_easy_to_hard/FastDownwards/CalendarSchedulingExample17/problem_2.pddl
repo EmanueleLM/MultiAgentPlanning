@@ -9,7 +9,6 @@
     (busy peter ts4)
     (busy peter ts6)
     (busy peter ts8)
-
     (busy keith ts6)
     (busy keith ts8)
     (busy keith ts9)
@@ -18,7 +17,6 @@
     (busy keith ts12)
     (busy keith ts14)
     (busy keith ts16)
-
     (busy evelyn ts1)
     (busy evelyn ts2)
     (busy evelyn ts3)
@@ -31,7 +29,6 @@
     (busy evelyn ts12)
     (busy evelyn ts13)
     (busy evelyn ts16)
-
     (allow ts9)
   )
   (:goal (scheduled ts9))

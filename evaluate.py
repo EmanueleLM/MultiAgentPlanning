@@ -35,13 +35,12 @@ def normalize_text(text: str) -> str:
     return " ".join(text.strip().split())
 
 
-def find_natural_plan(environment_name: str, results_root: Path = Path("results")) -> Optional[Path]:
-    if not results_root.exists():
+def find_natural_plan(experiments_root: Path, environment_name: str) -> Optional[Path]:
+    target_dir = experiments_root / environment_name
+    if not target_dir.exists():
         return None
-    target = environment_name
-    for candidate in results_root.rglob("final_natural_plan.txt"):
-        if candidate.parent.name == target:
-            return candidate
+    for candidate in target_dir.rglob("final_natural_plan.txt"):
+        return candidate
     return None
 
 
@@ -63,7 +62,12 @@ def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
         return False, f"Failed to parse LLM response: {response}"
 
 
-def evaluate_dataset(data_path: Path, llm: LLM, verbose: bool = False) -> list[ExampleResult]:
+def evaluate_dataset(
+    data_path: Path,
+    experiments_root: Path,
+    llm: LLM,
+    verbose: bool = False,
+) -> list[ExampleResult]:
     with open(data_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
@@ -72,8 +76,9 @@ def evaluate_dataset(data_path: Path, llm: LLM, verbose: bool = False) -> list[E
 
     for key, payload in sorted_items:
         golden = payload.get("golden_plan", "").strip()
-        env_name = "".join(part.capitalize() for part in key.split("_"))
-        plan_path = find_natural_plan(env_name)
+        parts = key.split("_")
+        env_name = "".join(part.capitalize() for part in parts[:-1]) + parts[-1]
+        plan_path = find_natural_plan(experiments_root, env_name)
         natural = None
         correct = False
         reason = "final_natural_plan.txt not found"
@@ -109,7 +114,7 @@ def evaluate_dataset(data_path: Path, llm: LLM, verbose: bool = False) -> list[E
     return results
 
 
-def summarize(results: list[ExampleResult]) -> None:
+def summarize(results: list[ExampleResult]) -> tuple[int, int, float]:
     total = len(results)
     evaluated = sum(1 for r in results if r.natural_plan is not None)
     correct = sum(1 for r in results if r.correct)
@@ -120,6 +125,7 @@ def summarize(results: list[ExampleResult]) -> None:
     logging.info("With natural plan output: %s", evaluated)
     logging.info("Correct matches         : %s", correct)
     logging.info("Accuracy (evaluated)    : %.2f%%", accuracy * 100)
+    return total, evaluated, accuracy
 
 
 def parse_args() -> argparse.Namespace:
@@ -130,6 +136,11 @@ def parse_args() -> argparse.Namespace:
         "data_file",
         type=Path,
         help="Path to the dataset JSON file inside data/<folder>.",
+    )
+    parser.add_argument(
+        "experiments_root",
+        type=Path,
+        help="Root folder containing experiment outputs.",
     )
     parser.add_argument(
         "--model",
@@ -153,10 +164,33 @@ def main() -> None:
         raise ValueError(f"Unsupported model '{args.model}'.")
 
     llm = LLM_FACTORIES[args.model]()
-    results = evaluate_dataset(args.data_file, llm, verbose=args.verbose)
-    summarize(results)
+    results = evaluate_dataset(
+        args.data_file,
+        args.experiments_root,
+        llm,
+        verbose=args.verbose,
+    )
+    total, evaluated, accuracy = summarize(results)
+
+    dataset_name = args.data_file.stem
+    accuracy_dir = Path("results") / "_accuracies" / dataset_name
+    accuracy_dir.mkdir(parents=True, exist_ok=True)
+    accuracy_file = accuracy_dir / "accuracy.txt"
+    with open(accuracy_file, "w", encoding="utf-8") as f:
+        f.write(
+            json.dumps(
+                {
+                    "dataset": dataset_name,
+                    "total_examples": total,
+                    "evaluated_examples": evaluated,
+                    "accuracy": accuracy,
+                    "model": args.model,
+                },
+                indent=2,
+            )
+        )
+    logging.info("Accuracy written to %s", accuracy_file)
 
 
 if __name__ == "__main__":
     main()
-

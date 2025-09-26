@@ -1,0 +1,101 @@
+{
+    "name": "TripPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "oslo_planner",
+            "valencia_planner",
+            "dublin_planner",
+            "orchestrator"
+        ],
+        "oslo_planner": {
+            "private_information": [
+                "I manage the Oslo part of the trip",
+                "You want to spend 3 days in Oslo",
+                "Oslo has a direct flight connection to Dublin"
+            ],
+            "goal": "Provide a local itinerary fragment for Oslo that respects the global trip constraints."
+        },
+        "valencia_planner": {
+            "private_information": [
+                "I manage the Valencia part of the trip",
+                "You want to spend 5 days in Valencia",
+                "You plan to visit relatives in Valencia between day 5 and day 9",
+                "Valencia has a direct flight connection to Dublin"
+            ],
+            "goal": "Provide a local itinerary fragment for Valencia that respects the global trip constraints and the relatives visit window."
+        },
+        "dublin_planner": {
+            "private_information": [
+                "I manage the Dublin part of the trip",
+                "You want to spend 3 days in Dublin",
+                "Dublin has direct flight connections to Oslo and Valencia"
+            ],
+            "goal": "Provide a local itinerary fragment for Dublin that respects the global trip constraints and flight connectivity."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the city itinerary fragments and produce a final PDDL domain and problem for the FastDownwards solver that yields a valid 9-day trip using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9,
+            "only_direct_flights": true
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 9 days in total",
+            "You only take direct flights to commute between cities",
+            "You want to spend 3 days in Oslo",
+            "You want to spend 5 days in Valencia",
+            "You plan to visit relatives in Valencia between day 5 and day 9",
+            "You plan to stay in Dublin for 3 days",
+            "Direct flights exist between Oslo and Dublin",
+            "Direct flights exist between Dublin and Valencia"
+        ]
+    },
+    "workflow": {
+        "oslo_planner": {
+            "fragment": {
+                "input": [],
+                "output": "fragment_oslo",
+                "system_prompt": "You are an expert in planning short city stays. Provide a concise structured JSON fragment describing the Oslo visit constraints and available flight connections. Do not produce PDDL. Focus on dates, duration, and direct flight link information.",
+                "prompt": "Your name is oslo_planner. You are given the public information {environment->public_information}. You have the following private knowledge {agents->oslo_planner->private_information}. Your local goal is {agents->oslo_planner->goal}. Provide a fragment that specifies the required stay duration in Oslo, the acceptable day window within the 9-day trip if any, and which direct flights connect to/from Oslo. Output a structured fragment that the orchestrator can consume."
+            }
+        },
+        "valencia_planner": {
+            "fragment": {
+                "input": [],
+                "output": "fragment_valencia",
+                "system_prompt": "You are an expert in planning family visits and stays. Provide a concise structured JSON fragment describing the Valencia visit constraints, the relatives visit window, and available flight connections. Do not produce PDDL. Focus on dates, duration, and direct flight link information.",
+                "prompt": "Your name is valencia_planner. You are given the public information {environment->public_information}. You have the following private knowledge {agents->valencia_planner->private_information}. Your local goal is {agents->valencia_planner->goal}. Provide a fragment that specifies the required stay duration in Valencia, the relatives visit window within days 5 to 9, and which direct flights connect to/from Valencia. Output a structured fragment that the orchestrator can consume."
+            }
+        },
+        "dublin_planner": {
+            "fragment": {
+                "input": [],
+                "output": "fragment_dublin",
+                "system_prompt": "You are an expert in planning transit city stays. Provide a concise structured JSON fragment describing the Dublin visit constraints and available flight connections. Do not produce PDDL. Focus on dates, duration, and direct flight link information.",
+                "prompt": "Your name is dublin_planner. You are given the public information {environment->public_information}. You have the following private knowledge {agents->dublin_planner->private_information}. Your local goal is {agents->dublin_planner->goal}. Provide a fragment that specifies the required stay duration in Dublin, acceptable placement within the 9-day trip, and which direct flights connect to/from Dublin. Output a structured fragment that the orchestrator can consume."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "fragment_oslo",
+                    "fragment_valencia",
+                    "fragment_dublin"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL planning targeting the FastDownwards solver. You must integrate the fragments provided by the city planners and produce a complete PDDL domain and a PDDL problem file that the FastDownwards solver can consume. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions of the different city agents logically distinct where appropriate.",
+                "prompt": "You are the orchestrator. You will receive structured fragments from three planners: {fragment_oslo}, {fragment_valencia}, and {fragment_dublin}. Your goal is {agents->orchestrator->goal}. Integrate the fragments, resolve any naming mismatches, ensure the solution respects only direct flights and the 9-day total, ensure Valencia relatives visit occurs between day 5 and day 9, and produce a PDDL domain and a PDDL problem for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. If some fragment is partial, make minimal and explicit assumptions and document them as comments in the PDDL problem section."
+            }
+        },
+        "constraints": [
+            "oslo_planner.fragment->orchestrator.pddl",
+            "valencia_planner.fragment->orchestrator.pddl",
+            "dublin_planner.fragment->orchestrator.pddl"
+        ]
+    }
+}

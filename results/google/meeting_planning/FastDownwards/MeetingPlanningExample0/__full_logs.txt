@@ -1,0 +1,917 @@
+PROBLEM
+------------------------------
+You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.
+
+Travel distances (in minutes):
+Marina District to Mission District: 20.
+Mission District to Marina District: 19.
+
+CONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.
+
+Your response should start with 'SOLUTION:'.
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.
+
+Travel distances (in minutes):
+Marina District to Mission District: 20.
+Mission District to Marina District: 19.
+
+CONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.
+
+Your response should start with 'SOLUTION:'.
+================================================================================
+
+FINAL-PLAN
+------------------------------
+Candidate schedule proposals (earliest-first; all times HH:MM). Each proposal lists departure, arrival, meeting start/end, travel legs and whether the 120-minute minimum is satisfied.
+
+1) Earliest feasible meeting (preferred)
+- Travel leg: Marina District -> Mission District
+  - Depart Marina District: 10:10
+  - Travel duration: 20 minutes
+  - Arrive Mission District: 10:30
+- Meeting with Stephanie:
+  - Start: 10:30
+  - End: 12:30
+  - Meeting duration: 120 minutes (meets minimum)
+- Return leg: Mission District -> Marina District
+  - Depart Mission District: 12:30
+  - Travel duration: 19 minutes
+  - Arrive Marina District: 12:49
+- Notes: This is the earliest meeting start that satisfies Stephanie's availability (10:30–13:30) and the travel time constraint.
+
+2) Early-arrival / wait then meet
+- Travel leg: Marina District -> Mission District
+  - Depart Marina District: 09:40
+  - Travel duration: 20 minutes
+  - Arrive Mission District: 10:00
+  - Wait at Mission District: 10:00–10:30
+- Meeting with Stephanie:
+  - Start: 10:30
+  - End: 12:30
+  - Meeting duration: 120 minutes (meets minimum)
+- Return leg:
+  - Depart Mission District: 12:30
+  - Travel duration: 19 minutes
+  - Arrive Marina District: 12:49
+- Notes: Arrive early and wait; meeting still starts at earliest feasible 10:30.
+
+3) Mid-window meeting
+- Travel leg:
+  - Depart Marina District: 10:40
+  - Travel duration: 20 minutes
+  - Arrive Mission District: 11:00
+- Meeting with Stephanie:
+  - Start: 11:00
+  - End: 13:00
+  - Meeting duration: 120 minutes (meets minimum)
+- Return leg:
+  - Depart Mission District: 13:00
+  - Travel duration: 19 minutes
+  - Arrive Marina District: 13:19
+
+4) Latest-possible contiguous meeting within Stephanie's window
+- Travel leg:
+  - Depart Marina District: 11:10
+  - Travel duration: 20 minutes
+  - Arrive Mission District: 11:30
+- Meeting with Stephanie:
+  - Start: 11:30
+  - End: 13:30
+  - Meeting duration: 120 minutes (meets minimum)
+- Return leg:
+  - Depart Mission District: 13:30
+  - Travel duration: 19 minutes
+  - Arrive Marina District: 13:49
+- Notes: This is the latest contiguous 120-minute meeting that finishes at Stephanie's departure (13:30).
+
+All proposals respect:
+- Traveler initial arrival at Marina District at 09:00.
+- Travel times: Marina->Mission = 20 min, Mission->Marina = 19 min.
+- Stephanie availability: Mission District 10:30–13:30.
+- Meeting minimum duration: 120 minutes contiguous.
+- Earliest feasible meeting start is 10:30; proposals are ordered to prefer the earliest feasible slot.
+
+PDDL Domain (for FastDownward compatibility)
+<domain>
+(define (domain travel-meetings)
+  (:requirements :strips :typing :durative-actions :negative-preconditions :fluents :numbers)
+  (:types person location)
+
+  (:predicates
+    (at ?p - person ?l - location)
+    (met ?p - person ?q - person)
+  )
+
+  (:functions
+    (time) ; global clock in minutes from midnight
+  )
+
+  ;; Travel MarinaDistrict -> MissionDistrict (fixed duration 20)
+  (:durative-action travel-marina-to-mission
+    :parameters (?p - person)
+    :duration (= ?duration 20)
+    :condition (and
+                 (at start (at ?p MarinaDistrict))
+               )
+    :effect (and
+              (at start (not (at ?p MarinaDistrict)))
+              (at end (at ?p MissionDistrict))
+              (at end (increase (time) 20))
+            )
+  )
+
+  ;; Travel MissionDistrict -> MarinaDistrict (fixed duration 19)
+  (:durative-action travel-mission-to-marina
+    :parameters (?p - person)
+    :duration (= ?duration 19)
+    :condition (and
+                 (at start (at ?p MissionDistrict))
+               )
+    :effect (and
+              (at start (not (at ?p MissionDistrict)))
+              (at end (at ?p MarinaDistrict))
+              (at end (increase (time) 19))
+            )
+  )
+
+  ;; Meeting action: must be contiguous 120 minutes, both present in MissionDistrict,
+  ;; start time must be >= 630 (10:30) and start+120 <= 810 (13:30).
+  (:durative-action meet-stephanie
+    :parameters (?p - person ?s - person)
+    :duration (= ?duration 120)
+    :condition (and
+                 (at start (at ?p MissionDistrict))
+                 (at start (at ?s MissionDistrict))
+                 ;; start time must be within Stephanie's availability window:
+                 (at start (>= (time) 630))                 ;; earliest meeting start 10:30
+                 (at start (<= (+ (time) 120) 810))        ;; ensure end <= 13:30
+               )
+    :effect (and
+              (at end (met ?p ?s))
+              (at end (increase (time) 120))
+            )
+  )
+
+)
+</domain>
+
+PDDL Problem (start at Marina at 09:00, Stephanie at Mission 10:30–13:30 encoded via meet action constraints)
+<problem>
+(define (problem meet-stephanie-problem)
+  (:domain travel-meetings)
+  (:objects
+    traveler stephanie - person
+    MarinaDistrict MissionDistrict - location
+  )
+  (:init
+    ;; traveler initial location (arrived at Marina District at 09:00)
+    (at traveler MarinaDistrict)
+    ;; Stephanie is at Mission District for the window (we model her presence as fixed)
+    (at stephanie MissionDistrict)
+    ;; global clock set to 09:00 = 540 minutes after midnight
+    (= (time) 540)
+  )
+  (:goal (and
+           (met traveler stephanie)
+         ))
+)
+</problem>
+
+Notes about the PDDL encoding and execution:
+- Time units are minutes since midnight. 09:00 = 540, 10:30 = 630, 13:30 = 810.
+- The domain uses durative actions that advance the global clock via numeric fluent (time).
+- Stephanie's availability window is enforced by the meet-stephanie action start conditions:
+  - meeting start >= 630 and meeting start + 120 <= 810, so the 120-minute contiguous requirement is encoded as a hard constraint.
+- The initial state does not invent any availability beyond the provided data: Stephanie is present at MissionDistrict (no actions move her).
+- The planner should find the earliest possible meeting schedule that achieves (met traveler stephanie). The earliest feasible start is 10:30 (proposal 1).
+================================================================================
+
+DOMAIN
+------------------------------
+(define (domain travel-meetings)
+  (:requirements :strips :typing :durative-actions :negative-preconditions :fluents :numbers)
+  (:types person location)
+
+  (:predicates
+    (at ?p - person ?l - location)
+    (met ?p - person ?q - person)
+  )
+
+  (:functions
+    (time) ; global clock in minutes from midnight
+  )
+
+  ;; Travel MarinaDistrict -> MissionDistrict (fixed duration 20)
+  (:durative-action travel-marina-to-mission
+    :parameters (?p - person)
+    :duration (= ?duration 20)
+    :condition (and
+                 (at start (at ?p MarinaDistrict))
+               )
+    :effect (and
+              (at start (not (at ?p MarinaDistrict)))
+              (at end (at ?p MissionDistrict))
+              (at end (increase (time) 20))
+            )
+  )
+
+  ;; Travel MissionDistrict -> MarinaDistrict (fixed duration 19)
+  (:durative-action travel-mission-to-marina
+    :parameters (?p - person)
+    :duration (= ?duration 19)
+    :condition (and
+                 (at start (at ?p MissionDistrict))
+               )
+    :effect (and
+              (at start (not (at ?p MissionDistrict)))
+              (at end (at ?p MarinaDistrict))
+              (at end (increase (time) 19))
+            )
+  )
+
+  ;; Meeting action: must be contiguous 120 minutes, both present in MissionDistrict,
+  ;; start time must be >= 630 (10:30) and start+120 <= 810 (13:30).
+  (:durative-action meet-stephanie
+    :parameters (?p - person ?s - person)
+    :duration (= ?duration 120)
+    :condition (and
+                 (at start (at ?p MissionDistrict))
+                 (at start (at ?s MissionDistrict))
+                 ;; start time must be within Stephanie's availability window:
+                 (at start (>= (time) 630))                 ;; earliest meeting start 10:30
+                 (at start (<= (+ (time) 120) 810))        ;; ensure end <= 13:30
+               )
+    :effect (and
+              (at end (met ?p ?s))
+              (at end (increase (time) 120))
+            )
+  )
+
+)
+================================================================================
+
+PROBLEM
+------------------------------
+(define (problem meet-stephanie-problem)
+  (:domain travel-meetings)
+  (:objects
+    traveler stephanie - person
+    MarinaDistrict MissionDistrict - location
+  )
+  (:init
+    ;; traveler initial location (arrived at Marina District at 09:00)
+    (at traveler MarinaDistrict)
+    ;; Stephanie is at Mission District for the window (we model her presence as fixed)
+    (at stephanie MissionDistrict)
+    ;; global clock set to 09:00 = 540 minutes after midnight
+    (= (time) 540)
+  )
+  (:goal (and
+           (met traveler stephanie)
+         ))
+)
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings)\n  (:requirements :strips :typing :durative-actions :negative-preconditions :fluents :numbers)\n  (:types person location)\n\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n  )\n\n  (:functions\n    (time) ; global clock in minutes from midnight\n  )\n\n  ;; Travel MarinaDistrict -> MissionDistrict (fixed duration 20)\n  (:durative-action travel-marina-to-mission\n    :parameters (?p - person)\n    :duration (= ?duration 20)\n    :condition (and\n                 (at start (at ?p MarinaDistrict))\n               )\n    :effect (and\n              (at start (not (at ?p MarinaDistrict)))\n              (at end (at ?p MissionDistrict))\n              (at end (increase (time) 20))\n            )\n  )\n\n  ;; Travel MissionDistrict -> MarinaDistrict (fixed duration 19)\n  (:durative-action travel-mission-to-marina\n    :parameters (?p - person)\n    :duration (= ?duration 19)\n    :condition (and\n                 (at start (at ?p MissionDistrict))\n               )\n    :effect (and\n              (at start (not (at ?p MissionDistrict)))\n              (at end (at ?p MarinaDistrict))\n              (at end (increase (time) 19))\n            )\n  )\n\n  ;; Meeting action: must be contiguous 120 minutes, both present in MissionDistrict,\n  ;; start time must be >= 630 (10:30) and start+120 <= 810 (13:30).\n  (:durative-action meet-stephanie\n    :parameters (?p - person ?s - person)\n    :duration (= ?duration 120)\n    :condition (and\n                 (at start (at ?p MissionDistrict))\n                 (at start (at ?s MissionDistrict))\n                 ;; start time must be within Stephanie's availability window:\n                 (at start (>= (time) 630))                 ;; earliest meeting start 10:30\n                 (at start (<= (+ (time) 120) 810))        ;; ensure end <= 13:30\n               )\n    :effect (and\n              (at end (met ?p ?s))\n              (at end (increase (time) 120))\n            )\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem)\n  (:domain travel-meetings)\n  (:objects\n    traveler stephanie - person\n    MarinaDistrict MissionDistrict - location\n  )\n  (:init\n    ;; traveler initial location (arrived at Marina District at 09:00)\n    (at traveler MarinaDistrict)\n    ;; Stephanie is at Mission District for the window (we model her presence as fixed)\n    (at stephanie MissionDistrict)\n    ;; global clock set to 09:00 = 540 minutes after midnight\n    (= (time) 540)\n  )\n  (:goal (and\n           (met traveler stephanie)\n         ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  NUMBERS does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_0.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_0.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :durative-actions\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": []
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings-classical)\n  (:requirements :strips :typing :action-costs)\n  (:types person location timepoint)\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n    (time ?t - timepoint)\n  )\n  (:functions\n    (total-cost)\n  )\n\n  (:action advance-540-610\n    :precondition (time t540)\n    :effect (and\n      (not (time t540))\n      (time t610)\n    )\n  )\n\n  (:action advance-610-630\n    :precondition (time t610)\n    :effect (and\n      (not (time t610))\n      (time t630)\n    )\n  )\n\n  (:action advance-630-670\n    :precondition (time t630)\n    :effect (and\n      (not (time t630))\n      (time t670)\n    )\n  )\n\n  (:action advance-670-690\n    :precondition (time t670)\n    :effect (and\n      (not (time t670))\n      (time t690)\n    )\n  )\n\n  (:action advance-690-750\n    :precondition (time t690)\n    :effect (and\n      (not (time t690))\n      (time t750)\n    )\n  )\n\n  (:action advance-750-810\n    :precondition (time t750)\n    :effect (and\n      (not (time t750))\n      (time t810)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-610\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t610)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t610))\n      (time t630)\n      (increase (total-cost) 20)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-670\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t670)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t670))\n      (time t690)\n      (increase (total-cost) 20)\n    )\n  )\n\n  (:action meet-630-750\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t630)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t630))\n      (time t750)\n      (increase (total-cost) 120)\n    )\n  )\n\n  (:action meet-690-810\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t690)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t690))\n      (time t810)\n      (increase (total-cost) 120)\n    )\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem-classical)\n  (:domain travel-meetings-classical)\n  (:objects\n    traveler stephanie - person\n    MarinaDistrict MissionDistrict - location\n    t540 t610 t630 t670 t690 t750 t810 - timepoint\n  )\n  (:init\n    (at traveler MarinaDistrict)\n    (at stephanie MissionDistrict)\n    (time t540)\n    (= (total-cost) 0)\n  )\n  (:goal (and\n    (met traveler stephanie)\n  ))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(advance-540-610 )\n(travel-marina-to-mission-at-610 )\n(meet-630-750 )\n; cost = 140 (general cost)\n",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::ExpectedToken'\n  what():  :PARAMETERS expected\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_1.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_1.pddl --sas-file output.sas\nParsing...\nParsing: [0.020s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 25 rules.\nComputing model... [0.000s CPU, 0.000s wall-clock]\n56 relevant atoms\n0 auxiliary atoms\n56 final queue length\n62 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.000s wall-clock]\nInstantiating: [0.000s CPU, 0.002s wall-clock]\nComputing fact groups...\nFinding invariants...\n8 initial candidates\nFinding invariants: [0.000s CPU, 0.001s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n2 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.000s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n4 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.000s wall-clock]\nReordering and filtering variables...\n3 of 3 variables necessary.\n0 of 2 mutex groups necessary.\n10 of 10 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.000s wall-clock]\nTranslator variables: 3\nTranslator derived variables: 0\nTranslator facts: 11\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 10\nTranslator axioms: 0\nTranslator task size: 53\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.020s CPU, 0.007s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/sas_plan_1 < output.sas\n[t=0.000274s, 9964 KB] reading input...\n[t=0.000509s, 9964 KB] done reading input!\n[t=0.002418s, 10228 KB] Initializing landmark cut heuristic...\n[t=0.002501s, 10228 KB] Building successor generator...done!\n[t=0.002581s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002600s, 10228 KB] time for successor generation creation: 0.000018s\n[t=0.002621s, 10228 KB] Variables: 3\n[t=0.002641s, 10228 KB] FactPairs: 11\n[t=0.002660s, 10228 KB] Bytes per state: 4\n[t=0.002695s, 10228 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002744s, 10228 KB] New best heuristic value for lmcut: 140\n[t=0.002766s, 10228 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002797s, 10228 KB] f = 140, 1 evaluated, 0 expanded\n[t=0.002823s, 10228 KB] Initial heuristic value for lmcut: 140\n[t=0.002845s, 10228 KB] pruning method: none\n[t=0.002887s, 10228 KB] New best heuristic value for lmcut: 120\n[t=0.002906s, 10228 KB] g=20, 3 evaluated, 2 expanded\n[t=0.002935s, 10228 KB] New best heuristic value for lmcut: 0\n[t=0.002953s, 10228 KB] g=140, 5 evaluated, 3 expanded\n[t=0.002977s, 10228 KB] Solution found!\n[t=0.002995s, 10228 KB] Actual search time: 0.000145s\nadvance-540-610  (0)\ntravel-marina-to-mission-at-610  (20)\nmeet-630-750  (120)\n[t=0.003012s, 10228 KB] Plan length: 3 step(s).\n[t=0.003012s, 10228 KB] Plan cost: 140\n[t=0.003012s, 10228 KB] Expanded 4 state(s).\n[t=0.003012s, 10228 KB] Reopened 0 state(s).\n[t=0.003012s, 10228 KB] Evaluated 6 state(s).\n[t=0.003012s, 10228 KB] Evaluations: 6\n[t=0.003012s, 10228 KB] Generated 5 state(s).\n[t=0.003012s, 10228 KB] Dead ends: 0 state(s).\n[t=0.003012s, 10228 KB] Expanded until last jump: 0 state(s).\n[t=0.003012s, 10228 KB] Reopened until last jump: 0 state(s).\n[t=0.003012s, 10228 KB] Evaluated until last jump: 1 state(s).\n[t=0.003012s, 10228 KB] Generated until last jump: 0 state(s).\n[t=0.003012s, 10228 KB] Number of registered states: 6\n[t=0.003012s, 10228 KB] Int hash set load factor: 6/8 = 0.750000\n[t=0.003012s, 10228 KB] Int hash set resizes: 3\n[t=0.003012s, 10228 KB] Search time: 0.000317s\n[t=0.003012s, 10228 KB] Total time: 0.003012s\nSolution found.\nPeak memory: 10228 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.11s\n",
+    "history": [
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings-classical)\n  (:requirements :strips :typing :fluents :action-costs)\n  (:types person location timepoint)\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n    (time ?t - timepoint)\n  )\n  (:functions\n    (total-cost)\n  )\n\n  (:action advance-540-610\n    :parameters ()\n    :precondition (time t540)\n    :effect (and\n      (not (time t540))\n      (time t610)\n    )\n  )\n\n  (:action advance-610-630\n    :parameters ()\n    :precondition (time t610)\n    :effect (and\n      (not (time t610))\n      (time t630)\n    )\n  )\n\n  (:action advance-630-670\n    :parameters ()\n    :precondition (time t630)\n    :effect (and\n      (not (time t630))\n      (time t670)\n    )\n  )\n\n  (:action advance-670-690\n    :parameters ()\n    :precondition (time t670)\n    :effect (and\n      (not (time t670))\n      (time t690)\n    )\n  )\n\n  (:action advance-690-750\n    :parameters ()\n    :precondition (time t690)\n    :effect (and\n      (not (time t690))\n      (time t750)\n    )\n  )\n\n  (:action advance-750-810\n    :parameters ()\n    :precondition (time t750)\n    :effect (and\n      (not (time t750))\n      (time t810)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-610\n    :parameters ()\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t610)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t610))\n      (time t630)\n      (increase (total-cost) 20)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-670\n    :parameters ()\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t670)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t670))\n      (time t690)\n      (increase (total-cost) 20)\n    )\n  )\n\n  (:action meet-630-750\n    :parameters ()\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t630)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t630))\n      (time t750)\n      (increase (total-cost) 120)\n    )\n  )\n\n  (:action meet-690-810\n    :parameters ()\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t690)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t690))\n      (time t810)\n      (increase (total-cost) 120)\n    )\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem-classical)\n  (:domain travel-meetings-classical)\n  (:objects\n    traveler stephanie - person\n    MarinaDistrict MissionDistrict - location\n    t540 t610 t630 t670 t690 t750 t810 - timepoint\n  )\n  (:init\n    (at traveler MarinaDistrict)\n    (at stephanie MissionDistrict)\n    (time t540)\n    (= (total-cost) 0)\n  )\n  (:goal (and\n    (met traveler stephanie)\n  ))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  T540 does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_2.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_2.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings-classical)\n  (:requirements :strips :typing :action-costs)\n  (:types person location timepoint)\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n    (time ?t - timepoint)\n  )\n\n  (:action advance-540-610\n    :parameters ()\n    :precondition (time t540)\n    :effect (and\n      (not (time t540))\n      (time t610)\n    )\n    :cost 0\n  )\n\n  (:action advance-610-630\n    :parameters ()\n    :precondition (time t610)\n    :effect (and\n      (not (time t610))\n      (time t630)\n    )\n    :cost 0\n  )\n\n  (:action advance-630-670\n    :parameters ()\n    :precondition (time t630)\n    :effect (and\n      (not (time t630))\n      (time t670)\n    )\n    :cost 0\n  )\n\n  (:action advance-670-690\n    :parameters ()\n    :precondition (time t670)\n    :effect (and\n      (not (time t670))\n      (time t690)\n    )\n    :cost 0\n  )\n\n  (:action advance-690-750\n    :parameters ()\n    :precondition (time t690)\n    :effect (and\n      (not (time t690))\n      (time t750)\n    )\n    :cost 0\n  )\n\n  (:action advance-750-810\n    :parameters ()\n    :precondition (time t750)\n    :effect (and\n      (not (time t750))\n      (time t810)\n    )\n    :cost 0\n  )\n\n  (:action travel-marina-to-mission-at-610\n    :parameters ()\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t610)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t610))\n      (time t630)\n    )\n    :cost 20\n  )\n\n  (:action travel-marina-to-mission-at-670\n    :parameters ()\n    :precondition (and\n      (at traveler MarinaDistrict)\n      (time t670)\n    )\n    :effect (and\n      (not (at traveler MarinaDistrict))\n      (at traveler MissionDistrict)\n      (not (time t670))\n      (time t690)\n    )\n    :cost 20\n  )\n\n  (:action meet-630-750\n    :parameters ()\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t630)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t630))\n      (time t750)\n    )\n    :cost 0\n  )\n\n  (:action meet-690-810\n    :parameters ()\n    :precondition (and\n      (at traveler MissionDistrict)\n      (at stephanie MissionDistrict)\n      (time t690)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t690))\n      (time t810)\n    )\n    :cost 0\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem-classical)\n  (:domain travel-meetings-classical)\n  (:objects\n    traveler stephanie - person\n    MarinaDistrict MissionDistrict - location\n    t540 t610 t630 t670 t690 t750 t810 - timepoint\n  )\n  (:init\n    (at traveler MarinaDistrict)\n    (at stephanie MissionDistrict)\n    (time t540)\n  )\n  (:goal (and\n    (met traveler stephanie)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  T540 does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_3.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_3.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing 1. axiom/action entry\n\t->Parsing 1. action\n\t->Parsing action 'advance-540-610'\nToo many fields. Expecting (:action NAME [:parameters PARAMETERS]? [:precondition PRECONDITION]? :effect EFFECT)\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+ITERATION 4
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings-classical)\n  (:requirements :strips :typing :action-costs)\n  (:types person location timepoint)\n  (:constants t540 t610 t630 t670 t690 t750 t810 - timepoint)\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n    (time ?t - timepoint)\n  )\n\n  (:action advance-540-610\n    :parameters ()\n    :precondition (time t540)\n    :effect (and\n      (not (time t540))\n      (time t610)\n    )\n    :cost 0\n  )\n\n  (:action advance-610-630\n    :parameters ()\n    :precondition (time t610)\n    :effect (and\n      (not (time t610))\n      (time t630)\n    )\n    :cost 0\n  )\n\n  (:action advance-630-670\n    :parameters ()\n    :precondition (time t630)\n    :effect (and\n      (not (time t630))\n      (time t670)\n    )\n    :cost 0\n  )\n\n  (:action advance-670-690\n    :parameters ()\n    :precondition (time t670)\n    :effect (and\n      (not (time t670))\n      (time t690)\n    )\n    :cost 0\n  )\n\n  (:action advance-690-750\n    :parameters ()\n    :precondition (time t690)\n    :effect (and\n      (not (time t690))\n      (time t750)\n    )\n    :cost 0\n  )\n\n  (:action advance-750-810\n    :parameters ()\n    :precondition (time t750)\n    :effect (and\n      (not (time t750))\n      (time t810)\n    )\n    :cost 0\n  )\n\n  (:action travel-marina-to-mission-at-610\n    :parameters ()\n    :precondition (and\n      (at traveler marina_district)\n      (time t610)\n    )\n    :effect (and\n      (not (at traveler marina_district))\n      (at traveler mission_district)\n      (not (time t610))\n      (time t630)\n    )\n    :cost 20\n  )\n\n  (:action travel-marina-to-mission-at-670\n    :parameters ()\n    :precondition (and\n      (at traveler marina_district)\n      (time t670)\n    )\n    :effect (and\n      (not (at traveler marina_district))\n      (at traveler mission_district)\n      (not (time t670))\n      (time t690)\n    )\n    :cost 20\n  )\n\n  (:action meet-630-750\n    :parameters ()\n    :precondition (and\n      (at traveler mission_district)\n      (at stephanie mission_district)\n      (time t630)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t630))\n      (time t750)\n    )\n    :cost 0\n  )\n\n  (:action meet-690-810\n    :parameters ()\n    :precondition (and\n      (at traveler mission_district)\n      (at stephanie mission_district)\n      (time t690)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t690))\n      (time t810)\n    )\n    :cost 0\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem-classical)\n  (:domain travel-meetings-classical)\n  (:objects\n    traveler stephanie - person\n    marina_district mission_district - location\n  )\n  (:init\n    (at traveler marina_district)\n    (at stephanie mission_district)\n    (time t540)\n  )\n  (:goal (and\n    (met traveler stephanie)\n  ))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::ExpectedToken'\n  what():  ) expected\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_4.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_4.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing 1. axiom/action entry\n\t->Parsing 1. action\n\t->Parsing action 'advance-540-610'\nToo many fields. Expecting (:action NAME [:parameters PARAMETERS]? [:precondition PRECONDITION]? :effect EFFECT)\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 5
+------------------------------
+{
+    "human_specification": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nMarina District to Mission District: 20.\nMission District to Marina District: 19.\n\nCONSTRAINTS: You arrive at Marina District at 9:00AM. Stephanie will be at Mission District from 10:30AM to 1:30PM. You'd like to meet Stephanie for a minimum of 120 minutes.\n\nYour response should start with 'SOLUTION:'.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "MeetingPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "stephanie",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I arrive at Marina District at 09:00",
+                    "I can travel between Marina District and Mission District using the provided travel times",
+                    "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+                ],
+                "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+            },
+            "stephanie": {
+                "private_information": [
+                    "I will be at Mission District from 10:30 to 13:30",
+                    "I am available to meet for a minimum of 120 minutes during that window"
+                ],
+                "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+            }
+        },
+        "environment": {
+            "init": {
+                "start_time": "09:00",
+                "start_location": "Marina District",
+                "locations": [
+                    "Marina District",
+                    "Mission District"
+                ],
+                "travel_times_minutes": {
+                    "Marina District->Mission District": 20,
+                    "Mission District->Marina District": 19
+                }
+            },
+            "public_information": [
+                "You arrive at Marina District at 09:00",
+                "Stephanie will be at Mission District from 10:30 to 13:30",
+                "You would like to meet Stephanie for a minimum of 120 minutes",
+                "Travel time from Marina District to Mission District is 20 minutes",
+                "Travel time from Mission District to Marina District is 19 minutes"
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "proposal": {
+                    "input": [],
+                    "output": "traveler_proposal",
+                    "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                    "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+                }
+            },
+            "stephanie": {
+                "proposal": {
+                    "input": [],
+                    "output": "stephanie_proposal",
+                    "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                    "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_proposal",
+                        "stephanie_proposal"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                    "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "traveler.proposal->orchestrator.pddl",
+                "stephanie.proposal->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-meetings-classical)\n  (:requirements :strips :typing)\n  (:types person location timepoint)\n  (:constants t540 t610 t630 t670 t690 t750 t810 - timepoint)\n  (:predicates\n    (at ?p - person ?l - location)\n    (met ?p - person ?q - person)\n    (time ?t - timepoint)\n  )\n\n  (:action advance-540-610\n    :parameters ()\n    :precondition (time t540)\n    :effect (and\n      (not (time t540))\n      (time t610)\n    )\n  )\n\n  (:action advance-610-630\n    :parameters ()\n    :precondition (time t610)\n    :effect (and\n      (not (time t610))\n      (time t630)\n    )\n  )\n\n  (:action advance-630-670\n    :parameters ()\n    :precondition (time t630)\n    :effect (and\n      (not (time t630))\n      (time t670)\n    )\n  )\n\n  (:action advance-670-690\n    :parameters ()\n    :precondition (time t670)\n    :effect (and\n      (not (time t670))\n      (time t690)\n    )\n  )\n\n  (:action advance-690-750\n    :parameters ()\n    :precondition (time t690)\n    :effect (and\n      (not (time t690))\n      (time t750)\n    )\n  )\n\n  (:action advance-750-810\n    :parameters ()\n    :precondition (time t750)\n    :effect (and\n      (not (time t750))\n      (time t810)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-610\n    :parameters ()\n    :precondition (and\n      (at traveler marina_district)\n      (time t610)\n    )\n    :effect (and\n      (not (at traveler marina_district))\n      (at traveler mission_district)\n      (not (time t610))\n      (time t630)\n    )\n  )\n\n  (:action travel-marina-to-mission-at-670\n    :parameters ()\n    :precondition (and\n      (at traveler marina_district)\n      (time t670)\n    )\n    :effect (and\n      (not (at traveler marina_district))\n      (at traveler mission_district)\n      (not (time t670))\n      (time t690)\n    )\n  )\n\n  (:action meet-630-750\n    :parameters ()\n    :precondition (and\n      (at traveler mission_district)\n      (at stephanie mission_district)\n      (time t630)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t630))\n      (time t750)\n    )\n  )\n\n  (:action meet-690-810\n    :parameters ()\n    :precondition (and\n      (at traveler mission_district)\n      (at stephanie mission_district)\n      (time t690)\n    )\n    :effect (and\n      (met traveler stephanie)\n      (not (time t690))\n      (time t810)\n    )\n  )\n\n)",
+    "pddl_problem": "(define (problem meet-stephanie-problem-classical)\n  (:domain travel-meetings-classical)\n  (:objects\n    traveler stephanie - person\n    marina_district mission_district - location\n  )\n  (:init\n    (at traveler marina_district)\n    (at stephanie mission_district)\n    (time t540)\n  )\n  (:goal (and\n    (met traveler stephanie)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(advance-540-610 )\n(travel-marina-to-mission-at-610 )\n(meet-630-750 )\n; cost = 3 (unit cost)\n",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  TRAVELER does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/domain_5.pddl results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/problem_5.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 25 rules.\nComputing model... [0.000s CPU, 0.000s wall-clock]\n55 relevant atoms\n0 auxiliary atoms\n55 final queue length\n61 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.000s wall-clock]\nInstantiating: [0.000s CPU, 0.002s wall-clock]\nComputing fact groups...\nFinding invariants...\n8 initial candidates\nFinding invariants: [0.000s CPU, 0.001s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n2 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.000s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n4 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.000s wall-clock]\nReordering and filtering variables...\n3 of 3 variables necessary.\n0 of 2 mutex groups necessary.\n10 of 10 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.000s wall-clock]\nTranslator variables: 3\nTranslator derived variables: 0\nTranslator facts: 11\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 10\nTranslator axioms: 0\nTranslator task size: 53\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.010s CPU, 0.007s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/meeting_planning/FastDownwards/MeetingPlanningExample0/sas_plan_5 < output.sas\n[t=0.000218s, 9964 KB] reading input...\n[t=0.000453s, 9964 KB] done reading input!\n[t=0.002148s, 10228 KB] Initializing landmark cut heuristic...\n[t=0.002223s, 10228 KB] Building successor generator...done!\n[t=0.002293s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002310s, 10228 KB] time for successor generation creation: 0.000017s\n[t=0.002328s, 10228 KB] Variables: 3\n[t=0.002347s, 10228 KB] FactPairs: 11\n[t=0.002363s, 10228 KB] Bytes per state: 4\n[t=0.002394s, 10228 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002440s, 10228 KB] New best heuristic value for lmcut: 3\n[t=0.002460s, 10228 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002489s, 10228 KB] f = 3, 1 evaluated, 0 expanded\n[t=0.002511s, 10228 KB] Initial heuristic value for lmcut: 3\n[t=0.002541s, 10228 KB] pruning method: none\n[t=0.002574s, 10228 KB] New best heuristic value for lmcut: 2\n[t=0.002591s, 10228 KB] g=1, 2 evaluated, 1 expanded\n[t=0.002616s, 10228 KB] New best heuristic value for lmcut: 1\n[t=0.002633s, 10228 KB] g=2, 3 evaluated, 2 expanded\n[t=0.002659s, 10228 KB] New best heuristic value for lmcut: 0\n[t=0.002677s, 10228 KB] g=3, 5 evaluated, 3 expanded\n[t=0.002699s, 10228 KB] Solution found!\n[t=0.002718s, 10228 KB] Actual search time: 0.000172s\nadvance-540-610  (1)\ntravel-marina-to-mission-at-610  (1)\nmeet-630-750  (1)\n[t=0.002736s, 10228 KB] Plan length: 3 step(s).\n[t=0.002736s, 10228 KB] Plan cost: 3\n[t=0.002736s, 10228 KB] Expanded 4 state(s).\n[t=0.002736s, 10228 KB] Reopened 0 state(s).\n[t=0.002736s, 10228 KB] Evaluated 6 state(s).\n[t=0.002736s, 10228 KB] Evaluations: 6\n[t=0.002736s, 10228 KB] Generated 5 state(s).\n[t=0.002736s, 10228 KB] Dead ends: 0 state(s).\n[t=0.002736s, 10228 KB] Expanded until last jump: 0 state(s).\n[t=0.002736s, 10228 KB] Reopened until last jump: 0 state(s).\n[t=0.002736s, 10228 KB] Evaluated until last jump: 1 state(s).\n[t=0.002736s, 10228 KB] Generated until last jump: 0 state(s).\n[t=0.002736s, 10228 KB] Number of registered states: 6\n[t=0.002736s, 10228 KB] Int hash set load factor: 6/8 = 0.750000\n[t=0.002736s, 10228 KB] Int hash set resizes: 3\n[t=0.002736s, 10228 KB] Search time: 0.000342s\n[t=0.002736s, 10228 KB] Total time: 0.002736s\nSolution found.\nPeak memory: 10228 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.11s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+NATURAL-PLAN sas_plan_5
+------------------------------
+1) Advance time (wait) from 09:00 to 10:10 — remain at Marina District.  
+   - Timestamp: 09:00 → 10:10  
+   - Duration: 70 minutes
+
+2) Travel from Marina District to Mission District, departing at 10:10 and arriving at 10:30.  
+   - Departure: 10:10 (from Marina District)  
+   - Travel duration: 20 minutes  
+   - Arrival: 10:30 (at Mission District)
+
+3) Meet Stephanie at Mission District from 10:30 to 12:30.  
+   - Meeting window used: 10:30 → 12:30  
+   - Meeting duration: 120 minutes (meets the required minimum)  
+   - Result: traveler has met Stephanie (goal achieved)
+
+Plan cost: 3 (unit cost).
+================================================================================
+

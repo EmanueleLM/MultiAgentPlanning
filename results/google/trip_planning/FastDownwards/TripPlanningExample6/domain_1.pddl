@@ -1,0 +1,20 @@
+(define (domain trip)
+  (:requirements :strips :typing)
+  (:types city day)
+  (:predicates
+    (connected ?from - city ?to - city)
+    (at ?c - city ?d - day)
+    (unassigned ?d - day)
+    (next ?d - day ?d2 - day)
+  )
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and (at ?c ?d) (next ?d ?d2) (unassigned ?d2))
+    :effect (and (at ?c ?d2) (not (unassigned ?d2)))
+  )
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and (at ?from ?d) (next ?d ?d2) (unassigned ?d2) (connected ?from ?to))
+    :effect (and (at ?to ?d2) (not (unassigned ?d2)))
+  )
+)

@@ -1,0 +1,91 @@
+{
+    "name": "TripPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_network",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a 15-day trip in Europe.",
+                "I want to visit Split for 6 days, Manchester for 4 days, and Riga for 7 days (note: these desired days sum to 17)."
+            ],
+            "goal": "Produce an itinerary visiting Split, Manchester, and Riga within a total of 15 days using only direct flights between cities."
+        },
+        "flight_network": {
+            "private_information": [
+                "Direct flight exists between Riga and Manchester (both directions).",
+                "Direct flight exists from Manchester to Split (at least one direction).",
+                "No direct flight information between Riga and Split is provided."
+            ],
+            "goal": "Provide the valid direct-flight connections and possible commuting sequences between the specified cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and the flight network to produce a PDDL domain and problem for FastDownwards that yields a feasible 15-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 15,
+            "cities": [
+                "Split",
+                "Manchester",
+                "Riga"
+            ],
+            "direct_flights": [
+                [
+                    "Riga",
+                    "Manchester"
+                ],
+                [
+                    "Manchester",
+                    "Split"
+                ]
+            ]
+        },
+        "public_information": [
+            "You will visit 3 cities: Split, Manchester, and Riga.",
+            "The trip length is 15 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Desired stays provided by the traveler are Split:6 days, Manchester:4 days, Riga:7 days (these sum to 17 days, which conflicts with the 15-day total).",
+            "Known direct flights are Riga<->Manchester and Manchester->Split."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "info": {
+                "input": [],
+                "output": "traveler_info",
+                "system_prompt": "You are a travel preference agent. Provide a concise structured representation of the traveler's preferences, requested stay durations, and any hard constraints or conflicts. Do not produce PDDL.",
+                "prompt": "You are the traveler agent. Use the public information and your private information to return a short structured summary describing the desired stays per city, the total-days constraint, and highlight any conflicts between desired stays and total days."
+            }
+        },
+        "flight_network": {
+            "network": {
+                "input": [],
+                "output": "network_info",
+                "system_prompt": "You are a flight connectivity agent. Provide a concise structured representation of the direct-flight connections available between the cities. Do not produce PDDL.",
+                "prompt": "You are the flight network agent. Use the public information and your private information to return a short structured summary listing direct flights, whether they are bidirectional or one-way (if known), and any missing links that prevent direct commutes between specific city pairs."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_info",
+                    "network_info"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning for the FastDownwards solver. Integrate the information provided by other agents to produce a complete PDDL domain and a PDDL problem file suitable for FastDownwards. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep action definitions distinct and model travel moves and day allocations explicitly.",
+                "prompt": "You are the orchestrator. Your job is to integrate the traveler's preferences and the flight network to produce a PDDL domain and problem that model cities, direct-flight edges, travel actions, and day-allocation actions. The global planning goal is to produce an itinerary of length 15 days visiting Split, Manchester, and Riga using only direct flights. Use the traveler_info and network_info inputs to resolve conflicts or note assumptions. Provide the final PDDL domain and problem targeting the FastDownwards solver and enclose the domain with <domain></domain> and the problem with <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.info->orchestrator.pddl",
+            "flight_network.network->orchestrator.pddl"
+        ]
+    }
+}

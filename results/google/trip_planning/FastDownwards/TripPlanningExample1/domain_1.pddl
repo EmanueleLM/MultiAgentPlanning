@@ -1,0 +1,22 @@
+(define (domain itinerary)
+  (:requirements :typing :adl :action-costs)
+  (:types city day)
+  (:predicates
+    (at ?c - city)
+    (visited ?c - city)
+    (direct ?from ?to - city)
+    (current-day ?d - day)
+    (next ?d1 ?d2 - day)
+  )
+  (:functions (total-cost))
+  (:action travel
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?from) (direct ?from ?to) (current-day ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?from)) (at ?to) (visited ?to) (not (current-day ?d1)) (current-day ?d2) (increase (total-cost) 1))
+  )
+  (:action allocate-day
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?c) (current-day ?d1) (next ?d1 ?d2))
+    :effect (and (visited ?c) (not (current-day ?d1)) (current-day ?d2) (increase (total-cost) 1))
+  )
+)

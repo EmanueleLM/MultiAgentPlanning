@@ -1,0 +1,78 @@
+{
+    "name": "TripPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_manager",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to visit Dubrovnik for 3 days",
+                "I want to visit Berlin for 4 days",
+                "I want to visit Munich for 3 days",
+                "I must attend a conference in Berlin on day 1 and on day 4"
+            ],
+            "goal": "Find a feasible 8-day trip schedule visiting Dubrovnik, Berlin, and Munich while satisfying mandatory conference days and using only direct flights to commute"
+        },
+        "flight_manager": {
+            "private_information": [
+                "Direct flights exist between Munich and Dubrovnik",
+                "Direct flights exist between Berlin and Munich",
+                "No direct flight exists between Berlin and Dubrovnik"
+            ],
+            "goal": "Provide a compact representation of direct-flight connectivity and any commute constraints so a planner can use only direct flights to move between cities"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and flight connectivity to produce a PDDL domain and problem targeting the FastDownwards solver that yields a feasible 8-day itinerary using only direct flights and respecting mandatory conference days"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8
+        },
+        "public_information": [
+            "The trip will last 8 days in total",
+            "Cities of interest are Dubrovnik, Berlin, and Munich",
+            "Only direct flights may be used to commute between cities",
+            "Conference sessions occur in Berlin on day 1 and day 4",
+            "Direct flights are available between Munich and Dubrovnik and between Berlin and Munich"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_prefs",
+                "system_prompt": "You are an expert in encoding traveler preferences and mandatory constraints. Provide a concise structured description of desired visit durations per city and hard constraints such as exact-day conference attendance. Do not generate PDDL, only produce the structured preferences and mandatory constraints in a clear format.",
+                "prompt": "Your name is traveler. Use your private information and the environment public information to produce a structured description of preferences and hard constraints. The output should be a compact representation listing each city and the desired number of days, and explicit mandatory day constraints like conference attendance."
+            }
+        },
+        "flight_manager": {
+            "flights": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an expert in representing transportation connectivity. Provide a concise structured representation of direct flight connections between the cities and any commuting constraints relevant to planning (for example which origin-destination legs are feasible). Do not generate PDDL, only produce the connectivity description.",
+                "prompt": "Your name is flight_manager. Use your private information and the environment public information to produce a compact representation of direct-flight edges and any assumptions about commuting (for example that flights allow moving from one city to another overnight or between days)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_prefs",
+                    "flight_graph"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You always provide a PDDL domain and a PDDL problem file to solve the integrated planning task. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Produce STRIPS-compatible PDDL suitable for the FastDownwards solver. Keep different agents' actions distinct where relevant. Resolve inconsistencies between preferences and hard limits by producing a feasible plan that satisfies mandatory constraints and the total duration.",
+                "prompt": "You are the orchestrator. Integrate the traveler's structured preferences and the flight manager's connectivity representation to produce a PDDL domain and a PDDL problem that models days as discrete time steps, visiting-city durations, conference attendance on specific days in Berlin, and movement only via direct flights. If preferences exceed the total available days, prioritize satisfying mandatory constraints and produce a feasible allocation for an 8-day trip. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary->orchestrator.pddl",
+            "flight_manager.flights->orchestrator.pddl"
+        ]
+    }
+}

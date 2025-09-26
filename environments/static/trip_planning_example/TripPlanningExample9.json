@@ -1,0 +1,93 @@
+{
+    "name": "TripPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "frankfurt_agent",
+            "bucharest_agent",
+            "stuttgart_agent",
+            "orchestrator"
+        ],
+        "frankfurt_agent": {
+            "private_information": [
+                "I want to spend 3 days in Frankfurt.",
+                "Frankfurt has direct flights to Bucharest and to Stuttgart."
+            ],
+            "goal": "Provide a concise structured summary of local constraints and availability for visiting Frankfurt."
+        },
+        "bucharest_agent": {
+            "private_information": [
+                "I want to spend 3 days in Bucharest.",
+                "Bucharest has a direct flight to Frankfurt."
+            ],
+            "goal": "Provide a concise structured summary of local constraints and availability for visiting Bucharest."
+        },
+        "stuttgart_agent": {
+            "private_information": [
+                "I would like to spend 6 days in Stuttgart.",
+                "There is a workshop in Stuttgart that must be attended between day 5 and day 10.",
+                "Stuttgart has a direct flight to Frankfurt."
+            ],
+            "goal": "Provide a concise structured summary of local constraints and availability for visiting Stuttgart, including the workshop time window."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the city agents summaries and produce a single PDDL domain and PDDL problem suitable for the FastDownwards solver that encodes the trip planning problem with the given constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 10 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Cities and direct flight connections known: Bucharest <-> Frankfurt, Frankfurt <-> Stuttgart.",
+            "The final plan must allocate whole days to cities and respect the total time horizon of 10 days."
+        ]
+    },
+    "workflow": {
+        "frankfurt_agent": {
+            "planning": {
+                "input": [],
+                "output": "info_frankfurt",
+                "system_prompt": "You are the local city agent for Frankfurt. You know local preferences and flight connections. Provide a concise structured summary of your constraints and availability. Do not produce PDDL.",
+                "prompt": "Your name is frankfurt_agent. Use the public information and your private information to produce a short structured summary with fields desired_days, flight_connections, and any hard constraints. The output should be a compact machine readable description that the orchestrator can consume. Do not emit PDDL."
+            }
+        },
+        "bucharest_agent": {
+            "planning": {
+                "input": [],
+                "output": "info_bucharest",
+                "system_prompt": "You are the local city agent for Bucharest. You know local preferences and flight connections. Provide a concise structured summary of your constraints and availability. Do not produce PDDL.",
+                "prompt": "Your name is bucharest_agent. Use the public information and your private information to produce a short structured summary with fields desired_days, flight_connections, and any hard constraints. The output should be a compact machine readable description that the orchestrator can consume. Do not emit PDDL."
+            }
+        },
+        "stuttgart_agent": {
+            "planning": {
+                "input": [],
+                "output": "info_stuttgart",
+                "system_prompt": "You are the local city agent for Stuttgart. You know local preferences and the workshop requirement. Provide a concise structured summary of your constraints and availability. Do not produce PDDL.",
+                "prompt": "Your name is stuttgart_agent. Use the public information and your private information to produce a short structured summary with fields desired_days, flight_connections, workshop_window, and any hard constraints. The output should be a compact machine readable description that the orchestrator can consume. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "info_frankfurt",
+                    "info_bucharest",
+                    "info_stuttgart"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning for the FastDownwards solver. Your job is to integrate structured summaries from city agents and produce a single PDDL domain and a PDDL problem that encode the trip planning task. The PDDL must include time horizon encoding for days up to the environment total_days, actions for traveling only along allowed direct flights, and allocation of whole days to cities. Keep agent-specific actions distinct if necessary. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility.",
+                "prompt": "You are the orchestrator. Integrate the three city agent summaries and the public information to produce a PDDL domain and a PDDL problem that find a 10 day trip plan using only direct flights and satisfying the city desiderata and hard constraints such as the Stuttgart workshop between day 5 and day 10. If the agents preferences sum to more days than the total horizon, reconcile them explicitly and produce a feasible allocation. Keep actions representing travel and staying at cities distinct and explicit. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "frankfurt_agent.planning->orchestrator.pddl",
+            "bucharest_agent.planning->orchestrator.pddl",
+            "stuttgart_agent.planning->orchestrator.pddl"
+        ]
+    }
+}

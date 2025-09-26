@@ -1,0 +1,502 @@
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Florence for 6 days. You want to meet a friend in Florence between day 9 and day 14. You would like to visit Barcelona for 5 days. You would like to visit Helsinki for 5 days.
+
+Here are the cities that have direct flights:
+Barcelona and Florence, Helsinki and Barcelona.
+
+Find a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Florence for 6 days. You want to meet a friend in Florence between day 9 and day 14. You would like to visit Barcelona for 5 days. You would like to visit Helsinki for 5 days.
+
+Here are the cities that have direct flights:
+Barcelona and Florence, Helsinki and Barcelona.
+
+Find a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.
+================================================================================
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain trip)
+  (:requirements :strips :typing)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)        ; agent is at city ?c at the start of day ?d
+    (next ?d1 - day ?d2 - day)    ; consecutive days relation: ?d2 is the day after ?d1
+    (conn ?c1 - city ?c2 - city)  ; there is a direct flight connection between ?c1 and ?c2
+  )
+
+  ; Stay in the same city from one day to the next
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and (at ?c ?d) (next ?d ?d2))
+    :effect (and
+      (not (at ?c ?d))
+      (at ?c ?d2)
+    )
+  )
+
+  ; Fly from one city to another on the same day (arrive the next day).
+  ; Allowed only when there is a direct connection (conn).
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and (at ?from ?d) (next ?d ?d2) (conn ?from ?to))
+    :effect (and
+      (not (at ?from ?d))
+      (at ?to ?d2)
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem trip-problem)
+  (:domain trip)
+
+  ; ================================================================
+  ; Allocation decision and rationale (documented as comments per spec)
+  ; - Agents requested: Florence 6 days, Barcelona 5 days, Helsinki 5 days => total 16 > available 14
+  ; - Mandatory constraint: meeting in Florence between day9 and day14 inclusive (must be honored).
+  ; - We prioritize the mandatory meeting window and the earliest feasible meeting day.
+  ; - Chosen feasible allocation (sum = 14) that honors the meeting window and approximates preferences:
+  ;     * Florence: 6 days  -> days 9..14 (meeting occurs at day9, the earliest allowed)
+  ;     * Barcelona: 4 days -> days 5..8  (reduced from requested 5 -> 4)
+  ;     * Helsinki: 4 days  -> days 1..4  (reduced from requested 5 -> 4)
+  ; - Trade-offs: To respect the direct-flight graph (Helsinki <-> Barcelona, Barcelona <-> Florence)
+  ;   and to arrive in Florence by day9, we allocate contiguous blocks and perform two flights:
+  ;     1) Fly Helsinki -> Barcelona on day4 to arrive Barcelona on day5.
+  ;     2) Fly Barcelona -> Florence on day8 to arrive Florence on day9 (meeting).
+  ; - Starting city choice: we select Helsinki as the start location on day1 to enable the H->B->F route
+  ;   and to make the meeting occur at the earliest allowed day (day9). This start choice is part of
+  ;   the allocation (documented here) to produce a concrete feasible plan model.
+  ; ================================================================
+
+  (:objects
+    florence barcelona helsinki - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+  )
+
+  (:init
+    ; consecutive day relations
+    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)
+    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)
+    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)
+    (next day13 day14)
+
+    ; direct flight connections (public information)
+    (conn barcelona florence)
+    (conn florence barcelona)
+    (conn helsinki barcelona)
+    (conn barcelona helsinki)
+
+    ; initial location (chosen as part of feasible allocation to satisfy constraints)
+    (at helsinki day1)
+  )
+
+  ; Goals explicitly enforce the chosen allocation (presence at each city on each day).
+  ; These goals encode the stay-duration constraints by requiring presence on the specified days.
+  (:goal
+    (and
+      ; Helsinki presence days 1..4 (allocated 4 days)
+      (at helsinki day1)
+      (at helsinki day2)
+      (at helsinki day3)
+      (at helsinki day4)
+
+      ; Barcelona presence days 5..8 (allocated 4 days)
+      (at barcelona day5)
+      (at barcelona day6)
+      (at barcelona day7)
+      (at barcelona day8)
+
+      ; Florence presence days 9..14 (allocated 6 days, includes meeting window)
+      (at florence day9)  ; meeting occurs at earliest allowed day (day9)
+      (at florence day10)
+      (at florence day11)
+      (at florence day12)
+      (at florence day13)
+      (at florence day14)
+    )
+  )
+)
+</problem>
+================================================================================
+
+DOMAIN
+------------------------------
+(define (domain trip)
+  (:requirements :strips :typing)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)        ; agent is at city ?c at the start of day ?d
+    (next ?d1 - day ?d2 - day)    ; consecutive days relation: ?d2 is the day after ?d1
+    (conn ?c1 - city ?c2 - city)  ; there is a direct flight connection between ?c1 and ?c2
+  )
+
+  ; Stay in the same city from one day to the next
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and (at ?c ?d) (next ?d ?d2))
+    :effect (and
+      (not (at ?c ?d))
+      (at ?c ?d2)
+    )
+  )
+
+  ; Fly from one city to another on the same day (arrive the next day).
+  ; Allowed only when there is a direct connection (conn).
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and (at ?from ?d) (next ?d ?d2) (conn ?from ?to))
+    :effect (and
+      (not (at ?from ?d))
+      (at ?to ?d2)
+    )
+  )
+)
+================================================================================
+
+PROBLEM
+------------------------------
+(define (problem trip-problem)
+  (:domain trip)
+
+  ; ================================================================
+  ; Allocation decision and rationale (documented as comments per spec)
+  ; - Agents requested: Florence 6 days, Barcelona 5 days, Helsinki 5 days => total 16 > available 14
+  ; - Mandatory constraint: meeting in Florence between day9 and day14 inclusive (must be honored).
+  ; - We prioritize the mandatory meeting window and the earliest feasible meeting day.
+  ; - Chosen feasible allocation (sum = 14) that honors the meeting window and approximates preferences:
+  ;     * Florence: 6 days  -> days 9..14 (meeting occurs at day9, the earliest allowed)
+  ;     * Barcelona: 4 days -> days 5..8  (reduced from requested 5 -> 4)
+  ;     * Helsinki: 4 days  -> days 1..4  (reduced from requested 5 -> 4)
+  ; - Trade-offs: To respect the direct-flight graph (Helsinki <-> Barcelona, Barcelona <-> Florence)
+  ;   and to arrive in Florence by day9, we allocate contiguous blocks and perform two flights:
+  ;     1) Fly Helsinki -> Barcelona on day4 to arrive Barcelona on day5.
+  ;     2) Fly Barcelona -> Florence on day8 to arrive Florence on day9 (meeting).
+  ; - Starting city choice: we select Helsinki as the start location on day1 to enable the H->B->F route
+  ;   and to make the meeting occur at the earliest allowed day (day9). This start choice is part of
+  ;   the allocation (documented here) to produce a concrete feasible plan model.
+  ; ================================================================
+
+  (:objects
+    florence barcelona helsinki - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+  )
+
+  (:init
+    ; consecutive day relations
+    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)
+    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)
+    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)
+    (next day13 day14)
+
+    ; direct flight connections (public information)
+    (conn barcelona florence)
+    (conn florence barcelona)
+    (conn helsinki barcelona)
+    (conn barcelona helsinki)
+
+    ; initial location (chosen as part of feasible allocation to satisfy constraints)
+    (at helsinki day1)
+  )
+
+  ; Goals explicitly enforce the chosen allocation (presence at each city on each day).
+  ; These goals encode the stay-duration constraints by requiring presence on the specified days.
+  (:goal
+    (and
+      ; Helsinki presence days 1..4 (allocated 4 days)
+      (at helsinki day1)
+      (at helsinki day2)
+      (at helsinki day3)
+      (at helsinki day4)
+
+      ; Barcelona presence days 5..8 (allocated 4 days)
+      (at barcelona day5)
+      (at barcelona day6)
+      (at barcelona day7)
+      (at barcelona day8)
+
+      ; Florence presence days 9..14 (allocated 6 days, includes meeting window)
+      (at florence day9)  ; meeting occurs at earliest allowed day (day9)
+      (at florence day10)
+      (at florence day11)
+      (at florence day12)
+      (at florence day13)
+      (at florence day14)
+    )
+  )
+)
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Florence for 6 days. You want to meet a friend in Florence between day 9 and day 14. You would like to visit Barcelona for 5 days. You would like to visit Helsinki for 5 days.\n\nHere are the cities that have direct flights:\nBarcelona and Florence, Helsinki and Barcelona.\n\nFind a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "florence_agent",
+                "barcelona_agent",
+                "helsinki_agent",
+                "orchestrator"
+            ],
+            "florence_agent": {
+                "private_information": [
+                    "I would like to visit Florence for 6 days.",
+                    "I will meet a friend in Florence between day 9 and day 14 (inclusive)."
+                ],
+                "goal": "Contribute my stay preference and the meeting constraint so the trip plan can include Florence with the specified temporal constraint."
+            },
+            "barcelona_agent": {
+                "private_information": [
+                    "I would like to visit Barcelona for 5 days."
+                ],
+                "goal": "Contribute my stay preference so the trip plan can consider Barcelona for the desired duration."
+            },
+            "helsinki_agent": {
+                "private_information": [
+                    "I would like to visit Helsinki for 5 days."
+                ],
+                "goal": "Contribute my stay preference so the trip plan can consider Helsinki for the desired duration."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' preferences and produce a complete PDDL domain and problem suitable for the FastDownwards solver to produce a feasible 14-day trip plan using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 14
+            },
+            "public_information": [
+                "There are three candidate cities to visit: Florence, Barcelona, Helsinki.",
+                "Total trip length available is 14 days.",
+                "You only take direct flights to commute between cities.",
+                "Direct flight connections available: Barcelona <-> Florence, Helsinki <-> Barcelona.",
+                "No direct flight exists between Florence and Helsinki."
+            ]
+        },
+        "workflow": {
+            "florence_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_florence",
+                    "system_prompt": "You represent the travel preference for Florence. Provide structured facts about required stay length and any hard temporal constraints you have for Florence. Do not emit PDDL here.",
+                    "prompt": "Your name is florence_agent. Public information: {environment->public_information}. Your private information: {agents->florence_agent->private_information}. Your goal: {agents->florence_agent->goal}. Provide a concise, structured description of the Florence preference and mandatory temporal constraints that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "barcelona_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_barcelona",
+                    "system_prompt": "You represent the travel preference for Barcelona. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
+                    "prompt": "Your name is barcelona_agent. Public information: {environment->public_information}. Your private information: {agents->barcelona_agent->private_information}. Your goal: {agents->barcelona_agent->goal}. Provide a concise, structured description of the Barcelona preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "helsinki_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_helsinki",
+                    "system_prompt": "You represent the travel preference for Helsinki. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
+                    "prompt": "Your name is helsinki_agent. Public information: {environment->public_information}. Your private information: {agents->helsinki_agent->private_information}. Your goal: {agents->helsinki_agent->goal}. Provide a concise, structured description of the Helsinki preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_florence",
+                        "info_barcelona",
+                        "info_helsinki"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an orchestrator that must integrate agent facts and produce a PDDL domain and PDDL problem suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Model days explicitly, use actions to represent flying between cities only when a direct flight exists, and include stay-duration constraints and the mandatory meeting window in Florence. If agents' total desired days exceed the available days, create a feasible allocation that honors mandatory constraints (meeting window) and otherwise approximates preferrences, documenting any trade-offs in comments inside the PDDL problem section.",
+                    "prompt": "You are the orchestrator. Inputs you receive: {workflow->florence_agent->describe->output}, {workflow->barcelona_agent->describe->output}, {workflow->helsinki_agent->describe->output}. Public information: {environment->public_information}. Agents' private inputs: {agents->florence_agent->private_information}, {agents->barcelona_agent->private_information}, {agents->helsinki_agent->private_information}. Global goal: produce a planning model that schedules visits across 14 days using only direct flights listed in the public information. Represent each day explicitly (day1 .. day14), locations (Florence, Barcelona, Helsinki), flights allowed only on direct connections, and actions to stay in a city for a day. Ensure the meeting in Florence occurs between day 9 and day 14 inclusive. If total requested stays exceed 14 days, allocate days to satisfy the meeting and then distribute remaining days to best match requested durations; document the chosen allocation in comments inside the PDDL problem. Provide a PDDL domain and a PDDL problem that FastDownwards can consume. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                }
+            },
+            "constraints": [
+                "florence_agent.describe->orchestrator.pddl",
+                "barcelona_agent.describe->orchestrator.pddl",
+                "helsinki_agent.describe->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip)\n  (:requirements :strips :typing)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)        ; agent is at city ?c at the start of day ?d\n    (next ?d1 - day ?d2 - day)    ; consecutive days relation: ?d2 is the day after ?d1\n    (conn ?c1 - city ?c2 - city)  ; there is a direct flight connection between ?c1 and ?c2\n  )\n\n  ; Stay in the same city from one day to the next\n  (:action stay\n    :parameters (?c - city ?d - day ?d2 - day)\n    :precondition (and (at ?c ?d) (next ?d ?d2))\n    :effect (and\n      (not (at ?c ?d))\n      (at ?c ?d2)\n    )\n  )\n\n  ; Fly from one city to another on the same day (arrive the next day).\n  ; Allowed only when there is a direct connection (conn).\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?d2 - day)\n    :precondition (and (at ?from ?d) (next ?d ?d2) (conn ?from ?to))\n    :effect (and\n      (not (at ?from ?d))\n      (at ?to ?d2)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip-problem)\n  (:domain trip)\n\n  ; ================================================================\n  ; Allocation decision and rationale (documented as comments per spec)\n  ; - Agents requested: Florence 6 days, Barcelona 5 days, Helsinki 5 days => total 16 > available 14\n  ; - Mandatory constraint: meeting in Florence between day9 and day14 inclusive (must be honored).\n  ; - We prioritize the mandatory meeting window and the earliest feasible meeting day.\n  ; - Chosen feasible allocation (sum = 14) that honors the meeting window and approximates preferences:\n  ;     * Florence: 6 days  -> days 9..14 (meeting occurs at day9, the earliest allowed)\n  ;     * Barcelona: 4 days -> days 5..8  (reduced from requested 5 -> 4)\n  ;     * Helsinki: 4 days  -> days 1..4  (reduced from requested 5 -> 4)\n  ; - Trade-offs: To respect the direct-flight graph (Helsinki <-> Barcelona, Barcelona <-> Florence)\n  ;   and to arrive in Florence by day9, we allocate contiguous blocks and perform two flights:\n  ;     1) Fly Helsinki -> Barcelona on day4 to arrive Barcelona on day5.\n  ;     2) Fly Barcelona -> Florence on day8 to arrive Florence on day9 (meeting).\n  ; - Starting city choice: we select Helsinki as the start location on day1 to enable the H->B->F route\n  ;   and to make the meeting occur at the earliest allowed day (day9). This start choice is part of\n  ;   the allocation (documented here) to produce a concrete feasible plan model.\n  ; ================================================================\n\n  (:objects\n    florence barcelona helsinki - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day\n  )\n\n  (:init\n    ; consecutive day relations\n    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)\n    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)\n    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)\n    (next day13 day14)\n\n    ; direct flight connections (public information)\n    (conn barcelona florence)\n    (conn florence barcelona)\n    (conn helsinki barcelona)\n    (conn barcelona helsinki)\n\n    ; initial location (chosen as part of feasible allocation to satisfy constraints)\n    (at helsinki day1)\n  )\n\n  ; Goals explicitly enforce the chosen allocation (presence at each city on each day).\n  ; These goals encode the stay-duration constraints by requiring presence on the specified days.\n  (:goal\n    (and\n      ; Helsinki presence days 1..4 (allocated 4 days)\n      (at helsinki day1)\n      (at helsinki day2)\n      (at helsinki day3)\n      (at helsinki day4)\n\n      ; Barcelona presence days 5..8 (allocated 4 days)\n      (at barcelona day5)\n      (at barcelona day6)\n      (at barcelona day7)\n      (at barcelona day8)\n\n      ; Florence presence days 9..14 (allocated 6 days, includes meeting window)\n      (at florence day9)  ; meeting occurs at earliest allowed day (day9)\n      (at florence day10)\n      (at florence day11)\n      (at florence day12)\n      (at florence day13)\n      (at florence day14)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/google/trip_planning/FastDownwards/TripPlanningExample0/sas_plan_0'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample0/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample0/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 13 rules.\nComputing model... [0.010s CPU, 0.002s wall-clock]\n192 relevant atoms\n186 auxiliary atoms\n378 final queue length\n424 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.002s wall-clock]\nInstantiating: [0.010s CPU, 0.006s wall-clock]\nComputing fact groups...\nFinding invariants...\n3 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n39 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.002s wall-clock]\n84 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n36 of 39 variables necessary.\n0 of 0 mutex groups necessary.\n82 of 84 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 36\nTranslator derived variables: 0\nTranslator facts: 72\nTranslator goal facts: 14\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 82\nTranslator axioms: 0\nTranslator task size: 445\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.010s CPU, 0.013s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample0/sas_plan_0 < output.sas\n[t=0.000168s, 9964 KB] reading input...\n[t=0.000800s, 9964 KB] done reading input!\n[t=0.002401s, 10228 KB] Initializing landmark cut heuristic...\n[t=0.002469s, 10228 KB] Building successor generator...done!\n[t=0.002558s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002575s, 10228 KB] time for successor generation creation: 0.000035s\n[t=0.002594s, 10228 KB] Variables: 36\n[t=0.002611s, 10228 KB] FactPairs: 72\n[t=0.002628s, 10228 KB] Bytes per state: 8\n[t=0.002658s, 10228 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002742s, 10364 KB] New best heuristic value for lmcut: 13\n[t=0.002762s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002789s, 10364 KB] f = 13, 1 evaluated, 0 expanded\n[t=0.002809s, 10364 KB] Initial heuristic value for lmcut: 13\n[t=0.002828s, 10364 KB] pruning method: none\n[t=0.002862s, 10364 KB] Completely explored state space -- no solution!\n[t=0.002878s, 10364 KB] Actual search time: 0.000049s\n[t=0.002896s, 10364 KB] Expanded 1 state(s).\n[t=0.002896s, 10364 KB] Reopened 0 state(s).\n[t=0.002896s, 10364 KB] Evaluated 3 state(s).\n[t=0.002896s, 10364 KB] Evaluations: 3\n[t=0.002896s, 10364 KB] Generated 2 state(s).\n[t=0.002896s, 10364 KB] Dead ends: 2 state(s).\n[t=0.002896s, 10364 KB] Expanded until last jump: 0 state(s).\n[t=0.002896s, 10364 KB] Reopened until last jump: 0 state(s).\n[t=0.002896s, 10364 KB] Evaluated until last jump: 1 state(s).\n[t=0.002896s, 10364 KB] Generated until last jump: 0 state(s).\n[t=0.002896s, 10364 KB] Number of registered states: 3\n[t=0.002896s, 10364 KB] Int hash set load factor: 3/4 = 0.750000\n[t=0.002896s, 10364 KB] Int hash set resizes: 2\n[t=0.002896s, 10364 KB] Search time: 0.000238s\n[t=0.002896s, 10364 KB] Total time: 0.002896s\nSearch stopped without finding a solution.\nPeak memory: 10364 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.11s\n",
+    "history": []
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Florence for 6 days. You want to meet a friend in Florence between day 9 and day 14. You would like to visit Barcelona for 5 days. You would like to visit Helsinki for 5 days.\n\nHere are the cities that have direct flights:\nBarcelona and Florence, Helsinki and Barcelona.\n\nFind a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample0",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "florence_agent",
+                "barcelona_agent",
+                "helsinki_agent",
+                "orchestrator"
+            ],
+            "florence_agent": {
+                "private_information": [
+                    "I would like to visit Florence for 6 days.",
+                    "I will meet a friend in Florence between day 9 and day 14 (inclusive)."
+                ],
+                "goal": "Contribute my stay preference and the meeting constraint so the trip plan can include Florence with the specified temporal constraint."
+            },
+            "barcelona_agent": {
+                "private_information": [
+                    "I would like to visit Barcelona for 5 days."
+                ],
+                "goal": "Contribute my stay preference so the trip plan can consider Barcelona for the desired duration."
+            },
+            "helsinki_agent": {
+                "private_information": [
+                    "I would like to visit Helsinki for 5 days."
+                ],
+                "goal": "Contribute my stay preference so the trip plan can consider Helsinki for the desired duration."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the agents' preferences and produce a complete PDDL domain and problem suitable for the FastDownwards solver to produce a feasible 14-day trip plan using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 14
+            },
+            "public_information": [
+                "There are three candidate cities to visit: Florence, Barcelona, Helsinki.",
+                "Total trip length available is 14 days.",
+                "You only take direct flights to commute between cities.",
+                "Direct flight connections available: Barcelona <-> Florence, Helsinki <-> Barcelona.",
+                "No direct flight exists between Florence and Helsinki."
+            ]
+        },
+        "workflow": {
+            "florence_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_florence",
+                    "system_prompt": "You represent the travel preference for Florence. Provide structured facts about required stay length and any hard temporal constraints you have for Florence. Do not emit PDDL here.",
+                    "prompt": "Your name is florence_agent. Public information: {environment->public_information}. Your private information: {agents->florence_agent->private_information}. Your goal: {agents->florence_agent->goal}. Provide a concise, structured description of the Florence preference and mandatory temporal constraints that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "barcelona_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_barcelona",
+                    "system_prompt": "You represent the travel preference for Barcelona. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
+                    "prompt": "Your name is barcelona_agent. Public information: {environment->public_information}. Your private information: {agents->barcelona_agent->private_information}. Your goal: {agents->barcelona_agent->goal}. Provide a concise, structured description of the Barcelona preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "helsinki_agent": {
+                "describe": {
+                    "input": [],
+                    "output": "info_helsinki",
+                    "system_prompt": "You represent the travel preference for Helsinki. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
+                    "prompt": "Your name is helsinki_agent. Public information: {environment->public_information}. Your private information: {agents->helsinki_agent->private_information}. Your goal: {agents->helsinki_agent->goal}. Provide a concise, structured description of the Helsinki preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_florence",
+                        "info_barcelona",
+                        "info_helsinki"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an orchestrator that must integrate agent facts and produce a PDDL domain and PDDL problem suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Model days explicitly, use actions to represent flying between cities only when a direct flight exists, and include stay-duration constraints and the mandatory meeting window in Florence. If agents' total desired days exceed the available days, create a feasible allocation that honors mandatory constraints (meeting window) and otherwise approximates preferrences, documenting any trade-offs in comments inside the PDDL problem section.",
+                    "prompt": "You are the orchestrator. Inputs you receive: {workflow->florence_agent->describe->output}, {workflow->barcelona_agent->describe->output}, {workflow->helsinki_agent->describe->output}. Public information: {environment->public_information}. Agents' private inputs: {agents->florence_agent->private_information}, {agents->barcelona_agent->private_information}, {agents->helsinki_agent->private_information}. Global goal: produce a planning model that schedules visits across 14 days using only direct flights listed in the public information. Represent each day explicitly (day1 .. day14), locations (Florence, Barcelona, Helsinki), flights allowed only on direct connections, and actions to stay in a city for a day. Ensure the meeting in Florence occurs between day 9 and day 14 inclusive. If total requested stays exceed 14 days, allocate days to satisfy the meeting and then distribute remaining days to best match requested durations; document the chosen allocation in comments inside the PDDL problem. Provide a PDDL domain and a PDDL problem that FastDownwards can consume. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                }
+            },
+            "constraints": [
+                "florence_agent.describe->orchestrator.pddl",
+                "barcelona_agent.describe->orchestrator.pddl",
+                "helsinki_agent.describe->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip)\n  (:requirements :strips :typing)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)\n    (next ?d1 - day ?d2 - day)\n    (conn ?c1 - city ?c2 - city)\n    (free ?d - day)\n  )\n\n  (:action stay\n    :parameters (?c - city ?d - day ?d2 - day)\n    :precondition (and (at ?c ?d) (next ?d ?d2) (free ?d2))\n    :effect (and\n      (not (free ?d2))\n      (at ?c ?d2)\n    )\n  )\n\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?d2 - day)\n    :precondition (and (at ?from ?d) (next ?d ?d2) (free ?d2) (conn ?from ?to))\n    :effect (and\n      (not (free ?d2))\n      (at ?to ?d2)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip-problem)\n  (:domain trip)\n  (:objects\n    florence barcelona helsinki - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day\n  )\n  (:init\n    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)\n    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)\n    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)\n    (next day13 day14)\n\n    (conn barcelona florence)\n    (conn florence barcelona)\n    (conn helsinki barcelona)\n    (conn barcelona helsinki)\n\n    (at helsinki day1)\n\n    (free day2) (free day3) (free day4) (free day5) (free day6) (free day7)\n    (free day8) (free day9) (free day10) (free day11) (free day12) (free day13) (free day14)\n  )\n  (:goal\n    (and\n      (at helsinki day1)\n      (at helsinki day2)\n      (at helsinki day3)\n      (at helsinki day4)\n      (at barcelona day5)\n      (at barcelona day6)\n      (at barcelona day7)\n      (at barcelona day8)\n      (at florence day9)\n      (at florence day10)\n      (at florence day11)\n      (at florence day12)\n      (at florence day13)\n      (at florence day14)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(stay helsinki day1 day2)\n(stay helsinki day2 day3)\n(stay helsinki day3 day4)\n(fly helsinki barcelona day4 day5)\n(stay barcelona day5 day6)\n(stay barcelona day6 day7)\n(stay barcelona day7 day8)\n(fly barcelona florence day8 day9)\n(stay florence day9 day10)\n(stay florence day10 day11)\n(stay florence day11 day12)\n(stay florence day12 day13)\n(stay florence day13 day14)\n; cost = 13 (unit cost)\n",
+    "syntax_errors": "No syntax error log was generated.",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample0/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample0/problem_1.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 15 rules.\nComputing model... [0.000s CPU, 0.002s wall-clock]\n205 relevant atoms\n212 auxiliary atoms\n417 final queue length\n463 total queue pushes\nCompleting instantiation... [0.010s CPU, 0.002s wall-clock]\nInstantiating: [0.010s CPU, 0.006s wall-clock]\nComputing fact groups...\nFinding invariants...\n5 initial candidates\nFinding invariants: [0.000s CPU, 0.001s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n1 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.002s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.002s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n15 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n13 of 13 variables necessary.\n0 of 13 mutex groups necessary.\n84 of 84 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.000s wall-clock]\nTranslator variables: 13\nTranslator derived variables: 0\nTranslator facts: 51\nTranslator goal facts: 13\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 84\nTranslator axioms: 0\nTranslator task size: 411\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.020s CPU, 0.014s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample0/sas_plan_1 < output.sas\n[t=0.000192s, 9964 KB] reading input...\n[t=0.000813s, 9964 KB] done reading input!\n[t=0.002427s, 10228 KB] Initializing landmark cut heuristic...\n[t=0.002485s, 10228 KB] Building successor generator...done!\n[t=0.002569s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002583s, 10228 KB] time for successor generation creation: 0.000039s\n[t=0.002600s, 10228 KB] Variables: 13\n[t=0.002615s, 10228 KB] FactPairs: 51\n[t=0.002628s, 10228 KB] Bytes per state: 4\n[t=0.002654s, 10228 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002719s, 10228 KB] New best heuristic value for lmcut: 13\n[t=0.002736s, 10228 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002759s, 10228 KB] f = 13, 1 evaluated, 0 expanded\n[t=0.002778s, 10364 KB] Initial heuristic value for lmcut: 13\n[t=0.002802s, 10364 KB] pruning method: none\n[t=0.002852s, 10364 KB] New best heuristic value for lmcut: 12\n[t=0.002867s, 10364 KB] g=1, 3 evaluated, 1 expanded\n[t=0.002906s, 10364 KB] New best heuristic value for lmcut: 11\n[t=0.002920s, 10364 KB] g=2, 5 evaluated, 2 expanded\n[t=0.002955s, 10364 KB] New best heuristic value for lmcut: 10\n[t=0.002970s, 10364 KB] g=3, 7 evaluated, 3 expanded\n[t=0.003002s, 10364 KB] New best heuristic value for lmcut: 9\n[t=0.003016s, 10364 KB] g=4, 8 evaluated, 4 expanded\n[t=0.003053s, 10364 KB] New best heuristic value for lmcut: 8\n[t=0.003067s, 10364 KB] g=5, 12 evaluated, 5 expanded\n[t=0.003097s, 10364 KB] New best heuristic value for lmcut: 7\n[t=0.003111s, 10364 KB] g=6, 15 evaluated, 6 expanded\n[t=0.003142s, 10364 KB] New best heuristic value for lmcut: 6\n[t=0.003156s, 10364 KB] g=7, 18 evaluated, 7 expanded\n[t=0.003181s, 10364 KB] New best heuristic value for lmcut: 5\n[t=0.003195s, 10364 KB] g=8, 19 evaluated, 8 expanded\n[t=0.003223s, 10364 KB] New best heuristic value for lmcut: 4\n[t=0.003237s, 10364 KB] g=9, 23 evaluated, 9 expanded\n[t=0.003259s, 10364 KB] New best heuristic value for lmcut: 3\n[t=0.003273s, 10364 KB] g=10, 25 evaluated, 10 expanded\n[t=0.003294s, 10364 KB] New best heuristic value for lmcut: 2\n[t=0.003307s, 10364 KB] g=11, 27 evaluated, 11 expanded\n[t=0.003327s, 10364 KB] New best heuristic value for lmcut: 1\n[t=0.003341s, 10364 KB] g=12, 29 evaluated, 12 expanded\n[t=0.003360s, 10364 KB] New best heuristic value for lmcut: 0\n[t=0.003374s, 10364 KB] g=13, 31 evaluated, 13 expanded\n[t=0.003389s, 10364 KB] Solution found!\n[t=0.003404s, 10364 KB] Actual search time: 0.000600s\nstay helsinki day1 day2 (1)\nstay helsinki day2 day3 (1)\nstay helsinki day3 day4 (1)\nfly helsinki barcelona day4 day5 (1)\nstay barcelona day5 day6 (1)\nstay barcelona day6 day7 (1)\nstay barcelona day7 day8 (1)\nfly barcelona florence day8 day9 (1)\nstay florence day9 day10 (1)\nstay florence day10 day11 (1)\nstay florence day11 day12 (1)\nstay florence day12 day13 (1)\nstay florence day13 day14 (1)\n[t=0.003419s, 10364 KB] Plan length: 13 step(s).\n[t=0.003419s, 10364 KB] Plan cost: 13\n[t=0.003419s, 10364 KB] Expanded 14 state(s).\n[t=0.003419s, 10364 KB] Reopened 0 state(s).\n[t=0.003419s, 10364 KB] Evaluated 31 state(s).\n[t=0.003419s, 10364 KB] Evaluations: 31\n[t=0.003419s, 10364 KB] Generated 30 state(s).\n[t=0.003419s, 10364 KB] Dead ends: 17 state(s).\n[t=0.003419s, 10364 KB] Expanded until last jump: 0 state(s).\n[t=0.003419s, 10364 KB] Reopened until last jump: 0 state(s).\n[t=0.003419s, 10364 KB] Evaluated until last jump: 1 state(s).\n[t=0.003419s, 10364 KB] Generated until last jump: 0 state(s).\n[t=0.003419s, 10364 KB] Number of registered states: 31\n[t=0.003419s, 10364 KB] Int hash set load factor: 31/32 = 0.968750\n[t=0.003419s, 10364 KB] Int hash set resizes: 5\n[t=0.003419s, 10364 KB] Search time: 0.000765s\n[t=0.003419s, 10364 KB] Total time: 0.003419s\nSolution found.\nPeak memory: 10364 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentDeepThinkPDDL"
+    ]
+}
+================================================================================
+
+NATURAL-PLAN sas_plan_1
+------------------------------
+Plan (human-readable, matching the PDDL plan exactly):
+
+1. stay helsinki day1 → day2
+   - Stay in Helsinki from day1 to day2 (you are at Helsinki on day2).
+
+2. stay helsinki day2 → day3
+   - Stay in Helsinki from day2 to day3 (you are at Helsinki on day3).
+
+3. stay helsinki day3 → day4
+   - Stay in Helsinki from day3 to day4 (you are at Helsinki on day4).
+
+4. fly helsinki → barcelona day4 → day5
+   - Fly from Helsinki to Barcelona during the transition from day4 to day5; arrive and are at Barcelona on day5.
+
+5. stay barcelona day5 → day6
+   - Stay in Barcelona from day5 to day6 (you are at Barcelona on day6).
+
+6. stay barcelona day6 → day7
+   - Stay in Barcelona from day6 to day7 (you are at Barcelona on day7).
+
+7. stay barcelona day7 → day8
+   - Stay in Barcelona from day7 to day8 (you are at Barcelona on day8).
+
+8. fly barcelona → florence day8 → day9
+   - Fly from Barcelona to Florence during the transition from day8 to day9; arrive and are at Florence on day9.
+
+9. stay florence day9 → day10
+   - Stay in Florence from day9 to day10 (you are at Florence on day10).
+
+10. stay florence day10 → day11
+    - Stay in Florence from day10 to day11 (you are at Florence on day11).
+
+11. stay florence day11 → day12
+    - Stay in Florence from day11 to day12 (you are at Florence on day12).
+
+12. stay florence day12 → day13
+    - Stay in Florence from day12 to day13 (you are at Florence on day13).
+
+13. stay florence day13 → day14
+    - Stay in Florence from day13 to day14 (you are at Florence on day14).
+
+Summary / timestamps:
+- Helsinki: present day1, and stays cover day2, day3, day4 (Helsinki total presence days: day1–day4).
+- Flight Helsinki → Barcelona: departs during day4→day5, arrive day5.
+- Barcelona: presence days day5–day8.
+- Flight Barcelona → Florence: departs during day8→day9, arrive day9.
+- Florence: presence days day9–day14 (meeting window satisfied between day9 and day14 inclusive).
+
+Plan cost: 13 (unit cost).
+================================================================================
+

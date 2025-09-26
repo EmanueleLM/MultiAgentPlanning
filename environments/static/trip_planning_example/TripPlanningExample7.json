@@ -1,0 +1,76 @@
+{
+    "name": "TripPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_builder",
+            "flight_checker",
+            "orchestrator"
+        ],
+        "itinerary_builder": {
+            "private_information": [
+                "Desired stays: Venice 6 days, Dubrovnik 4 days, Istanbul 3 days",
+                "Total available days for the trip is 11",
+                "Prefer to prioritize Venice stay length when possible"
+            ],
+            "goal": "Provide a candidate allocation of days and an ordered list of city visits that respects preferences as much as possible."
+        },
+        "flight_checker": {
+            "private_information": [
+                "Direct flights exist from Dubrovnik to Istanbul",
+                "Direct flights exist from Dubrovnik to Venice",
+                "Only direct flights are used to commute between cities"
+            ],
+            "goal": "Provide the directed graph of available direct flights and feasible connections between the three cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate preferences and flight connectivity to produce a PDDL domain and problem suitable for FastDownwards that finds a trip plan visiting the three cities for exactly 11 days using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11
+        },
+        "public_information": [
+            "You plan to visit three European cities: Venice, Dubrovnik, Istanbul.",
+            "The trip must last exactly 11 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Known direct flights: from Dubrovnik to Istanbul and from Dubrovnik to Venice."
+        ]
+    },
+    "workflow": {
+        "itinerary_builder": {
+            "analyze_preferences": {
+                "input": [],
+                "output": "itinerary_prefs",
+                "system_prompt": "You are an agent that summarizes travel preferences and desired durations. Provide a clear structured summary of preferred stays, flexibility notes, and a candidate order of visits. Do not emit PDDL.",
+                "prompt": "You are itinerary_builder. Given the public information about cities and total days and your private information about desired stays and priorities, produce a structured summary containing the desired stays per city, which stays are flexible and by how much, and one or more candidate visit orders that try to respect the preferences while noting any conflicts with the total days."
+            }
+        },
+        "flight_checker": {
+            "check_flights": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an agent that inspects and returns the directed connectivity of direct flights between cities. Provide the list of directed edges and note which links are missing. Do not emit PDDL.",
+                "prompt": "You are flight_checker. Given the public information about direct flights and the list of cities, produce a structured representation of the directed flight graph connecting the cities. State which city pairs are connected by a direct flight and whether any required legs are impossible under the direct-flight-only constraint."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_prefs",
+                    "flight_graph"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domain and problem files targeted for the FastDownwards planner. Integrate structured inputs from other agents. You must produce a PDDL domain and a PDDL problem that encode travel between cities with actions for taking direct flights and staying days in cities. The PDDL should enforce the total trip length of 11 days and allow allocation of stay days per city consistent with available days and connectivity. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Mention in your output that the files are intended for FastDownwards.",
+                "prompt": "You are orchestrator. You will receive the itinerary preferences summary and the flight connectivity graph from other agents. Reconcile any conflicts between desired stays and the total days. Produce a complete PDDL domain and a PDDL problem that models cities as locations, actions for taking direct flights (only where flight_graph allows) and actions for staying an extra day in a city. The problem must require exactly 11 days total and include initial and goal states that ensure all three cities are visited within the plan. Keep agent actions and roles explicit in comments if helpful. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Ensure the PDDL is compatible with the FastDownwards planner."
+            }
+        },
+        "constraints": [
+            "itinerary_builder.analyze_preferences->orchestrator.pddl",
+            "flight_checker.check_flights->orchestrator.pddl"
+        ]
+    }
+}

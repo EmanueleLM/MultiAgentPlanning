@@ -1,0 +1,97 @@
+{
+    "name": "TripPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "oslo_planner",
+            "porto_planner",
+            "dubrovnik_planner",
+            "orchestrator"
+        ],
+        "oslo_planner": {
+            "private_information": [
+                "I plan to stay in Oslo for 6 days",
+                "Direct flights exist between Oslo and Dubrovnik",
+                "Direct flights exist between Porto and Oslo"
+            ],
+            "goal": "Help allocate arrival and departure days for Oslo that fit a 16 day trip using only direct flights and respecting Dubrovnik conference constraints"
+        },
+        "porto_planner": {
+            "private_information": [
+                "I plan to stay in Porto for 7 days",
+                "Direct flights exist between Porto and Oslo"
+            ],
+            "goal": "Help allocate arrival and departure days for Porto that fit a 16 day trip using only direct flights and respecting Dubrovnik conference constraints"
+        },
+        "dubrovnik_planner": {
+            "private_information": [
+                "I plan to stay in Dubrovnik for 5 days",
+                "I must attend a conference in Dubrovnik on day 12 and day 16",
+                "Direct flights exist between Dubrovnik and Oslo"
+            ],
+            "goal": "Help allocate arrival and departure days for Dubrovnik that fit a 16 day trip and ensure presence on days 12 and 16"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate local plans and produce a final PDDL domain and problem encoding the 16 day trip using only direct flights, targeting the FastDownwards solver"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "visibility": 1
+        },
+        "public_information": [
+            "You plan a trip visiting three European cities over 16 days in total",
+            "Cities to visit are Oslo, Porto, and Dubrovnik",
+            "You only take direct flights to commute between cities",
+            "Desired stays are Oslo 6 days, Porto 7 days, Dubrovnik 5 days",
+            "You must attend conferences in Dubrovnik on day 12 and day 16",
+            "Direct flight connections available are Oslo-Dubrovnik and Porto-Oslo"
+        ]
+    },
+    "workflow": {
+        "oslo_planner": {
+            "local_plan": {
+                "input": [],
+                "output": "local_plan_oslo",
+                "system_prompt": "You are the Oslo planner. Using only the public information and your private information, produce a local schedule fragment specifying arrival day, departure day, and which contiguous days of the 16 day itinerary you occupy Oslo. Ensure your fragment respects the total of 6 days in Oslo and does not assume unknown facts about other cities.",
+                "prompt": "Your name is oslo_planner. Use the environment public information and your private information to propose feasible arrival and departure days for Oslo within the 16 day trip. State arrival_day and departure_day and list the occupied days. Do not produce PDDL. Provide any constraints or assumptions you require to integrate your fragment with other city plans."
+            }
+        },
+        "porto_planner": {
+            "local_plan": {
+                "input": [],
+                "output": "local_plan_porto",
+                "system_prompt": "You are the Porto planner. Using only the public information and your private information, produce a local schedule fragment specifying arrival day, departure day, and which contiguous days of the 16 day itinerary you occupy Porto. Ensure your fragment respects the total of 7 days in Porto and does not assume unknown facts about other cities.",
+                "prompt": "Your name is porto_planner. Use the environment public information and your private information to propose feasible arrival and departure days for Porto within the 16 day trip. State arrival_day and departure_day and list the occupied days. Do not produce PDDL. Provide any constraints or assumptions you require to integrate your fragment with other city plans."
+            }
+        },
+        "dubrovnik_planner": {
+            "local_plan": {
+                "input": [],
+                "output": "local_plan_dubrovnik",
+                "system_prompt": "You are the Dubrovnik planner. Using only the public information and your private information, produce a local schedule fragment specifying arrival day, departure day, and which contiguous days of the 16 day itinerary you occupy Dubrovnik. Ensure your fragment respects the total of 5 days in Dubrovnik and guarantees presence on days 12 and 16. Do not produce PDDL.",
+                "prompt": "Your name is dubrovnik_planner. Use the environment public information and your private information to propose feasible arrival and departure days for Dubrovnik within the 16 day trip. State arrival_day and departure_day and list the occupied days and explain how you satisfy the conference attendance on days 12 and 16. Do not produce PDDL. Provide any constraints or assumptions you require to integrate your fragment with other city plans."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "local_plan_oslo",
+                    "local_plan_porto",
+                    "local_plan_dubrovnik"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at multi-agent planning and PDDL modeling. Your job is to integrate the schedule fragments from multiple agents and produce a single PDDL domain and PDDL problem that models the 16 day trip planning task. The PDDL must encode cities, days, flights, stays, and the conference presence constraints. The produced PDDL domain and problem must be suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions of different agents logically distinct where appropriate and avoid name collisions.",
+                "prompt": "You are the orchestrator. You will receive three local schedule fragments from the agents. Integrate these fragments into a coherent global plan for visiting Oslo, Porto, and Dubrovnik over 16 days using only direct flights Oslo-Dubrovnik and Porto-Oslo. Ensure Dubrovnik attendance on days 12 and 16. If local fragments conflict or are incomplete, resolve conflicts by producing a consistent plan or explicitly state remaining assumptions. Think step by step and provide a PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "oslo_planner.local_plan->orchestrator.pddl",
+            "porto_planner.local_plan->orchestrator.pddl",
+            "dubrovnik_planner.local_plan->orchestrator.pddl"
+        ]
+    }
+}

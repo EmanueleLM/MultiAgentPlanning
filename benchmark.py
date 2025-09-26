@@ -223,6 +223,8 @@ if __name__ == "__main__":
         
         # Load the environment
         env = Environment(full_path)
+        print(f"\n=== Experiment {i+1}/{num_experiments} ===")
+        print("Problem name:", k)
         print("Problem: ", data["prompt_0shot"])
         print("Plan:\n", env.plan)
 

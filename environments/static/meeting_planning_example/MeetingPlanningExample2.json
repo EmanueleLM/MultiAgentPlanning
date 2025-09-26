@@ -1,0 +1,87 @@
+{
+    "name": "MeetingPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "visitor",
+            "jessica",
+            "orchestrator"
+        ],
+        "visitor": {
+            "private_information": [
+                "I arrive at Haight-Ashbury at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I can travel between Haight-Ashbury and Sunset District; travel time is 15 minutes each way"
+            ],
+            "goal": "Maximize number of friends met while satisfying meeting constraints and travel times, specifically aim to meet Jessica for at least 90 minutes within her availability window"
+        },
+        "jessica": {
+            "private_information": [
+                "I will be at Sunset District from 15:15 to 20:15",
+                "I am available only within that window",
+                "I expect a meeting duration with the visitor of at least 90 minutes"
+            ],
+            "goal": "Meet the visitor for a minimum of 90 minutes between 15:15 and 20:15 at Sunset District"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent availabilities and travel times to produce a validated PDDL domain and problem optimized for the FastDownwards solver that schedules meetings and travel to meet goals"
+        }
+    },
+    "environment": {
+        "init": {
+            "locations": [
+                "Haight-Ashbury",
+                "Sunset District"
+            ],
+            "start_location": "Haight-Ashbury",
+            "arrival_time": "09:00",
+            "travel_times_minutes": {
+                "Haight-Ashbury_to_Sunset_District": 15,
+                "Sunset_District_to_Haight-Ashbury": 15
+            }
+        },
+        "public_information": [
+            "You arrive at Haight-Ashbury at 09:00",
+            "There are two relevant locations: Haight-Ashbury and Sunset District",
+            "Travel time between Haight-Ashbury and Sunset District is 15 minutes each way",
+            "Jessica will be at Sunset District from 15:15 to 20:15",
+            "You would like to meet Jessica for a minimum of 90 minutes",
+            "The goal is to consider different schedules and choose the best one that optimizes meetings and respects availability and travel times"
+        ]
+    },
+    "workflow": {
+        "visitor": {
+            "availability": {
+                "input": [],
+                "output": "visitor_availability",
+                "system_prompt": "You are the traveling visitor planning your day in San Francisco. Provide a structured description of your available time windows, travel constraints, preferences for meeting durations, and any flexibility in departure or moving between locations. Do not emit PDDL; provide only the factual availability, travel capabilities, and preferences.",
+                "prompt": "Your name is visitor. You are in an environment with the following public information: {environment->public_information} You have the following private knowledge: {agents->visitor->private_information} Provide step-by-step possible time windows you can allocate to meetings, list travel constraints and any flexible assumptions about waiting time or shifting plans, and state any optimization preferences you have for maximizing friends met."
+            }
+        },
+        "jessica": {
+            "availability": {
+                "input": [],
+                "output": "jessica_availability",
+                "system_prompt": "You represent Jessica's availability and constraints. Provide a clear structured availability window, minimum meeting duration requirement, and any location constraints. Do not emit PDDL; provide only the factual availability and constraints.",
+                "prompt": "Your name is jessica. You are in an environment with the following public information: {environment->public_information} You have the following private knowledge: {agents->jessica->private_information} Provide a concise representation of the times you are available, confirm the minimum meeting duration, and state any strict requirements about meeting location or scheduling flexibility."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "visitor_availability",
+                    "jessica_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent planner producing a PDDL domain and problem for the FastDownwards solver. Integrate the availability and travel information from agents, keep agents' actions distinct, model travel as durative actions with the provided travel times in minutes, and model meeting as a temporal/durative action with minimum duration constraints. Produce a valid PDDL domain and a PDDL problem that the FastDownwards solver can accept. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If any information is missing or ambiguous, state the assumption in comments in plain text (not PDDL) before the PDDL and keep assumptions minimal.",
+                "prompt": "You are the orchestrator. You will receive structured availability outputs from the agents and must produce a temporal PDDL domain and problem tailored for FastDownwards to schedule travel and meetings while ensuring Jessica and visitor meet for at least 90 minutes within Jessica's availability and accounting for travel times. Keep actions for the visitor and Jessica distinct. Here is the visitor information you will receive: {visitor_availability} Here is the Jessica information you will receive: {jessica_availability} Integrate these inputs, resolve naming mismatches, and output a PDDL domain and PDDL problem. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "visitor.availability->orchestrator.pddl",
+            "jessica.availability->orchestrator.pddl"
+        ]
+    }
+}

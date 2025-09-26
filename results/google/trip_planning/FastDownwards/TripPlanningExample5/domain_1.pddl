@@ -1,0 +1,28 @@
+(define (domain trip-planning)
+  (:requirements :typing :negative-preconditions :adl)
+  (:types city day num)
+  (:predicates
+    (at ?c - city ?d - day)
+    (assigned ?d - day)
+    (direct-flight ?c1 - city ?c2 - city)
+    (succ ?d1 - day ?d2 - day)
+    (desired-stay ?c - city ?n - num)
+    (total-days ?n - num)
+    (conference ?c - city ?d - day)
+  )
+  (:action assign-first
+    :parameters (?c - city ?d - day)
+    :precondition (and (not (assigned ?d)))
+    :effect (and (assigned ?d) (at ?c ?d))
+  )
+  (:action stay
+    :parameters (?c - city ?dprev - day ?d - day)
+    :precondition (and (assigned ?dprev) (at ?c ?dprev) (succ ?dprev ?d) (not (assigned ?d)))
+    :effect (and (assigned ?d) (at ?c ?d))
+  )
+  (:action fly
+    :parameters (?cprev - city ?c - city ?dprev - day ?d - day)
+    :precondition (and (assigned ?dprev) (at ?cprev ?dprev) (succ ?dprev ?d) (direct-flight ?cprev ?c) (not (assigned ?d)))
+    :effect (and (assigned ?d) (at ?c ?d))
+  )
+)

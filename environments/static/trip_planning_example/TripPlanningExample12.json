@@ -1,0 +1,113 @@
+{
+    "name": "TripPlanningExample12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "valencia_agent",
+            "amsterdam_agent",
+            "tallinn_agent",
+            "orchestrator"
+        ],
+        "valencia_agent": {
+            "private_information": [
+                "City: Valencia",
+                "Preferred stay length: 5 days",
+                "Direct flights available: Valencia <-> Amsterdam"
+            ],
+            "goal": "Propose a contiguous 5-day stay interval in Valencia that fits within the 15-day trip and list required direct flights to reach the next city."
+        },
+        "amsterdam_agent": {
+            "private_information": [
+                "City: Amsterdam",
+                "Preferred stay length: 5 days",
+                "Direct flights available: Amsterdam <-> Valencia, Amsterdam <-> Tallinn"
+            ],
+            "goal": "Propose a contiguous 5-day stay interval in Amsterdam that fits within the 15-day trip and list required direct flights to reach the next city."
+        },
+        "tallinn_agent": {
+            "private_information": [
+                "City: Tallinn",
+                "Preferred stay length: 7 days",
+                "Direct flights available: Tallinn <-> Amsterdam",
+                "Meeting constraint: meet a friend in Tallinn between day 9 and day 15 inclusive"
+            ],
+            "goal": "Propose a contiguous stay interval in Tallinn, attempting to allocate 7 days while satisfying the meeting constraint between day 9 and day 15, and list required direct flights to arrive."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate city-specific proposals into a single consistent 15-day trip plan and produce PDDL domain and problem files targeted for the FastDownward solver that model days, stays, and direct flight commutes."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 15,
+            "cities": [
+                "Valencia",
+                "Amsterdam",
+                "Tallinn"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Tallinn"
+                ],
+                [
+                    "Valencia",
+                    "Amsterdam"
+                ]
+            ]
+        },
+        "public_information": [
+            "Total trip length: 15 days",
+            "You may only use direct flights to commute between cities",
+            "Cities to visit: Valencia, Amsterdam, Tallinn",
+            "Desired stays: Valencia 5 days, Amsterdam 5 days, Tallinn 7 days",
+            "Direct flight connections: Amsterdam <-> Tallinn and Valencia <-> Amsterdam",
+            "Meeting constraint: meet a friend in Tallinn on a day between day 9 and day 15 inclusive"
+        ]
+    },
+    "workflow": {
+        "valencia_agent": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "plan_valencia",
+                "system_prompt": "You are a city-specific trip planner for Valencia. Provide a proposed contiguous stay interval inside the global 15-day trip. The proposal must specify a start_day and an end_day and must allocate 5 days in Valencia if possible. Also list required direct flights to leave or arrive. Do not emit PDDL.",
+                "prompt": "Your name is valencia_agent. You have the public information from the environment and your private information. Propose a contiguous interval of days for Valencia consistent with the global trip of 15 days and your preferred 5-day length. If you cannot fit the full 5 days due to global constraints, propose the best possible allocation. Output a short structured proposal indicating start_day, end_day, and flights needed."
+            }
+        },
+        "amsterdam_agent": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "plan_amsterdam",
+                "system_prompt": "You are a city-specific trip planner for Amsterdam. Provide a proposed contiguous stay interval inside the global 15-day trip. The proposal must specify a start_day and an end_day and must allocate 5 days in Amsterdam if possible. Also list required direct flights to leave or arrive. Do not emit PDDL.",
+                "prompt": "Your name is amsterdam_agent. You have the public information from the environment and your private information. Propose a contiguous interval of days for Amsterdam consistent with the global trip of 15 days and your preferred 5-day length. If you cannot fit the full 5 days due to global constraints, propose the best possible allocation. Output a short structured proposal indicating start_day, end_day, and flights needed."
+            }
+        },
+        "tallinn_agent": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "plan_tallinn",
+                "system_prompt": "You are a city-specific trip planner for Tallinn. Provide a proposed contiguous stay interval inside the global 15-day trip. The proposal must specify a start_day and an end_day and should attempt to allocate 7 days. You must ensure that the interval includes at least one day between day 9 and day 15 to meet a friend. Also list required direct flights to arrive or depart. Do not emit PDDL.",
+                "prompt": "Your name is tallinn_agent. You have the public information from the environment and your private information. Propose a contiguous interval of days for Tallinn that respects the meeting window between day 9 and day 15 and that tries to allocate 7 days. If full allocation is impossible, propose the best possible allocation that satisfies the meeting constraint. Output a short structured proposal indicating start_day, end_day, and flights needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_valencia",
+                    "plan_amsterdam",
+                    "plan_tallinn"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning and your target planner is FastDownward. Integrate the city proposals and the public environment constraints and produce a PDDL domain and a PDDL problem that model days 1 to 15, city stays, and direct flight commuting only along the provided direct flight edges. Keep actions produced by each city agent distinct and preserve which agent performs stay and travel actions. Ensure the PDDL is compatible with FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You receive structured proposals from three city agents and the public environment information. Your job is to reconcile allocations into a single consistent schedule of 15 days and output a PDDL domain and PDDL problem suitable for FastDownward that captures: days 1..15, staying in a city for a contiguous block, flight actions only along direct connections, that the traveler visits Valencia, Amsterdam, and Tallinn, and that the Tallinn stay includes at least one day in the inclusive window day 9 to day 15. Preserve distinct action names for each city when modeling stays and flights so the origin of actions remains clear. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "valencia_agent.propose_itinerary->orchestrator.pddl",
+            "amsterdam_agent.propose_itinerary->orchestrator.pddl",
+            "tallinn_agent.propose_itinerary->orchestrator.pddl"
+        ]
+    }
+}

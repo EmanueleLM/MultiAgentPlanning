@@ -1,0 +1,85 @@
+{
+    "name": "MeetingPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "stephanie",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Marina District at 09:00",
+                "I can travel between Marina District and Mission District using the provided travel times",
+                "I want to meet as many friends as possible and prioritize meeting Stephanie for at least 120 minutes"
+            ],
+            "goal": "Plan visit schedules and propose candidate meeting times and travel legs that enable meeting Stephanie for at least 120 minutes within her availability while maximizing meeting opportunities."
+        },
+        "stephanie": {
+            "private_information": [
+                "I will be at Mission District from 10:30 to 13:30",
+                "I am available to meet for a minimum of 120 minutes during that window"
+            ],
+            "goal": "Provide availability constraints and preferences for meeting in Mission District between 10:30 and 13:30 for at least 120 minutes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the agents' schedule proposals and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes travel, time windows, and the requirement to meet Stephanie for at least 120 minutes."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "09:00",
+            "start_location": "Marina District",
+            "locations": [
+                "Marina District",
+                "Mission District"
+            ],
+            "travel_times_minutes": {
+                "Marina District->Mission District": 20,
+                "Mission District->Marina District": 19
+            }
+        },
+        "public_information": [
+            "You arrive at Marina District at 09:00",
+            "Stephanie will be at Mission District from 10:30 to 13:30",
+            "You would like to meet Stephanie for a minimum of 120 minutes",
+            "Travel time from Marina District to Mission District is 20 minutes",
+            "Travel time from Mission District to Marina District is 19 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "proposal": {
+                "input": [],
+                "output": "traveler_proposal",
+                "system_prompt": "You are an agent responsible for the traveler's schedule proposals. Based on the public information and your private knowledge, provide a set of candidate schedules. Each candidate schedule should list departure times, arrival times, meeting start and end times when meeting Stephanie, and the travel legs with their durations. Consider arriving at Stephanie's location early enough to satisfy the 120 minute meeting requirement given the travel times. Do not produce PDDL. Produce clear structured textual proposals or small JSON-like proposals that the orchestrator can consume.",
+                "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide multiple feasible schedule proposals that respect travel times and Stephanie's availability. For each proposal include explicit times and travel legs and highlight whether the 120 minute minimum meeting is satisfied."
+            }
+        },
+        "stephanie": {
+            "proposal": {
+                "input": [],
+                "output": "stephanie_proposal",
+                "system_prompt": "You are an agent representing Stephanie. Provide clear availability constraints, any preferences about meeting start times within your window, and whether partial flexibility exists. Do not produce PDDL. Return a concise availability statement and any preferences that may influence schedule selection.",
+                "prompt": "Agent name: stephanie. Public information: {environment->public_information}. Your private information: {agents->stephanie->private_information}. Goal: {agents->stephanie->goal}. Provide your availability as explicit earliest start, latest end, and minimum meeting duration. Note any flexibility or preferences for contiguous meeting time versus split meetings."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_proposal",
+                    "stephanie_proposal"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator that must integrate agent proposals into a solvable PDDL domain and problem for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem file that model locations, travel durations, time windows, meeting duration requirements, and actions for the traveler to travel and meet. If there are multiple agents, keep their actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in your encoding.",
+                "prompt": "You will receive the traveler's schedule proposals and Stephanie's availability. Here is the traveler's proposals: {traveler_proposal}. Here is Stephanie's availability: {stephanie_proposal}. Integrate these inputs and produce a PDDL domain and PDDL problem that encode the following: start at Marina District at 09:00, travel times between Marina and Mission as given, Stephanie available at Mission from 10:30 to 13:30, and requirement to meet Stephanie for at least 120 minutes. The produced PDDL should be ready to run with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.proposal->orchestrator.pddl",
+            "stephanie.proposal->orchestrator.pddl"
+        ]
+    }
+}

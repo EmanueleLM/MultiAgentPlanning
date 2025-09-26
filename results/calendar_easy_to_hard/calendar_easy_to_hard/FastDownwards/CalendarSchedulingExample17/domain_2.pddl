@@ -17,6 +17,7 @@
     :effect (and
       (scheduled ?t)
       (meeting-scheduled)
+      (not (allow ?t))
     )
     :cost 1
   )

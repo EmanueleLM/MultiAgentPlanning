@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -151,11 +152,34 @@ def summarize(results: list[ExampleResult]) -> tuple[int, int, float]:
     logging.info("================ Evaluation Summary ================")
     logging.info("Total examples          : %s", total)
     logging.info("With natural plan output: %s", evaluated)
+    logging.info("Without natural plan    : %s", total - evaluated)
     logging.info("Correct matches         : %s", correct)
     logging.info("Accuracy (total)    : %.2f%%", accuracy * 100)
     logging.info("Accuracy (evaluated)    : %.2f%%", accuracy_evaluated * 100)
     return total, evaluated, accuracy, accuracy_evaluated
 
+
+def append_accuracy_result(accuracy_file, dataset_name, total, evaluated, accuracy, accuracy_evaluated, model):
+    results = []
+    if os.path.exists(accuracy_file):
+        with open(accuracy_file, "r", encoding="utf-8") as f:
+            results = json.load(f)
+
+    if not isinstance(results, list):
+        results = [results]
+
+    results.append({
+        "dataset": dataset_name,
+        "total_examples": total,
+        "evaluated_examples": evaluated,
+        "not_evaluated_examples": total - evaluated,
+        "accuracy": accuracy,
+        "accuracy_evaluated": accuracy_evaluated,
+        "model": model,
+    })
+
+    with open(accuracy_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
 
 def main() -> None:
     args = parse_args()
@@ -174,23 +198,19 @@ def main() -> None:
     total, evaluated, accuracy, accuracy_evaluated = summarize(results)
 
     dataset_name = args.data_file.stem
-    accuracy_dir = Path("results") / "_accuracies" / dataset_name
+    accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy.json"
-    with open(accuracy_file, "w", encoding="utf-8") as f:
-        f.write(
-            json.dumps(
-                {
-                    "dataset": dataset_name,
-                    "total_examples": total,
-                    "evaluated_examples": evaluated,
-                    "accuracy": accuracy,
-                    "accuracy_evaluated": accuracy_evaluated,
-                    "model": args.model,
-                },
-                indent=2,
-            )
-        )
+    append_accuracy_result(
+        accuracy_file,
+        dataset_name,
+        total,
+        evaluated,
+        total - evaluated,
+        accuracy,
+        accuracy_evaluated,
+        args.model
+    )
     logging.info("Accuracy written to %s", accuracy_file)
 
 

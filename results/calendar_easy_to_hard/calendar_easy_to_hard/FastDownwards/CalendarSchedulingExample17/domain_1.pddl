@@ -1,5 +1,5 @@
 (define (domain meeting-scheduler)
-  (:requirements :strips :typing :negative-preconditions :universal-preconditions :action-costs)
+  (:requirements :strips :typing :negative-preconditions :universal-preconditions :fluents :action-costs)
   (:types participant timeslot)
   (:predicates
     (busy ?p - participant ?t - timeslot)

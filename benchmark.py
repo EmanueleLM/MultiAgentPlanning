@@ -341,9 +341,9 @@ if __name__ == "__main__":
 
             # Save domain and problem
             with open(BASE_FOLDER / "domain_0.pddl", "w") as f:
-                f.write(domain)
+                f.write((domain if isinstance(domain, str) else str(domain)))
             with open(BASE_FOLDER / "problem_0.pddl", "w") as f:
-                f.write(problem)
+                f.write((problem if isinstance(problem, str) else str(problem)))
 
             logger.info("Initial domain/problem saved under %s", BASE_FOLDER)
 

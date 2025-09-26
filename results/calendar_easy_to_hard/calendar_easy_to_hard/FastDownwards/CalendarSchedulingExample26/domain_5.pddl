@@ -1,0 +1,23 @@
+(define (domain calendarschedulingexample26)
+  (:requirements :strips :typing)
+  (:types participant slot)
+  (:constants shirley jacob stephen margaret mason - participant)
+  (:predicates
+    (available ?p - participant ?s - slot)
+    (allowed-slot ?s - slot)
+    (scheduled-at ?s - slot)
+    (meeting-scheduled)
+  )
+  (:action schedule-at
+    :parameters (?s - slot)
+    :precondition (and
+      (available shirley ?s)
+      (available jacob ?s)
+      (available stephen ?s)
+      (available margaret ?s)
+      (available mason ?s)
+      (allowed-slot ?s)
+    )
+    :effect (and (meeting-scheduled) (scheduled-at ?s))
+  )
+)

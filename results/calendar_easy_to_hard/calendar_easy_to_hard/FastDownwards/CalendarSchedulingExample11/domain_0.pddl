@@ -1,0 +1,20 @@
+(define (domain pddl_orchestrator)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:predicates
+    (slot ?s - slot)
+    (free ?p - person ?s - slot)
+    (scheduled ?s - slot)
+  )
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (slot ?s)
+      (free madison ?s)
+      (free linda ?s)
+      (free logan ?s)
+      (free virginia ?s)
+    )
+    :effect (scheduled ?s)
+  )
+)

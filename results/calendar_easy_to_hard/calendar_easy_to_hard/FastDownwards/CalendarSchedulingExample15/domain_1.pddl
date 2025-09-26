@@ -1,0 +1,26 @@
+(define (domain CalendarSchedulingExample15)
+  (:requirements :strips :typing :equality :negative-preconditions :action-costs :fluents)
+  (:types person slot)
+  (:predicates
+    (free ?p - person ?s - slot)
+    (meeting-scheduled)
+    (scheduled-at ?s - slot)
+    (within-work-hours ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule-at
+    :parameters (?s - slot)
+    :precondition (and
+      (not (meeting-scheduled))
+      (free Jason ?s)
+      (free William ?s)
+      (free Frances ?s)
+      (free Rachel ?s)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled-at ?s)
+      (increase (total-cost) 1)
+    )
+  )
+)

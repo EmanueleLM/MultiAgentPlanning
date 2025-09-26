@@ -1,0 +1,100 @@
+{
+    "name": "CalendarSchedulingExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "adam",
+            "jerry",
+            "matthew",
+            "orchestrator"
+        ],
+        "adam": {
+            "private_information": [
+                "Monday meetings: 10:00-10:30",
+                "Monday meetings: 12:30-13:00",
+                "Monday meetings: 13:30-14:30"
+            ],
+            "goal": "Provide your free time slots for a 30-minute meeting on Monday within work hours 09:00-17:00."
+        },
+        "jerry": {
+            "private_information": [
+                "Monday meetings: 09:00-09:30",
+                "Monday meetings: 12:00-12:30",
+                "Monday meetings: 15:00-16:00"
+            ],
+            "goal": "Provide your free time slots for a 30-minute meeting on Monday within work hours 09:00-17:00."
+        },
+        "matthew": {
+            "private_information": [
+                "Monday meetings: 09:30-11:00",
+                "Monday meetings: 11:30-12:30",
+                "Monday meetings: 13:00-14:00",
+                "Monday meetings: 14:30-17:00"
+            ],
+            "goal": "Provide your free time slots for a 30-minute meeting on Monday within work hours 09:00-17:00."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate participants' availabilities and produce a PDDL domain and problem that schedules a 30-minute meeting acceptable to all participants, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30,
+            "time_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule must be within work hours 09:00-17:00 on Monday.",
+            "Meeting duration is 30 minutes.",
+            "Time granularity is 30 minutes and all schedules align to this granularity.",
+            "There exists at least one time slot that works for all participants."
+        ]
+    },
+    "workflow": {
+        "adam": {
+            "extract_availability": {
+                "input": [],
+                "output": "avail_adam",
+                "system_prompt": "You are an assistant that knows how to compute free time slots from a participant's calendar for a given day. You output a simple machine-readable list of free time intervals.",
+                "prompt": "Your name is adam. You are given the following public information: {environment->public_information} You have the following calendar entries: {agents->adam->private_information} Your goal: {agents->adam->goal} Provide a JSON array of available 30-minute slots during work hours on Monday that do not overlap your existing meetings. Use 24-hour times in HH:MM-HH:MM format, e.g. [\"09:30-10:00\",\"11:00-11:30\"]."
+            }
+        },
+        "jerry": {
+            "extract_availability": {
+                "input": [],
+                "output": "avail_jerry",
+                "system_prompt": "You are an assistant that knows how to compute free time slots from a participant's calendar for a given day. You output a simple machine-readable list of free time intervals.",
+                "prompt": "Your name is jerry. You are given the following public information: {environment->public_information} You have the following calendar entries: {agents->jerry->private_information} Your goal: {agents->jerry->goal} Provide a JSON array of available 30-minute slots during work hours on Monday that do not overlap your existing meetings. Use 24-hour times in HH:MM-HH:MM format."
+            }
+        },
+        "matthew": {
+            "extract_availability": {
+                "input": [],
+                "output": "avail_matthew",
+                "system_prompt": "You are an assistant that knows how to compute free time slots from a participant's calendar for a given day. You output a simple machine-readable list of free time intervals.",
+                "prompt": "Your name is matthew. You are given the following public information: {environment->public_information} You have the following calendar entries: {agents->matthew->private_information} Your goal: {agents->matthew->goal} Provide a JSON array of available 30-minute slots during work hours on Monday that do not overlap your existing meetings. Use 24-hour times in HH:MM-HH:MM format."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_adam",
+                    "avail_jerry",
+                    "avail_matthew"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) and scheduling. You must produce a PDDL domain and a PDDL problem file that can be solved by the FastDownwards planner to find a 30-minute meeting time acceptable to all participants. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct when relevant.",
+                "prompt": "You are the orchestrator integrating availabilities. Public information: {environment->public_information} Participant availabilities: {avail_adam} {avail_jerry} {avail_matthew} Your goal: {agents->orchestrator->goal} Think step by step, reconcile the available slots from each participant, model time slots and constraints in PDDL suitable for FastDownwards, and output a PDDL domain and problem that encode selecting a single 30-minute slot that is free for all participants. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "adam.extract_availability->orchestrator.pddl",
+            "jerry.extract_availability->orchestrator.pddl",
+            "matthew.extract_availability->orchestrator.pddl"
+        ]
+    }
+}

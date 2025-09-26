@@ -1,0 +1,26 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types agent slot)
+  (:constants thomas dylan jerry - agent)
+  (:predicates
+    (free ?a - agent ?s - slot)
+    (next ?s - slot ?s2 - slot)
+    (allowed-start ?s - slot)
+    (scheduled)
+    (meeting-start ?s - slot)
+  )
+  (:action schedule
+    :parameters (?s - slot ?s2 - slot)
+    :precondition (and
+      (next ?s ?s2)
+      (allowed-start ?s)
+      (free thomas ?s) (free thomas ?s2)
+      (free dylan ?s) (free dylan ?s2)
+      (free jerry ?s) (free jerry ?s2)
+    )
+    :effect (and
+      (scheduled)
+      (meeting-start ?s)
+    )
+  )
+)

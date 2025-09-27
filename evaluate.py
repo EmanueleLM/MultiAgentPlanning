@@ -94,30 +94,31 @@ def evaluate_dataset(
     experiments_root: Path,
     llm: LLM,
     verbose: bool = False,
-) -> list[ExampleResult]:
+) -> tuple[list[ExampleResult], int, int]:
     with open(data_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
     sorted_items = sorted(dataset.items(), key=lambda item: item[0])
     results: list[ExampleResult] = []
+    missing = 0
 
     for key, payload in sorted_items:
-        print(f"Evaluating {key}...")
         golden = payload.get("golden_plan", "").strip()
         parts = key.split("_")
         env_name = "".join(part.capitalize() for part in parts[:-1]) + parts[-1]
         plan_path = find_natural_plan(experiments_root, env_name)
-        natural = None
-        correct = False
-        reason = "final_natural_plan.txt not found"
+        if not plan_path or not plan_path.exists():
+            missing += 1
+            if verbose:
+                logging.info("[%s] skipped (no final_natural_plan)", key)
+            continue
 
-        if plan_path and plan_path.exists():
-            natural = plan_path.read_text(encoding="utf-8").strip()
-            if normalize_text(golden) == normalize_text(natural):
-                correct = True
-                reason = "Exact match after normalization"
-            else:
-                correct, reason = llm_judge(llm, golden, natural)
+        natural = plan_path.read_text(encoding="utf-8").strip()
+        if normalize_text(golden) == normalize_text(natural):
+            correct = True
+            reason = "Exact match after normalization"
+        else:
+            correct, reason = llm_judge(llm, golden, natural)
 
         if verbose:
             logging.info(
@@ -125,7 +126,7 @@ def evaluate_dataset(
                 key,
                 correct,
                 reason,
-                plan_path if plan_path else "<missing>",
+                plan_path,
             )
 
         results.append(
@@ -139,27 +140,40 @@ def evaluate_dataset(
             )
         )
 
-    return results
+    return results, missing, len(sorted_items)
 
 
-def summarize(results: list[ExampleResult]) -> tuple[int, int, float]:
-    total = len(results)
-    evaluated = sum(1 for r in results if r.natural_plan is not None)
+def summarize(
+    results: list[ExampleResult],
+    missing: int,
+    dataset_total: int,
+) -> tuple[int, int, int, float, float]:
+    evaluated = len(results)
     correct = sum(1 for r in results if r.correct)
-    accuracy = correct / total if evaluated else 0.0
-    accuracy_evaluated = correct / evaluated if evaluated else 0.0
+    accuracy = correct / evaluated if evaluated else 0.0
+    coverage = evaluated / dataset_total if dataset_total else 0.0
 
     logging.info("================ Evaluation Summary ================")
-    logging.info("Total examples          : %s", total)
-    logging.info("With natural plan output: %s", evaluated)
-    logging.info("Without natural plan    : %s", total - evaluated)
+    logging.info("Dataset examples        : %s", dataset_total)
+    logging.info("Evaluated examples      : %s", evaluated)
+    logging.info("Missing plan outputs    : %s", missing)
     logging.info("Correct matches         : %s", correct)
-    logging.info("Accuracy (total)    : %.2f%%", accuracy * 100)
-    logging.info("Accuracy (evaluated)    : %.2f%%", accuracy_evaluated * 100)
-    return total, evaluated, accuracy, accuracy_evaluated
+    logging.info("Accuracy (evaluated)    : %.2f%%", accuracy * 100)
+    logging.info("Coverage                 : %.2f%%", coverage * 100)
+
+    return evaluated, missing, dataset_total, accuracy, coverage
 
 
-def append_accuracy_result(accuracy_file, dataset_name, total, evaluated, accuracy, accuracy_evaluated, model):
+def append_accuracy_result(
+    accuracy_file,
+    dataset_name,
+    evaluated,
+    missing,
+    dataset_total,
+    accuracy,
+    coverage,
+    model,
+):
     results = []
     if os.path.exists(accuracy_file):
         with open(accuracy_file, "r", encoding="utf-8") as f:
@@ -168,15 +182,17 @@ def append_accuracy_result(accuracy_file, dataset_name, total, evaluated, accura
     if not isinstance(results, list):
         results = [results]
 
-    results.append({
-        "dataset": dataset_name,
-        "total_examples": total,
-        "evaluated_examples": evaluated,
-        "not_evaluated_examples": total - evaluated,
-        "accuracy": accuracy,
-        "accuracy_evaluated": accuracy_evaluated,
-        "model": model,
-    })
+    results.append(
+        {
+            "dataset": dataset_name,
+            "dataset_total": dataset_total,
+            "evaluated_examples": evaluated,
+            "missing_examples": missing,
+            "accuracy": accuracy,
+            "coverage": coverage,
+            "model": model,
+        }
+    )
 
     with open(accuracy_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
@@ -189,13 +205,15 @@ def main() -> None:
         raise ValueError(f"Unsupported model '{args.model}'.")
 
     llm = LLM_FACTORIES[args.model]()
-    results = evaluate_dataset(
+    results, missing, dataset_total = evaluate_dataset(
         args.data_file,
         args.experiments_root,
         llm,
         verbose=args.verbose,
     )
-    total, evaluated, accuracy, accuracy_evaluated = summarize(results)
+    evaluated, missing, dataset_total, accuracy, coverage = summarize(
+        results, missing, dataset_total
+    )
 
     dataset_name = args.data_file.stem
     accuracy_dir = Path("results") / "_accuracies"
@@ -204,11 +222,12 @@ def main() -> None:
     append_accuracy_result(
         accuracy_file,
         dataset_name,
-        total,
         evaluated,
+        missing,
+        dataset_total,
         accuracy,
-        accuracy_evaluated,
-        args.model
+        coverage,
+        args.model,
     )
     logging.info("Accuracy written to %s", accuracy_file)
 

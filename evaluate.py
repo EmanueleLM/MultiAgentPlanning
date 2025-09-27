@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -62,13 +63,13 @@ def normalize_text(text: str) -> str:
     return " ".join(text.strip().split())
 
 
-def find_natural_plan(experiments_root: Path, environment_name: str) -> Optional[Path]:
+def find_natural_plan(experiments_root: Path, environment_name: str) -> tuple[Optional[Path], Optional[Path]]:
     target_dir = experiments_root / environment_name
     if not target_dir.exists():
-        return None
+        return None, target_dir
     for candidate in target_dir.rglob("final_natural_plan.txt"):
-        return candidate
-    return None
+        return candidate, target_dir
+    return None, target_dir
 
 
 def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
@@ -94,13 +95,14 @@ def evaluate_dataset(
     experiments_root: Path,
     llm: LLM,
     verbose: bool = False,
-) -> tuple[list[ExampleResult], int, int]:
+) -> tuple[list[ExampleResult], int, int, int]:
     with open(data_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
     sorted_items = sorted(dataset.items(), key=lambda item: item[0])
     results: list[ExampleResult] = []
     missing = 0
+    total_plan_paths = 0
 
     for key, payload in sorted_items:
         raw_golden = payload.get("golden_plan", "")
@@ -112,7 +114,10 @@ def evaluate_dataset(
             golden = str(raw_golden).strip()
         parts = key.split("_")
         env_name = "".join(part.capitalize() for part in parts[:-1]) + parts[-1]
-        plan_path = find_natural_plan(experiments_root, env_name)
+        plan_path, plan_folder = find_natural_plan(experiments_root, env_name)
+        if plan_folder and plan_folder.exists():
+            total_plan_paths += 1
+
         if not plan_path or not plan_path.exists():
             missing += 1
             if verbose:
@@ -146,28 +151,67 @@ def evaluate_dataset(
             )
         )
 
-    return results, missing, len(sorted_items)
+    return results, missing, len(sorted_items), total_plan_paths
 
 
 def summarize(
     results: list[ExampleResult],
     missing: int,
     dataset_total: int,
-) -> tuple[int, int, int, float, float]:
+    total_plan_paths: int,
+) -> tuple[int, int, int, float, float, int, float, float]:
     evaluated = len(results)
     correct = sum(1 for r in results if r.correct)
-    accuracy = correct / evaluated if evaluated else 0.0
-    coverage = evaluated / dataset_total if dataset_total else 0.0
+
+    accuracy_existing = correct / evaluated if evaluated else 0.0
+    accuracy_including_missing = (
+        correct / total_plan_paths if total_plan_paths else 0.0
+    )
+
+    coverage_plan_paths = (
+        total_plan_paths / dataset_total if dataset_total else 0.0
+    )
+    coverage_outputs = (
+        evaluated / dataset_total if dataset_total else 0.0
+    )
+    missing_plan_outputs = max(total_plan_paths - evaluated, 0)
 
     logging.info("================ Evaluation Summary ================")
     logging.info("Dataset examples        : %s", dataset_total)
+    logging.info("Plan path folders       : %s", total_plan_paths)
     logging.info("Evaluated examples      : %s", evaluated)
     logging.info("Missing plan outputs    : %s", missing)
+    logging.info(
+        "Plan folders without final_natural_plan : %s", missing_plan_outputs
+    )
     logging.info("Correct matches         : %s", correct)
-    logging.info("Accuracy (evaluated)    : %.2f%%", accuracy * 100)
-    logging.info("Coverage                 : %.2f%%", coverage * 100)
+    logging.info(
+        "Accuracy (plan_path incl. missing) : %.2f%%",
+        accuracy_including_missing * 100,
+    )
+    logging.info(
+        "Accuracy (plan_path existing only) : %.2f%%",
+        accuracy_existing * 100,
+    )
+    logging.info(
+        "Coverage (plan folders vs dataset) : %.2f%%",
+        coverage_plan_paths * 100,
+    )
+    logging.info(
+        "Coverage (evaluated vs dataset)    : %.2f%%",
+        coverage_outputs * 100,
+    )
 
-    return evaluated, missing, dataset_total, accuracy, coverage
+    return (
+        evaluated,
+        missing,
+        dataset_total,
+        accuracy_existing,
+        coverage_outputs,
+        total_plan_paths,
+        accuracy_including_missing,
+        coverage_plan_paths,
+    )
 
 
 def append_accuracy_result(
@@ -176,8 +220,11 @@ def append_accuracy_result(
     evaluated,
     missing,
     dataset_total,
-    accuracy,
-    coverage,
+    accuracy_existing,
+    coverage_outputs,
+    total_plan_paths,
+    accuracy_including_missing,
+    coverage_plan_paths,
     model,
 ):
     results = []
@@ -194,8 +241,11 @@ def append_accuracy_result(
             "dataset_total": dataset_total,
             "evaluated_examples": evaluated,
             "missing_examples": missing,
-            "accuracy": accuracy,
-            "coverage": coverage,
+            "accuracy_plan_paths_existing": accuracy_existing,
+            "accuracy_plan_paths_including_missing": accuracy_including_missing,
+            "plan_path_count": total_plan_paths,
+            "coverage_plan_paths_vs_dataset": coverage_plan_paths,
+            "coverage_outputs_vs_dataset": coverage_outputs,
             "model": model,
         }
     )
@@ -211,15 +261,22 @@ def main() -> None:
         raise ValueError(f"Unsupported model '{args.model}'.")
 
     llm = LLM_FACTORIES[args.model]()
-    results, missing, dataset_total = evaluate_dataset(
+    results, missing, dataset_total, total_plan_paths = evaluate_dataset(
         args.data_file,
         args.experiments_root,
         llm,
         verbose=args.verbose,
     )
-    evaluated, missing, dataset_total, accuracy, coverage = summarize(
-        results, missing, dataset_total
-    )
+    (
+        evaluated,
+        missing,
+        dataset_total,
+        accuracy_existing,
+        coverage_outputs,
+        total_plan_paths,
+        accuracy_including_missing,
+        coverage_plan_paths,
+    ) = summarize(results, missing, dataset_total, total_plan_paths)
 
     dataset_name = args.data_file.stem
     accuracy_dir = Path("results") / "_accuracies"
@@ -231,8 +288,11 @@ def main() -> None:
         evaluated,
         missing,
         dataset_total,
-        accuracy,
-        coverage,
+        accuracy_existing,
+        coverage_outputs,
+        total_plan_paths,
+        accuracy_including_missing,
+        coverage_plan_paths,
         args.model,
     )
     logging.info("Accuracy written to %s", accuracy_file)

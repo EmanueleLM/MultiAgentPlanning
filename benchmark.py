@@ -238,9 +238,8 @@ if __name__ == "__main__":
 
     # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
     key = list(scheduling_data.keys())[0]
-    match = re.match(r"^(.*)_(\d+)$", key)
-    if match:
-        problem_name, _ = match.groups()
+    if "_" in key:
+        problem_name, _ = key.rsplit("_", 1)
     else:
         problem_name = key
 

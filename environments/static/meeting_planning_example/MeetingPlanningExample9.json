@@ -1,0 +1,82 @@
+{
+    "name": "MeetingPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "visitor",
+            "mary",
+            "orchestrator"
+        ],
+        "visitor": {
+            "private_information": [
+                "I arrive at Union Square at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "Travel times: Union Square to Nob Hill 9 minutes, Nob Hill to Union Square 7 minutes"
+            ],
+            "goal": "Maximize the number of meetings during the day while ensuring a meeting with Mary for at least 75 minutes during her availability window"
+        },
+        "mary": {
+            "private_information": [
+                "I will be at Nob Hill from 12:00 to 16:15",
+                "I can meet for at least 75 minutes within that interval"
+            ],
+            "goal": "Meet the visitor for at least 75 minutes while I am at Nob Hill between 12:00 and 16:15"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate schedules and availability to produce a final PDDL domain and problem suitable for the FastDownwards solver that optimizes meetings and enforces the Mary meeting constraint"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 0,
+            "day_start": "09:00",
+            "locations": [
+                "Union Square",
+                "Nob Hill"
+            ]
+        },
+        "public_information": [
+            "You arrive at Union Square at 09:00",
+            "Travel time from Union Square to Nob Hill is 9 minutes",
+            "Travel time from Nob Hill to Union Square is 7 minutes",
+            "Mary will be at Nob Hill from 12:00 to 16:15",
+            "You would like to meet Mary for a minimum of 75 minutes"
+        ]
+    },
+    "workflow": {
+        "visitor": {
+            "generate_schedules": {
+                "input": [],
+                "output": "schedules_visitor",
+                "system_prompt": "You are a scheduling assistant. Produce candidate schedules and time allocations for visiting friends and locations given the public information and your private preferences. Do not emit PDDL. Provide a compact structured description of several feasible schedules with start and end times for each meeting and travel legs.",
+                "prompt": "Your name is visitor. Use the public information and your private information to enumerate alternative daily schedules that try to maximize the number of meetings and ensure a meeting with Mary of at least 75 minutes when possible. Include estimated travel times between locations and clearly mark time windows for each potential meeting. Return multiple candidate schedules with their total meeting time and feasibility notes."
+            }
+        },
+        "mary": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_mary",
+                "system_prompt": "You are an availability reporter. Provide a precise availability window and any constraints on meeting length or start times. Do not emit PDDL. Provide structured availability information.",
+                "prompt": "Your name is mary. Confirm your availability at Nob Hill from 12:00 to 16:15 and state that you require at least a 75 minute contiguous meeting within that window. Indicate earliest possible start and latest possible end times for a meeting of that duration and any preferences that could affect schedule placement."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedules_visitor",
+                    "availability_mary"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeted to the FastDownwards solver. Integrate candidate schedules and availability to produce a complete PDDL domain and a PDDL problem that the FastDownwards solver can accept. Use STRIPS-style definitions where possible, model time discretely in minutes or in suitable time steps, and ensure the solution enforces that a meeting with Mary lasts at least 75 minutes within her availability window. Keep actions distinct and labeled for the visitor and for travel. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You will receive candidate schedules from the visitor and the availability statement from Mary. Integrate these inputs to create a final PDDL domain and problem that encodes the locations Union Square and Nob Hill, travel durations, the visitor arrival at 09:00, Mary's availability from 12:00 to 16:15, and the constraint that the meeting with Mary must be at least 75 minutes. The domain should include actions for 'travel' and 'meet' and a metric to maximize the number of meetings or to maximize total meeting time. Target the FastDownwards solver. Provide the domain and problem enclosed in <domain></domain> and <problem></problem> tags. Do not assume additional friends beyond those implied; focus on integrating schedules and enforcing constraints."
+            }
+        },
+        "constraints": [
+            "visitor.generate_schedules->orchestrator.pddl",
+            "mary.provide_availability->orchestrator.pddl"
+        ]
+    }
+}

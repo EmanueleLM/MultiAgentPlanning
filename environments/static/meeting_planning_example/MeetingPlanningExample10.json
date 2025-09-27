@@ -1,0 +1,82 @@
+{
+    "name": "MeetingPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "james",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Golden Gate Park at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I require meetings to be scheduled with travel time between locations taken into account"
+            ],
+            "goal": "Meet friends during the day and specifically meet James for at least 15 minutes within his availability window."
+        },
+        "james": {
+            "private_information": [
+                "I will be at Marina District from 10:15 to 13:30",
+                "I am available to meet for a minimum of 15 minutes during that window"
+            ],
+            "goal": "Meet the traveler for at least 15 minutes sometime between 10:15 and 13:30 at Marina District."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals from agents and produce a PDDL domain and problem suitable for the FastDownwards solver that plans travel and meetings to satisfy constraints and optimize number of meetings."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Golden Gate Park",
+            "start_time": "09:00",
+            "locations": [
+                "Golden Gate Park",
+                "Marina District"
+            ]
+        },
+        "public_information": [
+            "Travel time from Golden Gate Park to Marina District is 16 minutes",
+            "Travel time from Marina District to Golden Gate Park is 18 minutes",
+            "You arrive at Golden Gate Park at 09:00",
+            "James will be at Marina District from 10:15 to 13:30",
+            "Meetings require allocating contiguous time at a single location",
+            "You would like to meet James for a minimum of 15 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedule": {
+                "input": [],
+                "output": "schedule_traveler",
+                "system_prompt": "You are the traveler agent. Based on the public information and your private information, propose several candidate daily schedules that describe where you will be at what times, travel segments between locations with durations, and possible meeting slots with friends. Provide at least two distinct schedule options highlighting start times, travel legs, and potential meeting durations and locations. Do not produce PDDL; produce structured proposals that the orchestrator can consume.",
+                "prompt": "Agent: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Global goal: {agents->traveler->goal}. Produce multiple candidate schedules as structured proposals including times, travel legs, and meeting slot suggestions."
+            }
+        },
+        "james": {
+            "propose_schedule": {
+                "input": [],
+                "output": "schedule_james",
+                "system_prompt": "You are the James agent. Provide a clear description of your availability and any preferences for meeting times within your availability window. Do not produce PDDL; produce structured availability information that the orchestrator can use.",
+                "prompt": "Agent: james. Public information: {environment->public_information}. Your private information: {agents->james->private_information}. Global goal: {agents->james->goal}. Provide a precise availability specification and any preferences for meeting durations and earliest/latest start times during your window."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_traveler",
+                    "schedule_james"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate schedule proposals and availability from other agents and produce a complete PDDL domain and PDDL problem tailored for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct so the planner can assign agent-specific actions. Model time discretely in minutes and include travel duration actions and meeting actions. Optimize the plan to maximize number of meetings while ensuring the meeting with James is at least 15 minutes during his availability window.",
+                "prompt": "You are the orchestrator. Inputs: {workflow->traveler->propose_schedule->output} and {workflow->james->propose_schedule->output}. Public information: {environment->public_information}. Your goal: {agents->orchestrator->goal}. Merge the proposals, resolve conflicts, and produce a PDDL domain and problem suitable for FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedule->orchestrator.pddl",
+            "james.propose_schedule->orchestrator.pddl"
+        ]
+    }
+}

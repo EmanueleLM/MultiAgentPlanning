@@ -1,0 +1,87 @@
+{
+    "name": "MeetingPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "john",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Russian Hill at 09:00",
+                "I can travel between listed locations using the given travel durations",
+                "My objective is to meet John and optimize time spent with friends while respecting availability and travel times"
+            ],
+            "goal": "Plan an itinerary that allows meeting John for at least 90 minutes while maximizing feasible meeting opportunities during the day"
+        },
+        "john": {
+            "private_information": [
+                "I will be at Golden Gate Park from 13:00 to 18:15",
+                "I am available to meet for at least 90 minutes within that window",
+                "I prefer contiguous meeting time but can accept small travel buffer at start or end"
+            ],
+            "goal": "Coordinate a meeting with the traveler at Golden Gate Park that lasts at least 90 minutes within my availability window"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler options and John's availability into a single PDDL domain and problem suitable for the FastDownward solver to find the optimal schedule"
+        }
+    },
+    "environment": {
+        "init": {
+            "locations": [
+                "Russian Hill",
+                "Golden Gate Park"
+            ],
+            "arrival_time": "09:00",
+            "arrival_location": "Russian Hill",
+            "travel_times_minutes": {
+                "Russian Hill to Golden Gate Park": 21,
+                "Golden Gate Park to Russian Hill": 19
+            }
+        },
+        "public_information": [
+            "Locations in scope are Russian Hill and Golden Gate Park.",
+            "Travel time from Russian Hill to Golden Gate Park is 21 minutes.",
+            "Travel time from Golden Gate Park to Russian Hill is 19 minutes.",
+            "You arrive at Russian Hill at 09:00.",
+            "John will be at Golden Gate Park from 13:00 to 18:15.",
+            "The meeting with John should last a minimum of 90 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "generate_options": {
+                "input": [],
+                "output": "traveler_options",
+                "system_prompt": "You are the traveler planning your day in the city. Provide a set of candidate itineraries and scheduling options that start from your arrival at Russian Hill at 09:00. For each option, include a sequence of actions with locations, estimated travel times using the environment travel_times_minutes, earliest possible arrival times at meeting locations, and possible meeting start windows. Do not emit PDDL. Focus on feasible temporal schedules and alternatives the orchestrator can integrate.",
+                "prompt": "Your name is traveler. You have the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Provide several distinct candidate itineraries and meeting time options with explicit timing and travel considerations. Do not assume additional facts beyond what you have."
+            }
+        },
+        "john": {
+            "availability": {
+                "input": [],
+                "output": "john_availability",
+                "system_prompt": "You are John. Report your precise availability windows, constraints, and any meeting preferences. Provide the earliest and latest feasible start times for a meeting of at least 90 minutes within your stated presence at Golden Gate Park. Do not emit PDDL. Provide clear and machine-friendly availability intervals that the orchestrator can use.",
+                "prompt": "Your name is john. You have the following public information: {environment->public_information} You have the following private information: {agents->john->private_information} Your goal: {agents->john->goal} Provide availability intervals, minimum meeting duration enforcement, and any soft preferences. Do not make assumptions beyond your information."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_options",
+                    "john_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in temporal multi-agent planning and PDDL, and you prepare problems for the FastDownward solver. Integrate the traveler's candidate itineraries and John's availability to produce a complete PDDL domain and a PDDL problem. The PDDL must encode time (durative actions or time discretization as appropriate), travel durations between locations, location visit actions, and constraints enforcing John's availability and the minimum 90 minute meeting. Keep agent actions distinct and label them appropriately. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownward compatibility.",
+                "prompt": "You are the orchestrator. Your inputs are the traveler's options: {traveler_options} and John's availability: {john_availability} The global objective is: {agents->orchestrator->goal} Integrate the inputs, resolve any naming mismatches, and produce a PDDL domain and PDDL problem suitable for FastDownward. Ensure the domain models travel actions with the given durations and models meeting actions that respect John's availability window and the minimum 90 minute meeting requirement. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.generate_options->orchestrator.pddl",
+            "john.availability->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,19 @@
+(define (domain CalendarSchedulingExample11)
+  (:requirements :strips :typing)
+  (:types person time)
+  (:predicates
+    (free ?p - person ?t - time)
+    (meeting_scheduled)
+    (meeting_at ?t - time)
+  )
+  (:action schedule
+    :parameters (?t - time)
+    :precondition (and
+      (free madison ?t)
+      (free linda ?t)
+      (free logan ?t)
+      (free virginia ?t)
+    )
+    :effect (and (meeting_scheduled) (meeting_at ?t))
+  )
+)

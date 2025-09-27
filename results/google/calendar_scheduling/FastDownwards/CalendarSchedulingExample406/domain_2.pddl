@@ -1,0 +1,27 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :strips :equality :negative-preconditions :disjunctive-preconditions :universal-preconditions :action-costs :fluents)
+  (:types participant slot meeting)
+  (:predicates
+    (attendee ?p - participant ?m - meeting)
+    (available ?p - participant ?s - slot)
+    (scheduled ?m - meeting)
+    (meeting-at ?m - meeting ?s - slot)
+    (slot-in-working-hours ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule-meeting
+    :parameters (?m - meeting ?s - slot)
+    :precondition (and
+      (not (scheduled ?m))
+      (slot-in-working-hours ?s)
+      (forall (?p - participant)
+        (or (not (attendee ?p ?m)) (available ?p ?s))
+      )
+    )
+    :effect (and
+      (scheduled ?m)
+      (meeting-at ?m ?s)
+      (increase (total-cost) 1)
+    )
+  )
+)

@@ -1,0 +1,63 @@
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
+  (:objects
+    meeting1 - meeting
+    evelyn roy billy gregory vincent philip william - participant
+    admin - orchestrator
+    s09_00 s09_30 s10_00 s10_30 s11_00 s11_30 s12_00 s12_30
+    s13_00 s13_30 s14_00 s14_30 s15_00 s15_30 s16_00 s16_30 - slot
+  )
+  (:init
+    (meeting meeting1)
+    (unscheduled meeting1)
+
+    (participant evelyn) (participant roy) (participant billy) (participant gregory) (participant vincent) (participant philip) (participant william)
+    (orchestrator admin)
+
+    (slot s09_00) (slot s09_30) (slot s10_00) (slot s10_30)
+    (slot s11_00) (slot s11_30) (slot s12_00) (slot s12_30)
+    (slot s13_00) (slot s13_30) (slot s14_00) (slot s14_30)
+    (slot s15_00) (slot s15_30) (slot s16_00) (slot s16_30)
+
+    ; Evelyn availability (busy 09:30-10:00 and 11:30-12:00)
+    (available evelyn s09_00) (available evelyn s10_00) (available evelyn s10_30)
+    (available evelyn s11_00) (available evelyn s12_00) (available evelyn s12_30)
+    (available evelyn s13_00) (available evelyn s13_30) (available evelyn s14_00)
+    (available evelyn s14_30) (available evelyn s15_00) (available evelyn s15_30)
+    (available evelyn s16_00) (available evelyn s16_30)
+
+    ; Roy availability (free entire day)
+    (available roy s09_00) (available roy s09_30) (available roy s10_00) (available roy s10_30)
+    (available roy s11_00) (available roy s11_30) (available roy s12_00) (available roy s12_30)
+    (available roy s13_00) (available roy s13_30) (available roy s14_00) (available roy s14_30)
+    (available roy s15_00) (available roy s15_30) (available roy s16_00) (available roy s16_30)
+
+    ; Billy availability (free entire day)
+    (available billy s09_00) (available billy s09_30) (available billy s10_00) (available billy s10_30)
+    (available billy s11_00) (available billy s11_30) (available billy s12_00) (available billy s12_30)
+    (available billy s13_00) (available billy s13_30) (available billy s14_00) (available billy s14_30)
+    (available billy s15_00) (available billy s15_30) (available billy s16_00) (available billy s16_30)
+
+    ; Gregory availability (busy 10:00-10:30 and 16:00-16:30)
+    (available gregory s09_00) (available gregory s09_30)
+    (available gregory s10_30) (available gregory s11_00) (available gregory s11_30)
+    (available gregory s12_00) (available gregory s12_30) (available gregory s13_00)
+    (available gregory s13_30) (available gregory s14_00) (available gregory s14_30)
+    (available gregory s15_00) (available gregory s15_30) (available gregory s16_30)
+
+    ; Vincent availability (busy 10:00-10:30, 11:00-12:00, 12:30-13:00, 13:30-14:00, 15:00-16:30)
+    (available vincent s09_00) (available vincent s09_30) (available vincent s10_30)
+    (available vincent s12_00) (available vincent s13_00)
+    (available vincent s14_00) (available vincent s14_30) (available vincent s16_30)
+
+    ; Philip availability (busy 09:00-10:30, 11:00-11:30, 12:00-13:00, 15:00-17:00)
+    (available philip s10_30) (available philip s11_30)
+    (available philip s13_00) (available philip s13_30)
+    (available philip s14_00) (available philip s14_30)
+
+    ; William availability and preference (busy 09:00-10:00, 11:00-13:00, 13:30-14:30, 15:00-17:00; preference: avoid after 13:30)
+    ; encode preference as structural restriction by not offering availability after 13:30 start
+    (available william s10_30) (available william s13_00)
+  )
+  (:goal (scheduled meeting1 s10_30))
+)

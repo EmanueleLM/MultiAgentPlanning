@@ -1,0 +1,22 @@
+(define (domain meeting-planning)
+  (:requirements :strips :typing :durative-actions :negative-preconditions :numeric-fluents :timed-initial-literals)
+  (:types person location)
+  (:predicates (at ?l - location) (met ?p - person) (available ?p - person))
+  (:functions (met-count))
+  (:durative-action travel-md-to-ha
+    :duration (= ?duration 12)
+    :condition (at start (at mission-district))
+    :effect (and (at start (not (at mission-district))) (at end (at haight-ashbury)))
+  )
+  (:durative-action travel-ha-to-md
+    :duration (= ?duration 11)
+    :condition (at start (at haight-ashbury))
+    :effect (and (at start (not (at haight-ashbury))) (at end (at mission-district)))
+  )
+  (:durative-action meet-margaret
+    :parameters (?p - person)
+    :duration (= ?duration 30)
+    :condition (and (at start (at haight-ashbury)) (over all (available ?p)))
+    :effect (and (at end (met ?p)) (at end (increase (met-count) 1)))
+  )
+)

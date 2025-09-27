@@ -1,0 +1,21 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :negative-preconditions :fluents :adl)
+  (:types agent slot)
+  (:predicates
+    (available ?a - agent ?s - slot)
+    (preferred_margaret ?s - slot)
+    (scheduled)
+    (meeting-at ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and (not (scheduled)) (forall (?a - agent) (available ?a ?s)))
+    :effect (and
+              (scheduled)
+              (meeting-at ?s)
+              (when (preferred_margaret ?s) (increase (total-cost) 0))
+              (when (not (preferred_margaret ?s)) (increase (total-cost) 1))
+            )
+  )
+)

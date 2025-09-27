@@ -1,0 +1,89 @@
+{
+    "name": "MeetingPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "visitor",
+            "carol",
+            "orchestrator"
+        ],
+        "visitor": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I can travel between neighborhoods following the reported travel times"
+            ],
+            "goal": "Maximize the number of friends met today subject to travel and availability constraints."
+        },
+        "carol": {
+            "private_information": [
+                "I will be at the Sunset District from 14:00 to 20:30",
+                "I can allocate at least 75 minutes to meet during that window"
+            ],
+            "goal": "Meet the visitor for at least 75 minutes while I am in Sunset District."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate information from other agents and produce the final planning problem"
+            ],
+            "goal": "Integrate agents' availability and travel information and produce a PDDL domain and problem tailored for the FastDownwards solver that yields an optimal schedule maximizing friends met while respecting constraints such as Carol's minimum meeting duration."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 2,
+            "visibility": 2,
+            "locations": [
+                "Nob_Hill",
+                "Sunset_District"
+            ],
+            "start_time": "09:00",
+            "end_time": "20:30",
+            "travel_times_minutes": {
+                "Nob_Hill->Sunset_District": 25,
+                "Sunset_District->Nob_Hill": 27
+            }
+        },
+        "public_information": [
+            "Travel time from Nob Hill to Sunset District is 25 minutes",
+            "Travel time from Sunset District to Nob Hill is 27 minutes",
+            "You arrive at Nob Hill at 09:00",
+            "Carol is at Sunset District from 14:00 to 20:30",
+            "You would like to meet Carol for a minimum of 75 minutes"
+        ]
+    },
+    "workflow": {
+        "visitor": {
+            "inform": {
+                "input": [],
+                "output": "info_visitor",
+                "system_prompt": "You are the visitor arriving in San Francisco. Provide structured non-PDDL information about your arrival time, starting location, travel flexibility, and objective. Return clear key value lines describing arrival_time, start_location, travel_preferences, and primary_goal.",
+                "prompt": "Your name is visitor. You have the following public information: {environment->public_information}. Use your private information: {agents->visitor->private_information}. State your availability and constraints in a concise structured form so the orchestrator can consume it."
+            }
+        },
+        "carol": {
+            "inform": {
+                "input": [],
+                "output": "info_carol",
+                "system_prompt": "You are Carol. Provide structured availability information. Include location, availability_start, availability_end, and minimum_meeting_duration as clear key value lines. Do not produce PDDL.",
+                "prompt": "Your name is carol. You have the following public information: {environment->public_information}. Use your private information: {agents->carol->private_information}. State your availability and meeting constraints in a concise structured form so the orchestrator can consume it."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "info_visitor",
+                    "info_carol"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and must integrate inputs from agents to produce a complete PDDL domain and problem formulation suitable for the FastDownwards planner. Produce a temporal or timed PDDL encoding that represents locations, travel durations, agent availability windows, meeting durations, and an objective to maximize the number of friends met while satisfying minimum meeting duration constraints. Keep agent actions distinct when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility and include any needed metric or optimization formulation.",
+                "prompt": "You receive structured information from other agents. Input from visitor: {info_visitor}. Input from carol: {info_carol}. Public environment information: {environment->public_information}. Your objective is {agents->orchestrator->goal}. Think step by step. Build a PDDL domain and a PDDL problem that encode time, travel costs, availability windows, and the constraint that a meeting with Carol must be at least 75 minutes when scheduled. Prefer a formulation compatible with FastDownwards and include comments or name conventions to clarify how time and travel are modeled. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "visitor.inform->orchestrator.pddl",
+            "carol.inform->orchestrator.pddl"
+        ]
+    }
+}

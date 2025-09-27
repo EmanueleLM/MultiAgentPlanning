@@ -1,0 +1,79 @@
+{
+    "name": "MeetingPlanningExample25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "friend_david",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Golden Gate Park at 09:00",
+                "Travel time Golden Gate Park to Chinatown is 23 minutes",
+                "Travel time Chinatown to Golden Gate Park is 23 minutes"
+            ],
+            "goal": "Meet as many friends as possible and meet David for at least 105 minutes."
+        },
+        "friend_david": {
+            "private_information": [
+                "I will be at Chinatown from 16:00 to 21:45",
+                "I can meet for a contiguous block of at least 105 minutes within that window"
+            ],
+            "goal": "Meet the traveler in Chinatown for at least 105 minutes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate schedules and availabilities and generate a PDDL domain and problem for FastDownwards to find an optimal schedule that satisfies the constraints and maximizes meetings."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Locations in the city include Golden Gate Park and Chinatown",
+            "Travel durations are given in minutes for walking or transit between locations",
+            "Travel time Golden Gate Park to Chinatown is 23 minutes",
+            "Travel time Chinatown to Golden Gate Park is 23 minutes",
+            "You arrive at Golden Gate Park at 09:00",
+            "David is available at Chinatown between 16:00 and 21:45",
+            "Meeting with David must last at least 105 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "draft_schedules": {
+                "input": [],
+                "output": "schedules_traveler",
+                "system_prompt": "You are an expert schedule planner. Generate multiple candidate day schedules for the traveler that try to meet as many friends as possible while respecting travel durations and known constraints. Provide structured schedules listing ordered visits with start and end times and locations. Do not produce PDDL.",
+                "prompt": "Your name is traveler. Use the public information from the environment and your private information to propose several feasible candidate schedules. Include explicit arrival and departure times at each location, travel legs and their durations, and indicate which friend meetings are included. If information is missing for other friends, propose plausible optional slots but do not assume unknown availabilities. Think step by step and produce multiple candidate schedules."
+            }
+        },
+        "friend_david": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_david",
+                "system_prompt": "You are David or an agent representing David. Provide exact availability windows and any preferences relevant to scheduling. Provide your availability as clear start and end times and state the minimum contiguous meeting duration requirement. Do not produce PDDL.",
+                "prompt": "Your name is friend_david. Use your private information to state your availability window and meeting constraints. Confirm that you will be at Chinatown from 16:00 to 21:45 and that you require at least 105 minutes for a meeting. Mention any flexibility or constraints on start or end times if present. Think step by step and return the availability details in a structured form."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedules_traveler",
+                    "availability_david"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and in producing PDDL models tailored for the FastDownwards planner. Your role is to integrate candidate schedules and explicit availabilities into a single PDDL domain and a single PDDL problem that models time, travel durations, meeting duration constraints, and distinct agent actions. You must produce a PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the traveler and friend actions distinct and model the requirement that the traveler meets David for at least 105 minutes at Chinatown. Prefer explicit numeric time modeling or time-expanded encoding that FastDownwards can handle.",
+                "prompt": "You are the orchestrator. You will receive candidate schedules from the traveler and the availability statement from friend_david. Integrate these inputs to construct a PDDL domain and a PDDL problem that will be solved by FastDownwards to find an optimal feasible schedule that maximizes meetings and satisfies David's minimum 105 minute meeting requirement. Keep agent actions distinct. Model travel durations between Golden Gate Park and Chinatown as 23 minutes. Model the traveler's start at Golden Gate Park at 09:00 and David's availability at Chinatown from 16:00 to 21:45. Think step by step and produce the PDDL domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.draft_schedules->orchestrator.pddl",
+            "friend_david.provide_availability->orchestrator.pddl"
+        ]
+    }
+}

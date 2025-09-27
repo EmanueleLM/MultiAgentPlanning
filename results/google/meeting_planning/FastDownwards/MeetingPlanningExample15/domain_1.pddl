@@ -1,0 +1,43 @@
+(define (domain meeting-domain)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (time-at ?t - time)
+    (john-present ?t - time)
+    (succ1 ?t - time ?t2 - time)
+    (succ19 ?t - time ?t2 - time)
+    (succ21 ?t - time ?t2 - time)
+    (succ90 ?t - time ?t2 - time)
+    (met)
+  )
+
+  (:action traveler-travel-rh-to-ggp
+    :parameters (?t ?t2 - time)
+    :precondition (and (time-at ?t) (succ21 ?t ?t2) (at traveler rh))
+    :effect (and (not (time-at ?t)) (time-at ?t2) (not (at traveler rh)) (at traveler ggp))
+    :cost 0
+  )
+
+  (:action traveler-travel-ggp-to-rh
+    :parameters (?t ?t2 - time)
+    :precondition (and (time-at ?t) (succ19 ?t ?t2) (at traveler ggp))
+    :effect (and (not (time-at ?t)) (time-at ?t2) (not (at traveler ggp)) (at traveler rh))
+    :cost 0
+  )
+
+  (:action meet-90
+    :parameters (?t ?t2 - time)
+    :precondition (and (time-at ?t) (succ90 ?t ?t2) (at traveler ggp)
+      )
+    :effect (and (not (time-at ?t)) (time-at ?t2) (met) (at traveler ggp))
+    :cost -90
+  )
+
+  (:action meet-extend-1
+    :parameters (?t ?t2 - time)
+    :precondition (and (time-at ?t) (succ1 ?t ?t2) (john-present ?t) (at traveler ggp) (met))
+    :effect (and (not (time-at ?t)) (time-at ?t2) (met) (at traveler ggp))
+    :cost -1
+  )
+)

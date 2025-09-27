@@ -1,0 +1,43 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :negative-preconditions)
+  (:constants olivia anna virginia paul)
+  (:predicates
+    (slot ?s)
+    (next ?s ?s2)
+    (free ?p ?s)
+    (meeting_proposed ?s ?s2)
+    (attended ?p ?s)
+    (meeting_scheduled)
+    (meeting_start ?s)
+  )
+  (:action propose_meeting
+    :parameters (?s ?s2)
+    :precondition (and (slot ?s) (next ?s ?s2) (not (meeting_scheduled)) (not (meeting_proposed ?s ?s2)))
+    :effect (and (meeting_proposed ?s ?s2))
+  )
+  (:action attend_olivia
+    :parameters (?s ?s2)
+    :precondition (and (slot ?s) (next ?s ?s2) (meeting_proposed ?s ?s2) (free olivia ?s) (free olivia ?s2) (not (attended olivia ?s)))
+    :effect (and (attended olivia ?s))
+  )
+  (:action attend_anna
+    :parameters (?s ?s2)
+    :precondition (and (slot ?s) (next ?s ?s2) (meeting_proposed ?s ?s2) (free anna ?s) (free anna ?s2) (not (attended anna ?s)))
+    :effect (and (attended anna ?s))
+  )
+  (:action attend_virginia
+    :parameters (?s ?s2)
+    :precondition (and (slot ?s) (next ?s ?s2) (meeting_proposed ?s ?s2) (free virginia ?s) (free virginia ?s2) (not (attended virginia ?s)))
+    :effect (and (attended virginia ?s))
+  )
+  (:action attend_paul
+    :parameters (?s ?s2)
+    :precondition (and (slot ?s) (next ?s ?s2) (meeting_proposed ?s ?s2) (free paul ?s) (free paul ?s2) (not (attended paul ?s)))
+    :effect (and (attended paul ?s))
+  )
+  (:action finalize_meeting
+    :parameters (?s ?s2)
+    :precondition (and (meeting_proposed ?s ?s2) (attended olivia ?s) (attended anna ?s) (attended virginia ?s) (attended paul ?s) (not (meeting_scheduled)))
+    :effect (and (meeting_scheduled) (meeting_start ?s) (not (meeting_proposed ?s ?s2)))
+  )
+)

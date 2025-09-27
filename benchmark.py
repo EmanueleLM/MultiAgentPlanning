@@ -247,9 +247,9 @@ if __name__ == "__main__":
     # Start the experiments
     for i in range(num_experiments):
         # Problem name and full path
-        k = f"{problem_name}_{i}"
-        data = scheduling_data[k]
-        environment_name = "".join([v.capitalize() for v in k.split("_")])
+        numbered_problem_name = f"{problem_name}_{i}"
+        data = scheduling_data[numbered_problem_name]
+        environment_name = "".join([v.capitalize() for v in numbered_problem_name.split("_")])
 
         # Generate the first representation
         planner = Planner()
@@ -277,7 +277,7 @@ if __name__ == "__main__":
             "=== Experiment %s/%s: problem=%s env=%s ===",
             i + 1,
             num_experiments,
-            k,
+            numbered_problem_name,
             environment_name,
         )
         logger.info("Problem prompt: %s", data["prompt_0shot"])
@@ -336,14 +336,19 @@ if __name__ == "__main__":
                 problem = "No problem was generated. The error was: " + str(exc)
                 final_plan = "No plan was generated. The error was: " + str(exc)
 
+            # Explicitly cast to string (this prevents future errors)
+            domain = str(domain)
+            problem = str(problem)
+            final_plan = str(final_plan)
+
             # Collect the full logs (default -> __full_logs.txt)
             append_debug_log("FINAL-PLAN", final_plan)
 
             # Save domain and problem
             with open(BASE_FOLDER / "domain_0.pddl", "w") as f:
-                f.write((domain if isinstance(domain, str) else str(domain)))
+                f.write(domain)
             with open(BASE_FOLDER / "problem_0.pddl", "w") as f:
-                f.write((problem if isinstance(problem, str) else str(problem)))
+                f.write(problem)
 
             logger.info("Initial domain/problem saved under %s", BASE_FOLDER)
 

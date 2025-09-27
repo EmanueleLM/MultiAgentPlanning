@@ -1,0 +1,20 @@
+(define (problem meeting-problem)
+  (:domain meeting-domain)
+  (:objects
+    t480 t540 t562 t585 t652 t690 - time
+  )
+  (:init
+    (at barbara goldengatepark t480)
+    (at traveler bayview t540)
+    (travel_bayview_ggp t540 t562)
+    (travel_ggp_bayview t562 t585)
+    (span t540 t562)
+    (span t562 t652)
+    (span t480 t562)
+    (span t480 t652)
+    (span90 t562 t652)
+    (available barbara t480 t690)
+    (available traveler t540 t690)
+  )
+  (:goal (met traveler barbara))
+)

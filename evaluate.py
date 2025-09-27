@@ -103,7 +103,13 @@ def evaluate_dataset(
     missing = 0
 
     for key, payload in sorted_items:
-        golden = payload.get("golden_plan", "").strip()
+        raw_golden = payload.get("golden_plan", "")
+        if isinstance(raw_golden, list):
+            golden = " ".join(str(item) for item in raw_golden).strip()
+        elif isinstance(raw_golden, dict):
+            golden = json.dumps(raw_golden, ensure_ascii=False).strip()
+        else:
+            golden = str(raw_golden).strip()
         parts = key.split("_")
         env_name = "".join(part.capitalize() for part in parts[:-1]) + parts[-1]
         plan_path = find_natural_plan(experiments_root, env_name)

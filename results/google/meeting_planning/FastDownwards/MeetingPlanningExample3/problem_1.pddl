@@ -1,16 +1,15 @@
-(define (problem meeting-problem)
-  (:domain meeting-domain)
+(define (problem MeetingPlanningExample3)
+  (:domain meeting-planning)
   (:objects
-    traveler barbara - person
-    Bayview GoldenGatePark - location
+    traveler barbara orchestrator - agent
+    bayview golden_gate_park - location
   )
   (:init
-    ;; Barbara is at GoldenGatePark from 08:00 (480) until 11:30 (690)
-    (at 480 (at barbara GoldenGatePark))
-    (at 690 (not (at barbara GoldenGatePark)))
-
-    ;; Traveler arrives at Bayview at 09:00 (540)
-    (at 540 (at traveler Bayview))
+    (at traveler bayview)
+    (at barbara golden_gate_park)
+    (= (time) 540)
   )
-  (:goal (met traveler barbara))
+  (:goal (and
+    (met traveler barbara)
+  ))
 )

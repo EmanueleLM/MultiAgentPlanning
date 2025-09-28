@@ -1,0 +1,78 @@
+{
+    "name": "MeetingPlanningExample47",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "paul",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Richmond District at 9:00AM",
+                "I know travel times: Richmond District to Nob Hill is 17 minutes, Nob Hill to Richmond District is 14 minutes",
+                "I want to maximize the number of friends I meet and respect minimum meeting durations"
+            ],
+            "goal": "Generate candidate daily schedules and feasible meeting windows given my arrival time and known travel times"
+        },
+        "paul": {
+            "private_information": [
+                "I will be at Nob Hill from 9:30AM to 11:15AM",
+                "I can meet for a minimum of 15 minutes during that window",
+                "My meeting location is Nob Hill"
+            ],
+            "goal": "Provide precise availability and any preferences or constraints for meeting with the traveler"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a PDDL domain and a PDDL problem for the FastDownward solver that encodes locations, travel durations, time windows, and meeting duration constraints and finds an optimal schedule to maximize meetings while respecting all constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Richmond District",
+            "arrival_time": "09:00"
+        },
+        "public_information": [
+            "Travel time from Richmond District to Nob Hill is 17 minutes",
+            "Travel time from Nob Hill to Richmond District is 14 minutes",
+            "You arrive at Richmond District at 9:00AM",
+            "Paul will be at Nob Hill from 9:30AM to 11:15AM",
+            "Minimum meeting duration with Paul is 15 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "generate_options": {
+                "input": [],
+                "output": "traveler_options",
+                "system_prompt": "You are an agent that enumerates feasible schedule options and meeting windows given travel times and arrival time. Do not produce PDDL. Provide a structured list of candidate schedules with sequences of location visits, arrival and departure times, and feasibility notes.",
+                "prompt": "Your name is traveler. You have the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Think step by step and produce multiple candidate schedules and their timings in a structured form. If information is missing, state what is missing instead of making assumptions."
+            }
+        },
+        "paul": {
+            "provide_availability": {
+                "input": [],
+                "output": "paul_availability",
+                "system_prompt": "You are an agent representing a friend who provides availability windows and meeting preferences. Do not produce PDDL. Provide a clear availability statement and any constraints about meeting location or duration.",
+                "prompt": "Your name is paul. You have the following public information: {environment->public_information} You have the following private information: {agents->paul->private_information} Your goal: {agents->paul->goal} State your precise availability window and any constraints regarding meeting location, earliest start, latest finish, and minimum duration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_options",
+                    "paul_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning targeting the FastDownward solver. Produce a PDDL domain and a PDDL problem that encode locations, travel durations, time windows, and minimum meeting durations. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and ensure the produced PDDL is compatible with FastDownward.",
+                "prompt": "You are orchestrator. Use the public information and the inputs from other agents to build a single PDDL domain and problem that plans travel and meetings to maximize the number of friends met while satisfying arrival times, travel durations, and minimum meeting durations. Public information: {environment->public_information} Traveler inputs: {traveler_options} Friend inputs: {paul_availability} Global goal: {agents->orchestrator->goal} Think step by step and output the domain and problem files suitable for FastDownward."
+            }
+        },
+        "constraints": [
+            "traveler.generate_options->orchestrator.pddl",
+            "paul.provide_availability->orchestrator.pddl"
+        ]
+    }
+}

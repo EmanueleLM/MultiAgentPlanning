@@ -27,11 +27,28 @@
     t230 t231 t232 t233 t234 t235 t236 t237 t238 t239
     t240 t241 t242 t243 t244 t245 t246 t247 t248 t249
     t250 t251 t252 t253 t254 t255 t256 t257 t258 t259
-    t260 - time
+    t260 t261 t262 t263 t264 t265 t266 t267 t268 t269
+    t270 t271 t272 t273 t274 t275 t276 t277 t278 t279
+    t280 t281 t282 t283 t284 t285 t286 t287 t288 t289
+    t290 t291 t292 t293 t294 t295 t296 t297 t298 t299
+    t300 t301 t302 t303 t304 t305 t306 t307 t308 t309
+    t310 t311 t312 t313 t314 t315 t316 t317 t318 t319
+    t320 t321 t322 t323 t324 t325 t326 t327 t328 t329
+    t330 t331 t332 t333 t334 t335 t336 t337 t338 t339
+    t340 t341 t342 t343 t344 t345 t346 t347 t348 t349
+    t350 t351 t352 t353 t354 t355 t356 t357 t358 t359
+    t360 t361 t362 t363 t364 t365 t366 t367 t368 t369
+    t370 t371 t372 t373 t374 t375 t376 t377 t378 t379
+    t380 t381 t382 t383 t384 t385 t386 t387 t388 t389
+    t390 t391 t392 t393 t394 t395 t396 t397 t398 t399
+    t400 t401 t402 t403 t404 t405 t406 t407 t408 t409
+    t410 t411 t412 t413 t414 t415 t416 t417 t418 t419
+    t420 t421 t422 t423 t424 t425 t426 t427 t428 t429
+    t430 t431 t432 t433 t434 t435 - time
   )
 
   (:init
-    (current-time t0)
+    (at-time t0)
     (at visitor union-square)
     (at mary nob-hill)
     (next t0 t1) (next t1 t2) (next t2 t3) (next t3 t4) (next t4 t5) (next t5 t6) (next t6 t7) (next t7 t8) (next t8 t9)
@@ -60,72 +77,40 @@
     (next t229 t230) (next t230 t231) (next t231 t232) (next t232 t233) (next t233 t234) (next t234 t235) (next t235 t236) (next t236 t237) (next t237 t238) (next t238 t239)
     (next t239 t240) (next t240 t241) (next t241 t242) (next t242 t243) (next t243 t244) (next t244 t245) (next t245 t246) (next t246 t247) (next t247 t248) (next t248 t249)
     (next t249 t250) (next t250 t251) (next t251 t252) (next t252 t253) (next t253 t254) (next t254 t255) (next t255 t256) (next t256 t257) (next t257 t258) (next t258 t259)
-    (next t259 t260)
-
-    (plus9 t0 t9) (plus9 t1 t10) (plus9 t2 t11) (plus9 t3 t12) (plus9 t4 t13) (plus9 t5 t14) (plus9 t6 t15) (plus9 t7 t16) (plus9 t8 t17) (plus9 t9 t18)
-    (plus9 t10 t19) (plus9 t11 t20) (plus9 t12 t21) (plus9 t13 t22) (plus9 t14 t23) (plus9 t15 t24) (plus9 t16 t25) (plus9 t17 t26) (plus9 t18 t27) (plus9 t19 t28)
-    (plus9 t20 t29) (plus9 t21 t30) (plus9 t22 t31) (plus9 t23 t32) (plus9 t24 t33) (plus9 t25 t34) (plus9 t26 t35) (plus9 t27 t36) (plus9 t28 t37) (plus9 t29 t38)
-    (plus9 t30 t39) (plus9 t31 t40) (plus9 t32 t41) (plus9 t33 t42) (plus9 t34 t43) (plus9 t35 t44) (plus9 t36 t45) (plus9 t37 t46) (plus9 t38 t47) (plus9 t39 t48)
-    (plus9 t40 t49) (plus9 t41 t50) (plus9 t42 t51) (plus9 t43 t52) (plus9 t44 t53) (plus9 t45 t54) (plus9 t46 t55) (plus9 t47 t56) (plus9 t48 t57) (plus9 t49 t58)
-    (plus9 t50 t59) (plus9 t51 t60) (plus9 t52 t61) (plus9 t53 t62) (plus9 t54 t63) (plus9 t55 t64) (plus9 t56 t65) (plus9 t57 t66) (plus9 t58 t67) (plus9 t59 t68)
-    (plus9 t60 t69) (plus9 t61 t70) (plus9 t62 t71) (plus9 t63 t72) (plus9 t64 t73) (plus9 t65 t74) (plus9 t66 t75) (plus9 t67 t76) (plus9 t68 t77) (plus9 t69 t78)
-    (plus9 t70 t79) (plus9 t71 t80) (plus9 t72 t81) (plus9 t73 t82) (plus9 t74 t83) (plus9 t75 t84) (plus9 t76 t85) (plus9 t77 t86) (plus9 t78 t87) (plus9 t79 t88)
-    (plus9 t80 t89) (plus9 t81 t90) (plus9 t82 t91) (plus9 t83 t92) (plus9 t84 t93) (plus9 t85 t94) (plus9 t86 t95) (plus9 t87 t96) (plus9 t88 t97) (plus9 t89 t98)
-    (plus9 t90 t99) (plus9 t91 t100) (plus9 t92 t101) (plus9 t93 t102) (plus9 t94 t103) (plus9 t95 t104) (plus9 t96 t105) (plus9 t97 t106) (plus9 t98 t107) (plus9 t99 t108)
-    (plus9 t100 t109) (plus9 t101 t110) (plus9 t102 t111) (plus9 t103 t112) (plus9 t104 t113) (plus9 t105 t114) (plus9 t106 t115) (plus9 t107 t116) (plus9 t108 t117) (plus9 t109 t118)
-    (plus9 t110 t119) (plus9 t111 t120) (plus9 t112 t121) (plus9 t113 t122) (plus9 t114 t123) (plus9 t115 t124) (plus9 t116 t125) (plus9 t117 t126) (plus9 t118 t127) (plus9 t119 t128)
-    (plus9 t120 t129) (plus9 t121 t130) (plus9 t122 t131) (plus9 t123 t132) (plus9 t124 t133) (plus9 t125 t134) (plus9 t126 t135) (plus9 t127 t136) (plus9 t128 t137) (plus9 t129 t138)
-    (plus9 t130 t139) (plus9 t131 t140) (plus9 t132 t141) (plus9 t133 t142) (plus9 t134 t143) (plus9 t135 t144) (plus9 t136 t145) (plus9 t137 t146) (plus9 t138 t147) (plus9 t139 t148)
-    (plus9 t140 t149) (plus9 t141 t150) (plus9 t142 t151) (plus9 t143 t152) (plus9 t144 t153) (plus9 t145 t154) (plus9 t146 t155) (plus9 t147 t156) (plus9 t148 t157) (plus9 t149 t158)
-    (plus9 t150 t159) (plus9 t151 t160) (plus9 t152 t161) (plus9 t153 t162) (plus9 t154 t163) (plus9 t155 t164) (plus9 t156 t165) (plus9 t157 t166) (plus9 t158 t167) (plus9 t159 t168)
-    (plus9 t160 t169) (plus9 t161 t170) (plus9 t162 t171) (plus9 t163 t172) (plus9 t164 t173) (plus9 t165 t174) (plus9 t166 t175) (plus9 t167 t176) (plus9 t168 t177) (plus9 t169 t178)
-    (plus9 t170 t179) (plus9 t171 t180) (plus9 t172 t181) (plus9 t173 t182) (plus9 t174 t183) (plus9 t175 t184) (plus9 t176 t185) (plus9 t177 t186) (plus9 t178 t187) (plus9 t179 t188)
-    (plus9 t180 t189) (plus9 t181 t190) (plus9 t182 t191) (plus9 t183 t192) (plus9 t184 t193) (plus9 t185 t194) (plus9 t186 t195) (plus9 t187 t196) (plus9 t188 t197) (plus9 t189 t198)
-    (plus9 t190 t199) (plus9 t191 t200) (plus9 t192 t201) (plus9 t193 t202) (plus9 t194 t203) (plus9 t195 t204) (plus9 t196 t205) (plus9 t197 t206) (plus9 t198 t207) (plus9 t199 t208)
-    (plus9 t200 t209) (plus9 t201 t210) (plus9 t202 t211) (plus9 t203 t212) (plus9 t204 t213) (plus9 t205 t214) (plus9 t206 t215) (plus9 t207 t216) (plus9 t208 t217) (plus9 t209 t218)
-    (plus9 t210 t219) (plus9 t211 t220) (plus9 t212 t221) (plus9 t213 t222) (plus9 t214 t223) (plus9 t215 t224) (plus9 t216 t225) (plus9 t217 t226) (plus9 t218 t227) (plus9 t219 t228)
-    (plus9 t220 t229) (plus9 t221 t230) (plus9 t222 t231) (plus9 t223 t232) (plus9 t224 t233) (plus9 t225 t234) (plus9 t226 t235) (plus9 t227 t236) (plus9 t228 t237) (plus9 t229 t238)
-    (plus9 t230 t239) (plus9 t231 t240) (plus9 t232 t241) (plus9 t233 t242) (plus9 t234 t243) (plus9 t235 t244) (plus9 t236 t245) (plus9 t237 t246) (plus9 t238 t247) (plus9 t239 t248)
-    (plus9 t240 t249) (plus9 t241 t250) (plus9 t242 t251) (plus9 t243 t252) (plus9 t244 t253) (plus9 t245 t254) (plus9 t246 t255) (plus9 t247 t256) (plus9 t248 t257) (plus9 t249 t258)
-    (plus9 t250 t259) (plus9 t251 t260)
-
-    (plus7 t0 t7) (plus7 t1 t8) (plus7 t2 t9) (plus7 t3 t10) (plus7 t4 t11) (plus7 t5 t12) (plus7 t6 t13) (plus7 t7 t14) (plus7 t8 t15) (plus7 t9 t16)
-    (plus7 t10 t17) (plus7 t11 t18) (plus7 t12 t19) (plus7 t13 t20) (plus7 t14 t21) (plus7 t15 t22) (plus7 t16 t23) (plus7 t17 t24) (plus7 t18 t25) (plus7 t19 t26)
-    (plus7 t20 t27) (plus7 t21 t28) (plus7 t22 t29) (plus7 t23 t30) (plus7 t24 t31) (plus7 t25 t32) (plus7 t26 t33) (plus7 t27 t34) (plus7 t28 t35) (plus7 t29 t36)
-    (plus7 t30 t37) (plus7 t31 t38) (plus7 t32 t39) (plus7 t33 t40) (plus7 t34 t41) (plus7 t35 t42) (plus7 t36 t43) (plus7 t37 t44) (plus7 t38 t45) (plus7 t39 t46)
-    (plus7 t40 t47) (plus7 t41 t48) (plus7 t42 t49) (plus7 t43 t50) (plus7 t44 t51) (plus7 t45 t52) (plus7 t46 t53) (plus7 t47 t54) (plus7 t48 t55) (plus7 t49 t56)
-    (plus7 t50 t57) (plus7 t51 t58) (plus7 t52 t59) (plus7 t53 t60) (plus7 t54 t61) (plus7 t55 t62) (plus7 t56 t63) (plus7 t57 t64) (plus7 t58 t65) (plus7 t59 t66)
-    (plus7 t60 t67) (plus7 t61 t68) (plus7 t62 t69) (plus7 t63 t70) (plus7 t64 t71) (plus7 t65 t72) (plus7 t66 t73) (plus7 t67 t74) (plus7 t68 t75) (plus7 t69 t76)
-    (plus7 t70 t77) (plus7 t71 t78) (plus7 t72 t79) (plus7 t73 t80) (plus7 t74 t81) (plus7 t75 t82) (plus7 t76 t83) (plus7 t77 t84) (plus7 t78 t85) (plus7 t79 t86)
-    (plus7 t80 t87) (plus7 t81 t88) (plus7 t82 t89) (plus7 t83 t90) (plus7 t84 t91) (plus7 t85 t92) (plus7 t86 t93) (plus7 t87 t94) (plus7 t88 t95) (plus7 t89 t96)
-    (plus7 t90 t97) (plus7 t91 t98) (plus7 t92 t99) (plus7 t93 t100) (plus7 t94 t101) (plus7 t95 t102) (plus7 t96 t103) (plus7 t97 t104) (plus7 t98 t105) (plus7 t99 t106)
-    (plus7 t100 t107) (plus7 t101 t108) (plus7 t102 t109) (plus7 t103 t110) (plus7 t104 t111) (plus7 t105 t112) (plus7 t106 t113) (plus7 t107 t114) (plus7 t108 t115) (plus7 t109 t116)
-    (plus7 t110 t117) (plus7 t111 t118) (plus7 t112 t119) (plus7 t113 t120) (plus7 t114 t121) (plus7 t115 t122) (plus7 t116 t123) (plus7 t117 t124) (plus7 t118 t125) (plus7 t119 t126)
-    (plus7 t120 t127) (plus7 t121 t128) (plus7 t122 t129) (plus7 t123 t130) (plus7 t124 t131) (plus7 t125 t132) (plus7 t126 t133) (plus7 t127 t134) (plus7 t128 t135) (plus7 t129 t136)
-    (plus7 t130 t137) (plus7 t131 t138) (plus7 t132 t139) (plus7 t133 t140) (plus7 t134 t141) (plus7 t135 t142) (plus7 t136 t143) (plus7 t137 t144) (plus7 t138 t145) (plus7 t139 t146)
-    (plus7 t140 t147) (plus7 t141 t148) (plus7 t142 t149) (plus7 t143 t150) (plus7 t144 t151) (plus7 t145 t152) (plus7 t146 t153) (plus7 t147 t154) (plus7 t148 t155) (plus7 t149 t156)
-    (plus7 t150 t157) (plus7 t151 t158) (plus7 t152 t159) (plus7 t153 t160) (plus7 t154 t161) (plus7 t155 t162) (plus7 t156 t163) (plus7 t157 t164) (plus7 t158 t165) (plus7 t159 t166)
-    (plus7 t160 t167) (plus7 t161 t168) (plus7 t162 t169) (plus7 t163 t170) (plus7 t164 t171) (plus7 t165 t172) (plus7 t166 t173) (plus7 t167 t174) (plus7 t168 t175) (plus7 t169 t176)
-    (plus7 t170 t177) (plus7 t171 t178) (plus7 t172 t179) (plus7 t173 t180) (plus7 t174 t181) (plus7 t175 t182) (plus7 t176 t183) (plus7 t177 t184) (plus7 t178 t185) (plus7 t179 t186)
-    (plus7 t180 t187) (plus7 t181 t188) (plus7 t182 t189) (plus7 t183 t190) (plus7 t184 t191) (plus7 t185 t192) (plus7 t186 t193) (plus7 t187 t194) (plus7 t188 t195) (plus7 t189 t196)
-    (plus7 t190 t197) (plus7 t191 t198) (plus7 t192 t199) (plus7 t193 t200) (plus7 t194 t201) (plus7 t195 t202) (plus7 t196 t203) (plus7 t197 t204) (plus7 t198 t205) (plus7 t199 t206)
-    (plus7 t200 t207) (plus7 t201 t208) (plus7 t202 t209) (plus7 t203 t210) (plus7 t204 t211) (plus7 t205 t212) (plus7 t206 t213) (plus7 t207 t214) (plus7 t208 t215) (plus7 t209 t216)
-    (plus7 t210 t217) (plus7 t211 t218) (plus7 t212 t219) (plus7 t213 t220) (plus7 t214 t221) (plus7 t215 t222) (plus7 t216 t223) (plus7 t217 t224) (plus7 t218 t225) (plus7 t219 t226)
-    (plus7 t220 t227) (plus7 t221 t228) (plus7 t222 t229) (plus7 t223 t230) (plus7 t224 t231) (plus7 t225 t232) (plus7 t226 t233) (plus7 t227 t234) (plus7 t228 t235) (plus7 t229 t236)
-    (plus7 t230 t237) (plus7 t231 t238) (plus7 t232 t239) (plus7 t233 t240) (plus7 t234 t241) (plus7 t235 t242) (plus7 t236 t243) (plus7 t237 t244) (plus7 t238 t245) (plus7 t239 t246)
-    (plus7 t240 t247) (plus7 t241 t248) (plus7 t242 t249) (plus7 t243 t250) (plus7 t244 t251) (plus7 t245 t252) (plus7 t246 t253) (plus7 t247 t254) (plus7 t248 t255) (plus7 t249 t256)
-    (plus7 t250 t257) (plus7 t251 t258) (plus7 t252 t259) (plus7 t253 t260)
-
-    (nextcount c0 c1) (nextcount c1 c2) (nextcount c2 c3) (nextcount c3 c4) (nextcount c4 c5) (nextcount c5 c6) (nextcount c6 c7) (nextcount c7 c8) (nextcount c8 c9)
-    (nextcount c9 c10) (nextcount c10 c11) (nextcount c11 c12) (nextcount c12 c13) (nextcount c13 c14) (nextcount c14 c15) (nextcount c15 c16) (nextcount c16 c17) (nextcount c17 c18)
-    (nextcount c18 c19) (nextcount c19 c20) (nextcount c20 c21) (nextcount c21 c22) (nextcount c22 c23) (nextcount c23 c24) (nextcount c24 c25) (nextcount c25 c26) (nextcount c26 c27)
-    (nextcount c27 c28) (nextcount c28 c29) (nextcount c29 c30) (nextcount c30 c31) (nextcount c31 c32) (nextcount c32 c33) (nextcount c33 c34) (nextcount c34 c35) (nextcount c35 c36)
-    (nextcount c36 c37) (nextcount c37 c38) (nextcount c38 c39) (nextcount c39 c40) (nextcount c40 c41) (nextcount c41 c42) (nextcount c42 c43) (nextcount c43 c44) (nextcount c44 c45)
-    (nextcount c45 c46) (nextcount c46 c47) (nextcount c47 c48) (nextcount c48 c49) (nextcount c49 c50) (nextcount c50 c51) (nextcount c51 c52) (nextcount c52 c53) (nextcount c53 c54)
-    (nextcount c54 c55) (nextcount c55 c56) (nextcount c56 c57) (nextcount c57 c58) (nextcount c58 c59) (nextcount c59 c60) (nextcount c60 c61) (nextcount c61 c62) (nextcount c62 c63)
-    (nextcount c63 c64) (nextcount c64 c65) (nextcount c65 c66) (nextcount c66 c67) (nextcount c67 c68) (nextcount c68 c69) (nextcount c69 c70) (nextcount c70 c71) (nextcount c71 c72)
-    (nextcount c72 c73) (nextcount c73 c74) (nextcount c74 c75) (nextcount c75 c75)
-
+    (next t259 t260) (next t260 t261) (next t261 t262) (next t262 t263) (next t263 t264) (next t264 t265) (next t265 t266) (next t266 t267) (next t267 t268) (next t268 t269)
+    (next t269 t270) (next t270 t271) (next t271 t272) (next t272 t273) (next t273 t274) (next t274 t275) (next t275 t276) (next t276 t277) (next t277 t278) (next t278 t279)
+    (next t279 t280) (next t280 t281) (next t281 t282) (next t282 t283) (next t283 t284) (next t284 t285) (next t285 t286) (next t286 t287) (next t287 t288) (next t288 t289)
+    (next t289 t290) (next t290 t291) (next t291 t292) (next t292 t293) (next t293 t294) (next t294 t295) (next t295 t296) (next t296 t297) (next t297 t298) (next t298 t299)
+    (next t299 t300) (next t300 t301) (next t301 t302) (next t302 t303) (next t303 t304) (next t304 t305) (next t305 t306) (next t306 t307) (next t307 t308) (next t308 t309)
+    (next t309 t310) (next t310 t311) (next t311 t312) (next t312 t313) (next t313 t314) (next t314 t315) (next t315 t316) (next t316 t317) (next t317 t318) (next t318 t319)
+    (next t319 t320) (next t320 t321) (next t321 t322) (next t322 t323) (next t323 t324) (next t324 t325) (next t325 t326) (next t326 t327) (next t327 t328) (next t328 t329)
+    (next t329 t330) (next t330 t331) (next t331 t332) (next t332 t333) (next t333 t334) (next t334 t335) (next t335 t336) (next t336 t337) (next t337 t338) (next t338 t339)
+    (next t339 t340) (next t340 t341) (next t341 t342) (next t342 t343) (next t343 t344) (next t344 t345) (next t345 t346) (next t346 t347) (next t347 t348) (next t348 t349)
+    (next t349 t350) (next t350 t351) (next t351 t352) (next t352 t353) (next t353 t354) (next t354 t355) (next t355 t356) (next t356 t357) (next t357 t358) (next t358 t359)
+    (next t359 t360) (next t360 t361) (next t361 t362) (next t362 t363) (next t363 t364) (next t364 t365) (next t365 t366) (next t366 t367) (next t367 t368) (next t368 t369)
+    (next t369 t370) (next t370 t371) (next t371 t372) (next t372 t373) (next t373 t374) (next t374 t375) (next t375 t376) (next t376 t377) (next t377 t378) (next t378 t379)
+    (next t379 t380) (next t380 t381) (next t381 t382) (next t382 t383) (next t383 t384) (next t384 t385) (next t385 t386) (next t386 t387) (next t387 t388) (next t388 t389)
+    (next t389 t390) (next t390 t391) (next t391 t392) (next t392 t393) (next t393 t394) (next t394 t395) (next t395 t396) (next t396 t397) (next t397 t398) (next t398 t399)
+    (next t399 t400) (next t400 t401) (next t401 t402) (next t402 t403) (next t403 t404) (next t404 t405) (next t405 t406) (next t406 t407) (next t407 t408) (next t408 t409)
+    (next t409 t410) (next t410 t411) (next t411 t412) (next t412 t413) (next t413 t414) (next t414 t415) (next t415 t416) (next t416 t417) (next t417 t418) (next t418 t419)
+    (next t419 t420) (next t420 t421) (next t421 t422) (next t422 t423) (next t423 t424) (next t424 t425) (next t425 t426) (next t426 t427) (next t427 t428) (next t428 t429)
+    (next t429 t430) (next t430 t431) (next t431 t432) (next t432 t433) (next t433 t434) (next t434 t435)
+    (nextcount c0 c1) (nextcount c1 c2) (nextcount c2 c3) (nextcount c3 c4) (nextcount c4 c5)
+    (nextcount c5 c6) (nextcount c6 c7) (nextcount c7 c8) (nextcount c8 c9) (nextcount c9 c10)
+    (nextcount c10 c11) (nextcount c11 c12) (nextcount c12 c13) (nextcount c13 c14) (nextcount c14 c15)
+    (nextcount c15 c16) (nextcount c16 c17) (nextcount c17 c18) (nextcount c18 c19) (nextcount c19 c20)
+    (nextcount c20 c21) (nextcount c21 c22) (nextcount c22 c23) (nextcount c23 c24) (nextcount c24 c25)
+    (nextcount c25 c26) (nextcount c26 c27) (nextcount c27 c28) (nextcount c28 c29) (nextcount c29 c30)
+    (nextcount c30 c31) (nextcount c31 c32) (nextcount c32 c33) (nextcount c33 c34) (nextcount c34 c35)
+    (nextcount c35 c36) (nextcount c36 c37) (nextcount c37 c38) (nextcount c38 c39) (nextcount c39 c40)
+    (nextcount c40 c41) (nextcount c41 c42) (nextcount c42 c43) (nextcount c43 c44) (nextcount c44 c45)
+    (nextcount c45 c46) (nextcount c46 c47) (nextcount c47 c48) (nextcount c48 c49) (nextcount c49 c50)
+    (nextcount c50 c51) (nextcount c51 c52) (nextcount c52 c53) (nextcount c53 c54) (nextcount c54 c55)
+    (nextcount c55 c56) (nextcount c56 c57) (nextcount c57 c58) (nextcount c58 c59) (nextcount c59 c60)
+    (nextcount c60 c61) (nextcount c61 c62) (nextcount c62 c63) (nextcount c63 c64) (nextcount c64 c65)
+    (nextcount c65 c66) (nextcount c66 c67) (nextcount c67 c68) (nextcount c68 c69) (nextcount c69 c70)
+    (nextcount c70 c71) (nextcount c71 c72) (nextcount c72 c73) (nextcount c73 c74) (nextcount c74 c75)
+    (nextcount c75 c75)
     (mary-available t180) (mary-available t181) (mary-available t182) (mary-available t183) (mary-available t184) (mary-available t185) (mary-available t186) (mary-available t187) (mary-available t188) (mary-available t189)
     (mary-available t190) (mary-available t191) (mary-available t192) (mary-available t193) (mary-available t194) (mary-available t195) (mary-available t196) (mary-available t197) (mary-available t198) (mary-available t199)
     (mary-available t200) (mary-available t201) (mary-available t202) (mary-available t203) (mary-available t204) (mary-available t205) (mary-available t206) (mary-available t207) (mary-available t208) (mary-available t209)
@@ -133,15 +118,29 @@
     (mary-available t220) (mary-available t221) (mary-available t222) (mary-available t223) (mary-available t224) (mary-available t225) (mary-available t226) (mary-available t227) (mary-available t228) (mary-available t229)
     (mary-available t230) (mary-available t231) (mary-available t232) (mary-available t233) (mary-available t234) (mary-available t235) (mary-available t236) (mary-available t237) (mary-available t238) (mary-available t239)
     (mary-available t240) (mary-available t241) (mary-available t242) (mary-available t243) (mary-available t244) (mary-available t245) (mary-available t246) (mary-available t247) (mary-available t248) (mary-available t249)
-    (mary-available t250) (mary-available t251) (mary-available t252) (mary-available t253) (mary-available t254) (mary-available t255)
-
-    (= (total-cost) 0)
+    (mary-available t250) (mary-available t251) (mary-available t252) (mary-available t253) (mary-available t254) (mary-available t255) (mary-available t256) (mary-available t257) (mary-available t258) (mary-available t259)
+    (mary-available t260) (mary-available t261) (mary-available t262) (mary-available t263) (mary-available t264) (mary-available t265) (mary-available t266) (mary-available t267) (mary-available t268) (mary-available t269)
+    (mary-available t270) (mary-available t271) (mary-available t272) (mary-available t273) (mary-available t274) (mary-available t275) (mary-available t276) (mary-available t277) (mary-available t278) (mary-available t279)
+    (mary-available t280) (mary-available t281) (mary-available t282) (mary-available t283) (mary-available t284) (mary-available t285) (mary-available t286) (mary-available t287) (mary-available t288) (mary-available t289)
+    (mary-available t290) (mary-available t291) (mary-available t292) (mary-available t293) (mary-available t294) (mary-available t295) (mary-available t296) (mary-available t297) (mary-available t298) (mary-available t299)
+    (mary-available t300) (mary-available t301) (mary-available t302) (mary-available t303) (mary-available t304) (mary-available t305) (mary-available t306) (mary-available t307) (mary-available t308) (mary-available t309)
+    (mary-available t310) (mary-available t311) (mary-available t312) (mary-available t313) (mary-available t314) (mary-available t315) (mary-available t316) (mary-available t317) (mary-available t318) (mary-available t319)
+    (mary-available t320) (mary-available t321) (mary-available t322) (mary-available t323) (mary-available t324) (mary-available t325) (mary-available t326) (mary-available t327) (mary-available t328) (mary-available t329)
+    (mary-available t330) (mary-available t331) (mary-available t332) (mary-available t333) (mary-available t334) (mary-available t335) (mary-available t336) (mary-available t337) (mary-available t338) (mary-available t339)
+    (mary-available t340) (mary-available t341) (mary-available t342) (mary-available t343) (mary-available t344) (mary-available t345) (mary-available t346) (mary-available t347) (mary-available t348) (mary-available t349)
+    (mary-available t350) (mary-available t351) (mary-available t352) (mary-available t353) (mary-available t354) (mary-available t355) (mary-available t356) (mary-available t357) (mary-available t358) (mary-available t359)
+    (mary-available t360) (mary-available t361) (mary-available t362) (mary-available t363) (mary-available t364) (mary-available t365) (mary-available t366) (mary-available t367) (mary-available t368) (mary-available t369)
+    (mary-available t370) (mary-available t371) (mary-available t372) (mary-available t373) (mary-available t374) (mary-available t375) (mary-available t376) (mary-available t377) (mary-available t378) (mary-available t379)
+    (mary-available t380) (mary-available t381) (mary-available t382) (mary-available t383) (mary-available t384) (mary-available t385) (mary-available t386) (mary-available t387) (mary-available t388) (mary-available t389)
+    (mary-available t390) (mary-available t391) (mary-available t392) (mary-available t393) (mary-available t394) (mary-available t395) (mary-available t396) (mary-available t397) (mary-available t398) (mary-available t399)
+    (mary-available t400) (mary-available t401) (mary-available t402) (mary-available t403) (mary-available t404) (mary-available t405) (mary-available t406) (mary-available t407) (mary-available t408) (mary-available t409)
+    (mary-available t410) (mary-available t411) (mary-available t412) (mary-available t413) (mary-available t414) (mary-available t415) (mary-available t416) (mary-available t417) (mary-available t418) (mary-available t419)
+    (mary-available t420) (mary-available t421) (mary-available t422) (mary-available t423) (mary-available t424) (mary-available t425) (mary-available t426) (mary-available t427) (mary-available t428) (mary-available t429)
+    (mary-available t430) (mary-available t431) (mary-available t432) (mary-available t433) (mary-available t434) (mary-available t435)
   )
 
   (:goal (and
     (met-started-at t180)
     (met-count c75)
     (not (meeting-active))
-  ))
-  (:metric minimize (total-cost))
-)
+  )))

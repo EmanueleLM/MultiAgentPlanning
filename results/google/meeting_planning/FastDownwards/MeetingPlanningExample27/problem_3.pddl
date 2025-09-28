@@ -1,0 +1,10 @@
+(define (problem meet-margaret-problem)
+  (:domain meetings-domain)
+  (:init
+    (at traveler marina-district)
+    (time t540)
+    (= (total-cost) 0)
+  )
+  (:goal (and (met-or-penalized)))
+  (:metric minimize (total-cost))
+)

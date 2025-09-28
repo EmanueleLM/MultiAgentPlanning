@@ -1,0 +1,86 @@
+{
+    "name": "MeetingPlanningExample31",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "anthony",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00 AM",
+                "I want to meet as many friends as possible during the day",
+                "I can travel between locations; travel time Nob Hill <-> Alamo Square is 11 minutes each way"
+            ],
+            "goal": "Maximize the number of friends I meet today while respecting arrival times and travel durations."
+        },
+        "anthony": {
+            "private_information": [
+                "I (Anthony) will be at Alamo Square from 07:15 AM to 01:00 PM",
+                "I can meet for at least 15 minutes"
+            ],
+            "goal": "Meet the traveler at Alamo Square for at least 15 minutes sometime between 07:15 AM and 01:00 PM."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and problem targeting the FastDownwards solver that encodes the scheduling and travel problem to optimize meeting as many friends as possible."
+        }
+    },
+    "environment": {
+        "init": {
+            "locations": [
+                "Nob Hill",
+                "Alamo Square"
+            ],
+            "start_location": "Nob Hill",
+            "start_time": "09:00",
+            "travel_times_minutes": {
+                "Nob Hill->Alamo Square": 11,
+                "Alamo Square->Nob Hill": 11
+            }
+        },
+        "public_information": [
+            "You arrive at Nob Hill at 09:00 AM.",
+            "Anthony will be at Alamo Square from 07:15 AM to 01:00 PM.",
+            "Travel time from Nob Hill to Alamo Square is 11 minutes.",
+            "Travel time from Alamo Square to Nob Hill is 11 minutes.",
+            "You would like to meet Anthony for a minimum of 15 minutes.",
+            "Goal: meet as many friends as possible; here the explicit friend is Anthony."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "collect_info": {
+                "input": [],
+                "output": "traveler_info",
+                "system_prompt": "You are the traveler planning your day in San Francisco. Provide a concise structured summary (JSON or bullet-like text) of your availability window, starting location and time, travel capabilities, and any scheduling preferences. Do NOT produce PDDL. Your output will be consumed by an orchestrator that builds the planning model.",
+                "prompt": "Your name is traveler. Public information:\n{environment->public_information}\nYour private information:\n{agents->traveler->private_information}\nYour personal goal:\n{agents->traveler->goal}\nProvide a clear structured summary of your availability, earliest and latest times you can meet, constraints derived from your arrival and travel times, and any preferences about meeting durations. Do not create PDDL; only provide the traveler-side structured info."
+            }
+        },
+        "anthony": {
+            "share_availability": {
+                "input": [],
+                "output": "anthony_info",
+                "system_prompt": "You are Anthony (a friend). Provide a concise structured statement of your availability window, minimum acceptable meeting duration, meeting location, and any other constraints. Do NOT produce PDDL. The orchestrator will use this information to build the planning problem.",
+                "prompt": "Your name is anthony. Public information:\n{environment->public_information}\nYour private information:\n{agents->anthony->private_information}\nYour personal goal:\n{agents->anthony->goal}\nProvide a clear structured summary of your availability (start and end times), location, minimum meeting duration, and any additional constraints. Do not create PDDL; only provide the anthony-side structured info."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_info",
+                    "anthony_info"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must integrate agent-provided structured information and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. The PDDL must encode locations, travel actions with their durations, time windows (availability), meeting actions with minimum meeting duration, and the traveler's arrival constraint (arrive at Nob Hill at 09:00). Model time explicitly using numeric fluents or temporal constructs compatible with FastDownwards preferences (e.g., encode durations as integer time increments if using simple numeric fluents). Provide an objective to maximize the number of friends met (or, if using a numeric metric, maximize a 'met-count') while respecting all hard constraints. Keep actions of different agents distinct when appropriate (for example, travel and meet actions may be attributed to the traveler and to the friend if needed). Always produce two artifacts enclosed exactly between <domain></domain> and <problem></problem> tags respectively: first the PDDL domain, then the PDDL problem. Target the FastDownwards solver when selecting PDDL constructs and ensure the problem is solvable by FastDownwards.",
+                "prompt": "You will receive the structured outputs from the traveler and from Anthony:\nTraveler info:\n{traveler_info}\nAnthony info:\n{anthony_info}\nPublic environment info:\n{environment->public_information}\nGlobal orchestrator goal:\n{agents->orchestrator->goal}\nIntegrate the inputs to create a complete PDDL domain and problem for FastDownwards that captures:\n- locations: Nob Hill and Alamo Square,\n- travel durations between locations (11 minutes each way),\n- traveler starting at Nob Hill at 09:00,\n- Anthony availability window 07:15-13:00 at Alamo Square,\n- minimum meeting duration of 15 minutes for Anthony,\n- an objective to maximize the number of friends met (or maximize total meeting time as a proxy),\n- ensure time and duration modeling that FastDownwards can handle.\nEnclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Think step by step and resolve any minor naming mismatches between inputs. If some information is missing, encode conservative defaults only when necessary and state those defaults as comments in the PDDL problem section."
+            }
+        },
+        "constraints": [
+            "traveler.collect_info->orchestrator.pddl",
+            "anthony.share_availability->orchestrator.pddl"
+        ]
+    }
+}

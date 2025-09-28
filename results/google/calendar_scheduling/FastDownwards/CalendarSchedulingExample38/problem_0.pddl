@@ -1,0 +1,60 @@
+(define (problem schedule-monday)
+  (:domain meeting-scheduling)
+  (:objects
+    adam frances natalie patrick willie diana - person
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+  )
+  (:init
+    (= (total-cost) 0)
+    (= (slot-cost s0900) 0)
+    (= (slot-cost s0930) 1)
+    (= (slot-cost s1000) 2)
+    (= (slot-cost s1030) 3)
+    (= (slot-cost s1100) 4)
+    (= (slot-cost s1130) 5)
+    (= (slot-cost s1200) 6)
+    (= (slot-cost s1230) 7)
+    (= (slot-cost s1300) 8)
+    (= (slot-cost s1330) 9)
+    (= (slot-cost s1400) 10)
+    (= (slot-cost s1430) 11)
+    (= (slot-cost s1500) 12)
+    (= (slot-cost s1530) 13)
+    (= (slot-cost s1600) 14)
+    (= (slot-cost s1630) 15)
+
+    ; Availabilities: (No participant constraints were provided beyond the Monday 09:00-17:00 window.
+    ; Conservatively encode that every listed participant is available at every 30-minute slot in that window.)
+    (available adam s0900) (available adam s0930) (available adam s1000) (available adam s1030)
+    (available adam s1100) (available adam s1130) (available adam s1200) (available adam s1230)
+    (available adam s1300) (available adam s1330) (available adam s1400) (available adam s1430)
+    (available adam s1500) (available adam s1530) (available adam s1600) (available adam s1630)
+
+    (available frances s0900) (available frances s0930) (available frances s1000) (available frances s1030)
+    (available frances s1100) (available frances s1130) (available frances s1200) (available frances s1230)
+    (available frances s1300) (available frances s1330) (available frances s1400) (available frances s1430)
+    (available frances s1500) (available frances s1530) (available frances s1600) (available frances s1630)
+
+    (available natalie s0900) (available natalie s0930) (available natalie s1000) (available natalie s1030)
+    (available natalie s1100) (available natalie s1130) (available natalie s1200) (available natalie s1230)
+    (available natalie s1300) (available natalie s1330) (available natalie s1400) (available natalie s1430)
+    (available natalie s1500) (available natalie s1530) (available natalie s1600) (available natalie s1630)
+
+    (available patrick s0900) (available patrick s0930) (available patrick s1000) (available patrick s1030)
+    (available patrick s1100) (available patrick s1130) (available patrick s1200) (available patrick s1230)
+    (available patrick s1300) (available patrick s1330) (available patrick s1400) (available patrick s1430)
+    (available patrick s1500) (available patrick s1530) (available patrick s1600) (available patrick s1630)
+
+    (available willie s0900) (available willie s0930) (available willie s1000) (available willie s1030)
+    (available willie s1100) (available willie s1130) (available willie s1200) (available willie s1230)
+    (available willie s1300) (available willie s1330) (available willie s1400) (available willie s1430)
+    (available willie s1500) (available willie s1530) (available willie s1600) (available willie s1630)
+
+    (available diana s0900) (available diana s0930) (available diana s1000) (available diana s1030)
+    (available diana s1100) (available diana s1130) (available diana s1200) (available diana s1230)
+    (available diana s1300) (available diana s1330) (available diana s1400) (available diana s1430)
+    (available diana s1500) (available diana s1530) (available diana s1600) (available diana s1630)
+  )
+  (:goal (meeting-scheduled))
+  (:metric minimize (total-cost))
+)

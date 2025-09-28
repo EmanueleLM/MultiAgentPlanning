@@ -1,0 +1,82 @@
+{
+    "name": "TripPlanningExample23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "stay_planner",
+            "flight_agent",
+            "orchestrator"
+        ],
+        "stay_planner": {
+            "private_information": [
+                "Planned stays: London 3 days, Bucharest 3 days, Riga 4 days"
+            ],
+            "goal": "Propose a stay allocation across London, Bucharest and Riga that fits the total of 8 days and respects the Riga workshop constraint"
+        },
+        "flight_agent": {
+            "private_information": [
+                "Direct flights available between London and Bucharest",
+                "Direct flights available between Bucharest and Riga",
+                "Only direct flights may be used to commute between cities"
+            ],
+            "goal": "Provide feasible flight sequences that connect the planned city visits using only available direct flights"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target planner: FastDownwards"
+            ],
+            "goal": "Integrate the stay allocation and flight feasibility information and produce a final PDDL domain and problem targeting the FastDownwards solver that yields a valid 8-day itinerary respecting all constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8,
+            "cities": [
+                "London",
+                "Bucharest",
+                "Riga"
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 8 days in total",
+            "You only take direct flights to commute between cities",
+            "Planned stays reported: London 3 days, Bucharest 3 days, Riga 4 days",
+            "Direct flights exist between London and Bucharest and between Bucharest and Riga",
+            "There is a workshop in Riga that must be attended between day 5 and day 8"
+        ]
+    },
+    "workflow": {
+        "stay_planner": {
+            "analyze_stays": {
+                "input": [],
+                "output": "stay_plan",
+                "system_prompt": "You are an expert trip stay planner. Using your private information, propose an allocation of days per city and explain how that allocation meets the total available days and the workshop constraint. Do not produce PDDL.",
+                "prompt": "Your name is stay_planner. Public information: {environment->public_information}. Your knowledge: {agents->stay_planner->private_information}. Goal: {agents->stay_planner->goal}. Think step by step and provide a concrete proposed stay allocation (days per city) and a short justification. If some information is missing, do not assume extra facts."
+            }
+        },
+        "flight_agent": {
+            "check_flights": {
+                "input": [],
+                "output": "flight_options",
+                "system_prompt": "You are an expert on flight connections. Using your private information, enumerate feasible direct flight legs and possible city visit sequences that can be achieved using only direct flights. Do not produce PDDL.",
+                "prompt": "Your name is flight_agent. Public information: {environment->public_information}. Your knowledge: {agents->flight_agent->private_information}. Goal: {agents->flight_agent->goal}. Think step by step and provide feasible flight sequences and any ordering constraints implied by available direct flights. If some connections are impossible given direct-flight-only constraint, explain why."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "stay_plan",
+                    "flight_options"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeted to the FastDownwards solver. Integrate the stay allocation and flight feasibility inputs to produce a complete PDDL domain and a PDDL problem that encode the trip planning task for FastDownwards. The PDDL must capture days as a timeline of 1..8, city visit durations, flight transitions using only direct-flight actions, and the constraint that the Riga workshop occurs between day 5 and day 8. Keep actions belonging to different agents distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Do not output other formats.",
+                "prompt": "You are the orchestrator. You will receive the stay allocation and flight feasibility analyses from the other agents and must integrate them into a final PDDL domain and problem for the FastDownwards solver. Here is the global goal to achieve: {agents->orchestrator->goal}. Here is the stay planner output: {stay_plan}. Here is the flight agent output: {flight_options}. Reconcile any conflicts (for example if proposed stays sum to more than the total days) and produce a single coherent PDDL domain and problem. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "stay_planner.analyze_stays->orchestrator.pddl",
+            "flight_agent.check_flights->orchestrator.pddl"
+        ]
+    }
+}

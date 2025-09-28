@@ -1,0 +1,25 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :negative-preconditions)
+  (:constants nicholas emma catherine steven adam lori)
+  (:predicates
+    (free ?person ?slot)
+    (scheduled)
+    (meeting-at ?slot)
+  )
+  (:action schedule
+    :parameters (?s)
+    :precondition (and
+      (not (scheduled))
+      (free nicholas ?s)
+      (free emma ?s)
+      (free catherine ?s)
+      (free steven ?s)
+      (free adam ?s)
+      (free lori ?s)
+    )
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+    )
+  )
+)

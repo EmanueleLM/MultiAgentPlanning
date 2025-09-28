@@ -1,0 +1,116 @@
+{
+    "name": "TripPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_scheduler",
+            "itinerary_checker",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit 3 European cities for 11 days in total.",
+                "I plan to stay in Amsterdam for 5 days.",
+                "I plan to stay in Vilnius for 2 days.",
+                "I plan to stay in Bucharest for 6 days.",
+                "I will only take direct flights to commute between cities."
+            ],
+            "goal": "Provide a clear statement of my city visit preferences and the desired stay durations. Highlight any potential inconsistencies with the total trip duration."
+        },
+        "flight_scheduler": {
+            "private_information": [
+                "Direct flights exist between Amsterdam and Bucharest.",
+                "Direct flights exist between Vilnius and Amsterdam.",
+                "No direct flight between Vilnius and Bucharest is listed."
+            ],
+            "goal": "Provide the graph of available direct flight connections and feasible direct flight legs that can be used to travel between the cities."
+        },
+        "itinerary_checker": {
+            "private_information": [
+                "I can analyze day allocation and suggest feasible adjustments to meet the total days constraint.",
+                "I can propose which city stay durations could be reduced or reordered to achieve the overall 11-day limit."
+            ],
+            "goal": "Validate the traveler's requested stays against the total trip duration, identify conflicts, and propose concrete adjustments or alternatives."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the agents' information and produce a complete PDDL domain and problem suitable for the FastDownwards solver to find a feasible itinerary that respects direct-flight constraints and the 11-day total."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Amsterdam",
+                "Vilnius",
+                "Bucharest"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Bucharest"
+                ],
+                [
+                    "Vilnius",
+                    "Amsterdam"
+                ]
+            ]
+        },
+        "public_information": [
+            "There are three cities to visit: Amsterdam, Vilnius, and Bucharest.",
+            "The total trip length must be 11 days.",
+            "You only take direct flights to commute between cities.",
+            "Direct flight connections available: Amsterdam <-> Bucharest, Vilnius <-> Amsterdam.",
+            "Stay preferences provided: Amsterdam 5 days, Vilnius 2 days, Bucharest 6 days (note: these sum to 13 days and may conflict with the 11-day total).",
+            "You would like to meet friends in Bucharest between day 6 and day 11 to tour together."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "collect_preferences": {
+                "input": [],
+                "output": "info_traveler",
+                "system_prompt": "You are a user-agent that summarizes travel preferences and constraints. Provide a structured summary (not PDDL) listing the desired stays per city, total days target, meeting window in Bucharest, and call out any arithmetic inconsistencies you observe.",
+                "prompt": "Your name is traveler. You have the following public environment information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Produce a concise structured summary of the travel preferences, including stays per city, the requested meeting window in Bucharest, and explicitly note if the sum of requested stays conflicts with the total days. Do not emit PDDL; emit a clear machine-readable summary labeled as info_traveler."
+            }
+        },
+        "flight_scheduler": {
+            "flight_graph": {
+                "input": [],
+                "output": "info_flight_scheduler",
+                "system_prompt": "You are an agent that provides the direct-flight connectivity graph between cities. Return a clear representation of available direct flight legs and indicate which city pairs are not directly connected. Do not produce PDDL.",
+                "prompt": "Your name is flight_scheduler. You have the following public environment information: {environment->public_information} You have the following private information: {agents->flight_scheduler->private_information} Your goal: {agents->flight_scheduler->goal} Provide a structured representation of direct flight edges and note any missing direct links required to travel between specific city pairs under the 'direct flights only' constraint. Output this as info_flight_scheduler."
+            }
+        },
+        "itinerary_checker": {
+            "validate_itinerary": {
+                "input": [
+                    "info_traveler",
+                    "info_flight_scheduler"
+                ],
+                "output": "info_itinerary_checker",
+                "system_prompt": "You are an agent that validates and proposes itinerary adjustments. Analyze the traveler's requested stays and the flight connectivity. If the requested stays exceed the total available days, propose minimal adjustments or reorderings to satisfy the total days while respecting direct-flight constraints and the requested meeting window. Provide concrete alternative allocations and a rationale. Do not produce PDDL.",
+                "prompt": "Your name is itinerary_checker. You will receive: {info_traveler} and {info_flight_scheduler}. Your private information: {agents->itinerary_checker->private_information} Your goal: {agents->itinerary_checker->goal} Analyze whether the requested stays can fit into the total_days from the environment. If not, propose feasible stay adjustments (specific days per city) or travel orders that make the itinerary feasible given direct-flight edges, and ensure the meeting in Bucharest can happen between day 6 and day 11. Output this as info_itinerary_checker."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "info_traveler",
+                    "info_flight_scheduler",
+                    "info_itinerary_checker"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL for the FastDownwards solver. Integrate the structured information provided by the other agents and produce a complete PDDL domain and PDDL problem targeting the FastDownwards planner that models: cities as locations, direct-flight actions between directly connected cities, staying actions consuming days, the total trip duration constraint (11 days), and a constraint that the traveler meets friends in Bucharest between day 6 and day 11. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure multi-agent contributions are merged but keep decision/action names clear and unambiguous.",
+                "prompt": "You are the orchestrator. You received the following inputs:\n{info_traveler}\n{info_flight_scheduler}\n{info_itinerary_checker}\nYour goal: {agents->orchestrator->goal}\nUsing the agents' structured outputs, produce a PDDL domain and a PDDL problem suitable for the FastDownwards solver that encodes direct-flight-only movement, day consumption for stays and flights, the 11-day total, and the requirement to be in Bucharest between day 6 and day 11 to meet friends. Keep agent-derived actions and objects distinct where relevant. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Provide the resulting PDDL as pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "traveler.collect_preferences->orchestrator.pddl",
+            "flight_scheduler.flight_graph->orchestrator.pddl",
+            "itinerary_checker.validate_itinerary->orchestrator.pddl"
+        ]
+    }
+}

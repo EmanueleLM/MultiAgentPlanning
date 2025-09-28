@@ -1,0 +1,27 @@
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
+  (:objects
+    madison linda logan virginia - person
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+  )
+  (:init
+    (person madison) (person linda) (person logan) (person virginia)
+    (slot s0900) (slot s0930) (slot s1000) (slot s1030) (slot s1100) (slot s1130)
+    (slot s1200) (slot s1230) (slot s1300) (slot s1330) (slot s1400) (slot s1430)
+    (slot s1500) (slot s1530) (slot s1600) (slot s1630)
+    (available madison s0900) (available madison s0930)
+    (available madison s1030) (available madison s1100) (available madison s1130)
+    (available madison s1200) (available madison s1230) (available madison s1300)
+    (available madison s1330) (available madison s1400) (available madison s1500)
+    (available madison s1600)
+    (available linda s0900) (available linda s0930) (available linda s1000) (available linda s1030)
+    (available linda s1100) (available linda s1130) (available linda s1200) (available linda s1230)
+    (available linda s1300) (available linda s1330) (available linda s1400) (available linda s1430)
+    (available linda s1500) (available linda s1530) (available linda s1600) (available linda s1630)
+    (available logan s1200) (available logan s1600)
+    (available virginia s0900) (available virginia s1100)
+    (available virginia s1200) (available virginia s1230)
+    (available virginia s1430) (available virginia s1530)
+  )
+  (:goal (meeting-scheduled))
+)

@@ -1,20 +1,20 @@
-(define (problem meeting-problem)
-  (:domain meeting-domain)
+(define (problem MeetingPlanningExample3)
+  (:domain meeting-planning)
   (:objects
-    t480 t540 t562 t585 t652 t690 - time
+    traveler barbara orchestrator - agent
+    bayview golden_gate_park - location
+    t540 t562 t652 - time
   )
   (:init
-    (at barbara goldengatepark t480)
-    (at traveler bayview t540)
-    (travel_bayview_ggp t540 t562)
-    (travel_ggp_bayview t562 t585)
-    (span t540 t562)
-    (span t562 t652)
-    (span t480 t562)
-    (span t480 t652)
-    (span90 t562 t652)
-    (available barbara t480 t690)
-    (available traveler t540 t690)
+    (at traveler bayview)
+    (at barbara golden_gate_park)
+    (now t540)
+    (travel-time t540 t562)
+    (meeting-span t562 t652)
+    (= (total-cost) 0)
   )
-  (:goal (met traveler barbara))
+  (:goal (and
+    (met traveler barbara)
+  ))
+  (:metric minimize (total-cost))
 )

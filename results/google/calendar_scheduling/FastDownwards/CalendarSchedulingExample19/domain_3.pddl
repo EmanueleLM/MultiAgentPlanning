@@ -1,0 +1,252 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :adl :typing :negation :negative-preconditions :equality :action-costs)
+  (:types person slot)
+  (:predicates
+    (person ?p - person)
+    (slot ?s - slot)
+    (unavailable ?p - person ?s - slot)
+    (scheduled)
+    (scheduled-at ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule-slot1
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot1))
+      (not (unavailable janice slot1))
+      (not (unavailable elijah slot1))
+      (not (unavailable theresa slot1))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot1)
+      (increase (total-cost) 1)
+    )
+  )
+  (:action schedule-slot2
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot2))
+      (not (unavailable janice slot2))
+      (not (unavailable elijah slot2))
+      (not (unavailable theresa slot2))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot2)
+      (increase (total-cost) 2)
+    )
+  )
+  (:action schedule-slot3
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot3))
+      (not (unavailable janice slot3))
+      (not (unavailable elijah slot3))
+      (not (unavailable theresa slot3))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot3)
+      (increase (total-cost) 3)
+    )
+  )
+  (:action schedule-slot4
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot4))
+      (not (unavailable janice slot4))
+      (not (unavailable elijah slot4))
+      (not (unavailable theresa slot4))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot4)
+      (increase (total-cost) 4)
+    )
+  )
+  (:action schedule-slot5
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot5))
+      (not (unavailable janice slot5))
+      (not (unavailable elijah slot5))
+      (not (unavailable theresa slot5))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot5)
+      (increase (total-cost) 5)
+    )
+  )
+  (:action schedule-slot6
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot6))
+      (not (unavailable janice slot6))
+      (not (unavailable elijah slot6))
+      (not (unavailable theresa slot6))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot6)
+      (increase (total-cost) 6)
+    )
+  )
+  (:action schedule-slot7
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot7))
+      (not (unavailable janice slot7))
+      (not (unavailable elijah slot7))
+      (not (unavailable theresa slot7))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot7)
+      (increase (total-cost) 7)
+    )
+  )
+  (:action schedule-slot8
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot8))
+      (not (unavailable janice slot8))
+      (not (unavailable elijah slot8))
+      (not (unavailable theresa slot8))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot8)
+      (increase (total-cost) 8)
+    )
+  )
+  (:action schedule-slot9
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot9))
+      (not (unavailable janice slot9))
+      (not (unavailable elijah slot9))
+      (not (unavailable theresa slot9))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot9)
+      (increase (total-cost) 9)
+    )
+  )
+  (:action schedule-slot10
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot10))
+      (not (unavailable janice slot10))
+      (not (unavailable elijah slot10))
+      (not (unavailable theresa slot10))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot10)
+      (increase (total-cost) 10)
+    )
+  )
+  (:action schedule-slot11
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot11))
+      (not (unavailable janice slot11))
+      (not (unavailable elijah slot11))
+      (not (unavailable theresa slot11))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot11)
+      (increase (total-cost) 11)
+    )
+  )
+  (:action schedule-slot12
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot12))
+      (not (unavailable janice slot12))
+      (not (unavailable elijah slot12))
+      (not (unavailable theresa slot12))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot12)
+      (increase (total-cost) 12)
+    )
+  )
+  (:action schedule-slot13
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot13))
+      (not (unavailable janice slot13))
+      (not (unavailable elijah slot13))
+      (not (unavailable theresa slot13))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot13)
+      (increase (total-cost) 13)
+    )
+  )
+  (:action schedule-slot14
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot14))
+      (not (unavailable janice slot14))
+      (not (unavailable elijah slot14))
+      (not (unavailable theresa slot14))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot14)
+      (increase (total-cost) 14)
+    )
+  )
+  (:action schedule-slot15
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot15))
+      (not (unavailable janice slot15))
+      (not (unavailable elijah slot15))
+      (not (unavailable theresa slot15))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot15)
+      (increase (total-cost) 15)
+    )
+  )
+  (:action schedule-slot16
+    :parameters ()
+    :precondition (and
+      (not (scheduled))
+      (not (unavailable marie slot16))
+      (not (unavailable janice slot16))
+      (not (unavailable elijah slot16))
+      (not (unavailable theresa slot16))
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at slot16)
+      (increase (total-cost) 16)
+    )
+  )
+)

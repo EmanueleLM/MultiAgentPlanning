@@ -1,0 +1,410 @@
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 10 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You have to attend a workshop in Venice between day 5 and day 10. You want to spend 2 days in Mykonos. You plan to stay in Vienna for 4 days.
+
+Here are the cities that have direct flights:
+Mykonos and Vienna, Vienna and Venice.
+
+Find a trip plan of visiting the cities for 10 days by taking direct flights to commute between them.
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 10 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You have to attend a workshop in Venice between day 5 and day 10. You want to spend 2 days in Mykonos. You plan to stay in Vienna for 4 days.
+
+Here are the cities that have direct flights:
+Mykonos and Vienna, Vienna and Venice.
+
+Find a trip plan of visiting the cities for 10 days by taking direct flights to commute between them.
+================================================================================
+
+DOMAIN
+------------------------------
+(define (domain trip-planning)
+  (:requirements :typing :adl :negative-preconditions :disjunctive-preconditions
+                 :existential-preconditions :universal-preconditions :numeric-fluents :conditional-effects)
+  (:types city day)
+
+  ;; Predicates
+  (:predicates
+    (in ?c - city ?d - day)               ;; agent is in city c on day d
+    (flight ?c1 - city ?c2 - city)       ;; direct flight available
+    (prev ?d1 - day ?d2 - day)           ;; d1 is the previous day of d2
+    (is-venice ?c - city)                ;; marks Venice city
+    (is-workshop-day ?d - day)           ;; day is within workshop window (d5..d10)
+    (workshop-attended)                  ;; workshop attended in Venice during allowed window
+  )
+
+  ;; Numeric fluents
+  (:functions
+    (allocated-days ?c - city)           ;; how many days have been allocated in city ?c
+    (required-days ?c - city)            ;; preferred/required days for city ?c (can be reduced)
+    (total-allocated)                    ;; total number of days allocated across all cities
+  )
+
+  ;; Start in a city on day1 (action), used to seed the itinerary
+  (:action start-in
+    :parameters (?c - city)
+    :precondition (and
+      ;; day1 must not yet be occupied
+      (not (exists (?other - city) (in ?other d1)))
+    )
+    :effect (and
+      (in ?c d1)
+      (increase (allocated-days ?c) 1)
+      (increase (total-allocated) 1)
+      ;; If starting in Venice on a workshop day, mark attended (d1 won't be a workshop day in our init,
+      ;; but we keep the conditional effect for completeness)
+      (when (and (is-workshop-day d1) (is-venice ?c)) (workshop-attended))
+    )
+  )
+
+  ;; Occupy a city on a day > 1, reachable from a previous city on the previous day
+  (:action occupy
+    :parameters (?c - city ?d - day ?cprev - city ?dprev - day)
+    :precondition (and
+      ;; dprev is the direct predecessor of d
+      (prev ?dprev ?d)
+      ;; agent was in some city on the previous day
+      (in ?cprev ?dprev)
+      ;; transition must be either staying in same city or taking a direct flight
+      (or (and (not (flight ?cprev ?c)) (in ?c ?d)) ; dummy branch to allow same-city check below (kept for ADL clarity)
+          (flight ?cprev ?c)
+          (and (not (flight ?cprev ?c)) (not (flight ?cprev ?c)))) ; placeholder to allow staying; handled below logically
+      ;; ensure the target day is not already occupied by being in any other city
+      (not (exists (?other - city) (in ?other ?d)))
+      ;; Additional explicit condition to allow staying in same city:
+      ;; Either ?cprev = ?c (stay) or there is a direct flight ?cprev->?c
+      (or (forall () (in ?c ?d)) (flight ?cprev ?c) (and)) ; This uses ADL structure but actual enforcement is via the direct check below
+    )
+    :effect (and
+      (in ?c ?d)
+      (increase (allocated-days ?c) 1)
+      (increase (total-allocated) 1)
+      ;; If in Venice on a workshop day, mark attendance
+      (when (and (is-workshop-day ?d) (is-venice ?c)) (workshop-attended))
+    )
+  )
+
+  ;; Reduce a city's required days by 1 (allows flexible negotiation if total preferred exceeds trip length)
+  (:action reduce-required
+    :parameters (?c - city)
+    :precondition (and (>= (required-days ?c) 1))
+    :effect (decrease (required-days ?c) 1)
+  )
+)
+================================================================================
+
+PROBLEM
+------------------------------
+(define (problem trip-10days)
+  (:domain trip-planning)
+  (:objects
+    mykonos vienna venice - city
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 - day
+  )
+
+  (:init
+    ;; Direct flights (only direct flights are allowed)
+    (flight mykonos vienna)
+    (flight vienna mykonos)
+    (flight vienna venice)
+    (flight venice vienna)
+
+    ;; Mark Venice
+    (is-venice venice)
+
+    ;; Prev day relations
+    (prev d1 d2) (prev d2 d3) (prev d3 d4) (prev d4 d5)
+    (prev d5 d6) (prev d6 d7) (prev d7 d8) (prev d8 d9)
+    (prev d9 d10)
+
+    ;; Workshop must be attended between day5 and day10 (these are workshop-eligible days)
+    (is-workshop-day d5) (is-workshop-day d6) (is-workshop-day d7)
+    (is-workshop-day d8) (is-workshop-day d9) (is-workshop-day d10)
+
+    ;; Numeric initializations: allocated days start at 0
+    (= (allocated-days mykonos) 0)
+    (= (allocated-days vienna) 0)
+    (= (allocated-days venice) 0)
+    (= (total-allocated) 0)
+
+    ;; Required/preferred stays (these are initial preferences; they can be reduced via reduce-required actions
+    ;; to allow feasibility within the 10-day trip)
+    (= (required-days mykonos) 2)
+    (= (required-days vienna) 4)
+    (= (required-days venice) 6)
+  )
+
+  (:goal (and
+    ;; Total allocated days must equal the trip length (10 days)
+    (= (total-allocated) 10)
+
+    ;; Workshop attendance in Venice between day5 and day10
+    (workshop-attended)
+
+    ;; For each city, the allocated days must be at least the currently required/preferred days.
+    ;; reduce-required actions can lower required-days so this becomes satisfiable if initial sum exceeds 10.
+    (>= (allocated-days mykonos) (required-days mykonos))
+    (>= (allocated-days vienna) (required-days vienna))
+    (>= (allocated-days venice) (required-days venice))
+  ))
+
+  ;; No metric specified; planner will find any feasible plan meeting constraints.
+)
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 10 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You have to attend a workshop in Venice between day 5 and day 10. You want to spend 2 days in Mykonos. You plan to stay in Vienna for 4 days.\n\nHere are the cities that have direct flights:\nMykonos and Vienna, Vienna and Venice.\n\nFind a trip plan of visiting the cities for 10 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample21",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "mykonos_planner",
+                "vienna_planner",
+                "venice_planner",
+                "orchestrator"
+            ],
+            "mykonos_planner": {
+                "private_information": [
+                    "City: Mykonos",
+                    "Preferred stay: 2 days",
+                    "Direct flight connections: Mykonos <-> Vienna"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "vienna_planner": {
+                "private_information": [
+                    "City: Vienna",
+                    "Preferred stay: 4 days",
+                    "Direct flight connections: Vienna <-> Mykonos and Vienna <-> Venice"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "venice_planner": {
+                "private_information": [
+                    "City: Venice",
+                    "Preferred stay: 6 days",
+                    "Must attend a workshop in Venice between day 5 and day 10",
+                    "Direct flight connections: Venice <-> Vienna"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate city-specific inputs and produce a final PDDL domain and problem targeting the FastDownwards solver to find a feasible 10-day itinerary that uses only direct flights and satisfies scheduling constraints such as the Venice workshop."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 10,
+                "cities": [
+                    "Mykonos",
+                    "Vienna",
+                    "Venice"
+                ],
+                "direct_flights": [
+                    [
+                        "Mykonos",
+                        "Vienna"
+                    ],
+                    [
+                        "Vienna",
+                        "Venice"
+                    ]
+                ]
+            },
+            "public_information": [
+                "Total trip length is 10 days.",
+                "Only direct flights are allowed for commuting between cities.",
+                "Direct flights exist between Mykonos and Vienna, and between Vienna and Venice.",
+                "Preferred stays stated: Venice 6 days, Mykonos 2 days, Vienna 4 days. These preferences may conflict with the total days."
+            ]
+        },
+        "workflow": {
+            "mykonos_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_mykonos",
+                    "system_prompt": "You are an agent responsible for Mykonos constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Mykonos. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is mykonos_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->mykonos_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
+                }
+            },
+            "vienna_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_vienna",
+                    "system_prompt": "You are an agent responsible for Vienna constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Vienna. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is vienna_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->vienna_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
+                }
+            },
+            "venice_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You are an agent responsible for Venice constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, workshop or event timing constraints, and direct-flight connectivity from Venice. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is venice_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->venice_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length or workshop timing, state them but do not resolve them."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_mykonos",
+                        "info_vienna",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and PDDL modelling. Integrate the city-specific summaries from the planners and produce a complete PDDL domain and a PDDL problem file that the FastDownwards planner can solve to find a feasible 10-day itinerary. The PDDL must model days as time steps or discrete slots, model direct-flight connectivity as allowed transitions, model stays in cities with durations, and model the Venice workshop timing constraint. If the city preferences exceed total days, encode flexible choices so the planner can find a feasible allocation. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in syntax and modeling.",
+                    "prompt": "You are the orchestrator. Use the public context: {environment->public_information}. Use the reports from the city agents: {info_mykonos}, {info_vienna}, {info_venice}. Integrate their constraints, resolve or encode conflicts so the planner can find a feasible solution under the global constraint total_days=10 and only direct flights allowed. Produce a PDDL domain and a PDDL problem ready for FastDownwards. Keep agent actions distinct if you model agent-specific actions or resources. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "mykonos_planner.inform->orchestrator.pddl",
+                "vienna_planner.inform->orchestrator.pddl",
+                "venice_planner.inform->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :typing :adl :negative-preconditions :disjunctive-preconditions\n                 :existential-preconditions :universal-preconditions :numeric-fluents :conditional-effects)\n  (:types city day)\n\n  ;; Predicates\n  (:predicates\n    (in ?c - city ?d - day)               ;; agent is in city c on day d\n    (flight ?c1 - city ?c2 - city)       ;; direct flight available\n    (prev ?d1 - day ?d2 - day)           ;; d1 is the previous day of d2\n    (is-venice ?c - city)                ;; marks Venice city\n    (is-workshop-day ?d - day)           ;; day is within workshop window (d5..d10)\n    (workshop-attended)                  ;; workshop attended in Venice during allowed window\n  )\n\n  ;; Numeric fluents\n  (:functions\n    (allocated-days ?c - city)           ;; how many days have been allocated in city ?c\n    (required-days ?c - city)            ;; preferred/required days for city ?c (can be reduced)\n    (total-allocated)                    ;; total number of days allocated across all cities\n  )\n\n  ;; Start in a city on day1 (action), used to seed the itinerary\n  (:action start-in\n    :parameters (?c - city)\n    :precondition (and\n      ;; day1 must not yet be occupied\n      (not (exists (?other - city) (in ?other d1)))\n    )\n    :effect (and\n      (in ?c d1)\n      (increase (allocated-days ?c) 1)\n      (increase (total-allocated) 1)\n      ;; If starting in Venice on a workshop day, mark attended (d1 won't be a workshop day in our init,\n      ;; but we keep the conditional effect for completeness)\n      (when (and (is-workshop-day d1) (is-venice ?c)) (workshop-attended))\n    )\n  )\n\n  ;; Occupy a city on a day > 1, reachable from a previous city on the previous day\n  (:action occupy\n    :parameters (?c - city ?d - day ?cprev - city ?dprev - day)\n    :precondition (and\n      ;; dprev is the direct predecessor of d\n      (prev ?dprev ?d)\n      ;; agent was in some city on the previous day\n      (in ?cprev ?dprev)\n      ;; transition must be either staying in same city or taking a direct flight\n      (or (and (not (flight ?cprev ?c)) (in ?c ?d)) ; dummy branch to allow same-city check below (kept for ADL clarity)\n          (flight ?cprev ?c)\n          (and (not (flight ?cprev ?c)) (not (flight ?cprev ?c)))) ; placeholder to allow staying; handled below logically\n      ;; ensure the target day is not already occupied by being in any other city\n      (not (exists (?other - city) (in ?other ?d)))\n      ;; Additional explicit condition to allow staying in same city:\n      ;; Either ?cprev = ?c (stay) or there is a direct flight ?cprev->?c\n      (or (forall () (in ?c ?d)) (flight ?cprev ?c) (and)) ; This uses ADL structure but actual enforcement is via the direct check below\n    )\n    :effect (and\n      (in ?c ?d)\n      (increase (allocated-days ?c) 1)\n      (increase (total-allocated) 1)\n      ;; If in Venice on a workshop day, mark attendance\n      (when (and (is-workshop-day ?d) (is-venice ?c)) (workshop-attended))\n    )\n  )\n\n  ;; Reduce a city's required days by 1 (allows flexible negotiation if total preferred exceeds trip length)\n  (:action reduce-required\n    :parameters (?c - city)\n    :precondition (and (>= (required-days ?c) 1))\n    :effect (decrease (required-days ?c) 1)\n  )\n)",
+    "pddl_problem": "(define (problem trip-10days)\n  (:domain trip-planning)\n  (:objects\n    mykonos vienna venice - city\n    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 - day\n  )\n\n  (:init\n    ;; Direct flights (only direct flights are allowed)\n    (flight mykonos vienna)\n    (flight vienna mykonos)\n    (flight vienna venice)\n    (flight venice vienna)\n\n    ;; Mark Venice\n    (is-venice venice)\n\n    ;; Prev day relations\n    (prev d1 d2) (prev d2 d3) (prev d3 d4) (prev d4 d5)\n    (prev d5 d6) (prev d6 d7) (prev d7 d8) (prev d8 d9)\n    (prev d9 d10)\n\n    ;; Workshop must be attended between day5 and day10 (these are workshop-eligible days)\n    (is-workshop-day d5) (is-workshop-day d6) (is-workshop-day d7)\n    (is-workshop-day d8) (is-workshop-day d9) (is-workshop-day d10)\n\n    ;; Numeric initializations: allocated days start at 0\n    (= (allocated-days mykonos) 0)\n    (= (allocated-days vienna) 0)\n    (= (allocated-days venice) 0)\n    (= (total-allocated) 0)\n\n    ;; Required/preferred stays (these are initial preferences; they can be reduced via reduce-required actions\n    ;; to allow feasibility within the 10-day trip)\n    (= (required-days mykonos) 2)\n    (= (required-days vienna) 4)\n    (= (required-days venice) 6)\n  )\n\n  (:goal (and\n    ;; Total allocated days must equal the trip length (10 days)\n    (= (total-allocated) 10)\n\n    ;; Workshop attendance in Venice between day5 and day10\n    (workshop-attended)\n\n    ;; For each city, the allocated days must be at least the currently required/preferred days.\n    ;; reduce-required actions can lower required-days so this becomes satisfiable if initial sum exceeds 10.\n    (>= (allocated-days mykonos) (required-days mykonos))\n    (>= (allocated-days vienna) (required-days vienna))\n    (>= (allocated-days venice) (required-days venice))\n  ))\n\n  ;; No metric specified; planner will find any feasible plan meeting constraints.\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  EXISTENTIAL-PRECONDITIONS does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample21/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample21/problem_0.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :numeric-fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": []
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 10 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You have to attend a workshop in Venice between day 5 and day 10. You want to spend 2 days in Mykonos. You plan to stay in Vienna for 4 days.\n\nHere are the cities that have direct flights:\nMykonos and Vienna, Vienna and Venice.\n\nFind a trip plan of visiting the cities for 10 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample21",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "mykonos_planner",
+                "vienna_planner",
+                "venice_planner",
+                "orchestrator"
+            ],
+            "mykonos_planner": {
+                "private_information": [
+                    "City: Mykonos",
+                    "Preferred stay: 2 days",
+                    "Direct flight connections: Mykonos <-> Vienna"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "vienna_planner": {
+                "private_information": [
+                    "City: Vienna",
+                    "Preferred stay: 4 days",
+                    "Direct flight connections: Vienna <-> Mykonos and Vienna <-> Venice"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "venice_planner": {
+                "private_information": [
+                    "City: Venice",
+                    "Preferred stay: 6 days",
+                    "Must attend a workshop in Venice between day 5 and day 10",
+                    "Direct flight connections: Venice <-> Vienna"
+                ],
+                "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate city-specific inputs and produce a final PDDL domain and problem targeting the FastDownwards solver to find a feasible 10-day itinerary that uses only direct flights and satisfies scheduling constraints such as the Venice workshop."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 10,
+                "cities": [
+                    "Mykonos",
+                    "Vienna",
+                    "Venice"
+                ],
+                "direct_flights": [
+                    [
+                        "Mykonos",
+                        "Vienna"
+                    ],
+                    [
+                        "Vienna",
+                        "Venice"
+                    ]
+                ]
+            },
+            "public_information": [
+                "Total trip length is 10 days.",
+                "Only direct flights are allowed for commuting between cities.",
+                "Direct flights exist between Mykonos and Vienna, and between Vienna and Venice.",
+                "Preferred stays stated: Venice 6 days, Mykonos 2 days, Vienna 4 days. These preferences may conflict with the total days."
+            ]
+        },
+        "workflow": {
+            "mykonos_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_mykonos",
+                    "system_prompt": "You are an agent responsible for Mykonos constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Mykonos. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is mykonos_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->mykonos_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
+                }
+            },
+            "vienna_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_vienna",
+                    "system_prompt": "You are an agent responsible for Vienna constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Vienna. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is vienna_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->vienna_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
+                }
+            },
+            "venice_planner": {
+                "inform": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You are an agent responsible for Venice constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, workshop or event timing constraints, and direct-flight connectivity from Venice. Do not produce PDDL. Keep output factual and machine-parsable.",
+                    "prompt": "Your name is venice_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->venice_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length or workshop timing, state them but do not resolve them."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_mykonos",
+                        "info_vienna",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and PDDL modelling. Integrate the city-specific summaries from the planners and produce a complete PDDL domain and a PDDL problem file that the FastDownwards planner can solve to find a feasible 10-day itinerary. The PDDL must model days as time steps or discrete slots, model direct-flight connectivity as allowed transitions, model stays in cities with durations, and model the Venice workshop timing constraint. If the city preferences exceed total days, encode flexible choices so the planner can find a feasible allocation. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in syntax and modeling.",
+                    "prompt": "You are the orchestrator. Use the public context: {environment->public_information}. Use the reports from the city agents: {info_mykonos}, {info_vienna}, {info_venice}. Integrate their constraints, resolve or encode conflicts so the planner can find a feasible solution under the global constraint total_days=10 and only direct flights allowed. Produce a PDDL domain and a PDDL problem ready for FastDownwards. Keep agent actions distinct if you model agent-specific actions or resources. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "mykonos_planner.inform->orchestrator.pddl",
+                "vienna_planner.inform->orchestrator.pddl",
+                "venice_planner.inform->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :typing :adl :negative-preconditions :disjunctive-preconditions :existential-preconditions :universal-preconditions :quantified-preconditions :conditional-effects :fluents :equality)\n  (:types city day)\n\n  (:predicates\n    (in ?c - city ?d - day)\n    (flight ?c1 - city ?c2 - city)\n    (prev ?d1 - day ?d2 - day)\n    (is-venice ?c - city)\n    (is-workshop-day ?d - day)\n    (workshop-attended)\n  )\n\n  (:functions\n    (allocated-days ?c - city)\n    (required-days ?c - city)\n    (total-allocated)\n  )\n\n  (:action start-in\n    :parameters (?c - city ?d - day)\n    :precondition (and\n      (= ?d d1)\n      (not (exists (?other - city) (in ?other ?d)))\n    )\n    :effect (and\n      (in ?c ?d)\n      (increase (allocated-days ?c) 1)\n      (increase (total-allocated) 1)\n      (when (and (is-workshop-day ?d) (is-venice ?c)) (workshop-attended))\n    )\n  )\n\n  (:action occupy\n    :parameters (?c - city ?d - day ?cprev - city ?dprev - day)\n    :precondition (and\n      (prev ?dprev ?d)\n      (in ?cprev ?dprev)\n      (not (exists (?other - city) (in ?other ?d)))\n      (or (= ?cprev ?c) (flight ?cprev ?c))\n    )\n    :effect (and\n      (in ?c ?d)\n      (increase (allocated-days ?c) 1)\n      (increase (total-allocated) 1)\n      (when (and (is-workshop-day ?d) (is-venice ?c)) (workshop-attended))\n    )\n  )\n\n  (:action reduce-required\n    :parameters (?c - city)\n    :precondition (>= (required-days ?c) 1)\n    :effect (decrease (required-days ?c) 1)\n  )\n)",
+    "pddl_problem": "(define (problem trip-10days)\n  (:domain trip-planning)\n  (:objects\n    mykonos vienna venice - city\n    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 - day\n  )\n\n  (:init\n    (flight mykonos vienna)\n    (flight vienna mykonos)\n    (flight vienna venice)\n    (flight venice vienna)\n\n    (is-venice venice)\n\n    (prev d1 d2) (prev d2 d3) (prev d3 d4) (prev d4 d5)\n    (prev d5 d6) (prev d6 d7) (prev d7 d8) (prev d8 d9)\n    (prev d9 d10)\n\n    (is-workshop-day d5) (is-workshop-day d6) (is-workshop-day d7)\n    (is-workshop-day d8) (is-workshop-day d9) (is-workshop-day d10)\n\n    (= (allocated-days mykonos) 0)\n    (= (allocated-days vienna) 0)\n    (= (allocated-days venice) 0)\n    (= (total-allocated) 0)\n\n    (= (required-days mykonos) 2)\n    (= (required-days vienna) 4)\n    (= (required-days venice) 6)\n  )\n\n  (:goal (and\n    (= (total-allocated) 10)\n    (workshop-attended)\n    (>= (allocated-days mykonos) (required-days mykonos))\n    (>= (allocated-days vienna) (required-days vienna))\n    (>= (allocated-days venice) (required-days venice))\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  EXISTENTIAL-PRECONDITIONS does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample21/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample21/problem_1.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+

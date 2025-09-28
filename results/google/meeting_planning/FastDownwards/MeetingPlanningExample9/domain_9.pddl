@@ -1,5 +1,5 @@
 (define (domain meeting-planning)
-  (:requirements :strips :typing :negative-preconditions :equality :action-costs)
+  (:requirements :typing :negative-preconditions :equality :adl :strips)
   (:types agent location time count)
 
   (:constants
@@ -16,10 +16,8 @@
   )
 
   (:predicates
-    (current-time ?t - time)
+    (at-time ?t - time)
     (next ?t1 - time ?t2 - time)
-    (plus9 ?t1 - time ?t2 - time)
-    (plus7 ?t1 - time ?t2 - time)
     (at ?a - agent ?l - location)
     (mary-available ?t - time)
     (meeting-active)
@@ -29,44 +27,83 @@
   )
 
   (:action travel-us-to-nh
-    :parameters (?t - time ?t2 - time)
-    :precondition (and (current-time ?t) (plus9 ?t ?t2) (at visitor union-square) (not (meeting-active)))
-    :effect (and (not (current-time ?t)) (current-time ?t2) (not (at visitor union-square)) (at visitor nob-hill))
-    :cost 9
+    :parameters (?t ?t1 ?t2 ?t3 ?t4 ?t5 ?t6 ?t7 ?t8 ?t9 - time ?v - agent ?from - location ?to - location)
+    :precondition (and
+      (at-time ?t)
+      (next ?t ?t1) (next ?t1 ?t2) (next ?t2 ?t3) (next ?t3 ?t4) (next ?t4 ?t5) (next ?t5 ?t6) (next ?t6 ?t7) (next ?t7 ?t8) (next ?t8 ?t9)
+      (at ?v ?from)
+      (not (meeting-active))
+    )
+    :effect (and
+      (not (at-time ?t))
+      (at-time ?t9)
+      (not (at ?v ?from))
+      (at ?v ?to)
+    )
   )
 
   (:action travel-nh-to-us
-    :parameters (?t - time ?t2 - time)
-    :precondition (and (current-time ?t) (plus7 ?t ?t2) (at visitor nob-hill) (not (meeting-active)))
-    :effect (and (not (current-time ?t)) (current-time ?t2) (not (at visitor nob-hill)) (at visitor union-square))
-    :cost 7
+    :parameters (?t ?t1 ?t2 ?t3 ?t4 ?t5 ?t6 ?t7 - time ?v - agent ?from - location ?to - location)
+    :precondition (and
+      (at-time ?t)
+      (next ?t ?t1) (next ?t1 ?t2) (next ?t2 ?t3) (next ?t3 ?t4) (next ?t4 ?t5) (next ?t5 ?t6) (next ?t6 ?t7)
+      (at ?v ?from)
+      (not (meeting-active))
+    )
+    :effect (and
+      (not (at-time ?t))
+      (at-time ?t7)
+      (not (at ?v ?from))
+      (at ?v ?to)
+    )
   )
 
   (:action start-meeting
     :parameters (?t - time ?loc - location)
-    :precondition (and (current-time ?t) (at visitor ?loc) (at mary ?loc) (mary-available ?t) (not (meeting-active)))
-    :effect (and (meeting-active) (met-started-at ?t) (met-count c0))
-    :cost 0
+    :precondition (and
+      (at-time ?t)
+      (at visitor ?loc)
+      (at mary ?loc)
+      (mary-available ?t)
+      (not (meeting-active))
+    )
+    :effect (and
+      (meeting-active)
+      (met-started-at ?t)
+      (met-count c0)
+    )
   )
 
   (:action meet-advance
-    :parameters (?t - time ?tnext - time ?c - count ?cnext - count ?loc - location)
-    :precondition (and (current-time ?t) (next ?t ?tnext) (meeting-active) (met-count ?c) (nextcount ?c ?cnext) (mary-available ?t) (at visitor ?loc) (at mary ?loc))
-    :effect (and (not (current-time ?t)) (current-time ?tnext) (not (met-count ?c)) (met-count ?cnext))
-    :cost 0
+    :parameters (?t ?tnext - time ?c ?cnext - count ?loc - location)
+    :precondition (and
+      (at-time ?t)
+      (next ?t ?tnext)
+      (meeting-active)
+      (met-count ?c)
+      (nextcount ?c ?cnext)
+      (mary-available ?tnext)
+      (at visitor ?loc)
+      (at mary ?loc)
+    )
+    :effect (and
+      (not (at-time ?t))
+      (at-time ?tnext)
+      (not (met-count ?c))
+      (met-count ?cnext)
+    )
   )
 
   (:action end-meeting
     :parameters (?t - time)
-    :precondition (and (current-time ?t) (meeting-active) (met-count c75) (mary-available ?t))
-    :effect (and (not (meeting-active)))
-    :cost 0
-  )
-
-  (:action advance-time
-    :parameters (?t - time ?tnext - time)
-    :precondition (and (current-time ?t) (next ?t ?tnext) (not (meeting-active)))
-    :effect (and (not (current-time ?t)) (current-time ?tnext))
-    :cost 1
+    :precondition (and
+      (at-time ?t)
+      (meeting-active)
+      (met-count c75)
+      (mary-available ?t)
+    )
+    :effect (and
+      (not (meeting-active))
+    )
   )
 )

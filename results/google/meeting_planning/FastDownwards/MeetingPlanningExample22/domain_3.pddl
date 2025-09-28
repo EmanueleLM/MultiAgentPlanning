@@ -1,54 +1,89 @@
 (define (domain sf-meet-classical)
-  (:requirements :typing :adl :negative-preconditions :equality :action-costs)
+  (:requirements :typing :negative-preconditions :equality :adl :action-costs :fluents)
   (:types agent location timepoint)
 
   (:constants
     traveler andrew - agent
     Presidio UnionSquare - location
-    t540 t562 t586 t675 t780 t1035 - timepoint
+    time540 time562 time675 time780 time930 time1035 - timepoint
   )
 
   (:predicates
     (at ?ag - agent ?loc - location)
-    (at-time ?t - timepoint)
+    (time-at ?t - timepoint)
     (met-andrew)
   )
 
-  (:functions (total-cost))
-
-  (:action travel-presidio-to-unionsq-from-t540
-    :parameters ()
-    :precondition (and (at traveler Presidio) (at-time t540))
-    :effect (and (not (at traveler Presidio)) (at traveler UnionSquare) (not (at-time t540)) (at-time t562))
+  (:functions
+    (total-cost)
   )
 
-  (:action travel-unionsq-to-presidio-from-t562
+  (:action travel-presidio-to-unionsq
     :parameters ()
-    :precondition (and (at traveler UnionSquare) (at-time t562))
-    :effect (and (not (at traveler UnionSquare)) (at traveler Presidio) (not (at-time t562)) (at-time t586))
+    :precondition (and
+      (at traveler Presidio)
+      (time-at time540)
+    )
+    :effect (and
+      (not (at traveler Presidio))
+      (at traveler UnionSquare)
+      (not (time-at time540))
+      (time-at time562)
+      (increase (total-cost) 0)
+    )
   )
 
-  (:action wait-at-presidio-540-to-675
+  (:action wait-at-unionsq-until-675
     :parameters ()
-    :precondition (and (at traveler Presidio) (at-time t540))
-    :effect (and (not (at-time t540)) (at-time t675))
+    :precondition (and
+      (at traveler UnionSquare)
+      (time-at time562)
+    )
+    :effect (and
+      (not (time-at time562))
+      (time-at time675)
+      (increase (total-cost) 0)
+    )
   )
 
-  (:action wait-at-unionsq-562-to-675
+  (:action meet-with-andrew-105
     :parameters ()
-    :precondition (and (at traveler UnionSquare) (at-time t562))
-    :effect (and (not (at-time t562)) (at-time t675))
+    :precondition (and
+      (at traveler UnionSquare)
+      (at andrew UnionSquare)
+      (time-at time675)
+    )
+    :effect (and
+      (not (time-at time675))
+      (time-at time780)
+      (met-andrew)
+      (decrease (total-cost) 1)
+    )
   )
 
-  (:action wait-at-presidio-586-to-675
+  (:action optional-wait-until-930
     :parameters ()
-    :precondition (and (at traveler Presidio) (at-time t586))
-    :effect (and (not (at-time t586)) (at-time t675))
+    :precondition (and
+      (time-at time780)
+      (at traveler UnionSquare)
+    )
+    :effect (and
+      (not (time-at time780))
+      (time-at time930)
+      (increase (total-cost) 0)
+    )
   )
 
-  (:action meet-andrew-675-to-780
+  (:action optional-wait-until-1035
     :parameters ()
-    :precondition (and (at traveler UnionSquare) (at andrew UnionSquare) (at-time t675) (not (met-andrew)))
-    :effect (and (met-andrew) (not (at-time t675)) (at-time t780) (increase (total-cost) -1))
+    :precondition (and
+      (time-at time930)
+      (at traveler UnionSquare)
+    )
+    :effect (and
+      (not (time-at time930))
+      (time-at time1035)
+      (increase (total-cost) 0)
+    )
   )
 )

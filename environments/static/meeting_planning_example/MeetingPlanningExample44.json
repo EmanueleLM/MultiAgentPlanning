@@ -1,0 +1,85 @@
+{
+    "name": "MeetingPlanningExample44",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "betty",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Pacific Heights at 09:00.",
+                "I can travel between Pacific Heights and Fisherman's Wharf and back.",
+                "I want to maximize the time spent meeting friends today while respecting travel times and availability constraints."
+            ],
+            "goal": "Plan a schedule that allows meeting Betty for at least 105 minutes while optimizing the overall meeting plan."
+        },
+        "betty": {
+            "private_information": [
+                "I will be at Fisherman's Wharf from 08:45 to 18:00.",
+                "I am willing to meet for a minimum of 105 minutes if the traveler can arrive within my availability window."
+            ],
+            "goal": "Coordinate a meeting with the traveler at Fisherman's Wharf for at least 105 minutes within my availability window."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' information and produce a final PDDL domain and problem targeting the FastDownwards solver that finds an optimal schedule satisfying the constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "09:00",
+            "locations": [
+                "Pacific Heights",
+                "Fisherman's Wharf"
+            ],
+            "travel_times_minutes": {
+                "Pacific Heights->Fisherman's Wharf": 13,
+                "Fisherman's Wharf->Pacific Heights": 12
+            }
+        },
+        "public_information": [
+            "Travel time from Pacific Heights to Fisherman's Wharf is 13 minutes.",
+            "Travel time from Fisherman's Wharf to Pacific Heights is 12 minutes.",
+            "You arrive at Pacific Heights at 09:00.",
+            "Betty will be at Fisherman's Wharf from 08:45 to 18:00.",
+            "You would like to meet Betty for a minimum of 105 minutes.",
+            "Optimize the schedule to meet as many friends as possible while respecting availability and travel times."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "describe": {
+                "input": [],
+                "output": "traveler_info",
+                "system_prompt": "You are the traveler agent. Provide a concise description of your constraints, available time, and candidate meeting windows based on the environment public information and your private information. Do not produce PDDL. Focus on enumerating feasible arrival times at meeting locations given travel times and any hard constraints you have.",
+                "prompt": "Your name is traveler. You have access to the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal is: {agents->traveler->goal} Provide candidate meeting windows, earliest feasible arrival times at Fisherman's Wharf starting from Pacific Heights at the given start time, and any assumptions you explicitly need to flag. Do not produce PDDL."
+            }
+        },
+        "betty": {
+            "describe": {
+                "input": [],
+                "output": "betty_info",
+                "system_prompt": "You are the Betty agent. Provide a concise description of your availability, flexibility, and any constraints on meeting times. Do not produce PDDL. Focus on confirming acceptable meeting windows within your availability and any minimum durations you require.",
+                "prompt": "Your name is betty. You have access to the following public information: {environment->public_information} You have the following private information: {agents->betty->private_information} Your goal is: {agents->betty->goal} Provide the confirmed available time windows at Fisherman's Wharf and state any constraints about earliest start, latest end, and minimum meeting duration. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_info",
+                    "betty_info"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate agents' descriptions and produce a complete PDDL domain and a PDDL problem suitable for the FastDownwards solver. You must include a temporal or time-representative encoding sufficient to enforce arrival times, travel durations, availability windows, and minimum meeting duration of 105 minutes. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should keep agent actions distinct and model travel and meeting as actions. Target the FastDownwards planner with appropriate requirements and metric for optimization.",
+                "prompt": "You are the orchestrator. Integrate the following inputs from the agents to produce a single PDDL domain and problem that models the meeting scheduling task and is solvable by FastDownwards. The task to achieve is: {agents->orchestrator->goal} Here is the traveler's report: {traveler_info} Here is Betty's report: {betty_info} Here is the public environment information: {environment->public_information} Build a PDDL domain and a PDDL problem that enforces the travel times Pacific Heights to Fisherman's Wharf = 13 minutes and Fisherman's Wharf to Pacific Heights = 12 minutes, the traveler's arrival at Pacific Heights at 09:00, Betty's availability from 08:45 to 18:00, and a required meeting duration of at least 105 minutes. Include an objective to maximize meeting time or otherwise prefer schedules that fulfill the minimum meeting duration. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions for the traveler and Betty are represented distinctly and the problem is compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "traveler.describe->orchestrator.pddl",
+            "betty.describe->orchestrator.pddl"
+        ]
+    }
+}

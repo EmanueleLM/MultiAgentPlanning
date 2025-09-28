@@ -1,0 +1,88 @@
+{
+    "name": "TripPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a trip that lasts 11 days in total.",
+                "I want to visit Frankfurt for 4 days.",
+                "I want to visit Bucharest for 2 days.",
+                "I want to visit Berlin for 7 days.",
+                "There is a conflict between desired city-days (13) and total available days (11).",
+                "I would like to attend an annual show in Berlin that runs from day 1 to day 7."
+            ],
+            "goal": "Provide clear, ranked preferences and flexibility for allocating the 11 days across the three cities and any constraints about event attendance."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Direct flights exist between Berlin and Frankfurt.",
+                "Direct flights exist between Frankfurt and Bucharest.",
+                "There is no direct flight between Berlin and Bucharest."
+            ],
+            "goal": "Provide a concise representation of the direct-flight connectivity and travel-time assumptions needed to commute between the cities using direct flights only."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and flight connectivity to produce a final PDDL domain and problem suitable for FastDownward that finds a valid 11-day itinerary using only direct flights and respecting the Berlin show date window."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Berlin",
+                "Frankfurt",
+                "Bucharest"
+            ],
+            "event_city": "Berlin",
+            "event_start_day": 1,
+            "event_end_day": 7
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 11 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Desired city stays: Frankfurt 4 days, Bucharest 2 days, Berlin 7 days (these preferences sum to 13 days and exceed the total available 11 days).",
+            "There is an annual show in Berlin that runs from day 1 to day 7 and you would like to attend it.",
+            "Direct flight connections: Berlin <-> Frankfurt, Frankfurt <-> Bucharest. There is no direct Berlin <-> Bucharest flight."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent. Your task is to express clear preferences and flexibility rules about how the 11 days could be allocated among the three cities and any hard constraints about attending the Berlin event. Do not output PDDL. Provide structured information about minimum, maximum, and preferred days per city, whether nights can be split across days, desired order of visits if any, and any absolute constraints (for example must-attend dates).",
+                "prompt": "Your name is traveler. You have the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Provide a concise structured summary named traveler_preferences that lists preferred days per city, flexibility ranges, any ordering preferences, and any hard constraints for the trip. Do not generate PDDL. Be explicit about conflicts and possible ways to resolve them."
+            }
+        },
+        "flight_planner": {
+            "analyze": {
+                "input": [],
+                "output": "flight_connections",
+                "system_prompt": "You are the flight_planner agent. Your task is to describe the direct-flight graph, typical travel cost in days (assume travel between connected cities consumes 0 full days but requires a travel action counted on an itinerary day), and any routing constraints imposed by the direct-flight topology. Do not output PDDL. Provide the flight graph in a clear machine-readable form and note unreachable direct connections.",
+                "prompt": "Your name is flight_planner. You have the following public information: {environment->public_information} You have the following private information: {agents->flight_planner->private_information} Your goal: {agents->flight_planner->goal} Provide a structured output named flight_connections that represents the adjacency of direct flights, travel-time assumptions, and implications for visit order given no direct Berlin-Bucharest flights."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "flight_connections"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. You must integrate the structured outputs from the other agents and produce a final PDDL domain and a PDDL problem that solves the itinerary synthesis task. The PDDL must be compatible with the FastDownward planner. Keep agent actions distinct where appropriate (for example, travel actions vs. stay actions). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the model encodes days 1..11, direct-flight-only commute constraints, city stay durations summing to 11 days, and the Berlin event requirement for attendance within days 1 to 7. If some inputs are ambiguous, state assumptions clearly and encode them in the PDDL comments.",
+                "prompt": "You are the orchestrator. Integrate the following inputs: traveler_preferences: {traveler_preferences} flight_connections: {flight_connections} Your goal: {agents->orchestrator->goal} Resolve conflicts (for example when desired city-days exceed total_days) by applying traveler-specified flexibility or, if unspecified, prefer minimizing deviation from stated preferences while ensuring feasibility. Produce a PDDL domain and a PDDL problem targeting FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->orchestrator.pddl",
+            "flight_planner.analyze->orchestrator.pddl"
+        ]
+    }
+}

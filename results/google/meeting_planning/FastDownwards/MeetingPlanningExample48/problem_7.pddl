@@ -1,0 +1,11 @@
+(define (problem meet_joseph_problem)
+  (:domain multiagent_meetings)
+  (:objects)
+  (:init
+    (at-you-fd)
+    (time-540)
+    (= (total-meetings) 0)
+  )
+  (:goal (and))
+  (:metric maximize (total-meetings))
+)

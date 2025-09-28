@@ -1,0 +1,36 @@
+(define (problem trip-istanbul-budapest-dubrovnik)
+  (:domain multiagent-trip)
+  (:objects
+    dubrovnik istanbul budapest - city
+    dubrovnik_agent istanbul_agent budapest_agent - agent
+    d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 - daycount
+  )
+  (:init
+    (at dubrovnik)
+    (unvisited dubrovnik)
+    (unvisited istanbul)
+    (unvisited budapest)
+    (day d0)
+    (direct_flight istanbul budapest)
+    (direct_flight budapest istanbul)
+    (direct_flight dubrovnik istanbul)
+    (delta d0 d1) (delta d0 d2) (delta d0 d3) (delta d0 d4) (delta d0 d5) (delta d0 d6) (delta d0 d7) (delta d0 d8) (delta d0 d9) (delta d0 d10) (delta d0 d11) (delta d0 d12)
+    (delta d1 d2) (delta d1 d3) (delta d1 d4) (delta d1 d5) (delta d1 d6) (delta d1 d7) (delta d1 d8) (delta d1 d9) (delta d1 d10) (delta d1 d11) (delta d1 d12)
+    (delta d2 d3) (delta d2 d4) (delta d2 d5) (delta d2 d6) (delta d2 d7) (delta d2 d8) (delta d2 d9) (delta d2 d10) (delta d2 d11) (delta d2 d12)
+    (delta d3 d4) (delta d3 d5) (delta d3 d6) (delta d3 d7) (delta d3 d8) (delta d3 d9) (delta d3 d10) (delta d3 d11) (delta d3 d12)
+    (delta d4 d5) (delta d4 d6) (delta d4 d7) (delta d4 d8) (delta d4 d9) (delta d4 d10) (delta d4 d11) (delta d4 d12)
+    (delta d5 d6) (delta d5 d7) (delta d5 d8) (delta d5 d9) (delta d5 d10) (delta d5 d11) (delta d5 d12)
+    (delta d6 d7) (delta d6 d8) (delta d6 d9) (delta d6 d10) (delta d6 d11) (delta d6 d12)
+    (delta d7 d8) (delta d7 d9) (delta d7 d10) (delta d7 d11) (delta d7 d12)
+    (delta d8 d9) (delta d8 d10) (delta d8 d11) (delta d8 d12)
+    (delta d9 d10) (delta d9 d11) (delta d9 d12)
+    (delta d10 d11) (delta d10 d12)
+    (delta d11 d12)
+  )
+  (:goal (and
+           (visited dubrovnik)
+           (visited istanbul)
+           (visited budapest)
+           (day d12)
+         ))
+)

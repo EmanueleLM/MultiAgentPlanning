@@ -1,0 +1,99 @@
+{
+    "name": "TripPlanningExample25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "valencia_agent",
+            "split_agent",
+            "lyon_agent",
+            "orchestrator"
+        ],
+        "valencia_agent": {
+            "private_information": [
+                "I represent the Valencia portion of the trip",
+                "The traveler wants to spend exactly 5 days in Valencia",
+                "Valencia has direct flights to and from Lyon only"
+            ],
+            "goal": "Propose arrival and departure days for Valencia consistent with the overall 16-day trip and direct-flight constraints"
+        },
+        "split_agent": {
+            "private_information": [
+                "I represent the Split portion of the trip",
+                "The traveler wants to spend 7 days in Split",
+                "There is an annual show in Split that must be attended from day 10 to day 16",
+                "Split has direct flights with Lyon only"
+            ],
+            "goal": "Propose arrival and departure days for Split such that the traveler is present for the show and stays a total of 7 days while respecting direct-flight constraints"
+        },
+        "lyon_agent": {
+            "private_information": [
+                "I represent the Lyon portion of the trip",
+                "The traveler would like to visit Lyon for 6 days",
+                "Lyon has direct flights to both Split and Valencia"
+            ],
+            "goal": "Propose arrival and departure days for Lyon consistent with the overall 16-day trip and direct-flight constraints"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the city-specific plans into a single feasible trip satisfying the 16-day duration, direct flight connectivity, city-stay requirements, and the Split show attendance. Produce final PDDL domain and problem formatted for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "only_direct_flights": true
+        },
+        "public_information": [
+            "Trip duration is 16 days in total",
+            "Cities to visit: Valencia, Split, Lyon",
+            "Desired stays: 5 days in Valencia, 7 days in Split, 6 days in Lyon",
+            "An annual show in Split must be attended from day 10 to day 16 inclusive",
+            "Only direct flights may be used to commute between cities",
+            "Direct flight connections: Lyon <-> Split and Valencia <-> Lyon"
+        ]
+    },
+    "workflow": {
+        "valencia_agent": {
+            "plan": {
+                "input": [],
+                "output": "plan_valencia",
+                "system_prompt": "You are an expert city scheduling agent for Valencia. Provide a proposed arrival day and departure day for the Valencia segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                "prompt": "Your name is valencia_agent. Here is the public information: {environment->public_information}. Your private information: {agents->valencia_agent->private_information}. Your goal: {agents->valencia_agent->goal}. Propose arrival and departure days for Valencia within the 16-day trip, ensure the length equals your required stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+            }
+        },
+        "split_agent": {
+            "plan": {
+                "input": [],
+                "output": "plan_split",
+                "system_prompt": "You are an expert city scheduling agent for Split. Provide a proposed arrival day and departure day for the Split segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                "prompt": "Your name is split_agent. Here is the public information: {environment->public_information}. Your private information: {agents->split_agent->private_information}. Your goal: {agents->split_agent->goal}. Propose arrival and departure days for Split within the 16-day trip, ensure the traveler is present for the show from day 10 to day 16 and that the length equals your required stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+            }
+        },
+        "lyon_agent": {
+            "plan": {
+                "input": [],
+                "output": "plan_lyon",
+                "system_prompt": "You are an expert city scheduling agent for Lyon. Provide a proposed arrival day and departure day for the Lyon segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                "prompt": "Your name is lyon_agent. Here is the public information: {environment->public_information}. Your private information: {agents->lyon_agent->private_information}. Your goal: {agents->lyon_agent->goal}. Propose arrival and departure days for Lyon within the 16-day trip, ensure the length equals your requested stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_valencia",
+                    "plan_split",
+                    "plan_lyon"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent orchestrator for planning and PDDL modeling. Your job is to integrate the city-level plans into a single consistent plan and produce a PDDL domain and PDDL problem file suitable for the FastDownward solver. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep actions for each city distinct and model flight edges and day constraints explicitly. Target FastDownward compatibility.",
+                "prompt": "You are the orchestrator. Received proposed plans from the city agents: {plan_valencia}, {plan_split}, {plan_lyon}. Public information: {environment->public_information}. Your goal: {agents->orchestrator->goal}. Validate and, if necessary, adjust the agents' proposed arrival and departure days to ensure a single 16-day itinerary that uses only direct flights between consecutive cities, satisfies each city's stay-length requirement, and ensures presence in Split for days 10 through 16. After integrating, produce a PDDL domain and PDDL problem that models days as discrete time steps, cities as locations, flights as actions constrained by direct connections, and a goal that the traveler visits each city for the required number of days and attends the Split show. Enclose the PDDL domain between <domain> and </domain> and the PDDL problem between <problem> and </problem>."
+            }
+        },
+        "constraints": [
+            "valencia_agent.plan->orchestrator.pddl",
+            "lyon_agent.plan->orchestrator.pddl",
+            "split_agent.plan->orchestrator.pddl"
+        ]
+    }
+}

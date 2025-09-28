@@ -1,47 +1,55 @@
-(define (domain schedule-orchestration)
+(define (domain schedule-orchestration-classical)
   (:requirements :typing :negative-preconditions :action-costs)
-  (:types agent location time)
+  (:types agent location timepoint)
   (:predicates
     (at ?a - agent ?l - location)
-    (at-time ?t - time)
-    (next16 ?t1 - time ?t2 - time)
-    (next18 ?t1 - time ?t2 - time)
-    (next15 ?t1 - time ?t2 - time)
+    (now ?t - timepoint)
+    (next ?t1 - timepoint ?t2 - timepoint)
+    (after16 ?t1 - timepoint ?t2 - timepoint)
+    (after18 ?t1 - timepoint ?t2 - timepoint)
+    (meet15-window ?t1 - timepoint ?t2 - timepoint)
     (met-james)
+  )
+  (:functions (total-cost))
+
+  (:action wait
+    :parameters (?t1 - timepoint ?t2 - timepoint)
+    :precondition (and (now ?t1) (next ?t1 ?t2))
+    :effect (and (not (now ?t1)) (now ?t2) (increase (total-cost) 1))
   )
 
   (:action travel-ggp-to-marina
-    :parameters (?t1 - time ?t2 - time)
-    :precondition (and (at-time ?t1) (at traveler golden-gate-park) (next16 ?t1 ?t2))
+    :parameters (?t1 - timepoint ?t2 - timepoint)
+    :precondition (and (now ?t1) (at traveler golden-gate-park) (after16 ?t1 ?t2))
     :effect (and
       (not (at traveler golden-gate-park))
       (at traveler marina)
-      (not (at-time ?t1))
-      (at-time ?t2)
+      (not (now ?t1))
+      (now ?t2)
+      (increase (total-cost) 16)
     )
-    :cost 16
   )
 
   (:action travel-marina-to-ggp
-    :parameters (?t1 - time ?t2 - time)
-    :precondition (and (at-time ?t1) (at traveler marina) (next18 ?t1 ?t2))
+    :parameters (?t1 - timepoint ?t2 - timepoint)
+    :precondition (and (now ?t1) (at traveler marina) (after18 ?t1 ?t2))
     :effect (and
       (not (at traveler marina))
       (at traveler golden-gate-park)
-      (not (at-time ?t1))
-      (at-time ?t2)
+      (not (now ?t1))
+      (now ?t2)
+      (increase (total-cost) 18)
     )
-    :cost 18
   )
 
-  (:action meet-james-15
-    :parameters (?t1 - time ?t2 - time)
-    :precondition (and (at-time ?t1) (at traveler marina) (next15 ?t1 ?t2))
+  (:action meet-with-james
+    :parameters (?t1 - timepoint ?t2 - timepoint)
+    :precondition (and (now ?t1) (at traveler marina) (meet15-window ?t1 ?t2))
     :effect (and
       (met-james)
-      (not (at-time ?t1))
-      (at-time ?t2)
+      (not (now ?t1))
+      (now ?t2)
+      (increase (total-cost) -9985)
     )
-    :cost -10000
   )
 )

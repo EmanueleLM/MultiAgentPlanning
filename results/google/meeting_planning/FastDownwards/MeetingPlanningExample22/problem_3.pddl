@@ -4,13 +4,15 @@
   (:objects
     traveler andrew - agent
     Presidio UnionSquare - location
-    t540 t562 t586 t675 t780 t1035 - timepoint
+    time540 time562 time675 time780 time930 time1035 - timepoint
   )
 
   (:init
     (at traveler Presidio)
     (at andrew UnionSquare)
-    (at-time t540)
+
+    (time-at time540)
+
     (= (total-cost) 0)
   )
 

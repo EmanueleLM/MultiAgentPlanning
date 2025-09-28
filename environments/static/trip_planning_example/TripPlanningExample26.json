@@ -1,0 +1,99 @@
+{
+    "name": "TripPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "porto_planner",
+            "berlin_planner",
+            "reykjavik_planner",
+            "orchestrator"
+        ],
+        "porto_planner": {
+            "private_information": [
+                "I want to stay in Porto for 7 days",
+                "I will only take direct flights to commute between cities"
+            ],
+            "goal": "Provide an itinerary fragment describing when I am in Porto and any constraints related to my stay."
+        },
+        "berlin_planner": {
+            "private_information": [
+                "I want to spend 6 days in Berlin",
+                "I will only take direct flights to commute between cities"
+            ],
+            "goal": "Provide an itinerary fragment describing when I am in Berlin and any constraints related to my stay."
+        },
+        "reykjavik_planner": {
+            "private_information": [
+                "I would like to visit Reykjavik for 5 days",
+                "I must meet a friend in Reykjavik between day 12 and day 16",
+                "I will only take direct flights to commute between cities"
+            ],
+            "goal": "Provide an itinerary fragment describing when I am in Reykjavik and constraints regarding the meeting window."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the itinerary fragments into a single trip plan for 16 days and produce a PDDL domain and problem for the FastDownwards solver that respects direct-flight constraints and the meeting window."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Porto",
+                "Berlin",
+                "Reykjavik"
+            ]
+        },
+        "public_information": [
+            "The trip lasts 16 days in total.",
+            "You may only use direct flights to commute between cities.",
+            "Direct flights are available between Berlin and Reykjavik.",
+            "Direct flights are available between Porto and Berlin.",
+            "There is no direct flight between Porto and Reykjavik."
+        ]
+    },
+    "workflow": {
+        "porto_planner": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_porto",
+                "system_prompt": "You are a travel planning expert for Porto. Provide a concise itinerary fragment describing the days you occupy Porto and any hard constraints (arrival day, departure day, number of days) based solely on your private information and the environment's public information. Do not emit PDDL.",
+                "prompt": "Your agent name is porto_planner. The environment public information is: {environment->public_information}. Your private information is: {agents->porto_planner->private_information}. Your goal is: {agents->porto_planner->goal}. Produce an itinerary fragment that states an arrival day and a departure day (both inclusive) or an explicit stay length, and any constraints that must be respected by a global planner. If information is missing, report only what you know."
+            }
+        },
+        "berlin_planner": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_berlin",
+                "system_prompt": "You are a travel planning expert for Berlin. Provide a concise itinerary fragment describing the days you occupy Berlin and any hard constraints (arrival day, departure day, number of days) based solely on your private information and the environment's public information. Do not emit PDDL.",
+                "prompt": "Your agent name is berlin_planner. The environment public information is: {environment->public_information}. Your private information is: {agents->berlin_planner->private_information}. Your goal is: {agents->berlin_planner->goal}. Produce an itinerary fragment that states an arrival day and a departure day (both inclusive) or an explicit stay length, and any constraints that must be respected by a global planner. If information is missing, report only what you know."
+            }
+        },
+        "reykjavik_planner": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_reykjavik",
+                "system_prompt": "You are a travel planning expert for Reykjavik. Provide a concise itinerary fragment describing the days you occupy Reykjavik and any hard constraints (arrival day, departure day, number of days) and explicitly indicate the meeting window constraint. Do not emit PDDL.",
+                "prompt": "Your agent name is reykjavik_planner. The environment public information is: {environment->public_information}. Your private information is: {agents->reykjavik_planner->private_information}. Your goal is: {agents->reykjavik_planner->goal}. Produce an itinerary fragment that states an arrival day and a departure day (both inclusive) or an explicit stay length, and any constraints that must be respected by a global planner. Clearly indicate the required meeting window between day 12 and day 16."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_porto",
+                    "itinerary_berlin",
+                    "itinerary_reykjavik"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in producing PDDL files compatible with the FastDownwards solver. You will produce a PDDL domain and a PDDL problem that models the trip planning task with distinct actions for each city visit and flight moves. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Integrate the itinerary fragments from the three city planners to build a single feasible trip plan for the total of 16 days. The environment public information is: {environment->public_information}. The agents' fragments are: {itinerary_porto}, {itinerary_berlin}, {itinerary_reykjavik}. The orchestrator goal is: {agents->orchestrator->goal}. Important modeling constraints: only direct flights allowed (use only the provided direct connections), the total schedule must span exactly 16 days, and the visit to Reykjavik must include a meeting with a friend on a day between day 12 and day 16 inclusive. Keep actions for different agents distinct (for example, porto_travel, berlin_travel, reykjavik_travel and flight_porto_berlin, flight_berlin_reykjavik). If the agents' requested stays exceed the total days, reconcile by producing a plan that respects the total of 16 days while honoring the meeting constraint and preferring the stated durations when possible. Think step by step and produce a complete PDDL domain and a PDDL problem targeted for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "porto_planner.itinerary->orchestrator.pddl",
+            "berlin_planner.itinerary->orchestrator.pddl",
+            "reykjavik_planner.itinerary->orchestrator.pddl"
+        ]
+    }
+}

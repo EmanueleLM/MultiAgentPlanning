@@ -1,0 +1,21 @@
+(define (domain meeting-planning)
+  (:requirements :strips :typing :durative-actions :fluents :negative-preconditions :timed-initial-literals :numeric-fluents)
+  (:types person location)
+  (:predicates (at ?p - person ?l - location) (robert-available) (busy))
+  (:functions (num-meetings))
+  (:durative-action travel-haight-to-north
+    :parameters ()
+    :duration (= ?duration 19)
+    :condition (and (at start (at traveler haight_ashbury)) (at start (not (busy))))
+    :effect (and (at start (not (at traveler haight_ashbury))) (at end (at traveler north_beach))))
+  (:durative-action travel-north-to-haight
+    :parameters ()
+    :duration (= ?duration 18)
+    :condition (and (at start (at traveler north_beach)) (at start (not (busy))))
+    :effect (and (at start (not (at traveler north_beach))) (at end (at traveler haight_ashbury))))
+  (:durative-action meet-robert
+    :parameters ()
+    :duration (= ?duration 90)
+    :condition (and (at start (at traveler north_beach)) (at start (robert-available)) (over all (robert-available)) (over all (at traveler north_beach)))
+    :effect (and (at start (busy)) (at end (not (busy))) (at end (increase (num-meetings) 1))))
+)

@@ -1,0 +1,21 @@
+(define (domain trip-planning)
+  (:requirements :typing :strips)
+  (:types city day count)
+  (:predicates
+    (at ?c - city ?d - day)
+    (connected ?c1 - city ?c2 - city)
+    (next ?d1 - day ?d2 - day)
+    (desired ?c - city ?n - count)
+    (allocated ?c - city ?n - count)
+  )
+  (:action fly
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?from ?d1) (next ?d1 ?d2) (connected ?from ?to))
+    :effect (and (not (at ?from ?d1)) (at ?to ?d2))
+  )
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?c ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?c ?d1)) (at ?c ?d2))
+  )
+)

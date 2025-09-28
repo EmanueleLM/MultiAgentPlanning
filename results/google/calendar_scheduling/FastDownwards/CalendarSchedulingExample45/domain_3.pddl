@@ -1,0 +1,27 @@
+(define (domain calendar-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types person slot)
+  (:constants emily brian gerald julia logan judith michael - person)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (scheduled)
+    (meeting-at ?s - slot)
+  )
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (not (scheduled))
+      (available emily ?s)
+      (available brian ?s)
+      (available gerald ?s)
+      (available julia ?s)
+      (available logan ?s)
+      (available judith ?s)
+      (available michael ?s)
+    )
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+    )
+  )
+)

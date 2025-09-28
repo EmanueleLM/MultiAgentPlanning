@@ -1,0 +1,40 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types agent slot)
+  (:constants karen brandon donald kelly - agent)
+  (:predicates
+    (available ?a - agent ?s - slot)
+    (attended ?a - agent ?s - slot)
+    (scheduled ?s - slot)
+  )
+  (:action attend-karen
+    :parameters (?s - slot)
+    :precondition (available karen ?s)
+    :effect (attended karen ?s)
+  )
+  (:action attend-brandon
+    :parameters (?s - slot)
+    :precondition (available brandon ?s)
+    :effect (attended brandon ?s)
+  )
+  (:action attend-donald
+    :parameters (?s - slot)
+    :precondition (available donald ?s)
+    :effect (attended donald ?s)
+  )
+  (:action attend-kelly
+    :parameters (?s - slot)
+    :precondition (available kelly ?s)
+    :effect (attended kelly ?s)
+  )
+  (:action finalize
+    :parameters (?s - slot)
+    :precondition (and
+      (attended karen ?s)
+      (attended brandon ?s)
+      (attended donald ?s)
+      (attended kelly ?s)
+    )
+    :effect (scheduled ?s)
+  )
+)

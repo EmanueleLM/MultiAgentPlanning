@@ -1,0 +1,60 @@
+(define (domain trip_domain)
+  (:requirements :strips :typing)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)
+    (next ?d1 - day ?d2 - day)
+    (direct_flight ?from - city ?to - city)
+    (workshop_attended)
+  )
+  (:action prague_stay
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at prague ?d1) (next ?d1 ?d2))
+    :effect (and (at prague ?d2))
+  )
+  (:action prague_fly_to_vienna
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at prague ?d1) (next ?d1 ?d2) (direct_flight prague vienna))
+    :effect (and (at vienna ?d2) (not (at prague ?d2)))
+  )
+  (:action vienna_stay
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at vienna ?d1) (next ?d1 ?d2))
+    :effect (and (at vienna ?d2))
+  )
+  (:action vienna_fly_to_prague
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at vienna ?d1) (next ?d1 ?d2) (direct_flight vienna prague))
+    :effect (and (at prague ?d2) (not (at vienna ?d2)))
+  )
+  (:action vienna_fly_to_porto
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at vienna ?d1) (next ?d1 ?d2) (direct_flight vienna porto))
+    :effect (and (at porto ?d2) (not (at vienna ?d2)))
+  )
+  (:action porto_stay
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at porto ?d1) (next ?d1 ?d2))
+    :effect (and (at porto ?d2))
+  )
+  (:action porto_fly_to_vienna
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at porto ?d1) (next ?d1 ?d2) (direct_flight porto vienna))
+    :effect (and (at vienna ?d2) (not (at porto ?d2)))
+  )
+  (:action attend_workshop_prague_d1
+    :parameters ()
+    :precondition (and (at prague d1))
+    :effect (and (workshop_attended))
+  )
+  (:action attend_workshop_prague_d2
+    :parameters ()
+    :precondition (and (at prague d2))
+    :effect (and (workshop_attended))
+  )
+  (:action attend_workshop_prague_d3
+    :parameters ()
+    :precondition (and (at prague d3))
+    :effect (and (workshop_attended))
+  )
+)

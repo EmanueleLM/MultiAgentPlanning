@@ -1,59 +1,54 @@
-(define (domain sf-meet-discrete)
-  (:requirements :strips :typing :negative-preconditions :action-costs)
+(define (domain sf-meet-classical)
+  (:requirements :typing :strips :equality)
   (:types agent location time)
   (:predicates
-    (at-visitor ?l - location ?t - time)
-    (at-jessica ?l - location ?t - time)
-    (available-visitor ?t - time)
-    (available-jessica ?t - time)
-    (next ?t1 - time ?t2 - time)
-    (slot15 ?t1 - time ?t2 - time)
-    (span90 ?t1 - time ?t2 - time)
+    (current-time ?t - time)
+    (at-visitor ?l - location)
+    (jessica-at ?l - location)
+    (after15 ?t1 ?t2 - time)
+    (jessica-available-interval ?t1 ?t2 - time)
     (met)
   )
 
-  (:action advance-visitor
-    :parameters (?loc - location ?t1 - time ?t2 - time)
-    :precondition (and (at-visitor ?loc ?t1) (next ?t1 ?t2))
-    :effect (and (not (at-visitor ?loc ?t1)) (at-visitor ?loc ?t2))
-    :cost 0
-  )
-
   (:action travel-visitor
-    :parameters (?from ?to - location ?t1 - time ?t2 - time)
-    :precondition (and (at-visitor ?from ?t1) (slot15 ?t1 ?t2))
-    :effect (and (not (at-visitor ?from ?t1)) (at-visitor ?to ?t2))
-    :cost 15
+    :parameters (?from - location ?to - location ?t1 - time ?t2 - time)
+    :precondition (and
+      (current-time ?t1)
+      (at-visitor ?from)
+      (after15 ?t1 ?t2)
+    )
+    :effect (and
+      (not (at-visitor ?from))
+      (at-visitor ?to)
+      (not (current-time ?t1))
+      (current-time ?t2)
+    )
   )
 
-  (:action advance-jessica
-    :parameters (?loc - location ?t1 - time ?t2 - time)
-    :precondition (and (at-jessica ?loc ?t1) (next ?t1 ?t2))
-    :effect (and (not (at-jessica ?loc ?t1)) (at-jessica ?loc ?t2))
-    :cost 0
-  )
-
-  (:action travel-jessica
-    :parameters (?from ?to - location ?t1 - time ?t2 - time)
-    :precondition (and (at-jessica ?from ?t1) (slot15 ?t1 ?t2))
-    :effect (and (not (at-jessica ?from ?t1)) (at-jessica ?to ?t2))
-    :cost 15
+  (:action wait
+    :parameters (?t1 - time ?t2 - time)
+    :precondition (and
+      (current-time ?t1)
+      (after15 ?t1 ?t2)
+    )
+    :effect (and
+      (not (current-time ?t1))
+      (current-time ?t2)
+    )
   )
 
   (:action meet-visitor-jessica
     :parameters (?loc - location ?tstart - time ?tend - time)
     :precondition (and
-      (at-visitor ?loc ?tstart)
-      (at-visitor ?loc ?tend)
-      (at-jessica ?loc ?tstart)
-      (at-jessica ?loc ?tend)
-      (available-visitor ?tstart)
-      (available-visitor ?tend)
-      (available-jessica ?tstart)
-      (available-jessica ?tend)
-      (span90 ?tstart ?tend)
+      (current-time ?tstart)
+      (at-visitor ?loc)
+      (jessica-at ?loc)
+      (jessica-available-interval ?tstart ?tend)
     )
-    :effect (and (met))
-    :cost 0
+    :effect (and
+      (met)
+      (not (current-time ?tstart))
+      (current-time ?tend)
+    )
   )
 )

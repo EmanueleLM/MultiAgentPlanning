@@ -1,0 +1,79 @@
+{
+    "name": "TripPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flights_office",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Total trip length 17 days",
+                "I plan to stay in Lyon for 5 days",
+                "I would like to visit Bucharest for 7 days",
+                "I want to spend 7 days in Manchester",
+                "I must visit relatives in Lyon between day 13 and day 17"
+            ],
+            "goal": "Produce a feasible 17-day itinerary visiting Lyon, Bucharest, and Manchester while satisfying stay and relatives constraints using only direct flights."
+        },
+        "flights_office": {
+            "private_information": [
+                "Direct flights exist between Manchester and Bucharest",
+                "Direct flights exist between Bucharest and Lyon",
+                "No direct flight is available between Manchester and Lyon"
+            ],
+            "goal": "Provide a structured description of available direct flight connections and implications for feasible city-to-city commutes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate preferences and flight connectivity to produce a PDDL domain and problem suitable for the FastDownward solver that yields a feasible 17-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 17
+        },
+        "public_information": [
+            "Trip length is 17 days in total",
+            "You only take direct flights to commute between cities",
+            "Planned stays: Lyon 5 days, Bucharest 7 days, Manchester 7 days",
+            "Relatives in Lyon must be visited between day 13 and day 17 inclusive",
+            "Direct flight connections: Manchester <-> Bucharest, Bucharest <-> Lyon"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "prefs_traveler",
+                "system_prompt": "You are a travel preferences expert. Summarize the traveler's stay durations and hard constraints in a concise structured format that other modules can consume. Do not output PDDL. Present durations, required relative visit window, and any conflicts you detect.",
+                "prompt": "Your name is traveler. You have the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Produce a clear structured summary of stays, hard date windows, and any contradictory requirements. Output should be machine readable and not PDDL."
+            }
+        },
+        "flights_office": {
+            "flights_info": {
+                "input": [],
+                "output": "flights_data",
+                "system_prompt": "You are a flight connectivity expert. Provide a structured description of direct flight links between cities and indicate which direct commutes are possible or impossible. Explain implications for sequencing visits. Do not output PDDL.",
+                "prompt": "Your name is flights_office. You have the following public information: {environment->public_information} You have the following private information: {agents->flights_office->private_information} Your goal: {agents->flights_office->goal} Produce a structured report of direct flight edges, reachable transitions, and recommendations for feasible visit sequences using only direct flights. Output should be machine readable and not PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "prefs_traveler",
+                    "flights_data"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning targeting the FastDownward planner. Integrate the structured outputs from other agents and produce a complete PDDL domain and a PDDL problem file that represent the 17-day trip planning task. The PDDL should model days, city visits, travel actions constrained to direct flights only, and the relatives visit window. Keep agent-level data distinct when modeling actions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownward.",
+                "prompt": "You are the orchestrator. Your inputs are the traveler's preferences and the flights office connectivity. Use this information to build a PDDL domain and problem for the FastDownward solver that finds a 17-day itinerary visiting Lyon, Bucharest, and Manchester, respecting stays and the relatives visit window, and using only direct flights. Here is the traveler's structured summary: {prefs_traveler} Here is the flights connectivity report: {flights_data} Resolve any conflicts, choose feasible sequencing consistent with direct flights, and output the PDDL domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->orchestrator.pddl",
+            "flights_office.flights_info->orchestrator.pddl"
+        ]
+    }
+}

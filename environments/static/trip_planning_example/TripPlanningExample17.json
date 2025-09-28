@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "copenhagen_planner",
+            "vienna_planner",
+            "lyon_planner",
+            "orchestrator"
+        ],
+        "copenhagen_planner": {
+            "private_information": [
+                "I would like to stay in Copenhagen for 5 days.",
+                "I must attend a conference in Copenhagen on day 1 and on day 5.",
+                "I require only direct flights to move between cities."
+            ],
+            "goal": "Provide an availability fragment and constraints for Copenhagen so the orchestrator can build a feasible 11-day trip using only direct flights."
+        },
+        "vienna_planner": {
+            "private_information": [
+                "I would like to stay in Vienna for 4 days.",
+                "I am connected by direct flights to both Copenhagen and Lyon.",
+                "I require only direct flights to move between cities."
+            ],
+            "goal": "Provide an availability fragment and constraints for Vienna so the orchestrator can build a feasible 11-day trip using only direct flights."
+        },
+        "lyon_planner": {
+            "private_information": [
+                "I would like to stay in Lyon for 4 days.",
+                "I am connected by direct flights to Vienna.",
+                "I require only direct flights to move between cities."
+            ],
+            "goal": "Provide an availability fragment and constraints for Lyon so the orchestrator can build a feasible 11-day trip using only direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the fragments from city planners and produce a final PDDL domain and PDDL problem suitable for the FastDownwards solver that schedules an 11-day trip visiting Copenhagen, Vienna and Lyon using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Copenhagen",
+                "Vienna",
+                "Lyon"
+            ]
+        },
+        "public_information": [
+            "You plan to visit three European cities for a total of 11 days.",
+            "Desired stays (informational): Copenhagen 5 days, Vienna 4 days, Lyon 4 days.",
+            "Direct flights exist between Copenhagen and Vienna, and between Vienna and Lyon.",
+            "Only direct flights may be used to commute between cities.",
+            "There is a conference in Copenhagen on day 1 and on day 5.",
+            "The orchestrator must reconcile the desired stays with the 11-day total and produce a feasible itinerary."
+        ]
+    },
+    "workflow": {
+        "copenhagen_planner": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_copenhagen",
+                "system_prompt": "You are a city availability contributor. Provide a structured fragment describing constraints and preferences for Copenhagen that the orchestrator can use. Do not emit PDDL. Include required stay days, any fixed event days, earliest possible arrival day, latest possible departure day if applicable, and allowed direct connections to other cities.",
+                "prompt": "Your name is copenhagen_planner. Use the environment public information and your private information to produce a concise structured fragment for Copenhagen. The fragment should include fields such as city, desired_stay, fixed_days (events that must be attended on specific trip days), allowed_connections, and any flexibility notes. Keep the fragment factual and do not make scheduling decisions that require global knowledge beyond your constraints."
+            }
+        },
+        "vienna_planner": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_vienna",
+                "system_prompt": "You are a city availability contributor. Provide a structured fragment describing constraints and preferences for Vienna that the orchestrator can use. Do not emit PDDL. Include required stay days, earliest arrival, latest departure, and allowed direct connections.",
+                "prompt": "Your name is vienna_planner. Use the environment public information and your private information to produce a concise structured fragment for Vienna. The fragment should include fields such as city, desired_stay, allowed_connections, and any flexibility notes. Keep the fragment factual and avoid making global scheduling choices that the orchestrator must resolve."
+            }
+        },
+        "lyon_planner": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_lyon",
+                "system_prompt": "You are a city availability contributor. Provide a structured fragment describing constraints and preferences for Lyon that the orchestrator can use. Do not emit PDDL. Include required stay days, earliest arrival, latest departure, and allowed direct connections.",
+                "prompt": "Your name is lyon_planner. Use the environment public information and your private information to produce a concise structured fragment for Lyon. The fragment should include fields such as city, desired_stay, allowed_connections, and any flexibility notes. Keep the fragment factual and avoid making global scheduling choices that the orchestrator must resolve."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "fragment_copenhagen",
+                    "fragment_vienna",
+                    "fragment_lyon"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling. Your task is to integrate the fragments from the city planners and produce a complete PDDL domain and PDDL problem file that encodes the 11-day trip scheduling problem. Target the FastDownwards solver conventions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents (city movements, stays, events) distinct and clearly named. Resolve inconsistencies between desired stays and the total day budget by producing a feasible schedule that honors fixed event days (conference in Copenhagen on day 1 and day 5) and uses only direct flights.",
+                "prompt": "You are the orchestrator. You will receive structured fragments from three city planners describing constraints for Copenhagen, Vienna, and Lyon. Use those fragments together with the public information that the trip must last 11 days and that only direct flights between Copenhagen-Vienna and Vienna-Lyon are allowed. Build a PDDL domain and problem that encodes: days as a discrete timeline of 11 days, actions to fly only along the allowed direct connections, actions to stay in a city for a day, and hard constraints for required conference days in Copenhagen. Produce a PDDL domain and a PDDL problem that FastDownwards can solve. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "copenhagen_planner.plan_fragment->orchestrator.pddl",
+            "vienna_planner.plan_fragment->orchestrator.pddl",
+            "lyon_planner.plan_fragment->orchestrator.pddl"
+        ]
+    }
+}

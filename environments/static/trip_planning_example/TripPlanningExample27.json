@@ -1,0 +1,94 @@
+{
+    "name": "TripPlanningExample27",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_agent",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a 14 day trip in total.",
+                "I want to visit Santorini for 3 days.",
+                "I plan to visit relatives in Santorini between day 12 and day 14 (inclusive).",
+                "I plan to stay in Amsterdam for 7 days.",
+                "I would like to visit Istanbul for 6 days."
+            ],
+            "goal": "Provide clear preferences and any hard or soft scheduling constraints for the 14 day trip so an orchestrator can construct a feasible itinerary."
+        },
+        "flight_agent": {
+            "private_information": [
+                "Direct flights exist between Amsterdam and Santorini.",
+                "Direct flights exist between Istanbul and Amsterdam.",
+                "There are no direct flights between Istanbul and Santorini."
+            ],
+            "goal": "Provide the connectivity information and any assumptions about flight availability needed to plan commutes using only direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and flight connectivity to produce a PDDL domain and problem formatted for the FastDownwards solver that yields a valid 14-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "cities": [
+                "Amsterdam",
+                "Santorini",
+                "Istanbul"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Santorini"
+                ],
+                [
+                    "Istanbul",
+                    "Amsterdam"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan to visit three European cities over a total of 14 days.",
+            "Available cities are Amsterdam, Santorini, and Istanbul.",
+            "Direct flights exist between Amsterdam and Santorini, and between Istanbul and Amsterdam.",
+            "There are no direct flights between Istanbul and Santorini.",
+            "Travel must use only direct flights to commute between cities."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "analyze": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent who knows personal preferences and constraints. Provide a structured summary of the travel preferences and indicate which constraints are hard (must be satisfied) and which are flexible. Do not produce PDDL. Output a concise, structured description that the orchestrator can consume.",
+                "prompt": "You are the traveler. Given your private information and the public information about the trip, produce a structured summary of desired stays per city, any fixed date requirements, and notes about flexibility or conflicts. Identify any contradictions (for example, total days versus sum of desired stays) and mark which requirements are negotiable."
+            }
+        },
+        "flight_agent": {
+            "analyze": {
+                "input": [],
+                "output": "flight_connections",
+                "system_prompt": "You are the flight connectivity agent. Describe the flight graph, allowed direct commutes, and any simple assumptions about flight frequency or feasibility that are needed for planning (for example, assume at least one direct flight per day on allowed links). Do not produce PDDL. Output a clear representation of connections the orchestrator can use.",
+                "prompt": "You are the flight agent. Given the public information about direct flights, produce a concise connectivity specification (nodes, directed or undirected edges as appropriate) and indicate any assumptions about daily availability that the orchestrator should assume when building an itinerary."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "flight_connections"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent planning problems in PDDL targeted to the FastDownwards solver. Integrate the traveler's preferences and the flight connectivity information to produce a complete PDDL domain and a PDDL problem file that models days, city stays, and direct-flight commutes. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions remain distinct and clearly model flights and stays. The produced PDDL must be compatible with FastDownwards.",
+                "prompt": "You are the orchestrator. Use the traveler summary and the flight connectivity specification to create a PDDL domain and problem that encode: a 14-day planning horizon, cities Amsterdam, Santorini, and Istanbul, allowed direct flights only between Amsterdam-Santorini and Amsterdam-Istanbul, the traveler's requested durations and the hard requirement that the traveler be in Santorini on days 12 through 14 to visit relatives. Resolve any conflicts by making minimal, explicit adjustments and document any assumptions within comments in the PDDL problem file. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.analyze->orchestrator.pddl",
+            "flight_agent.analyze->orchestrator.pddl"
+        ]
+    }
+}

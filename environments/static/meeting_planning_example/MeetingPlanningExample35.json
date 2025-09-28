@@ -1,0 +1,78 @@
+{
+    "name": "MeetingPlanningExample35",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "jason",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Bayview at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I can travel between neighborhoods but travel takes time"
+            ],
+            "goal": "Meet as many friends as possible starting from Bayview at 09:00 while respecting travel times and meeting duration constraints"
+        },
+        "jason": {
+            "private_information": [
+                "I will be at Chinatown from 08:30 to 12:30",
+                "My location for meeting is Chinatown"
+            ],
+            "goal": "Be available to meet the traveler for at least 90 minutes between 08:30 and 12:30 in Chinatown"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' schedules and produce a PDDL domain and problem for the FastDownward solver that finds an optimal meeting schedule respecting all constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit_minutes": 1,
+            "start_time": "09:00"
+        },
+        "public_information": [
+            "Locations: Bayview, Chinatown",
+            "Travel time Bayview to Chinatown is 18 minutes",
+            "Travel time Chinatown to Bayview is 22 minutes",
+            "You arrive at Bayview at 09:00",
+            "Jason is at Chinatown from 08:30 to 12:30",
+            "Desired minimum meeting duration with Jason is 90 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "schedule_proposal": {
+                "input": [],
+                "output": "schedule_traveler",
+                "system_prompt": "You are the traveler planning your day in San Francisco. Using the public information about locations, travel times, and your arrival at Bayview at 09:00, produce candidate meeting time windows when you could meet friends. Include travel durations to reach meeting locations and feasible start and end times for each proposed meeting. Do not produce PDDL output. Provide clear, machine-parsable proposals.",
+                "prompt": "Your name is traveler. You have the following public information: {environment->public_information}. You know: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Provide candidate meeting windows and associated travel times from your arrival location. Do not emit PDDL."
+            }
+        },
+        "jason": {
+            "availability_report": {
+                "input": [],
+                "output": "schedule_jason",
+                "system_prompt": "You are Jason providing your availability for meetings. State your available time window(s), the meeting location, and any preferences or constraints. Do not produce PDDL output. Provide clear, machine-parsable availability information.",
+                "prompt": "Your name is jason. You have the following public information: {environment->public_information}. You know: {agents->jason->private_information}. Your goal: {agents->jason->goal}. Provide your availability window(s) and any constraints. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_traveler",
+                    "schedule_jason"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Integrate schedule proposals and availability reports from other agents into a single PDDL domain and problem targeting the FastDownward solver. The PDDL must capture time windows, travel durations, meeting duration minimums, and keep agent actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Produce output directly usable by FastDownward.",
+                "prompt": "You are the orchestrator. You will receive the traveler's schedule proposals and Jason's availability report. Integrate those inputs to produce a PDDL domain and problem that encodes locations, travel durations (Bayview->Chinatown 18, Chinatown->Bayview 22), the traveler's arrival at Bayview at 09:00, Jason's availability from 08:30 to 12:30, and the requirement to meet Jason for at least 90 minutes. The objective should prefer meeting the maximum number of friends and satisfy the minimum meeting duration. Keep actions of different agents distinct. Enclose the PDDL domain within <domain></domain> and the PDDL problem within <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.schedule_proposal->orchestrator.pddl",
+            "jason.availability_report->orchestrator.pddl"
+        ]
+    }
+}

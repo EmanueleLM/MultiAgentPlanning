@@ -1,0 +1,20 @@
+(define (domain trip-planning)
+  (:requirements :strips :typing)
+  (:types day city)
+  (:predicates
+    (assigned ?d - day ?c - city)
+    (free ?d - day)
+    (flight ?c1 - city ?c2 - city)
+    (succ ?d1 - day ?d2 - day)
+  )
+  (:action stay
+    :parameters (?d - day ?d2 - day ?c - city)
+    :precondition (and (assigned ?d ?c) (succ ?d ?d2) (free ?d2))
+    :effect (and (assigned ?d2 ?c) (not (free ?d2)))
+  )
+  (:action travel
+    :parameters (?d - day ?d2 - day ?from - city ?to - city)
+    :precondition (and (assigned ?d ?from) (succ ?d ?d2) (free ?d2) (flight ?from ?to))
+    :effect (and (assigned ?d2 ?to) (not (free ?d2)))
+  )
+)

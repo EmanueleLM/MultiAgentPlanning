@@ -1,0 +1,28 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing)
+  (:types participant slot)
+  (:constants rachel katherine kelly cynthia anthony ryan richard - participant)
+  (:predicates
+    (available ?p - participant ?s - slot)
+    (identified ?s - slot)
+    (meeting-at ?s - slot)
+  )
+  (:action identify-slot
+    :parameters (?s - slot)
+    :precondition (and
+      (available rachel ?s)
+      (available katherine ?s)
+      (available kelly ?s)
+      (available cynthia ?s)
+      (available anthony ?s)
+      (available ryan ?s)
+      (available richard ?s)
+    )
+    :effect (identified ?s)
+  )
+  (:action assign-slot
+    :parameters (?s - slot)
+    :precondition (identified ?s)
+    :effect (meeting-at ?s)
+  )
+)

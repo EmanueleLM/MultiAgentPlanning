@@ -1,0 +1,83 @@
+{
+    "name": "TripPlanningExample14",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_planner",
+            "flight_checker",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I plan to visit Lyon, Krakow, and Frankfurt during a 10 day trip",
+                "I would like to spend 7 days in Lyon",
+                "I plan to stay in Krakow for 3 days and attend an annual show there from day 8 to day 10",
+                "I would like to visit Frankfurt for 2 days"
+            ],
+            "goal": "Propose a feasible allocation of the 10 days across the three cities that respects the fixed event in Krakow and the preference priorities."
+        },
+        "flight_checker": {
+            "private_information": [
+                "Direct flight connections are available between Lyon and Frankfurt",
+                "Direct flight connections are available between Frankfurt and Krakow",
+                "There is no direct flight between Lyon and Krakow"
+            ],
+            "goal": "Provide feasible sequences of direct flights that allow commuting between the cities according to an itinerary."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the itinerary allocation and direct-flight feasibility to produce a final formal planning model (PDDL domain and PDDL problem) suitable for the FastDownward solver that realizes a 10-day trip using only direct flights and respecting the Krakow event and day limits."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10,
+            "cities": [
+                "Lyon",
+                "Frankfurt",
+                "Krakow"
+            ]
+        },
+        "public_information": [
+            "The trip lasts 10 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Desired stays: Lyon 7 days, Krakow 3 days, Frankfurt 2 days (these are preferences and may conflict with total duration).",
+            "There is an annual show in Krakow that occurs on days 8 to 10 and must be attended while in Krakow.",
+            "Direct flights exist between Lyon and Frankfurt and between Frankfurt and Krakow. There is no direct Lyon-Krakow flight."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "analyze": {
+                "input": [],
+                "output": "itinerary_plan",
+                "system_prompt": "You are an expert travel itinerary analyst. Provide a candidate allocation of the available 10 days across the cities given the public information and your private preferences. Do not emit PDDL. Explain which days would be spent in each city, highlight any conflicts with total days, and, if necessary, propose priority choices to resolve conflicts.",
+                "prompt": "Your name is itinerary_planner. You have the public information from the environment and your private information. Your goal is to propose a feasible allocation of the 10 days across Lyon, Frankfurt, and Krakow, taking into account the fixed event in Krakow on days 8 to 10 and the preference ordering. Produce a clear day-by-day allocation and note any unresolved conflicts or assumptions required to make the plan feasible. Output this as a structured, machine-readable itinerary summary named itinerary_plan."
+            }
+        },
+        "flight_checker": {
+            "check": {
+                "input": [],
+                "output": "flight_info",
+                "system_prompt": "You are an expert on flight connectivity and constraints. Given the list of cities and known direct connections, provide feasible direct-flight itineraries that connect the city sequence proposed by the itinerary planner. Do not emit PDDL. Provide the minimal required flight hops and indicate any impossibilities due to missing direct links.",
+                "prompt": "Your name is flight_checker. You have the public information about direct flights and your private information. Your goal is to produce feasible sequences of direct flights that connect visits between Lyon, Frankfurt, and Krakow in the order implied by a proposed itinerary, or indicate how to route through Frankfurt when direct flights are not available. Output a structured summary named flight_info describing the flight legs for each proposed city transition."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_plan",
+                    "flight_info"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling. Your task is to integrate the itinerary allocation and flight feasibility information produced by other agents and produce a complete PDDL domain and PDDL problem for the FastDownward planner. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep actions from different agents distinct where relevant and ensure the model enforces the use of only direct flights and the attendance constraint in Krakow on days 8 to 10. Target the FastDownward solver format and precautions.",
+                "prompt": "You are the orchestrator. You will receive the itinerary summary named itinerary_plan and the flight connectivity summary named flight_info. Integrate them into a single PDDL domain and problem that models days as discrete time steps from 1 to 10, locations as city states, movement actions that correspond to direct flights, stay actions that allocate days to cities, and a constraint that the agent must be in Krakow on days 8 to 10. If the inputs contain conflicting preferences (for example, total requested days exceed 10), prioritize the non-negotiable constraint of attending the Krakow show and then the largest preferences. Keep movement actions and stay actions clearly distinguishable. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be suitable to run with the FastDownward planner."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.analyze->orchestrator.pddl",
+            "flight_checker.check->orchestrator.pddl"
+        ]
+    }
+}

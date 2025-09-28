@@ -1,43 +1,43 @@
-(define (domain meeting-domain)
-  (:requirements :strips :typing :negative-preconditions :adl :action-costs)
-  (:types person location time)
-  (:constants bayview goldengatepark - location)
+(define (domain meeting-planning)
+  (:requirements :strips :negative-preconditions :typing :action-costs)
+  (:types agent location time)
   (:predicates
-    (at ?p - person ?l - location ?t - time)
-    (met ?p - person ?q - person)
-    (travel_bayview_ggp ?t1 - time ?t2 - time)
-    (travel_ggp_bayview ?t1 - time ?t2 - time)
-    (span ?t1 - time ?t2 - time)
-    (span90 ?t1 - time ?t2 - time)
-    (available ?p - person ?t1 - time ?t2 - time)
+    (at ?a - agent ?l - location)
+    (now ?t - time)
+    (met ?a - agent ?b - agent)
+    (travel-time ?t1 - time ?t2 - time)
+    (meeting-span ?t1 - time ?t2 - time)
   )
-  (:functions (total-cost))
-  (:action travel-bayview-to-ggp
-    :parameters (?p - person ?t1 - time ?t2 - time)
-    :precondition (and (at ?p bayview ?t1) (travel_bayview_ggp ?t1 ?t2))
-    :effect (and (not (at ?p bayview ?t1)) (at ?p goldengatepark ?t2) (increase (total-cost) 22))
-  )
-  (:action travel-ggp-to-bayview
-    :parameters (?p - person ?t1 - time ?t2 - time)
-    :precondition (and (at ?p goldengatepark ?t1) (travel_ggp_bayview ?t1 ?t2))
-    :effect (and (not (at ?p goldengatepark ?t1)) (at ?p bayview ?t2) (increase (total-cost) 23))
-  )
-  (:action stay
-    :parameters (?p - person ?l - location ?t1 - time ?t2 - time)
-    :precondition (and (at ?p ?l ?t1) (span ?t1 ?t2))
-    :effect (and (not (at ?p ?l ?t1)) (at ?p ?l ?t2))
-  )
-  (:action meet
-    :parameters (?t1 - time ?t2 - time ?l - location)
+
+  (:action travel-bayview-to-golden
+    :parameters ()
     :precondition (and
-      (at traveler ?l ?t1)
-      (at barbara ?l ?t1)
-      (at traveler ?l ?t2)
-      (at barbara ?l ?t2)
-      (span90 ?t1 ?t2)
-      (available barbara ?t1 ?t2)
-      (not (met traveler barbara))
+      (now t540)
+      (at traveler bayview)
+      (travel-time t540 t562)
     )
-    :effect (met traveler barbara)
+    :effect (and
+      (not (now t540))
+      (now t562)
+      (not (at traveler bayview))
+      (at traveler golden_gate_park)
+    )
+    :cost 22
+  )
+
+  (:action meet-traveler-barbara
+    :parameters ()
+    :precondition (and
+      (now t562)
+      (at traveler golden_gate_park)
+      (at barbara golden_gate_park)
+      (meeting-span t562 t652)
+    )
+    :effect (and
+      (not (now t562))
+      (now t652)
+      (met traveler barbara)
+    )
+    :cost 0
   )
 )

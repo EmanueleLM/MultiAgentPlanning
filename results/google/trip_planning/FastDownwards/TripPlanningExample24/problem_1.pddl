@@ -2,36 +2,27 @@
   (:domain europe-trip)
   (:objects
     florence amsterdam riga - city
-    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 - day
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 - day
   )
   (:init
-    (on florence day1)
+    (= (total-cost) 0)
 
-    (free day2)
-    (free day3)
-    (free day4)
-    (free day5)
-    (free day6)
-    (free day7)
-    (free day8)
-    (free day9)
-    (free day10)
-    (free day11)
-    (free day12)
-    (free day13)
+    (at florence d1)
+    (assigned d1)
+    (current d1)
 
-    (next day1 day2)
-    (next day2 day3)
-    (next day3 day4)
-    (next day4 day5)
-    (next day5 day6)
-    (next day6 day7)
-    (next day7 day8)
-    (next day8 day9)
-    (next day9 day10)
-    (next day10 day11)
-    (next day11 day12)
-    (next day12 day13)
+    (next d1 d2)
+    (next d2 d3)
+    (next d3 d4)
+    (next d4 d5)
+    (next d5 d6)
+    (next d6 d7)
+    (next d7 d8)
+    (next d8 d9)
+    (next d9 d10)
+    (next d10 d11)
+    (next d11 d12)
+    (next d12 d13)
 
     (connected florence florence)
     (connected amsterdam amsterdam)
@@ -42,24 +33,29 @@
 
     (connected amsterdam riga)
     (connected riga amsterdam)
-
-    (= (total-cost) 0)
   )
 
-  (:goal (and
-    (on florence day1)
-    (on florence day2)
-    (on florence day3)
-    (on florence day4)
-    (on amsterdam day5)
-    (on amsterdam day6)
-    (on amsterdam day7)
-    (on amsterdam day8)
-    (on amsterdam day9)
-    (on riga day10)
-    (on riga day11)
-    (on riga day12)
-    (on riga day13)
-  ))
+  (:goal
+    (and
+      (at florence d1)
+      (at florence d2)
+      (at florence d3)
+      (at florence d4)
+
+      (at amsterdam d5)
+      (at amsterdam d6)
+      (at amsterdam d7)
+      (at amsterdam d8)
+      (at amsterdam d9)
+
+      (at riga d10)
+      (at riga d11)
+      (at riga d12)
+      (at riga d13)
+
+      (current d13)
+    )
+  )
+
   (:metric minimize (total-cost))
 )

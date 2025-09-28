@@ -6823,3 +6823,1481 @@ ITERATION 4
 }
 ================================================================================
 
+
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 13 days in total. You only take direct flights to commute between cities. You plan to stay in Florence for 4 days. You have to attend a workshop in Florence between day 1 and day 4. You would like to visit Amsterdam for 6 days. You would like to visit Riga for 5 days.
+
+Here are the cities that have direct flights:
+Florence and Amsterdam, Amsterdam and Riga.
+
+Find a trip plan of visiting the cities for 13 days by taking direct flights to commute between them.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 13 days in total. You only take direct flights to commute between cities. You plan to stay in Florence for 4 days. You have to attend a workshop in Florence between day 1 and day 4. You would like to visit Amsterdam for 6 days. You would like to visit Riga for 5 days.
+
+Here are the cities that have direct flights:
+Florence and Amsterdam, Amsterdam and Riga.
+
+Find a trip plan of visiting the cities for 13 days by taking direct flights to commute between them.
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain europe-trip)
+  (:requirements :strips :typing :fluents :negative-preconditions :conditional-effects)
+  (:types city)
+  (:predicates
+    (at ?c - city)                      ; current location
+    (connected ?from - city ?to - city) ; allowed direct transition (includes self)
+  )
+  (:functions
+    (day)                 ; current day index (integer)
+    (spent-florence)      ; accumulated days spent in Florence
+    (spent-amsterdam)     ; accumulated days spent in Amsterdam
+    (spent-riga)          ; accumulated days spent in Riga
+  )
+
+  (:action advance
+    :parameters (?from - city ?to - city)
+    :precondition (and
+      (at ?from)
+      (connected ?from ?to)
+      (< (day) 13)
+    )
+    :effect (and
+      (not (at ?from))
+      (at ?to)
+      (assign (day) (+ (day) 1))
+      ;; conditional increments depending on destination
+      (when (= ?to florence) (increase (spent-florence) 1))
+      (when (= ?to amsterdam) (increase (spent-amsterdam) 1))
+      (when (= ?to riga) (increase (spent-riga) 1))
+    )
+  )
+
+  (:documentation
+   "Assumptons and modelling notes:
+    - Days are discrete and numbered 1..13. The initial state starts at day=1.
+    - The plan model uses an 'advance' action that sets the city for the next day and increments counters.
+    - The initial day (day 1) is counted already toward the initial city's spent-<city> counter.
+    - Flights/transitions are only allowed when a 'connected' relation exists between cities.
+    - Self-connections represent staying in the same city for the next day (no separate 'stay' action needed).
+    - The model assumes flights/transitions happen between day t and day t+1 and do not consume additional fractional time beyond advancing the day.
+    - The integrated plan chooses the earliest feasible schedule satisfying hard constraints: Florence days 1-4, Amsterdam days 5-9, Riga days 10-13.
+    - Minimal negotiated adjustments: Amsterdam reduced to 5 days and Riga reduced to 4 days to respect the 13-day total while keeping Florence fixed at 4 days (to meet the workshop constraint).
+    - This domain uses numeric fluents (PDDL 2.1 style) and conditional effects; FastDownward supports these constructs."
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem trip13)
+  (:domain europe-trip)
+  (:objects
+    florence amsterdam riga - city
+  )
+  (:init
+    ;; initial location and day accounting:
+    (at florence)
+    (= (day) 1)
+    (= (spent-florence) 1)    ; day 1 counted as Florence day
+    (= (spent-amsterdam) 0)
+    (= (spent-riga) 0)
+
+    ;; connectivity: only direct flights allowed (and self-stays)
+    (connected florence florence)
+    (connected amsterdam amsterdam)
+    (connected riga riga)
+
+    (connected florence amsterdam)
+    (connected amsterdam florence)
+
+    (connected amsterdam riga)
+    (connected riga amsterdam)
+
+    ;; No direct connection between florence and riga is encoded by absence of connected florence riga / riga florence
+  )
+
+  (:goal
+    (and
+      (= (day) 13)
+      (= (spent-florence) 4)
+      (= (spent-amsterdam) 5)
+      (= (spent-riga) 4)
+    )
+  )
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 13 days in total. You only take direct flights to commute between cities. You plan to stay in Florence for 4 days. You have to attend a workshop in Florence between day 1 and day 4. You would like to visit Amsterdam for 6 days. You would like to visit Riga for 5 days.\n\nHere are the cities that have direct flights:\nFlorence and Amsterdam, Amsterdam and Riga.\n\nFind a trip plan of visiting the cities for 13 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample24",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "florence_agent",
+                "amsterdam_agent",
+                "riga_agent",
+                "orchestrator"
+            ],
+            "florence_agent": {
+                "private_information": [
+                    "I plan to stay in Florence for 4 days",
+                    "I must attend a workshop in Florence between day 1 and day 4",
+                    "Florence has a direct flight connection only with Amsterdam"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "amsterdam_agent": {
+                "private_information": [
+                    "I would like to visit Amsterdam for 6 days",
+                    "Amsterdam has direct flight connections with Florence and Riga"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "riga_agent": {
+                "private_information": [
+                    "I would like to visit Riga for 5 days",
+                    "Riga has a direct flight connection only with Amsterdam"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city agents' inputs and produce a consistent trip plan of 13 days using only direct flights"
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 13,
+                "cities": [
+                    "Florence",
+                    "Amsterdam",
+                    "Riga"
+                ]
+            },
+            "public_information": [
+                "You plan to visit three European cities for a total of 13 days",
+                "Only direct flights may be used to commute between cities",
+                "Available direct flight connections: Florence<->Amsterdam, Amsterdam<->Riga",
+                "There is no direct flight between Florence and Riga"
+            ]
+        },
+        "workflow": {
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_florence",
+                    "system_prompt": "You are a Florence travel specialist. Provide a concise report of fixed constraints and any flexibility you can accept for the Florence leg. Do not emit PDDL. State the number of days you must stay, any time-window constraints (for example workshop dates), and whether you can shorten or shift your stay if needed.",
+                    "prompt": "Your name is florence_agent. Use the public information {environment->public_information} and your private knowledge {agents->florence_agent->private_information} to produce a short report describing your hard constraints and any flexibility about the Florence visit. The global planning goal is {agents->florence_agent->goal}. Do not produce PDDL. Focus on precise constraints (dates, days, connectivity limits) that the orchestrator can use."
+                }
+            },
+            "amsterdam_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_amsterdam",
+                    "system_prompt": "You are an Amsterdam travel specialist. Provide a concise report of desired duration and any flexibility or constraints for the Amsterdam leg. Do not emit PDDL. Indicate whether your requested days are hard or negotiable and any flight connection preferences.",
+                    "prompt": "Your name is amsterdam_agent. Use the public information {environment->public_information} and your private knowledge {agents->amsterdam_agent->private_information} to produce a short report describing your desired length of stay and any flexibility. The global planning goal is {agents->amsterdam_agent->goal}. Do not produce PDDL. Provide clear, machine-friendly constraints for the orchestrator."
+                }
+            },
+            "riga_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_riga",
+                    "system_prompt": "You are a Riga travel specialist. Provide a concise report of desired duration and any flexibility or constraints for the Riga leg. Do not emit PDDL. Indicate whether your requested days are hard or negotiable and any flight connection preferences.",
+                    "prompt": "Your name is riga_agent. Use the public information {environment->public_information} and your private knowledge {agents->riga_agent->private_information} to produce a short report describing your desired length of stay and any flexibility. The global planning goal is {agents->riga_agent->goal}. Do not produce PDDL. Provide clear, machine-friendly constraints for the orchestrator."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "report_florence",
+                        "report_amsterdam",
+                        "report_riga"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and PDDL targeting the FastDownward solver. You must integrate the reports from the city agents and produce a single PDDL domain and a single PDDL problem file suitable for FastDownward. Keep each agent's actions and responsibilities distinct in the model. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL uses constructs supported by FastDownward and documents any assumptions.",
+                    "prompt": "You are the orchestrator. You will receive three reports from the city agents describing hard constraints and flexibility about durations and dates: {report_florence}, {report_amsterdam}, {report_riga}. Use the environment public information {environment->public_information} and the agents' global goal {agents->orchestrator->goal}. Reconcile any conflicts (for example total desired days exceeding 13) by respecting hard constraints first (such as the Florence workshop between day 1 and day 4) and proposing minimal, explicit adjustments for negotiable desires. Only direct flights are allowed and the available connections are Florence-Amsterdam and Amsterdam-Riga. Produce a PDDL domain and PDDL problem that encode the travel plan search for a 13-day itinerary, using explicit actions for staying days in a city and for taking direct flights. Enclose the domain in <domain></domain> and the problem in <problem></problem>. The PDDL should be suitable to run with FastDownward."
+                }
+            },
+            "constraints": [
+                "florence_agent.report->orchestrator.pddl",
+                "amsterdam_agent.report->orchestrator.pddl",
+                "riga_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain europe-trip)\n  (:requirements :strips :typing :fluents :negative-preconditions :conditional-effects)\n  (:types city)\n  (:predicates\n    (at ?c - city)                      ; current location\n    (connected ?from - city ?to - city) ; allowed direct transition (includes self)\n  )\n  (:functions\n    (day)                 ; current day index (integer)\n    (spent-florence)      ; accumulated days spent in Florence\n    (spent-amsterdam)     ; accumulated days spent in Amsterdam\n    (spent-riga)          ; accumulated days spent in Riga\n  )\n\n  (:action advance\n    :parameters (?from - city ?to - city)\n    :precondition (and\n      (at ?from)\n      (connected ?from ?to)\n      (< (day) 13)\n    )\n    :effect (and\n      (not (at ?from))\n      (at ?to)\n      (assign (day) (+ (day) 1))\n      ;; conditional increments depending on destination\n      (when (= ?to florence) (increase (spent-florence) 1))\n      (when (= ?to amsterdam) (increase (spent-amsterdam) 1))\n      (when (= ?to riga) (increase (spent-riga) 1))\n    )\n  )\n\n  (:documentation\n   \"Assumptons and modelling notes:\n    - Days are discrete and numbered 1..13. The initial state starts at day=1.\n    - The plan model uses an 'advance' action that sets the city for the next day and increments counters.\n    - The initial day (day 1) is counted already toward the initial city's spent-<city> counter.\n    - Flights/transitions are only allowed when a 'connected' relation exists between cities.\n    - Self-connections represent staying in the same city for the next day (no separate 'stay' action needed).\n    - The model assumes flights/transitions happen between day t and day t+1 and do not consume additional fractional time beyond advancing the day.\n    - The integrated plan chooses the earliest feasible schedule satisfying hard constraints: Florence days 1-4, Amsterdam days 5-9, Riga days 10-13.\n    - Minimal negotiated adjustments: Amsterdam reduced to 5 days and Riga reduced to 4 days to respect the 13-day total while keeping Florence fixed at 4 days (to meet the workshop constraint).\n    - This domain uses numeric fluents (PDDL 2.1 style) and conditional effects; FastDownward supports these constructs.\"\n  )\n)",
+    "pddl_problem": "(define (problem trip13)\n  (:domain europe-trip)\n  (:objects\n    florence amsterdam riga - city\n  )\n  (:init\n    ;; initial location and day accounting:\n    (at florence)\n    (= (day) 1)\n    (= (spent-florence) 1)    ; day 1 counted as Florence day\n    (= (spent-amsterdam) 0)\n    (= (spent-riga) 0)\n\n    ;; connectivity: only direct flights allowed (and self-stays)\n    (connected florence florence)\n    (connected amsterdam amsterdam)\n    (connected riga riga)\n\n    (connected florence amsterdam)\n    (connected amsterdam florence)\n\n    (connected amsterdam riga)\n    (connected riga amsterdam)\n\n    ;; No direct connection between florence and riga is encoded by absence of connected florence riga / riga florence\n  )\n\n  (:goal\n    (and\n      (= (day) 13)\n      (= (spent-florence) 4)\n      (= (spent-amsterdam) 5)\n      (= (spent-riga) 4)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ASSIGN does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample24/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample24/problem_0.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": []
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 13 days in total. You only take direct flights to commute between cities. You plan to stay in Florence for 4 days. You have to attend a workshop in Florence between day 1 and day 4. You would like to visit Amsterdam for 6 days. You would like to visit Riga for 5 days.\n\nHere are the cities that have direct flights:\nFlorence and Amsterdam, Amsterdam and Riga.\n\nFind a trip plan of visiting the cities for 13 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample24",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "florence_agent",
+                "amsterdam_agent",
+                "riga_agent",
+                "orchestrator"
+            ],
+            "florence_agent": {
+                "private_information": [
+                    "I plan to stay in Florence for 4 days",
+                    "I must attend a workshop in Florence between day 1 and day 4",
+                    "Florence has a direct flight connection only with Amsterdam"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "amsterdam_agent": {
+                "private_information": [
+                    "I would like to visit Amsterdam for 6 days",
+                    "Amsterdam has direct flight connections with Florence and Riga"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "riga_agent": {
+                "private_information": [
+                    "I would like to visit Riga for 5 days",
+                    "Riga has a direct flight connection only with Amsterdam"
+                ],
+                "goal": "Find a trip plan visiting Florence, Amsterdam and Riga for 13 days using only direct flights"
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city agents' inputs and produce a consistent trip plan of 13 days using only direct flights"
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 13,
+                "cities": [
+                    "Florence",
+                    "Amsterdam",
+                    "Riga"
+                ]
+            },
+            "public_information": [
+                "You plan to visit three European cities for a total of 13 days",
+                "Only direct flights may be used to commute between cities",
+                "Available direct flight connections: Florence<->Amsterdam, Amsterdam<->Riga",
+                "There is no direct flight between Florence and Riga"
+            ]
+        },
+        "workflow": {
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_florence",
+                    "system_prompt": "You are a Florence travel specialist. Provide a concise report of fixed constraints and any flexibility you can accept for the Florence leg. Do not emit PDDL. State the number of days you must stay, any time-window constraints (for example workshop dates), and whether you can shorten or shift your stay if needed.",
+                    "prompt": "Your name is florence_agent. Use the public information {environment->public_information} and your private knowledge {agents->florence_agent->private_information} to produce a short report describing your hard constraints and any flexibility about the Florence visit. The global planning goal is {agents->florence_agent->goal}. Do not produce PDDL. Focus on precise constraints (dates, days, connectivity limits) that the orchestrator can use."
+                }
+            },
+            "amsterdam_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_amsterdam",
+                    "system_prompt": "You are an Amsterdam travel specialist. Provide a concise report of desired duration and any flexibility or constraints for the Amsterdam leg. Do not emit PDDL. Indicate whether your requested days are hard or negotiable and any flight connection preferences.",
+                    "prompt": "Your name is amsterdam_agent. Use the public information {environment->public_information} and your private knowledge {agents->amsterdam_agent->private_information} to produce a short report describing your desired length of stay and any flexibility. The global planning goal is {agents->amsterdam_agent->goal}. Do not produce PDDL. Provide clear, machine-friendly constraints for the orchestrator."
+                }
+            },
+            "riga_agent": {
+                "report": {
+                    "input": [],
+                    "output": "report_riga",
+                    "system_prompt": "You are a Riga travel specialist. Provide a concise report of desired duration and any flexibility or constraints for the Riga leg. Do not emit PDDL. Indicate whether your requested days are hard or negotiable and any flight connection preferences.",
+                    "prompt": "Your name is riga_agent. Use the public information {environment->public_information} and your private knowledge {agents->riga_agent->private_information} to produce a short report describing your desired length of stay and any flexibility. The global planning goal is {agents->riga_agent->goal}. Do not produce PDDL. Provide clear, machine-friendly constraints for the orchestrator."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "report_florence",
+                        "report_amsterdam",
+                        "report_riga"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and PDDL targeting the FastDownward solver. You must integrate the reports from the city agents and produce a single PDDL domain and a single PDDL problem file suitable for FastDownward. Keep each agent's actions and responsibilities distinct in the model. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL uses constructs supported by FastDownward and documents any assumptions.",
+                    "prompt": "You are the orchestrator. You will receive three reports from the city agents describing hard constraints and flexibility about durations and dates: {report_florence}, {report_amsterdam}, {report_riga}. Use the environment public information {environment->public_information} and the agents' global goal {agents->orchestrator->goal}. Reconcile any conflicts (for example total desired days exceeding 13) by respecting hard constraints first (such as the Florence workshop between day 1 and day 4) and proposing minimal, explicit adjustments for negotiable desires. Only direct flights are allowed and the available connections are Florence-Amsterdam and Amsterdam-Riga. Produce a PDDL domain and PDDL problem that encode the travel plan search for a 13-day itinerary, using explicit actions for staying days in a city and for taking direct flights. Enclose the domain in <domain></domain> and the problem in <problem></problem>. The PDDL should be suitable to run with FastDownward."
+                }
+            },
+            "constraints": [
+                "florence_agent.report->orchestrator.pddl",
+                "amsterdam_agent.report->orchestrator.pddl",
+                "riga_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain europe-trip)\n  (:requirements :strips :typing :negative-preconditions :fluents :action-costs)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)\n    (current ?d - day)\n    (next ?d1 - day ?d2 - day)\n    (connected ?from - city ?to - city)\n    (assigned ?d - day)\n  )\n  (:functions (total-cost))\n  (:action assign-next-day\n    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)\n    :precondition (and\n      (current ?d1)\n      (at ?from ?d1)\n      (next ?d1 ?d2)\n      (connected ?from ?to)\n      (not (assigned ?d2))\n    )\n    :effect (and\n      (not (current ?d1))\n      (current ?d2)\n      (at ?to ?d2)\n      (assigned ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip13)\n  (:domain europe-trip)\n  (:objects\n    florence amsterdam riga - city\n    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 - day\n  )\n  (:init\n    (= (total-cost) 0)\n\n    (at florence d1)\n    (assigned d1)\n    (current d1)\n\n    (next d1 d2)\n    (next d2 d3)\n    (next d3 d4)\n    (next d4 d5)\n    (next d5 d6)\n    (next d6 d7)\n    (next d7 d8)\n    (next d8 d9)\n    (next d9 d10)\n    (next d10 d11)\n    (next d11 d12)\n    (next d12 d13)\n\n    (connected florence florence)\n    (connected amsterdam amsterdam)\n    (connected riga riga)\n\n    (connected florence amsterdam)\n    (connected amsterdam florence)\n\n    (connected amsterdam riga)\n    (connected riga amsterdam)\n  )\n\n  (:goal\n    (and\n      (at florence d1)\n      (at florence d2)\n      (at florence d3)\n      (at florence d4)\n\n      (at amsterdam d5)\n      (at amsterdam d6)\n      (at amsterdam d7)\n      (at amsterdam d8)\n      (at amsterdam d9)\n\n      (at riga d10)\n      (at riga d11)\n      (at riga d12)\n      (at riga d13)\n\n      (current d13)\n    )\n  )\n\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/google/trip_planning/FastDownwards/TripPlanningExample24/sas_plan_1'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample24/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample24/problem_1.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 16 days in total. You only take direct flights to commute between cities. You want to spend 5 days in Valencia. You want to spend 7 days in Split. From day 10 to day 16, there is a annual show you want to attend in Split. You would like to visit Lyon for 6 days.
+
+Here are the cities that have direct flights:
+Lyon and Split, Valencia and Lyon.
+
+Find a trip plan of visiting the cities for 16 days by taking direct flights to commute between them.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 16 days in total. You only take direct flights to commute between cities. You want to spend 5 days in Valencia. You want to spend 7 days in Split. From day 10 to day 16, there is a annual show you want to attend in Split. You would like to visit Lyon for 6 days.
+
+Here are the cities that have direct flights:
+Lyon and Split, Valencia and Lyon.
+
+Find a trip plan of visiting the cities for 16 days by taking direct flights to commute between them.
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain trip)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)      ; traveler is at city ?c on day ?d (discrete day occupancy)
+    (next ?d - day ?dn - day)   ; temporal successor relation between days
+    (flight ?c1 - city ?c2 - city) ; allowed direct flight edge
+  )
+
+  ;; Stay in the same city from day ?d to the next day ?dn (requires next relation)
+  (:action stay
+    :parameters (?c - city ?d - day ?dn - day)
+    :precondition (and (at ?c ?d) (next ?d ?dn))
+    :effect (and (at ?c ?dn) (not (at ?c ?d)))
+  )
+
+  ;; Fly from ?from to ?to using a direct flight, departing on day ?d and arriving on the next day ?dn.
+  ;; Flight edges are constrained by the flight predicate provided in the problem instance.
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?dn - day)
+    :precondition (and (at ?from ?d) (flight ?from ?to) (next ?d ?dn))
+    :effect (and (at ?to ?dn) (not (at ?from ?d)))
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem trip-integration)
+  (:domain trip)
+  (:objects
+    valencia lyon split - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 - day
+  )
+
+  (:init
+    ;; Initial location assumption (earliest feasible start): start in Valencia on day1.
+    ;; This is an explicit modeling choice to prefer the earliest feasible start as requested.
+    (at valencia day1)
+
+    ;; Direct-flight edges (public information)
+    (flight valencia lyon)
+    (flight lyon valencia)
+    (flight lyon split)
+    (flight split lyon)
+
+    ;; Day successor relation (discrete time steps 1..16)
+    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)
+    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)
+    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)
+    (next day13 day14) (next day14 day15) (next day15 day16)
+  )
+
+  ;; Goal: encode all city-specific hard constraints as explicit day-presence requirements.
+  ;; - Valencia: exactly 5 days required — modeled here as presence on days 1..5 (earliest feasible)
+  ;; - Split: must be present for the show days 10..16 inclusive (7 days) — hard constraint
+  ;; - Lyon: requested 6 days — modeled here as presence on days 6..11 (earliest contiguous block)
+  ;;
+  ;; NOTE: The three hard stay-length requirements sum to 18 days (5 + 7 + 6) but the trip horizon is 16 days.
+  ;; This encoding therefore intentionally reflects the reported hard constraints; the conjunction below is
+  ;; inconsistent with a single exclusive occupancy per day over a 16-day horizon. A planner will therefore
+  ;; find no plan that satisfies all hard constraints simultaneously.
+  (:goal
+    (and
+      ;; Valencia presence (5 days)
+      (at valencia day1) (at valencia day2) (at valencia day3) (at valencia day4) (at valencia day5)
+
+      ;; Split presence for the show (days 10..16 inclusive; 7 days)
+      (at split day10) (at split day11) (at split day12) (at split day13) (at split day14) (at split day15) (at split day16)
+
+      ;; Lyon requested 6 days — earliest contiguous assignment available in remaining window chosen here:
+      ;; days 6..11 (this overlaps with Split on days 10..11, intentionally reflecting the agents' incompatible hard constraints)
+      (at lyon day6) (at lyon day7) (at lyon day8) (at lyon day9) (at lyon day10) (at lyon day11)
+    )
+  )
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 16 days in total. You only take direct flights to commute between cities. You want to spend 5 days in Valencia. You want to spend 7 days in Split. From day 10 to day 16, there is a annual show you want to attend in Split. You would like to visit Lyon for 6 days.\n\nHere are the cities that have direct flights:\nLyon and Split, Valencia and Lyon.\n\nFind a trip plan of visiting the cities for 16 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample25",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "valencia_agent",
+                "split_agent",
+                "lyon_agent",
+                "orchestrator"
+            ],
+            "valencia_agent": {
+                "private_information": [
+                    "I represent the Valencia portion of the trip",
+                    "The traveler wants to spend exactly 5 days in Valencia",
+                    "Valencia has direct flights to and from Lyon only"
+                ],
+                "goal": "Propose arrival and departure days for Valencia consistent with the overall 16-day trip and direct-flight constraints"
+            },
+            "split_agent": {
+                "private_information": [
+                    "I represent the Split portion of the trip",
+                    "The traveler wants to spend 7 days in Split",
+                    "There is an annual show in Split that must be attended from day 10 to day 16",
+                    "Split has direct flights with Lyon only"
+                ],
+                "goal": "Propose arrival and departure days for Split such that the traveler is present for the show and stays a total of 7 days while respecting direct-flight constraints"
+            },
+            "lyon_agent": {
+                "private_information": [
+                    "I represent the Lyon portion of the trip",
+                    "The traveler would like to visit Lyon for 6 days",
+                    "Lyon has direct flights to both Split and Valencia"
+                ],
+                "goal": "Propose arrival and departure days for Lyon consistent with the overall 16-day trip and direct-flight constraints"
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city-specific plans into a single feasible trip satisfying the 16-day duration, direct flight connectivity, city-stay requirements, and the Split show attendance. Produce final PDDL domain and problem formatted for the FastDownward solver."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 16,
+                "only_direct_flights": true
+            },
+            "public_information": [
+                "Trip duration is 16 days in total",
+                "Cities to visit: Valencia, Split, Lyon",
+                "Desired stays: 5 days in Valencia, 7 days in Split, 6 days in Lyon",
+                "An annual show in Split must be attended from day 10 to day 16 inclusive",
+                "Only direct flights may be used to commute between cities",
+                "Direct flight connections: Lyon <-> Split and Valencia <-> Lyon"
+            ]
+        },
+        "workflow": {
+            "valencia_agent": {
+                "plan": {
+                    "input": [],
+                    "output": "plan_valencia",
+                    "system_prompt": "You are an expert city scheduling agent for Valencia. Provide a proposed arrival day and departure day for the Valencia segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                    "prompt": "Your name is valencia_agent. Here is the public information: {environment->public_information}. Your private information: {agents->valencia_agent->private_information}. Your goal: {agents->valencia_agent->goal}. Propose arrival and departure days for Valencia within the 16-day trip, ensure the length equals your required stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+                }
+            },
+            "split_agent": {
+                "plan": {
+                    "input": [],
+                    "output": "plan_split",
+                    "system_prompt": "You are an expert city scheduling agent for Split. Provide a proposed arrival day and departure day for the Split segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                    "prompt": "Your name is split_agent. Here is the public information: {environment->public_information}. Your private information: {agents->split_agent->private_information}. Your goal: {agents->split_agent->goal}. Propose arrival and departure days for Split within the 16-day trip, ensure the traveler is present for the show from day 10 to day 16 and that the length equals your required stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+                }
+            },
+            "lyon_agent": {
+                "plan": {
+                    "input": [],
+                    "output": "plan_lyon",
+                    "system_prompt": "You are an expert city scheduling agent for Lyon. Provide a proposed arrival day and departure day for the Lyon segment, a short justification, and any constraints or assumptions you need the orchestrator to consider. Do not produce PDDL.",
+                    "prompt": "Your name is lyon_agent. Here is the public information: {environment->public_information}. Your private information: {agents->lyon_agent->private_information}. Your goal: {agents->lyon_agent->goal}. Propose arrival and departure days for Lyon within the 16-day trip, ensure the length equals your requested stay, and state any assumptions. Provide output labeled with keys arrival_day, departure_day, stay_length, and notes."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "plan_valencia",
+                        "plan_split",
+                        "plan_lyon"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert multi-agent orchestrator for planning and PDDL modeling. Your job is to integrate the city-level plans into a single consistent plan and produce a PDDL domain and PDDL problem file suitable for the FastDownward solver. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep actions for each city distinct and model flight edges and day constraints explicitly. Target FastDownward compatibility.",
+                    "prompt": "You are the orchestrator. Received proposed plans from the city agents: {plan_valencia}, {plan_split}, {plan_lyon}. Public information: {environment->public_information}. Your goal: {agents->orchestrator->goal}. Validate and, if necessary, adjust the agents' proposed arrival and departure days to ensure a single 16-day itinerary that uses only direct flights between consecutive cities, satisfies each city's stay-length requirement, and ensures presence in Split for days 10 through 16. After integrating, produce a PDDL domain and PDDL problem that models days as discrete time steps, cities as locations, flights as actions constrained by direct connections, and a goal that the traveler visits each city for the required number of days and attends the Split show. Enclose the PDDL domain between <domain> and </domain> and the PDDL problem between <problem> and </problem>."
+                }
+            },
+            "constraints": [
+                "valencia_agent.plan->orchestrator.pddl",
+                "lyon_agent.plan->orchestrator.pddl",
+                "split_agent.plan->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip)\n  (:requirements :typing :strips :negative-preconditions)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)      ; traveler is at city ?c on day ?d (discrete day occupancy)\n    (next ?d - day ?dn - day)   ; temporal successor relation between days\n    (flight ?c1 - city ?c2 - city) ; allowed direct flight edge\n  )\n\n  ;; Stay in the same city from day ?d to the next day ?dn (requires next relation)\n  (:action stay\n    :parameters (?c - city ?d - day ?dn - day)\n    :precondition (and (at ?c ?d) (next ?d ?dn))\n    :effect (and (at ?c ?dn) (not (at ?c ?d)))\n  )\n\n  ;; Fly from ?from to ?to using a direct flight, departing on day ?d and arriving on the next day ?dn.\n  ;; Flight edges are constrained by the flight predicate provided in the problem instance.\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?dn - day)\n    :precondition (and (at ?from ?d) (flight ?from ?to) (next ?d ?dn))\n    :effect (and (at ?to ?dn) (not (at ?from ?d)))\n  )\n)",
+    "pddl_problem": "(define (problem trip-integration)\n  (:domain trip)\n  (:objects\n    valencia lyon split - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 - day\n  )\n\n  (:init\n    ;; Initial location assumption (earliest feasible start): start in Valencia on day1.\n    ;; This is an explicit modeling choice to prefer the earliest feasible start as requested.\n    (at valencia day1)\n\n    ;; Direct-flight edges (public information)\n    (flight valencia lyon)\n    (flight lyon valencia)\n    (flight lyon split)\n    (flight split lyon)\n\n    ;; Day successor relation (discrete time steps 1..16)\n    (next day1 day2) (next day2 day3) (next day3 day4) (next day4 day5)\n    (next day5 day6) (next day6 day7) (next day7 day8) (next day8 day9)\n    (next day9 day10) (next day10 day11) (next day11 day12) (next day12 day13)\n    (next day13 day14) (next day14 day15) (next day15 day16)\n  )\n\n  ;; Goal: encode all city-specific hard constraints as explicit day-presence requirements.\n  ;; - Valencia: exactly 5 days required \u2014 modeled here as presence on days 1..5 (earliest feasible)\n  ;; - Split: must be present for the show days 10..16 inclusive (7 days) \u2014 hard constraint\n  ;; - Lyon: requested 6 days \u2014 modeled here as presence on days 6..11 (earliest contiguous block)\n  ;;\n  ;; NOTE: The three hard stay-length requirements sum to 18 days (5 + 7 + 6) but the trip horizon is 16 days.\n  ;; This encoding therefore intentionally reflects the reported hard constraints; the conjunction below is\n  ;; inconsistent with a single exclusive occupancy per day over a 16-day horizon. A planner will therefore\n  ;; find no plan that satisfies all hard constraints simultaneously.\n  (:goal\n    (and\n      ;; Valencia presence (5 days)\n      (at valencia day1) (at valencia day2) (at valencia day3) (at valencia day4) (at valencia day5)\n\n      ;; Split presence for the show (days 10..16 inclusive; 7 days)\n      (at split day10) (at split day11) (at split day12) (at split day13) (at split day14) (at split day15) (at split day16)\n\n      ;; Lyon requested 6 days \u2014 earliest contiguous assignment available in remaining window chosen here:\n      ;; days 6..11 (this overlaps with Split on days 10..11, intentionally reflecting the agents' incompatible hard constraints)\n      (at lyon day6) (at lyon day7) (at lyon day8) (at lyon day9) (at lyon day10) (at lyon day11)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/google/trip_planning/FastDownwards/TripPlanningExample25/sas_plan_0'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample25/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample25/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 13 rules.\nComputing model... [0.000s CPU, 0.003s wall-clock]\n220 relevant atoms\n214 auxiliary atoms\n434 final queue length\n488 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.002s wall-clock]\nInstantiating: [0.000s CPU, 0.006s wall-clock]\nComputing fact groups...\nFinding invariants...\n3 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n45 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.010s CPU, 0.002s wall-clock]\n98 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n42 of 45 variables necessary.\n0 of 0 mutex groups necessary.\n96 of 98 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 42\nTranslator derived variables: 0\nTranslator facts: 84\nTranslator goal facts: 18\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 96\nTranslator axioms: 0\nTranslator task size: 523\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.020s CPU, 0.015s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample25/sas_plan_0 < output.sas\n[t=0.000157s, 9964 KB] reading input...\n[t=0.000817s, 9964 KB] done reading input!\n[t=0.002323s, 10360 KB] Initializing landmark cut heuristic...\n[t=0.002401s, 10360 KB] Building successor generator...done!\n[t=0.002502s, 10360 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002521s, 10360 KB] time for successor generation creation: 0.000033s\n[t=0.002542s, 10360 KB] Variables: 42\n[t=0.002561s, 10360 KB] FactPairs: 84\n[t=0.002577s, 10360 KB] Bytes per state: 8\n[t=0.002607s, 10360 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002698s, 10360 KB] New best heuristic value for lmcut: 15\n[t=0.002721s, 10360 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002749s, 10360 KB] f = 15, 1 evaluated, 0 expanded\n[t=0.002769s, 10360 KB] Initial heuristic value for lmcut: 15\n[t=0.002804s, 10360 KB] pruning method: none\n[t=0.002839s, 10360 KB] Completely explored state space -- no solution!\n[t=0.002859s, 10360 KB] Actual search time: 0.000051s\n[t=0.002877s, 10360 KB] Expanded 1 state(s).\n[t=0.002877s, 10360 KB] Reopened 0 state(s).\n[t=0.002877s, 10360 KB] Evaluated 3 state(s).\n[t=0.002877s, 10360 KB] Evaluations: 3\n[t=0.002877s, 10360 KB] Generated 2 state(s).\n[t=0.002877s, 10360 KB] Dead ends: 2 state(s).\n[t=0.002877s, 10360 KB] Expanded until last jump: 0 state(s).\n[t=0.002877s, 10360 KB] Reopened until last jump: 0 state(s).\n[t=0.002877s, 10360 KB] Evaluated until last jump: 1 state(s).\n[t=0.002877s, 10360 KB] Generated until last jump: 0 state(s).\n[t=0.002877s, 10360 KB] Number of registered states: 3\n[t=0.002877s, 10360 KB] Int hash set load factor: 3/4 = 0.750000\n[t=0.002877s, 10360 KB] Int hash set resizes: 2\n[t=0.002877s, 10360 KB] Search time: 0.000270s\n[t=0.002877s, 10360 KB] Total time: 0.002877s\nSearch stopped without finding a solution.\nPeak memory: 10360 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.12s\n",
+    "history": []
+}
+================================================================================
+
+
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Santorini for 3 days. You plan to visit relatives in Santorini between day 12 and day 14. You plan to stay in Amsterdam for 7 days. You would like to visit Istanbul for 6 days.
+
+Here are the cities that have direct flights:
+Amsterdam and Santorini, Istanbul and Amsterdam.
+
+Find a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Santorini for 3 days. You plan to visit relatives in Santorini between day 12 and day 14. You plan to stay in Amsterdam for 7 days. You would like to visit Istanbul for 6 days.
+
+Here are the cities that have direct flights:
+Amsterdam and Santorini, Istanbul and Amsterdam.
+
+Find a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain travel-domain)
+  (:requirements :strips :typing)
+  (:types agent city day)
+  (:predicates
+    (at ?a - agent ?c - city ?d - day)   ; agent a is in city c on day d
+    (next ?d1 - day ?d2 - day)          ; d2 is the immediate successor of d1
+  )
+
+  ;; Stay in the same city from one day to the next
+  (:action stay
+    :parameters (?a - agent ?c - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?a ?c ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?a ?c ?d1)) (at ?a ?c ?d2))
+  )
+
+  ;; Direct flights allowed only between Amsterdam <-> Santorini and
+  ;; Amsterdam <-> Istanbul. Each flight consumes one day (moves from day d to day d+1).
+  ;; No direct Santorini <-> Istanbul flight is provided (must route via Amsterdam).
+
+  (:action fly-amsterdam-to-santorini
+    :parameters (?a - agent ?d1 - day ?d2 - day)
+    :precondition (and (at ?a amsterdam ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?a amsterdam ?d1)) (at ?a santorini ?d2))
+  )
+
+  (:action fly-santorini-to-amsterdam
+    :parameters (?a - agent ?d1 - day ?d2 - day)
+    :precondition (and (at ?a santorini ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?a santorini ?d1)) (at ?a amsterdam ?d2))
+  )
+
+  (:action fly-amsterdam-to-istanbul
+    :parameters (?a - agent ?d1 - day ?d2 - day)
+    :precondition (and (at ?a amsterdam ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?a amsterdam ?d1)) (at ?a istanbul ?d2))
+  )
+
+  (:action fly-istanbul-to-amsterdam
+    :parameters (?a - agent ?d1 - day ?d2 - day)
+    :precondition (and (at ?a istanbul ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?a istanbul ?d1)) (at ?a amsterdam ?d2))
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem travel-problem)
+  (:domain travel-domain)
+
+  ;;; Assumptions and minimal, explicit adjustments (documented):
+  ;; 1) The traveler is represented by the single agent "traveler".
+  ;; 2) The traveler starts in Amsterdam on day1. This is a minimal explicit
+  ;;    assumption required because no explicit start location was provided
+  ;;    in the descriptive inputs, and Amsterdam is the only hub connecting
+  ;;    to the other cities by the allowed direct flights.
+  ;; 3) Each flight or stay takes one day (an action moves the agent from day d to day d+1).
+  ;;    This is an explicit modeling choice to represent a day-by-day schedule.
+  ;; 4) Only the direct flights listed in the domain are available:
+  ;;    Amsterdam <-> Santorini and Amsterdam <-> Istanbul. There is no
+  ;;    direct Santorini <-> Istanbul flight (travel between them requires Amsterdam).
+  ;; 5) The hard requirement from the traveler: be in Santorini on days 12, 13, and 14.
+  ;;    This is encoded as a goal (strict constraint) and must hold in any plan.
+  ;; 6) No other preferences or unavailable slots were provided; no additional
+  ;;    availability was invented beyond the specified horizon, cities, and connections.
+  ;;
+
+  (:objects
+    traveler - agent
+    amsterdam santorini istanbul - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+  )
+
+  (:init
+    ;; day successor relation (one-day steps)
+    (next day1 day2)
+    (next day2 day3)
+    (next day3 day4)
+    (next day4 day5)
+    (next day5 day6)
+    (next day6 day7)
+    (next day7 day8)
+    (next day8 day9)
+    (next day9 day10)
+    (next day10 day11)
+    (next day11 day12)
+    (next day12 day13)
+    (next day13 day14)
+
+    ;; Initial location (explicit minimal assumption)
+    (at traveler amsterdam day1)
+  )
+
+  ;; Hard temporal constraint: traveler must be in Santorini on days 12-14 (inclusive).
+  ;; These are strict (must hold in the final state).
+  (:goal
+    (and
+      (at traveler santorini day12)
+      (at traveler santorini day13)
+      (at traveler santorini day14)
+    )
+  )
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 14 days in total. You only take direct flights to commute between cities. You would like to visit Santorini for 3 days. You plan to visit relatives in Santorini between day 12 and day 14. You plan to stay in Amsterdam for 7 days. You would like to visit Istanbul for 6 days.\n\nHere are the cities that have direct flights:\nAmsterdam and Santorini, Istanbul and Amsterdam.\n\nFind a trip plan of visiting the cities for 14 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample27",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "traveler",
+                "flight_agent",
+                "orchestrator"
+            ],
+            "traveler": {
+                "private_information": [
+                    "I plan a 14 day trip in total.",
+                    "I want to visit Santorini for 3 days.",
+                    "I plan to visit relatives in Santorini between day 12 and day 14 (inclusive).",
+                    "I plan to stay in Amsterdam for 7 days.",
+                    "I would like to visit Istanbul for 6 days."
+                ],
+                "goal": "Provide clear preferences and any hard or soft scheduling constraints for the 14 day trip so an orchestrator can construct a feasible itinerary."
+            },
+            "flight_agent": {
+                "private_information": [
+                    "Direct flights exist between Amsterdam and Santorini.",
+                    "Direct flights exist between Istanbul and Amsterdam.",
+                    "There are no direct flights between Istanbul and Santorini."
+                ],
+                "goal": "Provide the connectivity information and any assumptions about flight availability needed to plan commutes using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate traveler preferences and flight connectivity to produce a PDDL domain and problem formatted for the FastDownwards solver that yields a valid 14-day itinerary using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 14,
+                "cities": [
+                    "Amsterdam",
+                    "Santorini",
+                    "Istanbul"
+                ],
+                "direct_flights": [
+                    [
+                        "Amsterdam",
+                        "Santorini"
+                    ],
+                    [
+                        "Istanbul",
+                        "Amsterdam"
+                    ]
+                ]
+            },
+            "public_information": [
+                "You plan to visit three European cities over a total of 14 days.",
+                "Available cities are Amsterdam, Santorini, and Istanbul.",
+                "Direct flights exist between Amsterdam and Santorini, and between Istanbul and Amsterdam.",
+                "There are no direct flights between Istanbul and Santorini.",
+                "Travel must use only direct flights to commute between cities."
+            ]
+        },
+        "workflow": {
+            "traveler": {
+                "analyze": {
+                    "input": [],
+                    "output": "traveler_preferences",
+                    "system_prompt": "You are the traveler agent who knows personal preferences and constraints. Provide a structured summary of the travel preferences and indicate which constraints are hard (must be satisfied) and which are flexible. Do not produce PDDL. Output a concise, structured description that the orchestrator can consume.",
+                    "prompt": "You are the traveler. Given your private information and the public information about the trip, produce a structured summary of desired stays per city, any fixed date requirements, and notes about flexibility or conflicts. Identify any contradictions (for example, total days versus sum of desired stays) and mark which requirements are negotiable."
+                }
+            },
+            "flight_agent": {
+                "analyze": {
+                    "input": [],
+                    "output": "flight_connections",
+                    "system_prompt": "You are the flight connectivity agent. Describe the flight graph, allowed direct commutes, and any simple assumptions about flight frequency or feasibility that are needed for planning (for example, assume at least one direct flight per day on allowed links). Do not produce PDDL. Output a clear representation of connections the orchestrator can use.",
+                    "prompt": "You are the flight agent. Given the public information about direct flights, produce a concise connectivity specification (nodes, directed or undirected edges as appropriate) and indicate any assumptions about daily availability that the orchestrator should assume when building an itinerary."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "traveler_preferences",
+                        "flight_connections"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert at producing multi-agent planning problems in PDDL targeted to the FastDownwards solver. Integrate the traveler's preferences and the flight connectivity information to produce a complete PDDL domain and a PDDL problem file that models days, city stays, and direct-flight commutes. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions remain distinct and clearly model flights and stays. The produced PDDL must be compatible with FastDownwards.",
+                    "prompt": "You are the orchestrator. Use the traveler summary and the flight connectivity specification to create a PDDL domain and problem that encode: a 14-day planning horizon, cities Amsterdam, Santorini, and Istanbul, allowed direct flights only between Amsterdam-Santorini and Amsterdam-Istanbul, the traveler's requested durations and the hard requirement that the traveler be in Santorini on days 12 through 14 to visit relatives. Resolve any conflicts by making minimal, explicit adjustments and document any assumptions within comments in the PDDL problem file. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                }
+            },
+            "constraints": [
+                "traveler.analyze->orchestrator.pddl",
+                "flight_agent.analyze->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain travel-domain)\n  (:requirements :strips :typing)\n  (:types agent city day)\n  (:predicates\n    (at ?a - agent ?c - city ?d - day)   ; agent a is in city c on day d\n    (next ?d1 - day ?d2 - day)          ; d2 is the immediate successor of d1\n  )\n\n  ;; Stay in the same city from one day to the next\n  (:action stay\n    :parameters (?a - agent ?c - city ?d1 - day ?d2 - day)\n    :precondition (and (at ?a ?c ?d1) (next ?d1 ?d2))\n    :effect (and (not (at ?a ?c ?d1)) (at ?a ?c ?d2))\n  )\n\n  ;; Direct flights allowed only between Amsterdam <-> Santorini and\n  ;; Amsterdam <-> Istanbul. Each flight consumes one day (moves from day d to day d+1).\n  ;; No direct Santorini <-> Istanbul flight is provided (must route via Amsterdam).\n\n  (:action fly-amsterdam-to-santorini\n    :parameters (?a - agent ?d1 - day ?d2 - day)\n    :precondition (and (at ?a amsterdam ?d1) (next ?d1 ?d2))\n    :effect (and (not (at ?a amsterdam ?d1)) (at ?a santorini ?d2))\n  )\n\n  (:action fly-santorini-to-amsterdam\n    :parameters (?a - agent ?d1 - day ?d2 - day)\n    :precondition (and (at ?a santorini ?d1) (next ?d1 ?d2))\n    :effect (and (not (at ?a santorini ?d1)) (at ?a amsterdam ?d2))\n  )\n\n  (:action fly-amsterdam-to-istanbul\n    :parameters (?a - agent ?d1 - day ?d2 - day)\n    :precondition (and (at ?a amsterdam ?d1) (next ?d1 ?d2))\n    :effect (and (not (at ?a amsterdam ?d1)) (at ?a istanbul ?d2))\n  )\n\n  (:action fly-istanbul-to-amsterdam\n    :parameters (?a - agent ?d1 - day ?d2 - day)\n    :precondition (and (at ?a istanbul ?d1) (next ?d1 ?d2))\n    :effect (and (not (at ?a istanbul ?d1)) (at ?a amsterdam ?d2))\n  )\n)",
+    "pddl_problem": "(define (problem travel-problem)\n  (:domain travel-domain)\n\n  ;;; Assumptions and minimal, explicit adjustments (documented):\n  ;; 1) The traveler is represented by the single agent \"traveler\".\n  ;; 2) The traveler starts in Amsterdam on day1. This is a minimal explicit\n  ;;    assumption required because no explicit start location was provided\n  ;;    in the descriptive inputs, and Amsterdam is the only hub connecting\n  ;;    to the other cities by the allowed direct flights.\n  ;; 3) Each flight or stay takes one day (an action moves the agent from day d to day d+1).\n  ;;    This is an explicit modeling choice to represent a day-by-day schedule.\n  ;; 4) Only the direct flights listed in the domain are available:\n  ;;    Amsterdam <-> Santorini and Amsterdam <-> Istanbul. There is no\n  ;;    direct Santorini <-> Istanbul flight (travel between them requires Amsterdam).\n  ;; 5) The hard requirement from the traveler: be in Santorini on days 12, 13, and 14.\n  ;;    This is encoded as a goal (strict constraint) and must hold in any plan.\n  ;; 6) No other preferences or unavailable slots were provided; no additional\n  ;;    availability was invented beyond the specified horizon, cities, and connections.\n  ;;\n\n  (:objects\n    traveler - agent\n    amsterdam santorini istanbul - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day\n  )\n\n  (:init\n    ;; day successor relation (one-day steps)\n    (next day1 day2)\n    (next day2 day3)\n    (next day3 day4)\n    (next day4 day5)\n    (next day5 day6)\n    (next day6 day7)\n    (next day7 day8)\n    (next day8 day9)\n    (next day9 day10)\n    (next day10 day11)\n    (next day11 day12)\n    (next day12 day13)\n    (next day13 day14)\n\n    ;; Initial location (explicit minimal assumption)\n    (at traveler amsterdam day1)\n  )\n\n  ;; Hard temporal constraint: traveler must be in Santorini on days 12-14 (inclusive).\n  ;; These are strict (must hold in the final state).\n  (:goal\n    (and\n      (at traveler santorini day12)\n      (at traveler santorini day13)\n      (at traveler santorini day14)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  AMSTERDAM does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample27/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample27/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.010s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 31 rules.\nComputing model... [0.000s CPU, 0.003s wall-clock]\n195 relevant atoms\n318 auxiliary atoms\n513 final queue length\n561 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.002s wall-clock]\nInstantiating: [0.010s CPU, 0.007s wall-clock]\nComputing fact groups...\nFinding invariants...\n4 initial candidates\nFinding invariants: [0.000s CPU, 0.001s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n40 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.002s wall-clock]\n87 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.010s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n37 of 40 variables necessary.\n0 of 0 mutex groups necessary.\n85 of 87 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 37\nTranslator derived variables: 0\nTranslator facts: 74\nTranslator goal facts: 3\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 85\nTranslator axioms: 0\nTranslator task size: 449\nTranslator peak memory: 31560 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.020s CPU, 0.015s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample27/sas_plan_0 < output.sas\n[t=0.000206s, 9964 KB] reading input...\n[t=0.001092s, 9964 KB] done reading input!\n[t=0.002514s, 10360 KB] Initializing landmark cut heuristic...\n[t=0.002584s, 10360 KB] Building successor generator...done!\n[t=0.002665s, 10360 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002681s, 10360 KB] time for successor generation creation: 0.000029s\n[t=0.002697s, 10360 KB] Variables: 37\n[t=0.002716s, 10360 KB] FactPairs: 74\n[t=0.002731s, 10360 KB] Bytes per state: 8\n[t=0.002758s, 10360 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002823s, 10360 KB] New best heuristic value for lmcut: 13\n[t=0.002842s, 10360 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002866s, 10360 KB] f = 13, 1 evaluated, 0 expanded\n[t=0.002884s, 10360 KB] Initial heuristic value for lmcut: 13\n[t=0.002901s, 10360 KB] pruning method: none\n[t=0.002951s, 10360 KB] New best heuristic value for lmcut: 12\n[t=0.002969s, 10360 KB] g=1, 2 evaluated, 1 expanded\n[t=0.003064s, 10360 KB] New best heuristic value for lmcut: 11\n[t=0.003082s, 10360 KB] g=2, 5 evaluated, 2 expanded\n[t=0.003137s, 10360 KB] New best heuristic value for lmcut: 10\n[t=0.003153s, 10360 KB] g=3, 7 evaluated, 3 expanded\n[t=0.003223s, 10360 KB] New best heuristic value for lmcut: 9\n[t=0.003240s, 10360 KB] g=4, 10 evaluated, 4 expanded\n[t=0.003286s, 10360 KB] New best heuristic value for lmcut: 8\n[t=0.003301s, 10360 KB] g=5, 12 evaluated, 5 expanded\n[t=0.003357s, 10360 KB] New best heuristic value for lmcut: 7\n[t=0.003374s, 10360 KB] g=6, 15 evaluated, 6 expanded\n[t=0.003416s, 10360 KB] New best heuristic value for lmcut: 6\n[t=0.003432s, 10360 KB] g=7, 17 evaluated, 7 expanded\n[t=0.003475s, 10360 KB] New best heuristic value for lmcut: 5\n[t=0.003492s, 10360 KB] g=8, 20 evaluated, 8 expanded\n[t=0.003525s, 10360 KB] New best heuristic value for lmcut: 4\n[t=0.003540s, 10360 KB] g=9, 22 evaluated, 9 expanded\n[t=0.003575s, 10360 KB] New best heuristic value for lmcut: 3\n[t=0.003592s, 10360 KB] g=10, 25 evaluated, 10 expanded\n[t=0.003619s, 10360 KB] New best heuristic value for lmcut: 2\n[t=0.003634s, 10360 KB] g=11, 28 evaluated, 11 expanded\n[t=0.003743s, 10360 KB] Completely explored state space -- no solution!\n[t=0.003762s, 10360 KB] Actual search time: 0.000860s\n[t=0.003780s, 10360 KB] Expanded 31 state(s).\n[t=0.003780s, 10360 KB] Reopened 0 state(s).\n[t=0.003780s, 10360 KB] Evaluated 36 state(s).\n[t=0.003780s, 10360 KB] Evaluations: 36\n[t=0.003780s, 10360 KB] Generated 73 state(s).\n[t=0.003780s, 10360 KB] Dead ends: 5 state(s).\n[t=0.003780s, 10360 KB] Expanded until last jump: 0 state(s).\n[t=0.003780s, 10360 KB] Reopened until last jump: 0 state(s).\n[t=0.003780s, 10360 KB] Evaluated until last jump: 1 state(s).\n[t=0.003780s, 10360 KB] Generated until last jump: 0 state(s).\n[t=0.003780s, 10360 KB] Number of registered states: 36\n[t=0.003780s, 10360 KB] Int hash set load factor: 36/64 = 0.562500\n[t=0.003780s, 10360 KB] Int hash set resizes: 6\n[t=0.003780s, 10360 KB] Search time: 0.001023s\n[t=0.003780s, 10360 KB] Total time: 0.003780s\nSearch stopped without finding a solution.\nPeak memory: 10360 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.12s\n",
+    "history": []
+}
+================================================================================
+
+
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.
+
+Here are the cities that have direct flights:
+Venice and Zurich, from Zurich to Florence.
+
+Find a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.
+
+Here are the cities that have direct flights:
+Venice and Zurich, from Zurich to Florence.
+
+Find a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain trip-planning)
+  (:requirements :strips :typing :negative-preconditions :fluents)
+  (:types city)
+
+  (:predicates
+    (at ?loc - city)
+    (direct ?from - city ?to - city)
+  )
+
+  (:functions
+    (used-days)                ; total days consumed so far
+    (days-in ?loc - city)      ; accumulated days spent in a specific city
+    (min-days ?loc - city)     ; required minimum days to spend in a city (from agents' hard preferences)
+  )
+
+  ;; stay in a city for one day (increments both total and city-specific counters)
+  (:action stay
+    :parameters (?c - city)
+    :precondition (and
+      (at ?c)
+      (< (used-days) 12)            ; cannot stay if no budget left (ensures budget <= 12)
+    )
+    :effect (and
+      (increase (used-days) 1)
+      (increase (days-in ?c) 1)
+    )
+  )
+
+  ;; fly directly from one city to another; allowed only when a direct flight is available,
+  ;; and only if the minimum required stay in the current city has already been satisfied.
+  (:action fly
+    :parameters (?from - city ?to - city)
+    :precondition (and
+      (at ?from)
+      (direct ?from ?to)
+      (>= (days-in ?from) (min-days ?from))  ; enforce agent hard preferences before departing
+    )
+    :effect (and
+      (not (at ?from))
+      (at ?to)
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem trip-12days)
+  (:domain trip-planning)
+  (:objects
+    venice zurich florence - city
+  )
+
+  (:init
+    ;; starting location (Venice assumed from Venice-local planner context)
+    (at venice)
+
+    ;; direct flight availability (as reported)
+    (direct venice zurich)
+    (direct zurich venice)
+    (direct zurich florence)
+
+    ;; numeric initializations
+    (= (used-days) 0)
+    (= (days-in venice) 0)
+    (= (days-in zurich) 0)
+    (= (days-in florence) 0)
+
+    ;; hard minimum-day requirements derived from agent reports (encoded as strict constraints)
+    (= (min-days venice) 6)
+    (= (min-days florence) 6)
+    (= (min-days zurich) 2)
+  )
+
+  (:goal
+    (and
+      ;; must satisfy each city's required stay (agent hard preferences / public stated desires)
+      (>= (days-in venice) 6)
+      (>= (days-in florence) 6)
+      (>= (days-in zurich) 2)
+
+      ;; overall trip budget must not exceed 12 days
+      (<= (used-days) 12)
+    )
+  )
+)
+</problem>
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain trip-planning)
+  (:requirements :strips :typing :negative-preconditions :fluents)
+  (:types city)
+
+  (:predicates
+    (at ?loc - city)
+    (direct ?from - city ?to - city)
+  )
+
+  (:functions
+    (used-days)                ; total days consumed so far
+    (days-in ?loc - city)      ; accumulated days spent in a specific city
+    (min-days ?loc - city)     ; required minimum days to spend in a city (from agents' hard preferences)
+  )
+
+  ;; stay in a city for one day (increments both total and city-specific counters)
+  (:action stay
+    :parameters (?c - city)
+    :precondition (and
+      (at ?c)
+      (< (used-days) 12)            ; cannot stay if no budget left (ensures budget <= 12)
+    )
+    :effect (and
+      (increase (used-days) 1)
+      (increase (days-in ?c) 1)
+    )
+  )
+
+  ;; fly directly from one city to another; allowed only when a direct flight is available,
+  ;; and only if the minimum required stay in the current city has already been satisfied.
+  (:action fly
+    :parameters (?from - city ?to - city)
+    :precondition (and
+      (at ?from)
+      (direct ?from ?to)
+      (>= (days-in ?from) (min-days ?from))  ; enforce agent hard preferences before departing
+    )
+    :effect (and
+      (not (at ?from))
+      (at ?to)
+    )
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem trip-12days)
+  (:domain trip-planning)
+  (:objects
+    venice zurich florence - city
+  )
+
+  (:init
+    ;; starting location (Venice assumed from Venice-local planner context)
+    (at venice)
+
+    ;; direct flight availability (as reported)
+    (direct venice zurich)
+    (direct zurich venice)
+    (direct zurich florence)
+
+    ;; numeric initializations
+    (= (used-days) 0)
+    (= (days-in venice) 0)
+    (= (days-in zurich) 0)
+    (= (days-in florence) 0)
+
+    ;; hard minimum-day requirements derived from agent reports (encoded as strict constraints)
+    (= (min-days venice) 6)
+    (= (min-days florence) 6)
+    (= (min-days zurich) 2)
+  )
+
+  (:goal
+    (and
+      ;; must satisfy each city's required stay (agent hard preferences / public stated desires)
+      (>= (days-in venice) 6)
+      (>= (days-in florence) 6)
+      (>= (days-in zurich) 2)
+
+      ;; overall trip budget must not exceed 12 days
+      (<= (used-days) 12)
+    )
+  )
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.\n\nHere are the cities that have direct flights:\nVenice and Zurich, from Zurich to Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample28",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "venice_agent",
+                "florence_agent",
+                "orchestrator"
+            ],
+            "venice_agent": {
+                "private_information": [
+                    "I prefer to visit Venice for 6 days",
+                    "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "florence_agent": {
+                "private_information": [
+                    "I prefer to visit Florence for 6 days",
+                    "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12
+            },
+            "public_information": [
+                "Cities to consider: Venice, Zurich, Florence.",
+                "Total trip length available is 12 days.",
+                "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
+                "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
+                "Only direct flights are allowed for commuting between cities."
+            ]
+        },
+        "workflow": {
+            "venice_agent": {
+                "report": {
+                    "input": [],
+                    "output": "venice_report",
+                    "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
+                    "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "florence_report",
+                    "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
+                    "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "venice_report",
+                        "florence_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
+                    "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "venice_agent.report->orchestrator.pddl",
+                "florence_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :fluents)\n  (:types city)\n\n  (:predicates\n    (at ?loc - city)\n    (direct ?from - city ?to - city)\n  )\n\n  (:functions\n    (used-days)                ; total days consumed so far\n    (days-in ?loc - city)      ; accumulated days spent in a specific city\n    (min-days ?loc - city)     ; required minimum days to spend in a city (from agents' hard preferences)\n  )\n\n  ;; stay in a city for one day (increments both total and city-specific counters)\n  (:action stay\n    :parameters (?c - city)\n    :precondition (and\n      (at ?c)\n      (< (used-days) 12)            ; cannot stay if no budget left (ensures budget <= 12)\n    )\n    :effect (and\n      (increase (used-days) 1)\n      (increase (days-in ?c) 1)\n    )\n  )\n\n  ;; fly directly from one city to another; allowed only when a direct flight is available,\n  ;; and only if the minimum required stay in the current city has already been satisfied.\n  (:action fly\n    :parameters (?from - city ?to - city)\n    :precondition (and\n      (at ?from)\n      (direct ?from ?to)\n      (>= (days-in ?from) (min-days ?from))  ; enforce agent hard preferences before departing\n    )\n    :effect (and\n      (not (at ?from))\n      (at ?to)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip-12days)\n  (:domain trip-planning)\n  (:objects\n    venice zurich florence - city\n  )\n\n  (:init\n    ;; starting location (Venice assumed from Venice-local planner context)\n    (at venice)\n\n    ;; direct flight availability (as reported)\n    (direct venice zurich)\n    (direct zurich venice)\n    (direct zurich florence)\n\n    ;; numeric initializations\n    (= (used-days) 0)\n    (= (days-in venice) 0)\n    (= (days-in zurich) 0)\n    (= (days-in florence) 0)\n\n    ;; hard minimum-day requirements derived from agent reports (encoded as strict constraints)\n    (= (min-days venice) 6)\n    (= (min-days florence) 6)\n    (= (min-days zurich) 2)\n  )\n\n  (:goal\n    (and\n      ;; must satisfy each city's required stay (agent hard preferences / public stated desires)\n      (>= (days-in venice) 6)\n      (>= (days-in florence) 6)\n      (>= (days-in zurich) 2)\n\n      ;; overall trip budget must not exceed 12 days\n      (<= (used-days) 12)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  >= does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample28/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample28/problem_0.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": []
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.\n\nHere are the cities that have direct flights:\nVenice and Zurich, from Zurich to Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample28",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "venice_agent",
+                "florence_agent",
+                "orchestrator"
+            ],
+            "venice_agent": {
+                "private_information": [
+                    "I prefer to visit Venice for 6 days",
+                    "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "florence_agent": {
+                "private_information": [
+                    "I prefer to visit Florence for 6 days",
+                    "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12
+            },
+            "public_information": [
+                "Cities to consider: Venice, Zurich, Florence.",
+                "Total trip length available is 12 days.",
+                "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
+                "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
+                "Only direct flights are allowed for commuting between cities."
+            ]
+        },
+        "workflow": {
+            "venice_agent": {
+                "report": {
+                    "input": [],
+                    "output": "venice_report",
+                    "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
+                    "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "florence_report",
+                    "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
+                    "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "venice_report",
+                        "florence_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
+                    "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "venice_agent.report->orchestrator.pddl",
+                "florence_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :action-costs)\n  (:types city day)\n  (:predicates\n    (at ?loc - city)\n    (direct ?from - city ?to - city)\n    (day-available ?d - day)\n\n    (venice-days-0)\n    (venice-days-1)\n    (venice-days-2)\n    (venice-days-3)\n    (venice-days-4)\n    (venice-days-5)\n    (venice-days-6)\n\n    (florence-days-0)\n    (florence-days-1)\n    (florence-days-2)\n    (florence-days-3)\n    (florence-days-4)\n    (florence-days-5)\n    (florence-days-6)\n\n    (zurich-days-0)\n    (zurich-days-1)\n    (zurich-days-2)\n  )\n\n  (:functions\n    (total-cost)\n  )\n\n  (:action stay-venice-0\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-0))\n    :effect (and (not (day-available ?d)) (not (venice-days-0)) (venice-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-1\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-1))\n    :effect (and (not (day-available ?d)) (not (venice-days-1)) (venice-days-2) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-2\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-2))\n    :effect (and (not (day-available ?d)) (not (venice-days-2)) (venice-days-3) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-3\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-3))\n    :effect (and (not (day-available ?d)) (not (venice-days-3)) (venice-days-4) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-4\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-4))\n    :effect (and (not (day-available ?d)) (not (venice-days-4)) (venice-days-5) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-5\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-5))\n    :effect (and (not (day-available ?d)) (not (venice-days-5)) (venice-days-6) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-0\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-0))\n    :effect (and (not (day-available ?d)) (not (florence-days-0)) (florence-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-1\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-1))\n    :effect (and (not (day-available ?d)) (not (florence-days-1)) (florence-days-2) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-2\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-2))\n    :effect (and (not (day-available ?d)) (not (florence-days-2)) (florence-days-3) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-3\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-3))\n    :effect (and (not (day-available ?d)) (not (florence-days-3)) (florence-days-4) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-4\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-4))\n    :effect (and (not (day-available ?d)) (not (florence-days-4)) (florence-days-5) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-5\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-5))\n    :effect (and (not (day-available ?d)) (not (florence-days-5)) (florence-days-6) (increase (total-cost) 1))\n  )\n\n  (:action stay-zurich-0\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-0))\n    :effect (and (not (day-available ?d)) (not (zurich-days-0)) (zurich-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-zurich-1\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-1))\n    :effect (and (not (day-available ?d)) (not (zurich-days-1)) (zurich-days-2) (increase (total-cost) 1))\n  )\n\n  (:action fly-from-venice\n    :parameters (?to - city)\n    :precondition (and (at venice) (direct venice ?to) (venice-days-6))\n    :effect (and (not (at venice)) (at ?to))\n  )\n\n  (:action fly-from-zurich\n    :parameters (?to - city)\n    :precondition (and (at zurich) (direct zurich ?to) (zurich-days-2))\n    :effect (and (not (at zurich)) (at ?to))\n  )\n\n  (:action fly-from-florence\n    :parameters (?to - city)\n    :precondition (and (at florence) (direct florence ?to) (florence-days-6))\n    :effect (and (not (at florence)) (at ?to))\n  )\n)",
+    "pddl_problem": "(define (problem trip-12days)\n  (:domain trip-planning)\n  (:objects\n    venice zurich florence - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 - day\n  )\n\n  (:init\n    (at venice)\n\n    (direct venice zurich)\n    (direct zurich venice)\n    (direct zurich florence)\n\n    (day-available day1)\n    (day-available day2)\n    (day-available day3)\n    (day-available day4)\n    (day-available day5)\n    (day-available day6)\n    (day-available day7)\n    (day-available day8)\n    (day-available day9)\n    (day-available day10)\n    (day-available day11)\n    (day-available day12)\n\n    (= (total-cost) 0)\n\n    (venice-days-0)\n    (florence-days-0)\n    (zurich-days-0)\n  )\n\n  (:goal (and\n    (venice-days-6)\n    (florence-days-6)\n    (zurich-days-2)\n  ))\n\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  VENICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample28/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample28/problem_1.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.004s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 55 rules.\nComputing model... [0.000s CPU, 0.003s wall-clock]\n253 relevant atoms\n174 auxiliary atoms\n427 final queue length\n582 total queue pushes\nCompleting instantiation... [0.010s CPU, 0.004s wall-clock]\nInstantiating: [0.010s CPU, 0.010s wall-clock]\nComputing fact groups...\nFinding invariants...\n21 initial candidates\nFinding invariants: [0.000s CPU, 0.008s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.002s wall-clock]\nInstantiating groups... [0.010s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n12 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.010s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.005s wall-clock]\n168 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n4 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.002s wall-clock]\nReordering and filtering variables...\n16 of 16 variables necessary.\n0 of 15 mutex groups necessary.\n171 of 171 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 16\nTranslator derived variables: 0\nTranslator facts: 44\nTranslator goal facts: 3\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 171\nTranslator axioms: 0\nTranslator task size: 1083\nTranslator peak memory: 32584 KB\nWriting output... [0.010s CPU, 0.001s wall-clock]\nDone! [0.040s CPU, 0.034s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample28/sas_plan_1 < output.sas\n[t=0.000236s, 9964 KB] reading input...\n[t=0.001100s, 9964 KB] done reading input!\n[t=0.002521s, 10364 KB] Initializing landmark cut heuristic...\n[t=0.002582s, 10364 KB] Building successor generator...done!\n[t=0.002707s, 10364 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002724s, 10364 KB] time for successor generation creation: 0.000072s\n[t=0.002742s, 10364 KB] Variables: 16\n[t=0.002759s, 10364 KB] FactPairs: 44\n[t=0.002774s, 10364 KB] Bytes per state: 4\n[t=0.002801s, 10364 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002882s, 10364 KB] New best heuristic value for lmcut: 14\n[t=0.002902s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002924s, 10364 KB] f = 14, 1 evaluated, 0 expanded\n[t=0.002944s, 10364 KB] Initial heuristic value for lmcut: 14\n[t=0.002963s, 10364 KB] pruning method: none\n[t=0.003025s, 10364 KB] New best heuristic value for lmcut: 13\n[t=0.003041s, 10364 KB] g=1, 2 evaluated, 1 expanded\n[t=0.003503s, 10364 KB] New best heuristic value for lmcut: 12\n[t=0.003523s, 10364 KB] g=2, 14 evaluated, 2 expanded\n[t=0.003885s, 10364 KB] New best heuristic value for lmcut: 11\n[t=0.003906s, 10364 KB] g=3, 25 evaluated, 3 expanded\n[t=0.004190s, 10364 KB] New best heuristic value for lmcut: 10\n[t=0.004210s, 10364 KB] g=4, 35 evaluated, 4 expanded\n[t=0.004428s, 10364 KB] New best heuristic value for lmcut: 9\n[t=0.004446s, 10364 KB] g=5, 44 evaluated, 5 expanded\n[t=0.004609s, 10364 KB] New best heuristic value for lmcut: 8\n[t=0.004628s, 10364 KB] g=6, 52 evaluated, 6 expanded\n[t=0.004869s, 10364 KB] New best heuristic value for lmcut: 7\n[t=0.004887s, 10364 KB] g=7, 66 evaluated, 14 expanded\n[t=0.004980s, 10364 KB] New best heuristic value for lmcut: 6\n[t=0.004995s, 10364 KB] g=8, 72 evaluated, 15 expanded\n[t=0.005154s, 10364 KB] New best heuristic value for lmcut: 5\n[t=0.005173s, 10364 KB] g=9, 87 evaluated, 21 expanded\n[t=0.005220s, 10364 KB] New best heuristic value for lmcut: 4\n[t=0.005235s, 10364 KB] g=10, 91 evaluated, 22 expanded\n[t=0.005271s, 10364 KB] New best heuristic value for lmcut: 3\n[t=0.005286s, 10364 KB] g=11, 94 evaluated, 23 expanded\n[t=0.101528s, 10496 KB] Completely explored state space -- no solution!\n[t=0.101560s, 10496 KB] Actual search time: 0.098597s\n[t=0.101579s, 10496 KB] Expanded 6009 state(s).\n[t=0.101579s, 10496 KB] Reopened 0 state(s).\n[t=0.101579s, 10496 KB] Evaluated 6010 state(s).\n[t=0.101579s, 10496 KB] Evaluations: 6010\n[t=0.101579s, 10496 KB] Generated 26985 state(s).\n[t=0.101579s, 10496 KB] Dead ends: 1 state(s).\n[t=0.101579s, 10496 KB] Expanded until last jump: 0 state(s).\n[t=0.101579s, 10496 KB] Reopened until last jump: 0 state(s).\n[t=0.101579s, 10496 KB] Evaluated until last jump: 1 state(s).\n[t=0.101579s, 10496 KB] Generated until last jump: 0 state(s).\n[t=0.101579s, 10496 KB] Number of registered states: 6010\n[t=0.101579s, 10496 KB] Int hash set load factor: 6010/8192 = 0.733643\n[t=0.101579s, 10496 KB] Int hash set resizes: 13\n[t=0.101579s, 10496 KB] Search time: 0.098779s\n[t=0.101579s, 10496 KB] Total time: 0.101579s\nSearch stopped without finding a solution.\nPeak memory: 10496 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.23s\n",
+    "history": [
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.\n\nHere are the cities that have direct flights:\nVenice and Zurich, from Zurich to Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample28",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "venice_agent",
+                "florence_agent",
+                "orchestrator"
+            ],
+            "venice_agent": {
+                "private_information": [
+                    "I prefer to visit Venice for 6 days",
+                    "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "florence_agent": {
+                "private_information": [
+                    "I prefer to visit Florence for 6 days",
+                    "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12
+            },
+            "public_information": [
+                "Cities to consider: Venice, Zurich, Florence.",
+                "Total trip length available is 12 days.",
+                "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
+                "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
+                "Only direct flights are allowed for commuting between cities."
+            ]
+        },
+        "workflow": {
+            "venice_agent": {
+                "report": {
+                    "input": [],
+                    "output": "venice_report",
+                    "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
+                    "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "florence_report",
+                    "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
+                    "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "venice_report",
+                        "florence_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
+                    "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "venice_agent.report->orchestrator.pddl",
+                "florence_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :action-costs :fluents)\n  (:types city day)\n  (:predicates\n    (at ?loc - city)\n    (direct ?from - city ?to - city)\n    (day-available ?d - day)\n\n    (venice-days-0)\n    (venice-days-1)\n    (venice-days-2)\n    (venice-days-3)\n    (venice-days-4)\n    (venice-days-5)\n    (venice-days-6)\n\n    (florence-days-0)\n    (florence-days-1)\n    (florence-days-2)\n    (florence-days-3)\n    (florence-days-4)\n    (florence-days-5)\n    (florence-days-6)\n\n    (zurich-days-0)\n    (zurich-days-1)\n    (zurich-days-2)\n  )\n\n  (:functions\n    (total-cost)\n  )\n\n  (:action stay-venice-0\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-0))\n    :effect (and (not (day-available ?d)) (not (venice-days-0)) (venice-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-1\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-1))\n    :effect (and (not (day-available ?d)) (not (venice-days-1)) (venice-days-2) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-2\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-2))\n    :effect (and (not (day-available ?d)) (not (venice-days-2)) (venice-days-3) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-3\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-3))\n    :effect (and (not (day-available ?d)) (not (venice-days-3)) (venice-days-4) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-4\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-4))\n    :effect (and (not (day-available ?d)) (not (venice-days-4)) (venice-days-5) (increase (total-cost) 1))\n  )\n\n  (:action stay-venice-5\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-5))\n    :effect (and (not (day-available ?d)) (not (venice-days-5)) (venice-days-6) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-0\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-0))\n    :effect (and (not (day-available ?d)) (not (florence-days-0)) (florence-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-1\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-1))\n    :effect (and (not (day-available ?d)) (not (florence-days-1)) (florence-days-2) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-2\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-2))\n    :effect (and (not (day-available ?d)) (not (florence-days-2)) (florence-days-3) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-3\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-3))\n    :effect (and (not (day-available ?d)) (not (florence-days-3)) (florence-days-4) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-4\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-4))\n    :effect (and (not (day-available ?d)) (not (florence-days-4)) (florence-days-5) (increase (total-cost) 1))\n  )\n\n  (:action stay-florence-5\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-5))\n    :effect (and (not (day-available ?d)) (not (florence-days-5)) (florence-days-6) (increase (total-cost) 1))\n  )\n\n  (:action stay-zurich-0\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-0))\n    :effect (and (not (day-available ?d)) (not (zurich-days-0)) (zurich-days-1) (increase (total-cost) 1))\n  )\n\n  (:action stay-zurich-1\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-1))\n    :effect (and (not (day-available ?d)) (not (zurich-days-1)) (zurich-days-2) (increase (total-cost) 1))\n  )\n\n  (:action fly-from-venice\n    :parameters (?to - city)\n    :precondition (and (at venice) (direct venice ?to) (venice-days-6))\n    :effect (and (not (at venice)) (at ?to))\n  )\n\n  (:action fly-from-zurich\n    :parameters (?to - city)\n    :precondition (and (at zurich) (direct zurich ?to) (zurich-days-2))\n    :effect (and (not (at zurich)) (at ?to))\n  )\n\n  (:action fly-from-florence\n    :parameters (?to - city)\n    :precondition (and (at florence) (direct florence ?to) (florence-days-6))\n    :effect (and (not (at florence)) (at ?to))\n  )\n)",
+    "pddl_problem": "(define (problem trip-12days)\n  (:domain trip-planning)\n  (:objects\n    venice zurich florence - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 - day\n  )\n\n  (:init\n    (at venice)\n\n    (direct venice zurich)\n    (direct zurich venice)\n    (direct zurich florence)\n\n    (day-available day1)\n    (day-available day2)\n    (day-available day3)\n    (day-available day4)\n    (day-available day5)\n    (day-available day6)\n    (day-available day7)\n    (day-available day8)\n    (day-available day9)\n    (day-available day10)\n    (day-available day11)\n    (day-available day12)\n\n    (= (total-cost) 0)\n\n    (venice-days-0)\n    (florence-days-0)\n    (zurich-days-0)\n  )\n\n  (:goal (and\n    (venice-days-6)\n    (florence-days-6)\n    (zurich-days-2)\n  ))\n\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  VENICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample28/domain_2.pddl results/google/trip_planning/FastDownwards/TripPlanningExample28/problem_2.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.08s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.\n\nHere are the cities that have direct flights:\nVenice and Zurich, from Zurich to Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample28",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "venice_agent",
+                "florence_agent",
+                "orchestrator"
+            ],
+            "venice_agent": {
+                "private_information": [
+                    "I prefer to visit Venice for 6 days",
+                    "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "florence_agent": {
+                "private_information": [
+                    "I prefer to visit Florence for 6 days",
+                    "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12
+            },
+            "public_information": [
+                "Cities to consider: Venice, Zurich, Florence.",
+                "Total trip length available is 12 days.",
+                "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
+                "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
+                "Only direct flights are allowed for commuting between cities."
+            ]
+        },
+        "workflow": {
+            "venice_agent": {
+                "report": {
+                    "input": [],
+                    "output": "venice_report",
+                    "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
+                    "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "florence_report",
+                    "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
+                    "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "venice_report",
+                        "florence_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
+                    "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "venice_agent.report->orchestrator.pddl",
+                "florence_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types city day)\n  (:predicates\n    (at ?loc - city)\n    (direct ?from - city ?to - city)\n    (day-available ?d - day)\n\n    (venice-days-0)\n    (venice-days-1)\n    (venice-days-2)\n    (venice-days-3)\n    (venice-days-4)\n    (venice-days-5)\n    (venice-days-6)\n\n    (florence-days-0)\n    (florence-days-1)\n    (florence-days-2)\n    (florence-days-3)\n    (florence-days-4)\n    (florence-days-5)\n    (florence-days-6)\n\n    (zurich-days-0)\n    (zurich-days-1)\n    (zurich-days-2)\n  )\n\n  (:action stay-venice-0\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-0))\n    :effect (and (not (day-available ?d)) (not (venice-days-0)) (venice-days-1))\n  )\n\n  (:action stay-venice-1\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-1))\n    :effect (and (not (day-available ?d)) (not (venice-days-1)) (venice-days-2))\n  )\n\n  (:action stay-venice-2\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-2))\n    :effect (and (not (day-available ?d)) (not (venice-days-2)) (venice-days-3))\n  )\n\n  (:action stay-venice-3\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-3))\n    :effect (and (not (day-available ?d)) (not (venice-days-3)) (venice-days-4))\n  )\n\n  (:action stay-venice-4\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-4))\n    :effect (and (not (day-available ?d)) (not (venice-days-4)) (venice-days-5))\n  )\n\n  (:action stay-venice-5\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-5))\n    :effect (and (not (day-available ?d)) (not (venice-days-5)) (venice-days-6))\n  )\n\n  (:action stay-florence-0\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-0))\n    :effect (and (not (day-available ?d)) (not (florence-days-0)) (florence-days-1))\n  )\n\n  (:action stay-florence-1\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-1))\n    :effect (and (not (day-available ?d)) (not (florence-days-1)) (florence-days-2))\n  )\n\n  (:action stay-florence-2\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-2))\n    :effect (and (not (day-available ?d)) (not (florence-days-2)) (florence-days-3))\n  )\n\n  (:action stay-florence-3\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-3))\n    :effect (and (not (day-available ?d)) (not (florence-days-3)) (florence-days-4))\n  )\n\n  (:action stay-florence-4\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-4))\n    :effect (and (not (day-available ?d)) (not (florence-days-4)) (florence-days-5))\n  )\n\n  (:action stay-florence-5\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-5))\n    :effect (and (not (day-available ?d)) (not (florence-days-5)) (florence-days-6))\n  )\n\n  (:action stay-zurich-0\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-0))\n    :effect (and (not (day-available ?d)) (not (zurich-days-0)) (zurich-days-1))\n  )\n\n  (:action stay-zurich-1\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-1))\n    :effect (and (not (day-available ?d)) (not (zurich-days-1)) (zurich-days-2))\n  )\n\n  (:action fly-from-venice\n    :parameters (?to - city)\n    :precondition (and (at venice) (direct venice ?to) (venice-days-6))\n    :effect (and (not (at venice)) (at ?to))\n  )\n\n  (:action fly-from-zurich\n    :parameters (?to - city)\n    :precondition (and (at zurich) (direct zurich ?to) (zurich-days-2))\n    :effect (and (not (at zurich)) (at ?to))\n  )\n\n  (:action fly-from-florence\n    :parameters (?to - city)\n    :precondition (and (at florence) (direct florence ?to) (florence-days-6))\n    :effect (and (not (at florence)) (at ?to))\n  )\n)",
+    "pddl_problem": "(define (problem trip-12days)\n  (:domain trip-planning)\n  (:objects\n    venice zurich florence - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 - day\n  )\n\n  (:init\n    (at venice)\n\n    (direct venice zurich)\n    (direct zurich venice)\n    (direct zurich florence)\n\n    (day-available day1)\n    (day-available day2)\n    (day-available day3)\n    (day-available day4)\n    (day-available day5)\n    (day-available day6)\n    (day-available day7)\n    (day-available day8)\n    (day-available day9)\n    (day-available day10)\n    (day-available day11)\n    (day-available day12)\n\n    (venice-days-0)\n    (florence-days-0)\n    (zurich-days-0)\n  )\n\n  (:goal (and\n    (venice-days-6)\n    (florence-days-6)\n    (zurich-days-2)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  VENICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample28/domain_3.pddl results/google/trip_planning/FastDownwards/TripPlanningExample28/problem_3.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.004s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 55 rules.\nComputing model... [0.000s CPU, 0.003s wall-clock]\n252 relevant atoms\n174 auxiliary atoms\n426 final queue length\n581 total queue pushes\nCompleting instantiation... [0.010s CPU, 0.004s wall-clock]\nInstantiating: [0.010s CPU, 0.009s wall-clock]\nComputing fact groups...\nFinding invariants...\n21 initial candidates\nFinding invariants: [0.010s CPU, 0.008s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.002s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n12 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.010s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.005s wall-clock]\n168 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n4 propositions removed\nDetecting unreachable propositions: [0.010s CPU, 0.002s wall-clock]\nReordering and filtering variables...\n16 of 16 variables necessary.\n0 of 15 mutex groups necessary.\n171 of 171 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 16\nTranslator derived variables: 0\nTranslator facts: 44\nTranslator goal facts: 3\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 171\nTranslator axioms: 0\nTranslator task size: 1083\nTranslator peak memory: 32584 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.040s CPU, 0.034s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample28/sas_plan_3 < output.sas\n[t=0.000183s, 9964 KB] reading input...\n[t=0.001261s, 9964 KB] done reading input!\n[t=0.002881s, 10364 KB] Initializing landmark cut heuristic...\n[t=0.002941s, 10364 KB] Building successor generator...done!\n[t=0.003065s, 10364 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.003082s, 10364 KB] time for successor generation creation: 0.000071s\n[t=0.003099s, 10364 KB] Variables: 16\n[t=0.003116s, 10364 KB] FactPairs: 44\n[t=0.003130s, 10364 KB] Bytes per state: 4\n[t=0.003157s, 10364 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.003243s, 10364 KB] New best heuristic value for lmcut: 16\n[t=0.003263s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.003286s, 10364 KB] f = 16, 1 evaluated, 0 expanded\n[t=0.003307s, 10364 KB] Initial heuristic value for lmcut: 16\n[t=0.003326s, 10364 KB] pruning method: none\n[t=0.003394s, 10364 KB] New best heuristic value for lmcut: 15\n[t=0.003410s, 10364 KB] g=1, 2 evaluated, 1 expanded\n[t=0.003934s, 10364 KB] New best heuristic value for lmcut: 14\n[t=0.003956s, 10364 KB] g=2, 14 evaluated, 2 expanded\n[t=0.004356s, 10364 KB] New best heuristic value for lmcut: 13\n[t=0.004376s, 10364 KB] g=3, 25 evaluated, 3 expanded\n[t=0.004698s, 10364 KB] New best heuristic value for lmcut: 12\n[t=0.004717s, 10364 KB] g=4, 35 evaluated, 4 expanded\n[t=0.004976s, 10364 KB] New best heuristic value for lmcut: 11\n[t=0.004995s, 10364 KB] g=5, 44 evaluated, 5 expanded\n[t=0.005185s, 10364 KB] New best heuristic value for lmcut: 10\n[t=0.005205s, 10364 KB] g=6, 52 evaluated, 6 expanded\n[t=0.005353s, 10364 KB] New best heuristic value for lmcut: 9\n[t=0.005370s, 10364 KB] g=7, 59 evaluated, 7 expanded\n[t=0.005404s, 10364 KB] New best heuristic value for lmcut: 8\n[t=0.005419s, 10364 KB] g=8, 60 evaluated, 8 expanded\n[t=0.005529s, 10364 KB] New best heuristic value for lmcut: 7\n[t=0.005545s, 10364 KB] g=9, 66 evaluated, 9 expanded\n[t=0.005620s, 10364 KB] New best heuristic value for lmcut: 6\n[t=0.005637s, 10364 KB] g=10, 71 evaluated, 10 expanded\n[t=0.005675s, 10364 KB] New best heuristic value for lmcut: 5\n[t=0.005690s, 10364 KB] g=11, 73 evaluated, 11 expanded\n[t=0.005736s, 10364 KB] New best heuristic value for lmcut: 4\n[t=0.005753s, 10364 KB] g=12, 77 evaluated, 12 expanded\n[t=0.005789s, 10364 KB] New best heuristic value for lmcut: 3\n[t=0.005804s, 10364 KB] g=13, 80 evaluated, 13 expanded\n[t=0.111056s, 10496 KB] f = 18, 6010 evaluated, 5514 expanded\n[t=0.111248s, 10496 KB] Completely explored state space -- no solution!\n[t=0.111261s, 10496 KB] Actual search time: 0.107927s\n[t=0.111270s, 10496 KB] Expanded 6009 state(s).\n[t=0.111270s, 10496 KB] Reopened 0 state(s).\n[t=0.111270s, 10496 KB] Evaluated 6010 state(s).\n[t=0.111270s, 10496 KB] Evaluations: 6010\n[t=0.111270s, 10496 KB] Generated 26985 state(s).\n[t=0.111270s, 10496 KB] Dead ends: 1 state(s).\n[t=0.111270s, 10496 KB] Expanded until last jump: 5514 state(s).\n[t=0.111270s, 10496 KB] Reopened until last jump: 0 state(s).\n[t=0.111270s, 10496 KB] Evaluated until last jump: 6010 state(s).\n[t=0.111270s, 10496 KB] Generated until last jump: 26490 state(s).\n[t=0.111270s, 10496 KB] Number of registered states: 6010\n[t=0.111270s, 10496 KB] Int hash set load factor: 6010/8192 = 0.733643\n[t=0.111270s, 10496 KB] Int hash set resizes: 13\n[t=0.111270s, 10496 KB] Search time: 0.108114s\n[t=0.111270s, 10496 KB] Total time: 0.111270s\nSearch stopped without finding a solution.\nPeak memory: 10496 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.24s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+
+ITERATION 4
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You would like to visit Venice for 6 days. You would like to visit Florence for 6 days. You plan to stay in Zurich for 2 days.\n\nHere are the cities that have direct flights:\nVenice and Zurich, from Zurich to Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample28",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "venice_agent",
+                "florence_agent",
+                "orchestrator"
+            ],
+            "venice_agent": {
+                "private_information": [
+                    "I prefer to visit Venice for 6 days",
+                    "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "florence_agent": {
+                "private_information": [
+                    "I prefer to visit Florence for 6 days",
+                    "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                ],
+                "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12
+            },
+            "public_information": [
+                "Cities to consider: Venice, Zurich, Florence.",
+                "Total trip length available is 12 days.",
+                "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
+                "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
+                "Only direct flights are allowed for commuting between cities."
+            ]
+        },
+        "workflow": {
+            "venice_agent": {
+                "report": {
+                    "input": [],
+                    "output": "venice_report",
+                    "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
+                    "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "florence_agent": {
+                "report": {
+                    "input": [],
+                    "output": "florence_report",
+                    "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
+                    "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "venice_report",
+                        "florence_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
+                    "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "venice_agent.report->orchestrator.pddl",
+                "florence_agent.report->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing)\n  (:types city day)\n  (:predicates\n    (at ?loc - city)\n    (direct ?from - city ?to - city)\n    (day-available ?d - day)\n\n    (venice-days-0)\n    (venice-days-1)\n    (venice-days-2)\n    (venice-days-3)\n    (venice-days-4)\n    (venice-days-5)\n    (venice-days-6)\n\n    (florence-days-0)\n    (florence-days-1)\n    (florence-days-2)\n    (florence-days-3)\n    (florence-days-4)\n    (florence-days-5)\n    (florence-days-6)\n\n    (zurich-days-0)\n    (zurich-days-1)\n    (zurich-days-2)\n  )\n\n  ;; Stay actions consume one available day and advance the city's day-counter\n  (:action stay-venice-0\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-0))\n    :effect (and (not (day-available ?d)) (not (venice-days-0)) (venice-days-1))\n  )\n\n  (:action stay-venice-1\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-1))\n    :effect (and (not (day-available ?d)) (not (venice-days-1)) (venice-days-2))\n  )\n\n  (:action stay-venice-2\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-2))\n    :effect (and (not (day-available ?d)) (not (venice-days-2)) (venice-days-3))\n  )\n\n  (:action stay-venice-3\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-3))\n    :effect (and (not (day-available ?d)) (not (venice-days-3)) (venice-days-4))\n  )\n\n  (:action stay-venice-4\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-4))\n    :effect (and (not (day-available ?d)) (not (venice-days-4)) (venice-days-5))\n  )\n\n  (:action stay-venice-5\n    :parameters (?d - day)\n    :precondition (and (at venice) (day-available ?d) (venice-days-5))\n    :effect (and (not (day-available ?d)) (not (venice-days-5)) (venice-days-6))\n  )\n\n  (:action stay-florence-0\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-0))\n    :effect (and (not (day-available ?d)) (not (florence-days-0)) (florence-days-1))\n  )\n\n  (:action stay-florence-1\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-1))\n    :effect (and (not (day-available ?d)) (not (florence-days-1)) (florence-days-2))\n  )\n\n  (:action stay-florence-2\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-2))\n    :effect (and (not (day-available ?d)) (not (florence-days-2)) (florence-days-3))\n  )\n\n  (:action stay-florence-3\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-3))\n    :effect (and (not (day-available ?d)) (not (florence-days-3)) (florence-days-4))\n  )\n\n  (:action stay-florence-4\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-4))\n    :effect (and (not (day-available ?d)) (not (florence-days-4)) (florence-days-5))\n  )\n\n  (:action stay-florence-5\n    :parameters (?d - day)\n    :precondition (and (at florence) (day-available ?d) (florence-days-5))\n    :effect (and (not (day-available ?d)) (not (florence-days-5)) (florence-days-6))\n  )\n\n  (:action stay-zurich-0\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-0))\n    :effect (and (not (day-available ?d)) (not (zurich-days-0)) (zurich-days-1))\n  )\n\n  (:action stay-zurich-1\n    :parameters (?d - day)\n    :precondition (and (at zurich) (day-available ?d) (zurich-days-1))\n    :effect (and (not (day-available ?d)) (not (zurich-days-1)) (zurich-days-2))\n  )\n\n  ;; Flights allowed only along direct connections. Departure is permitted only\n  ;; once the planned stay length for the city has been achieved (modeled as the city's max-day predicate).\n  (:action fly-from-venice\n    :parameters (?to - city)\n    :precondition (and (at venice) (direct venice ?to) (venice-days-6))\n    :effect (and (not (at venice)) (at ?to))\n  )\n\n  (:action fly-from-zurich\n    :parameters (?to - city)\n    :precondition (and (at zurich) (direct zurich ?to) (zurich-days-2))\n    :effect (and (not (at zurich)) (at ?to))\n  )\n\n  (:action fly-from-florence\n    :parameters (?to - city)\n    :precondition (and (at florence) (direct florence ?to) (florence-days-6))\n    :effect (and (not (at florence)) (at ?to))\n  )\n)",
+    "pddl_problem": "(define (problem trip-12days)\n  (:domain trip-planning)\n  (:objects\n    venice zurich florence - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 - day\n  )\n\n  (:init\n    ;; start location\n    (at venice)\n\n    ;; direct flight connections (only direct flights allowed)\n    (direct venice zurich)\n    (direct zurich venice)\n    (direct zurich florence)\n\n    ;; available day tokens: total budget of 12 days\n    (day-available day1)\n    (day-available day2)\n    (day-available day3)\n    (day-available day4)\n    (day-available day5)\n    (day-available day6)\n    (day-available day7)\n    (day-available day8)\n    (day-available day9)\n    (day-available day10)\n    (day-available day11)\n    (day-available day12)\n\n    ;; initial counters for days spent in each city\n    (venice-days-0)\n    (florence-days-0)\n    (zurich-days-0)\n  )\n\n  ;; Goals reflect the human specification: desired stays.\n  ;; Note: the sum of these required stays (6+6+2 = 14) exceeds the available 12 days;\n  ;; this models the stated (inconsistent) hard requirements exactly.\n  (:goal (and\n    (venice-days-6)\n    (florence-days-6)\n    (zurich-days-2)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  VENICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample28/domain_4.pddl results/google/trip_planning/FastDownwards/TripPlanningExample28/problem_4.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.004s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 55 rules.\nComputing model... [0.000s CPU, 0.003s wall-clock]\n252 relevant atoms\n174 auxiliary atoms\n426 final queue length\n581 total queue pushes\nCompleting instantiation... [0.010s CPU, 0.004s wall-clock]\nInstantiating: [0.010s CPU, 0.009s wall-clock]\nComputing fact groups...\nFinding invariants...\n21 initial candidates\nFinding invariants: [0.010s CPU, 0.008s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.002s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n12 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.010s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.005s wall-clock]\n168 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n4 propositions removed\nDetecting unreachable propositions: [0.010s CPU, 0.002s wall-clock]\nReordering and filtering variables...\n16 of 16 variables necessary.\n0 of 15 mutex groups necessary.\n171 of 171 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 16\nTranslator derived variables: 0\nTranslator facts: 44\nTranslator goal facts: 3\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 171\nTranslator axioms: 0\nTranslator task size: 1083\nTranslator peak memory: 32584 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.030s CPU, 0.034s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/google/trip_planning/FastDownwards/TripPlanningExample28/sas_plan_4 < output.sas\n[t=0.000179s, 9964 KB] reading input...\n[t=0.001267s, 9964 KB] done reading input!\n[t=0.002913s, 10364 KB] Initializing landmark cut heuristic...\n[t=0.002975s, 10364 KB] Building successor generator...done!\n[t=0.003099s, 10364 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.003115s, 10364 KB] time for successor generation creation: 0.000071s\n[t=0.003132s, 10364 KB] Variables: 16\n[t=0.003149s, 10364 KB] FactPairs: 44\n[t=0.003164s, 10364 KB] Bytes per state: 4\n[t=0.003191s, 10364 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.003279s, 10364 KB] New best heuristic value for lmcut: 16\n[t=0.003298s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.003321s, 10364 KB] f = 16, 1 evaluated, 0 expanded\n[t=0.003340s, 10364 KB] Initial heuristic value for lmcut: 16\n[t=0.003358s, 10364 KB] pruning method: none\n[t=0.003427s, 10364 KB] New best heuristic value for lmcut: 15\n[t=0.003442s, 10364 KB] g=1, 2 evaluated, 1 expanded\n[t=0.003981s, 10364 KB] New best heuristic value for lmcut: 14\n[t=0.004005s, 10364 KB] g=2, 14 evaluated, 2 expanded\n[t=0.004420s, 10364 KB] New best heuristic value for lmcut: 13\n[t=0.004440s, 10364 KB] g=3, 25 evaluated, 3 expanded\n[t=0.004778s, 10364 KB] New best heuristic value for lmcut: 12\n[t=0.004798s, 10364 KB] g=4, 35 evaluated, 4 expanded\n[t=0.005053s, 10364 KB] New best heuristic value for lmcut: 11\n[t=0.005071s, 10364 KB] g=5, 44 evaluated, 5 expanded\n[t=0.005268s, 10364 KB] New best heuristic value for lmcut: 10\n[t=0.005286s, 10364 KB] g=6, 52 evaluated, 6 expanded\n[t=0.005435s, 10364 KB] New best heuristic value for lmcut: 9\n[t=0.005452s, 10364 KB] g=7, 59 evaluated, 7 expanded\n[t=0.005485s, 10364 KB] New best heuristic value for lmcut: 8\n[t=0.005500s, 10364 KB] g=8, 60 evaluated, 8 expanded\n[t=0.005611s, 10364 KB] New best heuristic value for lmcut: 7\n[t=0.005629s, 10364 KB] g=9, 66 evaluated, 9 expanded\n[t=0.005704s, 10364 KB] New best heuristic value for lmcut: 6\n[t=0.005720s, 10364 KB] g=10, 71 evaluated, 10 expanded\n[t=0.005759s, 10364 KB] New best heuristic value for lmcut: 5\n[t=0.005774s, 10364 KB] g=11, 73 evaluated, 11 expanded\n[t=0.005821s, 10364 KB] New best heuristic value for lmcut: 4\n[t=0.005837s, 10364 KB] g=12, 77 evaluated, 12 expanded\n[t=0.005873s, 10364 KB] New best heuristic value for lmcut: 3\n[t=0.005888s, 10364 KB] g=13, 80 evaluated, 13 expanded\n[t=0.116542s, 10496 KB] f = 18, 6010 evaluated, 5514 expanded\n[t=0.116916s, 10496 KB] Completely explored state space -- no solution!\n[t=0.116942s, 10496 KB] Actual search time: 0.113582s\n[t=0.116960s, 10496 KB] Expanded 6009 state(s).\n[t=0.116960s, 10496 KB] Reopened 0 state(s).\n[t=0.116960s, 10496 KB] Evaluated 6010 state(s).\n[t=0.116960s, 10496 KB] Evaluations: 6010\n[t=0.116960s, 10496 KB] Generated 26985 state(s).\n[t=0.116960s, 10496 KB] Dead ends: 1 state(s).\n[t=0.116960s, 10496 KB] Expanded until last jump: 5514 state(s).\n[t=0.116960s, 10496 KB] Reopened until last jump: 0 state(s).\n[t=0.116960s, 10496 KB] Evaluated until last jump: 6010 state(s).\n[t=0.116960s, 10496 KB] Generated until last jump: 26490 state(s).\n[t=0.116960s, 10496 KB] Number of registered states: 6010\n[t=0.116960s, 10496 KB] Int hash set load factor: 6010/8192 = 0.733643\n[t=0.116960s, 10496 KB] Int hash set resizes: 13\n[t=0.116960s, 10496 KB] Search time: 0.113769s\n[t=0.116960s, 10496 KB] Total time: 0.116960s\nSearch stopped without finding a solution.\nPeak memory: 10496 KB\nRemove intermediate file output.sas\nsearch exit code: 12\n\nDriver aborting after search\nINFO     Planner time: 0.25s\n",
+    "history": [
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL",
+        "AgentSyntaxPDDL",
+        "AgentDeepThinkConstraints"
+    ]
+}
+================================================================================
+

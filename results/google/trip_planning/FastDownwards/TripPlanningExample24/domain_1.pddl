@@ -1,27 +1,28 @@
 (define (domain europe-trip)
-  (:requirements :strips :typing :fluents :action-costs)
+  (:requirements :strips :typing :negative-preconditions :fluents :action-costs)
   (:types city day)
   (:predicates
-    (on ?c - city ?d - day)
-    (connected ?from - city ?to - city)
+    (at ?c - city ?d - day)
+    (current ?d - day)
     (next ?d1 - day ?d2 - day)
-    (free ?d - day)
+    (connected ?from - city ?to - city)
+    (assigned ?d - day)
   )
-  (:functions
-    (total-cost)
-  )
-
-  (:action assign-next
-    :parameters (?d1 - day ?d2 - day ?from - city ?to - city)
+  (:functions (total-cost))
+  (:action assign-next-day
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
     :precondition (and
-      (on ?from ?d1)
+      (current ?d1)
+      (at ?from ?d1)
       (next ?d1 ?d2)
       (connected ?from ?to)
-      (free ?d2)
+      (not (assigned ?d2))
     )
     :effect (and
-      (on ?to ?d2)
-      (not (free ?d2))
+      (not (current ?d1))
+      (current ?d2)
+      (at ?to ?d2)
+      (assigned ?d2)
       (increase (total-cost) 1)
     )
   )

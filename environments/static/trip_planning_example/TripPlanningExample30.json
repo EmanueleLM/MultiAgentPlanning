@@ -1,0 +1,85 @@
+{
+    "name": "TripPlanningExample30",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a 14-day trip in Europe",
+                "I will stay 5 days in Istanbul",
+                "I will stay 4 days in Tallinn",
+                "I will stay 7 days in Zurich",
+                "I only take direct flights between cities"
+            ],
+            "goal": "Produce a day-by-day visit schedule of the three cities that sums to 14 days and respects the requested stays and the Zurich show dates"
+        },
+        "flight_planner": {
+            "private_information": [
+                "Direct flights exist between Istanbul and Tallinn",
+                "Direct flights exist between Istanbul and Zurich",
+                "Direct flights exist between Zurich and Tallinn",
+                "All commuting must use direct flights only"
+            ],
+            "goal": "Provide feasible flight legs and an ordered list of direct flights that connect the cities in a way compatible with the traveler's desired stays"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating itinerary and flights into a PDDL planning instance",
+                "Target solver is FastDownwards"
+            ],
+            "goal": "Produce a PDDL domain and problem that encode the trip planning task for the FastDownwards planner, integrating traveler constraints and flight connectivity"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "start_day": 1
+        },
+        "public_information": [
+            "Cities to visit: Istanbul, Tallinn, Zurich",
+            "Total trip length is 14 days",
+            "Desired city stays: Istanbul 5 days, Tallinn 4 days, Zurich 7 days",
+            "There is an annual show in Zurich from day 1 to day 7",
+            "You only take direct flights to commute between cities",
+            "Direct flight connections: Istanbul <-> Tallinn, Istanbul <-> Zurich, Zurich <-> Tallinn"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_traveler",
+                "system_prompt": "You are the traveler agent who knows personal stay preferences and the overall goal; produce a day-by-day allocation of the 14 days among Istanbul, Tallinn and Zurich that respects the requested lengths of stay and the Zurich show window. Do not produce PDDL; provide a clear ordered itinerary with day ranges for each city and note required arrival/departure day constraints.",
+                "prompt": "You are named traveler. Use the public information and your private information to create a day-by-day schedule allocating days to each city, ensure totals match 14 days, respect Istanbul 5 days, Tallinn 4 days, Zurich 7 days, and the Zurich show from day 1 to day 7. List city stays as explicit day ranges and state any arrival/departure days that must align with flight legs."
+            }
+        },
+        "flight_planner": {
+            "connections": {
+                "input": [],
+                "output": "flight_plan",
+                "system_prompt": "You are the flight planner agent with knowledge of direct flight connectivity; your job is to enumerate feasible sequences of direct flights that can connect the cities according to an itinerary. Do not produce PDDL; provide flight legs, travel day implications, and indicate which day transitions are possible given direct connections.",
+                "prompt": "You are named flight_planner. Using the public information about direct flights, list possible direct flight legs between Istanbul, Tallinn and Zurich, provide example travel sequences that connect the three-city itinerary using only direct flights, and indicate which city-to-city moves can occur on which day transitions (arrival/departure constraints)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_traveler",
+                    "flight_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and must integrate itinerary and flight connectivity into a complete PDDL domain and PDDL problem designed to be solved by the FastDownwards planner. Produce a PDDL domain and a PDDL problem that model days, city stays, direct-flight moves, and the show constraint in Zurich. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility.",
+                "prompt": "You are named orchestrator. Receive the traveler's day-by-day itinerary and the flight planner's direct-flight sequences, resolve any naming or indexing differences, encode the timeline, city-stay duration constraints, direct-flight move actions, and the Zurich show constraint into a PDDL domain and problem that FastDownwards can solve. Keep the traveler's and flight_planner's constraints distinct while integrating them into a single planning instance, and output the domain and problem enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary->orchestrator.pddl",
+            "flight_planner.connections->orchestrator.pddl"
+        ]
+    }
+}

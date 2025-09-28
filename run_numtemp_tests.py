@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 from llm_plan.workflow import build_graph
 
 
-FOLDER = Path("./numtemp_test/datasets_nl/depots/str")
+FOLDER = Path("./numtemp_test/datasets_nl/depots/t")
 g = build_graph().compile()
 
 
@@ -19,15 +19,15 @@ async def run_one(file_path: Path, exp_num: int):
         "messages": [HumanMessage(content=initial_description)],
         "multi_agent": True,
         "mode": "direct",
-        "refinement_iters": 8,
-        "folder_name": f"depots_str_{exp_num}",
+        "refinement_iters": 10,
+        "folder_name": f"depots_t_{exp_num}",
         "enable_clarifications": False,
         "WSL": True,
     }
 
     config = {
-        "configurable": {"thread_id": f"dep_str_{exp_num}"},
-        "recursion_limit": 80,
+        "configurable": {"thread_id": f"dep_t_{exp_num}"},
+        "recursion_limit": 100,
     }
 
     result = await g.ainvoke(initial_state, config=config)
@@ -36,7 +36,7 @@ async def run_one(file_path: Path, exp_num: int):
 
 async def main():
     # sort files
-    files = sorted([p for p in FOLDER.iterdir() if p.is_file()])[:5]
+    files = sorted([p for p in FOLDER.iterdir() if p.is_file()])
     tasks = [run_one(fp, i + 1) for i, fp in enumerate(files)]
     results = await asyncio.gather(*tasks)
 

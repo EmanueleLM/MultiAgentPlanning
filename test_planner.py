@@ -7,14 +7,15 @@ from unified_planning.io import PDDLReader
 from unified_planning.shortcuts import OneshotPlanner
 from unified_planning.model.metrics import MinimizeMakespan
 
-ACTOR_OUTPUT_PATH = "./tmp"
-folder_name = "depot_test"
+ACTOR_OUTPUT_PATH = "./numtemp_test/results/depots/t"
+folder_name = "depots_t_2"
+
 
 base_dir = (Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")).resolve()
 
 dom, prob = (
-    base_dir / "DepotsTime.pddl",
-    base_dir / "DT_14.pddl",
+    base_dir / "domain.pddl",
+    base_dir / "problem.pddl",
 )  # put your paths here
 
 problem = PDDLReader().parse_problem(dom, prob)

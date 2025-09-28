@@ -1,0 +1,99 @@
+{
+    "name": "TripPlanningExample34",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "frankfurt_agent",
+            "florence_agent",
+            "valencia_agent",
+            "orchestrator"
+        ],
+        "frankfurt_agent": {
+            "private_information": [
+                "I plan to stay in Frankfurt for 5 days.",
+                "Frankfurt has direct flights to Florence and Valencia."
+            ],
+            "goal": "Find a trip plan visiting Frankfurt, Florence and Valencia in a total of 9 days using only direct flights between cities."
+        },
+        "florence_agent": {
+            "private_information": [
+                "I would like to visit Florence for 4 days.",
+                "Florence has a direct flight to Frankfurt."
+            ],
+            "goal": "Find a trip plan visiting Frankfurt, Florence and Valencia in a total of 9 days using only direct flights between cities."
+        },
+        "valencia_agent": {
+            "private_information": [
+                "I would like to visit Valencia for 2 days.",
+                "I plan to visit relatives in Valencia between day 1 and day 2 of the trip (the visit must occur within that window).",
+                "Valencia has a direct flight to Frankfurt."
+            ],
+            "goal": "Find a trip plan visiting Frankfurt, Florence and Valencia in a total of 9 days using only direct flights between cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' constraints and produce a final PDDL domain and PDDL problem (suitable for the FastDownwards solver) that yields a valid 9-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9,
+            "cities": [
+                "Frankfurt",
+                "Florence",
+                "Valencia"
+            ]
+        },
+        "public_information": [
+            "You plan a 9-day trip visiting three cities: Frankfurt, Florence, and Valencia.",
+            "You only take direct flights to commute between cities.",
+            "Direct flights exist between Frankfurt and Florence.",
+            "Direct flights exist between Valencia and Frankfurt.",
+            "There is no direct flight listed between Valencia and Florence, so travel between those two must go via Frankfurt."
+        ]
+    },
+    "workflow": {
+        "frankfurt_agent": {
+            "requirements": {
+                "input": [],
+                "output": "req_frankfurt",
+                "system_prompt": "You are an agent representing the travel preferences and constraints related to Frankfurt. Provide structured constraints and availability information (stay duration preference, any hard windows for visits, and connections known). Do NOT produce PDDL.",
+                "prompt": "Your name is frankfurt_agent. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->frankfurt_agent->private_information}\nThis is the global goal to solve:\n{agents->frankfurt_agent->goal}\nProvide a concise, structured summary of constraints and preferences you know and require for the itinerary. State explicit numeric durations and any hard windows or absolute requirements. If you detect a conflict with the global total days, report it but do not resolve it\u2014just state your information."
+            }
+        },
+        "florence_agent": {
+            "requirements": {
+                "input": [],
+                "output": "req_florence",
+                "system_prompt": "You are an agent representing the travel preferences and constraints related to Florence. Provide structured constraints and availability information (stay duration preference, any hard windows for visits, and connections known). Do NOT produce PDDL.",
+                "prompt": "Your name is florence_agent. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->florence_agent->private_information}\nThis is the global goal to solve:\n{agents->florence_agent->goal}\nProvide a concise, structured summary of constraints and preferences you know and require for the itinerary. State explicit numeric durations and any hard windows or absolute requirements. If you detect a conflict with the global total days, report it but do not resolve it\u2014just state your information."
+            }
+        },
+        "valencia_agent": {
+            "requirements": {
+                "input": [],
+                "output": "req_valencia",
+                "system_prompt": "You are an agent representing the travel preferences and constraints related to Valencia. Provide structured constraints and availability information (stay duration preference, specific required visit windows such as meeting relatives), and connections known. Do NOT produce PDDL.",
+                "prompt": "Your name is valencia_agent. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->valencia_agent->private_information}\nThis is the global goal to solve:\n{agents->valencia_agent->goal}\nProvide a concise, structured summary of constraints and preferences you know and require for the itinerary. State explicit numeric durations and any hard windows or absolute requirements (for example the relatives visit between day 1 and day 2). If you detect a conflict with the global total days, report it but do not resolve it\u2014just state your information."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "req_frankfurt",
+                    "req_florence",
+                    "req_valencia"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Your task is to integrate the structured constraints and preferences provided by the three city agents and produce a complete PDDL domain and a PDDL problem file suitable for solving with the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make agent-specific actions distinct where relevant, encode the 9-day horizon, encode flight connectivity as given (direct flights only between Frankfurt-Florence and Frankfurt-Valencia), and enforce any hard visit windows (e.g., relatives visit in Valencia between day 1 and day 2). If agents' preferred durations conflict with the total available days, resolve conflicts to produce a feasible plan that satisfies hard constraints (such as required visit windows) and explain in comments inside the PDDL (use PDDL comments starting with ;). Target FastDownwards: ensure the PDDL uses constructs supported by FastDownwards (classical STRIPS subset is preferred).",
+                "prompt": "You are the orchestrator. You will receive the structured requirement outputs from each city agent.\nHere's the information from the Frankfurt agent:\n{req_frankfurt}\nHere's the information from the Florence agent:\n{req_florence}\nHere's the information from the Valencia agent:\n{req_valencia}\nYour goal: produce a PDDL domain and a PDDL problem (suitable for FastDownwards) that yields a valid 9-day itinerary visiting all three cities, using only direct flights between cities, and respecting any hard constraints (for example Valencian relatives visit window). If agents' requested stay durations sum to more than 9 days, prioritize satisfying hard constraints and produce a feasible allocation of days across cities. Think step by step and produce the PDDL domain and problem. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "frankfurt_agent.requirements->orchestrator.pddl",
+            "florence_agent.requirements->orchestrator.pddl",
+            "valencia_agent.requirements->orchestrator.pddl"
+        ]
+    }
+}

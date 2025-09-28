@@ -3,8 +3,8 @@
 judge="gpt-5-nano"
 # datasets=("./data/natural_plan/calendar_scheduling.json" "./data/natural_plan/meeting_planning.json" "./data/natural_plan/trip_planning.json")
 # results=("./results/google/calendar_scheduling/" "./results/google/meeting_planning/" "./results/google/trip_planning/")
-datasets=("./data/natural_plan/calendar_scheduling.json")
-results=("./results/google/calendar_scheduling/")
+datasets=("./data/natural_plan/trip_planning.json")
+results=("./results/google/trip_planning/")
 solver="FastDownwards"
 
 for i in "${!datasets[@]}"; do

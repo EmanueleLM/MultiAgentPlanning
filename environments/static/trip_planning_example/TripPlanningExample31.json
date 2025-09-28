@@ -1,0 +1,84 @@
+{
+    "name": "TripPlanningExample31",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_agent",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I prefer daytime travel when possible",
+                "I prefer to minimize total number of flight legs"
+            ],
+            "goal": "Visit Frankfurt, Reykjavik, and Split within a total of 10 days while respecting my stay preferences and the workshop constraint in Reykjavik."
+        },
+        "flight_agent": {
+            "private_information": [
+                "Available direct flight connections: Frankfurt <-> Reykjavik, Frankfurt <-> Split",
+                "There is no direct flight between Reykjavik and Split"
+            ],
+            "goal": "Provide feasible flight connection sequences using only listed direct flights to commute between the cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' analyses and produce a final PDDL domain and problem (targeting the FastDownwards solver) that finds a 10-day itinerary using only direct flights and satisfying the workshop and stay constraints if possible."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10,
+            "cities": [
+                "Frankfurt",
+                "Reykjavik",
+                "Split"
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 10 days in total.",
+            "You want to spend 2 days in Frankfurt.",
+            "You want to spend 3 days in Reykjavik.",
+            "You want to spend 7 days in Split.",
+            "There is a workshop in Reykjavik that must be attended between day 8 and day 10 inclusive.",
+            "You only take direct flights to commute between cities.",
+            "Direct flights exist between Frankfurt and Reykjavik and between Frankfurt and Split.",
+            "There is no direct flight between Reykjavik and Split.",
+            "Note: the sum of the desired stays (2 + 3 + 7 = 12) exceeds the total available days (10), so stay durations may need to be adjusted to fit the 10-day limit."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "analysis": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are a travel preferences analyst. Using the public information and your private preferences, produce a concise summary of desired stays, required constraints, and acceptable flexibility for each city. Do not emit PDDL. The summary should state which durations are firm, which are flexible, and any hard constraints such as the workshop window.",
+                "prompt": "Your name is traveler. You see the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Provide a clear summary that the orchestrator can use to encode stay duration constraints and flexibility. Do not produce PDDL."
+            }
+        },
+        "flight_agent": {
+            "analysis": {
+                "input": [],
+                "output": "flight_options",
+                "system_prompt": "You are a flight connection analyst. Using the public information about direct flights, list all feasible city visitation sequences reachable using only direct flights, and highlight necessary transits (for example visiting Frankfurt as a hub). Provide travel leg sequences and any assumptions about whether flights consume full travel days or not. Do not emit PDDL.",
+                "prompt": "Your name is flight_agent. You see the following public information: {environment->public_information} You have the following private information: {agents->flight_agent->private_information} Your goal: {agents->flight_agent->goal} Provide feasible sequences of visits and explain any necessary transits or constraints for commuting only via direct flights. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "flight_options"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling. Integrate the summaries from the other agents and produce a PDDL domain and a PDDL problem file that encodes the trip planning task for the FastDownwards solver. The PDDL must model days 1..10, cities, travel actions constrained to the available direct flights, stay-duration constraints, and the workshop requirement that Reykjavik is visited on one of days 8, 9, or 10. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver by including appropriate :requirements and a clear problem definition.",
+                "prompt": "You are orchestrator. Integrate the following inputs to generate a final planning model for a 10-day itinerary that only uses direct flights and satisfies the workshop constraint: traveler preferences: {traveler_preferences} flight connection options: {flight_options} Global goal: {agents->orchestrator->goal} Think step by step, resolve the inconsistency where desired stays sum to more than 10 days by proposing adjustable durations or priorities, and produce a PDDL domain and problem suitable for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.analysis->orchestrator.pddl",
+            "flight_agent.analysis->orchestrator.pddl"
+        ]
+    }
+}

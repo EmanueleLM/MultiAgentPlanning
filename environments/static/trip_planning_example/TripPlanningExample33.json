@@ -1,0 +1,104 @@
+{
+    "name": "TripPlanningExample33",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_info",
+            "itinerary_agent",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit three European cities: Krakow, Rome, Barcelona",
+                "Desired stays: Krakow 4 days, Rome 4 days, Barcelona 7 days",
+                "Total travel available: 13 days",
+                "I want to meet a friend in Krakow between day 10 and day 13",
+                "Only direct flights may be used to commute between cities"
+            ],
+            "goal": "Provide the travel requirements, stays and meeting constraints for planning a 13 day trip"
+        },
+        "flight_info": {
+            "private_information": [
+                "Available direct flight connections: Barcelona <-> Krakow, Rome <-> Barcelona",
+                "No direct flight connection listed between Rome and Krakow"
+            ],
+            "goal": "Provide direct flight connectivity information between the cities to support feasible itineraries"
+        },
+        "itinerary_agent": {
+            "private_information": [
+                "Can propose candidate itineraries that respect direct flight constraints and day allocations",
+                "If the supplied stays conflict with total days, propose alternative allocations or indicate the conflict"
+            ],
+            "goal": "Generate candidate itineraries that cover all cities within the 13 day limit using only direct flights and respecting the meeting constraint where possible"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from other agents and produce a final PDDL domain and problem targeting the FastDownwards solver to find a valid trip plan"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 13,
+            "cities": [
+                "Krakow",
+                "Rome",
+                "Barcelona"
+            ]
+        },
+        "public_information": [
+            "You plan a trip visiting Krakow, Rome and Barcelona for a total of 13 days",
+            "Desired stays stated are Krakow 4 days, Rome 4 days, Barcelona 7 days which sum to 15 days creating a discrepancy with total 13 days",
+            "You must only use direct flights to commute between cities",
+            "Direct flights exist between Barcelona and Krakow and between Rome and Barcelona",
+            "You want to meet a friend in Krakow between day 10 and day 13"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "collect_preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler specifying trip requirements, durations and constraints. Provide the list of cities to visit, the desired number of days in each city, the total available days, and the meeting time window in Krakow. Do not emit PDDL. If there is a conflict between stated stays and total days, clearly state the conflict and offer no assumptions.",
+                "prompt": "Your name is traveler. You have the following private information: {agents->traveler->private_information}. The environment public information is: {environment->public_information}. Provide a concise structured statement of your trip requirements and highlight any inconsistencies you observe. Output should be suitable for downstream agents to consume."
+            }
+        },
+        "flight_info": {
+            "find_direct_flights": {
+                "input": [],
+                "output": "available_flights",
+                "system_prompt": "You are a flight connectivity expert. Provide a clear representation of which city pairs have direct flights and any implications for reachability given only direct flights. Do not emit PDDL.",
+                "prompt": "Your name is flight_info. Use the environment public information {environment->public_information} and your private information {agents->flight_info->private_information} to list direct flight connections and note if any city pairs lack a direct connection which could prevent a direct commute. Provide output suitable for itinerary construction."
+            }
+        },
+        "itinerary_agent": {
+            "propose_itineraries": {
+                "input": [
+                    "traveler_preferences",
+                    "available_flights"
+                ],
+                "output": "proposed_itineraries",
+                "system_prompt": "You are an itinerary planner. Using the travel requirements and direct flight connectivity, propose candidate itineraries that use only direct flights and fit within the total days. If the stated stays exceed the total days, generate reasonable alternative allocations and label them as options. Do not emit PDDL.",
+                "prompt": "Your name is itinerary_agent. You will receive traveler requirements {traveler_preferences} and direct flight information {available_flights}. Produce one or more candidate itineraries that allocate the 13 days across the three cities, specify travel days between cities consistent with direct flights, and ensure the traveler is in Krakow between day 10 and day 13 for the meeting. If the requested stays cannot all be satisfied, present alternative feasible allocations and explain tradeoffs."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "available_flights",
+                    "proposed_itineraries"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning and must produce a final PDDL domain and PDDL problem file formatted for the FastDownwards solver. Integrate inputs from the other agents to encode states, actions and temporal constraints required to solve the trip planning task. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-level information distinct where relevant and ensure the produced PDDL reflects only direct flights as allowed transitions. Resolve the duration discrepancy by producing a consistent plan that fits the 13 day limit and satisfies the Krakow meeting window. Target FastDownwards and do not include planner-specific meta comments.",
+                "prompt": "You are the orchestrator. Integrate the traveler's requirements {traveler_preferences}, the flight connectivity {available_flights}, and the candidate itineraries {proposed_itineraries}. Produce a PDDL domain and a PDDL problem that when solved with FastDownwards yields a trip schedule of total length 13 days, uses only the allowed direct flights, allocates days per city consistent with one of the feasible candidate itineraries or a resolved alternative, and ensures presence in Krakow between day 10 and day 13. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.collect_preferences->orchestrator.pddl",
+            "flight_info.find_direct_flights->orchestrator.pddl",
+            "itinerary_agent.propose_itineraries->orchestrator.pddl"
+        ]
+    }
+}

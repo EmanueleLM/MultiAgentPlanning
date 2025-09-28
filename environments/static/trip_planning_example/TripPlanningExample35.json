@@ -1,0 +1,83 @@
+{
+    "name": "TripPlanningExample35",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "scheduler",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Total available days: 10",
+                "Desired stays: Bucharest 3 days, Zurich 2 days, Dubrovnik 7 days",
+                "Wants to visit relatives in Dubrovnik between day 4 and day 10",
+                "Prefers only direct flights between cities"
+            ],
+            "goal": "Obtain a feasible 10-day itinerary visiting Bucharest, Zurich, and Dubrovnik while respecting travel constraints and relatives visit window."
+        },
+        "scheduler": {
+            "private_information": [
+                "Direct flights exist between Bucharest and Zurich",
+                "Direct flights exist between Zurich and Dubrovnik",
+                "No direct flights between Bucharest and Dubrovnik"
+            ],
+            "goal": "Provide the allowed travel connections and any constraints implied by only using direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and scheduler connectivity to produce a PDDL domain and problem suitable for the FastDownwards solver that finds a feasible 10-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10,
+            "cities": [
+                "Bucharest",
+                "Zurich",
+                "Dubrovnik"
+            ]
+        },
+        "public_information": [
+            "You plan a trip visiting three cities in Europe over 10 days total.",
+            "Desired city stays reported by the traveler are Bucharest 3 days, Zurich 2 days, and Dubrovnik 7 days, which may conflict with the total days available.",
+            "Relatives must be visited in Dubrovnik sometime between day 4 and day 10 inclusive.",
+            "Allowed travel between cities is only by direct flights.",
+            "Direct flight connections: Bucharest <-> Zurich and Zurich <-> Dubrovnik. There is no direct Bucharest <-> Dubrovnik flight."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_traveler",
+                "system_prompt": "You are the traveler agent. Provide a structured description of your desired stays, any hard constraints such as fixed visit windows, and note any conflicts or flexibilities in your preferences. Do not produce PDDL. Provide the data as a compact machine-readable summary.",
+                "prompt": "You are named traveler. Use the public information about the trip and your private preferences to produce a proposed stays summary. Include desired days per city, any mandatory day windows (for relatives), and indicate which preferences are flexible or hard. If your requests conflict with the total available days, clearly flag the conflict and suggest possible relaxations. Output a machine-friendly summary labeled as the itinerary_traveler output."
+            }
+        },
+        "scheduler": {
+            "flights": {
+                "input": [],
+                "output": "flights_scheduler",
+                "system_prompt": "You are the scheduler agent. Provide a concise representation of the transportation graph restricted to direct flights, travel durations if any, and any constraints implied by available connections. Do not produce PDDL. Provide the data as a compact machine-readable summary.",
+                "prompt": "You are named scheduler. Use the public information to describe the direct flight connectivity between cities, indicate which city pairs are reachable directly, and state whether intermediate stops are required for specific transfers. Output a machine-friendly summary labeled as the flights_scheduler output."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_traveler",
+                    "flights_scheduler"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator expert in multi-agent PDDL modeling. Your job is to integrate the travelers' desired stays and the scheduler's connectivity constraints and produce a PDDL domain and a PDDL problem tailored for the FastDownwards planner. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Ensure agent actions remain distinct if needed. If the inputs contain conflicting requirements, explicitly state the conflict and produce a feasible reconciled model that FastDownwards can solve, preferring solutions that respect mandatory windows and minimize deviations from the traveler's preferences.",
+                "prompt": "You are named orchestrator. You will receive the traveler's proposed stays and the scheduler's flight graph. Integrate these inputs to produce a PDDL domain and a PDDL problem that model the 10-day itinerary planning task with only direct flights allowed. The PDDL should model days as time steps or a discrete resource, represent stays per city, enforce the relatives visit window in Dubrovnik, and encode the allowed direct flights between cities. If the traveler's desired stays exceed the total available days, document how you reconcile the conflict and the assumptions you adopt in the model. Target the output for the FastDownwards solver and provide both domain and problem files. Enclose the PDDL domain between <domain> and </domain> and the PDDL problem between <problem> and </problem>."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary->orchestrator.pddl",
+            "scheduler.flights->orchestrator.pddl"
+        ]
+    }
+}

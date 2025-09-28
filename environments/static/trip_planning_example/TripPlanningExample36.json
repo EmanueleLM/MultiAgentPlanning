@@ -1,0 +1,92 @@
+{
+    "name": "TripPlanningExample36",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_booker",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I prefer to stay 2 days in Florence",
+                "I prefer to stay 7 days in Warsaw",
+                "I prefer to stay 6 days in Munich",
+                "Preferences may be flexible if required to meet the total trip length"
+            ],
+            "goal": "Provide clear stay preferences and constraints for a 13-day trip visiting Florence, Munich, and Warsaw."
+        },
+        "flight_booker": {
+            "private_information": [
+                "Available direct flights: Florence <-> Munich, Munich <-> Warsaw",
+                "Only the listed direct flights can be used to commute between cities"
+            ],
+            "goal": "Provide the set of feasible direct flight legs and any directionality or booking limitations between the three cities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate preferences and flight connectivity to produce a valid PDDL domain and problem for a 13-day trip that the FastDownward planner can solve."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 13,
+            "cities": [
+                "Florence",
+                "Munich",
+                "Warsaw"
+            ],
+            "direct_flights": [
+                [
+                    "Florence",
+                    "Munich"
+                ],
+                [
+                    "Munich",
+                    "Warsaw"
+                ]
+            ],
+            "notes": "Only the listed direct flights may be used to travel between cities. Visits must cover exactly total_days."
+        },
+        "public_information": [
+            "There are three cities to visit: Florence, Munich, and Warsaw.",
+            "The trip must last exactly 13 days in total.",
+            "Only direct flights may be used to commute between cities.",
+            "Available direct flights are Florence to Munich and Munich to Warsaw."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "provide_preferences": {
+                "input": [],
+                "output": "itinerary_preferences",
+                "system_prompt": "You are the traveler agent. Provide your stay preferences and any hard constraints about number of days in each city. Do not output PDDL. Provide the information in a structured, machine-consumable form describing desired days per city and whether each value is mandatory or flexible.",
+                "prompt": "As the traveler, list your desired days in Florence, Munich, and Warsaw, mark which days are hard constraints and which are flexible, and state any preferred visit order. Do not generate PDDL; only produce structured preferences and constraints."
+            }
+        },
+        "flight_booker": {
+            "provide_flights": {
+                "input": [],
+                "output": "flight_options",
+                "system_prompt": "You are the flight_booker agent. Provide precise direct flight connectivity and any limitations such as one-way or unavailable legs. Do not output PDDL. Provide structured flight legs that other agents can consume.",
+                "prompt": "As the flight booking agent, enumerate all direct flight connections between Florence, Munich, and Warsaw, indicate allowed directions for each leg, and note any constraints that affect feasible travel sequences. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_preferences",
+                    "flight_options"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the traveler preferences and flight connectivity to produce a final PDDL domain and PDDL problem targeting the FastDownward planner. Model cities, days allocated per city, travel actions using only the permitted direct flights, and a global constraint that the total days equal 13. Where traveler preferences conflict with the total days, prefer minimal necessary adjustments and document assumptions. Keep the agents' contributions distinct if represented as separate action sets. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Mention explicitly that the produced problem is intended for FastDownward.",
+                "prompt": "Receive the structured preferences and flight options from the other agents, reconcile any conflicts, and output a PDDL domain and problem that represent the trip planning task. The domain should include types for cities and days, actions for staying and flying that respect direct flights only, and a mechanism to ensure the sum of days spent equals 13. The output must be compatible with FastDownward. Enclose the PDDL domain in <domain> tags and the PDDL problem in <problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.provide_preferences->orchestrator.pddl",
+            "flight_booker.provide_flights->orchestrator.pddl"
+        ]
+    }
+}

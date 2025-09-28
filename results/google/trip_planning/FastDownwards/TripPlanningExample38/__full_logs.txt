@@ -1,0 +1,532 @@
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.
+
+Here are the cities that have direct flights:
+Geneva and Madrid, Madrid and Venice.
+
+Find a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.
+
+Here are the cities that have direct flights:
+Geneva and Madrid, Madrid and Venice.
+
+Find a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.
+================================================================================
+
+FINAL-PLAN
+------------------------------
+I don’t have the city-agent inputs yet (the direct-flight links, stay-duration preferences/constraints per city, starting city, and any other city-specific availability). I can’t invent those — to comply with your requirement I need the provided data.
+
+Please supply each city agent’s structured information using the template below. After you provide it I will produce a single FastDownward-compatible PDDL domain and problem (days 1–5), with:
+- travel only along the provided direct-flight links,
+- discrete days 1..5,
+- Venice occupied on days 4 and 5 (conference),
+- city-specific actions kept distinct if multiple agents/cities are modeled,
+- preferences treated as hard temporal constraints,
+- if stay-duration preferences conflict with the 5-day horizon, I will produce a feasible allocation that maximizes satisfaction and document tradeoffs as comments inside the PDDL problem.
+
+Required template (one block per city). Fill in every field; mark unknown as “none” rather than leaving blank:
+
+City name:
+- airport-id (a short atom, e.g., venice-airport)
+- direct-flights (list of city names this city has direct flights to; each flight is bidirectional unless you mark one-way)
+- earliest-available-day (1–5) — the earliest day the traveler can be in this city
+- latest-available-day (1–5) — the latest day allowed for being in this city
+- required-stay-days (integer) OR preferred-stay-days (integer). If both given, required takes precedence.
+- must-include-days (optional list of specific days that the traveler must be present here, e.g., [4,5] for Venice conference)
+- city-specific-actions (optional): list of actions the city offers (action-name, day-cost in days, any day restrictions)
+- any forbidden-days (optional list)
+- agent-id (optional short name used to keep city-specific actions distinct, e.g., venice-agent)
+
+Global / trip settings:
+- traveler-start-city (city name)
+- traveler-start-day (1–5)
+- traveler-end-city (optional)
+- travel-time-per-flight (assume 1 day per flight unless you specify otherwise)
+- any other global constraints you want enforced (e.g., must visit X before Y)
+
+Example filled city (so you can copy/paste and adapt):
+City name: Venice
+- airport-id: venice-ap
+- direct-flights: [Rome, Milan]
+- earliest-available-day: 1
+- latest-available-day: 5
+- required-stay-days: none
+- preferred-stay-days: 2
+- must-include-days: [4,5]
+- city-specific-actions: [attend-conference:1]
+- forbidden-days: none
+- agent-id: venice-agent
+
+When you send the city blocks I will:
+1) Build a PDDL domain with actions for:
+   - fly_between_cityX_cityY (modeled per-city if requested),
+   - stay_in_city (occupy a day in a city),
+   - perform city-specific actions,
+   all consuming discrete day steps 1..5.
+2) Build a PDDL problem that enforces the Venice conference on days 4 and 5, starting state and available flights, and encodes stay requirements/preferences as hard constraints. If preferences cannot all be satisfied within days 1–5, I will compute a feasible allocation maximizing satisfied preferences and include comments in the PDDL problem documenting tradeoffs.
+3) Return the domain enclosed in <domain>...</domain> and the problem in <problem>...</problem>.
+
+Provide the city data and I’ll generate the PDDL files.
+================================================================================
+
+DOMAIN
+------------------------------
+...
+================================================================================
+
+PROBLEM
+------------------------------
+...
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.\n\nHere are the cities that have direct flights:\nGeneva and Madrid, Madrid and Venice.\n\nFind a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample38",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "geneva_agent",
+                "madrid_agent",
+                "venice_agent",
+                "orchestrator"
+            ],
+            "geneva_agent": {
+                "private_information": [
+                    "Preferred stay in Geneva is 2 days.",
+                    "Geneva has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Geneva to help build a 5-day itinerary that uses direct flights only."
+            },
+            "madrid_agent": {
+                "private_information": [
+                    "Preferred stay in Madrid is 3 days.",
+                    "Madrid has direct flight connections to Geneva and to Venice."
+                ],
+                "goal": "Provide factual constraints about visiting Madrid to help build a 5-day itinerary that uses direct flights only."
+            },
+            "venice_agent": {
+                "private_information": [
+                    "Preferred stay in Venice is 2 days.",
+                    "There is a conference in Venice on day 4 and day 5.",
+                    "Venice has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Venice to help build a 5-day itinerary that uses direct flights only and enforces conference attendance on days 4 and 5."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city inputs and produce a PDDL domain and a PDDL problem targeting the FastDownward solver that models a 5-day trip using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 5
+            },
+            "public_information": [
+                "You will visit 3 European cities over a total of 5 days.",
+                "You only take direct flights to commute between cities.",
+                "Desired stays: Venice 2 days, Geneva 2 days, Madrid 3 days. These are preferences and may be infeasible together.",
+                "Conference in Venice must be attended on day 4 and day 5.",
+                "Direct flights exist between Geneva and Madrid, and between Madrid and Venice."
+            ]
+        },
+        "workflow": {
+            "geneva_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_geneva",
+                    "system_prompt": "You represent Geneva as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Geneva. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is geneva_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "madrid_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_madrid",
+                    "system_prompt": "You represent Madrid as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Madrid. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is madrid_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "venice_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You represent Venice as a destination. Provide concise, factual information about required or preferred stay durations, the conference requirement on specific days, available direct flight links, and any other hard constraints related to Venice. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is venice_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, conference_days, and direct_connections."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_geneva",
+                        "info_madrid",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert planner tasked with integrating destination information and producing a PDDL domain and a PDDL problem file suitable for the FastDownward planner. Model days as discrete time steps 1 through 5. Model travel only along direct flight links provided by the city inputs. Enforce hard constraints such as the conference in Venice on days 4 and 5. If preferences for stay durations are infeasible given the total days, produce a feasible allocation that maximizes preference satisfaction and document any tradeoffs as comments inside the PDDL problem description. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                    "prompt": "You are the orchestrator. Inputs from city agents are provided. Integrate their structured information and produce a full PDDL domain and a PDDL problem suitable for FastDownward that models days 1 to 5, direct flight connectivity, city visit durations, and the hard constraint that Venice must be occupied on days 4 and 5 for the conference. Keep city-specific actions distinct if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "geneva_agent.provide_info->orchestrator.pddl",
+                "madrid_agent.provide_info->orchestrator.pddl",
+                "venice_agent.provide_info->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "...",
+    "pddl_problem": "...",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::ExpectedToken'\n  what():  ( expected\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample38/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample38/problem_0.pddl --sas-file output.sas\nParsing...\nError: Could not parse domain file: results/google/trip_planning/FastDownwards/TripPlanningExample38/domain_0.pddl\nReason: Expected '(', got '...'.\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": []
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.\n\nHere are the cities that have direct flights:\nGeneva and Madrid, Madrid and Venice.\n\nFind a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample38",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "geneva_agent",
+                "madrid_agent",
+                "venice_agent",
+                "orchestrator"
+            ],
+            "geneva_agent": {
+                "private_information": [
+                    "Preferred stay in Geneva is 2 days.",
+                    "Geneva has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Geneva to help build a 5-day itinerary that uses direct flights only."
+            },
+            "madrid_agent": {
+                "private_information": [
+                    "Preferred stay in Madrid is 3 days.",
+                    "Madrid has direct flight connections to Geneva and to Venice."
+                ],
+                "goal": "Provide factual constraints about visiting Madrid to help build a 5-day itinerary that uses direct flights only."
+            },
+            "venice_agent": {
+                "private_information": [
+                    "Preferred stay in Venice is 2 days.",
+                    "There is a conference in Venice on day 4 and day 5.",
+                    "Venice has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Venice to help build a 5-day itinerary that uses direct flights only and enforces conference attendance on days 4 and 5."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city inputs and produce a PDDL domain and a PDDL problem targeting the FastDownward solver that models a 5-day trip using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 5
+            },
+            "public_information": [
+                "You will visit 3 European cities over a total of 5 days.",
+                "You only take direct flights to commute between cities.",
+                "Desired stays: Venice 2 days, Geneva 2 days, Madrid 3 days. These are preferences and may be infeasible together.",
+                "Conference in Venice must be attended on day 4 and day 5.",
+                "Direct flights exist between Geneva and Madrid, and between Madrid and Venice."
+            ]
+        },
+        "workflow": {
+            "geneva_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_geneva",
+                    "system_prompt": "You represent Geneva as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Geneva. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is geneva_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "madrid_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_madrid",
+                    "system_prompt": "You represent Madrid as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Madrid. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is madrid_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "venice_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You represent Venice as a destination. Provide concise, factual information about required or preferred stay durations, the conference requirement on specific days, available direct flight links, and any other hard constraints related to Venice. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is venice_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, conference_days, and direct_connections."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_geneva",
+                        "info_madrid",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert planner tasked with integrating destination information and producing a PDDL domain and a PDDL problem file suitable for the FastDownward planner. Model days as discrete time steps 1 through 5. Model travel only along direct flight links provided by the city inputs. Enforce hard constraints such as the conference in Venice on days 4 and 5. If preferences for stay durations are infeasible given the total days, produce a feasible allocation that maximizes preference satisfaction and document any tradeoffs as comments inside the PDDL problem description. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                    "prompt": "You are the orchestrator. Inputs from city agents are provided. Integrate their structured information and produce a full PDDL domain and a PDDL problem suitable for FastDownward that models days 1 to 5, direct flight connectivity, city visit durations, and the hard constraint that Venice must be occupied on days 4 and 5 for the conference. Keep city-specific actions distinct if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "geneva_agent.provide_info->orchestrator.pddl",
+                "madrid_agent.provide_info->orchestrator.pddl",
+                "venice_agent.provide_info->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :fluents)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)\n    (flight ?from - city ?to - city)\n    (day-next ?d - day ?d2 - day)\n    (pref-used ?c - city ?d - day)\n  )\n  (:functions\n    (satisfied ?c - city)\n    (desired ?c - city)\n    (cost)\n  )\n\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?d2 - day)\n    :precondition (and (at ?from ?d) (flight ?from ?to) (day-next ?d ?d2))\n    :effect (and (at ?to ?d2))\n  )\n\n  (:action stay\n    :parameters (?c - city ?d - day ?d2 - day)\n    :precondition (and (at ?c ?d) (day-next ?d ?d2))\n    :effect (and (at ?c ?d2))\n  )\n\n  (:action satisfy-pref\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (< (satisfied ?c) (desired ?c)))\n    :effect (and (pref-used ?c ?d) (increase (satisfied ?c) 1) (increase (cost) -1))\n  )\n)",
+    "pddl_problem": "(define (problem trip-problem)\n  (:domain trip-planning)\n  (:objects geneva madrid venice - city d1 d2 d3 d4 d5 - day)\n  (:init\n    (flight geneva madrid)\n    (flight madrid geneva)\n    (flight madrid venice)\n    (flight venice madrid)\n    (day-next d1 d2)\n    (day-next d2 d3)\n    (day-next d3 d4)\n    (day-next d4 d5)\n    (at madrid d1)\n    (= (desired geneva) 2)\n    (= (desired madrid) 3)\n    (= (desired venice) 2)\n    (= (satisfied geneva) 0)\n    (= (satisfied madrid) 0)\n    (= (satisfied venice) 0)\n    (= (cost) 0)\n  )\n  (:goal (and (at venice d4) (at venice d5)))\n  (:metric minimize (cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "METRIC only defined for temporal actions or actions with costs!\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample38/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample38/problem_1.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.\n\nHere are the cities that have direct flights:\nGeneva and Madrid, Madrid and Venice.\n\nFind a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample38",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "geneva_agent",
+                "madrid_agent",
+                "venice_agent",
+                "orchestrator"
+            ],
+            "geneva_agent": {
+                "private_information": [
+                    "Preferred stay in Geneva is 2 days.",
+                    "Geneva has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Geneva to help build a 5-day itinerary that uses direct flights only."
+            },
+            "madrid_agent": {
+                "private_information": [
+                    "Preferred stay in Madrid is 3 days.",
+                    "Madrid has direct flight connections to Geneva and to Venice."
+                ],
+                "goal": "Provide factual constraints about visiting Madrid to help build a 5-day itinerary that uses direct flights only."
+            },
+            "venice_agent": {
+                "private_information": [
+                    "Preferred stay in Venice is 2 days.",
+                    "There is a conference in Venice on day 4 and day 5.",
+                    "Venice has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Venice to help build a 5-day itinerary that uses direct flights only and enforces conference attendance on days 4 and 5."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city inputs and produce a PDDL domain and a PDDL problem targeting the FastDownward solver that models a 5-day trip using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 5
+            },
+            "public_information": [
+                "You will visit 3 European cities over a total of 5 days.",
+                "You only take direct flights to commute between cities.",
+                "Desired stays: Venice 2 days, Geneva 2 days, Madrid 3 days. These are preferences and may be infeasible together.",
+                "Conference in Venice must be attended on day 4 and day 5.",
+                "Direct flights exist between Geneva and Madrid, and between Madrid and Venice."
+            ]
+        },
+        "workflow": {
+            "geneva_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_geneva",
+                    "system_prompt": "You represent Geneva as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Geneva. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is geneva_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "madrid_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_madrid",
+                    "system_prompt": "You represent Madrid as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Madrid. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is madrid_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "venice_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You represent Venice as a destination. Provide concise, factual information about required or preferred stay durations, the conference requirement on specific days, available direct flight links, and any other hard constraints related to Venice. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is venice_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, conference_days, and direct_connections."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_geneva",
+                        "info_madrid",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert planner tasked with integrating destination information and producing a PDDL domain and a PDDL problem file suitable for the FastDownward planner. Model days as discrete time steps 1 through 5. Model travel only along direct flight links provided by the city inputs. Enforce hard constraints such as the conference in Venice on days 4 and 5. If preferences for stay durations are infeasible given the total days, produce a feasible allocation that maximizes preference satisfaction and document any tradeoffs as comments inside the PDDL problem description. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                    "prompt": "You are the orchestrator. Inputs from city agents are provided. Integrate their structured information and produce a full PDDL domain and a PDDL problem suitable for FastDownward that models days 1 to 5, direct flight connectivity, city visit durations, and the hard constraint that Venice must be occupied on days 4 and 5 for the conference. Keep city-specific actions distinct if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "geneva_agent.provide_info->orchestrator.pddl",
+                "madrid_agent.provide_info->orchestrator.pddl",
+                "venice_agent.provide_info->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :adl :fluents)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)\n    (flight ?from - city ?to - city)\n    (day-next ?d - day ?d2 - day)\n    (pref-used ?c - city ?d - day)\n    (desired-2 ?c - city)\n    (desired-3 ?c - city)\n    (satisfied-0 ?c - city)\n    (satisfied-1 ?c - city)\n    (satisfied-2 ?c - city)\n    (satisfied-3 ?c - city)\n  )\n  (:functions (total-cost))\n\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?d2 - day)\n    :precondition (and (at ?from ?d) (flight ?from ?to) (day-next ?d ?d2))\n    :effect (and (at ?to ?d2) (increase (total-cost) 1))\n  )\n\n  (:action stay\n    :parameters (?c - city ?d - day ?d2 - day)\n    :precondition (and (at ?c ?d) (day-next ?d ?d2))\n    :effect (and (at ?c ?d2))\n  )\n\n  (:action satisfy-pref-from-0\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-0 ?c) (or (desired-2 ?c) (desired-3 ?c)))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-0 ?c) (and (not (satisfied-0 ?c)) (satisfied-1 ?c)))\n                 (increase (total-cost) -1))\n  )\n\n  (:action satisfy-pref-from-1\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-1 ?c) (or (desired-2 ?c) (desired-3 ?c)))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-1 ?c) (and (not (satisfied-1 ?c)) (satisfied-2 ?c)))\n                 (increase (total-cost) -1))\n  )\n\n  (:action satisfy-pref-from-2\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-2 ?c) (desired-3 ?c))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-2 ?c) (and (not (satisfied-2 ?c)) (satisfied-3 ?c)))\n                 (increase (total-cost) -1))\n  )\n)",
+    "pddl_problem": "(define (problem trip-problem)\n  (:domain trip-planning)\n  (:objects geneva madrid venice - city d1 d2 d3 d4 d5 - day)\n  (:init\n    (flight geneva madrid)\n    (flight madrid geneva)\n    (flight madrid venice)\n    (flight venice madrid)\n    (day-next d1 d2)\n    (day-next d2 d3)\n    (day-next d3 d4)\n    (day-next d4 d5)\n    (at madrid d1)\n    (desired-2 geneva)\n    (desired-3 madrid)\n    (desired-2 venice)\n    (satisfied-0 geneva)\n    (satisfied-0 madrid)\n    (satisfied-0 venice)\n    (= (total-cost) 0)\n  )\n  (:goal (and (at venice d4) (at venice d5)))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "METRIC only defined for temporal actions or actions with costs!\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample38/domain_2.pddl results/google/trip_planning/FastDownwards/TripPlanningExample38/problem_2.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 5 days in total. You only take direct flights to commute between cities. You plan to stay in Venice for 2 days. During day 4 and day 5, you have to attend a conference in Venice. You want to spend 2 days in Geneva. You would like to visit Madrid for 3 days.\n\nHere are the cities that have direct flights:\nGeneva and Madrid, Madrid and Venice.\n\nFind a trip plan of visiting the cities for 5 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample38",
+        "author": "Human",
+        "agents": {
+            "number": 4,
+            "names": [
+                "geneva_agent",
+                "madrid_agent",
+                "venice_agent",
+                "orchestrator"
+            ],
+            "geneva_agent": {
+                "private_information": [
+                    "Preferred stay in Geneva is 2 days.",
+                    "Geneva has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Geneva to help build a 5-day itinerary that uses direct flights only."
+            },
+            "madrid_agent": {
+                "private_information": [
+                    "Preferred stay in Madrid is 3 days.",
+                    "Madrid has direct flight connections to Geneva and to Venice."
+                ],
+                "goal": "Provide factual constraints about visiting Madrid to help build a 5-day itinerary that uses direct flights only."
+            },
+            "venice_agent": {
+                "private_information": [
+                    "Preferred stay in Venice is 2 days.",
+                    "There is a conference in Venice on day 4 and day 5.",
+                    "Venice has a direct flight connection to Madrid."
+                ],
+                "goal": "Provide factual constraints about visiting Venice to help build a 5-day itinerary that uses direct flights only and enforces conference attendance on days 4 and 5."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the city inputs and produce a PDDL domain and a PDDL problem targeting the FastDownward solver that models a 5-day trip using only direct flights."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 5
+            },
+            "public_information": [
+                "You will visit 3 European cities over a total of 5 days.",
+                "You only take direct flights to commute between cities.",
+                "Desired stays: Venice 2 days, Geneva 2 days, Madrid 3 days. These are preferences and may be infeasible together.",
+                "Conference in Venice must be attended on day 4 and day 5.",
+                "Direct flights exist between Geneva and Madrid, and between Madrid and Venice."
+            ]
+        },
+        "workflow": {
+            "geneva_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_geneva",
+                    "system_prompt": "You represent Geneva as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Geneva. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is geneva_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "madrid_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_madrid",
+                    "system_prompt": "You represent Madrid as a destination. Provide concise, factual information about required or preferred stay durations, available direct flight links, and any hard constraints related to Madrid. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is madrid_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, and direct_connections."
+                }
+            },
+            "venice_agent": {
+                "provide_info": {
+                    "input": [],
+                    "output": "info_venice",
+                    "system_prompt": "You represent Venice as a destination. Provide concise, factual information about required or preferred stay durations, the conference requirement on specific days, available direct flight links, and any other hard constraints related to Venice. Do not produce PDDL. Provide a compact structured description that an orchestrator can consume.",
+                    "prompt": "Your name is venice_agent. Use the public information and your private information to produce the data needed by an orchestrator to build a PDDL planning problem. Do not generate PDDL yourself. Provide clear fields such as city name, preferred_days, hard_days, conference_days, and direct_connections."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "info_geneva",
+                        "info_madrid",
+                        "info_venice"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert planner tasked with integrating destination information and producing a PDDL domain and a PDDL problem file suitable for the FastDownward planner. Model days as discrete time steps 1 through 5. Model travel only along direct flight links provided by the city inputs. Enforce hard constraints such as the conference in Venice on days 4 and 5. If preferences for stay durations are infeasible given the total days, produce a feasible allocation that maximizes preference satisfaction and document any tradeoffs as comments inside the PDDL problem description. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                    "prompt": "You are the orchestrator. Inputs from city agents are provided. Integrate their structured information and produce a full PDDL domain and a PDDL problem suitable for FastDownward that models days 1 to 5, direct flight connectivity, city visit durations, and the hard constraint that Venice must be occupied on days 4 and 5 for the conference. Keep city-specific actions distinct if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "geneva_agent.provide_info->orchestrator.pddl",
+                "madrid_agent.provide_info->orchestrator.pddl",
+                "venice_agent.provide_info->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip-planning)\n  (:requirements :strips :typing :negative-preconditions :adl :disjunctive-preconditions :conditional-effects :action-costs)\n  (:types city day)\n  (:predicates\n    (at ?c - city ?d - day)\n    (flight ?from - city ?to - city)\n    (day-next ?d - day ?d2 - day)\n    (pref-used ?c - city ?d - day)\n    (desired-2 ?c - city)\n    (desired-3 ?c - city)\n    (satisfied-0 ?c - city)\n    (satisfied-1 ?c - city)\n    (satisfied-2 ?c - city)\n    (satisfied-3 ?c - city)\n  )\n  (:functions (total-cost))\n\n  (:action fly\n    :parameters (?from - city ?to - city ?d - day ?d2 - day)\n    :precondition (and (at ?from ?d) (flight ?from ?to) (day-next ?d ?d2))\n    :effect (and (at ?to ?d2) (increase (total-cost) 1))\n  )\n\n  (:action stay\n    :parameters (?c - city ?d - day ?d2 - day)\n    :precondition (and (at ?c ?d) (day-next ?d ?d2))\n    :effect (and (at ?c ?d2))\n  )\n\n  (:action satisfy-pref-from-0\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-0 ?c) (or (desired-2 ?c) (desired-3 ?c)))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-0 ?c) (and (not (satisfied-0 ?c)) (satisfied-1 ?c)))\n                 (increase (total-cost) -1))\n  )\n\n  (:action satisfy-pref-from-1\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-1 ?c) (or (desired-2 ?c) (desired-3 ?c)))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-1 ?c) (and (not (satisfied-1 ?c)) (satisfied-2 ?c)))\n                 (increase (total-cost) -1))\n  )\n\n  (:action satisfy-pref-from-2\n    :parameters (?c - city ?d - day)\n    :precondition (and (at ?c ?d) (not (pref-used ?c ?d)) (satisfied-2 ?c) (desired-3 ?c))\n    :effect (and (pref-used ?c ?d)\n                 (when (satisfied-2 ?c) (and (not (satisfied-2 ?c)) (satisfied-3 ?c)))\n                 (increase (total-cost) -1))\n  )\n)",
+    "pddl_problem": "(define (problem trip-problem)\n  (:domain trip-planning)\n  (:objects geneva madrid venice - city d1 d2 d3 d4 d5 - day)\n  (:init\n    (flight geneva madrid)\n    (flight madrid geneva)\n    (flight madrid venice)\n    (flight venice madrid)\n    (day-next d1 d2)\n    (day-next d2 d3)\n    (day-next d3 d4)\n    (day-next d4 d5)\n    (at madrid d1)\n    (desired-2 geneva)\n    (desired-3 madrid)\n    (desired-2 venice)\n    (satisfied-0 geneva)\n    (satisfied-0 madrid)\n    (satisfied-0 venice)\n    (= (total-cost) 0)\n  )\n  (:goal (and (at venice d4) (at venice d5)))\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/google/trip_planning/FastDownwards/TripPlanningExample38/sas_plan_3'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample38/domain_3.pddl results/google/trip_planning/FastDownwards/TripPlanningExample38/problem_3.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing 3. axiom/action entry\n\t->Parsing 3. action\n\t->Parsing action 'satisfy-pref-from-0'\n\t->Parsing effect\n\t->Parsing effect\n\t->Parsing Assignment\n\t->Parsing expression\nExpression cannot be a negative number\nSyntax: POSITIVE_NUMBER or (FUNCTION VARIABLES*)\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+

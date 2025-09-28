@@ -1,0 +1,106 @@
+{
+    "name": "TripPlanningExample42",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_paris",
+            "planner_mykonos",
+            "planner_nice",
+            "orchestrator"
+        ],
+        "planner_paris": {
+            "private_information": [
+                "I want to spend 4 days in Paris.",
+                "I would like to meet my friends in Paris between day 1 and day 4 to tour together."
+            ],
+            "goal": "Provide a local plan fragment describing arrival window, 4 days stay details in Paris, and any required flight legs consistent with available direct flights."
+        },
+        "planner_mykonos": {
+            "private_information": [
+                "I would like to visit Mykonos for 4 days."
+            ],
+            "goal": "Provide a local plan fragment describing feasible arrival and departure days for a 4 day stay in Mykonos and required flight legs consistent with available direct flights."
+        },
+        "planner_nice": {
+            "private_information": [
+                "I plan to stay in Nice for 5 days."
+            ],
+            "goal": "Provide a local plan fragment describing feasible arrival and departure days for a 5 day stay in Nice and required flight legs consistent with available direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the fragments from the planners and produce a final PDDL domain and PDDL problem that yields a trip plan of 11 days using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Paris",
+                "Nice",
+                "Mykonos"
+            ],
+            "direct_flights": [
+                [
+                    "Paris",
+                    "Nice"
+                ],
+                [
+                    "Nice",
+                    "Mykonos"
+                ]
+            ]
+        },
+        "public_information": [
+            "The trip lasts a total of 11 days.",
+            "There are three cities to visit: Paris, Nice, Mykonos.",
+            "You only take direct flights to commute between cities.",
+            "Available direct flights are Paris to Nice and Nice to Mykonos. Flights are bidirectional only if a direct connection is listed.",
+            "You want to spend 4 days in Paris, you would like to visit Mykonos for 4 days, and you plan to stay in Nice for 5 days. These desires may be inconsistent with the total of 11 days and must be reconciled."
+        ]
+    },
+    "workflow": {
+        "planner_paris": {
+            "plan_fragment": {
+                "input": [],
+                "output": "planner_paris.fragment",
+                "system_prompt": "You are an expert travel fragment generator. Given the public information about the trip and your private information, produce a concise structured plan fragment that states: arrival day window for Paris, the intended 4 days of stay and which specific days those would be if possible, required inbound and outbound flight legs (using only direct flights), and any hard constraints such as meeting friends between certain days. Do not produce a final PDDL domain or problem. Produce a clear structured fragment in JSON or plain text.",
+                "prompt": "Your name is planner_paris. You are given the environment public information: {environment->public_information} You have the following private information: {agents->planner_paris->private_information} This is your local goal: {agents->planner_paris->goal} Think step by step and produce a plan fragment describing feasible arrival and departure days for Paris, the four days you want to spend there, required direct flights, and any assumptions or conflicts you notice."
+            }
+        },
+        "planner_mykonos": {
+            "plan_fragment": {
+                "input": [],
+                "output": "planner_mykonos.fragment",
+                "system_prompt": "You are an expert travel fragment generator. Given the public information about the trip and your private information, produce a concise structured plan fragment that states feasible arrival and departure days for Mykonos assuming a 4 day stay, required inbound and outbound flight legs using only direct flights, and any conflicts or dependencies. Do not produce a final PDDL domain or problem. Produce a clear structured fragment in JSON or plain text.",
+                "prompt": "Your name is planner_mykonos. You are given the environment public information: {environment->public_information} You have the following private information: {agents->planner_mykonos->private_information} This is your local goal: {agents->planner_mykonos->goal} Think step by step and produce a plan fragment describing feasible days to spend in Mykonos, required direct flights, and any assumptions or conflicts you notice."
+            }
+        },
+        "planner_nice": {
+            "plan_fragment": {
+                "input": [],
+                "output": "planner_nice.fragment",
+                "system_prompt": "You are an expert travel fragment generator. Given the public information about the trip and your private information, produce a concise structured plan fragment that states feasible arrival and departure days for Nice assuming a 5 day stay, required inbound and outbound flight legs using only direct flights, and any conflicts or dependencies. Do not produce a final PDDL domain or problem. Produce a clear structured fragment in JSON or plain text.",
+                "prompt": "Your name is planner_nice. You are given the environment public information: {environment->public_information} You have the following private information: {agents->planner_nice->private_information} This is your local goal: {agents->planner_nice->goal} Think step by step and produce a plan fragment describing feasible days to spend in Nice, required direct flights, and any assumptions or conflicts you notice."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_paris.fragment",
+                    "planner_mykonos.fragment",
+                    "planner_nice.fragment"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL problems targeting the FastDownward planner. Your job is to integrate the plan fragments produced by the other agents, resolve inconsistencies, and produce a single PDDL domain and a PDDL problem that can be solved by FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. When defining actions, keep actions associated with each planner distinct by prefixing action names with the planner identifier. Ensure that all used flights correspond to available direct flights from the public information. If fragments conflict with the total days constraint, reconcile them and document the resolution choices in comments inside the PDDL problem file as plain text, but do not place comments that violate PDDL syntax for FastDownward.",
+                "prompt": "You are orchestrator. The global goal is: {agents->orchestrator->goal} Here are the fragments from the planners: {planner_paris.fragment} {planner_mykonos.fragment} {planner_nice.fragment} Integrate these fragments, resolve any conflicts such as total days exceeding 11, ensure travel uses only available direct flights, and produce a PDDL domain and PDDL problem suitable for FastDownward. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep action names distinct using planner prefixes."
+            }
+        },
+        "constraints": [
+            "planner_paris.plan_fragment->orchestrator.pddl",
+            "planner_mykonos.plan_fragment->orchestrator.pddl",
+            "planner_nice.plan_fragment->orchestrator.pddl"
+        ]
+    }
+}

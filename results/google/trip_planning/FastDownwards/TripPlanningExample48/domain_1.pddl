@@ -1,0 +1,25 @@
+(define (domain trip-planning)
+  (:requirements :strips :typing :preferences)
+  (:types city day)
+  (:predicates
+    (free-day ?d - day)
+    (at ?c - city ?d - day)
+    (direct ?c1 - city ?c2 - city)
+    (next ?d1 - day ?d2 - day)
+  )
+  (:action assign-day1
+    :parameters (?c - city)
+    :precondition (free-day day1)
+    :effect (and (at ?c day1) (not (free-day day1)))
+  )
+  (:action assign-next-stay
+    :parameters (?c - city ?pd - day ?d - day)
+    :precondition (and (free-day ?d) (next ?pd ?d) (at ?c ?pd))
+    :effect (and (at ?c ?d) (not (free-day ?d)))
+  )
+  (:action assign-next-fly
+    :parameters (?from - city ?to - city ?pd - day ?d - day)
+    :precondition (and (free-day ?d) (next ?pd ?d) (at ?from ?pd) (direct ?from ?to))
+    :effect (and (at ?to ?d) (not (free-day ?d)))
+  )
+)

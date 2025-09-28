@@ -13718,3 +13718,503 @@ ITERATION 6
 }
 ================================================================================
 
+
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You want to spend 4 days in Florence. You want to spend 7 days in Barcelona. You plan to stay in Porto for 3 days. You plan to visit relatives in Porto between day 1 and day 3.
+
+Here are the cities that have direct flights:
+Porto and Barcelona, Barcelona and Florence.
+
+Find a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You want to spend 4 days in Florence. You want to spend 7 days in Barcelona. You plan to stay in Porto for 3 days. You plan to visit relatives in Porto between day 1 and day 3.
+
+Here are the cities that have direct flights:
+Porto and Barcelona, Barcelona and Florence.
+
+Find a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain multi-city-trip)
+  (:requirements :strips :typing :negative-preconditions :fluents)
+  (:types city)
+
+  (:predicates
+    (at ?c - city)
+    (relatives-visited)
+  )
+
+  (:functions
+    (day)                   ; integer day counter, starts at 1, ends at 13 after 12 days
+    (days-porto)            ; total counted Porto days
+    (days-barcelona)        ; total counted Barcelona days
+    (days-florence)         ; total counted Florence days
+  )
+
+  ;; Stay actions: spend the current day in the same city and advance to next day.
+  ;; Each stay increments the day's counter and the corresponding city's day-count.
+  (:action stay-porto
+    :precondition (and (at porto) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-porto) 1)
+      ;; (at porto) persists
+    )
+  )
+
+  (:action stay-barcelona
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  (:action stay-florence
+    :precondition (and (at florence) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-florence) 1)
+    )
+  )
+
+  ;; Flight actions: use a direct flight; flying consumes a day and you arrive the next day.
+  ;; Only direct flights available are encoded as actions below.
+  (:action fly-porto-to-barcelona
+    :precondition (and (at porto) (< (day) 13))
+    :effect (and
+      (not (at porto))
+      (at barcelona)
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  (:action fly-barcelona-to-porto
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (not (at barcelona))
+      (at porto)
+      (increase (day) 1)
+      (increase (days-porto) 1)
+    )
+  )
+
+  (:action fly-barcelona-to-florence
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (not (at barcelona))
+      (at florence)
+      (increase (day) 1)
+      (increase (days-florence) 1)
+    )
+  )
+
+  (:action fly-florence-to-barcelona
+    :precondition (and (at florence) (< (day) 13))
+    :effect (and
+      (not (at florence))
+      (at barcelona)
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  ;; Visit relatives action: must be done while in Porto on an overall trip day 1..3 (inclusive).
+  ;; This action does not consume a day so it can be done during an eligible day.
+  (:action visit-relatives-in-porto
+    :precondition (and (at porto) (<= (day) 3) (not (relatives-visited)))
+    :effect (and (relatives-visited))
+  )
+
+)
+</domain>
+
+<problem>
+(define (problem multi-city-trip-problem)
+  (:domain multi-city-trip)
+
+  (:objects
+    porto barcelona florence - city
+  )
+
+  (:init
+    ;; Start assumptions (chosen to satisfy the relatives-window earliest): start in Porto on day 1.
+    (= (day) 1)
+    (= (days-porto) 0)
+    (= (days-barcelona) 0)
+    (= (days-florence) 0)
+
+    (at porto)
+    ;; Note: flights are encoded as actions only for the allowed direct legs:
+    ;; Porto <-> Barcelona and Barcelona <-> Florence. No direct Porto <-> Florence action exists.
+    ;; The planner must use the available fly-* actions to commute.
+  )
+
+  ;; Goals:
+  ;; - Spend exactly the requested number of days in each city (hard constraints).
+  ;; - Visit relatives in Porto during overall trip days 1..3 (encoded by the visit-relatives-in-porto precondition).
+  ;; - Complete the 12-day trip (we model day increment so after 12 day-consuming actions day==13).
+  (:goal
+    (and
+      ; required stay durations (hard constraints, as specified)
+      (= (days-porto) 3)
+      (= (days-barcelona) 7)
+      (= (days-florence) 4)
+
+      ; relatives must be visited within day 1..3
+      (relatives-visited)
+
+      ; total trip length 12 days: starting day=1, after 12 increments day must equal 13
+      (= (day) 13)
+    )
+  )
+
+  (:metric minimize 0) ; no optimization metric; feasibility problem
+)
+</problem>
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain multi-city-trip)
+  (:requirements :strips :typing :negative-preconditions :fluents)
+  (:types city)
+
+  (:predicates
+    (at ?c - city)
+    (relatives-visited)
+  )
+
+  (:functions
+    (day)                   ; integer day counter, starts at 1, ends at 13 after 12 days
+    (days-porto)            ; total counted Porto days
+    (days-barcelona)        ; total counted Barcelona days
+    (days-florence)         ; total counted Florence days
+  )
+
+  ;; Stay actions: spend the current day in the same city and advance to next day.
+  ;; Each stay increments the day's counter and the corresponding city's day-count.
+  (:action stay-porto
+    :precondition (and (at porto) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-porto) 1)
+      ;; (at porto) persists
+    )
+  )
+
+  (:action stay-barcelona
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  (:action stay-florence
+    :precondition (and (at florence) (< (day) 13))
+    :effect (and
+      (increase (day) 1)
+      (increase (days-florence) 1)
+    )
+  )
+
+  ;; Flight actions: use a direct flight; flying consumes a day and you arrive the next day.
+  ;; Only direct flights available are encoded as actions below.
+  (:action fly-porto-to-barcelona
+    :precondition (and (at porto) (< (day) 13))
+    :effect (and
+      (not (at porto))
+      (at barcelona)
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  (:action fly-barcelona-to-porto
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (not (at barcelona))
+      (at porto)
+      (increase (day) 1)
+      (increase (days-porto) 1)
+    )
+  )
+
+  (:action fly-barcelona-to-florence
+    :precondition (and (at barcelona) (< (day) 13))
+    :effect (and
+      (not (at barcelona))
+      (at florence)
+      (increase (day) 1)
+      (increase (days-florence) 1)
+    )
+  )
+
+  (:action fly-florence-to-barcelona
+    :precondition (and (at florence) (< (day) 13))
+    :effect (and
+      (not (at florence))
+      (at barcelona)
+      (increase (day) 1)
+      (increase (days-barcelona) 1)
+    )
+  )
+
+  ;; Visit relatives action: must be done while in Porto on an overall trip day 1..3 (inclusive).
+  ;; This action does not consume a day so it can be done during an eligible day.
+  (:action visit-relatives-in-porto
+    :precondition (and (at porto) (<= (day) 3) (not (relatives-visited)))
+    :effect (and (relatives-visited))
+  )
+
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem multi-city-trip-problem)
+  (:domain multi-city-trip)
+
+  (:objects
+    porto barcelona florence - city
+  )
+
+  (:init
+    ;; Start assumptions (chosen to satisfy the relatives-window earliest): start in Porto on day 1.
+    (= (day) 1)
+    (= (days-porto) 0)
+    (= (days-barcelona) 0)
+    (= (days-florence) 0)
+
+    (at porto)
+    ;; Note: flights are encoded as actions only for the allowed direct legs:
+    ;; Porto <-> Barcelona and Barcelona <-> Florence. No direct Porto <-> Florence action exists.
+    ;; The planner must use the available fly-* actions to commute.
+  )
+
+  ;; Goals:
+  ;; - Spend exactly the requested number of days in each city (hard constraints).
+  ;; - Visit relatives in Porto during overall trip days 1..3 (encoded by the visit-relatives-in-porto precondition).
+  ;; - Complete the 12-day trip (we model day increment so after 12 day-consuming actions day==13).
+  (:goal
+    (and
+      ; required stay durations (hard constraints, as specified)
+      (= (days-porto) 3)
+      (= (days-barcelona) 7)
+      (= (days-florence) 4)
+
+      ; relatives must be visited within day 1..3
+      (relatives-visited)
+
+      ; total trip length 12 days: starting day=1, after 12 increments day must equal 13
+      (= (day) 13)
+    )
+  )
+
+  (:metric minimize 0) ; no optimization metric; feasibility problem
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You want to spend 4 days in Florence. You want to spend 7 days in Barcelona. You plan to stay in Porto for 3 days. You plan to visit relatives in Porto between day 1 and day 3.\n\nHere are the cities that have direct flights:\nPorto and Barcelona, Barcelona and Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample39",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "flights_agent",
+                "stay_agent",
+                "orchestrator"
+            ],
+            "flights_agent": {
+                "private_information": [
+                    "I know which direct flights exist between the cities.",
+                    "Direct flights exist: Porto <-> Barcelona, Barcelona <-> Florence."
+                ],
+                "goal": "Provide a clear machine-readable summary of available direct flights and feasible city-to-city legs for the trip."
+            },
+            "stay_agent": {
+                "private_information": [
+                    "Desired stays: 4 days in Florence, 7 days in Barcelona, 3 days in Porto.",
+                    "Relative visit in Porto must occur between day 1 and day 3 of the overall trip."
+                ],
+                "goal": "Provide a machine-readable summary of the stay-duration constraints and the relatives-visit window."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I will integrate flight connectivity and stay constraints to produce a final plan.",
+                    "The final output must be a PDDL domain and PDDL problem targeted at the FastDownwards planner."
+                ],
+                "goal": "Integrate information from the other agents and produce the final PDDL domain and PDDL problem that solves the trip planning task for FastDownwards."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12,
+                "direct_flights_only": true
+            },
+            "public_information": [
+                "Total trip length: 12 days.",
+                "Cities to visit: Porto, Barcelona, Florence.",
+                "You only take direct flights to commute between cities.",
+                "Direct flights exist between Porto and Barcelona, and between Barcelona and Florence."
+            ]
+        },
+        "workflow": {
+            "flights_agent": {
+                "analyze": {
+                    "input": [],
+                    "output": "flights_info",
+                    "system_prompt": "You are an expert on flight connectivity and route feasibility. Provide a concise machine-readable summary of direct flight legs that can be used by a planner. Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'flights_info'.",
+                    "prompt": "Your name is flights_agent. Use the environment public information {environment->public_information} and your private information {agents->flights_agent->private_information} to produce a machine-readable summary called flights_info listing the direct flight connections and the implied feasible commutes between cities given direct-flight-only constraint. Explain assumptions if any."
+                }
+            },
+            "stay_agent": {
+                "plan": {
+                    "input": [],
+                    "output": "stay_constraints",
+                    "system_prompt": "You are an expert in trip scheduling and constraints. Provide a concise, machine-readable summary of stay durations and temporal constraints (including the relatives visit window). Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'stay_constraints'.",
+                    "prompt": "Your name is stay_agent. Use the environment public information {environment->public_information} and your private information {agents->stay_agent->private_information} to produce a machine-readable summary called stay_constraints that lists required days in each city, the allowable days for the relatives visit in Porto, and any ordering constraints implied by stay durations."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "flights_info",
+                        "stay_constraints"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in authoring PDDL for the FastDownwards planner. Integrate the inputs and produce a complete PDDL domain and a PDDL problem targeted at FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and movement explicit so a multi-step plan using direct flights and stays can be found by FastDownwards.",
+                    "prompt": "You are the orchestrator agent. You will receive the flights_info and stay_constraints from the other agents. Your task is to integrate that information and produce a PDDL domain and a PDDL problem that a FastDownwards planner can solve to yield a valid itinerary for the global goal: Visit Porto, Barcelona, and Florence for a total of 12 days with the specified stays: 3 days in Porto, 7 days in Barcelona, 4 days in Florence, and ensuring relatives in Porto are visited between overall day 1 and day 3. Use the environment public information {environment->public_information}. Here are the inputs from the agents: {flights_info} and {stay_constraints}. Think step by step and produce a PDDL domain and PDDL problem. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "flights_agent.analyze->orchestrator.pddl",
+                "stay_agent.plan->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain multi-city-trip)\n  (:requirements :strips :typing :negative-preconditions :fluents)\n  (:types city)\n\n  (:predicates\n    (at ?c - city)\n    (relatives-visited)\n  )\n\n  (:functions\n    (day)                   ; integer day counter, starts at 1, ends at 13 after 12 days\n    (days-porto)            ; total counted Porto days\n    (days-barcelona)        ; total counted Barcelona days\n    (days-florence)         ; total counted Florence days\n  )\n\n  ;; Stay actions: spend the current day in the same city and advance to next day.\n  ;; Each stay increments the day's counter and the corresponding city's day-count.\n  (:action stay-porto\n    :precondition (and (at porto) (< (day) 13))\n    :effect (and\n      (increase (day) 1)\n      (increase (days-porto) 1)\n      ;; (at porto) persists\n    )\n  )\n\n  (:action stay-barcelona\n    :precondition (and (at barcelona) (< (day) 13))\n    :effect (and\n      (increase (day) 1)\n      (increase (days-barcelona) 1)\n    )\n  )\n\n  (:action stay-florence\n    :precondition (and (at florence) (< (day) 13))\n    :effect (and\n      (increase (day) 1)\n      (increase (days-florence) 1)\n    )\n  )\n\n  ;; Flight actions: use a direct flight; flying consumes a day and you arrive the next day.\n  ;; Only direct flights available are encoded as actions below.\n  (:action fly-porto-to-barcelona\n    :precondition (and (at porto) (< (day) 13))\n    :effect (and\n      (not (at porto))\n      (at barcelona)\n      (increase (day) 1)\n      (increase (days-barcelona) 1)\n    )\n  )\n\n  (:action fly-barcelona-to-porto\n    :precondition (and (at barcelona) (< (day) 13))\n    :effect (and\n      (not (at barcelona))\n      (at porto)\n      (increase (day) 1)\n      (increase (days-porto) 1)\n    )\n  )\n\n  (:action fly-barcelona-to-florence\n    :precondition (and (at barcelona) (< (day) 13))\n    :effect (and\n      (not (at barcelona))\n      (at florence)\n      (increase (day) 1)\n      (increase (days-florence) 1)\n    )\n  )\n\n  (:action fly-florence-to-barcelona\n    :precondition (and (at florence) (< (day) 13))\n    :effect (and\n      (not (at florence))\n      (at barcelona)\n      (increase (day) 1)\n      (increase (days-barcelona) 1)\n    )\n  )\n\n  ;; Visit relatives action: must be done while in Porto on an overall trip day 1..3 (inclusive).\n  ;; This action does not consume a day so it can be done during an eligible day.\n  (:action visit-relatives-in-porto\n    :precondition (and (at porto) (<= (day) 3) (not (relatives-visited)))\n    :effect (and (relatives-visited))\n  )\n\n)",
+    "pddl_problem": "(define (problem multi-city-trip-problem)\n  (:domain multi-city-trip)\n\n  (:objects\n    porto barcelona florence - city\n  )\n\n  (:init\n    ;; Start assumptions (chosen to satisfy the relatives-window earliest): start in Porto on day 1.\n    (= (day) 1)\n    (= (days-porto) 0)\n    (= (days-barcelona) 0)\n    (= (days-florence) 0)\n\n    (at porto)\n    ;; Note: flights are encoded as actions only for the allowed direct legs:\n    ;; Porto <-> Barcelona and Barcelona <-> Florence. No direct Porto <-> Florence action exists.\n    ;; The planner must use the available fly-* actions to commute.\n  )\n\n  ;; Goals:\n  ;; - Spend exactly the requested number of days in each city (hard constraints).\n  ;; - Visit relatives in Porto during overall trip days 1..3 (encoded by the visit-relatives-in-porto precondition).\n  ;; - Complete the 12-day trip (we model day increment so after 12 day-consuming actions day==13).\n  (:goal\n    (and\n      ; required stay durations (hard constraints, as specified)\n      (= (days-porto) 3)\n      (= (days-barcelona) 7)\n      (= (days-florence) 4)\n\n      ; relatives must be visited within day 1..3\n      (relatives-visited)\n\n      ; total trip length 12 days: starting day=1, after 12 increments day must equal 13\n      (= (day) 13)\n    )\n  )\n\n  (:metric minimize 0) ; no optimization metric; feasibility problem\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::ExpectedToken'\n  what():  :PARAMETERS expected\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample39/domain_0.pddl results/google/trip_planning/FastDownwards/TripPlanningExample39/problem_0.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": []
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 12 days in total. You only take direct flights to commute between cities. You want to spend 4 days in Florence. You want to spend 7 days in Barcelona. You plan to stay in Porto for 3 days. You plan to visit relatives in Porto between day 1 and day 3.\n\nHere are the cities that have direct flights:\nPorto and Barcelona, Barcelona and Florence.\n\nFind a trip plan of visiting the cities for 12 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample39",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "flights_agent",
+                "stay_agent",
+                "orchestrator"
+            ],
+            "flights_agent": {
+                "private_information": [
+                    "I know which direct flights exist between the cities.",
+                    "Direct flights exist: Porto <-> Barcelona, Barcelona <-> Florence."
+                ],
+                "goal": "Provide a clear machine-readable summary of available direct flights and feasible city-to-city legs for the trip."
+            },
+            "stay_agent": {
+                "private_information": [
+                    "Desired stays: 4 days in Florence, 7 days in Barcelona, 3 days in Porto.",
+                    "Relative visit in Porto must occur between day 1 and day 3 of the overall trip."
+                ],
+                "goal": "Provide a machine-readable summary of the stay-duration constraints and the relatives-visit window."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I will integrate flight connectivity and stay constraints to produce a final plan.",
+                    "The final output must be a PDDL domain and PDDL problem targeted at the FastDownwards planner."
+                ],
+                "goal": "Integrate information from the other agents and produce the final PDDL domain and PDDL problem that solves the trip planning task for FastDownwards."
+            }
+        },
+        "environment": {
+            "init": {
+                "total_days": 12,
+                "direct_flights_only": true
+            },
+            "public_information": [
+                "Total trip length: 12 days.",
+                "Cities to visit: Porto, Barcelona, Florence.",
+                "You only take direct flights to commute between cities.",
+                "Direct flights exist between Porto and Barcelona, and between Barcelona and Florence."
+            ]
+        },
+        "workflow": {
+            "flights_agent": {
+                "analyze": {
+                    "input": [],
+                    "output": "flights_info",
+                    "system_prompt": "You are an expert on flight connectivity and route feasibility. Provide a concise machine-readable summary of direct flight legs that can be used by a planner. Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'flights_info'.",
+                    "prompt": "Your name is flights_agent. Use the environment public information {environment->public_information} and your private information {agents->flights_agent->private_information} to produce a machine-readable summary called flights_info listing the direct flight connections and the implied feasible commutes between cities given direct-flight-only constraint. Explain assumptions if any."
+                }
+            },
+            "stay_agent": {
+                "plan": {
+                    "input": [],
+                    "output": "stay_constraints",
+                    "system_prompt": "You are an expert in trip scheduling and constraints. Provide a concise, machine-readable summary of stay durations and temporal constraints (including the relatives visit window). Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'stay_constraints'.",
+                    "prompt": "Your name is stay_agent. Use the environment public information {environment->public_information} and your private information {agents->stay_agent->private_information} to produce a machine-readable summary called stay_constraints that lists required days in each city, the allowable days for the relatives visit in Porto, and any ordering constraints implied by stay durations."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "flights_info",
+                        "stay_constraints"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent planning and in authoring PDDL for the FastDownwards planner. Integrate the inputs and produce a complete PDDL domain and a PDDL problem targeted at FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and movement explicit so a multi-step plan using direct flights and stays can be found by FastDownwards.",
+                    "prompt": "You are the orchestrator agent. You will receive the flights_info and stay_constraints from the other agents. Your task is to integrate that information and produce a PDDL domain and a PDDL problem that a FastDownwards planner can solve to yield a valid itinerary for the global goal: Visit Porto, Barcelona, and Florence for a total of 12 days with the specified stays: 3 days in Porto, 7 days in Barcelona, 4 days in Florence, and ensuring relatives in Porto are visited between overall day 1 and day 3. Use the environment public information {environment->public_information}. Here are the inputs from the agents: {flights_info} and {stay_constraints}. Think step by step and produce a PDDL domain and PDDL problem. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "flights_agent.analyze->orchestrator.pddl",
+                "stay_agent.plan->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain multi-city-trip)\n  (:requirements :typing :negative-preconditions :adl :action-costs :fluents)\n  (:types city day porto-cap barca-cap flor-cap)\n  (:predicates\n    (at ?c - city)\n    (current ?d - day)\n    (next ?d1 - day ?d2 - day)\n    (day-unused ?d - day)\n    (assigned ?d - day ?c - city)\n    (porto-cap-available ?p - porto-cap)\n    (porto-cap-used ?p - porto-cap)\n    (barca-cap-available ?b - barca-cap)\n    (barca-cap-used ?b - barca-cap)\n    (flor-cap-available ?f - flor-cap)\n    (flor-cap-used ?f - flor-cap)\n    (relatives-visited)\n  )\n  (:functions (total-cost))\n\n  (:action stay-porto\n    :parameters (?d - day ?d2 - day ?pc - porto-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at porto) (day-unused ?d) (porto-cap-available ?pc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d porto)\n      (not (porto-cap-available ?pc))\n      (porto-cap-used ?pc)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action stay-barcelona\n    :parameters (?d - day ?d2 - day ?bc - barca-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at barcelona) (day-unused ?d) (barca-cap-available ?bc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d barcelona)\n      (not (barca-cap-available ?bc))\n      (barca-cap-used ?bc)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action stay-florence\n    :parameters (?d - day ?d2 - day ?fc - flor-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at florence) (day-unused ?d) (flor-cap-available ?fc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d florence)\n      (not (flor-cap-available ?fc))\n      (flor-cap-used ?fc)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action fly-porto-to-barcelona\n    :parameters (?d - day ?d2 - day ?bc - barca-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at porto) (day-unused ?d) (barca-cap-available ?bc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d barcelona)\n      (not (barca-cap-available ?bc))\n      (barca-cap-used ?bc)\n      (not (at porto))\n      (at barcelona)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action fly-barcelona-to-porto\n    :parameters (?d - day ?d2 - day ?pc - porto-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at barcelona) (day-unused ?d) (porto-cap-available ?pc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d porto)\n      (not (porto-cap-available ?pc))\n      (porto-cap-used ?pc)\n      (not (at barcelona))\n      (at porto)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action fly-barcelona-to-florence\n    :parameters (?d - day ?d2 - day ?fc - flor-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at barcelona) (day-unused ?d) (flor-cap-available ?fc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d florence)\n      (not (flor-cap-available ?fc))\n      (flor-cap-used ?fc)\n      (not (at barcelona))\n      (at florence)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action fly-florence-to-barcelona\n    :parameters (?d - day ?d2 - day ?bc - barca-cap)\n    :precondition (and (current ?d) (next ?d ?d2) (at florence) (day-unused ?d) (barca-cap-available ?bc))\n    :effect (and\n      (not (day-unused ?d))\n      (assigned ?d barcelona)\n      (not (barca-cap-available ?bc))\n      (barca-cap-used ?bc)\n      (not (at florence))\n      (at barcelona)\n      (not (current ?d))\n      (current ?d2)\n      (increase (total-cost) 1)\n    )\n  )\n\n  (:action visit-relatives-in-porto\n    :parameters ()\n    :precondition (and (at porto) (not (relatives-visited))\n                       (or (current day1) (current day2) (current day3)))\n    :effect (relatives-visited)\n  )\n)",
+    "pddl_problem": "(define (problem multi-city-trip-problem)\n  (:domain multi-city-trip)\n  (:objects\n    porto barcelona florence - city\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 - day\n    p1 p2 p3 - porto-cap\n    b1 b2 b3 b4 b5 b6 b7 - barca-cap\n    f1 f2 f3 f4 - flor-cap\n  )\n  (:init\n    (current day1)\n    (at porto)\n    (next day1 day2)\n    (next day2 day3)\n    (next day3 day4)\n    (next day4 day5)\n    (next day5 day6)\n    (next day6 day7)\n    (next day7 day8)\n    (next day8 day9)\n    (next day9 day10)\n    (next day10 day11)\n    (next day11 day12)\n    (next day12 day13)\n    (day-unused day1)\n    (day-unused day2)\n    (day-unused day3)\n    (day-unused day4)\n    (day-unused day5)\n    (day-unused day6)\n    (day-unused day7)\n    (day-unused day8)\n    (day-unused day9)\n    (day-unused day10)\n    (day-unused day11)\n    (day-unused day12)\n    (porto-cap-available p1)\n    (porto-cap-available p2)\n    (porto-cap-available p3)\n    (barca-cap-available b1)\n    (barca-cap-available b2)\n    (barca-cap-available b3)\n    (barca-cap-available b4)\n    (barca-cap-available b5)\n    (barca-cap-available b6)\n    (barca-cap-available b7)\n    (flor-cap-available f1)\n    (flor-cap-available f2)\n    (flor-cap-available f3)\n    (flor-cap-available f4)\n    (= (total-cost) 0)\n  )\n  (:goal\n    (and\n      (current day13)\n      (relatives-visited)\n      (porto-cap-used p1)\n      (porto-cap-used p2)\n      (porto-cap-used p3)\n      (barca-cap-used b1)\n      (barca-cap-used b2)\n      (barca-cap-used b3)\n      (barca-cap-used b4)\n      (barca-cap-used b5)\n      (barca-cap-used b6)\n      (barca-cap-used b7)\n      (flor-cap-used f1)\n      (flor-cap-used f2)\n      (flor-cap-used f3)\n      (flor-cap-used f4)\n      (not (day-unused day1))\n      (not (day-unused day2))\n      (not (day-unused day3))\n      (not (day-unused day4))\n      (not (day-unused day5))\n      (not (day-unused day6))\n      (not (day-unused day7))\n      (not (day-unused day8))\n      (not (day-unused day9))\n      (not (day-unused day10))\n      (not (day-unused day11))\n      (not (day-unused day12))\n    )\n  )\n  (:metric minimize (total-cost))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  PORTO does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/google/trip_planning/FastDownwards/TripPlanningExample39/domain_1.pddl results/google/trip_planning/FastDownwards/TripPlanningExample39/problem_1.pddl --sas-file output.sas\nParsing...\nParsing domain\n\t->Parsing requirements\nError in requirements.\nReason: Invalid requirement. Got: :fluents\nExpected: :strips, :adl, :typing, :negation, :equality, :negative-preconditions, :disjunctive-preconditions, :existential-preconditions, :universal-preconditions, :quantified-preconditions, :conditional-effects, :derived-predicates, :action-costs\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+

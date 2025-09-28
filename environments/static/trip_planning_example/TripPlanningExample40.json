@@ -1,0 +1,81 @@
+{
+    "name": "TripPlanningExample40",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flights_manager",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Total available days for the trip: 8",
+                "Desired stays by city: Oslo 6 days, Reykjavik 2 days, Manchester 2 days",
+                "I must attend a wedding in Manchester between day 1 and day 2",
+                "I will only take direct flights between cities"
+            ],
+            "goal": "Find a feasible 8-day trip visiting Oslo, Reykjavik, and Manchester using only direct flights while satisfying the wedding constraint."
+        },
+        "flights_manager": {
+            "private_information": [
+                "Available direct flight connections: Oslo <-> Reykjavik, Manchester <-> Oslo",
+                "Only the listed direct flight legs can be used to commute between cities"
+            ],
+            "goal": "Provide direct-flight connectivity and feasible flight legs that respect the travel constraint of only using direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences and flight connectivity to produce a single feasible trip plan for 8 days and output a PDDL domain and problem suitable for the FastDownward solver that encodes the schedule and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8,
+            "cities": [
+                "Oslo",
+                "Reykjavik",
+                "Manchester"
+            ]
+        },
+        "public_information": [
+            "You plan to visit three European cities for 8 days in total.",
+            "Only direct flights are allowed for commuting between cities.",
+            "Direct flight pairs available are: Oslo and Reykjavik, Manchester and Oslo.",
+            "There may be a preference inconsistency because desired city stays sum to more than total available days."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent responsible for stating exact trip preferences and hard constraints. Provide a compact structured representation that lists desired stay durations per city, the wedding timing constraint, the total available days, and flag any inconsistencies.",
+                "prompt": "Your name is traveler. Use your private information and the environment public information to produce a concise structured preferences object containing desired days per city, the wedding constraint, the total available days, and an explicit note if the sum of desired days exceeds the available days. Do not produce PDDL."
+            }
+        },
+        "flights_manager": {
+            "flight_options": {
+                "input": [],
+                "output": "flight_schedules",
+                "system_prompt": "You are the flights_manager agent responsible for providing valid direct-flight connectivity and feasible flight legs between the listed cities. Provide a compact structured representation of available direct flight legs and any assumptions about travel duration or ordering needed to construct itineraries.",
+                "prompt": "Your name is flights_manager. Using your private information and the environment public information, produce a structured list of direct flight legs and indicate how they may be used to move between cities (for example which legs connect which cities and whether they are two-way). Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "flight_schedules"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator for multi-agent planning. Integrate the travelers preferences and flight connectivity and produce a PDDL domain and PDDL problem that encode the trip planning task. Target the FastDownward solver when encoding numeric and temporal aspects. Keep agent responsibilities distinct in the encoding and document any reconciliations or assumptions made to resolve conflicts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You will receive the traveler's structured preferences and the flights_manager's structured flight schedules. Integrate them to produce a PDDL domain and a PDDL problem suitable for the FastDownward solver that models days, city visits, direct flights as commute actions, and the Manchester wedding constraint. If preferences are inconsistent with the total available days, reconcile them with minimal change and document the reconciliation in a short comment before the PDDL outputs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->orchestrator.pddl",
+            "flights_manager.flight_options->orchestrator.pddl"
+        ]
+    }
+}

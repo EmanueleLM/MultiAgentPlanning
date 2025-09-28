@@ -1,0 +1,78 @@
+{
+    "name": "TripPlanningExample39",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "flights_agent",
+            "stay_agent",
+            "orchestrator"
+        ],
+        "flights_agent": {
+            "private_information": [
+                "I know which direct flights exist between the cities.",
+                "Direct flights exist: Porto <-> Barcelona, Barcelona <-> Florence."
+            ],
+            "goal": "Provide a clear machine-readable summary of available direct flights and feasible city-to-city legs for the trip."
+        },
+        "stay_agent": {
+            "private_information": [
+                "Desired stays: 4 days in Florence, 7 days in Barcelona, 3 days in Porto.",
+                "Relative visit in Porto must occur between day 1 and day 3 of the overall trip."
+            ],
+            "goal": "Provide a machine-readable summary of the stay-duration constraints and the relatives-visit window."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate flight connectivity and stay constraints to produce a final plan.",
+                "The final output must be a PDDL domain and PDDL problem targeted at the FastDownwards planner."
+            ],
+            "goal": "Integrate information from the other agents and produce the final PDDL domain and PDDL problem that solves the trip planning task for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 12,
+            "direct_flights_only": true
+        },
+        "public_information": [
+            "Total trip length: 12 days.",
+            "Cities to visit: Porto, Barcelona, Florence.",
+            "You only take direct flights to commute between cities.",
+            "Direct flights exist between Porto and Barcelona, and between Barcelona and Florence."
+        ]
+    },
+    "workflow": {
+        "flights_agent": {
+            "analyze": {
+                "input": [],
+                "output": "flights_info",
+                "system_prompt": "You are an expert on flight connectivity and route feasibility. Provide a concise machine-readable summary of direct flight legs that can be used by a planner. Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'flights_info'.",
+                "prompt": "Your name is flights_agent. Use the environment public information {environment->public_information} and your private information {agents->flights_agent->private_information} to produce a machine-readable summary called flights_info listing the direct flight connections and the implied feasible commutes between cities given direct-flight-only constraint. Explain assumptions if any."
+            }
+        },
+        "stay_agent": {
+            "plan": {
+                "input": [],
+                "output": "stay_constraints",
+                "system_prompt": "You are an expert in trip scheduling and constraints. Provide a concise, machine-readable summary of stay durations and temporal constraints (including the relatives visit window). Do not produce PDDL. Output should be suitable to feed into a planner orchestrator as 'stay_constraints'.",
+                "prompt": "Your name is stay_agent. Use the environment public information {environment->public_information} and your private information {agents->stay_agent->private_information} to produce a machine-readable summary called stay_constraints that lists required days in each city, the allowable days for the relatives visit in Porto, and any ordering constraints implied by stay durations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "flights_info",
+                    "stay_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and in authoring PDDL for the FastDownwards planner. Integrate the inputs and produce a complete PDDL domain and a PDDL problem targeted at FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and movement explicit so a multi-step plan using direct flights and stays can be found by FastDownwards.",
+                "prompt": "You are the orchestrator agent. You will receive the flights_info and stay_constraints from the other agents. Your task is to integrate that information and produce a PDDL domain and a PDDL problem that a FastDownwards planner can solve to yield a valid itinerary for the global goal: Visit Porto, Barcelona, and Florence for a total of 12 days with the specified stays: 3 days in Porto, 7 days in Barcelona, 4 days in Florence, and ensuring relatives in Porto are visited between overall day 1 and day 3. Use the environment public information {environment->public_information}. Here are the inputs from the agents: {flights_info} and {stay_constraints}. Think step by step and produce a PDDL domain and PDDL problem. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "flights_agent.analyze->orchestrator.pddl",
+            "stay_agent.plan->orchestrator.pddl"
+        ]
+    }
+}

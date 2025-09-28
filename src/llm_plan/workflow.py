@@ -2,6 +2,7 @@ import json
 import shlex
 import subprocess
 import io
+import inspect
 
 # import shlex
 import ast
@@ -56,10 +57,10 @@ BASE_DIR = Path(__file__).resolve().parent  # directory of *this* file
 EXAMPLE_JSON = str(BASE_DIR / "example_json")
 ENVIRONMENT_CLASS = str(BASE_DIR / "environment.py")
 JSON_OUTPUT_PATH = str(
-    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "str"
+    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "t"
 )
 ACTOR_OUTPUT_PATH = str(
-    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "str"
+    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "t"
 )
 DEBUG = True  # whether to print debug info
 # PLANNER = "popf2"
@@ -397,6 +398,7 @@ def agent_coder_json(state: State):
         "The orchestrator will be the only participant in the workflow, prompted with initial information about the environment and the goal,"
         "as well as the constraints of each agent, and is responsible for generating a PDDL domain and problem file that coordinates the agents."
         "The order_constraints field of workflow should simply be 'orchestrator.pddl'."
+        "The inputs field for the orchestrator under workflow->participants->orchestrator should be an empty list."
     )
     sys_msg_pddl = (
         "Each agent generates a PDDL domain + problem and sends it to the orchestrator that generates the final plan. "
@@ -549,10 +551,26 @@ def generic_actor(state: AgentState):
     # This is a pddl specific formatting reminder appended to prompts in case it was not inferred from the example.
     # If supporting other modes in the future, might want to change this.
     tag_reminder = "You MUST enclose the domain in the tags <domain> ... </domain> and problem in the tags <problem> ... </problem>!"
+    types_reminder = inspect.cleandoc(
+        """\
+            A reminder: when defining types, ensure base types are defined AFTER hyphenated groups to avoid circular definitions."
+            For example, use
+            (:types
+                a, b - thing
+                thing
+            )
+            instead of
+            (:types
+                thing
+                a, b - thing
+            )
+            because the latter might get parsed as thing being a subtype of itself.
+        """
+    )
     folder_name = state["folder_name"]
     name = state["name"]
     sys_msg = state["sys_msg"] + tag_reminder
-    prompt = state["prompt"] + tag_reminder
+    prompt = state["prompt"] + types_reminder
     inputs = state["inputs"]
     output = state["output"]
 
@@ -794,6 +812,8 @@ def run_planner(
         pddl_error = "No error found."
         # print("The plan is valid.")
         # print("[stdout]", out.stdout)
+    if DEBUG:
+        print(f"DEBUG: VAL stderr:\n{out.stderr}\n")
     return pddl_error
 
 
@@ -945,7 +965,8 @@ def proceed_to_solver(
 def refine_or_end(
     state: RefinerState,
 ) -> Literal["Select refiner", "NL converter"]:
-    if state["MetaPass"] and state["acting_agent_name"] == "NoOpAgent":
+    # Just go to nl converter if Meta says ok. Already have plan, plan is good. No need for extra iters.
+    if state["MetaPass"]:  # and state["acting_agent_name"] == "NoOpAgent":
         return "NL converter"
     if state["curr_refinement_iter"] < state["refinement_iters"]:
         return "Select refiner"
@@ -1197,9 +1218,11 @@ def agent_to_nl(state: State | RefinerState):
     try:
         with open(base_dir / "sas_plan", "r") as f:
             plan = f.read()
+            if not plan.strip():
+                raise FileNotFoundError
     except FileNotFoundError:
         print(
-            f"Plan file not found in {base_dir}. Ensure the solver ran successfully and produced a plan."
+            f"Plan file not found in {base_dir} or is empty. Ensure the solver ran successfully and produced a plan."
         )
         return {}
 

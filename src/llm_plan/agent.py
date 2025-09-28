@@ -195,6 +195,18 @@ class AgentDeepThinkConstraints(Agent):
                                       - the PDDL domain reflects the goal of the human and json specifications. Always consider the human specification and the ground truth.
                                       - the PDDL problem correctly enumerates and expresses all the constraints in the specification. Put particular attention that all the constraints are expressed and none is missing or under-specified.
                                       
+                                      Important: when defining types, ensure base types are defined AFTER hyphenated groups to avoid circular definitions.
+                                        For example, use
+                                        (:types
+                                            a, b - thing
+                                            thing
+                                        )
+                                        instead of
+                                        (:types
+                                            thing
+                                            a, b - thing
+                                        )
+                                        because the latter might get parsed as 'thing' being a subtype of itself.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
                                       """
@@ -280,6 +292,18 @@ class AgentEnforceMultiAgency(Agent):
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
 
                                       You task is to fix all the issues mentioned above.
+                                      Important: when defining types, ensure base types are defined AFTER hyphenated groups to avoid circular definitions.
+                                        For example, use
+                                        (:types
+                                            a, b - thing
+                                            thing
+                                        )
+                                        instead of
+                                        (:types
+                                            thing
+                                            a, b - thing
+                                        )
+                                        because the latter might get parsed as 'thing' being a subtype of itself.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. 
                                       Just return the PDDL code, do not add special characters or comments.
                                       """
@@ -419,7 +443,19 @@ class AgentSyntaxPDDL(Agent):
                         you **MUST** use the `planning_wiki_lookup` tool to get the authoritative syntax. This is crucial for accuracy.
                     3. First, reason about the error. Then, decide if you need to use a tool. If so, use it.
                     4. After gathering information, produce the final corrected PDDL files.
-                    5. If there are no errors, return the exact phrase "<<PASS>>".
+                    5. Important: when defining types, ensure base types are defined AFTER hyphenated groups to avoid circular definitions.
+                        For example, use
+                        (:types
+                            a, b - thing
+                            thing
+                        )
+                        instead of
+                        (:types
+                            thing
+                            a, b - thing
+                        )
+                        because the latter might get parsed as 'thing' being a subtype of itself.
+                    6. If there are no errors, return the exact phrase "<<PASS>>".
 
                     **Solver-Specific PDDL Guidance:**
                     Use the following information to guide your syntax corrections and to select the correct pages with the `planning_wiki_lookup` tool.

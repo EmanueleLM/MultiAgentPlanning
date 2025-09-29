@@ -1,0 +1,41 @@
+(define (domain meeting-planning)
+  (:requirements :strips :negative-preconditions :typing :action-costs :fluents)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (now ?t - time)
+    (met ?a - agent ?b - agent)
+    (travel-time ?t1 - time ?t2 - time)
+    (meeting-span ?t1 - time ?t2 - time)
+  )
+  (:functions (total-cost))
+  (:action travel
+    :parameters (?a - agent ?from - location ?to - location ?t1 - time ?t2 - time)
+    :precondition (and
+      (now ?t1)
+      (at ?a ?from)
+      (travel-time ?t1 ?t2)
+    )
+    :effect (and
+      (not (now ?t1))
+      (now ?t2)
+      (not (at ?a ?from))
+      (at ?a ?to)
+      (increase (total-cost) 22)
+    )
+  )
+  (:action meet
+    :parameters (?a - agent ?b - agent ?loc - location ?t1 - time ?t2 - time)
+    :precondition (and
+      (now ?t1)
+      (at ?a ?loc)
+      (at ?b ?loc)
+      (meeting-span ?t1 ?t2)
+    )
+    :effect (and
+      (not (now ?t1))
+      (now ?t2)
+      (met ?a ?b)
+    )
+  )
+)

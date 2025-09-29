@@ -1,0 +1,57 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions :equality :adl :action-costs)
+  (:types agent location time)
+  (:constants visitor sarah - agent richmond_district bayview - location)
+  (:predicates
+    (at ?a - agent ?l - location ?t - time)
+    (plus1 ?t1 - time ?t2 - time)
+    (plus25 ?t1 - time ?t2 - time)
+    (plus26 ?t1 - time ?t2 - time)
+    (plus45 ?t1 - time ?t2 - time)
+    (sarah_available ?t - time)
+    (met_sarah)
+    (can_start_meet_sarah ?t - time)
+  )
+
+  (:action travel_richmond_to_bayview
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (at visitor richmond_district ?t)
+      (plus26 ?t ?t2)
+    )
+    :effect (and
+      (not (at visitor richmond_district ?t))
+      (at visitor bayview ?t2)
+    )
+    :costs 26
+  )
+
+  (:action travel_bayview_to_richmond
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (at visitor bayview ?t)
+      (plus25 ?t ?t2)
+    )
+    :effect (and
+      (not (at visitor bayview ?t))
+      (at visitor richmond_district ?t2)
+    )
+    :costs 25
+  )
+
+  (:action meet_sarah
+    :parameters (?t - time ?t_end - time)
+    :precondition (and
+      (at visitor bayview ?t)
+      (plus45 ?t ?t_end)
+      (can_start_meet_sarah ?t)
+      (sarah_available ?t)
+    )
+    :effect (and
+      (met_sarah)
+      (not (at visitor bayview ?t))
+      (at visitor bayview ?t_end)
+    )
+    :costs 0
+  )
+)

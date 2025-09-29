@@ -241,6 +241,19 @@ class Planner:
             "Always prefer the earliest feasible meeting slot that satisfies all hard constraints and encoded preferences."
         )
 
+        lines.append(
+            "Double-check that every stay duration you infer matches the requested number of days and that the total number of days equals the trip horizon."
+        )
+        lines.append(
+            "Flag contradictory or over-subscribed stay requirements instead of silently shortening them."
+        )
+        lines.append(
+            "When modelling Fast Downward, only rely on requirements supported by classical STRIPS (:typing, :negative-preconditions, :action-costs). Never introduce :fluents, durative actions, axioms, or conditional effects."
+        )
+        lines.append(
+            "Only include travel actions that correspond to direct connections explicitly listed in the specification; do not fabricate multi-hop or implicit routes."
+        )
+
         return "\n".join(lines)
 
     async def plan(self, model: LLM, environment: Environment) -> dict[str, str]:

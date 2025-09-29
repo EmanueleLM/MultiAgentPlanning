@@ -1,0 +1,28 @@
+(define (domain meeting-domain)
+  (:requirements :typing :adl :negative-preconditions :fluents)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (now ?t - time)
+    (met ?a - agent ?b - agent)
+    (can-travel ?from - location ?to - location ?t1 - time ?t2 - time)
+    (time-adv ?t1 - time ?t2 - time)
+    (can-meet ?t1 - time ?t2 - time)
+  )
+  (:functions (total-cost))
+  (:action travel
+    :parameters (?ag - agent ?from - location ?to - location ?t1 - time ?t2 - time)
+    :precondition (and (now ?t1) (at ?ag ?from) (can-travel ?from ?to ?t1 ?t2))
+    :effect (and (not (now ?t1)) (now ?t2) (not (at ?ag ?from)) (at ?ag ?to) (increase (total-cost) 0))
+  )
+  (:action wait
+    :parameters (?t1 - time ?t2 - time)
+    :precondition (and (now ?t1) (time-adv ?t1 ?t2))
+    :effect (and (not (now ?t1)) (now ?t2) (increase (total-cost) 0))
+  )
+  (:action meet-traveler-emily
+    :parameters (?trav - agent ?em - agent ?loc - location ?t1 - time ?t2 - time)
+    :precondition (and (now ?t1) (at ?trav ?loc) (at ?em ?loc) (can-meet ?t1 ?t2) (not (met ?trav ?em)))
+    :effect (and (not (now ?t1)) (now ?t2) (met ?trav ?em) (increase (total-cost) -1))
+  )
+)

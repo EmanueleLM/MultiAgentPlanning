@@ -1,0 +1,25 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:predicates
+    (free ?p - person ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
+    (earliest-allowed ?s - slot)
+  )
+  (:action schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (earliest-allowed ?s)
+      (free walter ?s)
+      (free danielle ?s)
+      (free julia ?s)
+      (free samuel ?s)
+      (free lori ?s)
+    )
+    :effect (and
+      (scheduled ?s)
+      (meeting-scheduled)
+    )
+  )
+)

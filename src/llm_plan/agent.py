@@ -102,6 +102,9 @@ class AgentHallucinations(Agent):
             specification. Preserve valid constructs, repair or remove unsupported ones, and keep the
             syntax compliant with classical PDDL. Always encode stated busy intervals and preferences
             (e.g., "avoid", "would rather not", "earliest") as hard constraints in the resulting PDDL.
+            Limit the :requirements list to those supported by Fast Downward (:typing, :negative-preconditions,
+            and :action-costs when needed); never introduce :fluents, axioms, conditional effects, or durative
+            constructs.
             """
         )
 
@@ -130,7 +133,11 @@ class AgentHallucinations(Agent):
             Align action preconditions and effects, object declarations, the initial state, and the goal facts
             with the provided specifications. Preserve the multi-agent structure and solver compatibility.
             Explicitly encode availability and preference constraints so that disallowed time windows cannot be
-            selected. When uncertain, prefer conservative edits instead of introducing new abstractions.
+            selected. Ensure that requested stay durations match the natural-language specification and that the
+            total number of days equals the stated trip length; call out irreconcilable over-subscriptions instead
+            of silently reducing stays. Only model direct connections that are explicitly described—do not invent
+            multi-hop flights or additional transport actions. When uncertain, prefer conservative edits instead of
+            introducing new abstractions.
 
             Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
             <problem></problem>. Output only raw PDDL code inside the tags.
@@ -189,7 +196,10 @@ class AgentDeepThinkPDDL(Agent):
             You analyze the provided domain, problem, and plan against the human specification, identify every
             inconsistency, and return corrected PDDL artifacts that satisfy the goal. Treat all stated busy
             intervals and temporal preferences as hard constraints and ensure only feasible time windows remain
-            selectable.
+            selectable. Verify that stay durations exactly match the specification, that the total time horizon
+            is preserved, and that only direct flights or connections explicitly listed are available.
+            Do not introduce unsupported Fast Downward features (:fluents, axioms, conditional effects, durative
+            actions, etc.).
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -211,6 +221,8 @@ class AgentDeepThinkPDDL(Agent):
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the human specification.
                                       - The PDDL problem reflects the particular instance of the specification.
+                                      - Stay durations per city and the overall trip horizon match exactly the natural-language requirements.
+                                      - Only direct connections explicitly mentioned in the specification are encoded.
                                       - The PDDL plan satisfies the goal and the constraints of the human specification, including every availability or temporal preference mentioned. Be careful: the plan may be wrong.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -275,6 +287,9 @@ class AgentDeepThinkConstraints(Agent):
             Analyze the PDDL domain and problem against the natural-language and JSON specifications.
             Focus on whether each agent's constraints are correctly captured as PDDL formulae, especially
             calendar availability, meeting durations, and any natural-language preferences that must be enforced.
+            Ensure stay durations sum to the required trip length, highlight irreconcilable demands, and verify
+            that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions,
+            :action-costs).
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -296,6 +311,7 @@ class AgentDeepThinkConstraints(Agent):
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the goals described in the human and JSON specifications. Always consider the human specification as the ground truth.
                                       - The PDDL problem correctly enumerates and expresses every constraint in the specification, including preferences that restrict certain times. Pay close attention to missing or underspecified constraints.
+                                      - The encoded stay durations and total number of days match the specification, and only direct flights or transitions explicitly stated are available.
                                       - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -359,7 +375,10 @@ class AgentEnforceMultiAgency(Agent):
             You are an expert Planning Domain Definition Language (PDDL) programmer.
             Ensure that the PDDL domain and problem correctly represent each agent's actions as distinct entities.
             Encode every stated constraint or preference as a structural restriction so that no agent executes
-            an action that violates availability or timing requirements.
+            an action that violates availability or timing requirements. Reject candidate models that invent
+            indirect flight connections or unsupported requirements (:fluents, axioms, conditional effects).
+            Confirm that stay durations per city and the overall trip horizon match the natural-language brief
+            before approving the domain/problem pair.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -379,6 +398,7 @@ class AgentEnforceMultiAgency(Agent):
                                       - The PDDL domain and plan correctly implement the JSON specification as well as the human specification within a multi-agent system.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
+                                      - The encoded connections and travel actions are limited to direct links explicitly listed, and the stay durations per city add up to the stated horizon.
 
                                       Your task is to fix all the issues mentioned above.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -446,6 +466,8 @@ class AgentFastDownwardsAdapter(Agent):
             Convert numeric, temporal, or durative features into classical STRIPS/ADL-style constructs so the
             solver can operate on the domain while preserving as much of the original semantics as possible.
             Never relax calendar availability, duration requirements, or stated preferences when adapting.
+            Restrict the :requirements list to features supported by Fast Downward (:typing, :negative-preconditions,
+            :action-costs); strip out :fluents, axioms, conditional effects, or durative constructs entirely.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -465,6 +487,7 @@ class AgentFastDownwardsAdapter(Agent):
             - Use symbolic ordering instead of numeric comparisons.
             - Encode optimization via :action-costs only.
             - Keep types, equality, and STRIPS/ADL features.
+            - Remove unsupported requirements such as :fluents, axioms, or conditional effects; ensure only direct connections mentioned in the source specification remain.
             
             Return the domain between <domain></domain> and the problem between <problem></problem>.
             Return only raw PDDL code inside the tags; do not add comments or extra characters.
@@ -521,7 +544,8 @@ class AgentSyntaxPDDL(Agent):
             You are an agent that evaluates each step of a plan.
             Analyze the provided plan against the human specification and identify every inconsistency with the
             PDDL syntax expected by the *{target_solver}* planner. Confirm that availability and preference
-            constraints remain encoded correctly after your edits.
+            constraints remain encoded correctly after your edits and that the :requirements list only contains
+            features supported by Fast Downward (:typing, :negative-preconditions, :action-costs).
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -541,7 +565,7 @@ class AgentSyntaxPDDL(Agent):
                                       <errors>{syntax_errors}</errors>
                                       
                                       Fix any errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by the *{target_solver}* planner.
-                                      Ensure that no constraint (availability, duration, preference) is lost during the fix.
+                                      Ensure that no constraint (availability, duration, preference) is lost during the fix and that unsupported requirements (e.g., :fluents, axioms, conditional effects) are removed.
                                       If anything does not satisfy the specification, return a corrected version of the PDDL domain and problem; otherwise, return the originals.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -609,7 +633,8 @@ class AgentAsynchronicity(Agent):
             Analyze the provided plan against the human specification and introduce a timestamp variable that
             marks when each agent performs an action. Use it to schedule independent actions concurrently while
             keeping compatibility with the *{target_solver}* planner. Do not violate any availability or
-            preference constraint while reshaping the schedule.
+            preference constraint while reshaping the schedule, and ensure you do not introduce unsupported
+            Fast Downward features (e.g., :fluents, axioms, conditional effects).
             You may think through the problem in as many steps as needed.
             """
         )
@@ -630,7 +655,7 @@ class AgentAsynchronicity(Agent):
                                       <errors>{syntax_errors}</errors>
                                       
                                       Introduce or refine a `timestamp` variable that indicates when each agent performs an action so that compatible actions can execute concurrently when possible.
-                                      Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner and that all availability and preference constraints remain satisfied.
+                                      Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner and that all availability and preference constraints remain satisfied without adding unsupported requirements.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                                       Return only raw PDDL code inside the tags; do not add comments or extra characters.

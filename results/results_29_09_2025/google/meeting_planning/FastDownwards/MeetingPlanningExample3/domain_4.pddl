@@ -1,0 +1,42 @@
+(define (domain meeting-planning)
+  (:requirements :strips :negative-preconditions :typing :fluents)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (now ?t - time)
+    (met ?a - agent ?b - agent)
+    (travel-time ?t1 - time ?t2 - time)
+    (meeting-span ?t1 - time ?t2 - time)
+  )
+  (:functions (total-cost))
+  (:action travel-bayview-to-golden
+    :parameters ()
+    :precondition (and
+      (now t540)
+      (at traveler bayview)
+      (travel-time t540 t562)
+    )
+    :effect (and
+      (not (now t540))
+      (now t562)
+      (not (at traveler bayview))
+      (at traveler golden_gate_park)
+      (increase (total-cost) 22)
+    )
+  )
+  (:action meet-traveler-barbara
+    :parameters ()
+    :precondition (and
+      (now t562)
+      (at traveler golden_gate_park)
+      (at barbara golden_gate_park)
+      (meeting-span t562 t652)
+    )
+    :effect (and
+      (not (now t562))
+      (now t652)
+      (met traveler barbara)
+      (increase (total-cost) 0)
+    )
+  )
+)

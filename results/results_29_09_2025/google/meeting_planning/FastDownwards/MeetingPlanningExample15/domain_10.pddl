@@ -1,0 +1,31 @@
+(define (domain meeting-domain)
+  (:requirements :typing :adl :negative-preconditions)
+  (:types agent location time)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (now ?t - time)
+    (adj ?t1 - time ?t2 - time)
+    (meeting-start-allowed ?t - time)
+    (met)
+  )
+  (:action travel-rh-ggp
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (now ?t) (at traveler rh) (adj ?t ?t2))
+    :effect (and (not (now ?t)) (now ?t2) (not (at traveler rh)) (at traveler ggp))
+  )
+  (:action travel-ggp-rh
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (now ?t) (at traveler ggp) (adj ?t ?t2))
+    :effect (and (not (now ?t)) (now ?t2) (not (at traveler ggp)) (at traveler rh))
+  )
+  (:action wait
+    :parameters (?t - time ?t2 - time ?loc - location)
+    :precondition (and (now ?t) (at traveler ?loc) (adj ?t ?t2))
+    :effect (and (not (now ?t)) (now ?t2) (at traveler ?loc))
+  )
+  (:action meet-john
+    :parameters (?t - time ?t2 - time)
+    :precondition (and (now ?t) (at traveler ggp) (meeting-start-allowed ?t) (adj ?t ?t2))
+    :effect (and (not (now ?t)) (now ?t2) (met) (at traveler ggp))
+  )
+)

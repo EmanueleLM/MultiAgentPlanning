@@ -1,0 +1,21 @@
+(define (problem schedule-meeting)
+  (:domain meeting-scheduling)
+  (:objects
+    t09_00 t09_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30 t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 - time
+  )
+  (:init
+    (unscheduled)
+    (free shirley t09_00) (free shirley t09_30) (free shirley t10_00) (free shirley t11_00) (free shirley t11_30)
+    (free shirley t12_30) (free shirley t13_00) (free shirley t13_30) (free shirley t14_00) (free shirley t14_30)
+    (free shirley t15_00) (free shirley t15_30) (free shirley t16_00) (free shirley t16_30)
+    (free jacob t09_30) (free jacob t10_30) (free jacob t11_30) (free jacob t12_00)
+    (free jacob t13_30) (free jacob t14_00) (free jacob t15_00) (free jacob t15_30) (free jacob t16_00) (free jacob t16_30)
+    (free stephen t09_00) (free stephen t09_30) (free stephen t10_00) (free stephen t10_30) (free stephen t11_00)
+    (free stephen t12_00) (free stephen t13_00) (free stephen t13_30) (free stephen t14_00) (free stephen t14_30)
+    (free stephen t15_00) (free stephen t15_30) (free stephen t16_00) (free stephen t16_30)
+    (free margaret t14_30) (free margaret t15_30) (free margaret t16_00)
+    (free mason t10_00) (free mason t11_00) (free mason t12_30) (free mason t13_30)
+    (free mason t14_30) (free mason t15_00) (free mason t15_30) (free mason t16_00)
+  )
+  (:goal (scheduled))
+)

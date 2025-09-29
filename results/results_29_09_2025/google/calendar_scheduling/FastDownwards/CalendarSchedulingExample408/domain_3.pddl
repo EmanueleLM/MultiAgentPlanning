@@ -1,0 +1,24 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :action-costs)
+  (:types participant timeslot)
+  (:predicates
+    (available ?p - participant ?t - timeslot)
+    (meeting-scheduled ?t - timeslot)
+    (meeting-duration-30)
+  )
+  (:action schedule
+    :parameters (?t - timeslot ?noah - participant ?teresa - participant ?bradley - participant ?philip - participant ?joyce - participant ?ryan - participant ?aaron - participant)
+    :precondition (and
+      (available ?noah ?t)
+      (available ?teresa ?t)
+      (available ?bradley ?t)
+      (available ?philip ?t)
+      (available ?joyce ?t)
+      (available ?ryan ?t)
+      (available ?aaron ?t)
+      (meeting-duration-30)
+    )
+    :effect (and (meeting-scheduled ?t))
+    :cost 1
+  )
+)

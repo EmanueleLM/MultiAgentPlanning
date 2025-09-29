@@ -1,0 +1,25 @@
+(define (domain meeting-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person timeslot)
+  (:constants jesse nancy isabella harold linda - person)
+  (:predicates
+    (busy ?p - person ?t - timeslot)
+    (meeting-scheduled)
+    (scheduled-at ?t - timeslot)
+  )
+  (:action schedule-meeting
+    :parameters (?t - timeslot)
+    :precondition (and
+      (not (busy jesse ?t))
+      (not (busy nancy ?t))
+      (not (busy isabella ?t))
+      (not (busy harold ?t))
+      (not (busy linda ?t))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled-at ?t)
+    )
+  )
+)

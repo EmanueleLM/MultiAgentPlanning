@@ -1,0 +1,25 @@
+(define (domain schedule-meeting)
+  (:requirements :typing :negative-preconditions :adl)
+  (:types participant timeslot)
+  (:predicates
+    (free ?p - participant ?t - timeslot)
+    (scheduled ?t - timeslot)
+    (meeting-scheduled)
+  )
+
+  (:action schedule
+    :parameters (?t - timeslot)
+    :precondition (and
+      (not (meeting-scheduled))
+      (free sara ?t)
+      (free sarah ?t)
+      (free shirley ?t)
+      (free harold ?t)
+      (free terry ?t)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled ?t)
+    )
+  )
+)

@@ -34,6 +34,8 @@ class Hypervisor:
             decide which agent is best suited to act next.
             Always discard abstract classes or classes with abstract methods and report the selected class name
             between <class></class> tags.
+            Fast Downward only supports classical STRIPS features; reject or repair PDDL that introduces unsupported
+            requirements such as :fluents, axioms, or conditional effects.
             """
         )
         self.prompt = inspect.cleandoc(
@@ -72,6 +74,8 @@ class Hypervisor:
             2. Multi-agency — verify the modelling distinguishes each agent's actions appropriately.
             3. Asynchronicity — confirm the domain/problem allow independent concurrent actions when needed.
             4. Syntax — enforce compliance with the target solver's PDDL requirements.
+            Additionally, ensure the stay durations and total-day counts match the natural-language specification and
+            that only direct flights or links explicitly listed are modelled.
 
             Select the class best positioned to address the most pressing issue given the current artefacts. If
             you believe the domain, problem, and plan already satisfy the specification, respond with

@@ -1,0 +1,28 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :negative-preconditions :typing :conditional-effects :fluents :numeric-fluents :action-costs)
+  (:types participant slot)
+  (:predicates
+    (busy ?p - participant ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
+    (before13 ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (not (busy christine ?s))
+      (not (busy janice ?s))
+      (not (busy bobby ?s))
+      (not (busy elizabeth ?s))
+      (not (busy tyler ?s))
+      (not (busy edward ?s))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (scheduled ?s)
+      (meeting-scheduled)
+      (when (not (before13 ?s)) (increase (total-cost) 1))
+    )
+  )
+)

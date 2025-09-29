@@ -1,0 +1,31 @@
+(define (domain meeting-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person slot)
+  (:constants madison linda logan virginia - person)
+  (:predicates
+    (person ?p - person)
+    (slot ?s - slot)
+    (available ?p - person ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
+  )
+
+  (:action schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (available madison ?s)
+      (available linda ?s)
+      (available logan ?s)
+      (available virginia ?s)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled ?s)
+      (not (available madison ?s))
+      (not (available linda ?s))
+      (not (available logan ?s))
+      (not (available virginia ?s))
+    )
+  )
+)

@@ -57,11 +57,13 @@ BASE_DIR = Path(__file__).resolve().parent  # directory of *this* file
 EXAMPLE_JSON = str(BASE_DIR / "example_json")
 ENVIRONMENT_CLASS = str(BASE_DIR / "environment.py")
 JSON_OUTPUT_PATH = str(
-    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "t"
+    BASE_DIR.parents[1] / "numtemp_complexity_test" / "results" / "satellite"
 )
 ACTOR_OUTPUT_PATH = str(
-    BASE_DIR.parents[1] / "numtemp_test" / "results" / "depots" / "t"
+    BASE_DIR.parents[1] / "numtemp_complexity_test" / "results" / "satellite"
 )
+# JSON_OUTPUT_PATH = str(BASE_DIR.parents[1] / "tmp")
+# ACTOR_OUTPUT_PATH = str(BASE_DIR.parents[1] / "tmp")
 DEBUG = True  # whether to print debug info
 # PLANNER = "popf2"
 # PLANNER = "fast-downward"

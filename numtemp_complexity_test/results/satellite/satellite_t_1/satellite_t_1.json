@@ -1,0 +1,164 @@
+{
+  "name": "SatelliteScheduling",
+  "author": "Human",
+  "agents": {
+    "number": 3,
+    "names": [
+      "satellite0",
+      "instrument0",
+      "orchestrator"
+    ],
+    "agent_details": {
+      "satellite0": {
+        "private_information": [
+          "I am satellite0",
+          "I host instrument0",
+          "I have a single power feed",
+          "I initially point Phenomenon6",
+          "My power is available at start"
+        ],
+        "goal": "Support instrument operations to obtain required images while respecting pointing and power constraints."
+      },
+      "instrument0": {
+        "private_information": [
+          "I am instrument0",
+          "I reside on satellite0",
+          "I support mode thermograph0 only",
+          "My calibration target is GroundStation2",
+          "I am initially powered off",
+          "I am initially uncalibrated"
+        ],
+        "goal": "Be used to capture thermograph0 images for the specified directions as required by the mission goals."
+      },
+      "orchestrator": {
+        "private_information": [],
+        "goal": "Generate a PDDL domain and problem that models the satellite, instrument, timing, slew and calibration durations, actions (turn, switch_on, switch_off, calibrate, take_image) and the mission goals. Minimize total-time."
+      }
+    }
+  },
+  "environment": {
+    "init": {
+      "objects": {
+        "satellites": [
+          "satellite0"
+        ],
+        "instruments": [
+          "instrument0"
+        ],
+        "modes": [
+          "image1",
+          "spectrograph2",
+          "thermograph0"
+        ],
+        "directions": [
+          "GroundStation1",
+          "GroundStation2",
+          "Phenomenon3",
+          "Phenomenon4",
+          "Phenomenon6",
+          "Star0",
+          "Star5"
+        ]
+      },
+      "satellite_state": {
+        "satellite0": {
+          "pointing": "Phenomenon6",
+          "power_available": true,
+          "instruments": [
+            "instrument0"
+          ]
+        }
+      },
+      "instrument_state": {
+        "instrument0": {
+          "onboard": "satellite0",
+          "powered": false,
+          "calibrated": false,
+          "supports_modes": [
+            "thermograph0"
+          ],
+          "calibration_target": "GroundStation2"
+        }
+      },
+      "calibration_time": {
+        "instrument0->GroundStation2": 5.9
+      },
+      "slew_time": {
+        "GroundStation1->GroundStation2": 68.04,
+        "GroundStation1->Phenomenon3": 89.48,
+        "GroundStation1->Phenomenon4": 31.79,
+        "GroundStation1->Phenomenon6": 17.63,
+        "GroundStation1->Star0": 18.17,
+        "GroundStation1->Star5": 8.59,
+        "GroundStation2->Phenomenon3": 33.94,
+        "GroundStation2->Phenomenon4": 39.73,
+        "GroundStation2->Phenomenon6": 50.73,
+        "GroundStation2->Star0": 38.61,
+        "GroundStation2->Star5": 62.86,
+        "Phenomenon3->Phenomenon4": 25.72,
+        "Phenomenon3->Phenomenon6": 14.75,
+        "Phenomenon3->Star0": 14.29,
+        "Phenomenon3->Star5": 10.18,
+        "Phenomenon4->Phenomenon6": 2.098,
+        "Phenomenon4->Star0": 35.01,
+        "Phenomenon4->Star5": 64.5,
+        "Phenomenon6->Star0": 77.07,
+        "Phenomenon6->Star5": 29.32,
+        "Star0->Star5": 36.56
+      },
+      "action_durations": {
+        "turn": "slew_time(new,old)",
+        "switch_on": 2.0,
+        "switch_off": 1.0,
+        "take_image": 7.0,
+        "calibrate": "calibration_time(instrument, target)"
+      }
+    },
+    "goal": {
+      "image_goals": [
+        {
+          "direction": "Phenomenon4",
+          "mode": "thermograph0"
+        },
+        {
+          "direction": "Star5",
+          "mode": "thermograph0"
+        },
+        {
+          "direction": "Phenomenon6",
+          "mode": "thermograph0"
+        }
+      ],
+      "counts_by_mode": {
+        "thermograph0": 3
+      },
+      "final_pointing_constraints": []
+    },
+    "public_information": [
+      "Slew times are symmetric between directions and specified in slew_time",
+      "Calibration times per instrument-target pair specified in calibration_time",
+      "Each satellite points at exactly one direction when not turning",
+      "During a turn the satellite points at no direction",
+      "Each satellite has a single power feed shared by its instruments",
+      "Switching on takes 2 time units and claims power at start, instrument becomes powered at end and calibration is cleared",
+      "Switching off takes 1 time unit and power becomes available at end",
+      "Calibration duration given by calibration_time; instrument must be powered throughout and satellite must point at calibration target at start; instrument becomes calibrated at end",
+      "Taking an image takes 7 time units and requires instrument powered, calibrated, supporting the mode, and satellite pointing at the image direction throughout; produces have_image(direction,mode) at end",
+      "Static relations (instrument on which satellite, supported modes, calibration target) do not change"
+    ]
+  },
+  "workflow": {
+    "participants": {
+      "orchestrator": {
+        "task": "pddl",
+        "input": [],
+        "output": "pddl_orchestrator",
+        "system_prompt": "You are an expert with multi-agent PDDL problems. You will be provided information about the environment and the capabilities and knowledge of the agents which interact in the environment. You always provide a PDDL domain and a PDDL problem file that describes the planning problem. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. Keep the actions for different agents distinct, so that there is no confusion as to which agent performs which action.",
+        "prompt": "Your name is orchestrator.\nInitial information about the environment: {environment->init}.\nGoal for the environment: {environment->goal}.\nThe public information is: {environment->public_information}.\nThe satellite0's constraints are: {agents->agent_details->satellite0->private_information}.\nThe instrument0's constraints are: {agents->agent_details->instrument0->private_information}.\nThink step by step and provide a PDDL domain and problem that encapsulate the integrated model, including objects, initial state, numeric/schedule durations (slew_time and calibration_time), actions (turn, switch_on, switch_off, calibrate, take_image) with start/end and over-all interval conditions and effects, and the mission goals. Respect the constraints of each agent and do not assume information beyond what is provided. Minimize total-time in the produced problem. There is no need for anything else beyond producing the pddl files."
+      }
+    },
+    "order_constraints": [
+      "orchestrator.pddl"
+    ]
+  }
+}

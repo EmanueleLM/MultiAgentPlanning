@@ -7,8 +7,8 @@ from unified_planning.io import PDDLReader
 from unified_planning.shortcuts import OneshotPlanner
 from unified_planning.model.metrics import MinimizeMakespan
 
-ACTOR_OUTPUT_PATH = "./numtemp_test/results/depots/t"
-folder_name = "depots_t_2"
+ACTOR_OUTPUT_PATH = "./numtemp_complexity_test/results/depots"
+folder_name = "depots_t_9"
 
 
 base_dir = (Path(__file__).parent / (ACTOR_OUTPUT_PATH + f"/{folder_name}")).resolve()
@@ -23,7 +23,7 @@ problem = PDDLReader().parse_problem(dom, prob)
 buf = io.StringIO()
 try:
     with OneshotPlanner(name="lpg") as planner:
-        result = planner.solve(problem, output_stream=buf)
+        result = planner.solve(problem, output_stream=buf, timeout=400)
         print("Status:", result.status)
         if result.plan:
             print(result.plan)

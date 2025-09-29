@@ -34,27 +34,35 @@ if not os.getenv("OPENAI_API_KEY"):
         os.environ["OPENAI_API_KEY"] = key_file.read_text(encoding="utf-8").strip()
 
 BASE_DIR = Path(__file__).resolve().parents[2] / "numtemp_test"
-VARIANTS = ["str", "n", "st", "t"]
+# VARIANTS = ["str", "n", "st", "t"]
+VARIANTS = ["st", "t"]
 
 PLANNER_SYSTEM_PROMPT = (
     "You are an expert classical planning assistant. You must craft a valid, "
     "sound plan for the specified {domain_label} variant {variant}, using only "
-    "the provided natural-language task description. Output a numbered list of "
-    "grounded actions accepted by the official domain. Do not add explanations."
+    "the provided natural-language task description. Output a list of PDDL-style"
+    "grounded actions. Each action should be a single line, preceeded with the time that the action is taken, and succeeded with the duration of the action. You should try to accomplish the goal whilst minimizing the total time required. Do not add explanations."
 )
 PLANNER_USER_TEMPLATE = """Task description:
 {description}
 
 Produce the execution plan as:
 PLAN:
-1. (action parameter1 parameter2 ...)
-2. ...
+time, e.g. 0.000 (action parameter1 parameter2 ...) [D:duration]
+...
 Ensure steps are in execution order and omit commentary.
 """
 
 JUDGE_SYSTEM_PROMPT = (
-    "You are a meticulous PDDL plan validator. Decide if the given plan exactly "
-    "satisfies the domain and problem. Assume no prior conversation. You might want to repeat to yourself the current state of certain aspects of the environment after each action to keep track."
+    "You are a meticulous PDDL plan validator. Decide if the given plan "
+    "satisfies the domain and problem. The action names and order of arguments "
+    "don't need to match the PDDL exactly, but everything needs to be internally "
+    "consistent and achieve the same goal. You can imagine that the plan is "
+    "produced from a different PDDL specification based on the same problem, and "
+    "your task is to check if it is essentially correct up to naming and variable "
+    "ordering. Assume no prior conversation. You might want to repeat to yourself "
+    "the current state of certain aspects of the environment after each action to keep track."
+    "Make sure to carefully check action timings and durations to determine whether actions meet all preconditions and can be executed at the specified times."
 )
 JUDGE_USER_TEMPLATE = """Evaluate whether the colleague's plan reaches the goal without violating preconditions or effects. If any step is wrong or missing, mark it invalid. Respond as strict JSON with boolean field "is_valid", a short "verdict" string, and optional "issues" list.
 
@@ -93,7 +101,7 @@ def create_judge() -> ChatOpenAI:
     """Return a fresh judge LLM constrained to JSON output."""
     return ChatOpenAI(
         model="gpt-5-mini",
-        reasoning={"effort": "medium"},
+        reasoning={"effort": "high"},
         model_kwargs={"response_format": {"type": "json_object"}},
     )
 
@@ -230,14 +238,20 @@ def run_batches() -> None:
             "domain_prefix": "dep",
             "problem_root": BASE_DIR / "datasets_pddl" / "depots_instances",
             "plan_output": BASE_DIR / "baseline" / "depots",
-            "summary_file": BASE_DIR / "baseline" / "depots" / "judge_report.txt",
+            "summary_file": BASE_DIR
+            / "baseline"
+            / "depots"
+            / "judge_report_temporal_lenient.txt",
         },
         "satellite": {
             "nl_root": BASE_DIR / "datasets_nl" / "satellite",
             "domain_prefix": "sat",
             "problem_root": BASE_DIR / "datasets_pddl" / "satellite_instances",
             "plan_output": BASE_DIR / "baseline" / "satellite",
-            "summary_file": BASE_DIR / "baseline" / "satellite" / "judge_report.txt",
+            "summary_file": BASE_DIR
+            / "baseline"
+            / "satellite"
+            / "judge_report_temporal_lenient.txt",
         },
     }
 

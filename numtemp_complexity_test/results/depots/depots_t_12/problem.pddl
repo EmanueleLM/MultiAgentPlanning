@@ -1,0 +1,219 @@
+(define (problem multiagent-logistics-problem)
+  (:domain multiagent-logistics)
+  (:objects
+    depot0 depot1 depot2 depot3 distributor0 distributor1 distributor2 distributor3 - place
+
+    truck0 truck1 truck2 truck3 - truck
+    hoist0 hoist1 hoist2 hoist3 hoist4 hoist5 hoist6 hoist7 - hoist
+    pallet0 pallet1 pallet2 pallet3 pallet4 pallet5 pallet6 pallet7 pallet8 pallet9 - pallet
+    crate0 crate1 crate2 crate3 crate4 crate5 crate6 crate7 - crate
+  )
+
+  (:init
+    ; trucks initial places
+    (at-truck truck0 depot0)
+    (at-truck truck1 distributor0)
+    (at-truck truck2 depot2)
+    (at-truck truck3 distributor3)
+
+    ; hoists initial places and availability
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 depot3)
+    (at-hoist hoist4 distributor0)
+    (at-hoist hoist5 distributor1)
+    (at-hoist hoist6 distributor2)
+    (at-hoist hoist7 distributor3)
+
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+    (available hoist4)
+    (available hoist5)
+    (available hoist6)
+    (available hoist7)
+
+    ; pallets at places
+    (at-pallet pallet0 depot0)
+    (at-pallet pallet1 depot1)
+    (at-pallet pallet2 depot2)
+    (at-pallet pallet3 depot3)
+    (at-pallet pallet4 distributor0)
+    (at-pallet pallet5 distributor1)
+    (at-pallet pallet6 distributor2)
+    (at-pallet pallet7 distributor3)
+    (at-pallet pallet8 distributor2)
+    (at-pallet pallet9 depot3)
+
+    ; also generic at for surfaces
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 depot3)
+    (at pallet4 distributor0)
+    (at pallet5 distributor1)
+    (at pallet6 distributor2)
+    (at pallet7 distributor3)
+    (at pallet8 distributor2)
+    (at pallet9 depot3)
+
+    ; on relations (initial stacks)
+    (on crate6 pallet0)
+    (on crate1 pallet1)
+    (on crate2 pallet4)
+    (on crate3 pallet5)
+    (on crate4 pallet8)
+    (on crate7 pallet3)
+    (on crate0 pallet9)
+    (on crate5 crate3)
+
+    ; crates locations (same place as supporting surface)
+    (at-crate crate6 depot0)
+    (at-crate crate1 depot1)
+    (at-crate crate2 distributor0)
+    (at-crate crate3 distributor1)
+    (at-crate crate4 distributor2)
+    (at-crate crate7 depot3)
+    (at-crate crate0 depot3)
+    (at-crate crate5 distributor1)
+
+    ; generic at for crates as well
+    (at crate6 depot0)
+    (at crate1 depot1)
+    (at crate2 distributor0)
+    (at crate3 distributor1)
+    (at crate4 distributor2)
+    (at crate7 depot3)
+    (at crate0 depot3)
+    (at crate5 distributor1)
+
+    ; clear surfaces initial
+    (clear crate0)
+    (clear crate1)
+    (clear crate2)
+    (clear crate4)
+    (clear crate5)
+    (clear crate6)
+    (clear crate7)
+    (clear pallet2)
+    (clear pallet6)
+    (clear pallet7)
+
+    ; no truck is busy initially
+    ; numeric fluents
+    (= (total-time) 0)
+
+    ; truck speeds
+    (= (speed truck0) 5)
+    (= (speed truck1) 6)
+    (= (speed truck2) 2)
+    (= (speed truck3) 6)
+
+    ; hoist powers
+    (= (power hoist0) 7)
+    (= (power hoist1) 7)
+    (= (power hoist2) 1)
+    (= (power hoist3) 1)
+    (= (power hoist4) 1)
+    (= (power hoist5) 5)
+    (= (power hoist6) 2)
+    (= (power hoist7) 3)
+
+    ; crate weights
+    (= (weight crate0) 81)
+    (= (weight crate1) 32)
+    (= (weight crate2) 50)
+    (= (weight crate3) 80)
+    (= (weight crate4) 20)
+    (= (weight crate5) 63)
+    (= (weight crate6) 93)
+    (= (weight crate7) 67)
+
+    ; distances (explicit)
+    (= (distance depot0 depot0) 0)
+    (= (distance depot0 depot1) 5)
+    (= (distance depot0 depot2) 3)
+    (= (distance depot0 depot3) 2)
+    (= (distance depot0 distributor0) 10)
+    (= (distance depot0 distributor1) 8)
+    (= (distance depot0 distributor2) 4)
+    (= (distance depot0 distributor3) 2)
+
+    (= (distance depot1 depot0) 4)
+    (= (distance depot1 depot1) 0)
+    (= (distance depot1 depot2) 5)
+    (= (distance depot1 depot3) 8)
+    (= (distance depot1 distributor0) 8)
+    (= (distance depot1 distributor1) 9)
+    (= (distance depot1 distributor2) 8)
+    (= (distance depot1 distributor3) 7)
+
+    (= (distance depot2 depot0) 1)
+    (= (distance depot2 depot1) 3)
+    (= (distance depot2 depot2) 0)
+    (= (distance depot2 depot3) 6)
+    (= (distance depot2 distributor0) 2)
+    (= (distance depot2 distributor1) 7)
+    (= (distance depot2 distributor2) 4)
+    (= (distance depot2 distributor3) 10)
+
+    (= (distance depot3 depot0) 4)
+    (= (distance depot3 depot1) 7)
+    (= (distance depot3 depot2) 2)
+    (= (distance depot3 depot3) 0)
+    (= (distance depot3 distributor0) 3)
+    (= (distance depot3 distributor1) 7)
+    (= (distance depot3 distributor2) 6)
+    (= (distance depot3 distributor3) 4)
+
+    (= (distance distributor0 depot0) 1)
+    (= (distance distributor0 depot1) 8)
+    (= (distance distributor0 depot2) 5)
+    (= (distance distributor0 depot3) 10)
+    (= (distance distributor0 distributor0) 0)
+    (= (distance distributor0 distributor1) 8)
+    (= (distance distributor0 distributor2) 2)
+    (= (distance distributor0 distributor3) 9)
+
+    (= (distance distributor1 depot0) 9)
+    (= (distance distributor1 depot1) 6)
+    (= (distance distributor1 depot2) 6)
+    (= (distance distributor1 depot3) 7)
+    (= (distance distributor1 distributor0) 5)
+    (= (distance distributor1 distributor1) 0)
+    (= (distance distributor1 distributor2) 4)
+    (= (distance distributor1 distributor3) 5)
+
+    (= (distance distributor2 depot0) 6)
+    (= (distance distributor2 depot1) 4)
+    (= (distance distributor2 depot2) 1)
+    (= (distance distributor2 depot3) 8)
+    (= (distance distributor2 distributor0) 1)
+    (= (distance distributor2 distributor1) 4)
+    (= (distance distributor2 distributor2) 0)
+    (= (distance distributor2 distributor3) 4)
+
+    (= (distance distributor3 depot0) 1)
+    (= (distance distributor3 depot1) 9)
+    (= (distance distributor3 depot2) 8)
+    (= (distance distributor3 depot3) 3)
+    (= (distance distributor3 distributor0) 5)
+    (= (distance distributor3 distributor1) 3)
+    (= (distance distributor3 distributor2) 6)
+    (= (distance distributor3 distributor3) 0)
+  )
+
+  (:goal (and
+    (on crate3 crate1)
+    (on crate7 crate4)
+    (on crate5 crate7)
+    (on crate6 pallet4)
+    (on crate4 pallet5)
+    (on crate0 pallet6)
+    (on crate1 pallet8)
+  ))
+
+  (:metric minimize (total-time))
+)

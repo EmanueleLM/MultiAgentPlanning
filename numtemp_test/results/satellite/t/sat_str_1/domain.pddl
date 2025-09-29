@@ -1,97 +1,101 @@
-(define (domain satellite-temporal)
-  (:requirements :typing :durative-actions :fluents :negative-preconditions :numeric-fluents)
-  (:types satellite instrument mode direction)
+(define (domain multi-sat-temporal)
+  (:requirements :typing :durative-actions :negative-preconditions :universal-preconditions :numeric-fluents :equality :quantified-preconditions :conditional-effects)
+  (:types
+    satellite instrument mode direction
+  )
 
   (:predicates
-    (onboard ?i - instrument ?s - satellite)
+    (on-board ?i - instrument ?s - satellite)
     (supports ?i - instrument ?m - mode)
-    (cal-target ?i - instrument ?t - direction)
-    (inst_on ?i - instrument)
-    (calibrated ?i - instrument)
+    (calibration-target ?i - instrument ?d - direction)
     (pointing ?s - satellite ?d - direction)
-    (taken ?m - mode ?d - direction)
+    (power-available ?s - satellite)
+    (powered ?i - instrument)
+    (calibrated ?i - instrument)
+    (have_image ?d - direction ?m - mode)
   )
 
   (:functions
-    (power-available ?s - satellite) ; 1 = free, 0 = claimed
-    (have-images ?m - mode) ; numeric count of images taken for mode
-    (slew-time ?from - direction ?to - direction)
-    (calib-time ?i - instrument ?t - direction)
+    (slewtime ?from - direction ?to - direction) ; numeric durations for slews
+    (calibtime ?i - instrument ?d - direction)   ; numeric durations for calibrations
   )
 
-  ;; Switch an instrument on: requires the satellite power feed to be free at start.
-  ;; At end the instrument is on and the satellite power is claimed (set to 0).
-  (:durative-action switch_on
+  ;; Slew action: during the slew the satellite does not point anywhere.
+  (:durative-action slew
+    :parameters (?s - satellite ?from - direction ?to - direction)
+    :duration (= ?duration (slewtime ?from ?to))
+    :condition (and
+                 (at start (pointing ?s ?from))
+               )
+    :effect (and
+              (at start (not (pointing ?s ?from)))
+              (at end (pointing ?s ?to))
+            )
+  )
+
+  ;; Switch on instrument. Enforce single-power-feed per satellite via universal condition over all instruments on that satellite.
+  (:durative-action switch-on
     :parameters (?i - instrument ?s - satellite)
     :duration (= ?duration 2)
     :condition (and
-                 (at start (onboard ?i ?s))
-                 (at start (not (inst_on ?i)))
-                 (at start (>= (power-available ?s) 1))
+                 (at start (on-board ?i ?s))
+                 (at start (power-available ?s))
+                 (at start (forall (?other - instrument)
+                             (imply (and (on-board ?other ?s) (not (= ?other ?i)))
+                                    (not (powered ?other)))))
                )
     :effect (and
-              (at end (inst_on ?i))
-              (at end (assign (power-available ?s) 0))
+              (at end (powered ?i))
             )
   )
 
-  ;; Switch an instrument off: releases the satellite power feed at end.
-  (:durative-action switch_off
+  ;; Switch off instrument
+  (:durative-action switch-off
     :parameters (?i - instrument ?s - satellite)
     :duration (= ?duration 1)
     :condition (and
-                 (at start (onboard ?i ?s))
-                 (at start (inst_on ?i))
+                 (at start (on-board ?i ?s))
+                 (at start (powered ?i))
                )
     :effect (and
-              (at end (not (inst_on ?i)))
-              (at end (assign (power-available ?s) 1))
+              (at end (not (powered ?i)))
             )
   )
 
-  ;; Calibrate an instrument while the satellite is pointing at its calibration target.
+  ;; Calibrate instrument on its calibration target. Calibration requires instrument powered and the satellite pointing at the calibration direction for the whole calibration.
   (:durative-action calibrate
-    :parameters (?i - instrument ?s - satellite ?t - direction)
-    :duration (= ?duration (calib-time ?i ?t))
+    :parameters (?i - instrument ?s - satellite ?d - direction)
+    :duration (= ?duration (calibtime ?i ?d))
     :condition (and
-                 (at start (onboard ?i ?s))
-                 (at start (inst_on ?i))
-                 (at start (pointing ?s ?t))
-                 (at start (cal-target ?i ?t))
+                 (at start (on-board ?i ?s))
+                 (at start (calibration-target ?i ?d))
+                 (at start (pointing ?s ?d))
+                 (at start (powered ?i))
+                 (at start (not (calibrated ?i)))
+                 (over all (pointing ?s ?d))
+                 (over all (powered ?i))
                )
     :effect (and
               (at end (calibrated ?i))
             )
   )
 
-  ;; Take an image: instrument must be on, calibrated, support the mode, and satellite must be pointing at target.
-  ;; Increases numeric counter and records that a picture for (mode,direction) was taken.
-  (:durative-action take_image
-    :parameters (?i - instrument ?s - satellite ?t - direction ?m - mode)
+  ;; Take an image using an instrument in a supported mode. Requires instrument powered, calibrated and satellite pointing to target throughout.
+  (:durative-action take-image
+    :parameters (?i - instrument ?s - satellite ?d - direction ?m - mode)
     :duration (= ?duration 7)
     :condition (and
-                 (at start (onboard ?i ?s))
-                 (at start (inst_on ?i))
-                 (at start (calibrated ?i))
-                 (at start (pointing ?s ?t))
+                 (at start (on-board ?i ?s))
                  (at start (supports ?i ?m))
+                 (at start (pointing ?s ?d))
+                 (at start (powered ?i))
+                 (at start (calibrated ?i))
+                 (over all (pointing ?s ?d))
+                 (over all (powered ?i))
+                 (over all (calibrated ?i))
                )
     :effect (and
-              (at end (increase (have-images ?m) 1))
-              (at end (taken ?m ?t))
-            )
-  )
-
-  ;; Slew a satellite from one direction to another; duration is given by slew-time table.
-  (:durative-action slew
-    :parameters (?s - satellite ?from - direction ?to - direction)
-    :duration (= ?duration (slew-time ?from ?to))
-    :condition (and
-                 (at start (pointing ?s ?from))
-               )
-    :effect (and
-              (at end (not (pointing ?s ?from)))
-              (at end (pointing ?s ?to))
+              (at end (have_image ?d ?m))
             )
   )
 )

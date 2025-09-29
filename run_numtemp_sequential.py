@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage
 from llm_plan.workflow import build_graph
 
 
-FOLDER = Path("./numtemp_test/datasets_nl/depots/t")
+FOLDER = Path("./numtemp_test/datasets_nl/satellite/t")
 ERROR_LOG = Path("./numtemp_test/error_log.txt")
 g = build_graph().compile()
 
@@ -20,7 +20,9 @@ def log_error(exp_num: int, file_path: Path, exc: Exception) -> None:
     timestamp = datetime.utcnow().isoformat()
     details = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     with ERROR_LOG.open("a", encoding="utf-8") as log_file:
-        log_file.write(f"[{timestamp}] Experiment {exp_num} ({file_path.name}) failed.\n")
+        log_file.write(
+            f"[{timestamp}] Experiment {exp_num} ({file_path.name}) failed.\n"
+        )
         log_file.write(details)
         if not details.endswith("\n"):
             log_file.write("\n")
@@ -35,13 +37,13 @@ def run_one(file_path: Path, exp_num: int):
         "multi_agent": True,
         "mode": "direct",
         "refinement_iters": 10,
-        "folder_name": f"depots_t_{exp_num}",
+        "folder_name": f"satellite_t11_{exp_num}",
         "enable_clarifications": False,
         "WSL": True,
     }
 
     config = {
-        "configurable": {"thread_id": f"dep_t_{exp_num}"},
+        "configurable": {"thread_id": f"satellite_t11_{exp_num}"},
         "recursion_limit": 100,
     }
 
@@ -63,4 +65,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    exp_num = 1
+    try:
+        run_one(FOLDER / "pfile11.txt", 1)
+        print(f"Experiment {exp_num} complete.")
+    except Exception as exc:
+        print(f"Experiment {exp_num} failed. Error: {exc}")

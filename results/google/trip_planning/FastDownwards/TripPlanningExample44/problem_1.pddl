@@ -1,0 +1,36 @@
+(define (problem travel-multiagent-problem)
+  (:domain travel-multiagent)
+  (:objects
+    rome lyon zurich - city
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 d14 d15 d16 d17 d18 - day
+    r1 r2 r3 r4 r5 r6 l1 l2 l3 l4 l5 l6 z1 z2 z3 z4 z5 z6 z7 - token
+  )
+  (:init
+    (next d1 d2) (next d2 d3) (next d3 d4) (next d4 d5) (next d5 d6)
+    (next d6 d7) (next d7 d8) (next d8 d9) (next d9 d10) (next d10 d11)
+    (next d11 d12) (next d12 d13) (next d13 d14) (next d14 d15) (next d15 d16)
+    (next d16 d17) (next d17 d18)
+    (current-day d1)
+    (can-move rome rome) (can-move lyon lyon) (can-move zurich zurich)
+    (can-move rome lyon) (can-move lyon rome)
+    (can-move rome zurich) (can-move zurich rome)
+    (wedding-window d1) (wedding-window d2) (wedding-window d3)
+    (wedding-window d4) (wedding-window d5) (wedding-window d6)
+    (wedding-window d7)
+    (token-of r1 rome) (token-of r2 rome) (token-of r3 rome)
+    (token-of r4 rome) (token-of r5 rome) (token-of r6 rome)
+    (token-of l1 lyon) (token-of l2 lyon) (token-of l3 lyon)
+    (token-of l4 lyon) (token-of l5 lyon) (token-of l6 lyon)
+    (token-of z1 zurich) (token-of z2 zurich) (token-of z3 zurich)
+    (token-of z4 zurich) (token-of z5 zurich) (token-of z6 zurich) (token-of z7 zurich)
+    (available r1) (available r2) (available r3) (available r4) (available r5) (available r6)
+    (available l1) (available l2) (available l3) (available l4) (available l5) (available l6)
+    (available z1) (available z2) (available z3) (available z4) (available z5) (available z6) (available z7)
+  )
+  (:goal (and
+    (current-day d18)
+    (consumed r1) (consumed r2) (consumed r3) (consumed r4) (consumed r5) (consumed r6)
+    (consumed l1) (consumed l2) (consumed l3) (consumed l4) (consumed l5) (consumed l6)
+    (consumed z1) (consumed z2) (consumed z3) (consumed z4) (consumed z5) (consumed z6) (consumed z7)
+    (wedding-attended)
+  ))

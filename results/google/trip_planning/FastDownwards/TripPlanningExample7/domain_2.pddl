@@ -1,0 +1,22 @@
+(define (domain trip-planning)
+  (:requirements :typing)
+  (:types city token)
+  (:predicates
+    (at ?c - city)
+    (direct ?from ?to - city)
+    (token-of ?t - token ?c - city)
+    (free ?t - token)
+    (used ?t - token)
+    (visited ?c - city)
+  )
+  (:action fly
+    :parameters (?from - city ?to - city)
+    :precondition (and (at ?from) (direct ?from ?to))
+    :effect (and (not (at ?from)) (at ?to))
+  )
+  (:action stay
+    :parameters (?t - token ?c - city)
+    :precondition (and (at ?c) (token-of ?t ?c) (free ?t))
+    :effect (and (not (free ?t)) (used ?t) (visited ?c))
+  )
+)

@@ -1,0 +1,30 @@
+(define (domain trip-planning)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day)
+  (:predicates
+    (at ?c - city)
+    (day-free ?d - day)
+    (assigned ?d - day ?c - city)
+    (flight ?from - city ?to - city)
+  )
+  (:action fly-venice_agent-venice-to-zurich
+    :parameters ()
+    :precondition (and (at venice) (flight venice zurich))
+    :effect (and (not (at venice)) (at zurich))
+  )
+  (:action fly-venice_agent-zurich-to-venice
+    :parameters ()
+    :precondition (and (at zurich) (flight zurich venice))
+    :effect (and (not (at zurich)) (at venice))
+  )
+  (:action fly-florence_agent-zurich-to-florence
+    :parameters ()
+    :precondition (and (at zurich) (flight zurich florence))
+    :effect (and (not (at zurich)) (at florence))
+  )
+  (:action assign-day
+    :parameters (?d - day ?c - city)
+    :precondition (and (day-free ?d) (at ?c))
+    :effect (and (not (day-free ?d)) (assigned ?d ?c))
+  )
+)

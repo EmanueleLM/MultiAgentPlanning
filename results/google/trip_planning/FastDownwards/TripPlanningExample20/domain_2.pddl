@@ -1,0 +1,21 @@
+(define (domain trip-domain)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day agent)
+  (:predicates
+    (at ?c - city)
+    (free-day ?d - day)
+    (stayed ?c - city ?d - day)
+    (direct ?from - city ?to - city)
+    (responsible ?ag - agent ?c - city)
+  )
+  (:action stay
+    :parameters (?c - city ?d - day ?ag - agent)
+    :precondition (and (at ?c) (free-day ?d) (responsible ?ag ?c))
+    :effect (and (stayed ?c ?d) (not (free-day ?d)))
+  )
+  (:action fly
+    :parameters (?from - city ?to - city)
+    :precondition (and (at ?from) (direct ?from ?to))
+    :effect (and (not (at ?from)) (at ?to))
+  )
+)

@@ -1,0 +1,14 @@
+(define (problem trip-planning-problem)
+  (:domain trip-planning)
+  (:objects geneva madrid venice - city
+            day1 day2 day3 day4 day5 - day)
+  (:init
+    (at madrid day1)
+    (next day1 day2)
+    (next day2 day3)
+    (next day3 day4)
+    (next day4 day5)
+  )
+  (:goal (and (at venice day4) (at venice day5)))
+  (:metric minimize (total-cost))
+)

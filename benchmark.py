@@ -402,20 +402,21 @@ if __name__ == "__main__":
             response = hypervisor.run(model_plan)
 
             # Dynamically instantiate the agent class
-            match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
-
-            if match:
+            try:
+                match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
                 agent_name = match.group(1).strip()
-            else:
+                agent_class = hypervisor.agents[agent_name]
+            except Exception as exc:
                 logger.warning(
-                    "No agent class found in response. Falling back to %s. Response snippet: %s",
+                    "Failed to extract agent class from response: %s. Falling back to %s. Response snippet: %s",
+                    exc,
                     base_agent,
                     response[:200],
                 )
+                agent_class = hypervisor.agents[base_agent]
                 agent_name = base_agent
 
             logger.info("Selected agent: %s", agent_name)
-            agent_class = hypervisor.agents[agent_name]
 
             # Generate the refined plan
             required_args: dict[object] = {}

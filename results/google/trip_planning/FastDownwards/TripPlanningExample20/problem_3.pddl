@@ -1,0 +1,30 @@
+(define (problem trip-problem)
+  (:domain trip-domain)
+  (:init
+    (at dubrovnik)
+    (free-day day1) (free-day day2) (free-day day3) (free-day day4)
+    (free-day day5) (free-day day6) (free-day day7) (free-day day8)
+    (free-day day9) (free-day day10) (free-day day11) (free-day day12)
+  )
+  (:goal
+    (and
+      ;; Dubrovnik: 3 days (day1..day3)
+      (stayed dubrovnik day1)
+      (stayed dubrovnik day2)
+      (stayed dubrovnik day3)
+      ;; Istanbul: 5 days (day4..day8)
+      (stayed istanbul day4)
+      (stayed istanbul day5)
+      (stayed istanbul day6)
+      (stayed istanbul day7)
+      (stayed istanbul day8)
+      ;; Budapest: 4 days (day9..day12) -- adjusted so total days = 12
+      (stayed budapest day9)
+      (stayed budapest day10)
+      (stayed budapest day11)
+      (stayed budapest day12)
+      ;; end location
+      (at budapest)
+    )
+  )
+)

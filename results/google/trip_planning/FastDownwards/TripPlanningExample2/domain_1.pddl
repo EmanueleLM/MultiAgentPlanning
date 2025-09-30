@@ -1,0 +1,40 @@
+(define (domain travel)
+  (:requirements :typing :negative-preconditions)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)
+    (next ?d - day ?d2 - day)
+    (connected ?from - city ?to - city)
+    (attended-wedding)
+  )
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and (at ?from ?d) (connected ?from ?to) (next ?d ?d2))
+    :effect (and (at ?to ?d2))
+  )
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and (at ?c ?d) (next ?d ?d2))
+    :effect (and (at ?c ?d2))
+  )
+  (:action attend-wedding-day8
+    :parameters ()
+    :precondition (and (at venice day8))
+    :effect (and (attended-wedding))
+  )
+  (:action attend-wedding-day9
+    :parameters ()
+    :precondition (and (at venice day9))
+    :effect (and (attended-wedding))
+  )
+  (:action attend-wedding-day10
+    :parameters ()
+    :precondition (and (at venice day10))
+    :effect (and (attended-wedding))
+  )
+  (:action attend-wedding-day11
+    :parameters ()
+    :precondition (and (at venice day11))
+    :effect (and (attended-wedding))
+  )
+)

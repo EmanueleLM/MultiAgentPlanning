@@ -1,0 +1,21 @@
+(define (domain trip-planning)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)
+    (next ?d - day ?d2 - day)
+    (can-fly ?from - city ?to - city)
+    (free ?d - day)
+    (assigned ?d - day)
+  )
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and (at ?c ?d) (next ?d ?d2) (free ?d2))
+    :effect (and (at ?c ?d2) (assigned ?d2) (not (free ?d2)))
+  )
+  (:action move
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and (at ?from ?d) (next ?d ?d2) (can-fly ?from ?to) (free ?d2))
+    :effect (and (at ?to ?d2) (assigned ?d2) (not (free ?d2)))
+  )
+)

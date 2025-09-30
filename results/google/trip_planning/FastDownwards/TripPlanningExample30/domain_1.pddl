@@ -1,0 +1,23 @@
+(define (domain tripplanning)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day num)
+  (:predicates
+    (at ?c - city ?d - day)
+    (direct ?from - city ?to - city)
+    (next ?d1 - day ?d2 - day)
+    (start-day ?d - day)
+    (stay-required ?c - city ?n - num)
+    (show-window ?c - city ?dstart - day ?dend - day)
+    (total-days ?n - num)
+  )
+  (:action move
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?from ?d1) (next ?d1 ?d2) (direct ?from ?to))
+    :effect (and (not (at ?from ?d1)) (at ?to ?d2))
+  )
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?c ?d1) (next ?d1 ?d2))
+    :effect (and (not (at ?c ?d1)) (at ?c ?d2))
+  )
+)

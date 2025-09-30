@@ -1,0 +1,48 @@
+(define (domain trip-planning)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day)
+  (:constants lyon frankfurt krakow - city)
+  (:predicates
+    (at ?c - city ?d - day)
+    (flight ?from - city ?to - city)
+    (next ?d - day ?e - day)
+    (free ?d - day)
+    (assigned ?d - day)
+  )
+  (:functions (total-cost))
+  (:action stay-lyon
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at lyon ?d) (next ?d ?d2) (free ?d2))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at lyon ?d2) (increase (total-cost) 0))
+  )
+  (:action stay-frankfurt
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at frankfurt ?d) (next ?d ?d2) (free ?d2))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at frankfurt ?d2) (increase (total-cost) 1))
+  )
+  (:action stay-krakow
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at krakow ?d) (next ?d ?d2) (free ?d2))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at krakow ?d2) (increase (total-cost) 0))
+  )
+  (:action fly-lyon-frankfurt
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at lyon ?d) (next ?d ?d2) (free ?d2) (flight lyon frankfurt))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at frankfurt ?d2) (increase (total-cost) 1))
+  )
+  (:action fly-frankfurt-lyon
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at frankfurt ?d) (next ?d ?d2) (free ?d2) (flight frankfurt lyon))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at lyon ?d2) (increase (total-cost) 1))
+  )
+  (:action fly-frankfurt-krakow
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at frankfurt ?d) (next ?d ?d2) (free ?d2) (flight frankfurt krakow))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at krakow ?d2) (increase (total-cost) 1))
+  )
+  (:action fly-krakow-frankfurt
+    :parameters (?d - day ?d2 - day)
+    :precondition (and (at krakow ?d) (next ?d ?d2) (free ?d2) (flight krakow frankfurt))
+    :effect (and (not (free ?d2)) (assigned ?d2) (at frankfurt ?d2) (increase (total-cost) 1))
+  )
+)

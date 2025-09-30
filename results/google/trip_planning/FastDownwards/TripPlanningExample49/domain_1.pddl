@@ -1,0 +1,28 @@
+(define (domain trip-planning)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day cnt)
+  (:predicates
+    (at ?c - city)
+    (connected ?from - city ?to - city)
+    (days-left ?d - day)
+    (day-dec-special ?from - day ?to - day)
+    (day-dec-general ?from - day ?to - day)
+    (need ?c - city ?n - cnt)
+    (cnt-dec ?from - cnt ?to - cnt)
+  )
+  (:action stay-split-special
+    :parameters (?dfrom - day ?dto - day ?nfrom - cnt ?nto - cnt)
+    :precondition (and (at split) (days-left ?dfrom) (day-dec-special ?dfrom ?dto) (need split ?nfrom) (cnt-dec ?nfrom ?nto))
+    :effect (and (not (days-left ?dfrom)) (days-left ?dto) (not (need split ?nfrom)) (need split ?nto))
+  )
+  (:action stay
+    :parameters (?city - city ?dfrom - day ?dto - day ?nfrom - cnt ?nto - cnt)
+    :precondition (and (at ?city) (days-left ?dfrom) (day-dec-general ?dfrom ?dto) (need ?city ?nfrom) (cnt-dec ?nfrom ?nto))
+    :effect (and (not (days-left ?dfrom)) (days-left ?dto) (not (need ?city ?nfrom)) (need ?city ?nto))
+  )
+  (:action fly
+    :parameters (?from - city ?to - city)
+    :precondition (and (at ?from) (connected ?from ?to))
+    :effect (and (not (at ?from)) (at ?to))
+  )
+)

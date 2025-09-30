@@ -1,0 +1,33 @@
+(define (problem trip-problem)
+  (:domain trip-domain)
+  (:objects
+    istanbul budapest dubrovnik - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 - day
+    istanbul_agent budapest_agent dubrovnik_agent - agent
+  )
+  (:init
+    (at dubrovnik)
+    (free-day day1) (free-day day2) (free-day day3) (free-day day4)
+    (free-day day5) (free-day day6) (free-day day7) (free-day day8)
+    (free-day day9) (free-day day10) (free-day day11) (free-day day12)
+    (direct istanbul budapest) (direct budapest istanbul) (direct dubrovnik istanbul)
+    (responsible istanbul_agent istanbul)
+    (responsible budapest_agent budapest)
+    (responsible dubrovnik_agent dubrovnik)
+  )
+  (:goal (and
+    (stayed dubrovnik day1)
+    (stayed dubrovnik day2)
+    (stayed dubrovnik day3)
+    (stayed istanbul day4)
+    (stayed istanbul day5)
+    (stayed istanbul day6)
+    (stayed istanbul day7)
+    (stayed istanbul day8)
+    (stayed budapest day9)
+    (stayed budapest day10)
+    (stayed budapest day11)
+    (stayed budapest day12)
+    (at budapest)
+  ))
+)

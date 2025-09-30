@@ -1,0 +1,41 @@
+(define (domain trip-domain)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day)
+  (:predicates
+    (assigned ?d - day ?c - city)
+    (unassigned ?d - day)
+    (next ?d1 - day ?d2 - day)
+    (direct ?c1 - city ?c2 - city)
+    (start-day ?d - day)
+  )
+  (:action start-in
+    :parameters (?c - city ?d - day)
+    :precondition (and (unassigned ?d) (start-day ?d))
+    :effect (and (assigned ?d ?c) (not (unassigned ?d)) (not (start-day ?d)))
+  )
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 ?c) (next ?d1 ?d2) (unassigned ?d2))
+    :effect (and (assigned ?d2 ?c) (not (unassigned ?d2)))
+  )
+  (:action fly-oslo-to-dublin
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 oslo) (next ?d1 ?d2) (unassigned ?d2) (direct oslo dublin))
+    :effect (and (assigned ?d2 dublin) (not (unassigned ?d2)))
+  )
+  (:action fly-dublin-to-oslo
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 dublin) (next ?d1 ?d2) (unassigned ?d2) (direct dublin oslo))
+    :effect (and (assigned ?d2 oslo) (not (unassigned ?d2)))
+  )
+  (:action fly-dublin-to-valencia
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 dublin) (next ?d1 ?d2) (unassigned ?d2) (direct dublin valencia))
+    :effect (and (assigned ?d2 valencia) (not (unassigned ?d2)))
+  )
+  (:action fly-valencia-to-dublin
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 valencia) (next ?d1 ?d2) (unassigned ?d2) (direct valencia dublin))
+    :effect (and (assigned ?d2 dublin) (not (unassigned ?d2)))
+  )
+)

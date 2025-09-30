@@ -133,11 +133,10 @@ class AgentHallucinations(Agent):
             Align action preconditions and effects, object declarations, the initial state, and the goal facts
             with the provided specifications. Preserve the multi-agent structure and solver compatibility.
             Explicitly encode availability and preference constraints so that disallowed time windows cannot be
-            selected. Ensure that requested stay durations match the natural-language specification and that the
-            total number of days equals the stated trip length; call out irreconcilable over-subscriptions instead
-            of silently reducing stays. Only model direct connections that are explicitly described—do not invent
-            multi-hop flights or additional transport actions. When uncertain, prefer conservative edits instead of
-            introducing new abstractions.
+            selected. Ensure that requested durations match the natural-language specification;
+            call out irreconcilable over-subscriptions instead of silently reducing stays.
+            Only model direct connections that are explicitly described—do not invent multi-hop additional actions.
+            When uncertain, prefer conservative edits instead of introducing new abstractions.
 
             Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
             <problem></problem>. Output only raw PDDL code inside the tags.
@@ -196,8 +195,8 @@ class AgentDeepThinkPDDL(Agent):
             You analyze the provided domain, problem, and plan against the human specification, identify every
             inconsistency, and return corrected PDDL artifacts that satisfy the goal. Treat all stated busy
             intervals and temporal preferences as hard constraints and ensure only feasible time windows remain
-            selectable. Verify that stay durations exactly match the specification, that the total time horizon
-            is preserved, and that only direct flights or connections explicitly listed are available.
+            selectable. Verify that time durations exactly match the specification, that the total time horizon
+            is preserved, and that only direct connections explicitly listed are available.
             Do not introduce unsupported Fast Downward features (:fluents, axioms, conditional effects, durative
             actions, etc.).
             """
@@ -221,7 +220,7 @@ class AgentDeepThinkPDDL(Agent):
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the human specification.
                                       - The PDDL problem reflects the particular instance of the specification.
-                                      - Stay durations per city and the overall trip horizon match exactly the natural-language requirements.
+                                      - Time durations match exactly the natural-language requirements.
                                       - Only direct connections explicitly mentioned in the specification are encoded.
                                       - The PDDL plan satisfies the goal and the constraints of the human specification, including every availability or temporal preference mentioned. Be careful: the plan may be wrong.
 
@@ -286,8 +285,8 @@ class AgentDeepThinkConstraints(Agent):
             You are an expert Planning Domain Definition Language (PDDL) programmer.
             Analyze the PDDL domain and problem against the natural-language and JSON specifications.
             Focus on whether each agent's constraints are correctly captured as PDDL formulae, especially
-            calendar availability, meeting durations, and any natural-language preferences that must be enforced.
-            Ensure stay durations sum to the required trip length, highlight irreconcilable demands, and verify
+            agents' availability, (e.g., meeting durations or robot schedules), and any natural-language preferences that must be enforced.
+            Ensure time durations sum to the required actions length, highlight irreconcilable demands, and verify
             that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions,
             :action-costs).
             """
@@ -311,7 +310,7 @@ class AgentDeepThinkConstraints(Agent):
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the goals described in the human and JSON specifications. Always consider the human specification as the ground truth.
                                       - The PDDL problem correctly enumerates and expresses every constraint in the specification, including preferences that restrict certain times. Pay close attention to missing or underspecified constraints.
-                                      - The encoded stay durations and total number of days match the specification, and only direct flights or transitions explicitly stated are available.
+                                      - The encoded action durations (e.g., total number of days/hours) match the specification, and only direct actions or transitions explicitly stated are available.
                                       - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -376,8 +375,8 @@ class AgentEnforceMultiAgency(Agent):
             Ensure that the PDDL domain and problem correctly represent each agent's actions as distinct entities.
             Encode every stated constraint or preference as a structural restriction so that no agent executes
             an action that violates availability or timing requirements. Reject candidate models that invent
-            indirect flight connections or unsupported requirements (:fluents, axioms, conditional effects).
-            Confirm that stay durations per city and the overall trip horizon match the natural-language brief
+            indirect actions, connections or unsupported requirements (:fluents, axioms, conditional effects).
+            Confirm that time durations of each action and the overall action horizon match the natural-language brief
             before approving the domain/problem pair.
             """
         )
@@ -398,7 +397,7 @@ class AgentEnforceMultiAgency(Agent):
                                       - The PDDL domain and plan correctly implement the JSON specification as well as the human specification within a multi-agent system.
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
-                                      - The encoded connections and travel actions are limited to direct links explicitly listed, and the stay durations per city add up to the stated horizon.
+                                      - The encoded connections and actions are limited to direct links explicitly listed, and the time durations add up to the stated horizon.
 
                                       Your task is to fix all the issues mentioned above.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -465,7 +464,7 @@ class AgentFastDownwardsAdapter(Agent):
             You are an agent that adapts PDDL domains and problems for the Fast Downward planner.
             Convert numeric, temporal, or durative features into classical STRIPS/ADL-style constructs so the
             solver can operate on the domain while preserving as much of the original semantics as possible.
-            Never relax calendar availability, duration requirements, or stated preferences when adapting.
+            Never relax agents' availability, duration requirements, or stated preferences when adapting.
             Restrict the :requirements list to features supported by Fast Downward (:typing, :negative-preconditions,
             :action-costs); strip out :fluents, axioms, conditional effects, or durative constructs entirely.
             """

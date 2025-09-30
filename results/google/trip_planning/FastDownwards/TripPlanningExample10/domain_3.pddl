@@ -1,0 +1,26 @@
+(define (domain trip-domain)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types city day)
+  (:predicates
+    (assigned ?d - day ?c - city)
+    (unassigned ?d - day)
+    (next ?d1 - day ?d2 - day)
+    (direct ?c1 - city ?c2 - city)
+    (start-day ?d - day)
+  )
+  (:action start-in
+    :parameters (?c - city ?d - day)
+    :precondition (and (unassigned ?d) (start-day ?d))
+    :effect (and (assigned ?d ?c) (not (unassigned ?d)) (not (start-day ?d)))
+  )
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 ?c) (next ?d1 ?d2) (unassigned ?d2))
+    :effect (and (assigned ?d2 ?c) (not (unassigned ?d2)))
+  )
+  (:action fly
+    :parameters (?c1 - city ?c2 - city ?d1 - day ?d2 - day)
+    :precondition (and (assigned ?d1 ?c1) (next ?d1 ?d2) (unassigned ?d2) (direct ?c1 ?c2))
+    :effect (and (assigned ?d2 ?c2) (not (unassigned ?d2)))
+  )
+)

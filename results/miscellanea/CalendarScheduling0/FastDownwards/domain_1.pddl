@@ -1,0 +1,32 @@
+(define (domain calendar-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types agent time)
+  (:constants michelle steven jerry - agent)
+  (:predicates
+    (avail ?a - agent ?t - time)
+    (selected ?t - time)
+    (confirmed ?a - agent)
+    (meeting-scheduled)
+    (meeting-time ?t - time)
+  )
+  (:action select-michelle
+    :parameters (?t - time)
+    :precondition (and (avail michelle ?t) (not (meeting-scheduled)))
+    :effect (and (selected ?t) (confirmed michelle))
+  )
+  (:action confirm-steven
+    :parameters (?t - time)
+    :precondition (and (selected ?t) (avail steven ?t) (not (confirmed steven)) (not (meeting-scheduled)))
+    :effect (and (confirmed steven))
+  )
+  (:action confirm-jerry
+    :parameters (?t - time)
+    :precondition (and (selected ?t) (avail jerry ?t) (not (confirmed jerry)) (not (meeting-scheduled)))
+    :effect (and (confirmed jerry))
+  )
+  (:action finalize
+    :parameters (?t - time)
+    :precondition (and (selected ?t) (confirmed michelle) (confirmed steven) (confirmed jerry) (not (meeting-scheduled)))
+    :effect (and (meeting-scheduled) (meeting-time ?t))
+  )
+)

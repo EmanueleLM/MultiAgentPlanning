@@ -23,6 +23,16 @@ https://cookbook.openai.com/articles/gpt-oss/run-locally-ollama
 
 5. You can play with GPT now and call it via the APIs. Check playground.ipynb and /test
 
+### Run the interactive planning app
+
+1. Activate your virtual environment (or install the requirements listed in `requirements.txt`).
+2. From the project root launch the Flask app:
+   ```
+   python3 webapp/app.py
+   ```
+3. Open your browser at http://127.0.0.1:5000/ (or the host/port shown in the console).
+4. Describe a planning task, press **Plan**, and watch the live logs and final natural-language solution.
+
 ### Install Fast Downward -- Tested on MacBook Pro M2 Sequoia 15.5 
 
 1. Install XCode and Homebrew:

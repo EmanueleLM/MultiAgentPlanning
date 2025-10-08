@@ -1,0 +1,192 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+
+  (:predicates
+    (slot ?s - slot)
+    (next ?s - slot ?t - slot)
+    (free ?p - person ?s - slot)
+    (meeting-start ?s - slot)
+    (meeting-scheduled)
+  )
+
+  (:action schedule-s0
+    :precondition (and (slot s0) (next s0 s1)
+      (free Dylan s0) (free Dylan s1)
+      (free Kathryn s0) (free Kathryn s1)
+      (free Hannah s0) (free Hannah s1)
+      (free Anna s0) (free Anna s1)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s0))
+    :cost 0
+  )
+
+  (:action schedule-s1
+    :precondition (and (slot s1) (next s1 s2)
+      (free Dylan s1) (free Dylan s2)
+      (free Kathryn s1) (free Kathryn s2)
+      (free Hannah s1) (free Hannah s2)
+      (free Anna s1) (free Anna s2)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s1))
+    :cost 1
+  )
+
+  (:action schedule-s2
+    :precondition (and (slot s2) (next s2 s3)
+      (free Dylan s2) (free Dylan s3)
+      (free Kathryn s2) (free Kathryn s3)
+      (free Hannah s2) (free Hannah s3)
+      (free Anna s2) (free Anna s3)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s2))
+    :cost 2
+  )
+
+  (:action schedule-s3
+    :precondition (and (slot s3) (next s3 s4)
+      (free Dylan s3) (free Dylan s4)
+      (free Kathryn s3) (free Kathryn s4)
+      (free Hannah s3) (free Hannah s4)
+      (free Anna s3) (free Anna s4)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s3))
+    :cost 3
+  )
+
+  (:action schedule-s4
+    :precondition (and (slot s4) (next s4 s5)
+      (free Dylan s4) (free Dylan s5)
+      (free Kathryn s4) (free Kathryn s5)
+      (free Hannah s4) (free Hannah s5)
+      (free Anna s4) (free Anna s5)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s4))
+    :cost 4
+  )
+
+  (:action schedule-s5
+    :precondition (and (slot s5) (next s5 s6)
+      (free Dylan s5) (free Dylan s6)
+      (free Kathryn s5) (free Kathryn s6)
+      (free Hannah s5) (free Hannah s6)
+      (free Anna s5) (free Anna s6)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s5))
+    :cost 5
+  )
+
+  (:action schedule-s6
+    :precondition (and (slot s6) (next s6 s7)
+      (free Dylan s6) (free Dylan s7)
+      (free Kathryn s6) (free Kathryn s7)
+      (free Hannah s6) (free Hannah s7)
+      (free Anna s6) (free Anna s7)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s6))
+    :cost 6
+  )
+
+  (:action schedule-s7
+    :precondition (and (slot s7) (next s7 s8)
+      (free Dylan s7) (free Dylan s8)
+      (free Kathryn s7) (free Kathryn s8)
+      (free Hannah s7) (free Hannah s8)
+      (free Anna s7) (free Anna s8)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s7))
+    :cost 7
+  )
+
+  (:action schedule-s8
+    :precondition (and (slot s8) (next s8 s9)
+      (free Dylan s8) (free Dylan s9)
+      (free Kathryn s8) (free Kathryn s9)
+      (free Hannah s8) (free Hannah s9)
+      (free Anna s8) (free Anna s9)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s8))
+    :cost 8
+  )
+
+  (:action schedule-s9
+    :precondition (and (slot s9) (next s9 s10)
+      (free Dylan s9) (free Dylan s10)
+      (free Kathryn s9) (free Kathryn s10)
+      (free Hannah s9) (free Hannah s10)
+      (free Anna s9) (free Anna s10)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s9))
+    :cost 9
+  )
+
+  (:action schedule-s10
+    :precondition (and (slot s10) (next s10 s11)
+      (free Dylan s10) (free Dylan s11)
+      (free Kathryn s10) (free Kathryn s11)
+      (free Hannah s10) (free Hannah s11)
+      (free Anna s10) (free Anna s11)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s10))
+    :cost 10
+  )
+
+  (:action schedule-s11
+    :precondition (and (slot s11) (next s11 s12)
+      (free Dylan s11) (free Dylan s12)
+      (free Kathryn s11) (free Kathryn s12)
+      (free Hannah s11) (free Hannah s12)
+      (free Anna s11) (free Anna s12)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s11))
+    :cost 11
+  )
+
+  (:action schedule-s12
+    :precondition (and (slot s12) (next s12 s13)
+      (free Dylan s12) (free Dylan s13)
+      (free Kathryn s12) (free Kathryn s13)
+      (free Hannah s12) (free Hannah s13)
+      (free Anna s12) (free Anna s13)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s12))
+    :cost 12
+  )
+
+  (:action schedule-s13
+    :precondition (and (slot s13) (next s13 s14)
+      (free Dylan s13) (free Dylan s14)
+      (free Kathryn s13) (free Kathryn s14)
+      (free Hannah s13) (free Hannah s14)
+      (free Anna s13) (free Anna s14)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s13))
+    :cost 13
+  )
+
+  (:action schedule-s14
+    :precondition (and (slot s14) (next s14 s15)
+      (free Dylan s14) (free Dylan s15)
+      (free Kathryn s14) (free Kathryn s15)
+      (free Hannah s14) (free Hannah s15)
+      (free Anna s14) (free Anna s15)
+      (not (meeting-scheduled))
+    )
+    :effect (and (meeting-scheduled) (meeting-start s14))
+    :cost 14
+  )
+)

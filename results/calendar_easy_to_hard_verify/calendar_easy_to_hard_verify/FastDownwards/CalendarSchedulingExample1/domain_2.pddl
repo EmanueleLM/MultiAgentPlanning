@@ -1,0 +1,30 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:constants raymond billy donald - person)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (attending ?p - person ?s - slot)
+    (scheduled ?s - slot)
+  )
+  (:action attend-raymond
+    :parameters (?s - slot)
+    :precondition (available raymond ?s)
+    :effect (attending raymond ?s)
+  )
+  (:action attend-billy
+    :parameters (?s - slot)
+    :precondition (available billy ?s)
+    :effect (attending billy ?s)
+  )
+  (:action attend-donald
+    :parameters (?s - slot)
+    :precondition (available donald ?s)
+    :effect (attending donald ?s)
+  )
+  (:action confirm
+    :parameters (?s - slot)
+    :precondition (and (attending raymond ?s) (attending billy ?s) (attending donald ?s) (not (scheduled ?s)))
+    :effect (scheduled ?s)
+  )
+)

@@ -1,0 +1,346 @@
+HUMAN-SPECIFICATION
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Michelle, Steven and Jerry for one hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nMichelle has meetings on Monday during 11:00 to 12:00; \nSteven has blocked their calendar on Monday during 9:00 to 9:30, 11:30 to 12:00, 13:30 to 14:00, 15:30 to 16:00; \nJerry has blocked their calendar on Monday during 9:00 to 9:30, 10:00 to 11:00, 11:30 to 12:30, 13:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints.
+================================================================================
+
+
+ENVIRONMENT-JSON
+------------------------------
+{
+    "name": "YouAreAnExpert20251008161436",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "michelle",
+            "steven",
+            "jerry",
+            "orchestrator"
+        ],
+        "michelle": {
+            "private_information": [
+                "Busy 11:00-12:00 on Monday"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend."
+        },
+        "steven": {
+            "private_information": [
+                "Busy 09:00-09:30 on Monday",
+                "Busy 11:30-12:00 on Monday",
+                "Busy 13:30-14:00 on Monday",
+                "Busy 15:30-16:00 on Monday"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend."
+        },
+        "jerry": {
+            "private_information": [
+                "Busy 09:00-09:30 on Monday",
+                "Busy 10:00-11:00 on Monday",
+                "Busy 11:30-12:30 on Monday",
+                "Busy 13:00-14:30 on Monday",
+                "Busy 15:30-16:00 on Monday",
+                "Busy 16:30-17:00 on Monday"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate participants' availabilities and produce a PDDL domain and problem compatible with FastDownwards that schedules a one hour meeting on Monday between 09:00 and 17:00 for Michelle, Steven, and Jerry."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_slot_minutes": 30,
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "day": "Monday"
+        },
+        "public_information": [
+            "Meeting duration is 60 minutes.",
+            "Work hours are 09:00 to 17:00 on Monday.",
+            "Participants required: michelle, steven, jerry.",
+            "There exists at least one solution that fits all participants' existing schedules."
+        ]
+    },
+    "workflow": {
+        "michelle": {
+            "report": {
+                "input": [],
+                "output": "availability_michelle",
+                "system_prompt": "You are Michelle and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.",
+                "prompt": "Your name is michelle. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->michelle->private_information} This is the goal: {agents->michelle->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting."
+            }
+        },
+        "steven": {
+            "report": {
+                "input": [],
+                "output": "availability_steven",
+                "system_prompt": "You are Steven and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.",
+                "prompt": "Your name is steven. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->steven->private_information} This is the goal: {agents->steven->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting."
+            }
+        },
+        "jerry": {
+            "report": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You are Jerry and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.",
+                "prompt": "Your name is jerry. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->jerry->private_information} This is the goal: {agents->jerry->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_michelle",
+                    "availability_steven",
+                    "availability_jerry"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domain and problem files compatible with the FastDownwards planner. Using the participants' reported availabilities, produce a PDDL domain and a PDDL problem that encode scheduling a 60 minute meeting on Monday between 09:00 and 17:00 for michelle, steven, and jerry. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the encoding is compatible with FastDownwards and keep actions for different participants distinct.",
+                "prompt": "You are the orchestrator. You will receive availability reports: {availability_michelle}, {availability_steven}, {availability_jerry}. Use them to construct a PDDL domain and a PDDL problem that schedule a 60 minute meeting on Monday between 09:00 and 17:00 that is feasible for all participants. Keep agent actions distinct and produce final domain and problem enclosed in <domain> and <problem> tags. Target FastDownwards compatibility."
+            }
+        },
+        "constraints": [
+            "michelle.report->orchestrator.pddl",
+            "steven.report->orchestrator.pddl",
+            "jerry.report->orchestrator.pddl"
+        ]
+    }
+}
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain schedule-meeting)
+  (:requirements :typing)
+  (:types person time)
+  (:predicates
+    (available ?p - person ?t - time)
+    (selected ?t - time)
+    (confirmed ?p - person ?t - time)
+    (meeting-scheduled ?t - time)
+  )
+
+  ;; Michelle chooses/locks a time and confirms for herself
+  (:action michelle-select
+    :parameters (?t - time)
+    :precondition (available michelle ?t)
+    :effect (and
+              (selected ?t)
+              (confirmed michelle ?t)
+            )
+  )
+
+  ;; Steven confirms the already-selected time (must be available for him)
+  (:action steven-confirm
+    :parameters (?t - time)
+    :precondition (and
+                    (selected ?t)
+                    (available steven ?t)
+                  )
+    :effect (confirmed steven ?t)
+  )
+
+  ;; Jerry confirms the already-selected time (must be available for him)
+  (:action jerry-confirm
+    :parameters (?t - time)
+    :precondition (and
+                    (selected ?t)
+                    (available jerry ?t)
+                  )
+    :effect (confirmed jerry ?t)
+  )
+
+  ;; Finalize the meeting once all participants have confirmed the same time
+  (:action finalize-meeting
+    :parameters (?t - time)
+    :precondition (and
+                    (confirmed michelle ?t)
+                    (confirmed steven ?t)
+                    (confirmed jerry ?t)
+                  )
+    :effect (meeting-scheduled ?t)
+  )
+)
+</domain>
+
+<problem>
+(define (problem schedule-monday)
+  (:domain schedule-meeting)
+
+  (:objects
+    michelle steven jerry - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 - time
+  )
+
+  (:init
+    ;; Michelle availability (meeting start times that do not overlap her busy 11:00-12:00)
+    (available michelle t0900)
+    (available michelle t0930)
+    (available michelle t1000)
+    (available michelle t1200)
+    (available michelle t1230)
+    (available michelle t1300)
+    (available michelle t1330)
+    (available michelle t1400)
+    (available michelle t1430)
+    (available michelle t1500)
+    (available michelle t1530)
+    (available michelle t1600)
+
+    ;; Steven availability (meeting start times that do not overlap his busy intervals)
+    (available steven t0930)
+    (available steven t1000)
+    (available steven t1030)
+    (available steven t1200)
+    (available steven t1230)
+    (available steven t1400)
+    (available steven t1430)
+    (available steven t1600)
+
+    ;; Jerry availability (meeting start times that do not overlap his busy intervals)
+    (available jerry t1430)
+  )
+
+  ;; Goal: meeting scheduled at the earliest feasible time that fits all participants (14:30)
+  (:goal (meeting-scheduled t1430))
+)
+</problem>
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain schedule-meeting)
+  (:requirements :typing)
+  (:types person time)
+  (:predicates
+    (available ?p - person ?t - time)
+    (selected ?t - time)
+    (confirmed ?p - person ?t - time)
+    (meeting-scheduled ?t - time)
+  )
+
+  ;; Michelle chooses/locks a time and confirms for herself
+  (:action michelle-select
+    :parameters (?t - time)
+    :precondition (available michelle ?t)
+    :effect (and
+              (selected ?t)
+              (confirmed michelle ?t)
+            )
+  )
+
+  ;; Steven confirms the already-selected time (must be available for him)
+  (:action steven-confirm
+    :parameters (?t - time)
+    :precondition (and
+                    (selected ?t)
+                    (available steven ?t)
+                  )
+    :effect (confirmed steven ?t)
+  )
+
+  ;; Jerry confirms the already-selected time (must be available for him)
+  (:action jerry-confirm
+    :parameters (?t - time)
+    :precondition (and
+                    (selected ?t)
+                    (available jerry ?t)
+                  )
+    :effect (confirmed jerry ?t)
+  )
+
+  ;; Finalize the meeting once all participants have confirmed the same time
+  (:action finalize-meeting
+    :parameters (?t - time)
+    :precondition (and
+                    (confirmed michelle ?t)
+                    (confirmed steven ?t)
+                    (confirmed jerry ?t)
+                  )
+    :effect (meeting-scheduled ?t)
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem schedule-monday)
+  (:domain schedule-meeting)
+
+  (:objects
+    michelle steven jerry - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 - time
+  )
+
+  (:init
+    ;; Michelle availability (meeting start times that do not overlap her busy 11:00-12:00)
+    (available michelle t0900)
+    (available michelle t0930)
+    (available michelle t1000)
+    (available michelle t1200)
+    (available michelle t1230)
+    (available michelle t1300)
+    (available michelle t1330)
+    (available michelle t1400)
+    (available michelle t1430)
+    (available michelle t1500)
+    (available michelle t1530)
+    (available michelle t1600)
+
+    ;; Steven availability (meeting start times that do not overlap his busy intervals)
+    (available steven t0930)
+    (available steven t1000)
+    (available steven t1030)
+    (available steven t1200)
+    (available steven t1230)
+    (available steven t1400)
+    (available steven t1430)
+    (available steven t1600)
+
+    ;; Jerry availability (meeting start times that do not overlap his busy intervals)
+    (available jerry t1430)
+  )
+
+  ;; Goal: meeting scheduled at the earliest feasible time that fits all participants (14:30)
+  (:goal (meeting-scheduled t1430))
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\\n\\nTASK: You need to schedule a meeting for Michelle, Steven and Jerry for one hour between the work hours of 9:00 to 17:00 on Monday. \\n\\nHere are the existing schedules for everyone during the day: \\nMichelle has meetings on Monday during 11:00 to 12:00; \\nSteven has blocked their calendar on Monday during 9:00 to 9:30, 11:30 to 12:00, 13:30 to 14:00, 15:30 to 16:00; \\nJerry has blocked their calendar on Monday during 9:00 to 9:30, 10:00 to 11:00, 11:30 to 12:30, 13:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00; \\n\\nFind a time that works for everyone's schedule and constraints.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"YouAreAnExpert20251008161436\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"michelle\",\n      \"steven\",\n      \"jerry\",\n      \"orchestrator\"\n    ],\n    \"michelle\": {\n      \"private_information\": [\n        \"Busy 11:00-12:00 on Monday\"\n      ],\n      \"goal\": \"Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend.\"\n    },\n    \"steven\": {\n      \"private_information\": [\n        \"Busy 09:00-09:30 on Monday\",\n        \"Busy 11:30-12:00 on Monday\",\n        \"Busy 13:30-14:00 on Monday\",\n        \"Busy 15:30-16:00 on Monday\"\n      ],\n      \"goal\": \"Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend.\"\n    },\n    \"jerry\": {\n      \"private_information\": [\n        \"Busy 09:00-09:30 on Monday\",\n        \"Busy 10:00-11:00 on Monday\",\n        \"Busy 11:30-12:30 on Monday\",\n        \"Busy 13:00-14:30 on Monday\",\n        \"Busy 15:30-16:00 on Monday\",\n        \"Busy 16:30-17:00 on Monday\"\n      ],\n      \"goal\": \"Schedule a one hour meeting on Monday between 09:00 and 17:00 that all participants can attend.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Integrate participants' availabilities and produce a PDDL domain and problem compatible with FastDownwards that schedules a one hour meeting on Monday between 09:00 and 17:00 for Michelle, Steven, and Jerry.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"time_slot_minutes\": 30,\n      \"work_start\": \"09:00\",\n      \"work_end\": \"17:00\",\n      \"day\": \"Monday\"\n    },\n    \"public_information\": [\n      \"Meeting duration is 60 minutes.\",\n      \"Work hours are 09:00 to 17:00 on Monday.\",\n      \"Participants required: michelle, steven, jerry.\",\n      \"There exists at least one solution that fits all participants' existing schedules.\"\n    ]\n  },\n  \"workflow\": {\n    \"michelle\": {\n      \"report\": {\n        \"input\": [],\n        \"output\": \"availability_michelle\",\n        \"system_prompt\": \"You are Michelle and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.\",\n        \"prompt\": \"Your name is michelle. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->michelle->private_information} This is the goal: {agents->michelle->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting.\"\n      }\n    },\n    \"steven\": {\n      \"report\": {\n        \"input\": [],\n        \"output\": \"availability_steven\",\n        \"system_prompt\": \"You are Steven and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.\",\n        \"prompt\": \"Your name is steven. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->steven->private_information} This is the goal: {agents->steven->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting.\"\n      }\n    },\n    \"jerry\": {\n      \"report\": {\n        \"input\": [],\n        \"output\": \"availability_jerry\",\n        \"system_prompt\": \"You are Jerry and you know your calendar for Monday. Provide your available time intervals within work hours for a 60 minute meeting based only on your private information. Use 24-hour HH:MM format and return either a list of available start times or intervals. Do not produce PDDL.\",\n        \"prompt\": \"Your name is jerry. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->jerry->private_information} This is the goal: {agents->jerry->goal} Provide your availability as a JSON list of available start times or intervals that fit a 60 minute meeting.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_michelle\",\n          \"availability_steven\",\n          \"availability_jerry\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert at producing PDDL domain and problem files compatible with the FastDownwards planner. Using the participants' reported availabilities, produce a PDDL domain and a PDDL problem that encode scheduling a 60 minute meeting on Monday between 09:00 and 17:00 for michelle, steven, and jerry. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the encoding is compatible with FastDownwards and keep actions for different participants distinct.\",\n        \"prompt\": \"You are the orchestrator. You will receive availability reports: {availability_michelle}, {availability_steven}, {availability_jerry}. Use them to construct a PDDL domain and a PDDL problem that schedule a 60 minute meeting on Monday between 09:00 and 17:00 that is feasible for all participants. Keep agent actions distinct and produce final domain and problem enclosed in <domain> and <problem> tags. Target FastDownwards compatibility.\"\n      }\n    },\n    \"constraints\": [\n      \"michelle.report->orchestrator.pddl\",\n      \"steven.report->orchestrator.pddl\",\n      \"jerry.report->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain schedule-meeting)\n  (:requirements :typing)\n  (:types person time)\n  (:predicates\n    (available ?p - person ?t - time)\n    (selected ?t - time)\n    (confirmed ?p - person ?t - time)\n    (meeting-scheduled ?t - time)\n  )\n\n  ;; Michelle chooses/locks a time and confirms for herself\n  (:action michelle-select\n    :parameters (?t - time)\n    :precondition (available michelle ?t)\n    :effect (and\n              (selected ?t)\n              (confirmed michelle ?t)\n            )\n  )\n\n  ;; Steven confirms the already-selected time (must be available for him)\n  (:action steven-confirm\n    :parameters (?t - time)\n    :precondition (and\n                    (selected ?t)\n                    (available steven ?t)\n                  )\n    :effect (confirmed steven ?t)\n  )\n\n  ;; Jerry confirms the already-selected time (must be available for him)\n  (:action jerry-confirm\n    :parameters (?t - time)\n    :precondition (and\n                    (selected ?t)\n                    (available jerry ?t)\n                  )\n    :effect (confirmed jerry ?t)\n  )\n\n  ;; Finalize the meeting once all participants have confirmed the same time\n  (:action finalize-meeting\n    :parameters (?t - time)\n    :precondition (and\n                    (confirmed michelle ?t)\n                    (confirmed steven ?t)\n                    (confirmed jerry ?t)\n                  )\n    :effect (meeting-scheduled ?t)\n  )\n)",
+    "pddl_problem": "(define (problem schedule-monday)\n  (:domain schedule-meeting)\n\n  (:objects\n    michelle steven jerry - person\n    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 - time\n  )\n\n  (:init\n    ;; Michelle availability (meeting start times that do not overlap her busy 11:00-12:00)\n    (available michelle t0900)\n    (available michelle t0930)\n    (available michelle t1000)\n    (available michelle t1200)\n    (available michelle t1230)\n    (available michelle t1300)\n    (available michelle t1330)\n    (available michelle t1400)\n    (available michelle t1430)\n    (available michelle t1500)\n    (available michelle t1530)\n    (available michelle t1600)\n\n    ;; Steven availability (meeting start times that do not overlap his busy intervals)\n    (available steven t0930)\n    (available steven t1000)\n    (available steven t1030)\n    (available steven t1200)\n    (available steven t1230)\n    (available steven t1400)\n    (available steven t1430)\n    (available steven t1600)\n\n    ;; Jerry availability (meeting start times that do not overlap his busy intervals)\n    (available jerry t1430)\n  )\n\n  ;; Goal: meeting scheduled at the earliest feasible time that fits all participants (14:30)\n  (:goal (meeting-scheduled t1430))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(michelle-select t1430)\n(jerry-confirm t1430)\n(steven-confirm t1430)\n(finalize-meeting t1430)\n; cost = 4 (unit cost)\n",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  MICHELLE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/miscellanea/YouAreAnExpert20251008161436/FastDownwards/domain_0.pddl results/miscellanea/YouAreAnExpert20251008161436/FastDownwards/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.000s wall-clock]\nGenerated 20 rules.\nComputing model... [0.000s CPU, 0.001s wall-clock]\n130 relevant atoms\n78 auxiliary atoms\n208 final queue length\n208 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.000s wall-clock]\nInstantiating: [0.000s CPU, 0.003s wall-clock]\nComputing fact groups...\nFinding invariants...\n7 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n33 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.010s CPU, 0.000s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n5 of 33 variables necessary.\n0 of 0 mutex groups necessary.\n4 of 21 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.000s wall-clock]\nTranslator variables: 5\nTranslator derived variables: 0\nTranslator facts: 10\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 4\nTranslator axioms: 0\nTranslator task size: 30\nTranslator peak memory: 31564 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.010s CPU, 0.007s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'astar(lmcut())' --internal-plan-file results/miscellanea/YouAreAnExpert20251008161436/FastDownwards/sas_plan_0 < output.sas\n[t=0.000202s, 9964 KB] reading input...\n[t=0.000423s, 9964 KB] done reading input!\n[t=0.001939s, 10228 KB] Initializing landmark cut heuristic...\n[t=0.002032s, 10228 KB] Building successor generator...done!\n[t=0.002093s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.002108s, 10228 KB] time for successor generation creation: 0.000013s\n[t=0.002124s, 10228 KB] Variables: 5\n[t=0.002140s, 10228 KB] FactPairs: 10\n[t=0.002154s, 10228 KB] Bytes per state: 4\n[t=0.002183s, 10228 KB] Conducting best first search with reopening closed nodes, (real) bound = 2147483647\n[t=0.002225s, 10228 KB] New best heuristic value for lmcut: 4\n[t=0.002243s, 10228 KB] g=0, 1 evaluated, 0 expanded\n[t=0.002258s, 10228 KB] f = 4, 1 evaluated, 0 expanded\n[t=0.002285s, 10228 KB] Initial heuristic value for lmcut: 4\n[t=0.002302s, 10228 KB] pruning method: none\n[t=0.002329s, 10228 KB] New best heuristic value for lmcut: 3\n[t=0.002343s, 10228 KB] g=1, 2 evaluated, 1 expanded\n[t=0.002363s, 10228 KB] New best heuristic value for lmcut: 2\n[t=0.002378s, 10228 KB] g=2, 3 evaluated, 2 expanded\n[t=0.002400s, 10228 KB] New best heuristic value for lmcut: 1\n[t=0.002414s, 10228 KB] g=3, 5 evaluated, 3 expanded\n[t=0.002432s, 10228 KB] New best heuristic value for lmcut: 0\n[t=0.002446s, 10228 KB] g=4, 6 evaluated, 4 expanded\n[t=0.002460s, 10228 KB] Solution found!\n[t=0.002476s, 10228 KB] Actual search time: 0.000172s\nmichelle-select t1430 (1)\njerry-confirm t1430 (1)\nsteven-confirm t1430 (1)\nfinalize-meeting t1430 (1)\n[t=0.002491s, 10228 KB] Plan length: 4 step(s).\n[t=0.002491s, 10228 KB] Plan cost: 4\n[t=0.002491s, 10228 KB] Expanded 5 state(s).\n[t=0.002491s, 10228 KB] Reopened 0 state(s).\n[t=0.002491s, 10228 KB] Evaluated 6 state(s).\n[t=0.002491s, 10228 KB] Evaluations: 6\n[t=0.002491s, 10228 KB] Generated 11 state(s).\n[t=0.002491s, 10228 KB] Dead ends: 0 state(s).\n[t=0.002491s, 10228 KB] Expanded until last jump: 0 state(s).\n[t=0.002491s, 10228 KB] Reopened until last jump: 0 state(s).\n[t=0.002491s, 10228 KB] Evaluated until last jump: 1 state(s).\n[t=0.002491s, 10228 KB] Generated until last jump: 0 state(s).\n[t=0.002491s, 10228 KB] Number of registered states: 6\n[t=0.002491s, 10228 KB] Int hash set load factor: 6/8 = 0.750000\n[t=0.002491s, 10228 KB] Int hash set resizes: 3\n[t=0.002491s, 10228 KB] Search time: 0.000308s\n[t=0.002491s, 10228 KB] Total time: 0.002491s\nSolution found.\nPeak memory: 10228 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.11s\n",
+    "history": []
+}
+================================================================================
+
+
+NATURAL-PLAN sas_plan_0
+------------------------------
+1) (michelle-select t1430)
+   - Michelle selects 14:30 on Monday as the meeting start and confirms it for herself.
+   - Meeting start time: 14:30. Duration: 60 minutes (14:30–15:30).
+
+2) (jerry-confirm t1430)
+   - Jerry confirms he is available for the meeting starting at 14:30 on Monday.
+
+3) (steven-confirm t1430)
+   - Steven confirms he is available for the meeting starting at 14:30 on Monday.
+
+4) (finalize-meeting t1430)
+   - The meeting is finalized and scheduled at 14:30–15:30 on Monday for Michelle, Jerry, and Steven.
+================================================================================
+

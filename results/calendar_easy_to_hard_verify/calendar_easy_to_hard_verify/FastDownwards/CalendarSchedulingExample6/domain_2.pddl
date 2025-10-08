@@ -1,0 +1,26 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types participant slot)
+  (:predicates
+    (unscheduled)
+    (scheduled ?s - slot)
+    (free ?p - participant ?s - slot)
+    (next ?s - slot ?n - slot)
+    (earliest-available ?s - slot)
+  )
+  (:action schedule-meeting
+    :parameters (?s - slot ?n - slot)
+    :precondition (and
+      (unscheduled)
+      (earliest-available ?s)
+      (next ?s ?n)
+      (free thomas ?s) (free thomas ?n)
+      (free dylan ?s) (free dylan ?n)
+      (free jerry ?s) (free jerry ?n)
+    )
+    :effect (and
+      (not (unscheduled))
+      (scheduled ?s)
+    )
+  )
+)

@@ -5,8 +5,10 @@ import asyncio
 import json
 import logging
 import re
+import sys
 from pathlib import Path
 from time import sleep
+from typing import Any
 
 from src.llm_plan.agent import AgentNaturalLanguage
 from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, RESULTS_FOLDER
@@ -145,8 +147,15 @@ def setup_logging(base_folder: Path) -> logging.Logger:
     return logger
 
 
-def main() -> None:
-    args = parse_args()
+def _run_with_args(args: argparse.Namespace) -> dict[str, Any]:
+    """Execute the workflow using the provided namespace configuration."""
+
+    summary: dict[str, Any] = {
+        "natural_plan": None,
+        "base_folder": None,
+        "logs_path": None,
+        "error": None,
+    }
 
     human_spec = args.human_specification
     environment_name = args.environment_name
@@ -156,6 +165,7 @@ def main() -> None:
     debug_enabled = args.debug
 
     base_folder = RESULTS_ROOT / environment_name / args.target_solver
+    summary["base_folder"] = base_folder
     logger = setup_logging(base_folder)
 
     if args.model_json == args.model_plan:
@@ -220,6 +230,7 @@ def main() -> None:
 
     base_folder.mkdir(parents=True, exist_ok=True)
     full_logs_path = base_folder / "__full_logs.txt"
+    summary["logs_path"] = full_logs_path
 
     if debug_enabled:
         with open(full_logs_path, "w", encoding="utf-8") as log_seed:
@@ -246,7 +257,8 @@ def main() -> None:
         except Exception as exc:
             logger.error("Planning failed for %s: %s", environment_name, exc)
             append_debug_log("PLANNING-ERROR", str(exc))
-            return
+            summary["error"] = f"Planning failed: {exc}"
+            return summary
 
         try:
             final_plan = responses["pddl_orchestrator"]
@@ -386,6 +398,7 @@ def main() -> None:
     plan_file, plan_index = get_latest_file(base_folder, "sas_plan_")
     if plan_file is None:
         logger.warning("No plan files produced for %s", environment_name)
+        summary["error"] = "No plan files were produced by the solver."
     else:
         with open(
             base_folder / f"domain_{plan_index}.pddl", "r", encoding="utf-8"
@@ -414,6 +427,7 @@ def main() -> None:
             base_folder / "final_natural_plan.txt",
         )
         append_debug_log(f"NATURAL-PLAN {plan_file}", natural_plan)
+        summary["natural_plan"] = natural_plan
 
     if debug_enabled:
         with open(full_logs_path, "w", encoding="utf-8") as f:
@@ -421,6 +435,42 @@ def main() -> None:
         logger.info("Detailed logs written to %s", full_logs_path)
     else:
         logger.info("Debug logging disabled; detailed logs were not persisted.")
+
+    return summary
+
+
+def run_workflow(
+    human_specification: str,
+    environment_name: str,
+    *,
+    model_json: str = "gpt-5-mini",
+    model_plan: str = "gpt-5-mini",
+    target_solver: str = "FastDownwards",
+    optimize_plan: bool = True,
+    budget: int = 20,
+    debug: bool = True,
+) -> dict[str, Any]:
+    """Convenience wrapper for programmatic usage."""
+
+    args = argparse.Namespace(
+        human_specification=human_specification,
+        environment_name=environment_name,
+        budget=budget,
+        model_json=model_json,
+        model_plan=model_plan,
+        target_solver=target_solver,
+        optimize_plan=optimize_plan,
+        debug=debug,
+    )
+    return _run_with_args(args)
+
+
+def main() -> None:
+    args = parse_args()
+    summary = _run_with_args(args)
+    if summary.get("error"):
+        logging.getLogger(__name__).error("Workflow failed: %s", summary["error"])
+        sys.exit(1)
 
 
 if __name__ == "__main__":

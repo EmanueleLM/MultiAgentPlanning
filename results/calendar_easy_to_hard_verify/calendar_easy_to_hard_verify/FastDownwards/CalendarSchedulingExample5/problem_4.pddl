@@ -1,0 +1,41 @@
+(define (problem schedule-monday-09-17)
+  (:domain meeting-scheduling)
+
+  (:init
+    (= (total-cost) 0)
+
+    (available kathryn s0930)
+    (available kathryn s1000)
+    (available kathryn s1100)
+    (available kathryn s1200)
+    (available kathryn s1230)
+    (available kathryn s1300)
+    (available kathryn s1430)
+    (available kathryn s1500)
+    (available kathryn s1530)
+    (available kathryn s1600)
+
+    (available charlotte s0900)
+    (available charlotte s0930)
+    (available charlotte s1000)
+    (available charlotte s1030)
+    (available charlotte s1100)
+    (available charlotte s1130)
+    (available charlotte s1230)
+    (available charlotte s1300)
+    (available charlotte s1330)
+
+    (available lauren s1000)
+    (available lauren s1030)
+    (available lauren s1100)
+    (available lauren s1130)
+    (available lauren s1230)
+    (available lauren s1300)
+    (available lauren s1430)
+    (available lauren s1600)
+  )
+
+  (:goal (and (meeting-scheduled)))
+
+  (:metric minimize (total-cost))
+)

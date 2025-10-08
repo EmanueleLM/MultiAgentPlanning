@@ -1,0 +1,108 @@
+HUMAN-SPECIFICATION
+------------------------------
+You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Michelle, Steven and Jerry for one hour between the work hours of 9:00 to 17:00 on Monday. \n\nHere are the existing schedules for everyone during the day: \nMichelle has meetings on Monday during 11:00 to 12:00; \nSteven has blocked their calendar on Monday during 9:00 to 9:30, 11:30 to 12:00, 13:30 to 14:00, 15:30 to 16:00; \nJerry has blocked their calendar on Monday during 9:00 to 9:30, 10:00 to 11:00, 11:30 to 12:30, 13:00 to 14:30, 15:30 to 16:00, 16:30 to 17:00; \n\nFind a time that works for everyone's schedule and constraints.
+================================================================================
+
+ENVIRONMENT-JSON
+------------------------------
+{
+    "name": "YouAreAnExpert20251008155335",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "michelle",
+            "steven",
+            "jerry",
+            "orchestrator"
+        ],
+        "michelle": {
+            "private_information": [
+                "Monday 11:00-12:00 busy"
+            ],
+            "goal": "Schedule a 1-hour meeting on Monday between 09:00 and 17:00 with Steven and Jerry."
+        },
+        "steven": {
+            "private_information": [
+                "Monday 09:00-09:30 busy",
+                "Monday 11:30-12:00 busy",
+                "Monday 13:30-14:00 busy",
+                "Monday 15:30-16:00 busy"
+            ],
+            "goal": "Schedule a 1-hour meeting on Monday between 09:00 and 17:00 with Michelle and Jerry."
+        },
+        "jerry": {
+            "private_information": [
+                "Monday 09:00-09:30 busy",
+                "Monday 10:00-11:00 busy",
+                "Monday 11:30-12:30 busy",
+                "Monday 13:00-14:30 busy",
+                "Monday 15:30-16:00 busy",
+                "Monday 16:30-17:00 busy"
+            ],
+            "goal": "Schedule a 1-hour meeting on Monday between 09:00 and 17:00 with Michelle and Steven."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate participant availabilities and produce a PDDL domain and problem to schedule the 1-hour meeting on Monday that is solvable by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "meeting_duration_minutes": 60
+        },
+        "public_information": [
+            "A 1-hour meeting must be scheduled on Monday during work hours 09:00-17:00.",
+            "All participants must be available for the entire meeting.",
+            "There exists at least one time that satisfies all participants schedules."
+        ]
+    },
+    "workflow": {
+        "michelle": {
+            "availability": {
+                "input": [],
+                "output": "avail_michelle",
+                "system_prompt": "You are an expert scheduler. Given the public information and your private calendar, compute your free time intervals on Monday that can accommodate a meeting of the requested duration. Return a concise machine-readable list of available intervals.",
+                "prompt": "Your name is michelle. Use the public information {environment->public_information} and your private information {agents->michelle->private_information} and provide a list of available time intervals on Monday that are at least {environment->init->meeting_duration_minutes} minutes long between {environment->init->work_start} and {environment->init->work_end}. Do not output PDDL."
+            }
+        },
+        "steven": {
+            "availability": {
+                "input": [],
+                "output": "avail_steven",
+                "system_prompt": "You are an expert scheduler. Given the public information and your private calendar, compute your free time intervals on Monday that can accommodate a meeting of the requested duration. Return a concise machine-readable list of available intervals.",
+                "prompt": "Your name is steven. Use the public information {environment->public_information} and your private information {agents->steven->private_information} and provide a list of available time intervals on Monday that are at least {environment->init->meeting_duration_minutes} minutes long between {environment->init->work_start} and {environment->init->work_end}. Do not output PDDL."
+            }
+        },
+        "jerry": {
+            "availability": {
+                "input": [],
+                "output": "avail_jerry",
+                "system_prompt": "You are an expert scheduler. Given the public information and your private calendar, compute your free time intervals on Monday that can accommodate a meeting of the requested duration. Return a concise machine-readable list of available intervals.",
+                "prompt": "Your name is jerry. Use the public information {environment->public_information} and your private information {agents->jerry->private_information} and provide a list of available time intervals on Monday that are at least {environment->init->meeting_duration_minutes} minutes long between {environment->init->work_start} and {environment->init->work_end}. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_michelle",
+                    "avail_steven",
+                    "avail_jerry"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL planning and scheduling targeting the FastDownwards planner. You must produce a PDDL domain and a PDDL problem that encode the scheduling task. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use time discretization appropriate for 30-minute or 15-minute granularity if needed. Keep participant actions and resources distinct.",
+                "prompt": "You are the orchestrator. You will receive availability reports {avail_michelle}, {avail_steven}, and {avail_jerry}. Combine these availability reports with the public information {environment->public_information} and the global goal {agents->orchestrator->goal} and produce a PDDL domain and a PDDL problem that schedule a single 60-minute meeting on Monday between 09:00 and 17:00 that is compatible with all participant availabilities. Target the FastDownwards solver. Reconcile any different time representations and keep agent-specific actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "michelle.availability->orchestrator.pddl",
+            "steven.availability->orchestrator.pddl",
+            "jerry.availability->orchestrator.pddl"
+        ]
+    }
+}
+================================================================================
+

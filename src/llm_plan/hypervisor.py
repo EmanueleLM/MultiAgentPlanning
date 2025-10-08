@@ -77,9 +77,8 @@ class Hypervisor:
             Additionally, ensure the stay durations and total-day counts match the natural-language specification and
             that only direct flights or links explicitly listed are modelled.
 
-            Select the class best positioned to address the most pressing issue given the current artefacts. If
-            you believe the domain, problem, and plan already satisfy the specification, respond with
-            <class>NoOpAgent</class>.
+            Select the class best positioned to address the most pressing issue given the current artefacts. 
+            Only answer <class>NoOpAgent</class> when every objective above is demonstrably satisfied.
             """
         )
 

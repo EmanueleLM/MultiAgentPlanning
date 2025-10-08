@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Planning Copilot</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app__header">
+        <div class="header__title">Planning Copilot</div>
+        <div class="header__subtitle">
+          Craft a domain/problem from natural language and get the validated plan.
+        </div>
+        <button type="button" id="clear-btn" class="clear-button">Clear</button>
+      </header>
+
+      <main class="app__main">
+        <section class="panel panel--input">
+          <form class="prompt-form" autocomplete="off">
+            <label for="prompt" class="prompt-form__label">Describe the task</label>
+            <div class="prompt-form__input">
+              <textarea
+                id="prompt"
+                name="prompt"
+                placeholder="e.g. Schedule a 30 minute meeting for Alice, Bob, and Carol next Monday afternoon..."
+                required
+              ></textarea>
+              <img
+                src="{{ url_for('static', filename='planner-icon.svg') }}"
+                alt=""
+                class="prompt-form__icon"
+                aria-hidden="true"
+              />
+            </div>
+
+            <div class="prompt-form__controls">
+              <div class="control-group">
+                <label for="model_json">Representation model</label>
+                <select id="model_json" name="model_json">
+                  {% for option in model_options %}
+                  <option value="{{ option }}" {% if option == default_model_json %}selected{% endif %}>
+                    {{ option }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="model_plan">Planning model</label>
+                <select id="model_plan" name="model_plan">
+                  {% for option in model_options %}
+                  <option value="{{ option }}" {% if option == default_model_plan %}selected{% endif %}>
+                    {{ option }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="target_solver">Solver</label>
+                <select id="target_solver" name="target_solver">
+                  {% for option in solver_options %}
+                  <option value="{{ option }}" {% if option == default_target_solver %}selected{% endif %}>
+                    {{ option }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="optimize_plan">Optimise plan?</label>
+                <select id="optimize_plan" name="optimize_plan">
+                  {% for value, label in optimize_options %}
+                  <option value="{{ value }}" {% if value == default_optimize %}selected{% endif %}>
+                    {{ label }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="budget">Refinement budget</label>
+                <input
+                  type="number"
+                  id="budget"
+                  name="budget"
+                  min="1"
+                  max="50"
+                  value="{{ default_budget }}"
+                />
+              </div>
+            </div>
+
+            <button type="submit" class="prompt-form__submit">Plan</button>
+          </form>
+        </section>
+
+        <section id="logs-panel" class="panel panel--logs" hidden>
+          <details class="log-view">
+            <summary>
+              <span class="spinner" aria-hidden="true"></span>
+              <span>Thinking and logs…</span>
+            </summary>
+            <pre id="logs-output" hidden></pre>
+            <div class="log-placeholder">
+              Logs will appear here as soon as they are generated.
+            </div>
+          </details>
+        </section>
+
+        <section class="panel panel--output">
+          <div id="user-prompt" class="chat-bubble chat-bubble--user" hidden>
+            <div class="chat-bubble__label">You</div>
+            <div class="chat-bubble__body"></div>
+          </div>
+
+          <div id="planner-response" class="chat-bubble chat-bubble--assistant" hidden>
+            <div class="chat-bubble__label">Planner</div>
+            <pre class="chat-bubble__body"></pre>
+            <div class="chat-meta"></div>
+          </div>
+
+          <div
+            id="planner-error"
+            class="chat-bubble chat-bubble--assistant chat-bubble--error"
+            hidden
+          >
+            <div class="chat-bubble__label">Planner</div>
+            <div class="chat-bubble__body"></div>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            <div class="empty-state__title">Waiting for your task</div>
+            <div class="empty-state__body">
+              Describe a scheduling or planning scenario and I'll validate or repair it using the multi-agent pipeline.
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app__footer">
+        <span>Powered by MultiAgentPlanning</span>
+      </footer>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.querySelector(".prompt-form");
+        const promptInput = document.getElementById("prompt");
+        const modelJsonSelect = document.getElementById("model_json");
+        const modelPlanSelect = document.getElementById("model_plan");
+        const solverSelect = document.getElementById("target_solver");
+        const optimizeSelect = document.getElementById("optimize_plan");
+        const budgetInput = document.getElementById("budget");
+        const logsPanel = document.getElementById("logs-panel");
+        const logDetails = logsPanel.querySelector("details");
+        const spinner = logsPanel.querySelector(".spinner");
+        const logsOutput = document.getElementById("logs-output");
+        const logsPlaceholder = logsPanel.querySelector(".log-placeholder");
+        const userPromptBubble = document.getElementById("user-prompt");
+        const userPromptBody = userPromptBubble.querySelector(".chat-bubble__body");
+        const plannerResponseBubble = document.getElementById("planner-response");
+        const plannerResponseBody = plannerResponseBubble.querySelector(".chat-bubble__body");
+        const plannerMeta = plannerResponseBubble.querySelector(".chat-meta");
+        const plannerErrorBubble = document.getElementById("planner-error");
+        const plannerErrorBody = plannerErrorBubble.querySelector(".chat-bubble__body");
+        const emptyState = document.getElementById("empty-state");
+        const clearButton = document.getElementById("clear-btn");
+
+        let jobId = null;
+        let pollInterval = null;
+
+        const resetOutput = () => {
+          userPromptBubble.hidden = true;
+          plannerResponseBubble.hidden = true;
+          plannerErrorBubble.hidden = true;
+          plannerMeta.textContent = "";
+          plannerResponseBody.textContent = "";
+          plannerErrorBody.textContent = "";
+          emptyState.hidden = false;
+        };
+
+        const stopPolling = () => {
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+          spinner.classList.remove("spinner--active");
+          document.body.classList.remove("submitting");
+        };
+
+        const updateLogs = (text) => {
+          if (text) {
+            logsPlaceholder.hidden = true;
+            logsOutput.hidden = false;
+            logsOutput.textContent = text;
+          } else {
+            logsOutput.hidden = true;
+            logsPlaceholder.hidden = false;
+            logsOutput.textContent = "";
+          }
+        };
+
+        const renderSummary = (summary) => {
+          emptyState.hidden = true;
+          if (summary?.natural_plan) {
+            plannerErrorBubble.hidden = true;
+            plannerResponseBubble.hidden = false;
+            plannerResponseBody.textContent = summary.natural_plan;
+            plannerMeta.textContent = summary.base_folder
+              ? `Artifacts stored in: ${summary.base_folder}`
+              : "";
+          } else {
+            plannerResponseBubble.hidden = true;
+            plannerErrorBubble.hidden = false;
+            const message = summary?.error || "No plan was produced.";
+            plannerErrorBody.textContent = message;
+          }
+        };
+
+        const pollLogs = () => {
+          if (!jobId) return;
+          fetch(`/logs/${jobId}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                plannerErrorBubble.hidden = false;
+                plannerErrorBody.textContent = data.error;
+                stopPolling();
+                return;
+              }
+              if (typeof data.logs === "string") {
+                updateLogs(data.logs);
+              }
+
+              if (data.status === "completed" || data.status === "failed") {
+                stopPolling();
+                if (data.summary) {
+                  renderSummary(data.summary);
+                } else {
+                  plannerResponseBubble.hidden = true;
+                  plannerErrorBubble.hidden = false;
+                  plannerErrorBody.textContent =
+                    "Workflow completed but no summary was returned.";
+                }
+              }
+            })
+            .catch((error) => {
+              plannerErrorBubble.hidden = false;
+              plannerErrorBody.textContent = `Error fetching logs: ${error}`;
+              stopPolling();
+            });
+        };
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          stopPolling();
+          jobId = null;
+          const prompt = promptInput.value.trim();
+          if (!prompt) {
+            promptInput.focus();
+            return;
+          }
+
+          resetOutput();
+
+          userPromptBubble.hidden = false;
+          userPromptBody.textContent = prompt;
+          emptyState.hidden = true;
+
+          logsPanel.hidden = false;
+          logDetails.setAttribute("open", "open");
+          spinner.classList.add("spinner--active");
+          updateLogs("");
+          document.body.classList.add("submitting");
+
+          const payload = {
+            prompt,
+            model_json: modelJsonSelect.value,
+            model_plan: modelPlanSelect.value,
+            target_solver: solverSelect.value,
+            optimize_plan: optimizeSelect.value,
+            budget: budgetInput.value,
+          };
+
+          fetch("/start_run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                plannerErrorBubble.hidden = false;
+                plannerErrorBody.textContent = data.error;
+                spinner.classList.remove("spinner--active");
+                document.body.classList.remove("submitting");
+                return;
+              }
+              jobId = data.job_id;
+              pollLogs();
+              pollInterval = setInterval(pollLogs, 10000);
+            })
+            .catch((error) => {
+              plannerErrorBubble.hidden = false;
+              plannerErrorBody.textContent = `Failed to start planner: ${error}`;
+              spinner.classList.remove("spinner--active");
+              document.body.classList.remove("submitting");
+            });
+        });
+
+        clearButton.addEventListener("click", () => {
+          fetch("/clear", { method: "POST" })
+            .finally(() => window.location.reload());
+        });
+      });
+    </script>
+  </body>
+</html>

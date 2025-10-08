@@ -1,0 +1,15 @@
+(define (domain calendar_scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types agent slot)
+  (:predicates
+    (available ?a - agent ?s - slot)
+    (scheduled ?s - slot)
+    (meeting_scheduled)
+    (chosen ?s - slot)
+  )
+  (:action schedule
+    :parameters (?s - slot ?ja - agent ?wa - agent ?fa - agent ?ra - agent)
+    :precondition (and (not (meeting_scheduled)) (available ?ja ?s) (available ?wa ?s) (available ?fa ?s) (available ?ra ?s))
+    :effect (and (scheduled ?s) (meeting_scheduled))
+  )
+)

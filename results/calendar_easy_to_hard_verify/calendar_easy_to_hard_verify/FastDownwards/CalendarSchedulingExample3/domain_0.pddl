@@ -1,0 +1,26 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types time)
+  (:predicates
+    (next ?t ?t2 - time)
+    (free-arthur ?t - time)
+    (free-michael ?t - time)
+    (free-samantha ?t - time)
+    (scheduled ?t ?t2 - time)
+  )
+  (:action schedule
+    :parameters (?s ?e - time)
+    :precondition (and
+      (next ?s ?e)
+      (free-arthur ?s) (free-arthur ?e)
+      (free-michael ?s) (free-michael ?e)
+      (free-samantha ?s) (free-samantha ?e)
+    )
+    :effect (and
+      (scheduled ?s ?e)
+      (not (free-arthur ?s)) (not (free-arthur ?e))
+      (not (free-michael ?s)) (not (free-michael ?e))
+      (not (free-samantha ?s)) (not (free-samantha ?e))
+    )
+  )
+)

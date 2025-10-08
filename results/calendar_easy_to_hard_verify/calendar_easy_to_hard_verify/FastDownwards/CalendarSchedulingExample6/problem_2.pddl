@@ -1,0 +1,25 @@
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
+  (:objects
+    thomas dylan jerry - participant
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+  )
+  (:init
+    (unscheduled)
+    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4)
+    (next s4 s5) (next s5 s6) (next s6 s7) (next s7 s8)
+    (next s8 s9) (next s9 s10) (next s10 s11) (next s11 s12)
+    (next s12 s13) (next s13 s14) (next s14 s15)
+    (earliest-available s11)
+    (free thomas s0) (free thomas s1) (free thomas s2) (free thomas s3)
+    (free thomas s4) (free thomas s5) (free thomas s6) (free thomas s7)
+    (free thomas s8) (free thomas s9) (free thomas s10) (free thomas s11)
+    (free thomas s12) (free thomas s13) (free thomas s14) (free thomas s15)
+    (free dylan s0) (free dylan s1) (free dylan s2)
+    (free dylan s4) (free dylan s5) (free dylan s6) (free dylan s7)
+    (free dylan s8) (free dylan s10) (free dylan s11) (free dylan s12)
+    (free dylan s13) (free dylan s14) (free dylan s15)
+    (free jerry s4) (free jerry s11) (free jerry s12) (free jerry s13)
+  )
+  (:goal (scheduled s11))
+)

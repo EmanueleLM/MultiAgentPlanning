@@ -147,21 +147,100 @@ class Hypervisor:
         self.upload_args(self.prompt_args)  # ensure args are uploaded
 
         # Prepare the selection prompt
-        prompt = self.prompt.format(
-            human_specification=self.prompt_args["human_specification"],
-            specification=self.prompt_args["specification"],
-            pddl_domain=self.prompt_args["pddl_domain"],
-            pddl_problem=self.prompt_args["pddl_problem"],
-            target_solver=self.prompt_args["target_solver"],
-            pddl_plan=self.prompt_args["pddl_plan"],
-            pddl_logs=self.prompt_args["pddl_logs"],
-            syntax_errors=self.prompt_args["syntax_errors"],
-            agents="\n".join(
+        prompt_kwargs = {
+            "human_specification": self.prompt_args["human_specification"],
+            "specification": self.prompt_args["specification"],
+            "pddl_domain": self.prompt_args["pddl_domain"],
+            "pddl_problem": self.prompt_args["pddl_problem"],
+            "target_solver": self.prompt_args["target_solver"],
+            "pddl_plan": self.prompt_args["pddl_plan"],
+            "pddl_logs": self.prompt_args["pddl_logs"],
+            "syntax_errors": self.prompt_args["syntax_errors"],
+            "agents": "\n".join(
                 f"{name}: {cls.__doc__}" for name, cls in self.agents.items()
             ),
-            history=self.history,
-        )
+            "history": self.history,
+        }
+
+        if "proposed_solution" in self.prompt_args:
+            prompt_kwargs["proposed_solution"] = self.prompt_args["proposed_solution"]
+
+        prompt = self.prompt.format(**prompt_kwargs)
         return model.generate_sync(
             system_prompt=self.system_prompt,
             prompt=prompt,
+        )
+
+
+class SolutionVerifierHypervisor(Hypervisor):
+    """
+    Hypervisor variant that validates a proposed solution by orchestrating agents
+    to build verification PDDL artefacts or repair the solution when needed.
+    """
+
+    def __init__(self, prompt_args: dict[str, str]):
+        super().__init__(prompt_args)
+        self.required_args = {
+            **self.required_args,
+            "proposed_solution": (
+                "(str) The proposed solution that should satisfy the task constraints."
+            ),
+        }
+
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a validation hypervisor coordinating specialised agents.
+            Your purpose is to drive the agents until the generated PDDL domain/problem conclusively
+            verify (or refute) the proposed solution.
+            Work only with concrete, fully specified PDDL; never accept placeholders such as "..." or templates.
+            Reject outputs that rely on unsupported Fast Downward requirements (e.g., axioms, universals, conditional
+            effects, :fluents) or malformed action schemas (:parameters, :precondition, :effect orderings).
+            Discard abstract classes or those with abstract methods and report the selected class name between
+            <class></class> tags.
+            """
+        )
+
+        self.prompt = inspect.cleandoc(
+            """\
+            You are validating a proposed solution for the planning task.
+
+            Human specification of the task:
+            <human_specification>{human_specification}</human_specification>
+
+            JSON plan specification of the task:
+            <specification>{specification}</specification>
+
+            Proposed solution to validate:
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
+            Current PDDL domain (should encode the validation criteria):
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem (should instantiate the validation criteria):
+            <problem>{pddl_problem}</problem>
+
+            Plan produced for the {target_solver} solver (may be empty or the proposed plan):
+            <plan>{pddl_plan}</plan>
+
+            Logs from the solver execution:
+            <logs>{pddl_logs}</logs>
+
+            Validator feedback (may be empty):
+            <errors>{syntax_errors}</errors>
+
+            Available agents and their capabilities (exclude abstract classes):
+            <agents>{agents}</agents>
+
+            Agents previously selected (helps maintain diversity):
+            <history>{history}</history>
+
+            Primary objectives (all must hold before selecting NoOpAgent):
+            1. The PDDL domain/problem are syntactically valid (no placeholders, templates, or unsupported features).
+            2. The solver logs confirm the model either validates the proposed solution or provides a corrected plan.
+            3. All natural-language constraints are encoded so that violating them becomes impossible in any satisfying plan.
+
+            Use the syntax errors and solver logs as ground truth feedback: repair anything they flag.
+            Select the class best positioned to progress this validation. Only answer <class>NoOpAgent</class> when every
+            objective above is demonstrably satisfied.
+            """
         )

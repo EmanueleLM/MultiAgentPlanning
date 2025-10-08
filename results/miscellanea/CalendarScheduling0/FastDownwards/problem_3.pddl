@@ -1,8 +1,11 @@
 (define (problem calendar-scheduling0)
   (:domain calendar-scheduling)
-  (:objects michelle steven jerry orchestrator - agent
-            t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30 t_12_00 t_12_30 t_13_00 t_13_30 t_14_00 t_14_30 t_15_00 t_15_30 t_16_00 - time)
+  (:objects
+    t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30 t_12_00 t_12_30 t_13_00 t_13_30 t_14_00 t_14_30 t_15_00 t_15_30 t_16_00 - time
+    michelle steven jerry orchestrator - agent
+  )
   (:init
+    ; Michelle availability (start times where a full 60-minute meeting can begin)
     (available michelle t_09_00)
     (available michelle t_09_30)
     (available michelle t_10_00)
@@ -15,6 +18,7 @@
     (available michelle t_15_00)
     (available michelle t_15_30)
     (available michelle t_16_00)
+    ; Steven availability
     (available steven t_09_30)
     (available steven t_10_00)
     (available steven t_10_30)
@@ -23,6 +27,7 @@
     (available steven t_14_00)
     (available steven t_14_30)
     (available steven t_16_00)
+    ; Jerry availability
     (available jerry t_14_30)
   )
   (:goal (meeting_scheduled))

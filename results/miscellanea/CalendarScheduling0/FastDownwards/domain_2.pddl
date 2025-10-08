@@ -1,6 +1,7 @@
 (define (domain calendar-scheduling)
   (:requirements :typing :negative-preconditions :action-costs)
   (:types agent time)
+  (:constants michelle steven jerry orchestrator - agent)
   (:predicates
     (available ?a - agent ?t - time)
     (scheduled ?t - time)

@@ -1,0 +1,31 @@
+(define (domain calendar-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types agent time)
+  (:constants michelle steven jerry orchestrator - agent)
+  (:predicates
+    (available ?a - agent ?t - time)
+    (attended ?a - agent ?t - time)
+    (scheduled ?t - time)
+    (meeting_scheduled)
+  )
+  (:action attend-michelle
+    :parameters (?t - time)
+    :precondition (and (available michelle ?t) (not (attended michelle ?t)))
+    :effect (attended michelle ?t)
+  )
+  (:action attend-steven
+    :parameters (?t - time)
+    :precondition (and (available steven ?t) (not (attended steven ?t)))
+    :effect (attended steven ?t)
+  )
+  (:action attend-jerry
+    :parameters (?t - time)
+    :precondition (and (available jerry ?t) (not (attended jerry ?t)))
+    :effect (attended jerry ?t)
+  )
+  (:action orchestrator-schedule
+    :parameters (?t - time)
+    :precondition (and (attended michelle ?t) (attended steven ?t) (attended jerry ?t) (not (meeting_scheduled)))
+    :effect (and (scheduled ?t) (meeting_scheduled))
+  )
+)

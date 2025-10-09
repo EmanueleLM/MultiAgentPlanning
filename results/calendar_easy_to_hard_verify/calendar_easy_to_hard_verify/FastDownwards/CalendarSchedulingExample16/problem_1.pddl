@@ -1,59 +1,32 @@
-(define (problem CalendarSchedulingExample16)
+(define (problem CalendarSchedulingExample16-prob)
   (:domain calendar-scheduling)
   (:objects
-    Olivia Anna Virginia Paul - person
-    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
+    olivia anna virginia paul - person
+    t09 t10 t11 t12 t13 t14 t15 t16 - time
   )
   (:init
-    ;; next relations (30-minute steps)
-    (next t0900 t0930)
-    (next t0930 t1000)
-    (next t1000 t1030)
-    (next t1030 t1100)
-    (next t1100 t1130)
-    (next t1130 t1200)
-    (next t1200 t1230)
-    (next t1230 t1300)
-    (next t1300 t1330)
-    (next t1330 t1400)
-    (next t1400 t1430)
-    (next t1430 t1500)
-    (next t1500 t1530)
-    (next t1530 t1600)
-    (next t1600 t1630)
+    ; Olivia free times: 09,10,11,15
+    (free olivia t09)
+    (free olivia t10)
+    (free olivia t11)
+    (free olivia t15)
 
-    ;; Olivia busy: 12:30-13:30, 14:30-15:00, 16:30-17:00
-    (busy Olivia t1230)
-    (busy Olivia t1300)
-    (busy Olivia t1430)
-    (busy Olivia t1630)
+    ; Anna free all times 09-16
+    (free anna t09)
+    (free anna t10)
+    (free anna t11)
+    (free anna t12)
+    (free anna t13)
+    (free anna t14)
+    (free anna t15)
+    (free anna t16)
 
-    ;; Anna: no busy slots
+    ; Virginia free only at 10:00
+    (free virginia t10)
 
-    ;; Virginia busy: 09:00-10:00, 11:30-16:00, 16:30-17:00
-    (busy Virginia t0900)
-    (busy Virginia t0930)
-    (busy Virginia t1130)
-    (busy Virginia t1200)
-    (busy Virginia t1230)
-    (busy Virginia t1300)
-    (busy Virginia t1330)
-    (busy Virginia t1400)
-    (busy Virginia t1430)
-    (busy Virginia t1500)
-    (busy Virginia t1530)
-    (busy Virginia t1630)
-
-    ;; Paul busy: 09:00-09:30, 11:00-11:30, 13:00-14:00, 14:30-16:00, 16:30-17:00
-    (busy Paul t0900)
-    (busy Paul t1100)
-    (busy Paul t1300)
-    (busy Paul t1330)
-    (busy Paul t1430)
-    (busy Paul t1500)
-    (busy Paul t1530)
-    (busy Paul t1630)
+    ; Paul free at 10:00 and 12:00
+    (free paul t10)
+    (free paul t12)
   )
-
-  (:goal (chosen))
+  (:goal (meeting-scheduled))
 )

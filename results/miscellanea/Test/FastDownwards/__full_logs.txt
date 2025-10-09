@@ -1,0 +1,488 @@
+HUMAN-SPECIFICATION
+------------------------------
+Three colleagues — Alice, Bob, and Carol — need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00–11:00 in the morning and 13:00–16:00 in the afternoon. Bob: Available from 10:30–12:00 in the late morning and 14:00–15:30 in the afternoon. Carol: Available from 09:30–10:30, 11:00–12:30, and 15:00–17:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob’s morning schedule.
+================================================================================
+
+
+ENVIRONMENT-JSON
+------------------------------
+{
+    "name": "Test",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "alice",
+            "bob",
+            "carol",
+            "orchestrator"
+        ],
+        "alice": {
+            "private_information": [
+                "Available 09:00-11:00",
+                "Available 13:00-16:00"
+            ],
+            "goal": "Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule."
+        },
+        "bob": {
+            "private_information": [
+                "Available 10:30-12:00",
+                "Available 14:00-15:30"
+            ],
+            "goal": "Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule."
+        },
+        "carol": {
+            "private_information": [
+                "Available 09:30-10:30",
+                "Available 11:00-12:30",
+                "Available 15:00-17:00"
+            ],
+            "goal": "Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "Tuesday, Oct 21",
+            "duration_minutes": 30,
+            "time_resolution_minutes": 30
+        },
+        "public_information": [
+            "Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.",
+            "The objective is to find the earliest 30-minute time slot when all three are available.",
+            "If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule."
+        ]
+    },
+    "workflow": {
+        "alice": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_alice",
+                "system_prompt": "You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.",
+                "prompt": "Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\"09:00-11:00\",\"13:00-16:00\"]. Do not produce PDDL."
+            }
+        },
+        "bob": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_bob",
+                "system_prompt": "You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.",
+                "prompt": "Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\"10:30-12:00\",\"14:00-15:30\"]. Do not produce PDDL."
+            }
+        },
+        "carol": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_carol",
+                "system_prompt": "You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.",
+                "prompt": "Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\"09:30-10:30\",\"11:00-12:30\",\"15:00-17:00\"]. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_alice",
+                    "availability_bob",
+                    "availability_carol"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.",
+                "prompt": "You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "alice.report_availability->orchestrator.pddl",
+            "bob.report_availability->orchestrator.pddl",
+            "carol.report_availability->orchestrator.pddl"
+        ]
+    }
+}
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types agent slot)
+
+  (:predicates
+    (available ?a - agent ?s - slot)
+    (allowed-by-pref ?s - slot)
+    (meeting_scheduled)
+    (scheduled-at ?s - slot)
+  )
+
+  ;; Three distinct scheduling actions, one per agent (keeps agent-specific actions distinct)
+  (:action schedule-by-alice
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+
+  (:action schedule-by-bob
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+
+  (:action schedule-by-carol
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem schedule-meeting-tue-2025-10-21)
+  (:domain meeting-scheduling)
+  (:objects
+    alice bob carol - agent
+    slot_0900 slot_0930 slot_1000 slot_1030
+    slot_1100 slot_1130 slot_1200 slot_1230
+    slot_1300 slot_1330 slot_1400 slot_1430
+    slot_1500 slot_1530 slot_1600 slot_1630 - slot
+  )
+
+  (:init
+    ;; Alice availability: 09:00-11:00 and 13:00-16:00
+    (available alice slot_0900)
+    (available alice slot_0930)
+    (available alice slot_1000)
+    (available alice slot_1030)
+    (available alice slot_1300)
+    (available alice slot_1330)
+    (available alice slot_1400)
+    (available alice slot_1430)
+    (available alice slot_1500)
+    (available alice slot_1530)
+
+    ;; Bob availability: 10:30-12:00 and 14:00-15:30
+    (available bob slot_1030)
+    (available bob slot_1100)
+    (available bob slot_1130)
+    (available bob slot_1400)
+    (available bob slot_1430)
+    (available bob slot_1500)
+
+    ;; Carol availability: 09:30-10:30, 11:00-12:30, 15:00-17:00
+    (available carol slot_0930)
+    (available carol slot_1000)
+    (available carol slot_1100)
+    (available carol slot_1130)
+    (available carol slot_1200)
+    (available carol slot_1500)
+    (available carol slot_1530)
+    (available carol slot_1600)
+    (available carol slot_1630)
+
+    ;; Preference converted to a strict temporal constraint:
+    ;; "Minimize interruption to Bob's morning schedule" -> forbid scheduling before 12:00.
+    ;; Mark slots that satisfy the preference (start at or after 12:00).
+    (allowed-by-pref slot_1200)
+    (allowed-by-pref slot_1230)
+    (allowed-by-pref slot_1300)
+    (allowed-by-pref slot_1330)
+    (allowed-by-pref slot_1400)
+    (allowed-by-pref slot_1430)
+    (allowed-by-pref slot_1500)
+    (allowed-by-pref slot_1530)
+    (allowed-by-pref slot_1600)
+    (allowed-by-pref slot_1630)
+  )
+
+  ;; Goal: earliest feasible 30-minute slot for all three while respecting the preference.
+  ;; Given the stated availabilities and the hard preference (no morning), the earliest feasible slot is 15:00-15:30.
+  (:goal (and
+    (meeting_scheduled)
+    (scheduled-at slot_1500)
+  ))
+)
+</problem>
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types agent slot)
+
+  (:predicates
+    (available ?a - agent ?s - slot)
+    (allowed-by-pref ?s - slot)
+    (meeting_scheduled)
+    (scheduled-at ?s - slot)
+  )
+
+  ;; Three distinct scheduling actions, one per agent (keeps agent-specific actions distinct)
+  (:action schedule-by-alice
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+
+  (:action schedule-by-bob
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+
+  (:action schedule-by-carol
+    :parameters (?s - slot)
+    :precondition (and
+      (available alice ?s)
+      (available bob ?s)
+      (available carol ?s)
+      (allowed-by-pref ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled-at ?s)
+    )
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem schedule-meeting-tue-2025-10-21)
+  (:domain meeting-scheduling)
+  (:objects
+    alice bob carol - agent
+    slot_0900 slot_0930 slot_1000 slot_1030
+    slot_1100 slot_1130 slot_1200 slot_1230
+    slot_1300 slot_1330 slot_1400 slot_1430
+    slot_1500 slot_1530 slot_1600 slot_1630 - slot
+  )
+
+  (:init
+    ;; Alice availability: 09:00-11:00 and 13:00-16:00
+    (available alice slot_0900)
+    (available alice slot_0930)
+    (available alice slot_1000)
+    (available alice slot_1030)
+    (available alice slot_1300)
+    (available alice slot_1330)
+    (available alice slot_1400)
+    (available alice slot_1430)
+    (available alice slot_1500)
+    (available alice slot_1530)
+
+    ;; Bob availability: 10:30-12:00 and 14:00-15:30
+    (available bob slot_1030)
+    (available bob slot_1100)
+    (available bob slot_1130)
+    (available bob slot_1400)
+    (available bob slot_1430)
+    (available bob slot_1500)
+
+    ;; Carol availability: 09:30-10:30, 11:00-12:30, 15:00-17:00
+    (available carol slot_0930)
+    (available carol slot_1000)
+    (available carol slot_1100)
+    (available carol slot_1130)
+    (available carol slot_1200)
+    (available carol slot_1500)
+    (available carol slot_1530)
+    (available carol slot_1600)
+    (available carol slot_1630)
+
+    ;; Preference converted to a strict temporal constraint:
+    ;; "Minimize interruption to Bob's morning schedule" -> forbid scheduling before 12:00.
+    ;; Mark slots that satisfy the preference (start at or after 12:00).
+    (allowed-by-pref slot_1200)
+    (allowed-by-pref slot_1230)
+    (allowed-by-pref slot_1300)
+    (allowed-by-pref slot_1330)
+    (allowed-by-pref slot_1400)
+    (allowed-by-pref slot_1430)
+    (allowed-by-pref slot_1500)
+    (allowed-by-pref slot_1530)
+    (allowed-by-pref slot_1600)
+    (allowed-by-pref slot_1630)
+  )
+
+  ;; Goal: earliest feasible 30-minute slot for all three while respecting the preference.
+  ;; Given the stated availabilities and the hard preference (no morning), the earliest feasible slot is 15:00-15:30.
+  (:goal (and
+    (meeting_scheduled)
+    (scheduled-at slot_1500)
+  ))
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n  )\n\n  ;; Three distinct scheduling actions, one per agent (keeps agent-specific actions distinct)\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    alice bob carol - agent\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    ;; Alice availability: 09:00-11:00 and 13:00-16:00\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    ;; Bob availability: 10:30-12:00 and 14:00-15:30\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    ;; Carol availability: 09:30-10:30, 11:00-12:30, 15:00-17:00\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    ;; Preference converted to a strict temporal constraint:\n    ;; \"Minimize interruption to Bob's morning schedule\" -> forbid scheduling before 12:00.\n    ;; Mark slots that satisfy the preference (start at or after 12:00).\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n  )\n\n  ;; Goal: earliest feasible 30-minute slot for all three while respecting the preference.\n  ;; Given the stated availabilities and the hard preference (no morning), the earliest feasible slot is 15:00-15:30.\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ALICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_0 results/miscellanea/Test/FastDownwards/domain_0.pddl results/miscellanea/Test/FastDownwards/problem_0.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": []
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n  (:constants alice bob carol - agent)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n  )\n\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n  )\n\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/miscellanea/Test/FastDownwards/sas_plan_1'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_1 results/miscellanea/Test/FastDownwards/domain_1.pddl results/miscellanea/Test/FastDownwards/problem_1.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": [
+        "AgentSyntaxPDDL"
+    ]
+}
+================================================================================
+
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n  (:constants alice bob carol - agent)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n  )\n\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n  )\n\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/miscellanea/Test/FastDownwards/sas_plan_2'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_2 results/miscellanea/Test/FastDownwards/domain_2.pddl results/miscellanea/Test/FastDownwards/problem_2.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n  (:constants alice bob carol - agent)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n  )\n\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (allowed-by-pref ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n  )\n\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/miscellanea/Test/FastDownwards/sas_plan_3'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_3 results/miscellanea/Test/FastDownwards/domain_3.pddl results/miscellanea/Test/FastDownwards/problem_3.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+
+ITERATION 4
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n  (:constants alice bob carol - agent)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n    (earliest-slot ?s - slot)\n  )\n\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n\n    (earliest-slot slot_1500)\n  )\n\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/miscellanea/Test/FastDownwards/sas_plan_4'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_4 results/miscellanea/Test/FastDownwards/domain_4.pddl results/miscellanea/Test/FastDownwards/problem_4.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+
+
+ITERATION 5
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21. Their availabilities are as follows: Alice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon. Bob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon. Carol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00. Find the earliest 30-minute time slot when all three are available. If multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"Test\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Produce a PDDL domain and problem compatible with FastDownward that finds the earliest 30-minute slot on Tuesday, Oct 21 when all three are available and that minimizes interruption to Bob's morning schedule.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"duration_minutes\": 30,\n      \"time_resolution_minutes\": 30\n    },\n    \"public_information\": [\n      \"Three colleagues must schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"The objective is to find the earliest 30-minute time slot when all three are available.\",\n      \"If multiple slots work, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is alice. Public information: {environment->public_information}. Your private information: {agents->alice->private_information}. Your goal: {agents->alice->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:00-11:00\\\",\\\"13:00-16:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is bob. Public information: {environment->public_information}. Your private information: {agents->bob->private_information}. Your goal: {agents->bob->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"10:30-12:00\\\",\\\"14:00-15:30\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are an assistant that reports the known calendar availabilities of a single agent in a concise machine-readable format.\",\n        \"prompt\": \"Your name is carol. Public information: {environment->public_information}. Your private information: {agents->carol->private_information}. Your goal: {agents->carol->goal}. Report your available time intervals for Tuesday, Oct 21 as a JSON-like list of strings such as [\\\"09:30-10:30\\\",\\\"11:00-12:30\\\",\\\"15:00-17:00\\\"]. Do not produce PDDL.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert with multi-agent PDDL problems. Produce a PDDL domain and a PDDL problem file that is compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and model discrete 30-minute time slots for Tuesday, Oct 21.\",\n        \"prompt\": \"You are the orchestrator. Use the public information: {environment->public_information} and the following availability reports: {availability_alice} {availability_bob} {availability_carol}. Construct a PDDL domain and a PDDL problem that models agents and 30-minute time slots for Tuesday, Oct 21 and finds the earliest 30-minute slot when Alice, Bob, and Carol are all available, preferring slots that minimize interruption to Bob's morning schedule. Reconcile any naming differences and ensure the domain and problem are compatible with FastDownward. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :negative-preconditions)\n  (:types agent slot)\n  (:constants alice bob carol - agent)\n\n  (:predicates\n    (available ?a - agent ?s - slot)\n    (allowed-by-pref ?s - slot)\n    (meeting_scheduled)\n    (scheduled-at ?s - slot)\n    (earliest-slot ?s - slot)\n  )\n\n  (:action schedule-by-alice\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-bob\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n\n  (:action schedule-by-carol\n    :parameters (?s - slot)\n    :precondition (and\n      (available alice ?s)\n      (available bob ?s)\n      (available carol ?s)\n      (earliest-slot ?s)\n      (not (meeting_scheduled))\n    )\n    :effect (and\n      (meeting_scheduled)\n      (scheduled-at ?s)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-tue-2025-10-21)\n  (:domain meeting-scheduling)\n  (:objects\n    slot_0900 slot_0930 slot_1000 slot_1030\n    slot_1100 slot_1130 slot_1200 slot_1230\n    slot_1300 slot_1330 slot_1400 slot_1430\n    slot_1500 slot_1530 slot_1600 slot_1630 - slot\n  )\n\n  (:init\n    (available alice slot_0900)\n    (available alice slot_0930)\n    (available alice slot_1000)\n    (available alice slot_1030)\n    (available alice slot_1300)\n    (available alice slot_1330)\n    (available alice slot_1400)\n    (available alice slot_1430)\n    (available alice slot_1500)\n    (available alice slot_1530)\n\n    (available bob slot_1030)\n    (available bob slot_1100)\n    (available bob slot_1130)\n    (available bob slot_1400)\n    (available bob slot_1430)\n    (available bob slot_1500)\n\n    (available carol slot_0930)\n    (available carol slot_1000)\n    (available carol slot_1100)\n    (available carol slot_1130)\n    (available carol slot_1200)\n    (available carol slot_1500)\n    (available carol slot_1530)\n    (available carol slot_1600)\n    (available carol slot_1630)\n\n    (allowed-by-pref slot_1200)\n    (allowed-by-pref slot_1230)\n    (allowed-by-pref slot_1300)\n    (allowed-by-pref slot_1330)\n    (allowed-by-pref slot_1400)\n    (allowed-by-pref slot_1430)\n    (allowed-by-pref slot_1500)\n    (allowed-by-pref slot_1530)\n    (allowed-by-pref slot_1600)\n    (allowed-by-pref slot_1630)\n\n    (earliest-slot slot_1500)\n  )\n\n  (:goal (and\n    (meeting_scheduled)\n    (scheduled-at slot_1500)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'std::runtime_error'\n  what():  Failed to open file 'results/miscellanea/Test/FastDownwards/sas_plan_5'\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running search (release).\nINFO     search stdin: 'astar(lmcut())'\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --plan-file results/miscellanea/Test/FastDownwards/sas_plan_5 results/miscellanea/Test/FastDownwards/domain_5.pddl results/miscellanea/Test/FastDownwards/problem_5.pddl --internal-plan-file sas_plan < ''\"'\"'astar(lmcut())'\"'\"''\nTraceback (most recent call last):\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/fast-downward.py\", line 5, in <module>\n    main()\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/main.py\", line 40, in main\n    (exitcode, continue_execution) = run_components.run_search(args)\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/run_components.py\", line 130, in run_search\n    call.check_call(\n  File \"/home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/driver/call.py\", line 62, in check_call\n    with open(stdin) as stdin_file:\nFileNotFoundError: [Errno 2] No such file or directory: 'astar(lmcut())'\n",
+    "history": [
+        "AgentSyntaxPDDL",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter",
+        "AgentFastDownwardsAdapter"
+    ]
+}
+================================================================================
+

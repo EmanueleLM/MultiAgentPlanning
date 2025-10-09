@@ -1,111 +1,329 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing :negative-preconditions :action-costs)
+  (:requirements :typing :negative-preconditions)
   (:types participant slot)
+
   (:predicates
-    (free ?p - participant ?s - slot)
-    (scheduled ?s - slot)
-    (meeting-scheduled)
-  )
-  (:functions (total-cost))
-
-  ;; Schedule actions for each discrete 30-minute slot (09:00-09:30 is s1 ... 16:30-17:00 is s16).
-  ;; Each action requires all participants to be free at that slot and that no meeting is yet scheduled.
-  ;; Effect: mark meeting scheduled at that slot and increase total-cost by a slot-specific cost
-  ;; so an optimal planner minimizing total-cost will pick the earliest feasible slot.
-
-  (:action schedule-s1
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s1) (free janice s1) (free elijah s1) (free theresa s1))
-    :effect (and (meeting-scheduled) (scheduled s1) (increase (total-cost) 1))
+    (slot ?s - slot)
+    (participant ?p - participant)
+    (busy ?p - participant ?s - slot)            ; participant is busy in slot
+    (slot-available ?s - slot)                   ; all participants free and within constraints (precomputed)
+    (meeting-scheduled ?s - slot)                ; meeting scheduled at slot
+    (scheduled)                                  ; a meeting has been scheduled
   )
 
-  (:action schedule-s2
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s2) (free janice s2) (free elijah s2) (free theresa s2))
-    :effect (and (meeting-scheduled) (scheduled s2) (increase (total-cost) 2))
+  ; Schedule actions for each 30-minute slot between 09:00 and 17:00.
+  ; Each action requires that the slot is available, that no meeting has yet been scheduled,
+  ; and (for later slots) that no earlier slot is available (enforce earliest preference).
+  (:action schedule-t0
+    :parameters ()
+    :precondition (and
+      (slot-available t0)
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t0)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s3
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s3) (free janice s3) (free elijah s3) (free theresa s3))
-    :effect (and (meeting-scheduled) (scheduled s3) (increase (total-cost) 3))
+  (:action schedule-t1
+    :parameters ()
+    :precondition (and
+      (slot-available t1)
+      (not (slot-available t0))   ; earlier-slot-available checks enforce earliest-slot preference
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t1)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s4
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s4) (free janice s4) (free elijah s4) (free theresa s4))
-    :effect (and (meeting-scheduled) (scheduled s4) (increase (total-cost) 4))
+  (:action schedule-t2
+    :parameters ()
+    :precondition (and
+      (slot-available t2)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t2)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s5
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s5) (free janice s5) (free elijah s5) (free theresa s5))
-    :effect (and (meeting-scheduled) (scheduled s5) (increase (total-cost) 5))
+  (:action schedule-t3
+    :parameters ()
+    :precondition (and
+      (slot-available t3)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t3)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s6
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s6) (free janice s6) (free elijah s6) (free theresa s6))
-    :effect (and (meeting-scheduled) (scheduled s6) (increase (total-cost) 6))
+  (:action schedule-t4
+    :parameters ()
+    :precondition (and
+      (slot-available t4)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t4)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s7
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s7) (free janice s7) (free elijah s7) (free theresa s7))
-    :effect (and (meeting-scheduled) (scheduled s7) (increase (total-cost) 7))
+  (:action schedule-t5
+    :parameters ()
+    :precondition (and
+      (slot-available t5)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t5)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s8
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s8) (free janice s8) (free elijah s8) (free theresa s8))
-    :effect (and (meeting-scheduled) (scheduled s8) (increase (total-cost) 8))
+  (:action schedule-t6
+    :parameters ()
+    :precondition (and
+      (slot-available t6)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t6)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s9
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s9) (free janice s9) (free elijah s9) (free theresa s9))
-    :effect (and (meeting-scheduled) (scheduled s9) (increase (total-cost) 9))
+  (:action schedule-t7
+    :parameters ()
+    :precondition (and
+      (slot-available t7)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t7)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s10
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s10) (free janice s10) (free elijah s10) (free theresa s10))
-    :effect (and (meeting-scheduled) (scheduled s10) (increase (total-cost) 10))
+  (:action schedule-t8
+    :parameters ()
+    :precondition (and
+      (slot-available t8)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t8)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s11
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s11) (free janice s11) (free elijah s11) (free theresa s11))
-    :effect (and (meeting-scheduled) (scheduled s11) (increase (total-cost) 11))
+  (:action schedule-t9
+    :parameters ()
+    :precondition (and
+      (slot-available t9)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t9)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s12
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s12) (free janice s12) (free elijah s12) (free theresa s12))
-    :effect (and (meeting-scheduled) (scheduled s12) (increase (total-cost) 12))
+  (:action schedule-t10
+    :parameters ()
+    :precondition (and
+      (slot-available t10)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t10)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s13
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s13) (free janice s13) (free elijah s13) (free theresa s13))
-    :effect (and (meeting-scheduled) (scheduled s13) (increase (total-cost) 13))
+  (:action schedule-t11
+    :parameters ()
+    :precondition (and
+      (slot-available t11)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (slot-available t10))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t11)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s14
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s14) (free janice s14) (free elijah s14) (free theresa s14))
-    :effect (and (meeting-scheduled) (scheduled s14) (increase (total-cost) 14))
+  (:action schedule-t12
+    :parameters ()
+    :precondition (and
+      (slot-available t12)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (slot-available t10))
+      (not (slot-available t11))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t12)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s15
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s15) (free janice s15) (free elijah s15) (free theresa s15))
-    :effect (and (meeting-scheduled) (scheduled s15) (increase (total-cost) 15))
+  (:action schedule-t13
+    :parameters ()
+    :precondition (and
+      (slot-available t13)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (slot-available t10))
+      (not (slot-available t11))
+      (not (slot-available t12))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t13)
+      (scheduled)
+    )
   )
 
-  (:action schedule-s16
-    :precondition (and (not (meeting-scheduled))
-                       (free marie s16) (free janice s16) (free elijah s16) (free theresa s16))
-    :effect (and (meeting-scheduled) (scheduled s16) (increase (total-cost) 16))
+  (:action schedule-t14
+    :parameters ()
+    :precondition (and
+      (slot-available t14)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (slot-available t10))
+      (not (slot-available t11))
+      (not (slot-available t12))
+      (not (slot-available t13))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t14)
+      (scheduled)
+    )
   )
+
+  (:action schedule-t15
+    :parameters ()
+    :precondition (and
+      (slot-available t15)
+      (not (slot-available t0))
+      (not (slot-available t1))
+      (not (slot-available t2))
+      (not (slot-available t3))
+      (not (slot-available t4))
+      (not (slot-available t5))
+      (not (slot-available t6))
+      (not (slot-available t7))
+      (not (slot-available t8))
+      (not (slot-available t9))
+      (not (slot-available t10))
+      (not (slot-available t11))
+      (not (slot-available t12))
+      (not (slot-available t13))
+      (not (slot-available t14))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting-scheduled t15)
+      (scheduled)
+    )
+  )
+
 )

@@ -1,73 +1,39 @@
-(define (problem schedule-monday)
+(define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
   (:objects
     elijah janet brian carl timothy - participant
-    t0900_0930 t0930_1000 t1000_1030 t1030_1100
-    t1100_1130 t1130_1200 t1200_1230 t1230_1300
-    t1300_1330 t1330_1400 t1400_1430 t1430_1500
-    t1500_1530 t1530_1600 t1600_1630 t1630_1700 - slot
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 - slot
   )
-
+  ; Slot mapping: s1=09:00-09:30, s2=09:30-10:00, s3=10:00-10:30, s4=10:30-11:00,
+  ; s5=11:00-11:30, s6=11:30-12:00, s7=12:00-12:30, s8=12:30-13:00,
+  ; s9=13:00-13:30, s10=13:30-14:00, s11=14:00-14:30, s12=14:30-15:00,
+  ; s13=15:00-15:30, s14=15:30-16:00, s15=16:00-16:30, s16=16:30-17:00
   (:init
-    ; Elijah busy: t1000_1030, t1030_1100, t1200_1230, t1500_1530  -> unavailable those slots
-    (available elijah t0900_0930)
-    (available elijah t0930_1000)
-    ; t1000_1030 unavailable
-    ; t1030_1100 unavailable
-    (available elijah t1100_1130)
-    ; t1200_1230 unavailable
-    (available elijah t1230_1300)
-    (available elijah t1300_1330)
-    (available elijah t1330_1400)
-    (available elijah t1400_1430)
-    (available elijah t1430_1500)
-    ; t1500_1530 unavailable
-    (available elijah t1530_1600)
-    (available elijah t1600_1630)
-    (available elijah t1630_1700)
+    ; Elijah busy: 10:00-11:00 -> s3,s4 ; 12:00-12:30 -> s7 ; 15:00-15:30 -> s13
+    (busy elijah s3) (busy elijah s4) (busy elijah s7) (busy elijah s13)
 
-    ; Janet busy: t0930_1000, t1000_1030, t1330_1400, t1400_1430, t1430_1500, t1500_1530
-    (available janet t0900_0930)
-    ; t0930_1000 unavailable
-    ; t1000_1030 unavailable
-    (available janet t1030_1100)
-    (available janet t1100_1130)
-    (available janet t1130_1200)
-    (available janet t1200_1230)
-    (available janet t1230_1300)
-    (available janet t1300_1330)
-    ; t1330_1400 unavailable
-    ; t1400_1430 unavailable
-    ; t1430_1500 unavailable
-    ; t1500_1530 unavailable
-    (available janet t1530_1600)
-    (available janet t1600_1630)
-    (available janet t1630_1700)
+    ; Janet busy: 09:30-10:30 -> s2,s3,s4 ; 13:30-15:30 -> s10,s11,s12,s13
+    (busy janet s2) (busy janet s3) (busy janet s4)
+    (busy janet s10) (busy janet s11) (busy janet s12) (busy janet s13)
 
-    ; Brian: No meetings on Monday -> unavailable all slots (no (available brian ...) facts)
+    ; Brian: No meetings on Monday -> busy all slots s1..s16
+    (busy brian s1) (busy brian s2) (busy brian s3) (busy brian s4)
+    (busy brian s5) (busy brian s6) (busy brian s7) (busy brian s8)
+    (busy brian s9) (busy brian s10) (busy brian s11) (busy brian s12)
+    (busy brian s13) (busy brian s14) (busy brian s15) (busy brian s16)
 
-    ; Carl busy: t0930_1000 through t1600_1630 (inclusive) -> available only t0900_0930 and t1630_1700
-    (available carl t0900_0930)
-    (available carl t1630_1700)
+    ; Carl busy: 09:30-16:30 -> s2..s15
+    (busy carl s2) (busy carl s3) (busy carl s4) (busy carl s5)
+    (busy carl s6) (busy carl s7) (busy carl s8) (busy carl s9)
+    (busy carl s10) (busy carl s11) (busy carl s12) (busy carl s13)
+    (busy carl s14) (busy carl s15)
 
-    ; Timothy busy: t1030_1100, t1100_1130, t1130_1200, t1330_1400, t1430_1500, t1500_1530, t1530_1600, t1630_1700
-    (available timothy t0900_0930)
-    (available timothy t0930_1000)
-    (available timothy t1000_1030)
-    ; t1030_1100 unavailable
-    ; t1100_1130 unavailable
-    ; t1130_1200 unavailable
-    (available timothy t1200_1230)
-    (available timothy t1230_1300)
-    (available timothy t1300_1330)
-    ; t1330_1400 unavailable
-    (available timothy t1400_1430)
-    ; t1430_1500 unavailable
-    ; t1500_1530 unavailable
-    ; t1530_1600 unavailable
-    (available timothy t1600_1630)
-    ; t1630_1700 unavailable
+    ; Timothy busy: 10:30-12:00 -> s4,s5,s6 ; 13:30-14:00 -> s10 ;
+    ; 14:30-16:00 -> s12,s13,s14 ; 16:30-17:00 -> s16
+    (busy timothy s4) (busy timothy s5) (busy timothy s6)
+    (busy timothy s10)
+    (busy timothy s12) (busy timothy s13) (busy timothy s14)
+    (busy timothy s16)
   )
-
-  (:goal (meeting-scheduled))
+  (:goal (and (meeting-scheduled)))
 )

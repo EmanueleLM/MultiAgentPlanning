@@ -1,16 +1,22 @@
-(define (domain schedule-meeting)
+(define (domain meeting-scheduling)
   (:requirements :typing :negative-preconditions :action-costs)
-  (:types person slot)
-
+  (:types person time)
   (:predicates
-    (free ?p - person ?s - slot)
+    (available ?p - person ?t - time)
     (scheduled)
-    (meeting-at ?s - slot)
+    (scheduled-at ?t - time)
   )
-
-  (:action schedule
-    :parameters (?s - slot)
-    :precondition (and (not (scheduled)) (free diane ?s) (free kelly ?s) (free deborah ?s))
-    :effect (and (scheduled) (meeting-at ?s))
+  (:action schedule-meeting
+    :parameters (?t - time)
+    :precondition (and
+      (not (scheduled))
+      (available diane ?t)
+      (available kelly ?t)
+      (available deborah ?t)
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at ?t)
+    )
   )
 )

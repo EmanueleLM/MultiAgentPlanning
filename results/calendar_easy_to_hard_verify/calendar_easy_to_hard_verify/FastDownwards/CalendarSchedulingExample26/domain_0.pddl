@@ -1,38 +1,34 @@
-(define (domain scheduling-multiagent)
-  (:requirements :strips :typing :negative-preconditions :quantified-preconditions :conditional-effects :adl)
-  (:types agent slot meeting)
+(define (domain meeting-scheduling)
+  (:requirements :typing :adl)
+  (:types participant timeslot meeting)
 
   (:predicates
-    (agent ?a - agent)
-    (slot ?s - slot)
-    ;; available ?a ?s = participant ?a is available for a 30-min meeting that starts at slot ?s
-    (available ?a - agent ?s - slot)
-    ;; scheduled ?s = a meeting has been scheduled at slot ?s
-    (scheduled ?s - slot)
-    ;; meeting-at ?m ?s = meeting ?m is scheduled at slot ?s
-    (meeting-at ?m - meeting ?s - slot)
-    ;; attends ?a ?m = participant ?a will attend meeting ?m
-    (attends ?a - agent ?m - meeting)
+    (participant ?p - participant)
+    (timeslot ?t - timeslot)
+    (workslot ?t - timeslot)           ; t is inside work hours
+    (free ?p - participant ?t - timeslot)   ; participant p is available at timeslot t
+    (occupied ?p - participant ?t - timeslot) ; participant p occupied at timeslot t
+    (meeting-at ?t - timeslot)         ; meeting is scheduled at timeslot t
+    (next ?t1 - timeslot ?t2 - timeslot) ; temporal ordering of slots: t2 immediately follows t1
   )
 
-  ;; Single action to schedule a 30-minute meeting (a meeting is a single slot).
-  ;; Preconditions: slot not scheduled and every declared agent is available at that slot.
-  ;; Effects: mark slot scheduled, create meeting-at, each agent attends meeting, and mark those agents unavailable at that slot (so slot cannot be reused).
+  ; The only action schedules a single meeting of fixed duration = one timeslot.
+  ; Preconditions: the chosen timeslot must be a workslot and every participant must be free at that slot.
+  ; Effects: mark meeting-at that slot and mark each participant occupied for that slot.
   (:action schedule-meeting
-    :parameters (?m - meeting ?s - slot)
+    :parameters (?t - timeslot)
     :precondition (and
-      (slot ?s)
-      (not (scheduled ?s))
-      ;; require that all agents that appear in the problem are available at ?s
-      (forall (?a - agent) (available ?a ?s))
-    )
+                    (workslot ?t)
+                    (forall (?p - participant) (free ?p ?t))
+                  )
     :effect (and
-      (scheduled ?s)
-      (meeting-at ?m ?s)
-      ;; every agent attends the meeting
-      (forall (?a - agent) (attends ?a ?m))
-      ;; mark those agents not available at that slot anymore (represents consuming that slot)
-      (forall (?a - agent) (not (available ?a ?s)))
-    )
+              (meeting-at ?t)
+              ; For each participant, if they were free on t, they become occupied and no longer free.
+              (forall (?p - participant)
+                (when (free ?p ?t)
+                      (and (not (free ?p ?t)) (occupied ?p ?t))
+                )
+              )
+            )
   )
 )

@@ -1,23 +1,21 @@
-(define (domain CalendarSchedulingExample25)
-  (:requirements :typing :negative-preconditions :action-costs)
-  (:types participant timeslot)
+(define (domain calendar-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types person time)
   (:predicates
-    (avail ?p - participant ?t - timeslot)
-    (scheduled)
-    (chosen ?t - timeslot)
+    (free ?p - person ?t - time)
+    (scheduled ?t - time)
   )
-  (:action select
-    :parameters (?t - timeslot)
+
+  (:action schedule
+    :parameters (?t - time)
     :precondition (and
-      (avail julia ?t)
-      (avail joshua ?t)
-      (avail nicholas ?t)
-      (avail david ?t)
-      (avail melissa ?t)
+      (not (scheduled ?t))
+      (free julia ?t)
+      (free joshua ?t)
+      (free nicholas ?t)
+      (free david ?t)
+      (free melissa ?t)
     )
-    :effect (and
-      (scheduled)
-      (chosen ?t)
-    )
+    :effect (and (scheduled ?t))
   )
 )

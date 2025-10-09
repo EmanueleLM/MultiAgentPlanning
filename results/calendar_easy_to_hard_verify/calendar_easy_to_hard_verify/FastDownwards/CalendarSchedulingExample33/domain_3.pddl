@@ -1,0 +1,26 @@
+(define (domain calendar-scheduling-example33)
+  (:requirements :typing :negative-preconditions)
+  (:types participant timeslot)
+  (:constants theresa alexander virginia lisa natalie victoria - participant)
+  (:predicates
+    (available ?p - participant ?t - timeslot)
+    (meeting-scheduled)
+    (scheduled ?t - timeslot)
+  )
+  (:action schedule-meeting
+    :parameters (?t - timeslot)
+    :precondition (and
+      (not (meeting-scheduled))
+      (available theresa ?t)
+      (available alexander ?t)
+      (available virginia ?t)
+      (available lisa ?t)
+      (available natalie ?t)
+      (available victoria ?t)
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled ?t)
+    )
+  )
+)

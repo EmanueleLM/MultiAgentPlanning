@@ -1,59 +1,45 @@
-(define (problem schedule-one-meeting)
+(define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
 
-  ;; OBJECT DECLARATIONS
+  ;; Objects: the 16 half-hour slots from 09:00-09:30 up to 16:30-17:00
   (:objects
-    ; Agents: REPLACE the following placeholder agents with the actual participant names.
-    ; Example: alice bob carol
-    ; If you have N participants, list them here as agent constants.
-    ; Note: Do not invent participants; use only the participants you provide.
-    ; Agents:
-    ;   <REPLACE_WITH_AGENT_LIST>
-    ; Example placeholder (remove or replace):
-    ;   ; alice bob carol
-    ; (Uncomment and replace the above with real agent names, e.g. alice bob)
+    s09_00_09_30 s09_30_10_00 s10_00_10_30 s10_30_11_00
+    s11_00_11_30 s11_30_12_00 s12_00_12_30 s12_30_13_00
+    s13_00_13_30 s13_30_14_00 s14_00_14_30 s14_30_15_00
+    s15_00_15_30 s15_30_16_00 s16_00_16_30 s16_30_17_00
+    ;; Add participant objects here, for example:
+    ;; alice bob carol - participant
   )
 
-  ;; Slots: discrete 30-minute slots from 09:00 to 17:00 (16 slots).
-  (:objects
-    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230
-    s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
-  )
+  ;; Initial facts:
+  ;; IMPORTANT: Replace the following comment block with actual participant objects
+  ;; in the :objects list and concrete (free <participant> <slot>) facts below,
+  ;; according to each participant's availability summaries.
+  ;;
+  ;; Example (when participants are alice and bob and both free from 09:00-09:30 and 09:30-10:00):
+  ;;   (free alice s09_00_09_30)
+  ;;   (free alice s09_30_10_00)
+  ;;   (free bob   s09_00_09_30)
+  ;;   (free bob   s09_30_10_00)
+  ;;
+  ;; DO NOT invent availability: supply the facts exactly as provided by participants.
+  ;; Remove these comments and add the actual (free ...) facts here.
 
-  ;; INITIAL STATE
   (:init
-    ; Populate (free <agent> <slot>) facts according to each participant's availability summary.
-    ; For each agent and for each slot where they are free, include:
-    ;   (free <agent> <slot>)
-    ;
-    ; RULES for filling availability:
-    ; - Treat natural-language preferences such as "avoid", "would rather", "earliest"
-    ;   as hard constraints: do not mark a slot free if the participant said they cannot
-    ;   or prefer to avoid it.
-    ; - Do not invent availability beyond the provided summaries.
-    ;
-    ; EXAMPLE (do not include unless this matches provided data):
-    ;   (free alice s0900)
-    ;   (free alice s0930)
-    ;   (free bob s0930)
-    ;   (free carol s0930)
-    ;
-    ; After inserting all (free ...) facts according to the actual inputs, you can
-    ; choose the goal slot (see below). The planner will need all required (free ...)
-    ; facts so that attend actions can be applied for each agent at the chosen slot.
+    ; << Insert (free <participant> <slot>) facts here, one per available slot per participant >>
+    ; Example placeholders (remove when you add real data):
+    ; (free alice s09_00_09_30)
+    ; (free alice s09_30_10_00)
+    ; (free bob   s09_00_09_30)
+    ; (free bob   s09_30_10_00)
   )
 
-  ;; GOAL
-  ;; The goal must state the chosen slot explicitly as the meeting time.
-  ;; Replace <CHOSEN_SLOT> with the earliest slot that is free for all participants
-  ;; (determined from the availability facts you provided above).
+  ;; Goal: schedule the meeting in a concrete slot. When you provide availability,
+  ;; I will set the goal to the earliest slot that is free for every participant.
+  ;; For now this is a placeholder: replace with (scheduled <chosen-slot>) after availability is known.
   (:goal
-    ; Example:
-    ;   (meeting-scheduled s0930)
-    ; Replace the following placeholder with the actual chosen slot:
-    ;   <REPLACE_WITH_GOAL>
-    ; Note: Do not leave this abstract when running the planner — set the goal
-    ; to the specific slot you want the planner to produce as the final selected time.
-    (and )
+    ; Replace with the chosen slot, e.g. (scheduled s09_00_09_30)
+    ; (scheduled s09_00_09_30)
+    (and)
   )
 )

@@ -1,25 +1,27 @@
-(define (problem schedule-meeting-monday)
+(define (problem meeting-monday)
   (:domain meeting-scheduling)
+
   (:objects
-    thomas dylan jerry - participant
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+    thomas dylan jerry - person
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
   )
+
   (:init
-    (unscheduled)
-    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4)
-    (next s4 s5) (next s5 s6) (next s6 s7) (next s7 s8)
-    (next s8 s9) (next s9 s10) (next s10 s11) (next s11 s12)
-    (next s12 s13) (next s13 s14) (next s14 s15)
-    (earliest-available s11)
-    (free thomas s0) (free thomas s1) (free thomas s2) (free thomas s3)
-    (free thomas s4) (free thomas s5) (free thomas s6) (free thomas s7)
-    (free thomas s8) (free thomas s9) (free thomas s10) (free thomas s11)
-    (free thomas s12) (free thomas s13) (free thomas s14) (free thomas s15)
-    (free dylan s0) (free dylan s1) (free dylan s2)
-    (free dylan s4) (free dylan s5) (free dylan s6) (free dylan s7)
-    (free dylan s8) (free dylan s10) (free dylan s11) (free dylan s12)
-    (free dylan s13) (free dylan s14) (free dylan s15)
-    (free jerry s4) (free jerry s11) (free jerry s12) (free jerry s13)
+    (free thomas s0900) (free thomas s0930) (free thomas s1000) (free thomas s1030)
+    (free thomas s1100) (free thomas s1130) (free thomas s1200) (free thomas s1230)
+    (free thomas s1300) (free thomas s1330) (free thomas s1400) (free thomas s1430)
+    (free thomas s1500) (free thomas s1530) (free thomas s1600) (free thomas s1630)
+
+    (free dylan s0900) (free dylan s0930) (free dylan s1000)
+    (free dylan s1100) (free dylan s1130) (free dylan s1200) (free dylan s1230)
+    (free dylan s1300)
+    (free dylan s1400) (free dylan s1430) (free dylan s1500) (free dylan s1530) (free dylan s1600) (free dylan s1630)
+
+    (free jerry s1100) (free jerry s1430) (free jerry s1500) (free jerry s1530)
+
+    (slot-allowed s1430)
+    (slot-allowed s1500)
   )
-  (:goal (scheduled s11))
+
+  (:goal (and (scheduled)))
 )

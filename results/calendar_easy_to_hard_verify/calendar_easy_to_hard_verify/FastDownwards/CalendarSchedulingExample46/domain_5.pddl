@@ -1,0 +1,26 @@
+(define (domain CalendarSchedulingExample46)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:predicates
+    (free ?p - person ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
+  )
+  (:action schedule
+    :parameters (?s - slot ?p1 - person ?p2 - person ?p3 - person ?p4 - person ?p5 - person ?p6 - person ?p7 - person)
+    :precondition (and
+      (not (scheduled ?s))
+      (free ?p1 ?s)
+      (free ?p2 ?s)
+      (free ?p3 ?s)
+      (free ?p4 ?s)
+      (free ?p5 ?s)
+      (free ?p6 ?s)
+      (free ?p7 ?s)
+    )
+    :effect (and
+      (scheduled ?s)
+      (meeting-scheduled)
+    )
+  )
+)

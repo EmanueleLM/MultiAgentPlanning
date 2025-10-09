@@ -1,24 +1,19 @@
 (define (domain meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types person slot)
+  (:requirements :strips)
   (:predicates
-    (busy ?p - person ?s - slot)        ;; participant ?p is busy during half-hour slot ?s
-    (next ?s - slot ?s2 - slot)         ;; ?s2 is the immediate next half-hour slot after ?s
-    (scheduled)                         ;; meeting has been scheduled
-    (meeting-start ?s - slot)           ;; meeting starts at slot ?s (a half-hour boundary)
+    (free ?person ?time)
+    (next ?t1 ?t2)
+    (scheduled ?time)
   )
-  ;; This domain contains a single scheduling action that explicitly names the chosen earliest feasible start:
-  (:action schedule-at-14_30
+
+  (:action schedule
+    :parameters (?t1 ?t2)
     :precondition (and
-      (next slot-14_30 slot-15_00)
-      (not (busy michelle slot-14_30)) (not (busy michelle slot-15_00))
-      (not (busy steven slot-14_30))   (not (busy steven slot-15_00))
-      (not (busy jerry slot-14_30))    (not (busy jerry slot-15_00))
-      (not (scheduled))
+      (next ?t1 ?t2)
+      (free michelle ?t1) (free michelle ?t2)
+      (free steven ?t1)  (free steven ?t2)
+      (free jerry ?t1)   (free jerry ?t2)
     )
-    :effect (and
-      (scheduled)
-      (meeting-start slot-14_30)
-    )
+    :effect (and (scheduled ?t1))
   )
 )

@@ -1,0 +1,29 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types agent timeslot)
+  (:predicates
+    (free ?a - agent ?t - timeslot)
+    (accepted ?a - agent ?t - timeslot)
+    (meeting-scheduled ?t - timeslot)
+  )
+  (:action raymond-accept
+    :parameters (?t - timeslot)
+    :precondition (free raymond ?t)
+    :effect (accepted raymond ?t)
+  )
+  (:action billy-accept
+    :parameters (?t - timeslot)
+    :precondition (free billy ?t)
+    :effect (accepted billy ?t)
+  )
+  (:action donald-accept
+    :parameters (?t - timeslot)
+    :precondition (free donald ?t)
+    :effect (accepted donald ?t)
+  )
+  (:action finalize-meeting
+    :parameters (?t - timeslot)
+    :precondition (and (accepted raymond ?t) (accepted billy ?t) (accepted donald ?t))
+    :effect (meeting-scheduled ?t)
+  )
+)

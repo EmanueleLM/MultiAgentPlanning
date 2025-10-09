@@ -1,110 +1,110 @@
 (define (domain meeting-scheduling)
   (:requirements :typing :negative-preconditions :action-costs)
-  (:types agent slot)
+  (:types slot agent)
   (:predicates
-    (free ?a - agent ?s - slot)
-    (scheduled ?s - slot)
+    (free ?s - slot ?a - agent)
     (meeting-scheduled)
+    (chosen-slot ?s - slot)
   )
 
-  ;; An action to schedule the meeting at a specific slot.
-  ;; Preconditions: all agents are free at that slot and no meeting already scheduled.
-  ;; Effects: mark meeting scheduled and mark the slot scheduled and remove free facts for the slot.
-  ;; Each action increases total-cost by a slot-specific integer; minimizing total-cost yields the earliest slot.
-  (:action schedule-s0900
-    :precondition (and (free donna s0900) (free john s0900) (free billy s0900) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s0900)
-                 (not (free donna s0900)) (not (free john s0900)) (not (free billy s0900))
-                 (increase (total-cost) 0))
+  ;; One action per candidate 30-minute start slot (09:00..16:30 every 30 minutes).
+  ;; Each action is applicable only if all participants are free for that slot.
+  ;; The action's cost encodes the slot's start time in minutes since 09:00 to
+  ;; prefer earlier slots via metric minimization.
+  (:action choose-s0900
+    :parameters ()
+    :precondition (and (free s0900 donna) (free s0900 john) (free s0900 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s0900))
+    :cost 0
   )
-  (:action schedule-s0930
-    :precondition (and (free donna s0930) (free john s0930) (free billy s0930) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s0930)
-                 (not (free donna s0930)) (not (free john s0930)) (not (free billy s0930))
-                 (increase (total-cost) 30))
+  (:action choose-s0930
+    :parameters ()
+    :precondition (and (free s0930 donna) (free s0930 john) (free s0930 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s0930))
+    :cost 30
   )
-  (:action schedule-s1000
-    :precondition (and (free donna s1000) (free john s1000) (free billy s1000) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1000)
-                 (not (free donna s1000)) (not (free john s1000)) (not (free billy s1000))
-                 (increase (total-cost) 60))
+  (:action choose-s1000
+    :parameters ()
+    :precondition (and (free s1000 donna) (free s1000 john) (free s1000 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1000))
+    :cost 60
   )
-  (:action schedule-s1030
-    :precondition (and (free donna s1030) (free john s1030) (free billy s1030) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1030)
-                 (not (free donna s1030)) (not (free john s1030)) (not (free billy s1030))
-                 (increase (total-cost) 90))
+  (:action choose-s1030
+    :parameters ()
+    :precondition (and (free s1030 donna) (free s1030 john) (free s1030 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1030))
+    :cost 90
   )
-  (:action schedule-s1100
-    :precondition (and (free donna s1100) (free john s1100) (free billy s1100) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1100)
-                 (not (free donna s1100)) (not (free john s1100)) (not (free billy s1100))
-                 (increase (total-cost) 120))
+  (:action choose-s1100
+    :parameters ()
+    :precondition (and (free s1100 donna) (free s1100 john) (free s1100 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1100))
+    :cost 120
   )
-  (:action schedule-s1130
-    :precondition (and (free donna s1130) (free john s1130) (free billy s1130) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1130)
-                 (not (free donna s1130)) (not (free john s1130)) (not (free billy s1130))
-                 (increase (total-cost) 150))
+  (:action choose-s1130
+    :parameters ()
+    :precondition (and (free s1130 donna) (free s1130 john) (free s1130 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1130))
+    :cost 150
   )
-  (:action schedule-s1200
-    :precondition (and (free donna s1200) (free john s1200) (free billy s1200) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1200)
-                 (not (free donna s1200)) (not (free john s1200)) (not (free billy s1200))
-                 (increase (total-cost) 180))
+  (:action choose-s1200
+    :parameters ()
+    :precondition (and (free s1200 donna) (free s1200 john) (free s1200 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1200))
+    :cost 180
   )
-  (:action schedule-s1230
-    :precondition (and (free donna s1230) (free john s1230) (free billy s1230) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1230)
-                 (not (free donna s1230)) (not (free john s1230)) (not (free billy s1230))
-                 (increase (total-cost) 210))
+  (:action choose-s1230
+    :parameters ()
+    :precondition (and (free s1230 donna) (free s1230 john) (free s1230 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1230))
+    :cost 210
   )
-  (:action schedule-s1300
-    :precondition (and (free donna s1300) (free john s1300) (free billy s1300) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1300)
-                 (not (free donna s1300)) (not (free john s1300)) (not (free billy s1300))
-                 (increase (total-cost) 240))
+  (:action choose-s1300
+    :parameters ()
+    :precondition (and (free s1300 donna) (free s1300 john) (free s1300 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1300))
+    :cost 240
   )
-  (:action schedule-s1330
-    :precondition (and (free donna s1330) (free john s1330) (free billy s1330) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1330)
-                 (not (free donna s1330)) (not (free john s1330)) (not (free billy s1330))
-                 (increase (total-cost) 270))
+  (:action choose-s1330
+    :parameters ()
+    :precondition (and (free s1330 donna) (free s1330 john) (free s1330 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1330))
+    :cost 270
   )
-  (:action schedule-s1400
-    :precondition (and (free donna s1400) (free john s1400) (free billy s1400) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1400)
-                 (not (free donna s1400)) (not (free john s1400)) (not (free billy s1400))
-                 (increase (total-cost) 300))
+  (:action choose-s1400
+    :parameters ()
+    :precondition (and (free s1400 donna) (free s1400 john) (free s1400 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1400))
+    :cost 300
   )
-  (:action schedule-s1430
-    :precondition (and (free donna s1430) (free john s1430) (free billy s1430) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1430)
-                 (not (free donna s1430)) (not (free john s1430)) (not (free billy s1430))
-                 (increase (total-cost) 330))
+  (:action choose-s1430
+    :parameters ()
+    :precondition (and (free s1430 donna) (free s1430 john) (free s1430 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1430))
+    :cost 330
   )
-  (:action schedule-s1500
-    :precondition (and (free donna s1500) (free john s1500) (free billy s1500) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1500)
-                 (not (free donna s1500)) (not (free john s1500)) (not (free billy s1500))
-                 (increase (total-cost) 360))
+  (:action choose-s1500
+    :parameters ()
+    :precondition (and (free s1500 donna) (free s1500 john) (free s1500 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1500))
+    :cost 360
   )
-  (:action schedule-s1530
-    :precondition (and (free donna s1530) (free john s1530) (free billy s1530) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1530)
-                 (not (free donna s1530)) (not (free john s1530)) (not (free billy s1530))
-                 (increase (total-cost) 390))
+  (:action choose-s1530
+    :parameters ()
+    :precondition (and (free s1530 donna) (free s1530 john) (free s1530 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1530))
+    :cost 390
   )
-  (:action schedule-s1600
-    :precondition (and (free donna s1600) (free john s1600) (free billy s1600) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1600)
-                 (not (free donna s1600)) (not (free john s1600)) (not (free billy s1600))
-                 (increase (total-cost) 420))
+  (:action choose-s1600
+    :parameters ()
+    :precondition (and (free s1600 donna) (free s1600 john) (free s1600 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1600))
+    :cost 420
   )
-  (:action schedule-s1630
-    :precondition (and (free donna s1630) (free john s1630) (free billy s1630) (not (meeting-scheduled)))
-    :effect (and (meeting-scheduled) (scheduled s1630)
-                 (not (free donna s1630)) (not (free john s1630)) (not (free billy s1630))
-                 (increase (total-cost) 450))
+  (:action choose-s1630
+    :parameters ()
+    :precondition (and (free s1630 donna) (free s1630 john) (free s1630 billy))
+    :effect (and (meeting-scheduled) (chosen-slot s1630))
+    :cost 450
   )
 )

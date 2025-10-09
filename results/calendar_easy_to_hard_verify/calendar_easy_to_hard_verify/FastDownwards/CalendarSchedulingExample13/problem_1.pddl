@@ -1,44 +1,28 @@
 (define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
+
   (:objects
     diane jack eugene patricia - agent
-    s_09_00 s_09_30 s_10_00 s_10_30 s_11_00 s_11_30 s_12_00 s_12_30
-    s_13_00 s_13_30 s_14_00 s_14_30 s_15_00 s_15_30 s_16_00 s_16_30 - slot
+    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8
+    slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - slot
   )
+
   (:init
-    (slot s_09_00) (slot s_09_30) (slot s_10_00) (slot s_10_30)
-    (slot s_11_00) (slot s_11_30) (slot s_12_00) (slot s_12_30)
-    (slot s_13_00) (slot s_13_30) (slot s_14_00) (slot s_14_30)
-    (slot s_15_00) (slot s_15_30) (slot s_16_00) (slot s_16_30)
+    (free diane slot1) (free diane slot3) (free diane slot4) (free diane slot5)
+    (free diane slot6) (free diane slot7) (free diane slot8) (free diane slot9)
+    (free diane slot10) (free diane slot11) (free diane slot13) (free diane slot14)
+    (free diane slot15) (free diane slot16)
 
-    (free diane s_09_00)
-    (free diane s_10_00) (free diane s_10_30)
-    (free diane s_11_00) (free diane s_11_30)
-    (free diane s_12_00) (free diane s_12_30)
-    (free diane s_13_00) (free diane s_13_30)
-    (free diane s_14_00)
-    (free diane s_15_00) (free diane s_15_30)
-    (free diane s_16_00) (free diane s_16_30)
+    (free jack slot1) (free jack slot2) (free jack slot3) (free jack slot4)
+    (free jack slot5) (free jack slot6) (free jack slot7) (free jack slot8)
+    (free jack slot9) (free jack slot11) (free jack slot13) (free jack slot14)
+    (free jack slot15) (free jack slot16)
 
-    (free jack s_09_00) (free jack s_09_30)
-    (free jack s_10_00) (free jack s_10_30)
-    (free jack s_11_00) (free jack s_11_30)
-    (free jack s_12_00) (free jack s_12_30)
-    (free jack s_13_00)
-    (free jack s_14_00)
-    (free jack s_15_00) (free jack s_15_30)
-    (free jack s_16_00) (free jack s_16_30)
+    (free eugene slot3) (free eugene slot6) (free eugene slot12) (free eugene slot16)
 
-    (free eugene s_10_00)
-    (free eugene s_11_30)
-    (free eugene s_14_30)
-    (free eugene s_16_30)
-
-    (free patricia s_09_00)
-    (free patricia s_10_30)
-    (free patricia s_12_00)
-    (free patricia s_14_00) (free patricia s_14_30)
-    (free patricia s_16_30)
+    (free patricia slot1) (free patricia slot4) (free patricia slot7)
+    (free patricia slot11) (free patricia slot12) (free patricia slot16)
   )
-  (:goal (scheduled))
+
+  (:goal (meeting-scheduled slot16))
 )

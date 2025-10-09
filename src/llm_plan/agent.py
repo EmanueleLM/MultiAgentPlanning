@@ -102,8 +102,8 @@ class AgentHallucinations(Agent):
             specification. Preserve valid constructs, repair or remove unsupported ones, and keep the
             syntax compliant with classical PDDL. Always encode stated busy intervals and preferences
             (e.g., "avoid", "would rather not", "earliest") as hard constraints in the resulting PDDL.
-            Limit the :requirements list to those supported by Fast Downward (:typing, :negative-preconditions,
-            and :action-costs when needed); never introduce :fluents, axioms, conditional effects, or durative
+            Limit the :requirements list to those supported by Fast Downward (:typing, :negative-preconditions);
+            never introduce :fluents, axioms, conditional effects, or durative
             constructs.
             """
         )
@@ -287,8 +287,7 @@ class AgentDeepThinkConstraints(Agent):
             Focus on whether each agent's constraints are correctly captured as PDDL formulae, especially
             agents' availability, (e.g., meeting durations or robot schedules), and any natural-language preferences that must be enforced.
             Ensure time durations sum to the required actions length, highlight irreconcilable demands, and verify
-            that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions,
-            :action-costs).
+            that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions).
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -445,7 +444,6 @@ class AgentFastDownwardsAdapter(Agent):
         - It pre-computes arithmetic constraints as predicates in the problem.
         - It discretizes temporal/duration effects into sequences of instantaneous actions.
         - It uses symbolic ordering instead of numeric comparisons.
-        - It encodes optimization via :action-costs only.
         - It keeps types, equality, and STRIPS/ADL features.
         
         *This agent should only be used if the Fast Downwards solver is used, not any other!*
@@ -465,8 +463,8 @@ class AgentFastDownwardsAdapter(Agent):
             Convert numeric, temporal, or durative features into classical STRIPS/ADL-style constructs so the
             solver can operate on the domain while preserving as much of the original semantics as possible.
             Never relax agents' availability, duration requirements, or stated preferences when adapting.
-            Restrict the :requirements list to features supported by Fast Downward (:typing, :negative-preconditions,
-            :action-costs); strip out :fluents, axioms, conditional effects, or durative constructs entirely.
+            Restrict the :requirements list to features supported by Fast Downward (:typing, :negative-preconditions);
+            strip out :fluents, axioms, conditional effects, or durative constructs entirely.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -484,7 +482,6 @@ class AgentFastDownwardsAdapter(Agent):
             - Pre-compute arithmetic constraints as predicates in the problem.
             - Discretize temporal/duration effects into sequences of instantaneous actions.
             - Use symbolic ordering instead of numeric comparisons.
-            - Encode optimization via :action-costs only.
             - Keep types, equality, and STRIPS/ADL features.
             - Remove unsupported requirements such as :fluents, axioms, or conditional effects; ensure only direct connections mentioned in the source specification remain.
             
@@ -544,7 +541,7 @@ class AgentSyntaxPDDL(Agent):
             Analyze the provided plan against the human specification and identify every inconsistency with the
             PDDL syntax expected by the *{target_solver}* planner. Confirm that availability and preference
             constraints remain encoded correctly after your edits and that the :requirements list only contains
-            features supported by Fast Downward (:typing, :negative-preconditions, :action-costs).
+            features supported by Fast Downward (:typing, :negative-preconditions).
             """
         )
         self.prompt = inspect.cleandoc("""\

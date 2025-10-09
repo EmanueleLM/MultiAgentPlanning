@@ -1,52 +1,47 @@
-(define (problem schedule-meeting-mon)
-  (:domain schedule-meeting)
+(define (problem schedule-meeting-monday)
+  (:domain meeting-scheduling)
 
   (:objects
     diane kelly deborah - person
-    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
   )
 
   (:init
-    ;; Diane's free slots (within 09:00-17:00, excluding her busy intervals 09:00-09:30, 12:00-12:30, 14:30-15:30)
-    (free diane s0930)
-    (free diane s1000)
-    (free diane s1030)
-    (free diane s1100)
-    (free diane s1130)
-    (free diane s1230)
-    (free diane s1300)
-    (free diane s1330)
-    (free diane s1400)
-    (free diane s1530)
-    (free diane s1600)
-    (free diane s1630)
+    ;; Diane available times (within 09:00-17:00, excluding her busy intervals 09:00-09:30, 12:00-12:30, 14:30-15:30)
+    (available diane t0930)
+    (available diane t1000)
+    (available diane t1030)
+    (available diane t1100)
+    (available diane t1130)
+    (available diane t1230)
+    (available diane t1300)
+    (available diane t1330)
+    (available diane t1400)
+    (available diane t1530)
+    (available diane t1600)
+    (available diane t1630)
 
-    ;; Kelly's free slots (within 09:00-17:00, excluding 09:30-10:00 and 10:30-11:00)
-    (free kelly s0900)
-    (free kelly s1000)
-    (free kelly s1100)
-    (free kelly s1130)
-    (free kelly s1200)
-    (free kelly s1230)
-    (free kelly s1300)
-    (free kelly s1330)
-    (free kelly s1400)
-    (free kelly s1430)
-    (free kelly s1500)
-    (free kelly s1530)
-    (free kelly s1600)
-    (free kelly s1630)
+    ;; Kelly available times (excluding her busy intervals 09:30-10:00, 10:30-11:00)
+    (available kelly t0900)
+    (available kelly t1000)
+    (available kelly t1100)
+    (available kelly t1130)
+    (available kelly t1200)
+    (available kelly t1230)
+    (available kelly t1300)
+    (available kelly t1330)
+    (available kelly t1400)
+    (available kelly t1430)
+    (available kelly t1500)
+    (available kelly t1530)
+    (available kelly t1600)
+    (available kelly t1630)
 
-    ;; Deborah's free slots (within 09:00-17:00, excluding 09:00-09:30, 10:00-14:00, 14:30-17:00)
-    (free deborah s0930)
-    (free deborah s1400)
-
-    ;; no meeting scheduled initially
-    ;; (scheduled) is intentionally absent
+    ;; Deborah available times (excluding her busy intervals 09:00-09:30, 10:00-14:00, 14:30-17:00)
+    (available deborah t0930)
+    (available deborah t1400)
   )
 
-  ;; Goal: schedule the meeting. Per the instruction to prefer the earliest feasible slot,
-  ;; the earliest slot that is feasible for all three participants is 14:00.
-  ;; The goal thus requests the meeting to be scheduled at s1400.
-  (:goal (and (scheduled) (meeting-at s1400)))
+  ;; Goal: meeting scheduled (the planner will bind a time that satisfies all availability constraints)
+  (:goal (scheduled))
 )

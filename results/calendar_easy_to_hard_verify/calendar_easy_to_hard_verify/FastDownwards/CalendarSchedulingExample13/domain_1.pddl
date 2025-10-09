@@ -1,24 +1,20 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing :negative-preconditions :action-costs)
+  (:requirements :typing)
   (:types agent slot)
+
   (:predicates
-    (slot ?s - slot)
     (free ?a - agent ?s - slot)
-    (scheduled)
-    (meeting-at ?s - slot)
+    (meeting-scheduled ?s - slot)
   )
-  (:action schedule
-    :parameters (?s - slot)
+
+  (:action schedule-meeting
+    :parameters (?s - slot ?a1 - agent ?a2 - agent ?a3 - agent ?a4 - agent)
     :precondition (and
-      (not (scheduled))
-      (free diane ?s)
-      (free jack ?s)
-      (free eugene ?s)
-      (free patricia ?s)
+      (free ?a1 ?s)
+      (free ?a2 ?s)
+      (free ?a3 ?s)
+      (free ?a4 ?s)
     )
-    :effect (and
-      (scheduled)
-      (meeting-at ?s)
-    )
+    :effect (meeting-scheduled ?s)
   )
 )

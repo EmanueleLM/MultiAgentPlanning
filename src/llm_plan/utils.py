@@ -120,11 +120,11 @@ def run_pddl_fast_downwards_and_uVal(
                 domain_path,
                 problem_path,
             ]
+            
             subprocess.run(
                 command,
                 stdout=logfile,
-                stderr=subprocess.STDOUT,
-                timeout=optimize
+                stderr=subprocess.STDOUT
             )
         # Optimization for int(optimize) seconds
         else:

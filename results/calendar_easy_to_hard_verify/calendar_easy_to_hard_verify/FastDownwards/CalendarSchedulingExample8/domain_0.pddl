@@ -1,142 +1,142 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing)
-  (:types agent slot)
-
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
   (:predicates
-    (slot ?s - slot)
-    (free ?a - agent ?s - slot)
-    (scheduled ?s - slot)
+    (free ?p - person ?s - slot)
     (meeting-scheduled)
+    (scheduled ?s - slot)
   )
 
-  ; Actions to schedule the meeting at a specific 30-minute slot.
-  ; Each action requires that the slot is free for all participants.
-  (:action schedule-s0900
-    :parameters ()
-    :precondition (and (slot s0900)
-                       (free adam s0900)
-                       (free jerry s0900)
-                       (free matthew s0900))
-    :effect (and (scheduled s0900) (meeting-scheduled))
-  )
-  (:action schedule-s0930
-    :parameters ()
-    :precondition (and (slot s0930)
-                       (free adam s0930)
-                       (free jerry s0930)
-                       (free matthew s0930))
-    :effect (and (scheduled s0930) (meeting-scheduled))
-  )
-  (:action schedule-s1000
-    :parameters ()
-    :precondition (and (slot s1000)
-                       (free adam s1000)
-                       (free jerry s1000)
-                       (free matthew s1000))
-    :effect (and (scheduled s1000) (meeting-scheduled))
-  )
-  (:action schedule-s1030
-    :parameters ()
-    :precondition (and (slot s1030)
-                       (free adam s1030)
-                       (free jerry s1030)
-                       (free matthew s1030))
-    :effect (and (scheduled s1030) (meeting-scheduled))
-  )
-  (:action schedule-s1100
-    :parameters ()
-    :precondition (and (slot s1100)
-                       (free adam s1100)
-                       (free jerry s1100)
-                       (free matthew s1100))
-    :effect (and (scheduled s1100) (meeting-scheduled))
-  )
-  (:action schedule-s1130
-    :parameters ()
-    :precondition (and (slot s1130)
-                       (free adam s1130)
-                       (free jerry s1130)
-                       (free matthew s1130))
-    :effect (and (scheduled s1130) (meeting-scheduled))
-  )
-  (:action schedule-s1200
-    :parameters ()
-    :precondition (and (slot s1200)
-                       (free adam s1200)
-                       (free jerry s1200)
-                       (free matthew s1200))
-    :effect (and (scheduled s1200) (meeting-scheduled))
-  )
-  (:action schedule-s1230
-    :parameters ()
-    :precondition (and (slot s1230)
-                       (free adam s1230)
-                       (free jerry s1230)
-                       (free matthew s1230))
-    :effect (and (scheduled s1230) (meeting-scheduled))
-  )
-  (:action schedule-s1300
-    :parameters ()
-    :precondition (and (slot s1300)
-                       (free adam s1300)
-                       (free jerry s1300)
-                       (free matthew s1300))
-    :effect (and (scheduled s1300) (meeting-scheduled))
-  )
-  (:action schedule-s1330
-    :parameters ()
-    :precondition (and (slot s1330)
-                       (free adam s1330)
-                       (free jerry s1330)
-                       (free matthew s1330))
-    :effect (and (scheduled s1330) (meeting-scheduled))
-  )
-  (:action schedule-s1400
-    :parameters ()
-    :precondition (and (slot s1400)
-                       (free adam s1400)
-                       (free jerry s1400)
-                       (free matthew s1400))
-    :effect (and (scheduled s1400) (meeting-scheduled))
-  )
-  (:action schedule-s1430
-    :parameters ()
-    :precondition (and (slot s1430)
-                       (free adam s1430)
-                       (free jerry s1430)
-                       (free matthew s1430))
-    :effect (and (scheduled s1430) (meeting-scheduled))
-  )
-  (:action schedule-s1500
-    :parameters ()
-    :precondition (and (slot s1500)
-                       (free adam s1500)
-                       (free jerry s1500)
-                       (free matthew s1500))
-    :effect (and (scheduled s1500) (meeting-scheduled))
-  )
-  (:action schedule-s1530
-    :parameters ()
-    :precondition (and (slot s1530)
-                       (free adam s1530)
-                       (free jerry s1530)
-                       (free matthew s1530))
-    :effect (and (scheduled s1530) (meeting-scheduled))
-  )
-  (:action schedule-s1600
-    :parameters ()
-    :precondition (and (slot s1600)
-                       (free adam s1600)
-                       (free jerry s1600)
-                       (free matthew s1600))
-    :effect (and (scheduled s1600) (meeting-scheduled))
-  )
-  (:action schedule-s1630
-    :parameters ()
-    :precondition (and (slot s1630)
-                       (free adam s1630)
-                       (free jerry s1630)
-                       (free matthew s1630))
-    :effect (and (scheduled s1630) (meeting-scheduled))
-  )
+  ;; Actions: one action per discrete 30-minute slot.
+  ;; Each action requires that the slot is free for all participants
+  ;; and that no meeting has yet been scheduled. The effect marks
+  ;; the meeting as scheduled at that slot. A numeric cost is attached
+  ;; to prefer earlier slots (lower cost = earlier).
+  (:action schedule-slot1
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot1)
+                       (free jerry slot1)
+                       (free matthew slot1))
+    :effect (and (meeting-scheduled) (scheduled slot1))
+    :cost 1)
+
+  (:action schedule-slot2
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot2)
+                       (free jerry slot2)
+                       (free matthew slot2))
+    :effect (and (meeting-scheduled) (scheduled slot2))
+    :cost 2)
+
+  (:action schedule-slot3
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot3)
+                       (free jerry slot3)
+                       (free matthew slot3))
+    :effect (and (meeting-scheduled) (scheduled slot3))
+    :cost 3)
+
+  (:action schedule-slot4
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot4)
+                       (free jerry slot4)
+                       (free matthew slot4))
+    :effect (and (meeting-scheduled) (scheduled slot4))
+    :cost 4)
+
+  (:action schedule-slot5
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot5)
+                       (free jerry slot5)
+                       (free matthew slot5))
+    :effect (and (meeting-scheduled) (scheduled slot5))
+    :cost 5)
+
+  (:action schedule-slot6
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot6)
+                       (free jerry slot6)
+                       (free matthew slot6))
+    :effect (and (meeting-scheduled) (scheduled slot6))
+    :cost 6)
+
+  (:action schedule-slot7
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot7)
+                       (free jerry slot7)
+                       (free matthew slot7))
+    :effect (and (meeting-scheduled) (scheduled slot7))
+    :cost 7)
+
+  (:action schedule-slot8
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot8)
+                       (free jerry slot8)
+                       (free matthew slot8))
+    :effect (and (meeting-scheduled) (scheduled slot8))
+    :cost 8)
+
+  (:action schedule-slot9
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot9)
+                       (free jerry slot9)
+                       (free matthew slot9))
+    :effect (and (meeting-scheduled) (scheduled slot9))
+    :cost 9)
+
+  (:action schedule-slot10
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot10)
+                       (free jerry slot10)
+                       (free matthew slot10))
+    :effect (and (meeting-scheduled) (scheduled slot10))
+    :cost 10)
+
+  (:action schedule-slot11
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot11)
+                       (free jerry slot11)
+                       (free matthew slot11))
+    :effect (and (meeting-scheduled) (scheduled slot11))
+    :cost 11)
+
+  (:action schedule-slot12
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot12)
+                       (free jerry slot12)
+                       (free matthew slot12))
+    :effect (and (meeting-scheduled) (scheduled slot12))
+    :cost 12)
+
+  (:action schedule-slot13
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot13)
+                       (free jerry slot13)
+                       (free matthew slot13))
+    :effect (and (meeting-scheduled) (scheduled slot13))
+    :cost 13)
+
+  (:action schedule-slot14
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot14)
+                       (free jerry slot14)
+                       (free matthew slot14))
+    :effect (and (meeting-scheduled) (scheduled slot14))
+    :cost 14)
+
+  (:action schedule-slot15
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot15)
+                       (free jerry slot15)
+                       (free matthew slot15))
+    :effect (and (meeting-scheduled) (scheduled slot15))
+    :cost 15)
+
+  (:action schedule-slot16
+    :precondition (and (not (meeting-scheduled))
+                       (free adam slot16)
+                       (free jerry slot16)
+                       (free matthew slot16))
+    :effect (and (meeting-scheduled) (scheduled slot16))
+    :cost 16)
 )

@@ -1,0 +1,25 @@
+(define (domain calendar-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person time)
+  (:predicates
+    (slot_free ?p - person ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (meeting_scheduled)
+    (meeting_at ?t - time)
+  )
+  (:action schedule
+    :parameters (?t - time ?t2 - time ?p1 - person ?p2 - person ?p3 - person ?p4 - person)
+    :precondition (and
+      (not (meeting_scheduled))
+      (next ?t ?t2)
+      (slot_free ?p1 ?t) (slot_free ?p1 ?t2)
+      (slot_free ?p2 ?t) (slot_free ?p2 ?t2)
+      (slot_free ?p3 ?t) (slot_free ?p3 ?t2)
+      (slot_free ?p4 ?t) (slot_free ?p4 ?t2)
+    )
+    :effect (and
+      (meeting_scheduled)
+      (meeting_at ?t)
+    )
+  )
+)

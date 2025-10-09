@@ -1,38 +1,69 @@
-(define (problem schedule-meeting-monday)
+(define (problem schedule-30min-monday)
   (:domain meeting-scheduling)
-
   (:objects
-    adam jerry matthew - agent
-    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230
-    s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    adam jerry matthew - person
+    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8
+    slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - slot
   )
+
+  ;; Initial state: only free facts are asserted. Busy slots (from participants'
+  ;; calendars) are omitted, interpreted as unavailable.
+  ;; Time slots mapping (30-min granularity between 09:00-17:00):
+  ;; slot1  = 09:00-09:30
+  ;; slot2  = 09:30-10:00
+  ;; slot3  = 10:00-10:30
+  ;; slot4  = 10:30-11:00
+  ;; slot5  = 11:00-11:30
+  ;; slot6  = 11:30-12:00
+  ;; slot7  = 12:00-12:30
+  ;; slot8  = 12:30-13:00
+  ;; slot9  = 13:00-13:30
+  ;; slot10 = 13:30-14:00
+  ;; slot11 = 14:00-14:30
+  ;; slot12 = 14:30-15:00
+  ;; slot13 = 15:00-15:30
+  ;; slot14 = 15:30-16:00
+  ;; slot15 = 16:00-16:30
+  ;; slot16 = 16:30-17:00
 
   (:init
-    ; All 30-minute slots within work hours 09:00-17:00 (Monday)
-    (slot s0900) (slot s0930) (slot s1000) (slot s1030)
-    (slot s1100) (slot s1130) (slot s1200) (slot s1230)
-    (slot s1300) (slot s1330) (slot s1400) (slot s1430)
-    (slot s1500) (slot s1530) (slot s1600) (slot s1630)
+    ;; adam's free slots (adam busy: slot3, slot8, slot10, slot11)
+    (free adam slot1)
+    (free adam slot2)
+    (free adam slot4)
+    (free adam slot5)
+    (free adam slot6)
+    (free adam slot7)
+    (free adam slot9)
+    (free adam slot12)
+    (free adam slot13)
+    (free adam slot14)
+    (free adam slot15)
+    (free adam slot16)
 
-    ; Participant availabilities (free slots), derived from provided busy intervals.
-    ; ADAM busy: 10:00-10:30 (s1000), 12:30-13:00 (s1230), 13:30-14:30 (s1330,s1400)
-    ; Therefore ADAM free slots:
-    (free adam s0900) (free adam s0930) (free adam s1030) (free adam s1100)
-    (free adam s1130) (free adam s1200) (free adam s1300) (free adam s1430)
-    (free adam s1500) (free adam s1530) (free adam s1600) (free adam s1630)
+    ;; jerry's free slots (jerry busy: slot1, slot7, slot13, slot14)
+    (free jerry slot2)
+    (free jerry slot3)
+    (free jerry slot4)
+    (free jerry slot5)
+    (free jerry slot6)
+    (free jerry slot8)
+    (free jerry slot9)
+    (free jerry slot10)
+    (free jerry slot11)
+    (free jerry slot12)
+    (free jerry slot15)
+    (free jerry slot16)
 
-    ; JERRY busy: 09:00-09:30 (s0900), 12:00-12:30 (s1200), 15:00-16:00 (s1500,s1530)
-    ; Therefore JERRY free slots:
-    (free jerry s0930) (free jerry s1000) (free jerry s1030) (free jerry s1100)
-    (free jerry s1130) (free jerry s1230) (free jerry s1300) (free jerry s1330)
-    (free jerry s1400) (free jerry s1430) (free jerry s1600) (free jerry s1630)
-
-    ; MATTHEW busy: 09:30-11:00 (s0930,s1000,s1030), 11:30-12:30 (s1130,s1200),
-    ; 13:00-14:00 (s1300,s1330), 14:30-17:00 (s1430,s1500,s1530,s1600,s1630)
-    ; Therefore MATTHEW free slots:
-    (free matthew s0900) (free matthew s1100) (free matthew s1230) (free matthew s1400)
+    ;; matthew's free slots (matthew busy: slot2,slot3,slot4,slot6,slot7,slot9,slot10,slot12,slot13,slot14,slot15,slot16)
+    (free matthew slot1)
+    (free matthew slot5)
+    (free matthew slot8)
+    (free matthew slot11)
   )
 
-  ; Goal: schedule one meeting slot that is free for all participants.
+  ;; Goal: schedule one meeting slot that is free for all participants.
+  ;; Metric: prefer lower-cost (earlier) slots. Fast Downward will minimize total-cost.
   (:goal (meeting-scheduled))
+  (:metric minimize (total-cost))
 )

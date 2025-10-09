@@ -1,55 +1,36 @@
 (define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
   (:objects
-    michelle steven jerry - person
-    slot-09_00 slot-09_30 slot-10_00 slot-10_30
-    slot-11_00 slot-11_30 slot-12_00 slot-12_30
-    slot-13_00 slot-13_30 slot-14_00 slot-14_30
-    slot-15_00 slot-15_30 slot-16_00 slot-16_30 - slot
+    michelle steven jerry
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630
   )
+
   (:init
-    ;; sequential half-hour slots from 09:00 to 16:30
-    (next slot-09_00 slot-09_30)
-    (next slot-09_30 slot-10_00)
-    (next slot-10_00 slot-10_30)
-    (next slot-10_30 slot-11_00)
-    (next slot-11_00 slot-11_30)
-    (next slot-11_30 slot-12_00)
-    (next slot-12_00 slot-12_30)
-    (next slot-12_30 slot-13_00)
-    (next slot-13_00 slot-13_30)
-    (next slot-13_30 slot-14_00)
-    (next slot-14_00 slot-14_30)
-    (next slot-14_30 slot-15_00)
-    (next slot-15_00 slot-15_30)
-    (next slot-15_30 slot-16_00)
-    (next slot-16_00 slot-16_30)
+    ;; consecutive half-hour slots (30-min resolution)
+    (next t0900 t0930) (next t0930 t1000) (next t1000 t1030)
+    (next t1030 t1100) (next t1100 t1130) (next t1130 t1200)
+    (next t1200 t1230) (next t1230 t1300) (next t1300 t1330)
+    (next t1330 t1400) (next t1400 t1430) (next t1430 t1500)
+    (next t1500 t1530) (next t1530 t1600) (next t1600 t1630)
 
-    ;; Busy (unavailable) half-hour slots derived from participant inputs (treated as hard constraints)
-    ;; Michelle busy Monday 11:00-12:00 => slots 11:00-11:30 and 11:30-12:00
-    (busy michelle slot-11_00)
-    (busy michelle slot-11_30)
+    ;; Michelle's free half-hour slots (09:00-11:00, 12:00-17:00)
+    (free michelle t0900) (free michelle t0930) (free michelle t1000) (free michelle t1030)
+    (free michelle t1200) (free michelle t1230) (free michelle t1300) (free michelle t1330)
+    (free michelle t1400) (free michelle t1430) (free michelle t1500) (free michelle t1530)
+    (free michelle t1600) (free michelle t1630)
 
-    ;; Steven busy: 09:00-09:30, 11:30-12:00, 13:30-14:00, 15:30-16:00
-    (busy steven slot-09_00)
-    (busy steven slot-11_30)
-    (busy steven slot-13_30)
-    (busy steven slot-15_30)
+    ;; Steven's free half-hour slots (09:30-11:30, 12:00-13:30, 14:00-15:30, 16:00-17:00)
+    (free steven t0930) (free steven t1000) (free steven t1030) (free steven t1100)
+    (free steven t1200) (free steven t1230) (free steven t1300)
+    (free steven t1400) (free steven t1430) (free steven t1500)
+    (free steven t1600) (free steven t1630)
 
-    ;; Jerry busy: 09:00-09:30, 10:00-11:00, 11:30-12:30, 13:00-14:30, 15:30-16:00, 16:30-17:00
-    ;; -> slots: 09:00; 10:00,10:30; 11:30,12:00; 13:00,13:30,14:00; 15:30; 16:30
-    (busy jerry slot-09_00)
-    (busy jerry slot-10_00)
-    (busy jerry slot-10_30)
-    (busy jerry slot-11_30)
-    (busy jerry slot-12_00)
-    (busy jerry slot-13_00)
-    (busy jerry slot-13_30)
-    (busy jerry slot-14_00)
-    (busy jerry slot-15_30)
-    (busy jerry slot-16_30)
+    ;; Jerry's free half-hour slots (09:30-10:00, 11:00-11:30, 12:30-13:00, 14:30-15:30, 16:00-16:30)
+    (free jerry t0930) (free jerry t1100) (free jerry t1230)
+    (free jerry t1430) (free jerry t1500) (free jerry t1600)
   )
-  ;; Goal explicitly requires the meeting to be scheduled at the chosen earliest feasible start
-  ;; (14:30-15:30, which corresponds to half-hour slots slot-14_30 and slot-15_00)
-  (:goal (and (scheduled) (meeting-start slot-14_30)))
+
+  ;; Explicit goal: schedule the one-hour meeting starting at 14:30 (t1430)
+  (:goal (scheduled t1430))
 )

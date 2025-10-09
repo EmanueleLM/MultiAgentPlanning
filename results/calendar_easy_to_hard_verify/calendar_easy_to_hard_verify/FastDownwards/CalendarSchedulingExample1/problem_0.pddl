@@ -1,97 +1,55 @@
-(define (problem schedule-meeting)
+(define (problem schedule-monday)
   (:domain meeting-scheduling)
 
   (:objects
-    raymond billy donald - person
-    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 - slot
+    raymond billy donald - agent
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - timeslot
   )
-
-  ;; Slots:
-  ;; s1  = 09:00-09:30
-  ;; s2  = 09:30-10:00
-  ;; s3  = 10:00-10:30
-  ;; s4  = 10:30-11:00
-  ;; s5  = 11:00-11:30
-  ;; s6  = 11:30-12:00
-  ;; s7  = 12:00-12:30
-  ;; s8  = 12:30-13:00
-  ;; s9  = 13:00-13:30
-  ;; s10 = 13:30-14:00
-  ;; s11 = 14:00-14:30
-  ;; s12 = 14:30-15:00
-  ;; s13 = 15:00-15:30
-  ;; s14 = 15:30-16:00
-  ;; s15 = 16:00-16:30
-  ;; s16 = 16:30-17:00
 
   (:init
-    ;; Interpret every busy/blocked interval as unavailable by omission.
-    ;; Raymond busy: s1, s6, s9, s13  (those slots are NOT listed as available for raymond)
-    ;; Billy busy:   s3, s7, s8, s16  (and preference -> hard constraint: avoid after 15:00 => disallow s13..s16)
-    ;; Donald busy:  s1, s3, s4, s7, s8, s11, s15, s16
+    ;; Raymond: busy at 09:00, 11:30, 13:00, 15:00 -> those slots are NOT declared free.
+    ;; Mark Raymond free at all other work slots.
+    (free raymond t0930)
+    (free raymond t1000)
+    (free raymond t1030)
+    (free raymond t1100)
+    (free raymond t1200)
+    (free raymond t1230)
+    (free raymond t1330)
+    (free raymond t1400)
+    (free raymond t1430)
+    (free raymond t1530)
+    (free raymond t1600)
+    (free raymond t1630)
 
-    ;; s1 = 09:00-09:30
-    (available billy s1)
+    ;; Billy: busy at 10:00, 12:00-13:00 (t1200,t1230), 16:30.
+    ;; Preference "avoid meetings after 15:00" treated as hard constraint -> disallow t1530,t1600,t1630.
+    ;; Mark Billy free at remaining allowed slots (within work hours and respecting preference).
+    (free billy t0900)
+    (free billy t0930)
+    (free billy t1030)
+    (free billy t1100)
+    (free billy t1130)
+    (free billy t1300)
+    (free billy t1330)
+    (free billy t1400)
+    (free billy t1430)
+    (free billy t1500)
 
-    ;; s2 = 09:30-10:00  <-- earliest feasible slot where all three are available
-    (available raymond s2)
-    (available billy s2)
-    (available donald s2)
-
-    ;; s3 = 10:00-10:30
-    (available raymond s3)
-
-    ;; s4 = 10:30-11:00
-    (available raymond s4)
-    (available billy s4)
-
-    ;; s5 = 11:00-11:30
-    (available raymond s5)
-    (available billy s5)
-    (available donald s5)
-
-    ;; s6 = 11:30-12:00
-    (available billy s6)
-    (available donald s6)
-
-    ;; s7 = 12:00-12:30
-    (available raymond s7)
-
-    ;; s8 = 12:30-13:00
-    (available raymond s8)
-
-    ;; s9 = 13:00-13:30
-    (available billy s9)
-    (available donald s9)
-
-    ;; s10 = 13:30-14:00
-    (available raymond s10)
-    (available billy s10)
-    (available donald s10)
-
-    ;; s11 = 14:00-14:30
-    (available raymond s11)
-    (available billy s11)
-
-    ;; s12 = 14:30-15:00
-    (available raymond s12)
-    (available billy s12)
-    (available donald s12)
-
-    ;; s13 = 15:00-15:30  (Raymond busy; Billy forbids after 15:00 -> not available; Donald available)
-    (available donald s13)
-
-    ;; s14 = 15:30-16:00  (Billy forbids after 15:00 -> not available)
-    (available raymond s14)
-    (available donald s14)
-
-    ;; s15 = 16:00-16:30  (Donald busy; Billy forbids after 15:00)
-    (available raymond s15)
-
-    ;; s16 = 16:30-17:00  (Billy busy; Donald busy; Billy forbids after 15:00)
-    (available raymond s16)
+    ;; Donald: busy at 09:00, 10:00-11:00 (t1000,t1030), 12:00-13:00 (t1200,t1230), 14:00, 16:00-17:00 (t1600,t1630).
+    ;; Mark Donald free at remaining work slots.
+    (free donald t0930)
+    (free donald t1100)
+    (free donald t1130)
+    (free donald t1300)
+    (free donald t1330)
+    (free donald t1430)
+    (free donald t1500)
+    (free donald t1530)
   )
 
-  ;; Goal: schedule the meeting at the earliest feasible slot found (s2 = 09:30-10:00)
-  (:goal (scheduled s2))
+  ;; Goal: schedule the 30-minute meeting at the earliest feasible slot that satisfies all constraints.
+  ;; Based on the inputs and hard constraints, the earliest feasible slot is 09:30 (t0930).
+  (:goal (meeting-scheduled t0930))
 )

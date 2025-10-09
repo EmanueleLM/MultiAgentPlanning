@@ -1,0 +1,22 @@
+(define (domain CalendarSchedulingExample48)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (scheduled)
+    (chosen ?s - slot)
+  )
+  (:action schedule
+    :parameters (?noah ?teresa ?bradley ?philip ?joyce ?ryan ?aaron - person ?s - slot)
+    :precondition (and
+      (available ?noah ?s)
+      (available ?teresa ?s)
+      (available ?bradley ?s)
+      (available ?philip ?s)
+      (available ?joyce ?s)
+      (available ?ryan ?s)
+      (available ?aaron ?s)
+    )
+    :effect (and (scheduled) (chosen ?s))
+  )
+)

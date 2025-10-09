@@ -1,29 +1,22 @@
 (define (domain calendar-scheduling)
   (:requirements :typing :negative-preconditions :action-costs)
   (:types person time)
-
   (:constants olivia anna virginia paul - person)
-
   (:predicates
-    (next ?t ?t2 - time)
-    (busy ?p - person ?t - time)
-    (selected ?t - time)
-    (chosen)
+    (free ?p - person ?t - time)
+    (meeting-scheduled)
   )
-
-  (:action select
-    :parameters (?t ?t2 - time)
+  (:action schedule
+    :parameters (?t - time)
     :precondition (and
-      (next ?t ?t2)
-      (not (chosen))
-      (not (busy olivia ?t)) (not (busy olivia ?t2))
-      (not (busy anna ?t)) (not (busy anna ?t2))
-      (not (busy virginia ?t)) (not (busy virginia ?t2))
-      (not (busy paul ?t)) (not (busy paul ?t2))
+      (not (meeting-scheduled))
+      (free olivia ?t)
+      (free anna ?t)
+      (free virginia ?t)
+      (free paul ?t)
     )
     :effect (and
-      (selected ?t)
-      (chosen)
+      (meeting-scheduled)
     )
   )
 )

@@ -1,27 +1,29 @@
 (define (problem schedule-meeting)
   (:domain meeting-scheduling)
   (:objects
-    donna john billy - agent
     s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    donna john billy - agent
   )
   (:init
-    ;; Donna's free slots (busy: 14:00-14:30 s1400, 15:30-16:00 s1530)
-    (free donna s0900) (free donna s0930) (free donna s1000) (free donna s1030)
-    (free donna s1100) (free donna s1130) (free donna s1200) (free donna s1230)
-    (free donna s1300) (free donna s1330) (free donna s1430) (free donna s1500)
-    (free donna s1600) (free donna s1630)
+    ;; Donna free slots (busy: 14:00, 15:30)
+    (free s0900 donna) (free s0930 donna) (free s1000 donna) (free s1030 donna)
+    (free s1100 donna) (free s1130 donna) (free s1200 donna) (free s1230 donna)
+    (free s1300 donna) (free s1330 donna) ;; 14:00 busy -> s1400 NOT free for donna
+    (free s1430 donna) (free s1500 donna) ;; 15:30 busy -> s1530 NOT free for donna
+    (free s1600 donna) (free s1630 donna)
 
-    ;; John's free slots (busy: 11:00-11:30 s1100, 16:30-17:00 s1630)
-    (free john s0900) (free john s0930) (free john s1000) (free john s1030)
-    (free john s1130) (free john s1200) (free john s1230) (free john s1300)
-    (free john s1330) (free john s1400) (free john s1430) (free john s1500)
-    (free john s1530) (free john s1600)
+    ;; John free slots (busy: 11:00, 16:30)
+    (free s0900 john) (free s0930 john) (free s1000 john) (free s1030 john)
+    ;; s1100 not free for john
+    (free s1130 john) (free s1200 john) (free s1230 john)
+    (free s1300 john) (free s1330 john) (free s1400 john) (free s1430 john)
+    (free s1500 john) (free s1530 john) (free s1600 john)
+    ;; s1630 not free for john
 
-    ;; Billy's free slots (busy: 09:00-10:00 s0900,s0930; 10:30-14:00 s1030,s1100,s1130,s1200,s1230,s1300,s1330; 14:30-17:00 s1430,s1500,s1530,s1600,s1630)
-    (free billy s1000) (free billy s1400)
+    ;; Billy free slots (busy: 09:00-10:00, 10:30-14:00, 14:30-17:00)
+    ;; free only at 10:00 and 14:00
+    (free s1000 billy) (free s1400 billy)
   )
-
   (:goal (meeting-scheduled))
-
   (:metric minimize (total-cost))
 )

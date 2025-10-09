@@ -248,7 +248,7 @@ class Planner:
             "Flag contradictory or over-subscribed action requirements instead of silently shortening them."
         )
         lines.append(
-            "When modelling Fast Downward, only rely on requirements supported by classical STRIPS (:typing, :negative-preconditions, :action-costs). Never introduce :fluents, durative actions, axioms, or conditional effects."
+            "When modelling Fast Downward, only rely on requirements supported by classical STRIPS (:typing, :negative-preconditions). Never introduce :fluents, durative actions, axioms, or conditional effects."
         )
         lines.append(
             "Only include actions that correspond to direct actions/connections explicitly listed in the specification; do not fabricate multi-hop or implicit routes/actions."

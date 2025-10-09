@@ -1,37 +1,66 @@
 (define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
   (:objects
-    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
-    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
+    arthur michael samantha - participant
+    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8 slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - slot
   )
+
   (:init
-    ;; consecutive half-hour pairs (start -> next)
-    (next t0900 t0930) (next t0930 t1000) (next t1000 t1030) (next t1030 t1100)
-    (next t1100 t1130) (next t1130 t1200) (next t1200 t1230) (next t1230 t1300)
-    (next t1300 t1330) (next t1330 t1400) (next t1400 t1430) (next t1430 t1500)
-    (next t1500 t1530) (next t1530 t1600) (next t1600 t1630)
+    ;; adjacency (consecutive 30-minute slots)
+    (next slot1 slot2)
+    (next slot2 slot3)
+    (next slot3 slot4)
+    (next slot4 slot5)
+    (next slot5 slot6)
+    (next slot6 slot7)
+    (next slot7 slot8)
+    (next slot8 slot9)
+    (next slot9 slot10)
+    (next slot10 slot11)
+    (next slot11 slot12)
+    (next slot12 slot13)
+    (next slot13 slot14)
+    (next slot14 slot15)
+    (next slot15 slot16)
 
-    ;; free slots for Arthur (all slots between 09:00 and 16:30 except busy ones)
-    ;; Arthur busy: 09:00, 10:30, 11:00, 11:30, 16:00, 16:30
-    (free-arthur t0930) (free-arthur t1000)
-    (free-arthur t1200) (free-arthur t1230)
-    (free-arthur t1300) (free-arthur t1330)
-    (free-arthur t1400) (free-arthur t1430)
-    (free-arthur t1500) (free-arthur t1530)
+    ;; Initial availability = slots not in each participant's busy intervals
+    ;; Arthur busy: slot1, slot4, slot5, slot6, slot15, slot16 -> therefore free facts exclude those
+    (free-arthur slot2)
+    (free-arthur slot3)
+    (free-arthur slot7)
+    (free-arthur slot8)
+    (free-arthur slot9)
+    (free-arthur slot10)
+    (free-arthur slot11)
+    (free-arthur slot12)
+    (free-arthur slot13)
+    (free-arthur slot14)
 
-    ;; free slots for Michael
-    ;; Michael busy: 13:00, 14:00
-    (free-michael t0900) (free-michael t0930) (free-michael t1000) (free-michael t1030)
-    (free-michael t1100) (free-michael t1130) (free-michael t1200) (free-michael t1230)
-    (free-michael t1330) (free-michael t1430) (free-michael t1500) (free-michael t1530)
-    (free-michael t1600) (free-michael t1630)
+    ;; Michael busy: slot9, slot11 -> free all other slots
+    (free-michael slot1)
+    (free-michael slot2)
+    (free-michael slot3)
+    (free-michael slot4)
+    (free-michael slot5)
+    (free-michael slot6)
+    (free-michael slot7)
+    (free-michael slot8)
+    (free-michael slot10)
+    (free-michael slot12)
+    (free-michael slot13)
+    (free-michael slot14)
+    (free-michael slot15)
+    (free-michael slot16)
 
-    ;; free slots for Samantha
-    ;; Samantha busy: 10:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:30, 16:00, 16:30
-    (free-samantha t0900) (free-samantha t0930) (free-samantha t1000)
-    (free-samantha t1100) (free-samantha t1130)
-    (free-samantha t1500)
+    ;; Samantha busy: slot4, slot7, slot8, slot9, slot10, slot11, slot12, slot14, slot15, slot16
+    ;; Thus Samantha free at 1,2,3,5,6,13
+    (free-samantha slot1)
+    (free-samantha slot2)
+    (free-samantha slot3)
+    (free-samantha slot5)
+    (free-samantha slot6)
+    (free-samantha slot13)
   )
-  ;; Goal: schedule the meeting at the earliest feasible start (09:30 -> 10:30)
-  (:goal (scheduled t0930 t1000))
+
+  (:goal (meeting-scheduled))
 )

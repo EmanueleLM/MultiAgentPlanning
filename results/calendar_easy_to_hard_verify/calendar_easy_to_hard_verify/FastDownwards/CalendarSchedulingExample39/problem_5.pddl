@@ -1,0 +1,27 @@
+(define (problem meeting-monday)
+  (:domain schedule-meeting)
+  (:objects
+    nicholas emma catherine steven adam lori - person
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 - time
+  )
+  (:init
+    (free nicholas t0) (free nicholas t1) (free nicholas t2) (free nicholas t3)
+    (free nicholas t4) (free nicholas t5) (free nicholas t6) (free nicholas t7)
+    (free nicholas t8) (free nicholas t9) (free nicholas t10) (free nicholas t11)
+    (free nicholas t12) (free nicholas t13) (free nicholas t14) (free nicholas t15)
+    (free emma t0) (free emma t1) (free emma t2) (free emma t3)
+    (free emma t4) (free emma t5) (free emma t6) (free emma t7)
+    (free emma t8) (free emma t9) (free emma t10) (free emma t11)
+    (free emma t12) (free emma t13) (free emma t14) (free emma t15)
+    (free catherine t1) (free catherine t2) (free catherine t3) (free catherine t4)
+    (free catherine t6) (free catherine t7) (free catherine t8)
+    (free catherine t10) (free catherine t11) (free catherine t12)
+    (free catherine t14) (free catherine t15)
+    (free steven t1) (free steven t15)
+    (free adam t2) (free adam t8) (free adam t10) (free adam t15)
+    (free lori t5) (free lori t6) (free lori t9) (free lori t10)
+    (free lori t11) (free lori t12) (free lori t13) (free lori t15)
+    (allowed t15)
+  )
+  (:goal (meeting-scheduled))
+)

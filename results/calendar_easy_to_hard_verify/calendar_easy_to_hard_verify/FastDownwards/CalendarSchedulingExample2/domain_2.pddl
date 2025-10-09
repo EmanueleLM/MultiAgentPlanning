@@ -1,26 +1,23 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing :negative-preconditions :action-costs)
-  (:types participant slot)
-
-  (:constants roy kathryn amy - participant)
-
+  (:requirements :typing)
+  (:types person slot)
+  (:constants roy kathryn amy - person)
   (:predicates
-    (available ?p - participant ?s - slot)
-    (scheduled)
+    (available ?p - person ?s - slot)
     (selected ?s - slot)
+    (scheduled)
   )
 
   (:action schedule
     :parameters (?s - slot)
     :precondition (and
-      (not (scheduled))
       (available roy ?s)
       (available kathryn ?s)
       (available amy ?s)
     )
     :effect (and
-      (scheduled)
       (selected ?s)
+      (scheduled)
     )
   )
 )

@@ -1,0 +1,26 @@
+(define (domain scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (slot-free ?s - slot)
+    (scheduled ?s - slot)
+    (meeting-scheduled)
+  )
+  (:action schedule-at
+    :parameters (?s - slot ?p1 - person ?p2 - person ?p3 - person ?p4 - person)
+    :precondition (and
+      (slot-free ?s)
+      (available ?p1 ?s)
+      (available ?p2 ?s)
+      (available ?p3 ?s)
+      (available ?p4 ?s)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (scheduled ?s)
+      (not (slot-free ?s))
+      (meeting-scheduled)
+    )
+  )
+)

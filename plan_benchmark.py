@@ -50,6 +50,10 @@ DATASET = {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
         "results": RESULTS_FOLDER / "calendar_easy_to_hard",
     },
+    "calendar_easy_to_hard_shifted": {
+        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted.json",
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted",
+    },
 }
 
 SOLVER = {
@@ -136,7 +140,7 @@ def parse_args():
     parser.add_argument(
         "--optimize_plan",
         type=bool,
-        default=True,
+        default=False,
         choices=[True, False],
         help="The PDDL solver tries to further minimize the plan cost.",
     )

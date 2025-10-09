@@ -1,0 +1,27 @@
+(define (domain schedule-meeting)
+  (:requirements :typing :negative-preconditions)
+  (:types person time)
+  (:predicates
+    (free ?p - person ?t - time)
+    (meeting-scheduled)
+    (scheduled-at ?t - time)
+    (allowed ?t - time)
+  )
+  (:action schedule
+    :parameters (?t - time)
+    :precondition (and
+      (allowed ?t)
+      (free nicholas ?t)
+      (free emma ?t)
+      (free catherine ?t)
+      (free steven ?t)
+      (free adam ?t)
+      (free lori ?t)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (scheduled-at ?t)
+    )
+  )
+)

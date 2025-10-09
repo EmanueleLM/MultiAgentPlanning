@@ -1,100 +1,86 @@
-with concrete slots and availability facts and a goal that schedules the meeting at the earliest feasible slot.
-
-<domain>
-(define (domain scheduling-multiagent)
-  (:requirements :strips :typing :negative-preconditions :quantified-preconditions :conditional-effects :adl)
-  (:types agent slot meeting)
-
-  (:predicates
-    (agent ?a - agent)
-    (slot ?s - slot)
-    ;; available ?a ?s = participant ?a is available for a 30-min meeting that starts at slot ?s
-    (available ?a - agent ?s - slot)
-    ;; scheduled ?s = a meeting has been scheduled at slot ?s
-    (scheduled ?s - slot)
-    ;; meeting-at ?m ?s = meeting ?m is scheduled at slot ?s
-    (meeting-at ?m - meeting ?s - slot)
-    ;; attends ?a ?m = participant ?a will attend meeting ?m
-    (attends ?a - agent ?m - meeting)
-  )
-
-  ;; Single action to schedule a 30-minute meeting (a meeting is a single slot).
-  ;; Preconditions: slot not scheduled and every declared agent is available at that slot.
-  ;; Effects: mark slot scheduled, create meeting-at, each agent attends meeting, and mark those agents unavailable at that slot (so slot cannot be reused).
-  (:action schedule-meeting
-    :parameters (?m - meeting ?s - slot)
-    :precondition (and
-      (slot ?s)
-      (not (scheduled ?s))
-      ;; require that all agents that appear in the problem are available at ?s
-      (forall (?a - agent) (available ?a ?s))
-    )
-    :effect (and
-      (scheduled ?s)
-      (meeting-at ?m ?s)
-      ;; every agent attends the meeting
-      (forall (?a - agent) (attends ?a ?m))
-      ;; mark those agents not available at that slot anymore (represents consuming that slot)
-      (forall (?a - agent) (not (available ?a ?s)))
-    )
-  )
-)
-</domain>
-
-<problem>
-; PROBLEM TEMPLATE - fill in participant objects, slots, and availability facts below.
-; Important: Do not invent availability beyond what you provide. Provide Margaret's preference constraints as unavailable slots.
-; Work hours and 30-minute meeting duration are handled by enumerating 30-minute slots within the work hours for the specified day.
+; PROBLEM TEMPLATE FOR FastDownwards
+; Fill in the placeholders below with the concrete day, work hours (as timeslot objects),
+; each participant, their availability (free predicates), and Margaret's strict preference(s).
+; Do NOT invent availability beyond what participants provide. Preference statements in natural language
+; must be translated to strict constraints (for example, forbidding specific slots or requiring earliest >= X).
 ;
-; Required structured input format (one entry per participant). Provide these as plain text so I can generate the concrete problem:
-; Example of structured participant entry:
-; Participant: Alice
-; Available: 09:00-10:30, 13:00-16:00
-; (means Alice is available for slots starting at 09:00, 09:30, 10:00 and 13:00,13:30,14:00,14:30,15:00,15:30)
+; Expected input structure you should provide for me to produce a concrete problem:
+; - Objects: list of participants (including "margaret") and timeslots (each timeslot represents 30 minutes).
+; - For each timeslot include a :workslot fact if it lies inside the specified work hours.
+; - For each participant and timeslot include (free <participant> <timeslot>) exactly when that participant is available.
+; - If Margaret's "preference" is e.g. "not before 10:00", mark all timeslots before 10:00 as not allowed for scheduling the meeting.
+;   To enforce that as a strict constraint, the problem must not claim (free margaret <t>) for those forbidden slots, or
+;   you must add an explicit predicate forbidding meeting-at those slots (see example comments below).
 ;
-; For Margaret, any natural-language preference must be given as explicit unavailable times or explicit available times.
-; Example:
-; Participant: Margaret
-; Available: 09:00-09:30, 10:00-12:00
-; Preference-as-constraint: NOT available 11:00-11:30  (this is a hard constraint)
-;
-; Also provide:
-; - Day (e.g., 2025-10-10)
-; - Work hours (start and end, inclusive) (e.g., 09:00-17:00). Slots are 30-minute start times within that window.
-;
-; After you provide the list of participants with their Available ranges and the Day and Work hours, I will produce a concrete PDDL problem with:
-;  - slot objects enumerated for the work hours (30-min increments),
-;  - agent objects for each participant,
-;  - available facts only for the slots you provide,
-;  - Margaret's constraints encoded by omitting available facts for the disallowed slots,
-;  - the meeting object (m1),
-;  - a goal that forces a schedule (meeting-at m1 ?earliest-slot) where ?earliest-slot is the earliest slot that meets all availabilities and constraints.
+; After you provide actual availabilities and constraints I will instantiate this template and choose the earliest
+; timeslot that satisfies all constraints (i.e., where schedule-meeting can be applied) and produce the final problem.
 
-; Below is an empty minimal valid problem skeleton that I will replace once you give availabilities.
-
-(define (problem schedule-meeting-problem-template)
-  (:domain scheduling-multiagent)
+(define (problem schedule-meeting-instance)
+  (:domain meeting-scheduling)
 
   (:objects
-    ;; Add participant objects here, e.g.:
-    ;; alice margaret bob - agent
-    ;; Add slot objects here once work-hours are provided, e.g.:
-    ;; s0900 s0930 s1000 ... - slot
-    m1 - meeting
+    ; Participants: replace these with the participants' names from your inputs
+    ; e.g. margaret alice bob
+    margaret alice bob - participant
+
+    ; Timeslots: each object is a 30-minute block. Replace with concrete times for the specified day.
+    ; Naming convention suggested: slot-0900, slot-0930, slot-1000, ... (one object per 30-minute interval in the workday)
+    ; Example placeholders (replace with the actual day's slots):
+    slot-0900 slot-0930 slot-1000 slot-1030 slot-1100 slot-1130 slot-1200 slot-1230 slot-1300 slot-1330 - timeslot
   )
 
   (:init
-    ;; Add (agent ...) facts for each participant
-    ;; Add (slot ...) facts for each enumerated slot
-    ;; Add (available <participant> <slot>) only for slots the participant is available.
-    ;; Example:
-    ;; (agent alice)
-    ;; (slot s0900)
-    ;; (available alice s0900)
-    ;; For Margaret, ensure any preference "avoid X" is represented by NOT including (available margaret sX).
+    ; Mark which objects are timeslots (optional, since types cover this).
+    ; (timeslot slot-0900) ...
+
+    ; Mark work hours: list all timeslots that lie inside the specified work hours.
+    ; Example: if work hours are 09:00-14:00 mark the slots within that range as workslot.
+    (workslot slot-0900)
+    (workslot slot-0930)
+    (workslot slot-1000)
+    (workslot slot-1030)
+    (workslot slot-1100)
+    (workslot slot-1130)
+    (workslot slot-1200)
+    (workslot slot-1230)
+    (workslot slot-1300)
+    (workslot slot-1330)
+
+    ; Define temporal ordering between consecutive 30-min slots (helpful if you extend duration >1 slot).
+    (next slot-0900 slot-0930)
+    (next slot-0930 slot-1000)
+    (next slot-1000 slot-1030)
+    (next slot-1030 slot-1100)
+    (next slot-1100 slot-1130)
+    (next slot-1130 slot-1200)
+    (next slot-1200 slot-1230)
+    (next slot-1230 slot-1300)
+    (next slot-1300 slot-1330)
+
+    ; Availabilities: list EXACTLY the (free <participant> <timeslot>) facts from participant inputs.
+    ; DO NOT invent availability. For example, if Alice is available at 09:30, 10:00 and 11:30:
+    ; (free alice slot-0930)
+    ; (free alice slot-1000)
+    ; (free alice slot-1130)
+    ;
+    ; Provide margaret's availabilities accordingly. If Margaret's preference is to avoid certain slots,
+    ; do NOT include (free margaret <slot>) for those slots (this enforces it as a hard constraint).
+    ; Example placeholders (REPLACE with actual provided availability):
+    (free margaret slot-0930)
+    (free margaret slot-1000)
+    ; If Margaret is NOT available at 09:00 do NOT include (free margaret slot-0900).
+    (free alice slot-0930)
+    (free alice slot-1000)
+    (free alice slot-1030)
+    (free bob slot-0930)
+    (free bob slot-1000)
+    (free bob slot-1100)
+    ; ... (fill in all provided free entries for all participants)
   )
 
-  ;; The goal will be to have scheduled one meeting (m1) at some slot:
-  ;; After you provide availability I will synthesize the goal so it prioritizes the earliest valid slot.
-  (:goal (exists (?s - slot) (meeting-at m1 ?s)))
+  ; Goal: require that a meeting is scheduled at some timeslot. To force the planner to choose the earliest feasible
+  ; slot, the orchestrator (me) will compute which slot is earliest that satisfies everyone's constraints and set the goal
+  ; to (meeting-at <earliest-slot>). Since you have not provided the availability data yet, the goal here is left generic.
+  ; Once you provide availabilities, I will produce a concrete goal that forces the earliest allowed slot.
+  (:goal (exists (?t - timeslot) (meeting-at ?t)))
 )

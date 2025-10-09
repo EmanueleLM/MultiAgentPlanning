@@ -57,6 +57,17 @@ MODELS = {
 }
 
 
+def _parse_bool(value: str | bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "y"}:
+        return True
+    if normalized in {"false", "0", "no", "n"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Expected boolean value, got '{value}'.")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate an environment from a human specification and run the agentic refinement loop.",
@@ -104,16 +115,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--optimize-plan",
-        type=bool,
+        type=_parse_bool,
         default=True,
-        choices=[True, False],
-        help="Allow the solver to spend extra time optimising the plan.",
+        metavar="{True|False}",
+        help="Allow the solver to spend extra time optimising the plan (True/False).",
     )
     parser.add_argument(
         "--debug",
-        type=bool,
+        type=_parse_bool,
         default=True,
-        choices=[True, False],
+        metavar="{True|False}",
         help="If True, write detailed iteration logs under __full_logs.txt.",
     )
     return parser.parse_args()

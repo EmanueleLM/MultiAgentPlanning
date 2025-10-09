@@ -171,8 +171,11 @@
 
         let jobId = null;
         let pollInterval = null;
+        let thinkingDotsInterval = null;
+        let dotsCount = 1;
 
         const resetOutput = () => {
+          stopThinkingDots();
           userPromptBubble.hidden = true;
           plannerResponseBubble.hidden = true;
           plannerErrorBubble.hidden = true;
@@ -187,8 +190,29 @@
             clearInterval(pollInterval);
             pollInterval = null;
           }
+          stopThinkingDots();
           spinner.classList.remove("spinner--active");
           document.body.classList.remove("submitting");
+        };
+
+        const stopThinkingDots = () => {
+          if (thinkingDotsInterval) {
+            clearInterval(thinkingDotsInterval);
+            thinkingDotsInterval = null;
+          }
+        };
+
+        const startThinkingDots = () => {
+          stopThinkingDots();
+          plannerErrorBubble.hidden = true;
+          plannerResponseBubble.hidden = false;
+          plannerMeta.textContent = "";
+          dotsCount = 1;
+          plannerResponseBody.textContent = ".".repeat(dotsCount);
+          thinkingDotsInterval = setInterval(() => {
+            dotsCount = dotsCount % 5 + 1;
+            plannerResponseBody.textContent = ".".repeat(dotsCount);
+          }, 400);
         };
 
         const updateLogs = (text) => {
@@ -204,6 +228,7 @@
         };
 
         const renderSummary = (summary) => {
+          stopThinkingDots();
           emptyState.hidden = true;
           if (summary?.natural_plan) {
             plannerErrorBubble.hidden = true;
@@ -226,6 +251,8 @@
             .then((response) => response.json())
             .then((data) => {
               if (data.error) {
+                plannerResponseBubble.hidden = true;
+                stopThinkingDots();
                 plannerErrorBubble.hidden = false;
                 plannerErrorBody.textContent = data.error;
                 stopPolling();
@@ -248,6 +275,8 @@
               }
             })
             .catch((error) => {
+              stopThinkingDots();
+              plannerResponseBubble.hidden = true;
               plannerErrorBubble.hidden = false;
               plannerErrorBody.textContent = `Error fetching logs: ${error}`;
               stopPolling();
@@ -275,6 +304,7 @@
           spinner.classList.add("spinner--active");
           updateLogs("");
           document.body.classList.add("submitting");
+          startThinkingDots();
 
           const payload = {
             prompt,
@@ -293,6 +323,8 @@
             .then((response) => response.json())
             .then((data) => {
               if (data.error) {
+                plannerResponseBubble.hidden = true;
+                stopThinkingDots();
                 plannerErrorBubble.hidden = false;
                 plannerErrorBody.textContent = data.error;
                 spinner.classList.remove("spinner--active");
@@ -304,6 +336,8 @@
               pollInterval = setInterval(pollLogs, 10000);
             })
             .catch((error) => {
+              plannerResponseBubble.hidden = true;
+              stopThinkingDots();
               plannerErrorBubble.hidden = false;
               plannerErrorBody.textContent = `Failed to start planner: ${error}`;
               spinner.classList.remove("spinner--active");

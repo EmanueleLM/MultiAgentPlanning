@@ -1,26 +1,351 @@
 (define (domain meeting-scheduling)
   (:requirements :typing :negative-preconditions :action-costs)
-  (:types agent slot)
+  (:types person slot)
   (:predicates
-    (available ?a - agent ?s - slot)
-    (scheduled)
-    (scheduled-at ?s - slot)
+    (busy ?p - person ?s - slot)
+    (meeting-at ?s - slot)
+    (meeting-scheduled)
+    (attends ?p - person ?s - slot)
   )
+  (:functions (total-cost))
 
-  ;; Single scheduling action parameterized by a half-hour slot.
-  ;; It can be applied only if every listed participant is available in that slot.
-  (:action schedule
-    :parameters (?s - slot)
+  ;; One scheduling action per 30-minute slot between 09:00 and 17:00.
+  ;; Preconditions require every participant NOT busy in that slot and
+  ;; that a meeting hasn't already been scheduled. Each action
+  ;; records the meeting slot, marks attendees, and increases total-cost.
+  (:action schedule-s0900
     :precondition (and
-      (available stephen ?s)
-      (available elijah ?s)
-      (available william ?s)
-      (available jeremy ?s)
-      (available timothy ?s)
+      (not (busy stephen s0900))
+      (not (busy elijah s0900))
+      (not (busy william s0900))
+      (not (busy jeremy s0900))
+      (not (busy timothy s0900))
+      (not (meeting-scheduled))
     )
     :effect (and
-      (scheduled)
-      (scheduled-at ?s)
+      (meeting-at s0900)
+      (meeting-scheduled)
+      (attends stephen s0900)
+      (attends elijah s0900)
+      (attends william s0900)
+      (attends jeremy s0900)
+      (attends timothy s0900)
+      (increase (total-cost) 1)
+    )
+  )
+
+  (:action schedule-s0930
+    :precondition (and
+      (not (busy stephen s0930))
+      (not (busy elijah s0930))
+      (not (busy william s0930))
+      (not (busy jeremy s0930))
+      (not (busy timothy s0930))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s0930)
+      (meeting-scheduled)
+      (attends stephen s0930)
+      (attends elijah s0930)
+      (attends william s0930)
+      (attends jeremy s0930)
+      (attends timothy s0930)
+      (increase (total-cost) 2)
+    )
+  )
+
+  (:action schedule-s1000
+    :precondition (and
+      (not (busy stephen s1000))
+      (not (busy elijah s1000))
+      (not (busy william s1000))
+      (not (busy jeremy s1000))
+      (not (busy timothy s1000))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1000)
+      (meeting-scheduled)
+      (attends stephen s1000)
+      (attends elijah s1000)
+      (attends william s1000)
+      (attends jeremy s1000)
+      (attends timothy s1000)
+      (increase (total-cost) 3)
+    )
+  )
+
+  (:action schedule-s1030
+    :precondition (and
+      (not (busy stephen s1030))
+      (not (busy elijah s1030))
+      (not (busy william s1030))
+      (not (busy jeremy s1030))
+      (not (busy timothy s1030))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1030)
+      (meeting-scheduled)
+      (attends stephen s1030)
+      (attends elijah s1030)
+      (attends william s1030)
+      (attends jeremy s1030)
+      (attends timothy s1030)
+      (increase (total-cost) 4)
+    )
+  )
+
+  (:action schedule-s1100
+    :precondition (and
+      (not (busy stephen s1100))
+      (not (busy elijah s1100))
+      (not (busy william s1100))
+      (not (busy jeremy s1100))
+      (not (busy timothy s1100))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1100)
+      (meeting-scheduled)
+      (attends stephen s1100)
+      (attends elijah s1100)
+      (attends william s1100)
+      (attends jeremy s1100)
+      (attends timothy s1100)
+      (increase (total-cost) 5)
+    )
+  )
+
+  (:action schedule-s1130
+    :precondition (and
+      (not (busy stephen s1130))
+      (not (busy elijah s1130))
+      (not (busy william s1130))
+      (not (busy jeremy s1130))
+      (not (busy timothy s1130))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1130)
+      (meeting-scheduled)
+      (attends stephen s1130)
+      (attends elijah s1130)
+      (attends william s1130)
+      (attends jeremy s1130)
+      (attends timothy s1130)
+      (increase (total-cost) 6)
+    )
+  )
+
+  (:action schedule-s1200
+    :precondition (and
+      (not (busy stephen s1200))
+      (not (busy elijah s1200))
+      (not (busy william s1200))
+      (not (busy jeremy s1200))
+      (not (busy timothy s1200))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1200)
+      (meeting-scheduled)
+      (attends stephen s1200)
+      (attends elijah s1200)
+      (attends william s1200)
+      (attends jeremy s1200)
+      (attends timothy s1200)
+      (increase (total-cost) 7)
+    )
+  )
+
+  (:action schedule-s1230
+    :precondition (and
+      (not (busy stephen s1230))
+      (not (busy elijah s1230))
+      (not (busy william s1230))
+      (not (busy jeremy s1230))
+      (not (busy timothy s1230))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1230)
+      (meeting-scheduled)
+      (attends stephen s1230)
+      (attends elijah s1230)
+      (attends william s1230)
+      (attends jeremy s1230)
+      (attends timothy s1230)
+      (increase (total-cost) 8)
+    )
+  )
+
+  (:action schedule-s1300
+    :precondition (and
+      (not (busy stephen s1300))
+      (not (busy elijah s1300))
+      (not (busy william s1300))
+      (not (busy jeremy s1300))
+      (not (busy timothy s1300))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1300)
+      (meeting-scheduled)
+      (attends stephen s1300)
+      (attends elijah s1300)
+      (attends william s1300)
+      (attends jeremy s1300)
+      (attends timothy s1300)
+      (increase (total-cost) 9)
+    )
+  )
+
+  (:action schedule-s1330
+    :precondition (and
+      (not (busy stephen s1330))
+      (not (busy elijah s1330))
+      (not (busy william s1330))
+      (not (busy jeremy s1330))
+      (not (busy timothy s1330))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1330)
+      (meeting-scheduled)
+      (attends stephen s1330)
+      (attends elijah s1330)
+      (attends william s1330)
+      (attends jeremy s1330)
+      (attends timothy s1330)
+      (increase (total-cost) 10)
+    )
+  )
+
+  (:action schedule-s1400
+    :precondition (and
+      (not (busy stephen s1400))
+      (not (busy elijah s1400))
+      (not (busy william s1400))
+      (not (busy jeremy s1400))
+      (not (busy timothy s1400))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1400)
+      (meeting-scheduled)
+      (attends stephen s1400)
+      (attends elijah s1400)
+      (attends william s1400)
+      (attends jeremy s1400)
+      (attends timothy s1400)
+      (increase (total-cost) 11)
+    )
+  )
+
+  (:action schedule-s1430
+    :precondition (and
+      (not (busy stephen s1430))
+      (not (busy elijah s1430))
+      (not (busy william s1430))
+      (not (busy jeremy s1430))
+      (not (busy timothy s1430))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1430)
+      (meeting-scheduled)
+      (attends stephen s1430)
+      (attends elijah s1430)
+      (attends william s1430)
+      (attends jeremy s1430)
+      (attends timothy s1430)
+      (increase (total-cost) 12)
+    )
+  )
+
+  (:action schedule-s1500
+    :precondition (and
+      (not (busy stephen s1500))
+      (not (busy elijah s1500))
+      (not (busy william s1500))
+      (not (busy jeremy s1500))
+      (not (busy timothy s1500))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1500)
+      (meeting-scheduled)
+      (attends stephen s1500)
+      (attends elijah s1500)
+      (attends william s1500)
+      (attends jeremy s1500)
+      (attends timothy s1500)
+      (increase (total-cost) 13)
+    )
+  )
+
+  (:action schedule-s1530
+    :precondition (and
+      (not (busy stephen s1530))
+      (not (busy elijah s1530))
+      (not (busy william s1530))
+      (not (busy jeremy s1530))
+      (not (busy timothy s1530))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1530)
+      (meeting-scheduled)
+      (attends stephen s1530)
+      (attends elijah s1530)
+      (attends william s1530)
+      (attends jeremy s1530)
+      (attends timothy s1530)
+      (increase (total-cost) 14)
+    )
+  )
+
+  (:action schedule-s1600
+    :precondition (and
+      (not (busy stephen s1600))
+      (not (busy elijah s1600))
+      (not (busy william s1600))
+      (not (busy jeremy s1600))
+      (not (busy timothy s1600))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1600)
+      (meeting-scheduled)
+      (attends stephen s1600)
+      (attends elijah s1600)
+      (attends william s1600)
+      (attends jeremy s1600)
+      (attends timothy s1600)
+      (increase (total-cost) 15)
+    )
+  )
+
+  (:action schedule-s1630
+    :precondition (and
+      (not (busy stephen s1630))
+      (not (busy elijah s1630))
+      (not (busy william s1630))
+      (not (busy jeremy s1630))
+      (not (busy timothy s1630))
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-at s1630)
+      (meeting-scheduled)
+      (attends stephen s1630)
+      (attends elijah s1630)
+      (attends william s1630)
+      (attends jeremy s1630)
+      (attends timothy s1630)
+      (increase (total-cost) 16)
     )
   )
 )

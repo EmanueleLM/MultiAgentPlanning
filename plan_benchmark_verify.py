@@ -196,7 +196,7 @@ def parse_args():
     parser.add_argument(
         "--optimize_plan",
         type=bool,
-        default=True,
+        default=False,
         choices=[True, False],
         help="The PDDL solver tries to further minimize the plan cost.",
     )

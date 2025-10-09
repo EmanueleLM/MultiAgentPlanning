@@ -1,60 +1,42 @@
 (define (problem schedule-meeting-monday)
   (:domain meeting-scheduling)
+
   (:objects
     denise joseph henry christian - participant
-    ; half-hour slots from 09:00 to 16:30 on Monday
-    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
-    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - slot
+    s09_10 s10_11 s11_12 s12_13 s13_14 s14_15 s15_16 s16_17 - slot
   )
 
   (:init
-    ; there is no meeting scheduled yet
-    (unscheduled)
+    ;; participants and slots
+    (participant denise) (participant joseph) (participant henry) (participant christian)
+    (slot s09_10) (slot s10_11) (slot s11_12) (slot s12_13) (slot s13_14) (slot s14_15) (slot s15_16) (slot s16_17)
 
-    ; next relations (consecutive half-hour slots)
-    (next t0900 t0930) (next t0930 t1000) (next t1000 t1030) (next t1030 t1100)
-    (next t1100 t1130) (next t1130 t1200) (next t1200 t1230) (next t1230 t1300)
-    (next t1300 t1330) (next t1330 t1400) (next t1400 t1430) (next t1430 t1500)
-    (next t1500 t1530) (next t1530 t1600) (next t1600 t1630)
+    ;; Work hours discretized into one-hour slots (09:00-17:00). A meeting must occupy one full slot.
+    ;; Availability facts: explicit only for free slots. Any busy interval given in the input is
+    ;; interpreted as unavailable (i.e., absence of an (available ...) fact for that slot).
 
-    ; ---------------------------
-    ; Participant availability (free half-slots)
-    ; Denise: available entire workday (09:00-17:00) -> all half-slots free
-    (free denise t0900) (free denise t0930) (free denise t1000) (free denise t1030)
-    (free denise t1100) (free denise t1130) (free denise t1200) (free denise t1230)
-    (free denise t1300) (free denise t1330) (free denise t1400) (free denise t1430)
-    (free denise t1500) (free denise t1530) (free denise t1600) (free denise t1630)
+    ;; Denise: available entire workday (no busy intervals)
+    (available denise s09_10) (available denise s10_11) (available denise s11_12)
+    (available denise s12_13) (available denise s13_14) (available denise s14_15)
+    (available denise s15_16) (available denise s16_17)
 
-    ; Joseph: available entire workday
-    (free joseph t0900) (free joseph t0930) (free joseph t1000) (free joseph t1030)
-    (free joseph t1100) (free joseph t1130) (free joseph t1200) (free joseph t1230)
-    (free joseph t1300) (free joseph t1330) (free joseph t1400) (free joseph t1430)
-    (free joseph t1500) (free joseph t1530) (free joseph t1600) (free joseph t1630)
+    ;; Joseph: available entire workday (no busy intervals)
+    (available joseph s09_10) (available joseph s10_11) (available joseph s11_12)
+    (available joseph s12_13) (available joseph s13_14) (available joseph s14_15)
+    (available joseph s15_16) (available joseph s16_17)
 
-    ; Henry: busy on 09:00-09:30 (t0900), 10:00-10:30 (t1000),
-    ; 12:00-14:30 (t1200,t1230,t1300,t1330,t1400), 15:00-16:00 (t1500,t1530), 16:30-17:00 (t1630)
-    ; So mark all other half-slots as free:
-    (free henry t0930) (free henry t1030) (free henry t1100) (free henry t1130)
-    ; t1200 t1230 t1300 t1330 t1400 are busy -> not listed as free
-    (free henry t1430)
-    ; t1500 t1530 busy -> not listed
-    (free henry t1600)
-    ; t1630 busy -> not listed
+    ;; Henry: busy on Monday during 09:00-09:30, 10:00-10:30, 12:00-14:30, 15:00-16:00, and 16:30-17:00.
+    ;; That blocks slots that overlap those intervals. The only full one-hour slot free for Henry is 11:00-12:00.
+    (available henry s11_12)
 
-    ; Christian: busy on 09:00-11:00 (t0900,t0930,t1000,t1030),
-    ; 14:30-15:30 (t1430,t1500), 16:00-17:00 (t1600,t1630)
-    ; So mark free half-slots accordingly:
-    (free christian t1100) (free christian t1130) (free christian t1200) (free christian t1230)
-    (free christian t1300) (free christian t1330) (free christian t1400)
-    ; t1430 and t1500 busy -> not listed
-    (free christian t1530)
-    ; t1600 and t1630 busy -> not listed
+    ;; Christian: busy on Monday during 09:00-11:00, 14:30-15:30, and 16:00-17:00.
+    ;; That blocks 09-10, 10-11, 14-15, 15-16, 16-17. Christian is available 11-12, 12-13, 13-14.
+    (available christian s11_12) (available christian s12_13) (available christian s13_14)
+
+    ;; Meeting has not been scheduled yet
+    (meeting-not-scheduled)
   )
 
-  ; Goal: schedule a single contiguous one-hour meeting on Monday (two consecutive half-slots).
-  ; Preference interpreted and encoded as a hard constraint: choose the earliest feasible slot.
-  ; Earliest feasible slot given all hard constraints is 11:00-12:00 (start at t1100).
-  (:goal (and
-    (meeting-start t1100)
-  ))
+  ;; Goal: schedule exactly one meeting (one action will set meeting-scheduled).
+  (:goal (and (meeting-scheduled)))
 )

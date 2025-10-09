@@ -1,35 +1,38 @@
 (define (domain meeting-scheduling)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types person slot)
+  (:requirements :strips :typing)
+  (:types agent timeslot)
+
   (:predicates
-    (available ?p - person ?s - slot)
-    (attending ?p - person ?s - slot)
-    (scheduled ?s - slot)
+    (free ?a - agent ?t - timeslot)
+    (accepted ?a - agent ?t - timeslot)
+    (meeting-scheduled ?t - timeslot)
   )
 
-  ;; Distinct attend actions per agent (agent actions kept separate)
-  (:action attend-raymond
-    :parameters (?s - slot)
-    :precondition (available raymond ?s)
-    :effect (attending raymond ?s)
+  ;; Raymond's accept action
+  (:action raymond-accept
+    :parameters (?t - timeslot)
+    :precondition (free raymond ?t)
+    :effect (accepted raymond ?t)
   )
 
-  (:action attend-billy
-    :parameters (?s - slot)
-    :precondition (available billy ?s)
-    :effect (attending billy ?s)
+  ;; Billy's accept action
+  (:action billy-accept
+    :parameters (?t - timeslot)
+    :precondition (free billy ?t)
+    :effect (accepted billy ?t)
   )
 
-  (:action attend-donald
-    :parameters (?s - slot)
-    :precondition (available donald ?s)
-    :effect (attending donald ?s)
+  ;; Donald's accept action
+  (:action donald-accept
+    :parameters (?t - timeslot)
+    :precondition (free donald ?t)
+    :effect (accepted donald ?t)
   )
 
-  ;; Confirm meeting when all participants are attending the same slot
-  (:action confirm
-    :parameters (?s - slot)
-    :precondition (and (attending raymond ?s) (attending billy ?s) (attending donald ?s) (not (scheduled ?s)))
-    :effect (scheduled ?s)
+  ;; Finalize meeting once all three have accepted the same timeslot
+  (:action finalize-meeting
+    :parameters (?t - timeslot)
+    :precondition (and (accepted raymond ?t) (accepted billy ?t) (accepted donald ?t))
+    :effect (meeting-scheduled ?t)
   )
 )

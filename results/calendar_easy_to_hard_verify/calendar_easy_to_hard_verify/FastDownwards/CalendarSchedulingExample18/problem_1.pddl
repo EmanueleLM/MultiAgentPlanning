@@ -1,35 +1,42 @@
-(define (problem CalendarSchedulingExample18-prob)
+(define (problem CalendarSchedulingExample18-problem)
   (:domain CalendarSchedulingExample18)
   (:objects
-    s0900_0930 s0930_1000 s1000_1030 s1030_1100 s1100_1130 s1130_1200 s1200_1230 s1230_1300
-    s1300_1330 s1330_1400 s1400_1430 s1430_1500 s1500_1530 s1530_1600 s1600_1630 s1630_1700 - slot
+    lisa dorothy anthony ryan - person
+    slot_0900 slot_0930 slot_1000 slot_1030 slot_1100 slot_1130 slot_1200 slot_1230
+    slot_1300 slot_1330 slot_1400 slot_1430 slot_1500 slot_1530 slot_1600 slot_1630 - slot
   )
   (:init
-    ; lisa availability (cannot meet before 14:30; other busy intervals removed)
-    (available lisa s1430_1500)
-    (available lisa s1600_1630)
-    (available lisa s1630_1700)
-    ; dorothy availability
-    (available dorothy s0930_1000)
-    (available dorothy s1000_1030)
-    (available dorothy s1130_1200)
-    (available dorothy s1200_1230)
-    (available dorothy s1230_1300)
-    (available dorothy s1300_1330)
-    (available dorothy s1400_1430)
-    (available dorothy s1530_1600)
-    (available dorothy s1600_1630)
-    (available dorothy s1630_1700)
-    ; anthony availability
-    (available anthony s1000_1030)
-    (available anthony s1030_1100)
-    (available anthony s1230_1300)
-    (available anthony s1400_1430)
-    (available anthony s1430_1500)
-    (available anthony s1630_1700)
-    ; ryan availability
-    (available ryan s1230_1300)
-    (available ryan s1630_1700)
+    ;; lisa availability (after applying "Lisa cannot meet before 14:30" and her busy intervals)
+    (available lisa slot_1430)
+    (available lisa slot_1600)
+    (available lisa slot_1630)
+
+    ;; dorothy availability (computed from her busy intervals)
+    (available dorothy slot_0930)
+    (available dorothy slot_1000)
+    (available dorothy slot_1130)
+    (available dorothy slot_1200)
+    (available dorothy slot_1230)
+    (available dorothy slot_1300)
+    (available dorothy slot_1400)
+    (available dorothy slot_1530)
+    (available dorothy slot_1600)
+    (available dorothy slot_1630)
+
+    ;; anthony availability (computed from his busy intervals)
+    (available anthony slot_1000)
+    (available anthony slot_1030)
+    (available anthony slot_1230)
+    (available anthony slot_1400)
+    (available anthony slot_1430)
+    (available anthony slot_1630)
+
+    ;; ryan availability (computed from his busy intervals)
+    (available ryan slot_1230)
+    (available ryan slot_1630)
   )
-  (:goal (meeting-scheduled))
+  (:goal (and
+    (meeting_scheduled)
+    (scheduled_at slot_1630)
+  ))
 )

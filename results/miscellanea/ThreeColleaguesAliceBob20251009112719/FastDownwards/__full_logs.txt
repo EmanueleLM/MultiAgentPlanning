@@ -1,0 +1,402 @@
+HUMAN-SPECIFICATION
+------------------------------
+Three colleagues — Alice, Bob, and Carol — need to schedule a 30-minute meeting on Tuesday, Oct 21.
+Their availabilities are as follows:
+
+Alice: Available from 09:00–11:00 in the morning and 13:00–16:00 in the afternoon.
+
+Bob: Available from 10:30–12:00 in the late morning and 14:00–15:30 in the afternoon.
+
+Carol: Available from 09:30–10:30, 11:00–12:30, and 15:00–17:00.
+
+Find the earliest 30-minute time slot when all three are available.
+If multiple slots work, choose the one that minimizes interruption to Bob’s morning schedule.
+================================================================================
+
+
+ENVIRONMENT-JSON
+------------------------------
+{
+    "name": "ThreeColleaguesAliceBob20251009112719",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "alice",
+            "bob",
+            "carol",
+            "orchestrator"
+        ],
+        "alice": {
+            "private_information": [
+                "Available 09:00-11:00",
+                "Available 13:00-16:00"
+            ],
+            "goal": "Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available."
+        },
+        "bob": {
+            "private_information": [
+                "Available 10:30-12:00",
+                "Available 14:00-15:30",
+                "Preference: minimize interruption to my morning schedule if multiple slots are possible"
+            ],
+            "goal": "Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available; prefer options that minimize interruption to Bob's morning schedule."
+        },
+        "carol": {
+            "private_information": [
+                "Available 09:30-10:30",
+                "Available 11:00-12:30",
+                "Available 15:00-17:00"
+            ],
+            "goal": "Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent availability reports and produce a PDDL domain and problem targeting the FastDownward solver that finds the earliest 30-minute meeting slot on Tuesday, Oct 21 when all three participants are available, breaking ties to minimize interruption to Bob's morning."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "Tuesday, Oct 21",
+            "meeting_duration_minutes": 30,
+            "time_granularity_minutes": 15
+        },
+        "public_information": [
+            "Three colleagues (Alice, Bob, Carol) need to schedule a 30-minute meeting on Tuesday, Oct 21.",
+            "Find the earliest 30-minute slot when all three are available.",
+            "If multiple slots satisfy availability, choose the one that minimizes interruption to Bob's morning schedule."
+        ]
+    },
+    "workflow": {
+        "alice": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_alice",
+                "system_prompt": "You are Alice. You know your own availability. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].",
+                "prompt": "Your name is alice. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private availability information:\n{agents->alice->private_information}\nThis is your goal:\n{agents->alice->goal}\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information."
+            }
+        },
+        "bob": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_bob",
+                "system_prompt": "You are Bob. You know your own availability and preferences. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].",
+                "prompt": "Your name is bob. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private availability information and preferences:\n{agents->bob->private_information}\nThis is your goal:\n{agents->bob->goal}\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information."
+            }
+        },
+        "carol": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_carol",
+                "system_prompt": "You are Carol. You know your own availability. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].",
+                "prompt": "Your name is carol. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private availability information:\n{agents->carol->private_information}\nThis is your goal:\n{agents->carol->goal}\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_alice",
+                    "availability_bob",
+                    "availability_carol"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent scheduling and PDDL modeling. Using the availability reports from the three agents, produce a complete PDDL domain and a PDDL problem suitable for the FastDownward planner that will find the earliest 30-minute meeting slot on Tuesday, Oct 21 when all participants are available. Model time slots with the provided granularity, encode the meeting duration (30 minutes), and include tie-breaking to minimize interruption to Bob's morning schedule. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and identities distinct where relevant.",
+                "prompt": "You are the orchestrator. Integrate the following structured availability reports from the agents and produce a PDDL domain and a PDDL problem targeted to the FastDownward solver. The objective is to find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available; if multiple slots are possible, prefer the one that minimizes interruption to Bob's morning schedule.\n\nPublic information:\n{environment->public_information}\n\nAvailability reports received:\nAlice: {availability_alice}\nBob: {availability_bob}\nCarol: {availability_carol}\n\nConstraints to model:\n- Meeting duration: {environment->init->meeting_duration_minutes} minutes.\n- Time granularity: {environment->init->time_granularity_minutes} minutes.\n- Only schedule when all three are available.\n- Tie-breaker: minimize interruption to Bob's morning (prefer slots that are later within Bob's morning or that occur outside his earlier morning window when possible).\n\nProduce a PDDL domain and PDDL problem that FastDownward can consume. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "alice.report_availability->orchestrator.pddl",
+            "bob.report_availability->orchestrator.pddl",
+            "carol.report_availability->orchestrator.pddl"
+        ]
+    }
+}
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain meeting-scheduling)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types person time)
+
+  (:predicates
+    (available ?p - person ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (bob_avoid ?t - time)
+    (meeting_scheduled ?t - time)
+    (scheduled)
+  )
+
+  ;; Alice initiates scheduling
+  (:action alice-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+
+  ;; Bob initiates scheduling
+  (:action bob-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+
+  ;; Carol initiates scheduling
+  (:action carol-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem schedule-meeting-oct21)
+  (:domain meeting-scheduling)
+  (:objects
+    alice bob carol - person
+
+    t0900 t0915 t0930 t0945 t1000 t1015 t1030 t1045
+    t1100 t1115 t1130 t1145 t1200 t1215 t1230 t1245
+    t1300 t1315 t1330 t1345 t1400 t1415 t1430 t1445
+    t1500 t1515 t1530 t1545 t1600 t1615 t1630 t1645 - time
+  )
+
+  (:init
+    ;; next relations (15-minute granularity)
+    (next t0900 t0915) (next t0915 t0930) (next t0930 t0945) (next t0945 t1000)
+    (next t1000 t1015) (next t1015 t1030) (next t1030 t1045) (next t1045 t1100)
+    (next t1100 t1115) (next t1115 t1130) (next t1130 t1145) (next t1145 t1200)
+    (next t1200 t1215) (next t1215 t1230) (next t1230 t1245) (next t1245 t1300)
+    (next t1300 t1315) (next t1315 t1330) (next t1330 t1345) (next t1345 t1400)
+    (next t1400 t1415) (next t1415 t1430) (next t1430 t1445) (next t1445 t1500)
+    (next t1500 t1515) (next t1515 t1530) (next t1530 t1545) (next t1545 t1600)
+    (next t1600 t1615) (next t1615 t1630) (next t1630 t1645)
+
+    ;; Bob's preference treated as a hard constraint: avoid scheduling start times before 11:00
+    (bob_avoid t0900) (bob_avoid t0915) (bob_avoid t0930) (bob_avoid t0945)
+    (bob_avoid t1000) (bob_avoid t1015) (bob_avoid t1030) (bob_avoid t1045)
+
+    ;; Availability facts (15-minute blocks). A block 'tXXXX' means that 15-minute block starting at that time is free.
+    ;; Alice: Available 09:00-11:00 -> blocks starting 09:00 .. 10:45
+    (available alice t0900) (available alice t0915) (available alice t0930) (available alice t0945)
+    (available alice t1000) (available alice t1015) (available alice t1030) (available alice t1045)
+    ;; Alice: Available 13:00-16:00 -> blocks starting 13:00 .. 15:45
+    (available alice t1300) (available alice t1315) (available alice t1330) (available alice t1345)
+    (available alice t1400) (available alice t1415) (available alice t1430) (available alice t1445)
+    (available alice t1500) (available alice t1515) (available alice t1530) (available alice t1545)
+
+    ;; Bob: Available 10:30-12:00 -> blocks starting 10:30 .. 11:45
+    (available bob t1030) (available bob t1045) (available bob t1100) (available bob t1115)
+    (available bob t1130) (available bob t1145)
+    ;; Bob: Available 14:00-15:30 -> blocks starting 14:00 .. 15:15
+    (available bob t1400) (available bob t1415) (available bob t1430) (available bob t1445)
+    (available bob t1500) (available bob t1515)
+
+    ;; Carol: Available 09:30-10:30 -> blocks starting 09:30 .. 10:15
+    (available carol t0930) (available carol t0945) (available carol t1000) (available carol t1015)
+    ;; Carol: Available 11:00-12:30 -> blocks starting 11:00 .. 12:15
+    (available carol t1100) (available carol t1115) (available carol t1130) (available carol t1145)
+    (available carol t1200) (available carol t1215)
+    ;; Carol: Available 15:00-17:00 -> blocks starting 15:00 .. 16:45
+    (available carol t1500) (available carol t1515) (available carol t1530) (available carol t1545)
+    (available carol t1600) (available carol t1615) (available carol t1630) (available carol t1645)
+  )
+
+  ;; Goal: a single meeting must be scheduled (the planner will pick a time that satisfies all hard constraints).
+  (:goal (and (scheduled)))
+)
+</problem>
+
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain meeting-scheduling)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types person time)
+
+  (:predicates
+    (available ?p - person ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (bob_avoid ?t - time)
+    (meeting_scheduled ?t - time)
+    (scheduled)
+  )
+
+  ;; Alice initiates scheduling
+  (:action alice-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+
+  ;; Bob initiates scheduling
+  (:action bob-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+
+  ;; Carol initiates scheduling
+  (:action carol-schedule
+    :parameters (?t - time ?t2 - time)
+    :precondition (and
+      (next ?t ?t2)
+      (available alice ?t) (available alice ?t2)
+      (available bob ?t) (available bob ?t2)
+      (available carol ?t) (available carol ?t2)
+      (not (bob_avoid ?t))
+      (not (scheduled))
+    )
+    :effect (and
+      (meeting_scheduled ?t)
+      (scheduled)
+    )
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem schedule-meeting-oct21)
+  (:domain meeting-scheduling)
+  (:objects
+    alice bob carol - person
+
+    t0900 t0915 t0930 t0945 t1000 t1015 t1030 t1045
+    t1100 t1115 t1130 t1145 t1200 t1215 t1230 t1245
+    t1300 t1315 t1330 t1345 t1400 t1415 t1430 t1445
+    t1500 t1515 t1530 t1545 t1600 t1615 t1630 t1645 - time
+  )
+
+  (:init
+    ;; next relations (15-minute granularity)
+    (next t0900 t0915) (next t0915 t0930) (next t0930 t0945) (next t0945 t1000)
+    (next t1000 t1015) (next t1015 t1030) (next t1030 t1045) (next t1045 t1100)
+    (next t1100 t1115) (next t1115 t1130) (next t1130 t1145) (next t1145 t1200)
+    (next t1200 t1215) (next t1215 t1230) (next t1230 t1245) (next t1245 t1300)
+    (next t1300 t1315) (next t1315 t1330) (next t1330 t1345) (next t1345 t1400)
+    (next t1400 t1415) (next t1415 t1430) (next t1430 t1445) (next t1445 t1500)
+    (next t1500 t1515) (next t1515 t1530) (next t1530 t1545) (next t1545 t1600)
+    (next t1600 t1615) (next t1615 t1630) (next t1630 t1645)
+
+    ;; Bob's preference treated as a hard constraint: avoid scheduling start times before 11:00
+    (bob_avoid t0900) (bob_avoid t0915) (bob_avoid t0930) (bob_avoid t0945)
+    (bob_avoid t1000) (bob_avoid t1015) (bob_avoid t1030) (bob_avoid t1045)
+
+    ;; Availability facts (15-minute blocks). A block 'tXXXX' means that 15-minute block starting at that time is free.
+    ;; Alice: Available 09:00-11:00 -> blocks starting 09:00 .. 10:45
+    (available alice t0900) (available alice t0915) (available alice t0930) (available alice t0945)
+    (available alice t1000) (available alice t1015) (available alice t1030) (available alice t1045)
+    ;; Alice: Available 13:00-16:00 -> blocks starting 13:00 .. 15:45
+    (available alice t1300) (available alice t1315) (available alice t1330) (available alice t1345)
+    (available alice t1400) (available alice t1415) (available alice t1430) (available alice t1445)
+    (available alice t1500) (available alice t1515) (available alice t1530) (available alice t1545)
+
+    ;; Bob: Available 10:30-12:00 -> blocks starting 10:30 .. 11:45
+    (available bob t1030) (available bob t1045) (available bob t1100) (available bob t1115)
+    (available bob t1130) (available bob t1145)
+    ;; Bob: Available 14:00-15:30 -> blocks starting 14:00 .. 15:15
+    (available bob t1400) (available bob t1415) (available bob t1430) (available bob t1445)
+    (available bob t1500) (available bob t1515)
+
+    ;; Carol: Available 09:30-10:30 -> blocks starting 09:30 .. 10:15
+    (available carol t0930) (available carol t0945) (available carol t1000) (available carol t1015)
+    ;; Carol: Available 11:00-12:30 -> blocks starting 11:00 .. 12:15
+    (available carol t1100) (available carol t1115) (available carol t1130) (available carol t1145)
+    (available carol t1200) (available carol t1215)
+    ;; Carol: Available 15:00-17:00 -> blocks starting 15:00 .. 16:45
+    (available carol t1500) (available carol t1515) (available carol t1530) (available carol t1545)
+    (available carol t1600) (available carol t1615) (available carol t1630) (available carol t1645)
+  )
+
+  ;; Goal: a single meeting must be scheduled (the planner will pick a time that satisfies all hard constraints).
+  (:goal (and (scheduled)))
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "Three colleagues \u2014 Alice, Bob, and Carol \u2014 need to schedule a 30-minute meeting on Tuesday, Oct 21.\nTheir availabilities are as follows:\n\nAlice: Available from 09:00\u201311:00 in the morning and 13:00\u201316:00 in the afternoon.\n\nBob: Available from 10:30\u201312:00 in the late morning and 14:00\u201315:30 in the afternoon.\n\nCarol: Available from 09:30\u201310:30, 11:00\u201312:30, and 15:00\u201317:00.\n\nFind the earliest 30-minute time slot when all three are available.\nIf multiple slots work, choose the one that minimizes interruption to Bob\u2019s morning schedule.",
+    "plan": "No plan yet.",
+    "specification": "{\n  \"name\": \"ThreeColleaguesAliceBob20251009112719\",\n  \"author\": \"Human\",\n  \"agents\": {\n    \"number\": 4,\n    \"names\": [\n      \"alice\",\n      \"bob\",\n      \"carol\",\n      \"orchestrator\"\n    ],\n    \"alice\": {\n      \"private_information\": [\n        \"Available 09:00-11:00\",\n        \"Available 13:00-16:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available.\"\n    },\n    \"bob\": {\n      \"private_information\": [\n        \"Available 10:30-12:00\",\n        \"Available 14:00-15:30\",\n        \"Preference: minimize interruption to my morning schedule if multiple slots are possible\"\n      ],\n      \"goal\": \"Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available; prefer options that minimize interruption to Bob's morning schedule.\"\n    },\n    \"carol\": {\n      \"private_information\": [\n        \"Available 09:30-10:30\",\n        \"Available 11:00-12:30\",\n        \"Available 15:00-17:00\"\n      ],\n      \"goal\": \"Find the earliest 30-minute time slot on Tuesday, Oct 21 when Alice, Bob and Carol are all available.\"\n    },\n    \"orchestrator\": {\n      \"private_information\": [],\n      \"goal\": \"Integrate agent availability reports and produce a PDDL domain and problem targeting the FastDownward solver that finds the earliest 30-minute meeting slot on Tuesday, Oct 21 when all three participants are available, breaking ties to minimize interruption to Bob's morning.\"\n    }\n  },\n  \"environment\": {\n    \"init\": {\n      \"date\": \"Tuesday, Oct 21\",\n      \"meeting_duration_minutes\": 30,\n      \"time_granularity_minutes\": 15\n    },\n    \"public_information\": [\n      \"Three colleagues (Alice, Bob, Carol) need to schedule a 30-minute meeting on Tuesday, Oct 21.\",\n      \"Find the earliest 30-minute slot when all three are available.\",\n      \"If multiple slots satisfy availability, choose the one that minimizes interruption to Bob's morning schedule.\"\n    ]\n  },\n  \"workflow\": {\n    \"alice\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_alice\",\n        \"system_prompt\": \"You are Alice. You know your own availability. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].\",\n        \"prompt\": \"Your name is alice. You are in an environment with the following public information:\\n{environment->public_information}\\nYou have the following private availability information:\\n{agents->alice->private_information}\\nThis is your goal:\\n{agents->alice->goal}\\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information.\"\n      }\n    },\n    \"bob\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_bob\",\n        \"system_prompt\": \"You are Bob. You know your own availability and preferences. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].\",\n        \"prompt\": \"Your name is bob. You are in an environment with the following public information:\\n{environment->public_information}\\nYou have the following private availability information and preferences:\\n{agents->bob->private_information}\\nThis is your goal:\\n{agents->bob->goal}\\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information.\"\n      }\n    },\n    \"carol\": {\n      \"report_availability\": {\n        \"input\": [],\n        \"output\": \"availability_carol\",\n        \"system_prompt\": \"You are Carol. You know your own availability. Provide a concise, structured list of your available time intervals for Tuesday, Oct 21. Do not produce PDDL. Use the format: ['HH:MM-HH:MM', ...].\",\n        \"prompt\": \"Your name is carol. You are in an environment with the following public information:\\n{environment->public_information}\\nYou have the following private availability information:\\n{agents->carol->private_information}\\nThis is your goal:\\n{agents->carol->goal}\\nRespond with a structured list of your availability intervals for Tuesday, Oct 21 in the format: ['HH:MM-HH:MM', ...]. Do not assume anything not stated in your private information.\"\n      }\n    },\n    \"orchestrator\": {\n      \"pddl\": {\n        \"input\": [\n          \"availability_alice\",\n          \"availability_bob\",\n          \"availability_carol\"\n        ],\n        \"output\": \"pddl_orchestrator\",\n        \"system_prompt\": \"You are an expert in multi-agent scheduling and PDDL modeling. Using the availability reports from the three agents, produce a complete PDDL domain and a PDDL problem suitable for the FastDownward planner that will find the earliest 30-minute meeting slot on Tuesday, Oct 21 when all participants are available. Model time slots with the provided granularity, encode the meeting duration (30 minutes), and include tie-breaking to minimize interruption to Bob's morning schedule. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and identities distinct where relevant.\",\n        \"prompt\": \"You are the orchestrator. Integrate the following structured availability reports from the agents and produce a PDDL domain and a PDDL problem targeted to the FastDownward solver. The objective is to find the earliest 30-minute slot on Tuesday, Oct 21 when Alice, Bob, and Carol are all available; if multiple slots are possible, prefer the one that minimizes interruption to Bob's morning schedule.\\n\\nPublic information:\\n{environment->public_information}\\n\\nAvailability reports received:\\nAlice: {availability_alice}\\nBob: {availability_bob}\\nCarol: {availability_carol}\\n\\nConstraints to model:\\n- Meeting duration: {environment->init->meeting_duration_minutes} minutes.\\n- Time granularity: {environment->init->time_granularity_minutes} minutes.\\n- Only schedule when all three are available.\\n- Tie-breaker: minimize interruption to Bob's morning (prefer slots that are later within Bob's morning or that occur outside his earlier morning window when possible).\\n\\nProduce a PDDL domain and PDDL problem that FastDownward can consume. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.\"\n      }\n    },\n    \"constraints\": [\n      \"alice.report_availability->orchestrator.pddl\",\n      \"bob.report_availability->orchestrator.pddl\",\n      \"carol.report_availability->orchestrator.pddl\"\n    ]\n  }\n}",
+    "pddl_domain": "(define (domain meeting-scheduling)\n  (:requirements :typing :strips :negative-preconditions)\n  (:types person time)\n\n  (:predicates\n    (available ?p - person ?t - time)\n    (next ?t1 - time ?t2 - time)\n    (bob_avoid ?t - time)\n    (meeting_scheduled ?t - time)\n    (scheduled)\n  )\n\n  ;; Alice initiates scheduling\n  (:action alice-schedule\n    :parameters (?t - time ?t2 - time)\n    :precondition (and\n      (next ?t ?t2)\n      (available alice ?t) (available alice ?t2)\n      (available bob ?t) (available bob ?t2)\n      (available carol ?t) (available carol ?t2)\n      (not (bob_avoid ?t))\n      (not (scheduled))\n    )\n    :effect (and\n      (meeting_scheduled ?t)\n      (scheduled)\n    )\n  )\n\n  ;; Bob initiates scheduling\n  (:action bob-schedule\n    :parameters (?t - time ?t2 - time)\n    :precondition (and\n      (next ?t ?t2)\n      (available alice ?t) (available alice ?t2)\n      (available bob ?t) (available bob ?t2)\n      (available carol ?t) (available carol ?t2)\n      (not (bob_avoid ?t))\n      (not (scheduled))\n    )\n    :effect (and\n      (meeting_scheduled ?t)\n      (scheduled)\n    )\n  )\n\n  ;; Carol initiates scheduling\n  (:action carol-schedule\n    :parameters (?t - time ?t2 - time)\n    :precondition (and\n      (next ?t ?t2)\n      (available alice ?t) (available alice ?t2)\n      (available bob ?t) (available bob ?t2)\n      (available carol ?t) (available carol ?t2)\n      (not (bob_avoid ?t))\n      (not (scheduled))\n    )\n    :effect (and\n      (meeting_scheduled ?t)\n      (scheduled)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem schedule-meeting-oct21)\n  (:domain meeting-scheduling)\n  (:objects\n    alice bob carol - person\n\n    t0900 t0915 t0930 t0945 t1000 t1015 t1030 t1045\n    t1100 t1115 t1130 t1145 t1200 t1215 t1230 t1245\n    t1300 t1315 t1330 t1345 t1400 t1415 t1430 t1445\n    t1500 t1515 t1530 t1545 t1600 t1615 t1630 t1645 - time\n  )\n\n  (:init\n    ;; next relations (15-minute granularity)\n    (next t0900 t0915) (next t0915 t0930) (next t0930 t0945) (next t0945 t1000)\n    (next t1000 t1015) (next t1015 t1030) (next t1030 t1045) (next t1045 t1100)\n    (next t1100 t1115) (next t1115 t1130) (next t1130 t1145) (next t1145 t1200)\n    (next t1200 t1215) (next t1215 t1230) (next t1230 t1245) (next t1245 t1300)\n    (next t1300 t1315) (next t1315 t1330) (next t1330 t1345) (next t1345 t1400)\n    (next t1400 t1415) (next t1415 t1430) (next t1430 t1445) (next t1445 t1500)\n    (next t1500 t1515) (next t1515 t1530) (next t1530 t1545) (next t1545 t1600)\n    (next t1600 t1615) (next t1615 t1630) (next t1630 t1645)\n\n    ;; Bob's preference treated as a hard constraint: avoid scheduling start times before 11:00\n    (bob_avoid t0900) (bob_avoid t0915) (bob_avoid t0930) (bob_avoid t0945)\n    (bob_avoid t1000) (bob_avoid t1015) (bob_avoid t1030) (bob_avoid t1045)\n\n    ;; Availability facts (15-minute blocks). A block 'tXXXX' means that 15-minute block starting at that time is free.\n    ;; Alice: Available 09:00-11:00 -> blocks starting 09:00 .. 10:45\n    (available alice t0900) (available alice t0915) (available alice t0930) (available alice t0945)\n    (available alice t1000) (available alice t1015) (available alice t1030) (available alice t1045)\n    ;; Alice: Available 13:00-16:00 -> blocks starting 13:00 .. 15:45\n    (available alice t1300) (available alice t1315) (available alice t1330) (available alice t1345)\n    (available alice t1400) (available alice t1415) (available alice t1430) (available alice t1445)\n    (available alice t1500) (available alice t1515) (available alice t1530) (available alice t1545)\n\n    ;; Bob: Available 10:30-12:00 -> blocks starting 10:30 .. 11:45\n    (available bob t1030) (available bob t1045) (available bob t1100) (available bob t1115)\n    (available bob t1130) (available bob t1145)\n    ;; Bob: Available 14:00-15:30 -> blocks starting 14:00 .. 15:15\n    (available bob t1400) (available bob t1415) (available bob t1430) (available bob t1445)\n    (available bob t1500) (available bob t1515)\n\n    ;; Carol: Available 09:30-10:30 -> blocks starting 09:30 .. 10:15\n    (available carol t0930) (available carol t0945) (available carol t1000) (available carol t1015)\n    ;; Carol: Available 11:00-12:30 -> blocks starting 11:00 .. 12:15\n    (available carol t1100) (available carol t1115) (available carol t1130) (available carol t1145)\n    (available carol t1200) (available carol t1215)\n    ;; Carol: Available 15:00-17:00 -> blocks starting 15:00 .. 16:45\n    (available carol t1500) (available carol t1515) (available carol t1530) (available carol t1545)\n    (available carol t1600) (available carol t1615) (available carol t1630) (available carol t1645)\n  )\n\n  ;; Goal: a single meeting must be scheduled (the planner will pick a time that satisfies all hard constraints).\n  (:goal (and (scheduled)))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(alice-schedule t1500 t1515)\n; cost = 1 (unit cost)\n",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ALICE does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/miscellanea/ThreeColleaguesAliceBob20251009112719/FastDownwards/domain_0.pddl results/miscellanea/ThreeColleaguesAliceBob20251009112719/FastDownwards/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.010s CPU, 0.002s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 49 rules.\nComputing model... [0.000s CPU, 0.004s wall-clock]\n200 relevant atoms\n474 auxiliary atoms\n674 final queue length\n678 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.000s wall-clock]\nInstantiating: [0.010s CPU, 0.008s wall-clock]\nComputing fact groups...\nFinding invariants...\n3 initial candidates\nFinding invariants: [0.000s CPU, 0.000s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n2 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.001s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.000s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n0 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.000s wall-clock]\nReordering and filtering variables...\n1 of 2 variables necessary.\n0 of 0 mutex groups necessary.\n3 of 3 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.000s wall-clock]\nTranslator variables: 1\nTranslator derived variables: 0\nTranslator facts: 2\nTranslator goal facts: 1\nTranslator mutex groups: 0\nTranslator total mutex groups size: 0\nTranslator operators: 3\nTranslator axioms: 0\nTranslator task size: 13\nTranslator peak memory: 31564 KB\nWriting output... [0.000s CPU, 0.000s wall-clock]\nDone! [0.010s CPU, 0.012s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'let(hlm,landmark_sum(lm_factory=lm_reasonable_orders_hps(lm_rhw()),transform=adapt_costs(one),pref=false),let(hff,ff(transform=adapt_costs(one)),lazy_greedy([hff,hlm],preferred=[hff,hlm],cost_type=one,reopen_closed=false)))' --internal-plan-file results/miscellanea/ThreeColleaguesAliceBob20251009112719/FastDownwards/sas_plan_0 < output.sas\n[t=0.000330s, 9964 KB] reading input...\n[t=0.000517s, 9964 KB] done reading input!\n[t=0.002441s, 10228 KB] Initializing landmark sum heuristic...\n[t=0.002514s, 10228 KB] Generating landmark graph...\n[t=0.002540s, 10228 KB] Building a landmark graph with reasonable orders.\n[t=0.002557s, 10228 KB] Initializing Exploration...\n[t=0.002578s, 10228 KB] Generating landmarks using the RPG/SAS+ approach\n[t=0.002629s, 10228 KB] Landmarks generation time: 0.000088s\n[t=0.002646s, 10228 KB] Discovered 2 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.002670s, 10228 KB] 1 edges\n[t=0.002685s, 10228 KB] approx. reasonable orders\n[t=0.002700s, 10228 KB] Landmarks generation time: 0.000180s\n[t=0.002717s, 10228 KB] Discovered 2 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.002732s, 10228 KB] 1 edges\n[t=0.002746s, 10228 KB] Landmark graph generation time: 0.000246s\n[t=0.002761s, 10228 KB] Landmark graph contains 2 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.002777s, 10228 KB] Landmark graph contains 1 orderings.\n[t=0.002821s, 10228 KB] Simplifying 3 unary operators... done! [1 unary operators]\n[t=0.002845s, 10228 KB] time to simplify: 0.000038s\n[t=0.002861s, 10228 KB] Initializing additive heuristic...\n[t=0.002876s, 10228 KB] Initializing FF heuristic...\n[t=0.002936s, 10228 KB] Building successor generator...done!\n[t=0.002986s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.003000s, 10228 KB] time for successor generation creation: 0.000010s\n[t=0.003030s, 10228 KB] Variables: 1\n[t=0.003044s, 10228 KB] FactPairs: 2\n[t=0.003058s, 10228 KB] Bytes per state: 4\n[t=0.003107s, 10228 KB] Conducting lazy best first search, (real) bound = 2147483647\n[t=0.003168s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 1\n[t=0.003187s, 10364 KB] New best heuristic value for ff: 1\n[t=0.003201s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.003223s, 10364 KB] Initial heuristic value for landmark_sum_heuristic: 1\n[t=0.003238s, 10364 KB] Initial heuristic value for ff: 1\n[t=0.003259s, 10364 KB] Solution found!\n[t=0.003274s, 10364 KB] Actual search time: 0.000143s\nalice-schedule t1500 t1515 (1)\n[t=0.003290s, 10364 KB] Plan length: 1 step(s).\n[t=0.003290s, 10364 KB] Plan cost: 1\n[t=0.003290s, 10364 KB] Expanded 1 state(s).\n[t=0.003290s, 10364 KB] Reopened 0 state(s).\n[t=0.003290s, 10364 KB] Evaluated 2 state(s).\n[t=0.003290s, 10364 KB] Evaluations: 4\n[t=0.003290s, 10364 KB] Generated 3 state(s).\n[t=0.003290s, 10364 KB] Dead ends: 0 state(s).\n[t=0.003290s, 10364 KB] Number of registered states: 2\n[t=0.003290s, 10364 KB] Int hash set load factor: 2/2 = 1.000000\n[t=0.003290s, 10364 KB] Int hash set resizes: 1\n[t=0.003290s, 10364 KB] Search time: 0.000184s\n[t=0.003290s, 10364 KB] Total time: 0.003290s\nSolution found.\nPeak memory: 10364 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.12s\n",
+    "history": []
+}
+================================================================================
+
+
+NATURAL-PLAN sas_plan_0
+------------------------------
+Step 1 — Alice schedules the meeting:
+- Actor: Alice
+- Date: Tuesday, Oct 21
+- Start time: 15:00 (t1500)
+- End time: 15:30 (uses blocks t1500 and t1515)
+- Duration: 30 minutes
+- Participants available: Alice, Bob, Carol
+- Notes: This start time is outside Bob’s avoided morning slots, satisfying the tie-breaker to minimize interruption to Bob’s morning. The meeting is now scheduled.
+================================================================================
+

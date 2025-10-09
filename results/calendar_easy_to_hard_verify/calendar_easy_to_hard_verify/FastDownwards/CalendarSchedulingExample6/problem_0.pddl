@@ -1,47 +1,47 @@
-(define (problem schedule-meeting-monday)
+(define (problem meeting-monday)
   (:domain meeting-scheduling)
+
   (:objects
-    thomas dylan jerry - participant
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - slot
+    thomas dylan jerry - person
+    ; 30-minute slot start times between 09:00 and 16:30
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
   )
 
   (:init
-    ;; meeting not yet scheduled
-    (unscheduled)
+    ; ----------------------
+    ; Participant free slots
+    ; ----------------------
+    ; Thomas: free entire workday 09:00-17:00 -> all 30-min slots available
+    (free thomas s0900) (free thomas s0930) (free thomas s1000) (free thomas s1030)
+    (free thomas s1100) (free thomas s1130) (free thomas s1200) (free thomas s1230)
+    (free thomas s1300) (free thomas s1330) (free thomas s1400) (free thomas s1430)
+    (free thomas s1500) (free thomas s1530) (free thomas s1600) (free thomas s1630)
 
-    ;; half-hour slot adjacency (09:00-09:30 is s0, ..., 16:30-17:00 is s15)
-    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4)
-    (next s4 s5) (next s5 s6) (next s6 s7) (next s7 s8)
-    (next s8 s9) (next s9 s10) (next s10 s11) (next s11 s12)
-    (next s12 s13) (next s13 s14) (next s14 s15)
+    ; Dylan: busy 10:30-11:00 (s1030) and 13:30-14:00 (s1330). All other slots free.
+    (free dylan s0900) (free dylan s0930) (free dylan s1000)
+    ; s1030 blocked -> not included
+    (free dylan s1100) (free dylan s1130) (free dylan s1200) (free dylan s1230)
+    (free dylan s1300)
+    ; s1330 blocked -> not included
+    (free dylan s1400) (free dylan s1430) (free dylan s1500) (free dylan s1530) (free dylan s1600) (free dylan s1630)
 
-    ;; Derived earliest feasible start slot (computed from participants' busy intervals
-    ;; and the requirement to prefer the earliest feasible slot). This encoding enforces
-    ;; that the planner selects this earliest feasible start.
-    ;; Earliest feasible start is s11 (14:30-15:30) given the busy intervals below.
-    (earliest-available s11)
+    ; Jerry: busy 09:00-11:00 (blocks s0900,s0930,s1000,s1030),
+    ;       busy 11:30-14:30 (blocks s1130,s1200,s1230,s1300,s1330,s1400),
+    ;       busy 16:00-17:00 (blocks s1600,s1630).
+    ; Remaining free slots are s1100, s1430, s1500, s1530
+    (free jerry s1100) (free jerry s1430) (free jerry s1500) (free jerry s1530)
 
-    ;; Participant availability (explicit free facts only for half-hour slots that are available).
-    ;; Thomas: free entire work day 09:00-17:00 -> all half-hour slots free
-    (free thomas s0) (free thomas s1) (free thomas s2) (free thomas s3)
-    (free thomas s4) (free thomas s5) (free thomas s6) (free thomas s7)
-    (free thomas s8) (free thomas s9) (free thomas s10) (free thomas s11)
-    (free thomas s12) (free thomas s13) (free thomas s14) (free thomas s15)
-
-    ;; Dylan: busy 10:30-11:00 (s3) and 13:30-14:00 (s9); all other half-hour slots within work hours free
-    (free dylan s0) (free dylan s1) (free dylan s2)
-    ;; s3 is busy -> no (free dylan s3)
-    (free dylan s4) (free dylan s5) (free dylan s6) (free dylan s7)
-    (free dylan s8)
-    ;; s9 is busy -> no (free dylan s9)
-    (free dylan s10) (free dylan s11) (free dylan s12) (free dylan s13)
-    (free dylan s14) (free dylan s15)
-
-    ;; Jerry: busy 09:00-11:00 (s0,s1,s2,s3), 11:30-14:30 (s5,s6,s7,s8,s9,s10), and 16:00-17:00 (s14,s15)
-    ;; Therefore Jerry's free half-hour slots are: s4 (11:00-11:30), s11 (14:30-15:00), s12 (15:00-15:30), s13 (15:30-16:00)
-    (free jerry s4) (free jerry s11) (free jerry s12) (free jerry s13)
+    ; ------------------------------------------
+    ; Precomputed slot-allowed start facts:
+    ; A start sX is slot-allowed iff for every participant both sX and the next 30-min slot are free.
+    ; We only include slot-allowed for starts that satisfy everyone's availability.
+    ; From the participants' constraints above, the only feasible 60-min start slots are:
+    ;   s1430 (14:30-15:30) and s1500 (15:00-16:00).
+    ; (All earlier candidate starts are impossible because Jerry is busy.)
+    ; ------------------------------------------
+    (slot-allowed s1430)
+    (slot-allowed s1500)
   )
 
-  ;; Goal: meeting scheduled (the encoding enforces the earliest feasible choice s11)
-  (:goal (scheduled s11))
+  (:goal (and (scheduled)))
 )

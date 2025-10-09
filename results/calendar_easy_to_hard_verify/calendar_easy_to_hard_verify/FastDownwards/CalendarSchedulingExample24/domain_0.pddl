@@ -1,33 +1,26 @@
 (define (domain meeting-scheduling)
-  (:requirements :typing :adl)
-  (:types agent slot)
+  (:requirements :typing :quantified-preconditions)
+  (:types participant slot)
 
   (:predicates
-    (free ?a - agent ?s - slot)         ; agent a is free at slot s
-    (attends ?a - agent ?s - slot)      ; agent a will attend meeting at slot s
-    (meeting-scheduled ?s - slot)       ; meeting has been scheduled at slot s
+    (free ?p - participant ?s - slot)        ; participant ?p is free in slot ?s
+    (attended ?p - participant ?s - slot)    ; participant ?p has been marked as attending slot ?s
+    (scheduled ?s - slot)                   ; meeting has been scheduled in slot ?s (goal)
   )
 
-  ;; Each agent can declare attendance at a slot if they are free then.
-  ;; Attendance actions are parameterized by agent so that grounded actions
-  ;; in the plan clearly show which agent attends which slot.
+  ;; Each participant can take an explicit attend action for a given slot,
+  ;; which requires that participant be free in that slot.
   (:action attend
-    :parameters (?a - agent ?s - slot)
-    :precondition (free ?a ?s)
-    :effect (and
-              (attends ?a ?s)
-              (not (free ?a ?s))
-            )
+    :parameters (?p - participant ?s - slot)
+    :precondition (free ?p ?s)
+    :effect (attended ?p ?s)
   )
 
-  ;; Schedule the meeting at slot ?s only if every agent attends ?s.
-  ;; Uses a universal precondition so the single scheduling action's precondition
-  ;; explicitly requires attendance from all agents (keeps agent-specific constraints distinct).
-  (:action schedule-meeting
+  ;; Finalize/confirm the meeting in a slot only when every participant has attended that slot.
+  ;; This uses a quantified (universal) precondition over participants.
+  (:action finalize
     :parameters (?s - slot)
-    :precondition (and
-                    (forall (?a - agent) (attends ?a ?s))
-                  )
-    :effect (meeting-scheduled ?s)
+    :precondition (forall (?p - participant) (attended ?p ?s))
+    :effect (scheduled ?s)
   )
 )

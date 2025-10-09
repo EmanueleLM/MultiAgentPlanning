@@ -1,32 +1,34 @@
-(define (problem CalendarSchedulingExample25-problem)
-  (:domain CalendarSchedulingExample25)
+(define (problem schedule-meeting-problem)
+  (:domain calendar-scheduling)
   (:objects
-    julia joshua nicholas david melissa - participant
-    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 - timeslot
+    julia joshua nicholas david melissa - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time
   )
   (:init
-    ; Julia available start times: 09:00..16:30 except 10:30,11:00,12:00,13:00,14:00,15:00
-    (avail julia t0) (avail julia t1) (avail julia t2) (avail julia t5) (avail julia t7)
-    (avail julia t9) (avail julia t11) (avail julia t13) (avail julia t14) (avail julia t15)
+    ;; Julia free times
+    (free julia t0900) (free julia t0930) (free julia t1000) (free julia t1130)
+    (free julia t1230) (free julia t1330) (free julia t1430) (free julia t1530)
+    (free julia t1600) (free julia t1630)
 
-    ; Joshua: free all slots
-    (avail joshua t0) (avail joshua t1) (avail joshua t2) (avail joshua t3)
-    (avail joshua t4) (avail joshua t5) (avail joshua t6) (avail joshua t7)
-    (avail joshua t8) (avail joshua t9) (avail joshua t10) (avail joshua t11)
-    (avail joshua t12) (avail joshua t13) (avail joshua t14) (avail joshua t15)
+    ;; Joshua free all slots
+    (free joshua t0900) (free joshua t0930) (free joshua t1000) (free joshua t1030)
+    (free joshua t1100) (free joshua t1130) (free joshua t1200) (free joshua t1230)
+    (free joshua t1300) (free joshua t1330) (free joshua t1400) (free joshua t1430)
+    (free joshua t1500) (free joshua t1530) (free joshua t1600) (free joshua t1630)
 
-    ; Nicholas available: all except 09:00,12:00,15:30-16:30 start slots (t0,t6,t13,t14)
-    (avail nicholas t1) (avail nicholas t2) (avail nicholas t3) (avail nicholas t4)
-    (avail nicholas t5) (avail nicholas t7) (avail nicholas t8) (avail nicholas t9)
-    (avail nicholas t10) (avail nicholas t11) (avail nicholas t12) (avail nicholas t15)
+    ;; Nicholas free times
+    (free nicholas t0930) (free nicholas t1000) (free nicholas t1030) (free nicholas t1100)
+    (free nicholas t1130) (free nicholas t1230) (free nicholas t1300) (free nicholas t1330)
+    (free nicholas t1400) (free nicholas t1430) (free nicholas t1500) (free nicholas t1630)
 
-    ; David available: {t4,t5,t7,t9,t12,t13}
-    (avail david t4) (avail david t5) (avail david t7)
-    (avail david t9) (avail david t12) (avail david t13)
+    ;; David free times
+    (free david t1100) (free david t1130) (free david t1230) (free david t1330)
+    (free david t1500) (free david t1530)
 
-    ; Melissa available: {t1,t2,t3,t4,t5,t6,t8,t12}
-    (avail melissa t1) (avail melissa t2) (avail melissa t3) (avail melissa t4)
-    (avail melissa t5) (avail melissa t6) (avail melissa t8) (avail melissa t12)
+    ;; Melissa free times
+    (free melissa t0930) (free melissa t1000) (free melissa t1030) (free melissa t1100)
+    (free melissa t1130) (free melissa t1200) (free melissa t1300) (free melissa t1500)
   )
-  (:goal (scheduled))
+
+  (:goal (scheduled t1130))
 )

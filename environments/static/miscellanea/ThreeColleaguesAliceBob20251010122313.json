@@ -1,0 +1,99 @@
+{
+    "name": "ThreeColleaguesAliceBob20251010122313",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "alice",
+            "bob",
+            "carol",
+            "orchestrator"
+        ],
+        "alice": {
+            "private_information": [
+                "Available 2025-10-21 09:00-11:00",
+                "Available 2025-10-21 13:00-16:00",
+                "Prefers morning if possible"
+            ],
+            "goal": "Find the earliest 30-minute time slot on 2025-10-21 when all participants are available. Minimize interruption to Bob's morning schedule if there are multiple valid slots."
+        },
+        "bob": {
+            "private_information": [
+                "Available 2025-10-21 10:30-12:00",
+                "Available 2025-10-21 14:00-15:30",
+                "Has important morning commitments before 10:30"
+            ],
+            "goal": "Find the earliest 30-minute time slot on 2025-10-21 when all participants are available. Prefer solutions that minimize disturbance to my morning schedule."
+        },
+        "carol": {
+            "private_information": [
+                "Available 2025-10-21 09:30-10:30",
+                "Available 2025-10-21 11:00-12:30",
+                "Available 2025-10-21 15:00-17:00"
+            ],
+            "goal": "Find the earliest 30-minute time slot on 2025-10-21 when all participants are available."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the participants' availabilities and produce a PDDL domain and problem (targeting the FastDownwards solver) that encodes the scheduling problem and yields the earliest 30-minute meeting slot on 2025-10-21, breaking ties by minimizing interruption to Bob's morning schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "2025-10-21",
+            "meeting_duration_minutes": 30,
+            "time_granularity_minutes": 30,
+            "workday_start": "09:00",
+            "workday_end": "17:00"
+        },
+        "public_information": [
+            "Three colleagues (Alice, Bob, Carol) need a 30-minute meeting on 2025-10-21.",
+            "Meeting duration is 30 minutes.",
+            "Search for the earliest time slot where all three are available.",
+            "If multiple slots are equally early, prefer the slot that minimizes interruption to Bob's morning commitments."
+        ]
+    },
+    "workflow": {
+        "alice": {
+            "availability": {
+                "input": [],
+                "output": "avail_alice",
+                "system_prompt": "You represent Alice. Provide your structured availability for the meeting date and any private preferences. Do not emit PDDL. Return a clear list of available time ranges on the date and any notes about preferences (for example: prefers morning).",
+                "prompt": "Your name is Alice. Public information:\n{environment->public_information}\nYour private availability and notes:\n{agents->alice->private_information}\nGoal:\n{agents->alice->goal}\nProduce a concise structured availability response for 2025-10-21 (list of start-end ranges) and any preference notes. Do not produce PDDL. Output should be strictly the availability structure and notes."
+            }
+        },
+        "bob": {
+            "availability": {
+                "input": [],
+                "output": "avail_bob",
+                "system_prompt": "You represent Bob. Provide your structured availability for the meeting date and any private preferences. Do not emit PDDL. Return a clear list of available time ranges on the date and any notes about preferences (for example: important morning commitments).",
+                "prompt": "Your name is Bob. Public information:\n{environment->public_information}\nYour private availability and notes:\n{agents->bob->private_information}\nGoal:\n{agents->bob->goal}\nProduce a concise structured availability response for 2025-10-21 (list of start-end ranges) and any preference notes. Do not produce PDDL. Output should be strictly the availability structure and notes."
+            }
+        },
+        "carol": {
+            "availability": {
+                "input": [],
+                "output": "avail_carol",
+                "system_prompt": "You represent Carol. Provide your structured availability for the meeting date and any private preferences. Do not emit PDDL. Return a clear list of available time ranges on the date and any notes about preferences.",
+                "prompt": "Your name is Carol. Public information:\n{environment->public_information}\nYour private availability and notes:\n{agents->carol->private_information}\nGoal:\n{agents->carol->goal}\nProduce a concise structured availability response for 2025-10-21 (list of start-end ranges) and any preference notes. Do not produce PDDL. Output should be strictly the availability structure and notes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_alice",
+                    "avail_bob",
+                    "avail_carol"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL, and you will produce a PDDL domain and a PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and agent-related predicates distinct where appropriate. Encode time with discrete 30-minute slots (as provided by the environment initialization). Aim to find the earliest feasible 30-minute meeting slot on 2025-10-21; if multiple earliest slots exist, include a cost structure or preference that minimizes interruption to Bob's morning schedule.",
+                "prompt": "You are the orchestrator. Public information:\n{environment->public_information}\nYou will receive the structured availabilities from the three participants:\n{avail_alice}\n{avail_bob}\n{avail_carol}\nYour orchestrator goal:\n{agents->orchestrator->goal}\nTask:\n- Integrate the availabilities into a single planning model.\n- Produce a PDDL domain and a PDDL problem that (1) models discrete 30-minute time slots on 2025-10-21 within the workday, (2) models each participant's availability as constraints, and (3) sets the objective to choose the earliest feasible 30-minute slot. If multiple equally early slots exist, encode a tie-breaker that minimizes interruption to Bob's morning schedule (for example by assigning a small cost to morning slots that overlap Bob's preferred busy periods).\n- Target the FastDownwards solver; ensure the PDDL is compatible (strip temporal constructs not supported and use classical planning constructs with discrete time encoded as predicates or objects).\nOutput:\n- Provide the PDDL domain enclosed in <domain></domain> and the PDDL problem enclosed in <problem></problem>.\n- Keep agent actions and any agent-specific predicates clearly namespaced (e.g., alice-..., bob-..., carol-...).\n- If any availability information is ambiguous or missing, state the ambiguity and proceed with what you have.\nThink step by step and produce the final PDDL domain and problem for FastDownwards."
+            }
+        },
+        "constraints": [
+            "alice.availability->orchestrator.pddl",
+            "bob.availability->orchestrator.pddl",
+            "carol.availability->orchestrator.pddl"
+        ]
+    }
+}

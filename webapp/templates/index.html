@@ -34,12 +34,15 @@
                 placeholder="e.g. Schedule a 30 minute meeting for Alice, Bob, and Carol next Monday afternoon..."
                 required
               ></textarea>
-              <img
-                src="{{ url_for('static', filename='cat-icon.svg') }}"
-                alt=""
-                class="prompt-form__icon"
-                aria-hidden="true"
-              />
+              <button
+                type="button"
+                id="cat-toggle"
+                class="prompt-form__toggle"
+                aria-pressed="false"
+                title="Gatozzo mirchidiii!"
+              >
+                <img src="{{ url_for('static', filename='gatozzo-planner.webp') }}" alt="Toggle cat animation" />
+              </button>
             </div>
 
             <div class="prompt-form__controls">
@@ -253,7 +256,8 @@
         const problemBody = document.getElementById("problem-body");
         const planBody = document.getElementById("plan-body");
         const planEmpty = document.getElementById("plan-empty");
-        const floatingCat = document.getElementById("floating-cat");
+        const catContainer = document.getElementById("cat-container");
+        const catToggle = document.getElementById("cat-toggle");
 
         let jobId = null;
         let pollInterval = null;
@@ -277,19 +281,14 @@
           hideArtifacts();
         };
 
-        const hideFloatingCat = () => {
-          if (floatingCat) {
-            floatingCat.classList.remove("show");
-            floatingCat.hidden = true;
-          }
-        };
-
-        let catAnimationBound = false;
-
         const randomBetween = (min, max) => min + Math.random() * (max - min);
 
-        const configureFloatingCat = () => {
-          if (!floatingCat) return;
+        let catInterval = null;
+        let cats = [];
+        let catAnimationEnabled = false;
+
+        const configureFloatingCat = (cat) => {
+          if (!cat) return;
           const viewportWidth = window.innerWidth || 1920;
           const viewportHeight = window.innerHeight || 1080;
 
@@ -299,7 +298,7 @@
           const startYNum = randomBetween(0.1, 0.9) * viewportHeight;
           const endYNum = randomBetween(0.1, 0.9) * viewportHeight;
 
-          const makeMidPoint = (t, variance = 0.15) => {
+          const makeMidPoint = (t, variance = 0.18) => {
             const baseX = startXNum + (endXNum - startXNum) * t;
             const baseY = startYNum + (endYNum - startYNum) * t;
             const jitterX = (Math.random() - 0.5) * variance * viewportWidth;
@@ -317,20 +316,20 @@
           const toVW = (value) => `${(value / viewportWidth) * 100}vw`;
           const toVH = (value) => `${(value / viewportHeight) * 100}vh`;
 
-          floatingCat.style.setProperty("--cat-start-x", toVW(startXNum));
-          floatingCat.style.setProperty("--cat-end-x", toVW(endXNum));
-          floatingCat.style.setProperty("--cat-start-y", toVH(startYNum));
-          floatingCat.style.setProperty("--cat-end-y", toVH(endYNum));
-          floatingCat.style.setProperty("--cat-mid1-x", toVW(mid1.x));
-          floatingCat.style.setProperty("--cat-mid1-y", toVH(mid1.y));
-          floatingCat.style.setProperty("--cat-mid2-x", toVW(mid2.x));
-          floatingCat.style.setProperty("--cat-mid2-y", toVH(mid2.y));
-          floatingCat.style.setProperty("--cat-mid3-x", toVW(mid3.x));
-          floatingCat.style.setProperty("--cat-mid3-y", toVH(mid3.y));
+          cat.style.setProperty("--cat-start-x", toVW(startXNum));
+          cat.style.setProperty("--cat-end-x", toVW(endXNum));
+          cat.style.setProperty("--cat-start-y", toVH(startYNum));
+          cat.style.setProperty("--cat-end-y", toVH(endYNum));
+          cat.style.setProperty("--cat-mid1-x", toVW(mid1.x));
+          cat.style.setProperty("--cat-mid1-y", toVH(mid1.y));
+          cat.style.setProperty("--cat-mid2-x", toVW(mid2.x));
+          cat.style.setProperty("--cat-mid2-y", toVH(mid2.y));
+          cat.style.setProperty("--cat-mid3-x", toVW(mid3.x));
+          cat.style.setProperty("--cat-mid3-y", toVH(mid3.y));
 
-          const fastBurst = Math.random() < 0.25;
-          const duration = fastBurst ? randomBetween(2.2, 3.8) : randomBetween(8, 16);
-          floatingCat.style.setProperty("--cat-duration", `${duration}s`);
+          const fastBurst = Math.random() < 0.3;
+          const duration = fastBurst ? randomBetween(1.8, 3.5) : randomBetween(7, 16);
+          cat.style.setProperty("--cat-duration", `${duration}s`);
 
           const timings = [
             "ease-in-out",
@@ -339,24 +338,48 @@
             "cubic-bezier(0.22, 1, 0.36, 1)",
             "linear",
           ];
-          floatingCat.style.setProperty(
+          cat.style.setProperty(
             "--cat-timing",
             timings[Math.floor(Math.random() * timings.length)]
           );
+
+          const scale = randomBetween(0.85, 1.15);
+          cat.style.setProperty("--cat-scale", scale.toString());
+        };
+
+        const hideFloatingCat = () => {
+          cats.forEach((cat) => cat.remove());
+          cats = [];
+          if (catInterval) {
+            clearInterval(catInterval);
+            catInterval = null;
+          }
+        };
+
+        const spawnCat = () => {
+          if (!catContainer || !catAnimationEnabled) return;
+          const cat = document.createElement("img");
+          cat.src = "{{ url_for('static', filename='gatozzo-planner.webp') }}";
+          cat.alt = "";
+          cat.className = "floating-cat";
+          catContainer.appendChild(cat);
+          configureFloatingCat(cat);
+          cat.classList.remove("show");
+          void cat.offsetWidth;
+          cat.classList.add("show");
+          cat.addEventListener("animationiteration", () => {
+            configureFloatingCat(cat);
+          });
+          cats.push(cat);
         };
 
         const showFloatingCat = () => {
-          if (!floatingCat) return;
-          configureFloatingCat();
-          floatingCat.hidden = false;
-          floatingCat.classList.remove("show");
-          void floatingCat.offsetWidth;
-          floatingCat.classList.add("show");
-          if (!catAnimationBound) {
-            floatingCat.addEventListener("animationiteration", () => {
-              configureFloatingCat();
-            });
-            catAnimationBound = true;
+          if (!catAnimationEnabled) return;
+          spawnCat();
+          if (!catInterval) {
+            catInterval = setInterval(() => {
+              spawnCat();
+            }, 30000);
           }
         };
 
@@ -584,6 +607,20 @@
             .finally(() => window.location.reload());
         });
 
+        if (catToggle) {
+          catToggle.addEventListener("click", () => {
+            catAnimationEnabled = !catAnimationEnabled;
+            catToggle.setAttribute("aria-pressed", catAnimationEnabled.toString());
+            if (!catAnimationEnabled) {
+              hideFloatingCat();
+            }
+            catToggle.title = catAnimationEnabled ? "Disable Gatozzo" : "Gatozzo mirchidiii!";
+          });
+          catToggle.addEventListener("mouseenter", () => {
+            catToggle.title = catAnimationEnabled ? "Disable Gatozzo" : "Gatozzo mirchidiii!";
+          });
+        }
+
         const openApiKeyModal = () => {
           apiKeyError.hidden = true;
           apiKeyError.style.color = "var(--error)";
@@ -674,6 +711,6 @@
         updateProgressBar();
       });
     </script>
-    <img src="{{ url_for('static', filename='gatozzo-planner.webp') }}" alt="" id="floating-cat" hidden />
+    <div id="cat-container"></div>
   </body>
 </html>

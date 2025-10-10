@@ -17,7 +17,10 @@
         <div class="header__subtitle">
           Craft a domain/problem from natural language and get the validated plan.
         </div>
-        <button type="button" id="clear-btn" class="clear-button">Clear</button>
+        <div class="header__actions">
+          <button type="button" id="api-key-btn" class="outline-button">API Key</button>
+          <button type="button" id="clear-btn" class="clear-button">Clear</button>
+        </div>
       </header>
 
       <main class="app__main">
@@ -32,7 +35,7 @@
                 required
               ></textarea>
               <img
-                src="{{ url_for('static', filename='planner-icon.svg') }}"
+                src="{{ url_for('static', filename='cat-icon.svg') }}"
                 alt=""
                 class="prompt-form__icon"
                 aria-hidden="true"
@@ -98,6 +101,14 @@
         </section>
 
         <section id="logs-panel" class="panel panel--logs" hidden>
+          <div class="progress">
+            <div class="progress__label">
+              Iteration progress <span id="progress-value">0%</span>
+            </div>
+            <div class="progress__bar">
+              <div id="progress-bar-fill" class="progress__fill" style="width: 0%"></div>
+            </div>
+          </div>
           <details class="log-view">
             <summary>
               <span class="spinner" aria-hidden="true"></span>
@@ -115,6 +126,22 @@
             <div class="chat-bubble__label">You</div>
             <div class="chat-bubble__body"></div>
           </div>
+
+          <details id="domain-section" class="artifact" open hidden>
+            <summary>Domain</summary>
+            <pre id="domain-body">Waiting for domain...</pre>
+          </details>
+
+          <details id="problem-section" class="artifact" open hidden>
+            <summary>Problem</summary>
+            <pre id="problem-body">Waiting for problem...</pre>
+          </details>
+
+          <details id="plan-section" class="artifact" open hidden>
+            <summary>Plan</summary>
+            <div id="plan-empty" class="artifact__placeholder" hidden>No plan generated yet.</div>
+            <pre id="plan-body" hidden></pre>
+          </details>
 
           <div id="planner-response" class="chat-bubble chat-bubble--assistant" hidden>
             <div class="chat-bubble__label">Planner</div>
@@ -145,6 +172,46 @@
       </footer>
     </div>
 
+    <div id="api-key-modal" class="modal" hidden>
+      <div class="modal__overlay"></div>
+      <div class="modal__content">
+        <h2>ChatGPT API Key</h2>
+        <p class="modal__description">
+          Provide the OpenAI API key used by the planner.
+        </p>
+        <div class="modal__body">
+          <div id="current-key-wrapper" class="modal__field" hidden>
+            <label for="current-api-key">Current key</label>
+            <input
+              id="current-api-key"
+              type="password"
+              readonly
+              value=""
+              autocomplete="off"
+            />
+          </div>
+          <div class="modal__field">
+            <label for="new-api-key">New key</label>
+            <input
+              id="new-api-key"
+              type="password"
+              placeholder="sk-..."
+              autocomplete="off"
+            />
+          </div>
+          <div id="api-key-error" class="modal__error" hidden></div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" id="api-key-cancel" class="outline-button">
+            Cancel
+          </button>
+          <button type="button" id="api-key-save" class="primary-button">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.querySelector(".prompt-form");
@@ -168,11 +235,32 @@
         const plannerErrorBody = plannerErrorBubble.querySelector(".chat-bubble__body");
         const emptyState = document.getElementById("empty-state");
         const clearButton = document.getElementById("clear-btn");
+        const apiKeyBtn = document.getElementById("api-key-btn");
+        const apiKeyModal = document.getElementById("api-key-modal");
+        const apiKeyOverlay = apiKeyModal.querySelector(".modal__overlay");
+        const currentKeyWrapper = document.getElementById("current-key-wrapper");
+        const currentKeyInput = document.getElementById("current-api-key");
+        const newKeyInput = document.getElementById("new-api-key");
+        const apiKeyError = document.getElementById("api-key-error");
+        const apiKeyCancel = document.getElementById("api-key-cancel");
+        const apiKeySave = document.getElementById("api-key-save");
+        const progressValue = document.getElementById("progress-value");
+        const progressBarFill = document.getElementById("progress-bar-fill");
+        const domainSection = document.getElementById("domain-section");
+        const problemSection = document.getElementById("problem-section");
+        const planSection = document.getElementById("plan-section");
+        const domainBody = document.getElementById("domain-body");
+        const problemBody = document.getElementById("problem-body");
+        const planBody = document.getElementById("plan-body");
+        const planEmpty = document.getElementById("plan-empty");
+        const floatingCat = document.getElementById("floating-cat");
 
         let jobId = null;
         let pollInterval = null;
         let thinkingDotsInterval = null;
         let dotsCount = 1;
+        let totalBudget = Number(budgetInput.value) || 1;
+        let iterationsCompleted = 0;
 
         const resetOutput = () => {
           stopThinkingDots();
@@ -183,6 +271,93 @@
           plannerResponseBody.textContent = "";
           plannerErrorBody.textContent = "";
           emptyState.hidden = false;
+          iterationsCompleted = 0;
+          totalBudget = Number(budgetInput.value) || 1;
+          updateProgressBar();
+          hideArtifacts();
+        };
+
+        const hideFloatingCat = () => {
+          if (floatingCat) {
+            floatingCat.classList.remove("show");
+            floatingCat.hidden = true;
+          }
+        };
+
+        let catAnimationBound = false;
+
+        const randomBetween = (min, max) => min + Math.random() * (max - min);
+
+        const configureFloatingCat = () => {
+          if (!floatingCat) return;
+          const viewportWidth = window.innerWidth || 1920;
+          const viewportHeight = window.innerHeight || 1080;
+
+          const fromLeft = Math.random() < 0.5;
+          const startXNum = fromLeft ? -0.35 * viewportWidth : 1.35 * viewportWidth;
+          const endXNum = fromLeft ? 1.35 * viewportWidth : -0.35 * viewportWidth;
+          const startYNum = randomBetween(0.1, 0.9) * viewportHeight;
+          const endYNum = randomBetween(0.1, 0.9) * viewportHeight;
+
+          const makeMidPoint = (t, variance = 0.15) => {
+            const baseX = startXNum + (endXNum - startXNum) * t;
+            const baseY = startYNum + (endYNum - startYNum) * t;
+            const jitterX = (Math.random() - 0.5) * variance * viewportWidth;
+            const jitterY = (Math.random() - 0.5) * variance * viewportHeight;
+            return {
+              x: baseX + jitterX,
+              y: baseY + jitterY,
+            };
+          };
+
+          const mid1 = makeMidPoint(0.25);
+          const mid2 = makeMidPoint(0.5);
+          const mid3 = makeMidPoint(0.75);
+
+          const toVW = (value) => `${(value / viewportWidth) * 100}vw`;
+          const toVH = (value) => `${(value / viewportHeight) * 100}vh`;
+
+          floatingCat.style.setProperty("--cat-start-x", toVW(startXNum));
+          floatingCat.style.setProperty("--cat-end-x", toVW(endXNum));
+          floatingCat.style.setProperty("--cat-start-y", toVH(startYNum));
+          floatingCat.style.setProperty("--cat-end-y", toVH(endYNum));
+          floatingCat.style.setProperty("--cat-mid1-x", toVW(mid1.x));
+          floatingCat.style.setProperty("--cat-mid1-y", toVH(mid1.y));
+          floatingCat.style.setProperty("--cat-mid2-x", toVW(mid2.x));
+          floatingCat.style.setProperty("--cat-mid2-y", toVH(mid2.y));
+          floatingCat.style.setProperty("--cat-mid3-x", toVW(mid3.x));
+          floatingCat.style.setProperty("--cat-mid3-y", toVH(mid3.y));
+
+          const fastBurst = Math.random() < 0.25;
+          const duration = fastBurst ? randomBetween(2.2, 3.8) : randomBetween(8, 16);
+          floatingCat.style.setProperty("--cat-duration", `${duration}s`);
+
+          const timings = [
+            "ease-in-out",
+            "cubic-bezier(0.42, 0, 0.58, 1)",
+            "cubic-bezier(0.68, -0.55, 0.27, 1.55)",
+            "cubic-bezier(0.22, 1, 0.36, 1)",
+            "linear",
+          ];
+          floatingCat.style.setProperty(
+            "--cat-timing",
+            timings[Math.floor(Math.random() * timings.length)]
+          );
+        };
+
+        const showFloatingCat = () => {
+          if (!floatingCat) return;
+          configureFloatingCat();
+          floatingCat.hidden = false;
+          floatingCat.classList.remove("show");
+          void floatingCat.offsetWidth;
+          floatingCat.classList.add("show");
+          if (!catAnimationBound) {
+            floatingCat.addEventListener("animationiteration", () => {
+              configureFloatingCat();
+            });
+            catAnimationBound = true;
+          }
         };
 
         const stopPolling = () => {
@@ -193,6 +368,7 @@
           stopThinkingDots();
           spinner.classList.remove("spinner--active");
           document.body.classList.remove("submitting");
+          hideFloatingCat();
         };
 
         const stopThinkingDots = () => {
@@ -200,6 +376,7 @@
             clearInterval(thinkingDotsInterval);
             thinkingDotsInterval = null;
           }
+          hideFloatingCat();
         };
 
         const startThinkingDots = () => {
@@ -213,6 +390,46 @@
             dotsCount = dotsCount % 5 + 1;
             plannerResponseBody.textContent = ".".repeat(dotsCount);
           }, 400);
+          showFloatingCat();
+        };
+
+        const updateProgressBar = () => {
+          const pct = Math.min(100, Math.round((iterationsCompleted / totalBudget) * 100));
+          progressValue.textContent = `${pct}%`;
+          progressBarFill.style.width = `${pct}%`;
+        };
+
+        const showArtifacts = (artifacts) => {
+          if (!artifacts) return;
+          const { domain = "", problem = "", plan = "" } = artifacts;
+          if (domain) {
+            domainSection.hidden = false;
+            domainBody.textContent = domain;
+          }
+          if (problem) {
+            problemSection.hidden = false;
+            problemBody.textContent = problem;
+          }
+          if (plan) {
+            planSection.hidden = false;
+            planEmpty.hidden = true;
+            planBody.hidden = false;
+            planBody.textContent = plan;
+          } else {
+            planSection.hidden = false;
+            planEmpty.hidden = false;
+            planBody.hidden = true;
+          }
+        };
+
+        const hideArtifacts = () => {
+          domainSection.hidden = true;
+          problemSection.hidden = true;
+          planSection.hidden = true;
+          domainBody.textContent = "";
+          problemBody.textContent = "";
+          planBody.textContent = "";
+          planEmpty.hidden = true;
         };
 
         const updateLogs = (text) => {
@@ -243,6 +460,8 @@
             const message = summary?.error || "No plan was produced.";
             plannerErrorBody.textContent = message;
           }
+          iterationsCompleted = totalBudget;
+          updateProgressBar();
         };
 
         const pollLogs = () => {
@@ -261,6 +480,14 @@
               if (typeof data.logs === "string") {
                 updateLogs(data.logs);
               }
+              if (data.artifacts) {
+                showArtifacts(data.artifacts);
+              }
+              if (typeof data.iterations_completed === "number") {
+                iterationsCompleted = data.iterations_completed;
+                totalBudget = Math.max(1, Number(data.total_budget || totalBudget));
+                updateProgressBar();
+              }
 
               if (data.status === "completed" || data.status === "failed") {
                 stopPolling();
@@ -271,7 +498,10 @@
                   plannerErrorBubble.hidden = false;
                   plannerErrorBody.textContent =
                     "Workflow completed but no summary was returned.";
+                  iterationsCompleted = totalBudget;
+                  updateProgressBar();
                 }
+                hideFloatingCat();
               }
             })
             .catch((error) => {
@@ -280,6 +510,7 @@
               plannerErrorBubble.hidden = false;
               plannerErrorBody.textContent = `Error fetching logs: ${error}`;
               stopPolling();
+              hideFloatingCat();
             });
         };
 
@@ -332,6 +563,9 @@
                 return;
               }
               jobId = data.job_id;
+              iterationsCompleted = Number(data.iterations_completed || 0);
+              totalBudget = Math.max(1, Number(data.total_budget || budgetInput.value));
+              updateProgressBar();
               pollLogs();
               pollInterval = setInterval(pollLogs, 10000);
             })
@@ -349,7 +583,97 @@
           fetch("/clear", { method: "POST" })
             .finally(() => window.location.reload());
         });
+
+        const openApiKeyModal = () => {
+          apiKeyError.hidden = true;
+          apiKeyError.style.color = "var(--error)";
+          apiKeyError.textContent = "";
+          newKeyInput.value = "";
+          fetch("/api_key")
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.has_key) {
+                currentKeyWrapper.hidden = false;
+                currentKeyInput.value = data.masked || "••••";
+              } else {
+                currentKeyWrapper.hidden = true;
+                currentKeyInput.value = "";
+              }
+            })
+            .catch(() => {
+              currentKeyWrapper.hidden = true;
+              currentKeyInput.value = "";
+            })
+            .finally(() => {
+              apiKeyModal.hidden = false;
+              newKeyInput.focus();
+            });
+        };
+
+        const closeApiKeyModal = () => {
+          apiKeyModal.hidden = true;
+          apiKeyError.hidden = true;
+          apiKeyError.style.color = "var(--error)";
+          apiKeyError.textContent = "";
+          newKeyInput.value = "";
+        };
+
+        apiKeyBtn.addEventListener("click", openApiKeyModal);
+        apiKeyOverlay.addEventListener("click", closeApiKeyModal);
+        apiKeyCancel.addEventListener("click", closeApiKeyModal);
+
+        apiKeySave.addEventListener("click", () => {
+          const keyValue = newKeyInput.value.trim();
+          if (!keyValue) {
+            apiKeyError.hidden = false;
+            apiKeyError.style.color = "var(--error)";
+            apiKeyError.textContent = "Please provide an API key.";
+            newKeyInput.focus();
+            return;
+          }
+
+          fetch("/api_key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ openai_api_key: keyValue }),
+          })
+            .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+              if (!ok) {
+                apiKeyError.hidden = false;
+                apiKeyError.style.color = "var(--error)";
+                apiKeyError.textContent = data.error || "Failed to save the key.";
+                return;
+              }
+              currentKeyWrapper.hidden = false;
+              currentKeyInput.value = data.masked || "••••";
+              apiKeyError.hidden = false;
+              apiKeyError.textContent = "API key saved.";
+              apiKeyError.style.color = "#166534";
+              setTimeout(() => {
+                apiKeyError.hidden = true;
+                apiKeyError.textContent = "";
+                apiKeyError.style.color = "var(--error)";
+                closeApiKeyModal();
+              }, 1200);
+            })
+            .catch(() => {
+              apiKeyError.hidden = false;
+              apiKeyError.style.color = "var(--error)";
+              apiKeyError.textContent = "Unexpected error while saving the key.";
+            });
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !apiKeyModal.hidden) {
+            closeApiKeyModal();
+          }
+        });
+
+        hideArtifacts();
+        updateProgressBar();
       });
     </script>
+    <img src="{{ url_for('static', filename='gatozzo-planner.webp') }}" alt="" id="floating-cat" hidden />
   </body>
 </html>

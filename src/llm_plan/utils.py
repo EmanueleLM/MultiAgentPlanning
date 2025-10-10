@@ -2,6 +2,7 @@ import os
 import re
 import string
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, List, Dict
 
@@ -131,12 +132,15 @@ def run_pddl_fast_downwards_and_uVal(
             try:
                 print(f"Running command with optimization timeout = {optimize} [s].")
                 command = [
-                    SOLVER_FD_BINARY,
-                    *SOLVER_FD_OPTIMIZE_ARGS,
-                    sas_plan_path,
-                    domain_path,
-                    problem_path,
+                    sys.executable,
+                    str(SOLVER_FD_BINARY),
+                    "--plan-file" , str(sas_plan_path),
+                    str(domain_path),
+                    str(problem_path),
+                    "--search", "astar(lmcut())",
                 ]
+
+                print("COMMAND:", command)
                 subprocess.run(
                     command,
                     stdout=logfile,

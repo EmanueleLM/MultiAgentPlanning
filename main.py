@@ -103,7 +103,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--optimize-plan",
         type=bool,
-        default=False,
+        default=True,
         choices=[True, False],
         help="Allow the solver to spend extra time optimising the plan.",
     )

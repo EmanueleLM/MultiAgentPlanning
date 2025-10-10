@@ -1,4 +1,7 @@
-"""Run the agentic planning workflow from a raw human specification."""
+"""
+Run the agentic planning workflow from a raw human specification.
+This module is used by the webapp.
+"""
 
 import argparse
 import asyncio

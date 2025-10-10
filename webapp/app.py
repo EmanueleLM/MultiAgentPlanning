@@ -38,6 +38,7 @@ DEFAULT_BUDGET = 5
 
 JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
+ENV_PATH = REPO_ROOT / ".env"
 
 
 def _make_environment_name(prompt: str) -> str:
@@ -66,6 +67,71 @@ def _shutdown_models():
 
 
 atexit.register(_shutdown_models)
+
+
+def _read_openai_api_key() -> str | None:
+    if not ENV_PATH.exists():
+        return None
+    for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+        if line.startswith("OPENAI_API_KEY="):
+            return line[len("OPENAI_API_KEY=") :].strip()
+    return None
+
+
+def _write_openai_api_key(value: str) -> None:
+    lines: list[str] = []
+    found = False
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            if line.startswith("OPENAI_API_KEY="):
+                lines.append(f"OPENAI_API_KEY={value}")
+                found = True
+            else:
+                lines.append(line)
+    if not found:
+        lines.append(f"OPENAI_API_KEY={value}")
+    ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _mask_key(key: str) -> str:
+    if not key:
+        return ""
+    return "•" * min(len(key), 20)
+
+
+def _read_artifacts(base_folder: Path) -> tuple[int, str, str, str]:
+    if not base_folder or not base_folder.exists():
+        return 0, "", "", ""
+
+    def _latest(prefix: str) -> Path | None:
+        candidates = sorted(base_folder.glob(f"{prefix}*.pddl"))
+        return candidates[-1] if candidates else None
+
+    domain_file = _latest("domain_") or base_folder / "domain_0.pddl"
+    problem_file = _latest("problem_") or base_folder / "problem_0.pddl"
+
+    iteration = 0
+    if domain_file and domain_file.exists():
+        match = re.search(r"_(\d+)\.pddl$", domain_file.name)
+        if match:
+            iteration = int(match.group(1))
+
+    def _read_file(path: Path | None) -> str:
+        if path and path.exists():
+            try:
+                return path.read_text(encoding="utf-8")
+            except Exception:
+                return ""
+        return ""
+
+    plan_candidates = sorted(base_folder.glob("sas_plan_*"))
+    plan_file = plan_candidates[-1] if plan_candidates else None
+
+    domain_content = _read_file(domain_file)
+    problem_content = _read_file(problem_file)
+    plan_content = _read_file(plan_file)
+
+    return iteration, domain_content, problem_content, plan_content
 
 
 @app.route("/", methods=["GET"])
@@ -170,12 +236,21 @@ def start_run():
             "created_at": time.time(),
             "logs_path": str(logs_path),
             "summary": None,
+            "base_folder": str(base_folder),
+            "total_budget": budget,
         }
 
     worker = threading.Thread(target=_run_job, args=(job_id, job_config), daemon=True)
     worker.start()
 
-    return jsonify({"job_id": job_id, "logs_path": str(logs_path)})
+    return jsonify(
+        {
+            "job_id": job_id,
+            "logs_path": str(logs_path),
+            "iterations_completed": 0,
+            "total_budget": budget,
+        }
+    )
 
 
 def _read_logs(path: str) -> str:
@@ -203,10 +278,22 @@ def get_logs(job_id: str):
         job_data = dict(job)
 
     logs_text = _read_logs(job_data["logs_path"])
+    base_folder = Path(job_data.get("base_folder", ""))
+    latest_step, domain_content, problem_content, plan_content = _read_artifacts(base_folder)
+
+    total_budget = max(1, int(job_data.get("total_budget", 1)))
+    iterations_completed = min(latest_step, total_budget)
 
     response: dict[str, Any] = {
         "status": job_data["status"],
         "logs": logs_text,
+        "iterations_completed": iterations_completed,
+        "total_budget": total_budget,
+        "artifacts": {
+            "domain": domain_content,
+            "problem": problem_content,
+            "plan": plan_content,
+        },
     }
 
     if job_data["summary"] is not None:
@@ -226,6 +313,24 @@ def clear_jobs():
         JOBS.clear()
     _shutdown_models()
     return jsonify({"status": "cleared"})
+
+
+@app.route("/api_key", methods=["GET"])
+def get_api_key():
+    key = _read_openai_api_key()
+    if key:
+        return jsonify({"has_key": True, "masked": _mask_key(key)})
+    return jsonify({"has_key": False, "masked": ""})
+
+
+@app.route("/api_key", methods=["POST"])
+def set_api_key():
+    payload = request.get_json(silent=True) or {}
+    key = (payload.get("openai_api_key") or "").strip()
+    if not key:
+        return jsonify({"error": "API key cannot be empty."}), 400
+    _write_openai_api_key(key)
+    return jsonify({"status": "saved", "masked": _mask_key(key)})
 
 
 if __name__ == "__main__":

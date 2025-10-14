@@ -1,21 +1,13 @@
-(define (problem multi-agent-blocks-problem)
-  (:domain multi-agent-blocks)
+(define (problem blocks-multiagent-problem)
+  (:domain blocks-multiagent)
   (:objects
-    A B C D E F G H I J - block
+    table - place
+    A E I - vowel
+    B C D F G H J - consonant
   )
-
   (:init
-    ;; Agent capabilities
-    (vowel A) (vowel E) (vowel I)
-    (consonant B) (consonant C) (consonant D) (consonant F) (consonant G) (consonant H) (consonant J)
-
-    ;; Initial stacks:
-    ;; A on the table (singleton)
-    (ontable A)
-    (clear A)
-
-    ;; One long stack: J (bottom) - I - H - G - F - E - D - C - B (top)
-    (ontable J)
+    ;; initial stacking: J bottom then I then H then G then F then E then D then C then B on top
+    (on J table)
     (on I J)
     (on H I)
     (on G H)
@@ -25,10 +17,13 @@
     (on C D)
     (on B C)
 
-    ;; Top blocks are clear
+    ;; A on the table
+    (on A table)
+
+    ;; only top blocks are clear: A and B
+    (clear A)
     (clear B)
   )
-
   (:goal (and
     (on A B)
     (on B C)
@@ -39,6 +34,6 @@
     (on G H)
     (on H I)
     (on I J)
-    (ontable J)
+    (on J table)
   ))
 )

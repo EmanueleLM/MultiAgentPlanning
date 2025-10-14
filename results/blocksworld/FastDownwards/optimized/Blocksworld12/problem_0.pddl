@@ -1,19 +1,17 @@
-(define (problem multiagent_blocks_problem)
-  (:domain multiagent_blocks)
+(define (problem multiagent-blocks-problem)
+  (:domain multiagent-blocks)
   (:objects
-    A B C D E F G H I J - block
+    A E I - vowel
+    B C D F G H J - consonant
     table - place
   )
-
   (:init
-    ;; Initial stacks (unified representation: on X table)
-    ;; Stack 1: H (table) <- D <- A <- C (top)
+    ;; Initial stacks (as provided)
     (on H table)
     (on D H)
     (on A D)
     (on C A)
 
-    ;; Stack 2: J (table) <- E <- F <- I <- G <- B (top)
     (on J table)
     (on E J)
     (on F E)
@@ -21,37 +19,21 @@
     (on G I)
     (on B G)
 
-    ;; Only top blocks are clear initially
+    ;; Top-of-stack (clear) facts
     (clear C)
     (clear B)
-
-    ;; Vowels (moved by vowel-agent actions)
-    (vowel A)
-    (vowel E)
-    (vowel I)
-
-    ;; Consonants (moved by consonant-agent actions)
-    (consonant B)
-    (consonant C)
-    (consonant D)
-    (consonant F)
-    (consonant G)
-    (consonant H)
-    (consonant J)
   )
-
   (:goal (and
-    ;; Target single stack: J on table, I on J, H on I, G on H, F on G,
-    ;; E on F, D on E, C on D, B on C, A on B (A is top)
-    (on J table)
-    (on I J)
-    (on H I)
-    (on G H)
-    (on F G)
-    (on E F)
-    (on D E)
-    (on C D)
-    (on B C)
+    ;; Target single stack (J on table, then I, H, G, F, E, D, C, B, A on top)
     (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J table)
   ))
 )

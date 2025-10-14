@@ -1,51 +1,46 @@
-(define (problem integrated_multiagent_problem)
+(define (problem multiagent_blocks_problem)
   (:domain multiagent_blocks)
+
   (:objects
-    a b c d e f g h i j k l - block
+    A E I - vowel
+    C D L K H F G J B - cons
+    table - place
   )
 
   (:init
-    (vowel a) (vowel e) (vowel i)
-    (consonant c) (consonant d) (consonant l) (consonant k)
-    (consonant h) (consonant f) (consonant g) (consonant j) (consonant b)
+    (on A table)
+    (on I A)
+    (on L I)
+    (on K L)
+    (on E K)
+    (on F E)
 
-    (ontable a)
-    (on i a)
-    (on l i)
-    (on k l)
-    (on e k)
-    (on f e)
+    (on C table)
+    (on D C)
+    (on H D)
+    (on G H)
+    (on J G)
+    (on B J)
 
-    (ontable c)
-    (on d c)
-    (on h d)
-    (on g h)
-    (on j g)
-    (on b j)
+    (clear F)
+    (clear B)
 
-    (clear f)
-    (clear b)
-
-    (handempty_v)
-    (handempty_c)
-
-    (= (total-cost) 0)
+    (handfree-vowel)
+    (handfree-cons)
   )
 
   (:goal (and
-    (on a b)
-    (on b c)
-    (on c d)
-    (on d e)
-    (on e f)
-    (on f g)
-    (on g h)
-    (on h i)
-    (on i j)
-    (on j k)
-    (on k l)
-    (ontable l)
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J K)
+    (on K L)
+    (on L table)
   ))
-
-  (:metric minimize (total-cost))
 )

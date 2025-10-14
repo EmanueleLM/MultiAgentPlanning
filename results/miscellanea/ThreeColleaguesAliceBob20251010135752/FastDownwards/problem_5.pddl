@@ -1,0 +1,43 @@
+(define (problem meeting-2025-10-21)
+  (:domain meeting-scheduling)
+  (:objects
+    alice bob carol - person
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 - slot
+  )
+  (:init
+    (available alice t0)
+    (available alice t1)
+    (available alice t2)
+    (available alice t3)
+    (available alice t8)
+    (available alice t9)
+    (available alice t10)
+    (available alice t11)
+    (available alice t12)
+    (available alice t13)
+
+    (available bob t3)
+    (available bob t4)
+    (available bob t5)
+    (available bob t10)
+    (available bob t11)
+    (available bob t12)
+
+    (available carol t1)
+    (available carol t2)
+    (available carol t4)
+    (available carol t5)
+    (available carol t6)
+    (available carol t12)
+    (available carol t13)
+    (available carol t14)
+    (available carol t15)
+
+    (free-alice)
+    (free-bob)
+    (free-carol)
+
+    (preferred-slot t12)
+  )
+  (:goal (meeting-set))
+)

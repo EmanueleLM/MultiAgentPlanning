@@ -1,120 +1,32 @@
-(define (domain multi-agent-blocks)
-  (:requirements :typing :equality :adl :action-costs)
-  (:types block)
+(define (domain blocks-multiagent)
+  (:requirements :typing :negative-preconditions)
+  (:types block place - loc)
   (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
-    (clear ?x - block)
-    (vowel ?x - block)
-    (consonant ?x - block)
-    (different ?x - block ?y - block)
+    (on ?b - block ?p - loc)
+    (clear ?p - loc)
+    (vowel ?b - block)
+    (consonant ?b - block)
   )
 
-  (:action vowel-move-from-table-to-block
-    :parameters (?b - block ?to - block)
-    :precondition (and
-      (vowel ?b)
-      (ontable ?b)
-      (clear ?b)
-      (clear ?to)
-      (different ?b ?to)
-    )
+  (:action vowel-move
+    :parameters (?b - block ?from - loc ?to - loc)
+    :precondition (and (vowel ?b) (on ?b ?from) (clear ?b) (clear ?to))
     :effect (and
-      (not (ontable ?b))
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?b)
-    )
-    :cost 1
+              (not (on ?b ?from))
+              (on ?b ?to)
+              (clear ?from)
+              (not (clear ?to))
+            )
   )
 
-  (:action vowel-move-from-block-to-block
-    :parameters (?b - block ?from - block ?to - block)
-    :precondition (and
-      (vowel ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (clear ?to)
-      (different ?b ?to)
-    )
+  (:action consonant-move
+    :parameters (?b - block ?from - loc ?to - loc)
+    :precondition (and (consonant ?b) (on ?b ?from) (clear ?b) (clear ?to))
     :effect (and
-      (not (on ?b ?from))
-      (clear ?from)
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?b)
-    )
-    :cost 1
-  )
-
-  (:action vowel-move-from-block-to-table
-    :parameters (?b - block ?from - block)
-    :precondition (and
-      (vowel ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (different ?b ?from)
-    )
-    :effect (and
-      (not (on ?b ?from))
-      (clear ?from)
-      (ontable ?b)
-      (clear ?b)
-    )
-    :cost 1
-  )
-
-  (:action consonant-move-from-table-to-block
-    :parameters (?b - block ?to - block)
-    :precondition (and
-      (consonant ?b)
-      (ontable ?b)
-      (clear ?b)
-      (clear ?to)
-      (different ?b ?to)
-    )
-    :effect (and
-      (not (ontable ?b))
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?b)
-    )
-    :cost 1
-  )
-
-  (:action consonant-move-from-block-to-block
-    :parameters (?b - block ?from - block ?to - block)
-    :precondition (and
-      (consonant ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (clear ?to)
-      (different ?b ?to)
-    )
-    :effect (and
-      (not (on ?b ?from))
-      (clear ?from)
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?b)
-    )
-    :cost 1
-  )
-
-  (:action consonant-move-from-block-to-table
-    :parameters (?b - block ?from - block)
-    :precondition (and
-      (consonant ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (different ?b ?from)
-    )
-    :effect (and
-      (not (on ?b ?from))
-      (clear ?from)
-      (ontable ?b)
-      (clear ?b)
-    )
-    :cost 1
+              (not (on ?b ?from))
+              (on ?b ?to)
+              (clear ?from)
+              (not (clear ?to))
+            )
   )
 )

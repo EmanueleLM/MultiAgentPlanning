@@ -1,29 +1,32 @@
-(define (problem multi-agent-blocks-problem)
-  (:domain blocks-multi-agent)
+(define (problem multiagent-blocks-problem)
+  (:domain multiagent-blocks)
   (:objects
-    A E - vowel
-    B C D - consonant
+    a e - vowel
+    b c d - consonant
   )
+
   (:init
-    ;; initial placement (shared initial state as received)
-    (ontable A)
-    (on B C)
-    (on C D)
-    (on D E)
-    (ontable E)
+    ;; Initial configuration (public): A on table; B on C; C on D; D on E; E on table.
+    (ontable a)
+    (on b c)
+    (on c d)
+    (on d e)
+    (ontable e)
 
-    ;; clear tops
-    (clear A)
-    (clear B)
+    ;; Clear (top blocks)
+    (clear a)
+    (clear b)
 
-    ;; consonant-agent is initially free-handed
-    (handempty-cons)
+    ;; Both agents' hands are initially free
+    (handfree-vowel)
+    (handfree-consonant)
   )
+
   (:goal (and
-    (on A B)
-    (on B C)
-    (on C D)
-    (on D E)
-    (ontable E)
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (ontable e)
   ))
 )

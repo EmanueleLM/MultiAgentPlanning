@@ -1,117 +1,109 @@
-(define (domain integrated-blocks)
-  (:requirements :strips :typing)
-  (:types agent block)
-
+(define (domain blocks-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block)
   (:predicates
-    (on ?b - block ?c - block)
-    (on-table ?b - block)
-    (clear ?b - block)
-    (holding ?a - agent ?b - block)
-    (handempty ?a - agent)
-    (vowel ?b - block)
-    (consonant ?b - block)
-    (vowel-agent ?a - agent)
-    (consonant-agent ?a - agent)
-    (can-move ?a - agent ?b - block)
+    (on ?x - block ?y - block)
+    (on-table ?x - block)
+    (clear ?x - block)
+    (holding-vowel ?x - block)
+    (holding-consonant ?x - block)
+    (handempty-vowel)
+    (handempty-consonant)
+    (can-vowel ?x - block)
+    (can-consonant ?x - block)
   )
 
-  ;; Vowel-agent picking a vowel block from the table
-  (:action pickup-from-table-vowel
-    :parameters (?a - agent ?x - block)
-    :precondition (and (vowel-agent ?a) (vowel ?x) (on-table ?x) (clear ?x) (handempty ?a))
+  ;; Vowel-agent actions (can move only blocks marked can-vowel)
+  (:action vowel-pick-up-from-table
+    :parameters (?b - block)
+    :precondition (and (on-table ?b) (clear ?b) (handempty-vowel) (can-vowel ?b))
     :effect (and
-      (not (on-table ?x))
-      (not (clear ?x))
-      (not (handempty ?a))
-      (holding ?a ?x)
-    )
+               (not (on-table ?b))
+               (not (clear ?b))
+               (holding-vowel ?b)
+               (not (handempty-vowel))
+            )
   )
 
-  ;; Vowel-agent picking a vowel block from another block
-  (:action pickup-from-block-vowel
-    :parameters (?a - agent ?x - block ?y - block)
-    :precondition (and (vowel-agent ?a) (vowel ?x) (on ?x ?y) (clear ?x) (handempty ?a))
+  (:action vowel-pick-up-from-block
+    :parameters (?b - block ?s - block)
+    :precondition (and (on ?b ?s) (clear ?b) (handempty-vowel) (can-vowel ?b))
     :effect (and
-      (not (on ?x ?y))
-      (clear ?y)
-      (not (clear ?x))
-      (not (handempty ?a))
-      (holding ?a ?x)
-    )
+              (not (on ?b ?s))
+              (not (clear ?b))
+              (holding-vowel ?b)
+              (not (handempty-vowel))
+              (clear ?s)
+            )
   )
 
-  ;; Vowel-agent placing a held vowel block on the table
-  (:action putdown-vowel
-    :parameters (?a - agent ?x - block)
-    :precondition (and (vowel-agent ?a) (vowel ?x) (holding ?a ?x))
+  (:action vowel-put-down-on-block
+    :parameters (?b - block ?t - block)
+    :precondition (and (holding-vowel ?b) (clear ?t) (can-vowel ?b))
     :effect (and
-      (on-table ?x)
-      (clear ?x)
-      (not (holding ?a ?x))
-      (handempty ?a)
-    )
+              (not (holding-vowel ?b))
+              (not (clear ?t))
+              (on ?b ?t)
+              (clear ?b)
+              (handempty-vowel)
+            )
   )
 
-  ;; Vowel-agent stacking a held vowel block onto another block
-  (:action stack-vowel
-    :parameters (?a - agent ?x - block ?y - block)
-    :precondition (and (vowel-agent ?a) (vowel ?x) (holding ?a ?x) (clear ?y))
+  (:action vowel-put-down-on-table
+    :parameters (?b - block)
+    :precondition (and (holding-vowel ?b) (can-vowel ?b))
     :effect (and
-      (on ?x ?y)
-      (clear ?x)
-      (not (clear ?y))
-      (not (holding ?a ?x))
-      (handempty ?a)
-    )
+              (not (holding-vowel ?b))
+              (on-table ?b)
+              (clear ?b)
+              (handempty-vowel)
+            )
   )
 
-  ;; Consonant-agent picking a consonant block from the table
-  (:action pickup-from-table-consonant
-    :parameters (?a - agent ?x - block)
-    :precondition (and (consonant-agent ?a) (consonant ?x) (on-table ?x) (clear ?x) (handempty ?a))
+  ;; Consonant-agent actions (can move only blocks marked can-consonant)
+  (:action consonant-pick-up-from-table
+    :parameters (?b - block)
+    :precondition (and (on-table ?b) (clear ?b) (handempty-consonant) (can-consonant ?b))
     :effect (and
-      (not (on-table ?x))
-      (not (clear ?x))
-      (not (handempty ?a))
-      (holding ?a ?x)
-    )
+               (not (on-table ?b))
+               (not (clear ?b))
+               (holding-consonant ?b)
+               (not (handempty-consonant))
+            )
   )
 
-  ;; Consonant-agent picking a consonant block from another block
-  (:action pickup-from-block-consonant
-    :parameters (?a - agent ?x - block ?y - block)
-    :precondition (and (consonant-agent ?a) (consonant ?x) (on ?x ?y) (clear ?x) (handempty ?a))
+  (:action consonant-pick-up-from-block
+    :parameters (?b - block ?s - block)
+    :precondition (and (on ?b ?s) (clear ?b) (handempty-consonant) (can-consonant ?b))
     :effect (and
-      (not (on ?x ?y))
-      (clear ?y)
-      (not (clear ?x))
-      (not (handempty ?a))
-      (holding ?a ?x)
-    )
+              (not (on ?b ?s))
+              (not (clear ?b))
+              (holding-consonant ?b)
+              (not (handempty-consonant))
+              (clear ?s)
+            )
   )
 
-  ;; Consonant-agent placing a held consonant block on the table
-  (:action putdown-consonant
-    :parameters (?a - agent ?x - block)
-    :precondition (and (consonant-agent ?a) (consonant ?x) (holding ?a ?x))
+  (:action consonant-put-down-on-block
+    :parameters (?b - block ?t - block)
+    :precondition (and (holding-consonant ?b) (clear ?t) (can-consonant ?b))
     :effect (and
-      (on-table ?x)
-      (clear ?x)
-      (not (holding ?a ?x))
-      (handempty ?a)
-    )
+              (not (holding-consonant ?b))
+              (not (clear ?t))
+              (on ?b ?t)
+              (clear ?b)
+              (handempty-consonant)
+            )
   )
 
-  ;; Consonant-agent stacking a held consonant block onto another block
-  (:action stack-consonant
-    :parameters (?a - agent ?x - block ?y - block)
-    :precondition (and (consonant-agent ?a) (consonant ?x) (holding ?a ?x) (clear ?y))
+  (:action consonant-put-down-on-table
+    :parameters (?b - block)
+    :precondition (and (holding-consonant ?b) (can-consonant ?b))
     :effect (and
-      (on ?x ?y)
-      (clear ?x)
-      (not (clear ?y))
-      (not (holding ?a ?x))
-      (handempty ?a)
-    )
+              (not (holding-consonant ?b))
+              (on-table ?b)
+              (clear ?b)
+              (handempty-consonant)
+            )
   )
 )

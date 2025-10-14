@@ -1,114 +1,66 @@
-(define (domain multiagent_blocks)
-  (:requirements :strips :negative-preconditions :equality)
+(define (domain vowel-consonant-blocks)
+  (:requirements :typing)
+  (:types agent block loc vowel-block cons-block)
   (:predicates
-    (on ?x ?y)        ; ?x is on block ?y
-    (ontable ?x)      ; ?x is on the table
-    (clear ?x)        ; nothing on top of ?x
-    (vowel ?x)        ; ?x is manipulable by the vowel agent
-    (consonant ?x)    ; ?x is manipulable by the consonant agent
+    (on ?b - block ?l - loc)    ; block ?b is directly on location ?l (block or table)
+    (clear ?l - loc)            ; location ?l has no block on top of it
   )
 
-  ;; -----------------------
-  ;; Vowel-agent actions
-  ;; (these actions may only move objects marked (vowel ?x))
-  ;; -----------------------
-
-  (:action vowel-move-block
-    :parameters (?b ?from ?to)
+  ;; Vowel-agent actions: may only move vowel blocks (A, E, I)
+  (:action vowel-move-to-block
+    :parameters (?ag - agent ?b - vowel-block ?from - loc ?to - block)
     :precondition (and
-      (vowel ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (clear ?to)
-    )
+                    (on ?b ?from)
+                    (clear ?b)         ; ?b must be the top of its stack
+                    (clear ?to)        ; target block must be clear (top)
+                  )
     :effect (and
-      (not (on ?b ?from))
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?from)
-    )
-  )
-
-  (:action vowel-move-from-table
-    :parameters (?b ?to)
-    :precondition (and
-      (vowel ?b)
-      (ontable ?b)
-      (clear ?b)
-      (clear ?to)
-    )
-    :effect (and
-      (not (ontable ?b))
-      (not (clear ?to))
-      (on ?b ?to)
-    )
+              (not (on ?b ?from))
+              (on ?b ?to)
+              (not (clear ?to))  ; ?to now has ?b on top
+              (clear ?from)      ; former support becomes clear
+            )
   )
 
   (:action vowel-move-to-table
-    :parameters (?b ?from)
+    :parameters (?ag - agent ?b - vowel-block ?from - loc)
     :precondition (and
-      (vowel ?b)
-      (on ?b ?from)
-      (clear ?b)
-    )
+                    (on ?b ?from)
+                    (clear ?b)
+                  )
     :effect (and
-      (not (on ?b ?from))
-      (ontable ?b)
-      (clear ?from)
-    )
+              (not (on ?b ?from))
+              (on ?b table)
+              (clear ?from)
+            )
   )
 
-  ;; -----------------------
-  ;; Consonant-agent actions
-  ;; (these actions may only move objects marked (consonant ?x))
-  ;; Keep distinct names from vowel actions.
-  ;; -----------------------
-
-  (:action cons-move-block-to-block
-    :parameters (?x ?from ?to)
+  ;; Consonant-agent actions: may only move consonant blocks (M H G B L D F C K J)
+  (:action cons-move-to-block
+    :parameters (?ag - agent ?b - cons-block ?from - loc ?to - block)
     :precondition (and
-      (consonant ?x)
-      (on ?x ?from)
-      (clear ?x)
-      (clear ?to)
-      (not (= ?x ?to))
-    )
+                    (on ?b ?from)
+                    (clear ?b)
+                    (clear ?to)
+                  )
     :effect (and
-      (not (on ?x ?from))
-      (on ?x ?to)
-      (not (clear ?to))
-      (clear ?from)
-    )
+              (not (on ?b ?from))
+              (on ?b ?to)
+              (not (clear ?to))
+              (clear ?from)
+            )
   )
 
-  (:action cons-move-from-table-to-block
-    :parameters (?x ?to)
+  (:action cons-move-to-table
+    :parameters (?ag - agent ?b - cons-block ?from - loc)
     :precondition (and
-      (consonant ?x)
-      (ontable ?x)
-      (clear ?x)
-      (clear ?to)
-      (not (= ?x ?to))
-    )
+                    (on ?b ?from)
+                    (clear ?b)
+                  )
     :effect (and
-      (not (ontable ?x))
-      (on ?x ?to)
-      (not (clear ?to))
-    )
+              (not (on ?b ?from))
+              (on ?b table)
+              (clear ?from)
+            )
   )
-
-  (:action cons-move-block-to-table
-    :parameters (?x ?from)
-    :precondition (and
-      (consonant ?x)
-      (on ?x ?from)
-      (clear ?x)
-    )
-    :effect (and
-      (not (on ?x ?from))
-      (ontable ?x)
-      (clear ?from)
-    )
-  )
-
 )

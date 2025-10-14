@@ -1,37 +1,29 @@
-(define (problem integrated_multiagent_problem)
+(define (problem multiagent_blocks_problem)
   (:domain multiagent_blocks)
+
   (:objects
-    a b c d e f g h i j k l - block
+    a e i - vowel
+    c d l k h f g j b - cons
+    table - place
   )
 
   (:init
-    ;; types
-    (vowel a) (vowel e) (vowel i)
-    (consonant c) (consonant d) (consonant l) (consonant k)
-    (consonant h) (consonant f) (consonant g) (consonant j) (consonant b)
-
-    ;; initial stacks
-    (ontable a)
+    (on a table)
     (on i a)
     (on l i)
     (on k l)
     (on e k)
     (on f e)
-
-    (ontable c)
+    (on c table)
     (on d c)
     (on h d)
     (on g h)
     (on j g)
     (on b j)
-
-    ;; clear tops
     (clear f)
     (clear b)
-
-    ;; agent hands empty
-    (handempty_v)
-    (handempty_c)
+    (handfree-vowel)
+    (handfree-cons)
   )
 
   (:goal (and
@@ -46,8 +38,6 @@
     (on i j)
     (on j k)
     (on k l)
-    (ontable l)
+    (on l table)
   ))
-
-  (:metric minimize (total-cost))
 )

@@ -1,30 +1,28 @@
-(define (problem combined-multiagent-tower)
-  (:domain combined-blocks)
-
+(define (problem blocks-multiagent-problem)
+  (:domain blocks-multiagent)
   (:objects
     A B C D E F G H I J K L M N - block
-    vowel_agent consonant_agent - agent
   )
 
   (:init
-    ;; agent identities
-    (agent vowel_agent)
-    (agent consonant_agent)
+    ;; block type labels (agent-specific accessibility)
+    (vowel A)
+    (vowel E)
+    (vowel I)
 
-    ;; block types
-    (vowel A) (vowel E) (vowel I)
-    (consonant B) (consonant C) (consonant D) (consonant F)
-    (consonant G) (consonant H) (consonant J) (consonant K)
-    (consonant L) (consonant M) (consonant N)
+    (consonant B)
+    (consonant C)
+    (consonant D)
+    (consonant F)
+    (consonant G)
+    (consonant H)
+    (consonant J)
+    (consonant K)
+    (consonant L)
+    (consonant M)
+    (consonant N)
 
-    ;; manipulation permissions
-    (can-manip vowel_agent A) (can-manip vowel_agent E) (can-manip vowel_agent I)
-    (can-manip consonant_agent B) (can-manip consonant_agent C) (can-manip consonant_agent D)
-    (can-manip consonant_agent F) (can-manip consonant_agent G) (can-manip consonant_agent H)
-    (can-manip consonant_agent J) (can-manip consonant_agent K) (can-manip consonant_agent L)
-    (can-manip consonant_agent M) (can-manip consonant_agent N)
-
-    ;; initial stacks (bottom to top): I C H G A N K
+    ;; Initial stacks as given (stack1 bottom-to-top: I C H G A N K)
     (ontable I)
     (on C I)
     (on H C)
@@ -32,9 +30,8 @@
     (on A G)
     (on N A)
     (on K N)
-    (clear K)
 
-    ;; stack2 bottom to top: D F E M L B J
+    ;; stack2 bottom-to-top: D F E M L B J
     (ontable D)
     (on F D)
     (on E F)
@@ -42,17 +39,19 @@
     (on L M)
     (on B L)
     (on J B)
+
+    ;; Only the top blocks of each stack are clear (can be picked)
+    (clear K)
     (clear J)
 
-    ;; hand status
-    (handempty consonant_agent)
-    (handempty vowel_agent)
+    ;; Hands are free initially
+    (hand-free-vowel)
+    (hand-free-cons)
   )
 
-  ;; Global goal: single tower on the table with N bottom and sequence above it:
-  ;; N (ontable), M on N, L on M, K on L, J on K, I on J, H on I, G on H, F on G, E on F, D on E, C on D, B on C, A on B
   (:goal
     (and
+      ;; Desired single tower: bottom N on table, above it M L K J I H G F E D C B A
       (ontable N)
       (on M N)
       (on L M)

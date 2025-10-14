@@ -1,92 +1,49 @@
-(define (domain multi-agent-blocks)
-  (:requirements :strips :typing :equality)
-  (:types block)
-
+(define (domain multiagent-blocks)
+  (:requirements :strips :typing)
+  (:types block vowel-block consonant-block)
   (:predicates
-    (vowel ?x - block)        ; blocks the vowel-agent may move
-    (consonant ?x - block)    ; blocks the consonant-agent may move
     (on ?x - block ?y - block)
     (ontable ?x - block)
     (clear ?x - block)
   )
 
-  ;; Vowel-agent actions (preserve vowel-only constraint and original semantics)
-  (:action vowel_move-table-to-block
-    :parameters (?x - block ?y - block)
-    :precondition (and
-      (vowel ?x)
-      (ontable ?x)
-      (clear ?x)
-      (clear ?y)
-      (not (= ?x ?y))
-    )
+  ;; Vowel-agent actions (vowel_agent can only move A E I)
+  (:action vowel-move-table-to-block
+    :parameters (?b - vowel-block ?to - block)
+    :precondition (and (ontable ?b) (clear ?b) (clear ?to))
     :effect (and
-      (not (ontable ?x))
-      (not (clear ?y))
-      (on ?x ?y)
-      (clear ?x)
+      (not (ontable ?b))
+      (on ?b ?to)
+      (not (clear ?to))
+      ;; ?b remains clear (nothing placed on it)
     )
   )
 
-  (:action vowel_move-block-to-block
-    :parameters (?x - block ?z - block ?y - block)
-    :precondition (and
-      (vowel ?x)
-      (on ?x ?z)
-      (clear ?x)
-      (clear ?y)
-      (not (= ?x ?y))
-    )
-    :effect (and
-      (not (on ?x ?z))
-      (clear ?z)
-      (not (clear ?y))
-      (on ?x ?y)
-      (clear ?x)
-    )
-  )
-
-  (:action vowel_move-block-to-table
-    :parameters (?x - block ?z - block)
-    :precondition (and
-      (vowel ?x)
-      (on ?x ?z)
-      (clear ?x)
-    )
-    :effect (and
-      (not (on ?x ?z))
-      (clear ?z)
-      (ontable ?x)
-      (clear ?x)
-    )
-  )
-
-  ;; Consonant-agent actions (preserve consonant-only constraint and original semantics)
-  (:action cons_move-block-to-block
-    :parameters (?b - block ?from - block ?to - block)
-    :precondition (and
-      (consonant ?b)
-      (on ?b ?from)
-      (clear ?b)
-      (clear ?to)
-    )
+  (:action vowel-move-block-to-block
+    :parameters (?b - vowel-block ?from - block ?to - block)
+    :precondition (and (on ?b ?from) (clear ?b) (clear ?to))
     :effect (and
       (not (on ?b ?from))
       (on ?b ?to)
-      (clear ?from)
       (not (clear ?to))
-      (not (ontable ?b))
+      (clear ?from)
     )
   )
 
-  (:action cons_move-from-table-to-block
-    :parameters (?b - block ?to - block)
-    :precondition (and
-      (consonant ?b)
+  (:action vowel-move-block-to-table
+    :parameters (?b - vowel-block ?from - block)
+    :precondition (and (on ?b ?from) (clear ?b))
+    :effect (and
+      (not (on ?b ?from))
       (ontable ?b)
-      (clear ?b)
-      (clear ?to)
+      (clear ?from)
     )
+  )
+
+  ;; Consonant-agent actions (consonant_agent can only move B C D F G H J)
+  (:action consonant-move-table-to-block
+    :parameters (?b - consonant-block ?to - block)
+    :precondition (and (ontable ?b) (clear ?b) (clear ?to))
     :effect (and
       (not (ontable ?b))
       (on ?b ?to)
@@ -94,13 +51,20 @@
     )
   )
 
-  (:action cons_move-block-to-table
-    :parameters (?b - block ?from - block)
-    :precondition (and
-      (consonant ?b)
-      (on ?b ?from)
-      (clear ?b)
+  (:action consonant-move-block-to-block
+    :parameters (?b - consonant-block ?from - block ?to - block)
+    :precondition (and (on ?b ?from) (clear ?b) (clear ?to))
+    :effect (and
+      (not (on ?b ?from))
+      (on ?b ?to)
+      (not (clear ?to))
+      (clear ?from)
     )
+  )
+
+  (:action consonant-move-block-to-table
+    :parameters (?b - consonant-block ?from - block)
+    :precondition (and (on ?b ?from) (clear ?b))
     :effect (and
       (not (on ?b ?from))
       (ontable ?b)

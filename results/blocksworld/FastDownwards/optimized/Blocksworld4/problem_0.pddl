@@ -1,52 +1,41 @@
-(define (problem multi-agent-blocks-problem)
-  (:domain multi-agent-blocks)
+(define (problem multiagent-blocks-problem)
+  (:domain multiagent-blocks)
   (:objects
-    a b c d e f g h i j - block
+    A E I - vowel-block
+    B C D F G H J - consonant-block
+    ;; All blocks are also of type block by typing hierarchy
   )
-
   (:init
-    ;; Agent capabilities (mapped from agent inputs: uppercase -> lowercase)
-    (vowel a)
-    (vowel e)
-    (vowel i)
+    ;; Initial stack: B on C on D on E on F on G on H on I on J, with J on the table.
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (ontable J)
 
-    (consonant b)
-    (consonant c)
-    (consonant d)
-    (consonant f)
-    (consonant g)
-    (consonant h)
-    (consonant j)
+    ;; A is on the table separately
+    (ontable A)
 
-    ;; Initial stacking (both agents described the same stack; names unified to lowercase)
-    (on b c)
-    (on c d)
-    (on d e)
-    (on e f)
-    (on f g)
-    (on g h)
-    (on h i)
-    (on i j)
-    (ontable j)
+    ;; Clear (top of stacks): A and B are clear initially
+    (clear A)
+    (clear B)
 
-    ;; a is on the table separately
-    (ontable a)
-
-    ;; Clear/top facts initially: a and b are clear (tops of their respective structures)
-    (clear a)
-    (clear b)
+    ;; Note: other blocks that have something on them are not marked clear.
   )
-
   (:goal (and
-    (on a b)
-    (on b c)
-    (on c d)
-    (on d e)
-    (on e f)
-    (on f g)
-    (on g h)
-    (on h i)
-    (on i j)
-    (ontable j)
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (ontable J)
   ))
 )

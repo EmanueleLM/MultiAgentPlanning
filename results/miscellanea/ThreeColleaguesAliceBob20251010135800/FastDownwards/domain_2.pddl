@@ -1,0 +1,24 @@
+(define (domain three-colleagues)
+  (:requirements :typing :negative-preconditions)
+  (:types time person)
+  (:predicates
+    (available ?p - person ?t - time)
+    (slot ?t - time)
+    (meeting-scheduled ?t - time)
+    (no-meeting)
+  )
+  (:action schedule
+    :parameters (?a - person ?b - person ?c - person ?t - time)
+    :precondition (and
+      (slot ?t)
+      (available ?a ?t)
+      (available ?b ?t)
+      (available ?c ?t)
+      (no-meeting)
+    )
+    :effect (and
+      (meeting-scheduled ?t)
+      (not (no-meeting))
+    )
+  )
+)

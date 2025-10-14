@@ -65,7 +65,7 @@ SOLVER = {
     "FastDownwards": {
         "solver": run_pddl_fast_downwards_and_uVal,
         "support_optimization": True,
-        "timeout": 60,
+        "timeout": 120,
     },
 }
 

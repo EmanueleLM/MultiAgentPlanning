@@ -95,7 +95,7 @@ def evaluate_dataset(
     experiments_root: Path,
     llm: LLM,
     verbose: bool = False,
-) -> tuple[list[ExampleResult], int, int, int]:
+) -> tuple[list[ExampleResult], int, int, int, float, int]:
     with open(data_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
@@ -103,6 +103,9 @@ def evaluate_dataset(
     results: list[ExampleResult] = []
     missing = 0
     total_plan_paths = 0
+
+    accumulated_cost = 0.0
+    cost_count = 0
 
     for key, payload in sorted_items:
         raw_golden = payload.get("golden_plan", "")
@@ -140,6 +143,11 @@ def evaluate_dataset(
                 plan_path,
             )
 
+        latest_cost = extract_latest_plan_cost(plan_folder)
+        if latest_cost is not None:
+            accumulated_cost += latest_cost
+            cost_count += 1
+
         results.append(
             ExampleResult(
                 key=key,
@@ -151,7 +159,42 @@ def evaluate_dataset(
             )
         )
 
-    return results, missing, len(sorted_items), total_plan_paths
+    return (
+        results,
+        missing,
+        len(sorted_items),
+        total_plan_paths,
+        accumulated_cost,
+        cost_count,
+    )
+
+
+def extract_latest_plan_cost(plan_folder: Path) -> Optional[float]:
+    if not plan_folder or not plan_folder.exists():
+        return None
+
+    sas_files = sorted([p for p in plan_folder.glob("sas_plan_*") if p.is_file()])
+    if not sas_files:
+        return None
+
+    latest_plan = sas_files[-1]
+    try:
+        last_lines = latest_plan.read_text(encoding="utf-8").strip().splitlines()
+    except OSError:
+        return None
+
+    for line in reversed(last_lines):
+        line = line.strip()
+        if line.startswith(";") and "cost" in line:
+            parts = line.split("cost =", 1)
+            if len(parts) < 2:
+                continue
+            try:
+                value_part = parts[1].split()[0]
+                return float(value_part)
+            except (ValueError, IndexError):
+                continue
+    return None
 
 
 def summarize(
@@ -226,6 +269,7 @@ def append_accuracy_result(
     accuracy_including_missing,
     coverage_plan_paths,
     model,
+    average_cost,
 ):
     results = []
     if os.path.exists(accuracy_file):
@@ -247,6 +291,7 @@ def append_accuracy_result(
             "coverage_plan_paths_vs_dataset": coverage_plan_paths,
             "coverage_outputs_vs_dataset": coverage_outputs,
             "model": model,
+            "average_plan_cost": average_cost,
         }
     )
 
@@ -261,7 +306,14 @@ def main() -> None:
         raise ValueError(f"Unsupported model '{args.model}'.")
 
     llm = LLM_FACTORIES[args.model]()
-    results, missing, dataset_total, total_plan_paths = evaluate_dataset(
+    (
+        results,
+        missing,
+        dataset_total,
+        total_plan_paths,
+        cost_sum,
+        cost_count,
+    ) = evaluate_dataset(
         args.data_file,
         args.experiments_root,
         llm,
@@ -277,6 +329,10 @@ def main() -> None:
         accuracy_including_missing,
         coverage_plan_paths,
     ) = summarize(results, missing, dataset_total, total_plan_paths)
+
+    average_cost = cost_sum / cost_count if cost_count else None
+    if average_cost is not None:
+        logging.info("Average plan cost        : %.2f", average_cost)
 
     dataset_name = args.data_file.stem
     accuracy_dir = Path("results") / "_accuracies"
@@ -294,6 +350,7 @@ def main() -> None:
         accuracy_including_missing,
         coverage_plan_paths,
         args.model,
+        average_cost,
     )
     logging.info("Accuracy written to %s", accuracy_file)
 

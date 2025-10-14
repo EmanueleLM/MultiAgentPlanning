@@ -1,11 +1,27 @@
-(define (problem stack-A-on-B-...-K)
-  (:domain multi-agent-blocksworld)
+(define (problem multi-agent-stack-A-on-B-on-C-...-K)
+  (:domain multi-agent-blocks)
   (:objects
+    vowel_agent consonant_agent - agent
     A B C D E F G H I J K - block
   )
 
   (:init
-    ;; All blocks start on the table and are clear
+    (vowel-agent vowel_agent)
+    (consonant-agent consonant_agent)
+
+    (vowel-block A)
+    (vowel-block E)
+    (vowel-block I)
+
+    (consonant-block B)
+    (consonant-block C)
+    (consonant-block D)
+    (consonant-block F)
+    (consonant-block G)
+    (consonant-block H)
+    (consonant-block J)
+    (consonant-block K)
+
     (ontable A) (clear A)
     (ontable B) (clear B)
     (ontable C) (clear C)
@@ -18,7 +34,6 @@
     (ontable J) (clear J)
     (ontable K) (clear K)
 
-    ;; Both agents' hands are empty initially
     (handempty vowel_agent)
     (handempty consonant_agent)
   )

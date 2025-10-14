@@ -1,112 +1,149 @@
 (define (domain multiagent_blocks)
   (:requirements :strips :typing :negative-preconditions)
-  (:types block)
+  (:types block place vowel cons - block)
 
   (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
+    (on ?x - block ?y - (either block place))
     (clear ?x - block)
-    ;; Agent-specific hand predicates to model two independent agents
-    (holding_v ?x - block)    ; vowel-agent holds ?x
-    (handempty_v)             ; vowel-agent's hand empty
-    (holding_c ?x - block)    ; consonant-agent holds ?x
-    (handempty_c)             ; consonant-agent's hand empty
-    ;; static classifications
+    (handfree-vowel)
+    (handfree-cons)
+    (holding-v ?x - block)
+    (holding-c ?x - block)
     (vowel ?x - block)
     (consonant ?x - block)
   )
 
-  ;; Vowel-agent actions (prefix vowel_)
+  ;; Vowel-agent picks a vowel block from the table
   (:action vowel_pick_from_table
-    :parameters (?b - block)
-    :precondition (and (vowel ?b) (ontable ?b) (clear ?b) (handempty_v))
+    :parameters (?b - vowel)
+    :precondition (and
+      (handfree-vowel)
+      (on ?b table)
+      (clear ?b)
+      (vowel ?b)
+    )
     :effect (and
-      (holding_v ?b)
-      (not (ontable ?b))
+      (not (on ?b table))
       (not (clear ?b))
-      (not (handempty_v))
+      (holding-v ?b)
+      (not (handfree-vowel))
     )
   )
 
+  ;; Vowel-agent picks a vowel block from on top of another block
   (:action vowel_pick_from_block
-    :parameters (?b - block ?x - block)
-    :precondition (and (vowel ?b) (on ?b ?x) (clear ?b) (handempty_v))
+    :parameters (?b - vowel ?under - block)
+    :precondition (and
+      (handfree-vowel)
+      (on ?b ?under)
+      (clear ?b)
+      (vowel ?b)
+    )
     :effect (and
-      (holding_v ?b)
-      (clear ?x)
-      (not (on ?b ?x))
+      (not (on ?b ?under))
       (not (clear ?b))
-      (not (handempty_v))
+      (clear ?under)
+      (holding-v ?b)
+      (not (handfree-vowel))
     )
   )
 
+  ;; Vowel-agent places a held vowel block onto the table
   (:action vowel_put_on_table
-    :parameters (?b - block)
-    :precondition (and (vowel ?b) (holding_v ?b))
+    :parameters (?b - vowel)
+    :precondition (and
+      (holding-v ?b)
+      (vowel ?b)
+    )
     :effect (and
-      (ontable ?b)
+      (on ?b table)
       (clear ?b)
-      (not (holding_v ?b))
-      (handempty_v)
+      (not (holding-v ?b))
+      (handfree-vowel)
     )
   )
 
+  ;; Vowel-agent stacks a held vowel block onto another block
   (:action vowel_put_on_block
-    :parameters (?b - block ?x - block)
-    :precondition (and (vowel ?b) (holding_v ?b) (clear ?x))
+    :parameters (?b - vowel ?target - block)
+    :precondition (and
+      (holding-v ?b)
+      (clear ?target)
+      (vowel ?b)
+    )
     :effect (and
-      (on ?b ?x)
+      (on ?b ?target)
       (clear ?b)
-      (not (clear ?x))
-      (not (holding_v ?b))
-      (handempty_v)
+      (not (clear ?target))
+      (not (holding-v ?b))
+      (handfree-vowel)
     )
   )
 
-  ;; Consonant-agent actions (prefix consonant_)
-  (:action consonant_pickup
-    :parameters (?x - block)
-    :precondition (and (consonant ?x) (ontable ?x) (clear ?x) (handempty_c))
+  ;; Consonant-agent picks a consonant block from the table
+  (:action cons_pick_from_table
+    :parameters (?b - cons)
+    :precondition (and
+      (handfree-cons)
+      (on ?b table)
+      (clear ?b)
+      (consonant ?b)
+    )
     :effect (and
-      (holding_c ?x)
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (handempty_c))
+      (not (on ?b table))
+      (not (clear ?b))
+      (holding-c ?b)
+      (not (handfree-cons))
     )
   )
 
-  (:action consonant_unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and (consonant ?x) (consonant ?y) (on ?x ?y) (clear ?x) (handempty_c))
+  ;; Consonant-agent picks a consonant block from on top of another block
+  (:action cons_pick_from_block
+    :parameters (?b - cons ?under - block)
+    :precondition (and
+      (handfree-cons)
+      (on ?b ?under)
+      (clear ?b)
+      (consonant ?b)
+    )
     :effect (and
-      (holding_c ?x)
-      (clear ?y)
-      (not (on ?x ?y))
-      (not (clear ?x))
-      (not (handempty_c))
+      (not (on ?b ?under))
+      (not (clear ?b))
+      (clear ?under)
+      (holding-c ?b)
+      (not (handfree-cons))
     )
   )
 
-  (:action consonant_putdown
-    :parameters (?x - block)
-    :precondition (and (consonant ?x) (holding_c ?x))
+  ;; Consonant-agent places a held consonant block onto the table
+  (:action cons_put_on_table
+    :parameters (?b - cons)
+    :precondition (and
+      (holding-c ?b)
+      (consonant ?b)
+    )
     :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty_c)
-      (not (holding_c ?x))
+      (on ?b table)
+      (clear ?b)
+      (not (holding-c ?b))
+      (handfree-cons)
     )
   )
 
-  (:action consonant_stack
-    :parameters (?x - block ?y - block)
-    :precondition (and (consonant ?x) (consonant ?y) (holding_c ?x) (clear ?y))
+  ;; Consonant-agent stacks a held consonant block onto another block
+  (:action cons_put_on_block
+    :parameters (?b - cons ?target - block)
+    :precondition (and
+      (holding-c ?b)
+      (clear ?target)
+      (consonant ?b)
+    )
     :effect (and
-      (on ?x ?y)
-      (clear ?x)
-      (handempty_c)
-      (not (holding_c ?x))
-      (not (clear ?y))
+      (on ?b ?target)
+      (clear ?b)
+      (not (clear ?target))
+      (not (holding-c ?b))
+      (handfree-cons)
     )
   )
 )

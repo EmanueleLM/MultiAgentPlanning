@@ -1,102 +1,154 @@
-(define (domain multi-agent-blocksworld)
+(define (domain multi-agent-blocks)
   (:requirements :strips :typing)
-  (:types block agent)
-
-  (:constants
-    vowel_agent consonant_agent - agent
-  )
+  (:types agent block)
 
   (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
-    (clear ?x - block)
-    (holding ?a - agent ?x - block)
-    (handempty ?a - agent)
+    (on ?b - block ?s - block)        ; block b is on block s
+    (ontable ?b - block)              ; block is on the table
+    (clear ?b - block)                ; nothing on top of block
+    (holding ?a - agent ?b - block)   ; agent a is holding block b
+    (handempty ?a - agent)            ; agent a's hand is empty
+    (vowel-block ?b - block)          ; block is assigned to vowel agent
+    (consonant-block ?b - block)      ; block is assigned to consonant agent
+    (vowel-agent ?a - agent)          ; agent is the vowel agent
+    (consonant-agent ?a - agent)      ; agent is the consonant agent
   )
 
-  ;; Actions belonging to the vowel_agent
-  (:action vowel-pickup
-    :parameters (?b - block)
-    :precondition (and (ontable ?b) (clear ?b) (handempty vowel_agent))
+  ;; Actions for the vowel_agent
+  (:action vowel_pickup
+    :parameters (?ag - agent ?b - block)
+    :precondition (and
+      (vowel-agent ?ag)
+      (vowel-block ?b)
+      (ontable ?b)
+      (clear ?b)
+      (handempty ?ag)
+    )
     :effect (and
-              (not (ontable ?b))
-              (not (clear ?b))
-              (not (handempty vowel_agent))
-              (holding vowel_agent ?b))
+      (holding ?ag ?b)
+      (not (ontable ?b))
+      (not (handempty ?ag))
+      (not (clear ?b))
+    )
   )
 
-  (:action vowel-putdown
-    :parameters (?b - block)
-    :precondition (holding vowel_agent ?b)
+  (:action vowel_unstack
+    :parameters (?ag - agent ?b - block ?s - block)
+    :precondition (and
+      (vowel-agent ?ag)
+      (vowel-block ?b)
+      (on ?b ?s)
+      (clear ?b)
+      (handempty ?ag)
+    )
     :effect (and
-              (ontable ?b)
-              (clear ?b)
-              (handempty vowel_agent)
-              (not (holding vowel_agent ?b)))
+      (holding ?ag ?b)
+      (not (on ?b ?s))
+      (clear ?s)
+      (not (handempty ?ag))
+      (not (clear ?b))
+    )
   )
 
-  (:action vowel-stack
-    :parameters (?b - block ?target - block)
-    :precondition (and (holding vowel_agent ?b) (clear ?target))
+  (:action vowel_stack
+    :parameters (?ag - agent ?b - block ?s - block)
+    :precondition (and
+      (vowel-agent ?ag)
+      (vowel-block ?b)
+      (holding ?ag ?b)
+      (clear ?s)
+      (not (= ?b ?s))
+    )
     :effect (and
-              (on ?b ?target)
-              (clear ?b)
-              (handempty vowel_agent)
-              (not (holding vowel_agent ?b))
-              (not (clear ?target)))
+      (on ?b ?s)
+      (clear ?b)
+      (not (clear ?s))
+      (not (holding ?ag ?b))
+      (handempty ?ag)
+    )
   )
 
-  (:action vowel-unstack
-    :parameters (?b - block ?below - block)
-    :precondition (and (on ?b ?below) (clear ?b) (handempty vowel_agent))
+  (:action vowel_putdown
+    :parameters (?ag - agent ?b - block)
+    :precondition (and
+      (vowel-agent ?ag)
+      (vowel-block ?b)
+      (holding ?ag ?b)
+    )
     :effect (and
-              (holding vowel_agent ?b)
-              (clear ?below)
-              (not (on ?b ?below))
-              (not (clear ?b))
-              (not (handempty vowel_agent)))
+      (ontable ?b)
+      (clear ?b)
+      (not (holding ?ag ?b))
+      (handempty ?ag)
+    )
   )
 
-  ;; Actions belonging to the consonant_agent
-  (:action consonant-pickup
-    :parameters (?b - block)
-    :precondition (and (ontable ?b) (clear ?b) (handempty consonant_agent))
+  ;; Actions for the consonant_agent
+  (:action consonant_pickup
+    :parameters (?ag - agent ?b - block)
+    :precondition (and
+      (consonant-agent ?ag)
+      (consonant-block ?b)
+      (ontable ?b)
+      (clear ?b)
+      (handempty ?ag)
+    )
     :effect (and
-              (not (ontable ?b))
-              (not (clear ?b))
-              (not (handempty consonant_agent))
-              (holding consonant_agent ?b))
+      (holding ?ag ?b)
+      (not (ontable ?b))
+      (not (handempty ?ag))
+      (not (clear ?b))
+    )
   )
 
-  (:action consonant-putdown
-    :parameters (?b - block)
-    :precondition (holding consonant_agent ?b)
+  (:action consonant_unstack
+    :parameters (?ag - agent ?b - block ?s - block)
+    :precondition (and
+      (consonant-agent ?ag)
+      (consonant-block ?b)
+      (on ?b ?s)
+      (clear ?b)
+      (handempty ?ag)
+    )
     :effect (and
-              (ontable ?b)
-              (clear ?b)
-              (handempty consonant_agent)
-              (not (holding consonant_agent ?b)))
+      (holding ?ag ?b)
+      (not (on ?b ?s))
+      (clear ?s)
+      (not (handempty ?ag))
+      (not (clear ?b))
+    )
   )
 
-  (:action consonant-stack
-    :parameters (?b - block ?target - block)
-    :precondition (and (holding consonant_agent ?b) (clear ?target))
+  (:action consonant_stack
+    :parameters (?ag - agent ?b - block ?s - block)
+    :precondition (and
+      (consonant-agent ?ag)
+      (consonant-block ?b)
+      (holding ?ag ?b)
+      (clear ?s)
+      (not (= ?b ?s))
+    )
     :effect (and
-              (on ?b ?target)
-              (clear ?b)
-              (handempty consonant_agent)
-              (not (holding consonant_agent ?b))
-              (not (clear ?target)))
+      (on ?b ?s)
+      (clear ?b)
+      (not (clear ?s))
+      (not (holding ?ag ?b))
+      (handempty ?ag)
+    )
   )
 
-  (:action consonant-unstack
-    :parameters (?b - block ?below - block)
-    :precondition (and (on ?b ?below) (clear ?b) (handempty consonant_agent))
+  (:action consonant_putdown
+    :parameters (?ag - agent ?b - block)
+    :precondition (and
+      (consonant-agent ?ag)
+      (consonant-block ?b)
+      (holding ?ag ?b)
+    )
     :effect (and
-              (holding consonant_agent ?b)
-              (clear ?below)
-              (not (on ?b ?below))
-              (not (clear ?b))
-              (not (handempty consonant_agent)))
+      (ontable ?b)
+      (clear ?b)
+      (not (holding ?ag ?b))
+      (handempty ?ag)
+    )
   )
 )

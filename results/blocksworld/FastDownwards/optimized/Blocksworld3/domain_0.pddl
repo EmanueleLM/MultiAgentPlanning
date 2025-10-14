@@ -1,134 +1,104 @@
-(define (domain blocks-multi-agent)
-  (:requirements :strips :typing)
+(define (domain multiagent-blocks)
+  (:requirements :strips :typing :negative-preconditions)
   (:types vowel consonant - block)
 
   (:predicates
     (on ?x - block ?y - block)
     (ontable ?x - block)
     (clear ?x - block)
-
-    ;; Consonant-agent local state
-    (handempty-cons)
-    (holding-cons ?x - consonant)
+    (handfree-vowel)
+    (handfree-consonant)
+    (holding-vowel ?x - block)
+    (holding-consonant ?x - block)
   )
 
-  ;; -----------------------
-  ;; Vowel-agent actions
-  ;; Vowel agent can only move vowel-typed blocks (A and E)
-  ;; -----------------------
-
-  ;; Move a vowel block from one block to another block
-  (:action vowel_move_block_to_block
-    :parameters (?b - vowel ?from - block ?to - block)
-    :precondition (and
-      (on ?b ?from)
-      (clear ?b)
-      (clear ?to)
-    )
+  ;; Vowel-agent actions (agent name: vowel_agent). Can only manipulate vowel blocks (A,E -> a,e).
+  (:action pick-vowel-from-table
+    :parameters (?b - vowel)
+    :precondition (and (ontable ?b) (clear ?b) (handfree-vowel) (not (holding-vowel ?b)) (not (holding-consonant ?b)))
     :effect (and
-      (not (on ?b ?from))
-      (on ?b ?to)
-      (not (clear ?to))
-      (clear ?from)
-      (clear ?b)
-    )
+              (not (ontable ?b))
+              (not (handfree-vowel))
+              (holding-vowel ?b)
+            )
   )
 
-  ;; Move a vowel block from the table onto a block
-  (:action vowel_move_table_to_block
-    :parameters (?b - vowel ?to - block)
-    :precondition (and
-      (ontable ?b)
-      (clear ?b)
-      (clear ?to)
-    )
+  (:action pick-vowel-from-block
+    :parameters (?b - vowel ?x - block)
+    :precondition (and (on ?b ?x) (clear ?b) (handfree-vowel) (not (holding-vowel ?b)) (not (holding-consonant ?b)))
     :effect (and
-      (not (ontable ?b))
-      (on ?b ?to)
-      (not (clear ?to))
-      (clear ?b)
-    )
+              (not (on ?b ?x))
+              (clear ?x)
+              (not (handfree-vowel))
+              (holding-vowel ?b)
+            )
   )
 
-  ;; Move a vowel block from a block to the table
-  (:action vowel_move_block_to_table
-    :parameters (?b - vowel ?from - block)
-    :precondition (and
-      (on ?b ?from)
-      (clear ?b)
-    )
+  (:action put-vowel-on
+    :parameters (?b - vowel ?y - block)
+    :precondition (and (holding-vowel ?b) (clear ?y) (not (holding-vowel ?y)) (not (holding-consonant ?y)))
     :effect (and
-      (not (on ?b ?from))
-      (ontable ?b)
-      (clear ?from)
-      (clear ?b)
-    )
+              (not (holding-vowel ?b))
+              (handfree-vowel)
+              (on ?b ?y)
+              (not (clear ?y))
+              (clear ?b)
+            )
   )
 
-  ;; -----------------------
-  ;; Consonant-agent actions (prefixed with cons_)
-  ;; Consonant agent can only pick up/move consonant-typed blocks (B, C, D)
-  ;; This agent models pickup/holding/putdown semantics
-  ;; -----------------------
-
-  ;; Consonant-only pickup from table
-  (:action cons_pickup
-    :parameters (?x - consonant)
-    :precondition (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty-cons)
-    )
+  (:action put-vowel-on-table
+    :parameters (?b - vowel)
+    :precondition (and (holding-vowel ?b))
     :effect (and
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (handempty-cons))
-      (holding-cons ?x)
-    )
+              (not (holding-vowel ?b))
+              (handfree-vowel)
+              (ontable ?b)
+              (clear ?b)
+            )
   )
 
-  ;; Consonant-only unstack: take a consonant block from top of another block
-  (:action cons_unstack
-    :parameters (?x - consonant ?y - block)
-    :precondition (and
-      (on ?x ?y)
-      (clear ?x)
-      (handempty-cons)
-    )
+  ;; Consonant-agent actions (agent name: consonant_agent). Can only manipulate consonant blocks (B,C,D -> b,c,d).
+  (:action pick-consonant-from-table
+    :parameters (?b - consonant)
+    :precondition (and (ontable ?b) (clear ?b) (handfree-consonant) (not (holding-vowel ?b)) (not (holding-consonant ?b)))
     :effect (and
-      (not (on ?x ?y))
-      (not (clear ?x))
-      (clear ?y)
-      (not (handempty-cons))
-      (holding-cons ?x)
-    )
+              (not (ontable ?b))
+              (not (handfree-consonant))
+              (holding-consonant ?b)
+            )
   )
 
-  ;; Put the held consonant block down on the table
-  (:action cons_putdown
-    :parameters (?x - consonant)
-    :precondition (holding-cons ?x)
+  (:action pick-consonant-from-block
+    :parameters (?b - consonant ?x - block)
+    :precondition (and (on ?b ?x) (clear ?b) (handfree-consonant) (not (holding-vowel ?b)) (not (holding-consonant ?b)))
     :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty-cons)
-      (not (holding-cons ?x))
-    )
+              (not (on ?b ?x))
+              (clear ?x)
+              (not (handfree-consonant))
+              (holding-consonant ?b)
+            )
   )
 
-  ;; Stack a held consonant block onto any clear block
-  (:action cons_stack
-    :parameters (?x - consonant ?y - block)
-    :precondition (and
-      (holding-cons ?x)
-      (clear ?y)
-    )
+  (:action put-consonant-on
+    :parameters (?b - consonant ?y - block)
+    :precondition (and (holding-consonant ?b) (clear ?y) (not (holding-vowel ?y)) (not (holding-consonant ?y)))
     :effect (and
-      (not (clear ?y))
-      (on ?x ?y)
-      (clear ?x)
-      (handempty-cons)
-      (not (holding-cons ?x))
-    )
+              (not (holding-consonant ?b))
+              (handfree-consonant)
+              (on ?b ?y)
+              (not (clear ?y))
+              (clear ?b)
+            )
+  )
+
+  (:action put-consonant-on-table
+    :parameters (?b - consonant)
+    :precondition (and (holding-consonant ?b))
+    :effect (and
+              (not (holding-consonant ?b))
+              (handfree-consonant)
+              (ontable ?b)
+              (clear ?b)
+            )
   )
 )

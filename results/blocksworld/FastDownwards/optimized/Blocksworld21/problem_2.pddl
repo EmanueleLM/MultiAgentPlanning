@@ -1,48 +1,31 @@
-(define (problem multiagent_blocks_problem)
-  (:domain multiagent_blocks)
+(define (problem rearrange-vowel-consonant)
+  (:domain vowel-consonant-blocks)
   (:objects
-    A B C D E F G H I J K L M
+    vowel_agent consonant_agent - agent
+    table - loc
+    A E I - vowel-block
+    M H G B L D F C K J - cons-block
   )
-
   (:init
-    (ontable M)
-    (ontable E)
-    (ontable G)
-    (ontable H)
-
+    (on M table)
     (on I M)
     (on K I)
     (on A K)
-
+    (on E table)
     (on L E)
     (on D L)
     (on F D)
     (on J F)
-
+    (on G table)
     (on B G)
     (on C B)
-
+    (on H table)
     (clear A)
     (clear J)
     (clear C)
     (clear H)
-
-    (vowel A)
-    (vowel E)
-    (vowel I)
-
-    (consonant M)
-    (consonant H)
-    (consonant G)
-    (consonant B)
-    (consonant L)
-    (consonant D)
-    (consonant F)
-    (consonant C)
-    (consonant K)
-    (consonant J)
+    (clear table)
   )
-
   (:goal (and
     (on A B)
     (on B C)
@@ -56,6 +39,6 @@
     (on J K)
     (on K L)
     (on L M)
-    (ontable M)
+    (on M table)
   ))
 )

@@ -1,10 +1,17 @@
-(define (problem blocks_multi_agents_problem)
-  (:domain blocks_multi_agent)
-  (:objects A B C D E F G H I J K - block)
+(define (problem stack-orchestration)
+  (:domain multiagent-blocks)
+  (:objects
+    A B C D E F G H I J K - block
+  )
 
   (:init
-    ;; initial stacks:
-    ;; Stack1 bottom-to-top: F H J C E G B A
+    ;; Type membership (agent capabilities)
+    (vowel A) (vowel E) (vowel I)
+    (consonant B) (consonant C) (consonant D) (consonant F)
+    (consonant G) (consonant H) (consonant J) (consonant K)
+
+    ;; Initial stacks:
+    ;; Stack1 bottom-to-top: F, H, J, C, E, G, B, A
     (ontable F)
     (on H F)
     (on J H)
@@ -14,32 +21,20 @@
     (on B G)
     (on A B)
 
-    ;; Stack2 bottom-to-top: D K I
+    ;; Stack2 bottom-to-top: D, K, I
     (ontable D)
     (on K D)
     (on I K)
 
-    ;; clear (top) blocks
+    ;; Clear (tops of stacks)
     (clear A)
     (clear I)
 
-    ;; vowel / consonant ownership (agent-specific)
-    (vowel A)
-    (vowel E)
-    (vowel I)
-
-    (consonant B)
-    (consonant C)
-    (consonant D)
-    (consonant F)
-    (consonant G)
-    (consonant H)
-    (consonant J)
-    (consonant K)
+    ;; Note: All other blocks that have something on them are not marked clear.
   )
 
   (:goal (and
-    ;; final stack bottom-to-top: K J I H G F E D C B A
+    ;; Desired final single stack bottom-to-top: K, J, I, H, G, F, E, D, C, B, A
     (ontable K)
     (on J K)
     (on I J)

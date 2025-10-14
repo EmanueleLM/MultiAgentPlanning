@@ -1,118 +1,131 @@
 (define (domain multiagent_blocks)
-  (:requirements :strips :typing :negative-preconditions :action-costs :equality)
-  (:types block)
+  (:requirements :typing :negative-preconditions)
+  (:types vowel cons - block block place - object)
 
   (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
+    (on ?x - block ?y - object)
     (clear ?x - block)
-    (holding_v ?x - block)
-    (handempty_v)
-    (holding_c ?x - block)
-    (handempty_c)
-    (vowel ?x - block)
-    (consonant ?x - block)
+    (handfree-vowel)
+    (handfree-cons)
+    (holding-v ?x - vowel)
+    (holding-c ?x - cons)
   )
 
-  ;; Vowel-agent actions (prefix vowel_)
   (:action vowel_pick_from_table
-    :parameters (?b - block)
-    :precondition (and (vowel ?b) (ontable ?b) (clear ?b) (handempty_v))
-    :effect (and
-      (holding_v ?b)
-      (not (ontable ?b))
-      (not (clear ?b))
-      (not (handempty_v))
+    :parameters (?b - vowel)
+    :precondition (and
+      (handfree-vowel)
+      (on ?b table)
+      (clear ?b)
     )
-    :cost 1
+    :effect (and
+      (not (on ?b table))
+      (not (clear ?b))
+      (holding-v ?b)
+      (not (handfree-vowel))
+    )
   )
 
   (:action vowel_pick_from_block
-    :parameters (?b - block ?x - block)
-    :precondition (and (vowel ?b) (on ?b ?x) (clear ?b) (handempty_v))
-    :effect (and
-      (holding_v ?b)
-      (clear ?x)
-      (not (on ?b ?x))
-      (not (clear ?b))
-      (not (handempty_v))
+    :parameters (?b - vowel ?under - block)
+    :precondition (and
+      (handfree-vowel)
+      (on ?b ?under)
+      (clear ?b)
     )
-    :cost 1
+    :effect (and
+      (not (on ?b ?under))
+      (not (clear ?b))
+      (clear ?under)
+      (holding-v ?b)
+      (not (handfree-vowel))
+    )
   )
 
   (:action vowel_put_on_table
-    :parameters (?b - block)
-    :precondition (and (vowel ?b) (holding_v ?b))
-    :effect (and
-      (ontable ?b)
-      (clear ?b)
-      (not (holding_v ?b))
-      (handempty_v)
+    :parameters (?b - vowel)
+    :precondition (and
+      (holding-v ?b)
     )
-    :cost 1
+    :effect (and
+      (on ?b table)
+      (clear ?b)
+      (not (holding-v ?b))
+      (handfree-vowel)
+    )
   )
 
   (:action vowel_put_on_block
-    :parameters (?b - block ?x - block)
-    :precondition (and (vowel ?b) (holding_v ?b) (clear ?x))
+    :parameters (?b - vowel ?target - block)
+    :precondition (and
+      (holding-v ?b)
+      (clear ?target)
+    )
     :effect (and
-      (on ?b ?x)
+      (on ?b ?target)
       (clear ?b)
-      (not (clear ?x))
-      (not (holding_v ?b))
-      (handempty_v)
+      (not (clear ?target))
+      (not (holding-v ?b))
+      (handfree-vowel)
     )
-    :cost 1
   )
 
-  ;; Consonant-agent actions (prefix consonant_)
-  (:action consonant_pickup
-    :parameters (?x - block)
-    :precondition (and (consonant ?x) (ontable ?x) (clear ?x) (handempty_c))
-    :effect (and
-      (holding_c ?x)
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (handempty_c))
+  (:action cons_pick_from_table
+    :parameters (?b - cons)
+    :precondition (and
+      (handfree-cons)
+      (on ?b table)
+      (clear ?b)
     )
-    :cost 1
+    :effect (and
+      (not (on ?b table))
+      (not (clear ?b))
+      (holding-c ?b)
+      (not (handfree-cons))
+    )
   )
 
-  (:action consonant_unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and (consonant ?x) (consonant ?y) (on ?x ?y) (clear ?x) (handempty_c))
-    :effect (and
-      (holding_c ?x)
-      (clear ?y)
-      (not (on ?x ?y))
-      (not (clear ?x))
-      (not (handempty_c))
+  (:action cons_pick_from_block
+    :parameters (?b - cons ?under - block)
+    :precondition (and
+      (handfree-cons)
+      (on ?b ?under)
+      (clear ?b)
     )
-    :cost 1
+    :effect (and
+      (not (on ?b ?under))
+      (not (clear ?b))
+      (clear ?under)
+      (holding-c ?b)
+      (not (handfree-cons))
+    )
   )
 
-  (:action consonant_putdown
-    :parameters (?x - block)
-    :precondition (and (consonant ?x) (holding_c ?x))
-    :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty_c)
-      (not (holding_c ?x))
+  (:action cons_put_on_table
+    :parameters (?b - cons)
+    :precondition (and
+      (holding-c ?b)
     )
-    :cost 1
+    :effect (and
+      (on ?b table)
+      (clear ?b)
+      (not (holding-c ?b))
+      (handfree-cons)
+    )
   )
 
-  (:action consonant_stack
-    :parameters (?x - block ?y - block)
-    :precondition (and (consonant ?x) (consonant ?y) (holding_c ?x) (clear ?y))
-    :effect (and
-      (on ?x ?y)
-      (clear ?x)
-      (handempty_c)
-      (not (holding_c ?x))
-      (not (clear ?y))
+  (:action cons_put_on_block
+    :parameters (?b - cons ?target - block)
+    :precondition (and
+      (holding-c ?b)
+      (clear ?target)
     )
-    :cost 1
+    :effect (and
+      (on ?b ?target)
+      (clear ?b)
+      (not (clear ?target))
+      (not (holding-c ?b))
+      (handfree-cons)
+    )
   )
 )

@@ -1,114 +1,110 @@
 (define (domain multi-agent-blocks)
-  (:requirements :strips :typing)
-  (:types block)
+  (:requirements :typing :negative-preconditions)
+  (:types block agent)
 
   (:predicates
     (on ?x - block ?y - block)
     (ontable ?x - block)
     (clear ?x - block)
-
-    ;; per-agent hand predicates to keep agents' hands distinct
-    (holding-vowel ?x - block)
-    (handempty-vowel)
-    (holding-cons ?x - block)
-    (handempty-cons)
-
-    ;; capability predicates
-    (vowel ?x - block)
-    (consonant ?x - block)
+    (holding ?a - agent ?b - block)
+    (handempty ?a - agent)
+    (vowel ?b - block)
+    (consonant ?b - block)
+    (is-vowel-agent ?a - agent)
+    (is-consonant-agent ?a - agent)
   )
 
-  ;; Vowel-agent actions (namespaced with vowel-)
-  (:action vowel-unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and (on ?x ?y) (clear ?x) (handempty-vowel) (vowel ?x))
+  ;; Vowel-agent actions (vowel_agent may only pick/place A, E, I)
+  (:action vowel-pick-from-table
+    :parameters (?a - agent ?b - block)
+    :precondition (and (is-vowel-agent ?a) (vowel ?b) (ontable ?b) (clear ?b) (handempty ?a))
     :effect (and
-      (not (on ?x ?y))
-      (not (clear ?x))
-      (holding-vowel ?x)
-      (not (handempty-vowel))
-      (clear ?y)
-    )
+              (not (ontable ?b))
+              (not (clear ?b))
+              (not (handempty ?a))
+              (holding ?a ?b)
+            )
   )
 
-  (:action vowel-pickup
-    :parameters (?x - block)
-    :precondition (and (ontable ?x) (clear ?x) (handempty-vowel) (vowel ?x))
+  (:action vowel-pick
+    :parameters (?a - agent ?b - block ?under - block)
+    :precondition (and (is-vowel-agent ?a) (vowel ?b) (on ?b ?under) (clear ?b) (handempty ?a))
     :effect (and
-      (not (ontable ?x))
-      (not (clear ?x))
-      (holding-vowel ?x)
-      (not (handempty-vowel))
-    )
+              (not (on ?b ?under))
+              (not (clear ?b))
+              (not (handempty ?a))
+              (holding ?a ?b)
+              (clear ?under)
+            )
   )
 
-  (:action vowel-putdown
-    :parameters (?x - block)
-    :precondition (and (holding-vowel ?x))
+  (:action vowel-place-on-table
+    :parameters (?a - agent ?b - block)
+    :precondition (and (is-vowel-agent ?a) (vowel ?b) (holding ?a ?b))
     :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty-vowel)
-      (not (holding-vowel ?x))
-    )
+              (ontable ?b)
+              (clear ?b)
+              (handempty ?a)
+              (not (holding ?a ?b))
+            )
   )
 
-  (:action vowel-stack
-    :parameters (?x - block ?y - block)
-    :precondition (and (holding-vowel ?x) (clear ?y) (vowel ?x))
+  (:action vowel-place-on
+    :parameters (?a - agent ?b - block ?target - block)
+    :precondition (and (is-vowel-agent ?a) (vowel ?b) (holding ?a ?b) (clear ?target))
     :effect (and
-      (not (holding-vowel ?x))
-      (not (clear ?y))
-      (on ?x ?y)
-      (clear ?x)
-      (handempty-vowel)
-    )
+              (on ?b ?target)
+              (clear ?b)
+              (not (clear ?target))
+              (handempty ?a)
+              (not (holding ?a ?b))
+            )
   )
 
-  ;; Consonant-agent actions (namespaced with cons-/consonant-)
-  (:action cons-unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and (on ?x ?y) (clear ?x) (handempty-cons) (consonant ?x))
+  ;; Consonant-agent actions (consonant_agent may only pick/place B C D F G H J)
+  (:action consonant-pick-from-table
+    :parameters (?a - agent ?b - block)
+    :precondition (and (is-consonant-agent ?a) (consonant ?b) (ontable ?b) (clear ?b) (handempty ?a))
     :effect (and
-      (not (on ?x ?y))
-      (clear ?y)
-      (not (handempty-cons))
-      (holding-cons ?x)
-      (not (clear ?x))
-    )
+              (not (ontable ?b))
+              (not (clear ?b))
+              (not (handempty ?a))
+              (holding ?a ?b)
+            )
   )
 
-  (:action cons-pickup
-    :parameters (?x - block)
-    :precondition (and (ontable ?x) (clear ?x) (handempty-cons) (consonant ?x))
+  (:action consonant-pick
+    :parameters (?a - agent ?b - block ?under - block)
+    :precondition (and (is-consonant-agent ?a) (consonant ?b) (on ?b ?under) (clear ?b) (handempty ?a))
     :effect (and
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (handempty-cons))
-      (holding-cons ?x)
-    )
+              (not (on ?b ?under))
+              (not (clear ?b))
+              (not (handempty ?a))
+              (holding ?a ?b)
+              (clear ?under)
+            )
   )
 
-  (:action cons-putdown
-    :parameters (?x - block)
-    :precondition (and (holding-cons ?x) (consonant ?x))
+  (:action consonant-place-on-table
+    :parameters (?a - agent ?b - block)
+    :precondition (and (is-consonant-agent ?a) (consonant ?b) (holding ?a ?b))
     :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty-cons)
-      (not (holding-cons ?x))
-    )
+              (ontable ?b)
+              (clear ?b)
+              (handempty ?a)
+              (not (holding ?a ?b))
+            )
   )
 
-  (:action cons-stack
-    :parameters (?x - block ?y - block)
-    :precondition (and (holding-cons ?x) (clear ?y) (consonant ?x))
+  (:action consonant-place-on
+    :parameters (?a - agent ?b - block ?target - block)
+    :precondition (and (is-consonant-agent ?a) (consonant ?b) (holding ?a ?b) (clear ?target))
     :effect (and
-      (on ?x ?y)
-      (clear ?x)
-      (handempty-cons)
-      (not (holding-cons ?x))
-      (not (clear ?y))
-    )
+              (on ?b ?target)
+              (clear ?b)
+              (not (clear ?target))
+              (handempty ?a)
+              (not (holding ?a ?b))
+            )
   )
 )

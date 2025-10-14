@@ -1,41 +1,54 @@
-(define (problem integrated-stacking)
-  (:domain integrated-blocks)
+(define (problem stack-vowel-consonant)
+  (:domain blocks-multiagent)
   (:objects
-    vowel_agent consonant_agent - agent
-    G H L I J C D B F M A K E - block
+    A B C D E F G H I J K L M - block
   )
+
   (:init
-    ;; initial "on" relations (stacks)
-    (on L G) (on J L) (on B J)
-    (on C H) (on M C)
-    (on D I) (on F D)
-    (on K A) (on E K)
+    ;; supports (initial configuration)
+    (on-table G)
+    (on-table H)
+    (on-table I)
+    (on-table A)
 
-    ;; blocks on the table
-    (on-table G) (on-table H) (on-table I) (on-table A)
+    (on L G)
+    (on J L)
+    (on B J)
 
-    ;; clear (tops of stacks)
-    (clear B) (clear M) (clear F) (clear E)
+    (on C H)
+    (on M C)
 
-    ;; agents are free at start
-    (handempty vowel_agent) (handempty consonant_agent)
+    (on D I)
+    (on F D)
 
-    ;; agent roles
-    (vowel-agent vowel_agent)
-    (consonant-agent consonant_agent)
+    (on K A)
+    (on E K)
 
-    ;; block classifications (based on their labels)
-    (vowel A) (vowel E) (vowel I)
-    (consonant G) (consonant H) (consonant L) (consonant J) (consonant C)
-    (consonant D) (consonant B) (consonant F) (consonant M) (consonant K)
+    ;; clear = top blocks initially
+    (clear B)
+    (clear M)
+    (clear F)
+    (clear E)
 
-    ;; movement permissions known by the second agent (kept as information;
- actions above use agent-role predicates)
-    (can-move consonant_agent B) (can-move consonant_agent C) (can-move consonant_agent D)
-    (can-move consonant_agent F) (can-move consonant_agent G) (can-move consonant_agent H)
-    (can-move consonant_agent J) (can-move consonant_agent K) (can-move consonant_agent L)
-    (can-move consonant_agent M)
-    (can-move vowel_agent A) (can-move vowel_agent E) (can-move vowel_agent I)
+    ;; both agents start with empty hands
+    (handempty-vowel)
+    (handempty-consonant)
+
+    ;; capability constraints (hard constraints): which agent may move which blocks
+    (can-vowel A)
+    (can-vowel E)
+    (can-vowel I)
+
+    (can-consonant B)
+    (can-consonant C)
+    (can-consonant D)
+    (can-consonant F)
+    (can-consonant G)
+    (can-consonant H)
+    (can-consonant J)
+    (can-consonant K)
+    (can-consonant L)
+    (can-consonant M)
   )
 
   (:goal (and

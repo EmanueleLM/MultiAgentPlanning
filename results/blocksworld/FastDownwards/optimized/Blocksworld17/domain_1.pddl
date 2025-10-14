@@ -1,134 +1,47 @@
-(define (domain combined-blocksworld)
-  (:requirements :strips :typing :fluents :action-costs :equality)
+(define (domain blocksworld-multiagent)
+  (:requirements :typing :negative-preconditions)
   (:types block)
-
   (:predicates
-    (vowel ?x - block)
-    (consonant ?x - block)
     (on ?x - block ?y - block)
     (ontable ?x - block)
     (clear ?x - block)
-    (holding ?x - block)
-    (handempty)
+    (vowel ?x - block)
+    (consonant ?x - block)
   )
 
-  (:functions (total-cost))
-
-  ;; VOWEL agent actions
   (:action move-vowel-block-to-block
     :parameters (?b - block ?from - block ?to - block)
-    :precondition (and
-      (vowel ?b)
-      (clear ?b)
-      (on ?b ?from)
-      (clear ?to)
-    )
-    :effect (and
-      (not (on ?b ?from))
-      (not (clear ?to))
-      (on ?b ?to)
-      (clear ?from)
-      (increase (total-cost) 1)
-    )
+    :precondition (and (vowel ?b) (on ?b ?from) (clear ?b) (clear ?to))
+    :effect (and (not (on ?b ?from)) (on ?b ?to) (not (clear ?to)) (clear ?from))
   )
 
   (:action move-vowel-table-to-block
     :parameters (?b - block ?to - block)
-    :precondition (and
-      (vowel ?b)
-      (clear ?b)
-      (ontable ?b)
-      (clear ?to)
-    )
-    :effect (and
-      (not (ontable ?b))
-      (not (clear ?to))
-      (on ?b ?to)
-      (increase (total-cost) 1)
-    )
+    :precondition (and (vowel ?b) (ontable ?b) (clear ?b) (clear ?to))
+    :effect (and (not (ontable ?b)) (on ?b ?to) (not (clear ?to)))
   )
 
   (:action move-vowel-block-to-table
     :parameters (?b - block ?from - block)
-    :precondition (and
-      (vowel ?b)
-      (clear ?b)
-      (on ?b ?from)
-    )
-    :effect (and
-      (not (on ?b ?from))
-      (ontable ?b)
-      (clear ?from)
-      (increase (total-cost) 1)
-    )
+    :precondition (and (vowel ?b) (on ?b ?from) (clear ?b))
+    :effect (and (not (on ?b ?from)) (ontable ?b) (clear ?from))
   )
 
-  ;; CONSONANT agent actions
-  (:action consonant-pickup
-    :parameters (?x - block)
-    :precondition (and
-      (clear ?x)
-      (ontable ?x)
-      (handempty)
-      (consonant ?x)
-    )
-    :effect (and
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (handempty))
-      (holding ?x)
-      (increase (total-cost) 1)
-    )
+  (:action move-consonant-block-to-block
+    :parameters (?b - block ?from - block ?to - block)
+    :precondition (and (consonant ?b) (on ?b ?from) (clear ?b) (clear ?to))
+    :effect (and (not (on ?b ?from)) (on ?b ?to) (not (clear ?to)) (clear ?from))
   )
 
-  (:action consonant-unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and
-      (on ?x ?y)
-      (clear ?x)
-      (handempty)
-      (consonant ?x)
-    )
-    :effect (and
-      (not (on ?x ?y))
-      (not (clear ?x))
-      (not (handempty))
-      (clear ?y)
-      (holding ?x)
-      (increase (total-cost) 1)
-    )
+  (:action move-consonant-table-to-block
+    :parameters (?b - block ?to - block)
+    :precondition (and (consonant ?b) (ontable ?b) (clear ?b) (clear ?to))
+    :effect (and (not (ontable ?b)) (on ?b ?to) (not (clear ?to)))
   )
 
-  (:action consonant-putdown
-    :parameters (?x - block)
-    :precondition (and
-      (holding ?x)
-      (consonant ?x)
-    )
-    :effect (and
-      (ontable ?x)
-      (clear ?x)
-      (handempty)
-      (not (holding ?x))
-      (increase (total-cost) 1)
-    )
-  )
-
-  (:action consonant-stack
-    :parameters (?x - block ?y - block)
-    :precondition (and
-      (holding ?x)
-      (clear ?y)
-      (consonant ?x)
-    )
-    :effect (and
-      (not (clear ?y))
-      (on ?x ?y)
-      (clear ?x)
-      (handempty)
-      (not (holding ?x))
-      (not (ontable ?x))
-      (increase (total-cost) 1)
-    )
+  (:action move-consonant-block-to-table
+    :parameters (?b - block ?from - block)
+    :precondition (and (consonant ?b) (on ?b ?from) (clear ?b))
+    :effect (and (not (on ?b ?from)) (ontable ?b) (clear ?from))
   )
 )

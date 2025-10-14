@@ -1,29 +1,15 @@
-(define (problem combined-blocksworld-problem)
-  (:domain combined-blocksworld)
-
-  (:objects
-    M H G K D N A L J F C I B E O - block
-  )
-
+(define (problem blocksworld17-problem)
+  (:domain blocksworld-multiagent)
+  (:objects A E I O B C D F G H J K L M N - block)
   (:init
-    ;; cost initialization
-    (= (total-cost) 0)
-
-    ;; Classification: which blocks each agent can move
     (vowel A) (vowel E) (vowel I) (vowel O)
-
-    (consonant B) (consonant C) (consonant D) (consonant F)
-    (consonant G) (consonant H) (consonant J) (consonant K)
-    (consonant L) (consonant M) (consonant N)
-
-    ;; Initial stacks
+    (consonant B) (consonant C) (consonant D) (consonant F) (consonant G) (consonant H) (consonant J) (consonant K) (consonant L) (consonant M) (consonant N)
     (ontable M)
     (on H M)
     (on G H)
     (on L G)
     (on B L)
     (on O B)
-
     (ontable K)
     (on N K)
     (on A N)
@@ -32,17 +18,11 @@
     (on C F)
     (on I C)
     (on E I)
-
     (ontable D)
-
-    ;; clear (top) facts
     (clear O)
     (clear E)
     (clear D)
-
-    (handempty)
   )
-
   (:goal (and
     (on A B)
     (on B C)
@@ -60,6 +40,4 @@
     (on N O)
     (ontable O)
   ))
-
-  (:metric minimize (total-cost))
 )

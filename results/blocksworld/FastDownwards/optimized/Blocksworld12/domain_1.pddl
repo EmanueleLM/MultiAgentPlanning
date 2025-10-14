@@ -1,73 +1,76 @@
-(define (domain multiagent_blocks)
-  (:requirements :typing :strips)
-  (:types block place - object)
-
+(define (domain multiagent-blocks)
+  (:requirements :typing)
+  (:types vowel consonant - block block place - object)
   (:predicates
-    (on ?b - block ?s - object)
+    (on ?b - block ?x - object)
     (clear ?b - block)
-    (vowel ?b - block)
-    (consonant ?b - block)
   )
 
   (:action vowel-move-block-to-block
-    :parameters (?b - block ?from - block ?to - block)
-    :precondition (and (vowel ?b) (on ?b ?from) (clear ?b) (clear ?to))
+    :parameters (?b - vowel ?from - block ?to - block)
+    :precondition (and (on ?b ?from) (clear ?b) (clear ?to))
     :effect (and
       (not (on ?b ?from))
       (on ?b ?to)
       (clear ?from)
       (not (clear ?to))
-    )
-  )
-
-  (:action vowel-move-block-to-place
-    :parameters (?b - block ?from - block ?p - place)
-    :precondition (and (vowel ?b) (on ?b ?from) (clear ?b))
-    :effect (and
-      (not (on ?b ?from))
-      (on ?b ?p)
-      (clear ?from)
+      (clear ?b)
     )
   )
 
   (:action vowel-move-place-to-block
-    :parameters (?b - block ?p - place ?to - block)
-    :precondition (and (vowel ?b) (on ?b ?p) (clear ?b) (clear ?to))
+    :parameters (?b - vowel ?p - place ?to - block)
+    :precondition (and (on ?b ?p) (clear ?b) (clear ?to))
     :effect (and
       (not (on ?b ?p))
       (on ?b ?to)
       (not (clear ?to))
+      (clear ?b)
     )
   )
 
-  (:action cons-move-block-to-block
-    :parameters (?b - block ?from - block ?to - block)
-    :precondition (and (consonant ?b) (on ?b ?from) (clear ?b) (clear ?to))
-    :effect (and
-      (not (on ?b ?from))
-      (on ?b ?to)
-      (clear ?from)
-      (not (clear ?to))
-    )
-  )
-
-  (:action cons-move-block-to-place
-    :parameters (?b - block ?from - block ?p - place)
-    :precondition (and (consonant ?b) (on ?b ?from) (clear ?b))
+  (:action vowel-move-block-to-place
+    :parameters (?b - vowel ?from - block ?p - place)
+    :precondition (and (on ?b ?from) (clear ?b))
     :effect (and
       (not (on ?b ?from))
       (on ?b ?p)
       (clear ?from)
+      (clear ?b)
     )
   )
 
-  (:action cons-move-place-to-block
-    :parameters (?b - block ?p - place ?to - block)
-    :precondition (and (consonant ?b) (on ?b ?p) (clear ?b) (clear ?to))
+  (:action consonant-move-block-to-block
+    :parameters (?b - consonant ?from - block ?to - block)
+    :precondition (and (on ?b ?from) (clear ?b) (clear ?to))
+    :effect (and
+      (not (on ?b ?from))
+      (on ?b ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (clear ?b)
+    )
+  )
+
+  (:action consonant-move-place-to-block
+    :parameters (?b - consonant ?p - place ?to - block)
+    :precondition (and (on ?b ?p) (clear ?b) (clear ?to))
     :effect (and
       (not (on ?b ?p))
       (on ?b ?to)
       (not (clear ?to))
+      (clear ?b)
+    )
+  )
+
+  (:action consonant-move-block-to-place
+    :parameters (?b - consonant ?from - block ?p - place)
+    :precondition (and (on ?b ?from) (clear ?b))
+    :effect (and
+      (not (on ?b ?from))
+      (on ?b ?p)
+      (clear ?from)
+      (clear ?b)
     )
   )
 )

@@ -1,25 +1,25 @@
-(define (problem multi-agent-blocks-problem)
-  (:domain blocks-multi-agent)
+(define (problem multiagent-blocks-problem)
+  (:domain multiagent-blocks)
   (:objects
-    A E - vowel
-    B C D - consonant
+    a e - vowel
+    b c d - consonant
   )
   (:init
-    (ontable A)
-    (on B C)
-    (on C D)
-    (on D E)
-    (ontable E)
-    (clear A)
-    (clear B)
-    (handempty-vowel)
-    (handempty-cons)
+    (ontable a)
+    (on b c)
+    (on c d)
+    (on d e)
+    (ontable e)
+    (clear a)
+    (clear b)
+    (handfree-vowel)
+    (handfree-consonant)
   )
   (:goal (and
-    (on A B)
-    (on B C)
-    (on C D)
-    (on D E)
-    (ontable E)
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (ontable e)
   ))
 )

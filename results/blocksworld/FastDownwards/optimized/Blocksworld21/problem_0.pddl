@@ -1,53 +1,42 @@
-(define (problem multiagent_blocks_problem)
-  (:domain multiagent_blocks)
+(define (problem rearrange-vowel-consonant)
+  (:domain vowel-consonant-blocks)
+
   (:objects
-    A B C D E F G H I J K L M
+    vowel_agent consonant_agent - agent
+    table - loc
+    ; vowel blocks
+    A E I - vowel-block
+    ; consonant blocks
+    M H G B L D F C K J - cons-block
   )
 
   (:init
-    ;; Table bottoms
-    (ontable M)
-    (ontable E)
-    (ontable G)
-    (ontable H)
-
-    ;; Stack 1: M - I - K - A  (M bottom, A top)
+    ; initial stack configuration (as provided)
+    (on M table)
     (on I M)
     (on K I)
     (on A K)
 
-    ;; Stack 2: E - L - D - F - J  (E bottom, J top)
+    (on E table)
     (on L E)
     (on D L)
     (on F D)
     (on J F)
 
-    ;; Stack 3: G - B - C  (G bottom, C top)
+    (on G table)
     (on B G)
     (on C B)
 
-    ;; Clear (top) blocks
+    (on H table)
+
+    ; top-of-stack (clear) facts: only top blocks are clear initially
     (clear A)
     (clear J)
     (clear C)
     (clear H)
 
-    ;; Vowel-capable blocks (manipulated by vowel agent)
-    (vowel A)
-    (vowel E)
-    (vowel I)
-
-    ;; Consonant-capable blocks (manipulated by consonant agent)
-    (consonant M)
-    (consonant H)
-    (consonant G)
-    (consonant B)
-    (consonant L)
-    (consonant D)
-    (consonant F)
-    (consonant C)
-    (consonant K)
-    (consonant J)
+    ; Note: table is modeled as a location named "table". Moving to table uses
+    ; the dedicated move-to-table actions (no clear requirement on table).
   )
 
   (:goal (and
@@ -63,6 +52,6 @@
     (on J K)
     (on K L)
     (on L M)
-    (ontable M)
+    (on M table)
   ))
 )

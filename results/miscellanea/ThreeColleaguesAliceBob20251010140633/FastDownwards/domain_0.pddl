@@ -1,0 +1,26 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types person slot date)
+  (:predicates
+    (person ?p - person)
+    (slot ?s - slot)
+    (date ?d - date)
+    (on-date ?s - slot ?d - date)
+    (free ?p - person ?s - slot)
+    (preferred-slot ?s - slot)
+    (scheduled ?s - slot)
+  )
+  ;; Schedule action: can only schedule a meeting in a slot if all three named participants are free
+  (:action schedule
+    :parameters (?s - slot)
+    :precondition (and
+      (slot ?s)
+      (free alice ?s)
+      (free bob ?s)
+      (free carol ?s)
+      (preferred-slot ?s)
+      (not (scheduled ?s))
+    )
+    :effect (scheduled ?s)
+  )
+)

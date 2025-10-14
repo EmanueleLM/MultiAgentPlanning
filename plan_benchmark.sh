@@ -7,9 +7,9 @@
 #     python plan_benchmark.py --dataset "$data" --model_json gpt-5-mini --model_plan gpt-5-mini --num_experiments 50 --budget 10 --optimize_plan true
 # done
 
-datasets=("calendar_easy_to_hard_shifted")
+datasets=("blocksworld")
 
 for data in "${datasets[@]}"; do
     echo "Running benchmark.py with $data"
-    python plan_benchmark.py --dataset "$data" --model_json gpt-5-mini --model_plan gpt-5-mini --num_experiments 5 --budget 10 --optimize_plan false
+    python plan_benchmark.py --dataset "$data" --model_json gpt-5-mini --model_plan gpt-5-mini --num_experiments 30 --budget 10 --optimize_plan true
 done

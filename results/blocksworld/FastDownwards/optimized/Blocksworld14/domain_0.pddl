@@ -1,47 +1,49 @@
-(define (domain multiagent_blocks)
-  (:requirements :strips :equality :negative-preconditions)
+(define (domain blocks-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block)
   (:predicates
-    (on ?x ?y)        ; ?x is on top of ?y (both are blocks)
-    (ontable ?x)      ; ?x is on the table
-    (clear ?x)        ; nothing is on ?x (it is the top of its stack)
-    (vowel ?x)        ; ?x is a vowel block (moved by vowel-agent actions)
-    (consonant ?x)    ; ?x is a consonant block (moved by consonant-agent actions)
+    (on ?x - block ?y - block)
+    (ontable ?x - block)
+    (clear ?x - block)
+    (vowel ?x - block)
+    (consonant ?x - block)
   )
 
-  ;; VOWEL AGENT ACTIONS (kept distinct and explicit)
-  (:action vowel-move-block-to-block
-    :parameters (?x ?from ?y)
+  ;; Actions executable only by the vowel-handling agent (vowel_agent).
+  ;; These actions can only manipulate blocks labeled as vowels (A, E, I).
+  (:action vowel-stack
+    :parameters (?x - block ?from - block ?to - block)
     :precondition (and
       (vowel ?x)
       (on ?x ?from)
       (clear ?x)
-      (clear ?y)
+      (clear ?to)
     )
     :effect (and
       (not (on ?x ?from))
-      (on ?x ?y)
-      (not (clear ?y))
+      (on ?x ?to)
+      (not (clear ?to))
       (clear ?from)
     )
   )
 
-  (:action vowel-move-table-to-block
-    :parameters (?x ?y)
+  (:action vowel-stack-from-table
+    :parameters (?x - block ?to - block)
     :precondition (and
       (vowel ?x)
       (ontable ?x)
       (clear ?x)
-      (clear ?y)
+      (clear ?to)
     )
     :effect (and
       (not (ontable ?x))
-      (on ?x ?y)
-      (not (clear ?y))
+      (on ?x ?to)
+      (not (clear ?to))
     )
   )
 
-  (:action vowel-move-block-to-table
-    :parameters (?x ?from)
+  (:action vowel-unstack-to-table
+    :parameters (?x - block ?from - block)
     :precondition (and
       (vowel ?x)
       (on ?x ?from)
@@ -54,54 +56,51 @@
     )
   )
 
-  ;; CONSONANT AGENT ACTIONS (kept distinct and explicit)
-  (:action consonant-move-block-to-block
-    :parameters (?x ?y ?z)
+  ;; Actions executable only by the consonant-handling agent (consonant_agent).
+  ;; These actions can only manipulate blocks labeled as consonants.
+  (:action consonant-stack
+    :parameters (?x - block ?from - block ?to - block)
     :precondition (and
       (consonant ?x)
+      (on ?x ?from)
       (clear ?x)
-      (clear ?y)
-      (on ?x ?z)
-      (not (= ?x ?y))
-      (not (= ?x ?z))
-      (not (= ?y ?z))
+      (clear ?to)
     )
     :effect (and
-      (not (on ?x ?z))
-      (on ?x ?y)
-      (clear ?z)
-      (not (clear ?y))
+      (not (on ?x ?from))
+      (on ?x ?to)
+      (not (clear ?to))
+      (clear ?from)
     )
   )
 
-  (:action consonant-move-table-to-block
-    :parameters (?x ?y)
+  (:action consonant-stack-from-table
+    :parameters (?x - block ?to - block)
     :precondition (and
       (consonant ?x)
-      (clear ?x)
-      (clear ?y)
       (ontable ?x)
-      (not (= ?x ?y))
+      (clear ?x)
+      (clear ?to)
     )
     :effect (and
       (not (ontable ?x))
-      (on ?x ?y)
-      (not (clear ?y))
+      (on ?x ?to)
+      (not (clear ?to))
     )
   )
 
-  (:action consonant-move-block-to-table
-    :parameters (?x ?z)
+  (:action consonant-unstack-to-table
+    :parameters (?x - block ?from - block)
     :precondition (and
       (consonant ?x)
+      (on ?x ?from)
       (clear ?x)
-      (on ?x ?z)
-      (not (= ?x ?z))
     )
     :effect (and
-      (not (on ?x ?z))
+      (not (on ?x ?from))
       (ontable ?x)
-      (clear ?z)
+      (clear ?from)
     )
   )
+
 )

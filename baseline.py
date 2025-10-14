@@ -56,14 +56,17 @@ DATASET = {
 }
 
 MODELS = {
-    "gpt-4o": {"model": ChatGPT("gpt-4o"),
+    "gpt-4o": {"model": ChatGPT("gpt-4o", api_key_env="OPENAI_API_KEY_ALTERNATIVE"),
                 "persistent": False,
                 "sleep": 0},
-    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"),
+    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini", api_key_env="OPENAI_API_KEY_ALTERNATIVE"),
                 "persistent": False, 
                 "sleep": 0},
-    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"),
-                "persistent": False, 
+    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano", api_key_env="OPENAI_API_KEY_ALTERNATIVE"),
+                "persistent": False,
+                "sleep": 0},
+    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano", api_key_env="OPENAI_API_KEY_ALTERNATIVE"),
+                "persistent": False,
                 "sleep": 0},
     "gemini-2.5-flash": {"model": Gemini("gemini-2.5-flash"),
                 "persistent": False,
@@ -115,7 +118,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    # Argpasrse arguments
+    # Argparse arguments
     dataset_name = args.dataset
     num_experiments = args.num_experiments
     debug = args.debug
@@ -131,9 +134,8 @@ if __name__ == "__main__":
 
     # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
     key = list(scheduling_data.keys())[0]
-    match = re.match(r'^(.*)_(\d+)$', key)
-    if match:
-        problem_name, _ = match.groups()
+    if "_" in key:
+        problem_name, _ = key.rsplit("_", 1)
     else:
         problem_name = key
         
@@ -141,8 +143,8 @@ if __name__ == "__main__":
     
     system_prompt = "You are an expert planner and scheduling assistant."
     for i in range(num_experiments):
-        k = f"{problem_name}{i}"
-        data = scheduling_data[k]
+        numbered_problem_name = f"{problem_name}_{i}"
+        data = scheduling_data[numbered_problem_name]
         
         prompt_0shot = data["prompt_0shot"]
         response = model.generate_sync(system_prompt, prompt_0shot)
@@ -162,7 +164,7 @@ if __name__ == "__main__":
         # Append the response to a(n existing) json file
         with open(BASE_FOLDER / f"{args.model}.json", "r+", encoding="utf-8") as f:
             data = json.load(f)
-            key = k
+            key = numbered_problem_name
             data[key] = result
             f.seek(0)
             json.dump(data, f, indent=2)

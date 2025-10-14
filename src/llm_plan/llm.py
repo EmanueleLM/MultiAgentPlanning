@@ -146,11 +146,12 @@ class GPT_OSS_Ollama(LLM):
         
 
 class ChatGPT(LLM):
-    def __init__(self, model_name: str = "gpt-4o"):
+    def __init__(self, model_name: str = "gpt-5-mini",
+                 api_key_env: str="OPENAI_API_KEY"):
         super().__init__(model_name=model_name)
 
         load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv(api_key_env)
 
         try:
             # Sync client
@@ -204,7 +205,7 @@ class Gemini(LLM):
         super().__init__(model_name=model_name)
 
         load_dotenv()
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY")
 
         try:
             # Sync client

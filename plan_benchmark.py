@@ -42,6 +42,22 @@ DATASET = {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
         "results": RESULTS_FOLDER / "google",
     },
+    "depots": {
+        "data": DATA_PATH / "planbench/depots.json",
+        "results": RESULTS_FOLDER / "planbench",
+    },
+    "logistics": {
+        "data": DATA_PATH / "planbench/logistics.json",
+        "results": RESULTS_FOLDER / "logistics",
+    },
+    "mystery_blocksworld": {
+        "data": DATA_PATH / "planbench/mystery_blocksworld.json",
+        "results": RESULTS_FOLDER / "mystery_blocksworld",
+    },
+    "obfuscated_deceptive_logistics": {
+        "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
+        "results": RESULTS_FOLDER / "obfuscated_deceptive_logistics",
+    },
     "blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
         "results": RESULTS_FOLDER / "blocksworld",

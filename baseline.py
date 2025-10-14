@@ -19,40 +19,40 @@ from src.llm_plan.llm import ChatGPT, Gemini
 DATASET = {
     "calendar_scheduling": {
         "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
     "meeting_planning": {
         "data": DATA_PATH / "natural_plan/meeting_planning.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
     "trip_planning": {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
-        "results": RESULTS_FOLDER / "google"
-        },
+        "results": RESULTS_FOLDER / "google",
+    },
+    "depots": {
+        "data": DATA_PATH / "planbench/depots.json",
+        "results": RESULTS_FOLDER / "planbench",
+    },
+    "logistics": {
+        "data": DATA_PATH / "planbench/logistics.json",
+        "results": RESULTS_FOLDER / "logistics",
+    },
+    "mystery_blocksworld": {
+        "data": DATA_PATH / "planbench/mystery_blocksworld.json",
+        "results": RESULTS_FOLDER / "mystery_blocksworld",
+    },
+    "obfuscated_deceptive_logistics": {
+        "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
+        "results": RESULTS_FOLDER / "obfuscated_deceptive_logistics",
+    },
     "blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "blocksworld"
-        },
+        "results": RESULTS_FOLDER / "blocksworld",
+    },
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard"
-        },
-    "calendar_easy_to_hard_shifted": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted"
-        },
-    "calendar_easy_to_hard_shifted_noise": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted_noise.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted_noise"
-        },
-    "calendar_easy_to_hard_analogy": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_analogy.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard_analogy"
-        },
-    "calendar_easy_to_hard_analogy_shifted": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_analogy_shifted.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard_analogy_shifted"
-        }
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard",
+    }
 }
 
 MODELS = {
@@ -137,19 +137,21 @@ if __name__ == "__main__":
     else:
         problem_name = key
         
-    BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/zero_shot"
+    BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/vanilla_llm"
     
     system_prompt = "You are an expert planner and scheduling assistant."
     for i in range(num_experiments):
         k = f"{problem_name}{i}"
         data = scheduling_data[k]
         
-        response = model.generate_sync(system_prompt, 
-                                       data["prompt_0shot"])
-        
+        prompt_0shot = data["prompt_0shot"]
+        response = model.generate_sync(system_prompt, prompt_0shot)
+
         result = {
-            "prompt_0shot": data["prompt_0shot"],
-            "response": response
+            "prompt_0shot": prompt_0shot,
+            "prompt": prompt_0shot,
+            "golden_plan": data.get("golden_plan"),
+            "response": response,
         }
         
         if not (BASE_FOLDER / f"{args.model}.json").exists():

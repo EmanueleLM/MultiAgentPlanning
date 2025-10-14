@@ -76,7 +76,7 @@ def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
     system_prompt = "You are an expert evaluator for calendar scheduling plans."
     prompt = (
         "Determine whether the candidate plan achieves the same meeting time as the golden plan.\n"
-        "Ignore wording differences; focus on whether the proposed meeting interval (day, start, end) matches."\
+        "Ignore wording differences; focus on whether the proposed plan matches with the ground truth label. Remember that they can be written in different ways: what matters is that the result in the proposed solution matches that of the ground truth plan."
         "\nRespond strictly in JSON with keys 'match' (true/false) and 'reason'."\
         f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
     )

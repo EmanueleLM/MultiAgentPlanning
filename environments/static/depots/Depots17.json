@@ -1,0 +1,82 @@
+{
+    "name": "Depots17",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "player",
+            "assistant",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I can perform actions: paltry, sip, clip, wretched, memory, tightfisted with three or four object arguments depending on the action.",
+                "I know the informal preconditions and effects for each action as described in the scenario. I can inspect an action instance and report whether its stated preconditions are satisfied given an initial state.",
+                "I can produce a structured summary of action schemas listing name, parameters, preconditions, add effects, and delete effects, but I should not emit PDDL directly."
+            ],
+            "goal": "Help produce a sound representation of actions and verify applicability of planned action instances given the initial states."
+        },
+        "assistant": {
+            "private_information": [
+                "I focus on objects, predicates and the articulation of initial states and goals.",
+                "I can parse the provided initial condition statements and goals and produce a clean symbolic initial state and goal specification as lists of ground predicates.",
+                "I can flag inconsistencies and unresolved references and can suggest renamings or alignments, but I should not emit PDDL directly."
+            ],
+            "goal": "Provide a validated symbolic initial state, object list, predicate vocabulary and the goal facts to be used when generating the final PDDL representation."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the analyses from the other agents and synthesize a complete PDDL domain and PDDL problem file ready for the FastDownwards solver.",
+                "I must keep agent-level actions distinct if that is necessary for clarity and debugging in the domain.",
+                "I will resolve naming mismatches reported by the assistant and player when possible, and report any remaining ambiguities."
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem that encode the actions, initial state and goal for use with FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 14,
+            "max_arity": 4
+        },
+        "public_information": [
+            "Objects present are named object_0 through object_13.",
+            "Predicates that appear in the scenario include cats, collect, hand, next, sneeze, spring, stupendous, texture, vase.",
+            "Action schemas are described informally: paltry, sip, clip, wretched, memory, tightfisted. Each action has specific preconditions and effects on predicates such as next and vase.",
+            "Two separate initial state variants and corresponding plans are provided in the scenario. The final goal requests several next relations to hold for particular object pairs.",
+            "The orchestrator will generate PDDL files targeted to the FastDownwards planner."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_player",
+                "system_prompt": "You are an expert in action schema analysis and plan validation. Do not produce PDDL. Provide precise structured summaries of action schemas and check plan action applicability against supplied initial states.",
+                "prompt": "Your name is player. Use the public information about objects and predicates and your private knowledge about the actions. Produce for each action a schema with parameter names, preconditions as a list of ground or lifted predicates, add effects and delete effects. For each action instance in the given plan, state whether the preconditions are satisfied at the point it is applied according to the initial state and prior effects, and if not explain what is missing. Output a compact machine-friendly summary suitable for an orchestrator to consume."
+            }
+        },
+        "assistant": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_assistant",
+                "system_prompt": "You are an expert in symbolic state representation and grounding. Do not produce PDDL. Extract objects, predicates, initial ground facts and the target goal facts from the scenario and present them as clean lists.",
+                "prompt": "Your name is assistant. Use the public information and your private knowledge. Parse the provided initial condition statements and goal statements. Produce a complete object list, a predicate vocabulary with arities, and two explicit ground initial states corresponding to the two scenario variants. Also produce the goal as a list of ground predicates. Detect and report any contradictions or missing predicates referenced by the provided plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_player",
+                    "analysis_assistant"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning domain engineering. Your job is to integrate the analyses provided by the other agents and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-level actions distinct if needed and ensure object and predicate names are consistent and compatible with FastDownwards requirements, including a requirements line that FastDownwards accepts.",
+                "prompt": "You are the orchestrator. You received two structured analyses from the other agents that describe action schemas, ground initial states and goals. Merge and reconcile those analyses, choose consistent names and typing if appropriate, and produce a PDDL domain and a PDDL problem targeted for FastDownwards. The domain must include all predicates, action definitions with preconditions and effects, and any typing declarations required. The problem must list objects, the initial state as explicit ground predicates and the goal conjuncts. If any ambiguity remains after merging the analyses, document the remaining assumptions in a brief comment at the top of the PDDL problem section. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.pddl",
+            "assistant.analyze->orchestrator.pddl"
+        ]
+    }
+}

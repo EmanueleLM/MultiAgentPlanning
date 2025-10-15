@@ -9,6 +9,6 @@ results=("./results/blocksworld/FastDownwards/non_optimized/")
 for i in "${!datasets[@]}"; do
     data="${datasets[$i]}"
     result="${results[$i]}"
-    echo "Running evaluate.py with dataset=$data and result=$result. Judge model=$judge"
-    python3 evaluate.py "$data" "$result" --model "$judge"
+    echo "Running evaluate_pddl.py with dataset=$data and result=$result. Judge model=$judge"
+    python3 evaluate_pddl.py "$data" "$result" --model "$judge"
 done

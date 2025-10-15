@@ -1,0 +1,40 @@
+(define (problem scenario1)
+  (:domain multiagent-tasks)
+  (:objects
+    agent1 agent2 - agent
+    paltry sip clip wretched memory tightfisted - task
+    res1 res2 - resource
+    s1 s2 - slot
+  )
+  (:init
+    (agent agent1)
+    (agent agent2)
+    (task paltry)
+    (task sip)
+    (task clip)
+    (task wretched)
+    (task memory)
+    (task tightfisted)
+    (resource res1)
+    (resource res2)
+    (available res1)
+    (available res2)
+    (slot s1)
+    (slot s2)
+    (earliest s1)
+    (slot-free s1)
+    (slot-free s2)
+    (requires paltry res1)
+    (requires sip res2)
+    (requires clip res1)
+    (requires wretched res2)
+    (requires memory res1)
+    (requires tightfisted res2)
+    (earliest s2)
+  )
+  (:goal (and
+    (completed paltry)
+    (completed sip)
+    (completed clip)
+  ))
+)

@@ -1,0 +1,96 @@
+{
+    "name": "Logistics22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "transformer",
+            "verifier",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I have the initial statements of two scenarios describing predicates such as cats, collect, hand, next, sneeze, spring, stupendous, texture with various object identifiers",
+                "I know the two provided initial STATEMENT blocks and the two goals to achieve"
+            ],
+            "goal": "Parse and extract the concrete initial predicate facts and present them as structured lists of ground predicates"
+        },
+        "transformer": {
+            "private_information": [
+                "I know the available high-level actions and their parameter lists: paltry, sip, clip, wretched, memory, tightfisted",
+                "I know for each action the required preconditions in terms of predicates and the add and delete effects as described in the use-case"
+            ],
+            "goal": "Translate the described action schemas into a consistent, typed planning action schema representation and normalize predicate names and parameter roles"
+        },
+        "verifier": {
+            "private_information": [
+                "I know the two goal descriptions for the two scenarios and can check whether claims in the provided plan steps refer to predicates and objects present in the initial state and action schemas",
+                "I can validate that object identifiers referenced by actions are within the set of objects present in the scenario"
+            ],
+            "goal": "Validate that the extracted facts and the produced action schemas are consistent and report any missing facts or mismatches"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the observers' facts, the transformers' action schemas, and the verifiers' checks to produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that encodes each scenario and its goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 13,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are many object constants named object_0 through object_12 and beyond used in facts and actions.",
+            "Available actions and their informal descriptions are paltry, sip, clip, wretched, memory, and tightfisted with parameterized objects.",
+            "Each action has specified preconditions in terms of predicates like hand, cats, texture, vase, next, sneeze, stupendous, collect, spring and specified add and delete effects.",
+            "Two scenario initial statements and goals are provided in the use-case. The task is to convert the scenarios into formal PDDL domain and problem files suitable for FastDownwards."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "analysis": {
+                "input": [],
+                "output": "facts_observer",
+                "system_prompt": "You are an agent whose job is to read the informal initial STATEMENT blocks and extract all ground predicate facts. Do not emit PDDL. Produce a compact structured JSON-like listing of predicates and their ground tuples and a list of all object constants encountered. Only include facts you can directly find in the provided initial statements. Do not invent facts.",
+                "prompt": "Your name is observer. You have the following public information: {environment->public_information} You have the following private information: {agents->observer->private_information} Your goal: {agents->observer->goal} Parse the initial statements and output a structured representation of the initial facts and object set. Keep the output machine friendly and do not produce PDDL."
+            }
+        },
+        "transformer": {
+            "schema": {
+                "input": [],
+                "output": "schemas_transformer",
+                "system_prompt": "You are an agent that turns informal action descriptions into consistent action schemas. Do not emit full PDDL domain and problem files. Instead produce a clear, normalized description for each action showing the parameter list, preconditions as a list of predicate templates, add effects and delete effects. Normalize predicate names so they are consistent across actions and match the predicates used in the initial facts.",
+                "prompt": "Your name is transformer. You have the following public information: {environment->public_information} You have the following private information: {agents->transformer->private_information} Your goal: {agents->transformer->goal} Convert each described action into a normalized action schema listing parameters, preconditions, add effects, and delete effects. Use predicate names like hand, cats, texture, vase, next, sneeze, stupendous, collect, spring. Do not produce PDDL, only structured schemas."
+            }
+        },
+        "verifier": {
+            "validation": {
+                "input": [
+                    "facts_observer",
+                    "schemas_transformer"
+                ],
+                "output": "validation_verifier",
+                "system_prompt": "You are an agent that verifies consistency between extracted initial facts and the normalized action schemas. Check that every predicate and object referenced by the schemas exists or is derivable from the initial facts. Report missing predicates, mismatched arities, or object names not present in the extracted object set. Provide concise corrective notes if inconsistencies are found. Do not produce PDDL.",
+                "prompt": "Your name is verifier. You have the following public information: {environment->public_information} You have the following private information: {agents->verifier->private_information} Your goal: {agents->verifier->goal} Using the facts {facts_observer} and the schemas {schemas_transformer}, validate consistency and report any issues in a structured format."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_observer",
+                    "schemas_transformer",
+                    "validation_verifier"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent orchestrator that produces a final PDDL domain and PDDL problem pair suitable for the FastDownwards planner. Use the structured facts and normalized action schemas produced by the other agents. Ensure typing, object declarations, predicate declarations, action definitions, initial state and goal are consistent. Keep agent-level actions distinct only if relevant; the resulting PDDL must encode the domain semantics so FastDownwards can process it. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Additionally include a :requirements line appropriate for FastDownwards and use STRIPS or ADL constructs only as supported by FastDownwards.",
+                "prompt": "You are orchestrator. Your role is to integrate the observer output {facts_observer}, the transformer output {schemas_transformer}, and the verifier output {validation_verifier} to produce a complete PDDL domain and a PDDL problem for each scenario described in the use-case. Target the FastDownwards planner. Ensure object declarations, predicate declarations, action schemas, initial state and goal statements are consistent and executable. Enclose the domain with <domain></domain> and the problem with <problem></problem>. If the verifier reported missing items, state any assumptions you make at the top of the PDDL problem comments."
+            }
+        },
+        "constraints": [
+            "observer.analysis->orchestrator.pddl",
+            "transformer.schema->orchestrator.pddl",
+            "verifier.validation->orchestrator.pddl"
+        ]
+    }
+}

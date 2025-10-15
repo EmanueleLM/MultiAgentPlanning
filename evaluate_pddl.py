@@ -335,7 +335,7 @@ def main() -> None:
         logging.info("Average plan cost        : %.2f", average_cost)
 
     dataset_name = args.data_file.stem
-    accuracy_dir = Path("results") / "_accuracies_pddl"
+    accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_pddl.json"
     append_accuracy_result(

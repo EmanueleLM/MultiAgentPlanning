@@ -1,0 +1,77 @@
+{
+    "name": "MysteryBlocksworld29",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "analyst",
+            "librarian",
+            "orchestrator"
+        ],
+        "analyst": {
+            "private_information": [
+                "Understands the action vocabulary: paltry, sip, clip, wretched, memory, tightfisted.",
+                "Knows for each action the listed preconditions and the effects (which facts become true and which become false).",
+                "Has access to the sequence of planned actions provided in the use-case for reference."
+            ],
+            "goal": "Extract structured action schemas capturing parameters, preconditions, add effects and delete effects for each action without producing final PDDL."
+        },
+        "librarian": {
+            "private_information": [
+                "Knows the object population referenced in statements and plans, including object_0 through object_14 and other collect/hand/next/sneeze/spring/stupendous/texture facts given in the statements.",
+                "Knows the two alternative initial-state and goal-state statement variants provided in the use-case and the example plans.",
+                "Can assemble object declarations, typed groupings, and the initial and goal fact sets in a neutral structured format."
+            ],
+            "goal": "Provide a canonical list of objects, types, and the initial facts and desired goal facts in a structured representation for the orchestrator to consume."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the structured action schemas and world state to produce a complete PDDL domain and a PDDL problem file compatible with the FastDownwards solver that encodes the actions, initial state and goal state."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted. Each action takes object parameters as described in the use-case.",
+            "Action relations used across preconditions and effects: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Actions have specific preconditions and effects. For example paltry requires hand object_0 cats object_1 texture object_2 vase object_0 object_1 next object_1 object_2 and makes next object_0 object_2 true and vase object_0 object_1 false. Other actions follow similar patterns as described in the use-case.",
+            "Two statement variants are provided as initial conditions together with two alternative goal specifications. A long example plan sequence is included in the use-case for reference."
+        ]
+    },
+    "workflow": {
+        "analyst": {
+            "model": {
+                "input": [],
+                "output": "model_analyst",
+                "system_prompt": "You are an expert analyst of action models. Do not emit final PDDL. Parse the action descriptions in the environment and produce a clean structured representation of each action. For each action provide the action name, parameter list with parameter roles, explicit preconditions as a list of predicate-argument tuples, add effects as a list of predicate-argument tuples that become true, and delete effects as a list of predicate-argument tuples that become false. If any precondition or effect references ambiguous object positions or naming, mark the ambiguity and keep the schema parametric. Return only the structured action schemas in JSON-like form suitable for programmatic consumption.",
+                "prompt": "You are analyst. Public information: {environment->public_information}. Your private information: {agents->analyst->private_information}. Your goal: {agents->analyst->goal}. Parse the use-case action specifications and produce structured action schemas listing for each action its parameters, preconditions, add effects and delete effects. Do not emit PDDL. Output a machine-readable structured representation."
+            }
+        },
+        "librarian": {
+            "world_state": {
+                "input": [],
+                "output": "world_state_librarian",
+                "system_prompt": "You are a domain librarian. Collect and canonicalize the concrete objects, types, initial facts and goal facts from the use-case statements. Do not produce PDDL. Provide a clear object list, an assignment of object tokens to simple types if possible, the initial facts as a list of predicate-argument tuples, and the goal facts as a list of predicate-argument tuples. If two alternative statement/goal variants are present, provide both labeled variant A and variant B.",
+                "prompt": "You are librarian. Public information: {environment->public_information}. Your private information: {agents->librarian->private_information}. Your goal: {agents->librarian->goal}. Produce a structured world state containing: canonical object list, optional types, initial facts for statement variant A and statement variant B, and goal facts for variant A and variant B. Keep representations unambiguous and suitable for the orchestrator to map to PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_analyst",
+                    "world_state_librarian"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL engineer targeting the FastDownwards planner. Use the structured action schemas and the structured world states provided by other agents. Produce a complete PDDL domain and a complete PDDL problem file that are compatible with FastDownwards. Keep action parameter names and types consistent. Include appropriate :requirements and, if useful, :typing and :negative-preconditions. Use STRIPS-style semantics where possible to match FastDownwards. Mark the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure object names in the problem match the domain declarations and include the correct initial facts and goal facts. If there are two alternative statement/goal variants, produce two problem files or clearly label which variant you encode as the problem.",
+                "prompt": "You are orchestrator. Inputs: the analyst's structured action schemas {model_analyst} and the librarian's structured world states {world_state_librarian}. Your goal: {agents->orchestrator->goal}. Integrate the inputs, resolve naming and typing, and output a PDDL domain and a PDDL problem ready for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>. If you choose one of the two statement/goal variants, state which variant you used in a brief comment inside the PDDL problem file."
+            }
+        },
+        "constraints": [
+            "analyst.model->orchestrator.pddl",
+            "librarian.world_state->orchestrator.pddl"
+        ]
+    }
+}

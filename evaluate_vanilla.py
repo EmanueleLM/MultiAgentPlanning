@@ -233,13 +233,13 @@ def main() -> None:
         accuracy_including_missing,
     ) = summarize(results, missing, dataset_total)
 
-    dataset_name = args.data_file.stem
+    dataset_name = args.data_file
     accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_vanilla.json"
     append_accuracy_result(
         accuracy_file,
-        dataset_name,
+        str(dataset_name),
         evaluated,
         missing,
         dataset_total,

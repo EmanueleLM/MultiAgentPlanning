@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import logging
 import threading
 import time
 import uuid
@@ -334,4 +335,6 @@ def set_api_key():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+    app.logger.setLevel(logging.DEBUG)
+    app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=True)

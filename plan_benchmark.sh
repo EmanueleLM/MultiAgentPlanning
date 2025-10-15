@@ -1,6 +1,7 @@
 #!/bin/bash
 
-datasets=("depots" "logistics" "mystery_blocksworld", "obfuscated_deceptive_logistics")
+# datasets=("depots" "logistics" "mystery_blocksworld", "obfuscated_deceptive_logistics")
+datasets=("mystery_blocksworld")
 
 for data in "${datasets[@]}"; do
     echo "Running plan_benchmark.py with $data"

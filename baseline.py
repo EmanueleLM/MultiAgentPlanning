@@ -17,6 +17,12 @@ from src.llm_plan.config import DATA_PATH, RESULTS_FOLDER
 from src.llm_plan.llm import ChatGPT, Gemini
 
 DATASET = {
+    # Blocksworld Multi-agent
+    "blocksworld": {
+        "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
+        "results": RESULTS_FOLDER / "blocksworld",
+    },
+    # Google Natural Bench
     "calendar_scheduling": {
         "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
         "results": RESULTS_FOLDER / "google",
@@ -29,31 +35,34 @@ DATASET = {
         "data": DATA_PATH / "natural_plan/trip_planning.json",
         "results": RESULTS_FOLDER / "google",
     },
+    # PlanBench
     "depots": {
         "data": DATA_PATH / "planbench/depots.json",
         "results": RESULTS_FOLDER / "planbench",
     },
     "logistics": {
         "data": DATA_PATH / "planbench/logistics.json",
-        "results": RESULTS_FOLDER / "logistics",
+        "results": RESULTS_FOLDER / "planbench",
     },
     "mystery_blocksworld": {
         "data": DATA_PATH / "planbench/mystery_blocksworld.json",
-        "results": RESULTS_FOLDER / "mystery_blocksworld",
+        "results": RESULTS_FOLDER / "planbench",
     },
     "obfuscated_deceptive_logistics": {
         "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
-        "results": RESULTS_FOLDER / "obfuscated_deceptive_logistics",
+        "results": RESULTS_FOLDER / "planbench",
     },
-    "blocksworld": {
-        "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "blocksworld",
-    },
+    # Variations on Calendar Scheduling
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
         "results": RESULTS_FOLDER / "calendar_easy_to_hard",
-    }
+    },
+    "calendar_easy_to_hard_shifted": {
+        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted.json",
+        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted",
+    },
 }
+
 
 MODELS = {
     "gpt-4o": {"model": ChatGPT("gpt-4o", api_key_env="OPENAI_API_KEY_ALTERNATIVE"),

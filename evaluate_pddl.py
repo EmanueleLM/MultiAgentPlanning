@@ -57,6 +57,8 @@ class ExampleResult:
     correct: bool
     reason: str
     plan_path: Optional[Path]
+    judge_response: str
+    label: int
 
 
 def normalize_text(text: str) -> str:
@@ -72,7 +74,7 @@ def find_natural_plan(experiments_root: Path, environment_name: str) -> tuple[Op
     return None, target_dir
 
 
-def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
+def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str, str]:
     system_prompt = "You are an expert evaluator for calendar scheduling plans."
     prompt = (
         "Determine whether the candidate plan achieves the same meeting time as the golden plan.\n"
@@ -85,9 +87,9 @@ def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
         data = json.loads(response)
         match = bool(data.get("match"))
         reason = str(data.get("reason", ""))
-        return match, reason
+        return match, reason, response
     except (json.JSONDecodeError, TypeError):
-        return False, f"Failed to parse LLM response: {response}"
+        return False, f"Failed to parse LLM response: {response}", response
 
 
 def evaluate_dataset(
@@ -131,8 +133,9 @@ def evaluate_dataset(
         if normalize_text(golden) == normalize_text(natural):
             correct = True
             reason = "Exact match after normalization"
+            judge_raw = "Exact match after normalization (judge not invoked)"
         else:
-            correct, reason = llm_judge(llm, golden, natural)
+            correct, reason, judge_raw = llm_judge(llm, golden, natural)
 
         if verbose:
             logging.info(
@@ -156,6 +159,8 @@ def evaluate_dataset(
                 correct=correct,
                 reason=reason,
                 plan_path=plan_path,
+                judge_response=judge_raw,
+                label=1 if correct else 0,
             )
         )
 
@@ -298,6 +303,41 @@ def append_accuracy_result(
     with open(accuracy_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
+
+def write_detailed_evaluations(
+    results: list[ExampleResult],
+    dataset_name: str,
+    model: str,
+) -> Path:
+    details_dir = Path("results") / "_evaluation"
+    details_dir.mkdir(parents=True, exist_ok=True)
+    output_path = details_dir / f"{dataset_name}.json"
+
+    entries = []
+    for r in results:
+        entries.append(
+            {
+                "key": r.key,
+                "golden_plan": r.golden,
+                "natural_plan": r.natural_plan,
+                "evaluation": {
+                    "response": r.judge_response,
+                    "label": r.label,
+                },
+            }
+        )
+
+    payload = {
+        "dataset": dataset_name,
+        "model": model,
+        "examples": entries,
+    }
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+    return output_path
+
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -353,6 +393,8 @@ def main() -> None:
         average_cost,
     )
     logging.info("Accuracy written to %s", accuracy_file)
+    detailed_path = write_detailed_evaluations(results, dataset_name, args.model)
+    logging.info("Detailed evaluations written to %s", detailed_path)
 
 
 if __name__ == "__main__":

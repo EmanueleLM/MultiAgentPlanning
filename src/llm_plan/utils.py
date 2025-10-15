@@ -115,13 +115,13 @@ def run_pddl_fast_downwards_and_uVal(
         if optimize == 0:
             print("Running command with no optimization.")
             command = [
-                SOLVER_FD_BINARY,
-                *SOLVER_FD_ARGS,
-                sas_plan_path,
-                domain_path,
-                problem_path,
+                str(SOLVER_FD_BINARY),
+                *map(str, SOLVER_FD_ARGS),
+                str(sas_plan_path),
+                str(domain_path),
+                str(problem_path),
             ]
-            
+
             subprocess.run(
                 command,
                 stdout=logfile,
@@ -131,33 +131,63 @@ def run_pddl_fast_downwards_and_uVal(
         else:
             try:
                 print(f"Running command with optimization timeout = {optimize} [s].")
+                optimize_args = list(SOLVER_FD_OPTIMIZE_ARGS) or ["--search", "astar(lmcut())", "--plan-file"]
                 command = [
                     sys.executable,
                     str(SOLVER_FD_BINARY),
-                    "--plan-file" , str(sas_plan_path),
+                    *optimize_args,
+                    str(sas_plan_path),
                     str(domain_path),
                     str(problem_path),
-                    "--search", "astar(lmcut())",
                 ]
 
                 print("COMMAND:", command)
-                subprocess.run(
+                proc = subprocess.run(
                     command,
                     stdout=logfile,
                     stderr=subprocess.STDOUT,
                     timeout=optimize
                 )
-                print("Optimization completed successfully!")
+                if proc.returncode == 0:
+                    print("Optimization completed successfully!")
+                    logfile.seek(0, os.SEEK_END)
+                else:
+                    logfile.flush()
+                    logfile.seek(0)
+                    snapshot = logfile.read()
+                    quoting_bug = (
+                        "FileNotFoundError" in snapshot and "astar(lmcut())" in snapshot
+                    )
+                    if quoting_bug:
+                        print(
+                            "Detected Fast Downward quoting issue for --search argument; retrying without optimization flags."
+                        )
+                        logfile.seek(0)
+                        logfile.truncate()
+                        fallback_command = [
+                            str(SOLVER_FD_BINARY),
+                            *map(str, SOLVER_FD_ARGS),
+                            str(sas_plan_path),
+                            str(domain_path),
+                            str(problem_path),
+                        ]
+                        subprocess.run(
+                            fallback_command,
+                            stdout=logfile,
+                            stderr=subprocess.STDOUT,
+                        )
+                    else:
+                        logfile.seek(0, os.SEEK_END)
                 
             # If the optimization times out, run without optimization  
             except subprocess.TimeoutExpired:
                 print("Optimization timed out, running without optimization.")
                 command = [
-                    SOLVER_FD_BINARY,
-                    *SOLVER_FD_ARGS,
-                    sas_plan_path,
-                    domain_path,
-                    problem_path,
+                    str(SOLVER_FD_BINARY),
+                    *map(str, SOLVER_FD_ARGS),
+                    str(sas_plan_path),
+                    str(domain_path),
+                    str(problem_path),
                 ]
                 subprocess.run(
                     command,

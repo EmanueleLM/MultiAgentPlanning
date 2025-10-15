@@ -182,80 +182,6 @@ class Planner:
 
         return filled
 
-    def _build_agent_context(
-        self, agent_name: str, filled_prompt: str, system_prompt: str
-    ) -> str:
-        lines: list[str] = [f"Agent name: {agent_name}"]
-
-        agent_data = {}
-        if getattr(self.environment, "agents", None):
-            agent_data = self.environment.agents.get(agent_name, {}) or {}
-
-        goal = agent_data.get("goal")
-        if goal:
-            lines.append(f"Goal: {goal}")
-
-        private_info = agent_data.get("private_information") or []
-        if private_info:
-            lines.append("Private constraints and preferences (treat as hard constraints):")
-            for item in private_info:
-                emphasis = item
-                lowered = item.lower()
-                if any(keyword in lowered for keyword in ["avoid", "prefer", "rather not", "no meeting", "must not"]):
-                    emphasis = f"[PREFERENCE→HARD] {item}"
-                elif any(keyword in lowered for keyword in ["busy", "blocked", "unavailable", "not free"]):
-                    emphasis = f"[UNAVAILABLE] {item}"
-                lines.append(f"- {emphasis}")
-
-        additional_keys = [
-            key for key in agent_data.keys() if key not in {"goal", "private_information"}
-        ]
-        for key in sorted(additional_keys):
-            value = agent_data[key]
-            lines.append(f"{key.capitalize()}: {self._stringify_value(value)}")
-
-        shared_info = {}
-        if getattr(self.environment, "environment", None):
-            shared_info = self.environment.environment or {}
-
-        public_information = shared_info.get("public_information") if shared_info else None
-        if public_information:
-            lines.append("Shared public information:")
-            for item in public_information:
-                lines.append(f"- {item}")
-
-        lines.append(
-            "Interpret every busy/blocked interval as unavailable in the PDDL initial state. "
-            "Convert natural-language preferences (e.g., avoid/only/earliest) into explicit temporal constraints."
-        )
-
-        if system_prompt:
-            lines.append("System guidance:")
-            lines.append(system_prompt.strip())
-
-        if filled_prompt:
-            lines.append("Task briefing:")
-            lines.append(filled_prompt.strip())
-
-        lines.append(
-            "Always prefer the earliest feasible meeting slot that satisfies all hard constraints and encoded preferences."
-        )
-
-        lines.append(
-            "Double-check that every action duration you infer matches the requested number of days/hours/minutes and that the total number of days/hours/minutes equals the overall action horizon."
-        )
-        lines.append(
-            "Flag contradictory or over-subscribed action requirements instead of silently shortening them."
-        )
-        lines.append(
-            "When modelling Fast Downward, only rely on requirements supported by classical STRIPS (:typing, :negative-preconditions). Never introduce :fluents, durative actions, axioms, or conditional effects."
-        )
-        lines.append(
-            "Only include actions that correspond to direct actions/connections explicitly listed in the specification; do not fabricate multi-hop or implicit routes/actions."
-        )
-
-        return "\n".join(lines)
-
     async def plan(self, model: LLM, environment: Environment) -> dict[str, str]:
         """
         Generate a sequential plan using the LLM.
@@ -299,31 +225,37 @@ class Planner:
                 filled_system_prompt = self._fill_template(system_template)
 
                 if agent_name != orchestrator_name:
-                    summary = self._build_agent_context(
-                        agent_name,
-                        filled_prompt,
-                        filled_system_prompt,
+                    tasks.append(
+                        self.run_action(
+                            model,
+                            (filled_system_prompt or "").strip(),
+                            (filled_prompt or "").strip(),
+                            variable_output,
+                        )
                     )
-                    self.format_fields[variable_output] = summary
                     continue
 
-                orchestrator_prompt = filled_prompt.strip()
+                orchestrator_prompt = (filled_prompt or "").strip()
                 note = (
                     "Note: The agent inputs above describe capabilities, goals, and constraints. "
                     "They are not valid PDDL artefacts. Derive a consistent multi-agent PDDL domain "
                     "and problem that satisfy the specification and remain compatible with the target solver. "
                     "Treat natural-language preferences (avoid / would rather / earliest) as hard temporal constraints and "
-                    "ensure no unavailable slot is marked free. Prioritise the earliest time that respects every constraint."
+                    "ensure no unavailable slot is marked free. Prioritise the earliest time that respects every constraint. "
+                    "Do not emit placeholder tokens such as '...' or 'None'; provide complete predicate and action definitions. "
+                    "Keep :requirements limited to :strips, :typing, and :negative-preconditions (optionally :action-costs if you add matching increase effects) and remove every unsupported feature. "
+                    "Express all cost contributions through (increase ...) effects—you must not use ':cost' declarations on action headers."
                 )
                 if orchestrator_prompt:
                     orchestrator_prompt += f"\n\n{note}"
                 else:
                     orchestrator_prompt = note
 
-                orchestrator_system_prompt = filled_system_prompt.strip()
+                orchestrator_system_prompt = (filled_system_prompt or "").strip()
                 system_note = (
                     "Agent inputs are descriptive summaries rather than executable PDDL. "
-                    "Do not invent availability beyond the provided data, and encode preferences as strict constraints."
+                    "Do not invent availability beyond the provided data, and encode preferences as strict constraints. "
+                    "Double-check that both the domain and problem contain fully expanded content (no placeholders) and that the :requirements list only contains solver-supported flags."
                 )
                 if orchestrator_system_prompt:
                     orchestrator_system_prompt += f"\n{system_note}"

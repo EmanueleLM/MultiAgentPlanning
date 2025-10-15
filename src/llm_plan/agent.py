@@ -103,8 +103,10 @@ class AgentHallucinations(Agent):
             syntax compliant with classical PDDL. Always encode stated busy intervals and preferences
             (e.g., "avoid", "would rather not", "earliest") as hard constraints in the resulting PDDL.
             Limit the :requirements list to those supported by Fast Downward (:typing, :negative-preconditions);
-            never introduce :fluents, axioms, conditional effects, or durative
-            constructs.
+            never introduce :fluents, axioms, conditional effects, or durative constructs. Remove placeholder
+            artefacts such as '...', 'None', or 'TBD', and ensure that any cost modelling uses (increase ...)
+            effects instead of ':cost' headers. If :action-costs remains in the requirements list, verify that
+            matching increase effects exist; otherwise drop the requirement.
             """
         )
 
@@ -136,6 +138,9 @@ class AgentHallucinations(Agent):
             selected. Ensure that requested durations match the natural-language specification;
             call out irreconcilable over-subscriptions instead of silently reducing stays.
             Only model direct connections that are explicitly described—do not invent multi-hop additional actions.
+            Remove every placeholder or sentinel token (e.g., '...', 'None') and expand the domain/problem fully.
+            Replace any ':cost' declarations on action headers with (increase ...) effects and strip unsupported
+            requirements other than :typing, :negative-preconditions, and justified :action-costs.
             When uncertain, prefer conservative edits instead of introducing new abstractions.
 
             Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
@@ -198,7 +203,9 @@ class AgentDeepThinkPDDL(Agent):
             selectable. Verify that time durations exactly match the specification, that the total time horizon
             is preserved, and that only direct connections explicitly listed are available.
             Do not introduce unsupported Fast Downward features (:fluents, axioms, conditional effects, durative
-            actions, etc.).
+            actions, etc.). Remove placeholder tokens such as '...' or 'None', limit :requirements to
+            (:strips :typing :negative-preconditions) plus :action-costs only when matching (increase ...)
+            effects are present, and ensure costs are modelled via effects rather than ':cost' headers.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -223,6 +230,8 @@ class AgentDeepThinkPDDL(Agent):
                                       - Time durations match exactly the natural-language requirements.
                                       - Only direct connections explicitly mentioned in the specification are encoded.
                                       - The PDDL plan satisfies the goal and the constraints of the human specification, including every availability or temporal preference mentioned. Be careful: the plan may be wrong.
+                                      - The :requirements list stays within (:strips :typing :negative-preconditions) with :action-costs only when justified by (increase ...) effects, and there are no placeholder tokens such as '...' or 'None'.
+                                      - Action costs, when needed, are implemented through (increase ...) effects rather than ':cost' declarations on headers.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                                       Return only raw PDDL code inside the tags; do not add comments or extra characters.
@@ -287,7 +296,9 @@ class AgentDeepThinkConstraints(Agent):
             Focus on whether each agent's constraints are correctly captured as PDDL formulae, especially
             agents' availability, (e.g., meeting durations or robot schedules), and any natural-language preferences that must be enforced.
             Ensure time durations sum to the required actions length, highlight irreconcilable demands, and verify
-            that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions).
+            that the domain declares only Fast Downward compatible requirements (:typing, :negative-preconditions,
+            and :action-costs only when justified by (increase ...) effects). Remove placeholder tokens such as '...'
+            or 'None', and rewrite any ':cost' headers as (increase ...) effects.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -311,6 +322,7 @@ class AgentDeepThinkConstraints(Agent):
                                       - The PDDL problem correctly enumerates and expresses every constraint in the specification, including preferences that restrict certain times. Pay close attention to missing or underspecified constraints.
                                       - The encoded action durations (e.g., total number of days/hours) match the specification, and only direct actions or transitions explicitly stated are available.
                                       - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
+                                      - There are no placeholder tokens left (e.g., '...' or 'None'), all :requirements are limited to (:strips :typing :negative-preconditions) with :action-costs only when matching (increase ...) effects are present, and action headers do not use ':cost'.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
                                       Return only raw PDDL code inside the tags; do not add comments or extra characters.
@@ -376,7 +388,9 @@ class AgentEnforceMultiAgency(Agent):
             an action that violates availability or timing requirements. Reject candidate models that invent
             indirect actions, connections or unsupported requirements (:fluents, axioms, conditional effects).
             Confirm that time durations of each action and the overall action horizon match the natural-language brief
-            before approving the domain/problem pair.
+            before approving the domain/problem pair. Remove placeholder tokens (e.g., '...', 'None'), limit
+            :requirements to (:strips :typing :negative-preconditions) with :action-costs only when justified by
+            (increase ...) effects, and rewrite any ':cost' headers as proper increase effects.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -397,6 +411,7 @@ class AgentEnforceMultiAgency(Agent):
                                       - The PDDL domain and problem correctly identify each agent's action and treat them as distinct variables and entities.
                                       - The PDDL domain and problem define variables that are expressive names that allow mapping them back to the specification.
                                       - The encoded connections and actions are limited to direct links explicitly listed, and the time durations add up to the stated horizon.
+                                      - There are no placeholder tokens like '...' or 'None'; :requirements only contain (:strips :typing :negative-preconditions) with :action-costs retained solely when (increase ...) effects are present, and action schemas do not use ':cost' headers.
 
                                       Your task is to fix all the issues mentioned above.
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
@@ -464,7 +479,9 @@ class AgentFastDownwardsAdapter(Agent):
             solver can operate on the domain while preserving as much of the original semantics as possible.
             Never relax agents' availability, duration requirements, or stated preferences when adapting.
             Restrict the :requirements list to features supported by Fast Downward (:typing, :negative-preconditions);
-            strip out :fluents, axioms, conditional effects, or durative constructs entirely.
+            strip out :fluents, axioms, conditional effects, or durative constructs entirely. Remove placeholder
+            tokens such as '...' or 'None', and convert any ':cost' headers into explicit (increase ...) effects,
+            keeping :action-costs only when such effects remain.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -484,6 +501,7 @@ class AgentFastDownwardsAdapter(Agent):
             - Use symbolic ordering instead of numeric comparisons.
             - Keep types, equality, and STRIPS/ADL features.
             - Remove unsupported requirements such as :fluents, axioms, or conditional effects; ensure only direct connections mentioned in the source specification remain.
+            - Eliminate placeholder tokens, ensure :requirements are limited to (:strips :typing :negative-preconditions) plus justified :action-costs, and move any ':cost' declarations into (increase ...) effects.
             
             Return the domain between <domain></domain> and the problem between <problem></problem>.
             Return only raw PDDL code inside the tags; do not add comments or extra characters.
@@ -541,7 +559,9 @@ class AgentSyntaxPDDL(Agent):
             Analyze the provided plan against the human specification and identify every inconsistency with the
             PDDL syntax expected by the *{target_solver}* planner. Confirm that availability and preference
             constraints remain encoded correctly after your edits and that the :requirements list only contains
-            features supported by Fast Downward (:typing, :negative-preconditions).
+            features supported by Fast Downward (:typing, :negative-preconditions, and :action-costs only when
+            (increase ...) effects remain). Remove placeholder tokens such as '...' or 'None', and ensure action
+            schemas never rely on ':cost' headers—instead express costs with (increase ...) effects.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -562,6 +582,7 @@ class AgentSyntaxPDDL(Agent):
                                       
                                       Fix any errors in the PDDL domain and problem so that they satisfy the PDDL syntax required by the *{target_solver}* planner.
                                       Ensure that no constraint (availability, duration, preference) is lost during the fix and that unsupported requirements (e.g., :fluents, axioms, conditional effects) are removed.
+                                      Replace any placeholder tokens (like '...' or 'None'), keep :requirements within (:strips :typing :negative-preconditions) plus justified :action-costs, and rewrite ':cost' annotations into (increase ...) effects when needed.
                                       If anything does not satisfy the specification, return a corrected version of the PDDL domain and problem; otherwise, return the originals.
 
                                       Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.

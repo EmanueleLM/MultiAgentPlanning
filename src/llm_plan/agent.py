@@ -71,6 +71,95 @@ class Agent(ABC):
         return Agent.required_args
 
 
+class AgentSolutionFirst(Agent):
+    """
+    Agent that first derives a concrete solution directly from the human/JSON specifications,
+    then authors PDDL artefacts that make that proposed solution provably feasible.
+    This agent should be called first, before any other agent, and never called again!
+    """
+
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The structured JSON specification of the task.",
+        "target_solver": "(str) The target PDDL solver.",
+        "pddl_domain": "(str) The current PDDL domain (may be empty or preliminary).",
+        "pddl_problem": "(str) The current PDDL problem (may be empty or preliminary).",
+        "pddl_plan": "(str) The current PDDL plan (may be empty).",
+        "proposed_solution": "(str) The previously endorsed solution to reconsider (may be empty).",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        Agent that hypothesises a solution before touching PDDL and then constructs
+        validation artefacts (domain/problem) proving that solution satisfies all constraints.
+        The returned text contains the hypothesised solution between <proposed_solution> tags
+        followed by <domain> and <problem> sections with the verification model.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentSolutionFirst"
+        self.llm = llm
+
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a faithful multi-agent planning engineer.
+            Step 1: Carefully read the human specification and JSON data to deduce a concrete,
+            constraint-satisfying solution (e.g., the scheduled meeting time and participants).
+            Step 2: Build PDDL domain/problem artefacts that encode every constraint so that the
+            deduced solution is the natural satisfying plan and any violation becomes impossible.
+            Use only Fast Downward compatible constructs (:strips :typing :negative-preconditions,
+            with :action-costs only when matched by (increase ...) effects).
+            Never leave placeholders, ellipses, or unsupported requirements.
+            """
+        )
+        self.prompt = inspect.cleandoc(
+            """\
+            Human specification of the task:
+            <human_specification>{human_specification}</human_specification>
+
+            Structured JSON specification:
+            <specification>{specification}</specification>
+
+            Current PDDL domain (for reference only, you must re-derive constraints):
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem (for reference only, you must re-derive constraints):
+            <problem>{pddl_problem}</problem>
+
+            Existing plan artefacts (may be empty; do not rely on them):
+            <plan>{pddl_plan}</plan>
+
+            Previously hypothesised solution (may be empty). Use it only as a hypothesis to confirm or adjust your PDDL:
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
+            Follow this procedure:
+            1. Derive a concrete solution directly from the human + JSON specification without
+               relying on the provided PDDL.
+            2. State that solution inside <proposed_solution></proposed_solution> tags.
+            3. Produce a fresh PDDL domain between <domain></domain> tags and a PDDL problem
+               between <problem></problem> tags that **verifies** whether the solution is feasible while
+               enforcing every timing/availability constraint. Again, the <proposed_solution></proposed_solution> is just a hypothesis
+               to confirm or adjust, do not rely on it! The proposed solution should never be explicitly stated in the goal of the PDDL problem!
+            4. Ensure the artefacts are self-consistent, solver-ready, and contain no placeholders.
+            """
+        )
+
+    def run(self) -> str:
+        """Generate a direct solution and the validating PDDL artefacts."""
+        self.upload_args(self.prompt_args)
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
+            pddl_domain=self.prompt_args.get("pddl_domain", ""),
+            pddl_problem=self.prompt_args.get("pddl_problem", ""),
+            pddl_plan=self.prompt_args.get("pddl_plan", ""),
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
 class AgentHallucinations(Agent):
     required_args = {
         "human_specification": "(str) The human-readable specification of the task.",
@@ -78,6 +167,7 @@ class AgentHallucinations(Agent):
         "pddl_domain": "(str) The PDDL domain authored by the model.",
         "pddl_problem": "(str) The PDDL problem authored by the model.",
         "pddl_plan": "(str) The PDDL plan produced so far (may be empty).",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -118,6 +208,9 @@ class AgentHallucinations(Agent):
             JSON specification (ground truth facts and workflow):
             <specification>{specification}</specification>
 
+            Previously hypothesised solution (confirm or revise as needed):
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
             Current PDDL domain authored by the model:
             <domain>{pddl_domain}</domain>
 
@@ -142,9 +235,9 @@ class AgentHallucinations(Agent):
             Replace any ':cost' declarations on action headers with (increase ...) effects and strip unsupported
             requirements other than :typing, :negative-preconditions, and justified :action-costs.
             When uncertain, prefer conservative edits instead of introducing new abstractions.
+            The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
 
-            Return the corrected PDDL domain between <domain></domain> and the corrected PDDL problem between
-            <problem></problem>. Output only raw PDDL code inside the tags.
+            Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
             """
         )
 
@@ -155,6 +248,7 @@ class AgentHallucinations(Agent):
         prompt = self.prompt.format(
             human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             pddl_plan=self.prompt_args.get("pddl_plan", ""),
@@ -175,6 +269,7 @@ class AgentDeepThinkPDDL(Agent):
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "target_solver": "(str) The target PDDL solver.",
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -215,6 +310,9 @@ class AgentDeepThinkPDDL(Agent):
                                       This is a plan specification, in JSON format, of the task:
                                       <specification>{specification}</specification>
                                       
+                                      Previously hypothesised solution (confirm or revise as needed):
+                                      <proposed_solution>{proposed_solution}</proposed_solution>
+                                      
                                       Now, consider this PDDL domain that describes the specification:
                                       <domain>{pddl_domain}</domain>
                                       
@@ -233,8 +331,9 @@ class AgentDeepThinkPDDL(Agent):
                                       - The :requirements list stays within (:strips :typing :negative-preconditions) with :action-costs only when justified by (increase ...) effects, and there are no placeholder tokens such as '...' or 'None'.
                                       - Action costs, when needed, are implemented through (increase ...) effects rather than ':cost' declarations on headers.
 
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
+                                      The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+                                      Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
                                       """)
 
     def run(self) -> str:
@@ -253,6 +352,7 @@ class AgentDeepThinkPDDL(Agent):
         prompt = self.prompt.format(
             human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             pddl_plan=self.prompt_args["pddl_plan"],
@@ -271,6 +371,7 @@ class AgentDeepThinkConstraints(Agent):
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
         "target_solver": "(str) The target PDDL solver.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -308,6 +409,9 @@ class AgentDeepThinkConstraints(Agent):
                                       This is a plan specification, in JSON format, of the task:
                                       <specification>{specification}</specification>
                                       
+                                      Previously hypothesised solution (confirm or revise as needed):
+                                      <proposed_solution>{proposed_solution}</proposed_solution>
+                                      
                                       Now, consider this PDDL domain that describes the specification:
                                       <domain>{pddl_domain}</domain>
                                       
@@ -324,8 +428,9 @@ class AgentDeepThinkConstraints(Agent):
                                       - The PDDL plan could be non-empty yet incorrect because the constraints are not correctly expressed in the PDDL problem.
                                       - There are no placeholder tokens left (e.g., '...' or 'None'), all :requirements are limited to (:strips :typing :negative-preconditions) with :action-costs only when matching (increase ...) effects are present, and action headers do not use ':cost'.
 
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
+                                      The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+                                      Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
                                       """)
 
     def run(self) -> str:
@@ -344,6 +449,7 @@ class AgentDeepThinkConstraints(Agent):
         prompt = self.prompt.format(
             human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             pddl_plan=self.prompt_args["pddl_plan"],
@@ -361,6 +467,7 @@ class AgentEnforceMultiAgency(Agent):
         "pddl_domain": "(str) The PDDL domain that describes the specification.",
         "pddl_problem": "(str) The PDDL problem that instantiates the specification.",
         "target_solver": "(str) The target PDDL solver.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -400,6 +507,9 @@ class AgentEnforceMultiAgency(Agent):
                                       This is a plan specification, in JSON format, of the task:
                                       <specification>{specification}</specification>
                                       
+                                      Previously hypothesised solution (confirm or revise as needed):
+                                      <proposed_solution>{proposed_solution}</proposed_solution>
+                                      
                                       Now, consider this PDDL domain that describes the specification:
                                       <domain>{pddl_domain}</domain>
                                       
@@ -413,9 +523,9 @@ class AgentEnforceMultiAgency(Agent):
                                       - The encoded connections and actions are limited to direct links explicitly listed, and the time durations add up to the stated horizon.
                                       - There are no placeholder tokens like '...' or 'None'; :requirements only contain (:strips :typing :negative-preconditions) with :action-costs retained solely when (increase ...) effects are present, and action schemas do not use ':cost' headers.
 
-                                      Your task is to fix all the issues mentioned above.
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
+                                      The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+                                      Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
                                       """)
 
     def run(self) -> str:
@@ -434,6 +544,7 @@ class AgentEnforceMultiAgency(Agent):
         prompt = self.prompt.format(
             human_specification=self.prompt_args["human_specification"],
             specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             target_solver=self.prompt_args["target_solver"]
@@ -449,6 +560,7 @@ class AgentFastDownwardsAdapter(Agent):
         "pddl_domain": "(str) The original PDDL domain.",
         "pddl_problem": "(str) The original PDDL problem.",
         "specification": "(str) Optional human-readable specification of the task.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -488,6 +600,9 @@ class AgentFastDownwardsAdapter(Agent):
             Given this specification, in JSON format:
             <specification>{specification}</specification>
 
+            Previously hypothesised solution (confirm or revise as needed):
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
             And this PDDL domain:
             <domain>{pddl_domain}</domain>
 
@@ -503,8 +618,9 @@ class AgentFastDownwardsAdapter(Agent):
             - Remove unsupported requirements such as :fluents, axioms, or conditional effects; ensure only direct connections mentioned in the source specification remain.
             - Eliminate placeholder tokens, ensure :requirements are limited to (:strips :typing :negative-preconditions) plus justified :action-costs, and move any ':cost' declarations into (increase ...) effects.
             
-            Return the domain between <domain></domain> and the problem between <problem></problem>.
-            Return only raw PDDL code inside the tags; do not add comments or extra characters.
+            The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+            Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
             """)
 
     def run(self) -> str:
@@ -518,6 +634,7 @@ class AgentFastDownwardsAdapter(Agent):
 
         prompt = self.prompt.format(
             specification=self.prompt_args.get("specification", ""),
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
         )
@@ -536,6 +653,7 @@ class AgentSyntaxPDDL(Agent):
         "target_solver": "(str) The target PDDL solver.",
         "pddl_logs": "(str) The logs of the attempted execution.",
         "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -574,6 +692,9 @@ class AgentSyntaxPDDL(Agent):
                                       And this PDDL problem that instantiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
+                                      Previously hypothesised solution (confirm or revise as needed):
+                                      <proposed_solution>{proposed_solution}</proposed_solution>
+                                      
                                       These are the logs of the attempted execution with the *{target_solver}* planner:
                                       <logs>{pddl_logs}</logs>
                                       
@@ -585,8 +706,9 @@ class AgentSyntaxPDDL(Agent):
                                       Replace any placeholder tokens (like '...' or 'None'), keep :requirements within (:strips :typing :negative-preconditions) plus justified :action-costs, and rewrite ':cost' annotations into (increase ...) effects when needed.
                                       If anything does not satisfy the specification, return a corrected version of the PDDL domain and problem; otherwise, return the originals.
 
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
+                                      The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+                                      Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
                                       """)
 
     def run(self) -> str:
@@ -612,6 +734,7 @@ class AgentSyntaxPDDL(Agent):
             target_solver=self.prompt_args["target_solver"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
         )
         return self.llm.generate_sync(
             system_prompt=system_prompt,
@@ -626,6 +749,7 @@ class AgentAsynchronicity(Agent):
         "target_solver": "(str) The target PDDL solver.",
         "pddl_logs": "(str) The logs of the attempted execution.",
         "syntax_errors": "(str) The syntax errors detected by a PDDL validator.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -665,6 +789,9 @@ class AgentAsynchronicity(Agent):
                                       And this PDDL problem that instantiates the specification:
                                       <problem>{pddl_problem}</problem>
                                       
+                                      Previously hypothesised solution (confirm or revise as needed):
+                                      <proposed_solution>{proposed_solution}</proposed_solution>
+                                      
                                       These are the logs of the attempted execution with the *{target_solver}* planner:
                                       <logs>{pddl_logs}</logs>
                                       
@@ -674,8 +801,9 @@ class AgentAsynchronicity(Agent):
                                       Introduce or refine a `timestamp` variable that indicates when each agent performs an action so that compatible actions can execute concurrently when possible.
                                       Ensure the PDDL syntax matches the requirements of the *{target_solver}* planner and that all availability and preference constraints remain satisfied without adding unsupported requirements.
 
-                                      Return the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags.
-                                      Return only raw PDDL code inside the tags; do not add comments or extra characters.
+                                      The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
+
+                                      Return the domain between <domain></domain>, the problem between <problem></problem>. Return them inside the respective tags; do not add comments or extra characters to it.
                                       """)
 
     def run(self) -> str:
@@ -701,6 +829,7 @@ class AgentAsynchronicity(Agent):
             target_solver=self.prompt_args["target_solver"],
             pddl_logs=self.prompt_args["pddl_logs"],
             syntax_errors=self.prompt_args["syntax_errors"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
         )
         return self.llm.generate_sync(
             system_prompt=system_prompt,

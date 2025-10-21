@@ -1,0 +1,80 @@
+{
+    "name": "BlocksworldScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can only pick up and place blocks whose labels are vowels: A, E, I, O, U.",
+                "I can only manipulate the top block of any stack and only one block at a time."
+            ],
+            "goal": "Collaborate to transform the initial block stacks into the desired final stack configuration."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can only pick up and place blocks whose labels are consonants.",
+                "I can only manipulate the top block of any stack and only one block at a time."
+            ],
+            "goal": "Collaborate to transform the initial block stacks into the desired final stack configuration."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the two agents and integrate their partial specifications into a single PDDL domain and problem.",
+                "I must keep actions for the two agents distinct when producing the multi-agent PDDL."
+            ],
+            "goal": "Produce a complete PDDL domain and problem file suitable for the FastDownwards planner that achieves the global stacking goal using the two agents' capabilities."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are ten uniquely labelled blocks: G, D, B, C, J, F, E, I, A, H.",
+            "Blocks are arranged in stacks on a table. Only the top block of each stack is directly movable.",
+            "Agents can move only one block at a time.",
+            "Initial configuration: G is on the table, D is on the table, B is on top of D, C is on top of B, J is on top of G, F is on top of C, E is on top of J, I is on top of E, A is on top of I, H is on top of A.",
+            "Goal configuration: A on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on the table.",
+            "Vowel-labeled blocks are A, E, I. Consonant-labeled blocks are B, C, D, F, G, H, J."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "spec": {
+                "input": [],
+                "output": "spec_vowel",
+                "system_prompt": "You are the vowel agent responsible for analyzing which parts of the task you can perform given your capabilities. Do not emit PDDL. Produce a clear, structured textual specification describing: the vowel blocks you can move, which stacks you can currently act upon (top blocks that are vowels), any preconditions or constraints you require from the other agent to perform moves, and a sequence of tentative elementary moves involving only vowel blocks that progresses toward the global goal. If some information is missing, describe what is missing rather than making ungrounded assumptions.",
+                "prompt": "Agent: vowel_agent. Public information: {environment->public_information}. Your private information: {agents->vowel_agent->private_information}. Global goal: {agents->vowel_agent->goal}. Provide a structured specification and a step-wise list of the vowel-block moves you can execute or propose, and any constraints on ordering or dependencies with the consonant agent."
+            }
+        },
+        "consonant_agent": {
+            "spec": {
+                "input": [],
+                "output": "spec_consonant",
+                "system_prompt": "You are the consonant agent responsible for analyzing which parts of the task you can perform given your capabilities. Do not emit PDDL. Produce a clear, structured textual specification describing: the consonant blocks you can move, which stacks you can currently act upon (top blocks that are consonants), any preconditions or constraints you require from the other agent to perform moves, and a sequence of tentative elementary moves involving only consonant blocks that progresses toward the global goal. If some information is missing, describe what is missing rather than making ungrounded assumptions.",
+                "prompt": "Agent: consonant_agent. Public information: {environment->public_information}. Your private information: {agents->consonant_agent->private_information}. Global goal: {agents->consonant_agent->goal}. Provide a structured specification and a step-wise list of the consonant-block moves you can execute or propose, and any constraints on ordering or dependencies with the vowel agent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_vowel",
+                    "spec_consonant"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning for the FastDownwards planner. Integrate the two agents' specifications into a single coherent multi-agent PDDL domain and a PDDL problem file suitable for FastDownwards. Keep the actions of the vowel agent and the consonant agent distinct by prefixing or typing their actions appropriately. Include types, predicates, and action schemas that enforce: only top blocks are movable, only one block may be moved at a time by an agent, and each agent can only move blocks of its allowed labels. Produce a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards-compatible features (STRIPS with typing and explicit preconditions/effects).",
+                "prompt": "You will receive the two agents' specifications and partial move proposals: {spec_vowel} and {spec_consonant}. Use the public environment information: {environment->public_information}. Use the orchestrator goal: {agents->orchestrator->goal}. Think step by step, resolve naming differences, integrate dependencies, and output a complete PDDL domain and problem for FastDownwards that achieves the goal. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "vowel_agent.spec->orchestrator.pddl",
+            "consonant_agent.spec->orchestrator.pddl"
+        ]
+    }
+}

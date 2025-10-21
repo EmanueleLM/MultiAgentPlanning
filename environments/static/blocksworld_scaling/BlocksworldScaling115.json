@@ -1,0 +1,80 @@
+{
+    "name": "BlocksworldScaling115",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can manipulate blocks whose labels are vowels: A, E, I.",
+                "I can only move blocks that are currently at the top of a stack.",
+                "I can move only one block at a time and place it either on the table or on top of another block."
+            ],
+            "goal": "Rearrange the blocks so that A is on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on K, K on L, and L on the table."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can manipulate blocks whose labels are consonants: B, C, D, F, G, H, J, K, L.",
+                "I can only move blocks that are currently at the top of a stack.",
+                "I can move only one block at a time and place it either on the table or on top of another block."
+            ],
+            "goal": "Rearrange the blocks so that A is on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on K, K on L, and L on the table."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a combined PDDL domain and problem modeling both agents and the block rearrangement task suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 12,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are twelve uniquely labeled blocks: A, B, C, D, E, F, G, H, I, J, K, L.",
+            "Only the top block of each stack can be picked up and moved.",
+            "Agents can move only one block at a time and can place it on the table or on top of another block.",
+            "One agent is restricted to manipulating vowel-labeled blocks and the other to consonant-labeled blocks.",
+            "Initial arrangement: B is on the table, A is on top of B, I is on the table, G is on top of I, H is on the table, F is on top of H, J is on top of F, D is on top of G, L is on top of A, C is on top of L, K is on top of D, E is on top of C.",
+            "Explicit initial stacks derivable from the above: stack1 (table->B, top->A), stack2 (table->I, top->G, topmost->D->K), stack3 (table->H, top->F, topmost->J), stack4 (top sequence on A: A->L->C->E), other blocks positioned as described above.",
+            "Goal arrangement: A on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on K, K on L, and L on the table."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "report": {
+                "input": [],
+                "output": "vowel_agent_report",
+                "system_prompt": "You are the vowel-specialized agent. Describe your capabilities, the subset of blocks you can manipulate, which initial top blocks you can currently move, and propose a concise stepwise local strategy that respects your constraints. Do not emit PDDL; provide a clear human-readable report that the orchestrator will use.",
+                "prompt": "You are vowel_agent. Public information: {environment->public_information}. Your private information: {agents->vowel_agent->private_information}. Global goal: {agents->vowel_agent->goal}. Provide a clear description of which specific blocks you can move now, any local preconditions you perceive, and a stepwise local action sequence or constraints you recommend that the orchestrator can integrate."
+            }
+        },
+        "consonant_agent": {
+            "report": {
+                "input": [],
+                "output": "consonant_agent_report",
+                "system_prompt": "You are the consonant-specialized agent. Describe your capabilities, the subset of blocks you can manipulate, which initial top blocks you can currently move, and propose a concise stepwise local strategy that respects your constraints. Do not emit PDDL; provide a clear human-readable report that the orchestrator will use.",
+                "prompt": "You are consonant_agent. Public information: {environment->public_information}. Your private information: {agents->consonant_agent->private_information}. Global goal: {agents->consonant_agent->goal}. Provide a clear description of which specific blocks you can move now, any local preconditions you perceive, and a stepwise local action sequence or constraints you recommend that the orchestrator can integrate."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "vowel_agent_report",
+                    "consonant_agent_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate human-readable reports from two specialized agents and produce a complete PDDL domain and PDDL problem targeted to the FastDownwards planner. Model both agents' action capabilities explicitly and keep their action names distinct (e.g., move-vowel, move-consonant). The domain must include types, predicates for on, ontable, clear, holding, and actions reflecting pick and place restrictions. The problem must encode the initial state exactly as given and the goal tower. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL is compatible with FastDownwards.",
+                "prompt": "You are orchestrator. You will receive the two agents' reports: {vowel_agent_report} and {consonant_agent_report}. Your task is to integrate their information, resolve any naming mismatches, and produce a single PDDL domain and a single PDDL problem modeling both agents and the block rearrangement goal described in public information. Keep the agents' actions distinct and include any necessary predicates and :requirements appropriate for FastDownwards. Output only the PDDL domain and problem enclosed in the requested tags."
+            }
+        },
+        "constraints": [
+            "vowel_agent.report->orchestrator.pddl",
+            "consonant_agent.report->orchestrator.pddl"
+        ]
+    }
+}

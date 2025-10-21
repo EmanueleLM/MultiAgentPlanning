@@ -1,0 +1,96 @@
+{
+    "name": "BlocksworldScaling49",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can manipulate only vowel-labeled blocks (A, E, I, O, U).",
+                "I can move only the top block of a stack and only one block at a time."
+            ],
+            "goal": "Contribute to rearranging the blocks into the target single tower where A on B on C on D on E on F on G on H on I on J on K on L on M on N on table."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can manipulate only consonant-labeled blocks (all labels that are not vowels).",
+                "I can move only the top block of a stack and only one block at a time."
+            ],
+            "goal": "Contribute to rearranging the blocks into the target single tower where A on B on C on D on E on F on G on H on I on J on K on L on M on N on table."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the two agents and integrate their local analyses into a single planning model."
+            ],
+            "goal": "Produce a single PDDL domain and problem for the FastDownwards solver that encodes the multi-agent constraints and achieves the target tower with N on the table and the specified order above it."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 14,
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L",
+                "M",
+                "N"
+            ],
+            "grid_size": 2,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are 14 uniquely labeled blocks: A B C D E F G H I J K L M N.",
+            "Agents can move only the top block of any stack and only one block at a time.",
+            "One agent may move only vowel-labeled blocks, the other only consonant-labeled blocks.",
+            "Initial stacks: Stack rooted at D on the table is D then A on D then L on A then N on L then C on N then H on C (top H).",
+            "Initial stacks: Stack rooted at I on the table is I then M on I then J on M then K on J then F on K then G on F then B on G then E on B (top E).",
+            "Goal: form a single tower with A on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on K, K on L, L on M, M on N, and N on the table."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "analyze": {
+                "input": [],
+                "output": "vowel_info",
+                "system_prompt": "You are an agent that can manipulate only vowel-labeled blocks. Describe, using the public information and your private capabilities, which vowel blocks are currently movable (on top of stacks), which are buried, and propose local moves you could perform to help reach the global goal. Do not emit PDDL.",
+                "prompt": "Your name is vowel_agent. Use the environment public information {environment->public_information} and your private information {agents->vowel_agent->private_information}. Provide a structured description of the vowels you can currently move, the vowels that are not on top, and a short list of safe local moves you can perform given you only move one top block at a time."
+            }
+        },
+        "consonant_agent": {
+            "analyze": {
+                "input": [],
+                "output": "consonant_info",
+                "system_prompt": "You are an agent that can manipulate only consonant-labeled blocks. Describe, using the public information and your private capabilities, which consonant blocks are currently movable (on top of stacks), which are buried, and propose local moves you could perform to help reach the global goal. Do not emit PDDL.",
+                "prompt": "Your name is consonant_agent. Use the environment public information {environment->public_information} and your private information {agents->consonant_agent->private_information}. Provide a structured description of the consonants you can currently move, the consonants that are not on top, and a short list of safe local moves you can perform given you only move one top block at a time."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "vowel_info",
+                    "consonant_info"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domains and problems for the FastDownwards planner. Integrate the agents' local analyses and the public information to produce a single PDDL domain and problem that encode the blocksworld rearrangement. Respect that vowel moves must be performed by actions labeled for vowel_agent and consonant moves by actions labeled for consonant_agent. Keep the agents' actions distinct by prefixing action names with the agent name. Ensure the PDDL is compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.",
+                "prompt": "You are orchestrator. Use the public information {environment->public_information}, the vowel agent report {vowel_info}, and the consonant agent report {consonant_info}. Produce a PDDL domain and a PDDL problem that represent the initial configuration and the goal tower with N on the table and the specified order above it. Ensure actions are distinct and constrained to vowels or consonants as appropriate, and that all actions operate only on top blocks. Target the FastDownwards solver and make no assumptions beyond the provided information. Output the domain within <domain></domain> tags and the problem within <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "vowel_agent.analyze->orchestrator.pddl",
+            "consonant_agent.analyze->orchestrator.pddl"
+        ]
+    }
+}

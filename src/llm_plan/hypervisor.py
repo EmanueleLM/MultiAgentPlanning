@@ -21,11 +21,12 @@ class Hypervisor:
             "pddl_logs": "(str) The logs of the attempted execution with the solver.",
             "syntax_errors": "(str) The error message returned by a PDDL validator.",
             "history": "(list[str]) The history of the agents picked up.",
+            "proposed_solution": "(str) The currently endorsed solution (may be empty).",
         }
 
-        self.history: list[
-            str
-        ] = []  # This contains the history of the agents picked up
+        self.history: list[str] = list(
+            prompt_args.get("history", [])
+        )  # Copy of the history so far
 
         self.system_prompt = inspect.cleandoc(
             """\
@@ -54,6 +55,9 @@ class Hypervisor:
             Current PDDL problem:
             <problem>{pddl_problem}</problem>
 
+            Previously hypothesised solution. Confirm or revise as needed. Think about this carefully!
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
             Plan produced for the {target_solver} solver (may be empty):
             <plan>{pddl_plan}</plan>
 
@@ -69,15 +73,13 @@ class Hypervisor:
             Agents previously selected (helps maintain diversity):
             <history>{history}</history>
 
-            Consider this priority when choosing the next agent:
+            Consider selecting the agent for refinement, depending on the issues that you see in the artefacts:
             1. Constraints — ensure the domain and problem satisfy every agent's constraints.
             2. Multi-agency — verify the modelling distinguishes each agent's actions appropriately.
             3. Asynchronicity — confirm the domain/problem allow independent concurrent actions when needed.
             4. Syntax — enforce compliance with the target solver's PDDL requirements.
-            Additionally, ensure the stay durations and total-day counts match the natural-language specification and
-            that only direct flights or links explicitly listed are modelled.
 
-            Select the class best positioned to address the most pressing issue given the current artefacts. 
+            Select the class best positioned to address the most pressing issue given the current artefacts.
             Only answer <class>NoOpAgent</class> when every objective above is demonstrably satisfied.
             """
         )
@@ -144,8 +146,25 @@ class Hypervisor:
             str: The selected agent class wrapped in <class></class> tags.
         """
         self.upload_args(self.prompt_args)  # ensure args are uploaded
+        # Refresh local history in case the caller updated the list reference
+        self.history = list(self.prompt_args.get("history", []))
+
+        first_agent = "AgentSolutionFirst"
+        has_solution = bool(str(self.prompt_args.get("proposed_solution", "")).strip())
+        if (
+            first_agent in self.agents
+            and not self.history
+            and not has_solution
+        ):
+            return f"<class>{first_agent}</class>"
 
         # Prepare the selection prompt
+        agents_for_prompt = self.agents
+        if self.history and first_agent in self.history:
+            filtered = {name: cls for name, cls in self.agents.items() if name != first_agent}
+            if filtered:
+                agents_for_prompt = filtered
+
         prompt_kwargs = {
             "human_specification": self.prompt_args["human_specification"],
             "specification": self.prompt_args["specification"],
@@ -156,9 +175,10 @@ class Hypervisor:
             "pddl_logs": self.prompt_args["pddl_logs"],
             "syntax_errors": self.prompt_args["syntax_errors"],
             "agents": "\n".join(
-                f"{name}: {cls.__doc__}" for name, cls in self.agents.items()
+                f"{name}: {cls.__doc__}" for name, cls in agents_for_prompt.items()
             ),
-            "history": self.history,
+            "history": ", ".join(self.history),
+            "proposed_solution": self.prompt_args.get("proposed_solution", ""),
         }
 
         if "proposed_solution" in self.prompt_args:
@@ -239,6 +259,8 @@ class SolutionVerifierHypervisor(Hypervisor):
             3. All natural-language constraints are encoded so that violating them becomes impossible in any satisfying plan.
 
             Use the syntax errors and solver logs as ground truth feedback: repair anything they flag.
+            Each agent you select must either confirm the proposed solution or revise it, and restate the endorsed
+            outcome inside <proposed_solution></proposed_solution> tags together with any updated PDDL.
             Select the class best positioned to progress this validation. Only answer <class>NoOpAgent</class> when every
             objective above is demonstrably satisfied.
             """

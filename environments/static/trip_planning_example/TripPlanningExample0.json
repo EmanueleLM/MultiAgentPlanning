@@ -2,90 +2,80 @@
     "name": "TripPlanningExample0",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
             "florence_agent",
             "barcelona_agent",
-            "helsinki_agent",
             "orchestrator"
         ],
         "florence_agent": {
             "private_information": [
-                "I would like to visit Florence for 6 days.",
-                "I will meet a friend in Florence between day 9 and day 14 (inclusive)."
+                "I would like to visit Florence for 6 days",
+                "I want to meet a friend in Florence between day 9 and day 14"
             ],
-            "goal": "Contribute my stay preference and the meeting constraint so the trip plan can include Florence with the specified temporal constraint."
+            "goal": "Convey my stay and timing preferences so they can be integrated into a 14-day trip plan using only direct flights."
         },
         "barcelona_agent": {
             "private_information": [
-                "I would like to visit Barcelona for 5 days."
+                "I would like to visit Barcelona for 5 days",
+                "I would like to visit Helsinki for 5 days"
             ],
-            "goal": "Contribute my stay preference so the trip plan can consider Barcelona for the desired duration."
-        },
-        "helsinki_agent": {
-            "private_information": [
-                "I would like to visit Helsinki for 5 days."
-            ],
-            "goal": "Contribute my stay preference so the trip plan can consider Helsinki for the desired duration."
+            "goal": "Convey my stay preferences so they can be integrated into a 14-day trip plan using only direct flights."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate the agents' preferences and produce a complete PDDL domain and problem suitable for the FastDownwards solver to produce a feasible 14-day trip plan using only direct flights."
+            "goal": "Integrate agents' preferences and the public travel constraints to produce a PDDL domain and PDDL problem suitable for the FastDownwards planner that yields a feasible 14-day itinerary using only direct flights."
         }
     },
     "environment": {
         "init": {
-            "total_days": 14
+            "total_days": 14,
+            "cities": [
+                "Florence",
+                "Barcelona",
+                "Helsinki"
+            ]
         },
         "public_information": [
-            "There are three candidate cities to visit: Florence, Barcelona, Helsinki.",
-            "Total trip length available is 14 days.",
-            "You only take direct flights to commute between cities.",
-            "Direct flight connections available: Barcelona <-> Florence, Helsinki <-> Barcelona.",
-            "No direct flight exists between Florence and Helsinki."
+            "There are three cities to visit: Florence, Barcelona, Helsinki.",
+            "You must allocate a sequence of stays across these cities totaling 14 days.",
+            "Only direct flights are allowed for commuting between cities.",
+            "Direct flights exist between Barcelona and Florence.",
+            "Direct flights exist between Helsinki and Barcelona.",
+            "There is no direct flight between Florence and Helsinki."
         ]
     },
     "workflow": {
         "florence_agent": {
-            "describe": {
+            "preferences": {
                 "input": [],
-                "output": "info_florence",
-                "system_prompt": "You represent the travel preference for Florence. Provide structured facts about required stay length and any hard temporal constraints you have for Florence. Do not emit PDDL here.",
-                "prompt": "Your name is florence_agent. Public information: {environment->public_information}. Your private information: {agents->florence_agent->private_information}. Your goal: {agents->florence_agent->goal}. Provide a concise, structured description of the Florence preference and mandatory temporal constraints that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                "output": "pref_florence",
+                "system_prompt": "You are a travel preference module. Summarize your stay length and any timing constraints for Florence so an orchestrator can integrate them. Do not emit PDDL.",
+                "prompt": "You are florence_agent. Use the public information about cities and flights and your private information to produce a clear machine-readable summary of your desired stay in Florence including required length and the meeting window. Output a compact list of constraints and timings. Do not produce a PDDL domain or problem."
             }
         },
         "barcelona_agent": {
-            "describe": {
+            "preferences": {
                 "input": [],
-                "output": "info_barcelona",
-                "system_prompt": "You represent the travel preference for Barcelona. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
-                "prompt": "Your name is barcelona_agent. Public information: {environment->public_information}. Your private information: {agents->barcelona_agent->private_information}. Your goal: {agents->barcelona_agent->goal}. Provide a concise, structured description of the Barcelona preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
-            }
-        },
-        "helsinki_agent": {
-            "describe": {
-                "input": [],
-                "output": "info_helsinki",
-                "system_prompt": "You represent the travel preference for Helsinki. Provide structured facts about desired stay length and constraints. Do not emit PDDL here.",
-                "prompt": "Your name is helsinki_agent. Public information: {environment->public_information}. Your private information: {agents->helsinki_agent->private_information}. Your goal: {agents->helsinki_agent->goal}. Provide a concise, structured description of the Helsinki preference that the orchestrator can consume. If some information is missing, state which pieces are missing instead of making assumptions."
+                "output": "pref_barcelona",
+                "system_prompt": "You are a travel preference module. Summarize your stay length preferences for Barcelona and Helsinki so an orchestrator can integrate them. Do not emit PDDL.",
+                "prompt": "You are barcelona_agent. Use the public information about cities and flights and your private information to produce a clear machine-readable summary of your desired stays for Barcelona and Helsinki including requested lengths and any flexibility. Output a compact list of constraints and timings. Do not produce a PDDL domain or problem."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "info_florence",
-                    "info_barcelona",
-                    "info_helsinki"
+                    "pref_florence",
+                    "pref_barcelona"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an orchestrator that must integrate agent facts and produce a PDDL domain and PDDL problem suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Model days explicitly, use actions to represent flying between cities only when a direct flight exists, and include stay-duration constraints and the mandatory meeting window in Florence. If agents' total desired days exceed the available days, create a feasible allocation that honors mandatory constraints (meeting window) and otherwise approximates preferrences, documenting any trade-offs in comments inside the PDDL problem section.",
-                "prompt": "You are the orchestrator. Inputs you receive: {workflow->florence_agent->describe->output}, {workflow->barcelona_agent->describe->output}, {workflow->helsinki_agent->describe->output}. Public information: {environment->public_information}. Agents' private inputs: {agents->florence_agent->private_information}, {agents->barcelona_agent->private_information}, {agents->helsinki_agent->private_information}. Global goal: produce a planning model that schedules visits across 14 days using only direct flights listed in the public information. Represent each day explicitly (day1 .. day14), locations (Florence, Barcelona, Helsinki), flights allowed only on direct connections, and actions to stay in a city for a day. Ensure the meeting in Florence occurs between day 9 and day 14 inclusive. If total requested stays exceed 14 days, allocate days to satisfy the meeting and then distribute remaining days to best match requested durations; document the chosen allocation in comments inside the PDDL problem. Provide a PDDL domain and a PDDL problem that FastDownwards can consume. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeting the FastDownwards planner. Integrate the agents' preference summaries and the public travel constraints to produce a single PDDL domain and a single PDDL problem suitable for FastDownwards. Keep actions for different travel legs and city-stays distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You receive the following public travel information and the preference summaries from the agents. Public information: There are three cities Florence, Barcelona, Helsinki. Total trip length is 14 days. Only direct flights allowed. Direct flights exist between Barcelona and Florence, and between Helsinki and Barcelona; there is no direct flight between Florence and Helsinki. Now integrate the agents' preference outputs and resolve conflicts if the sum of requested days exceeds the 14-day horizon. Produce a PDDL domain and a PDDL problem that represent days as a discrete horizon from day 1 to day 14, represent flight actions only where direct flights exist, represent stay actions for each city with durations in days, and encode the meeting constraint that the traveler must be in Florence on some day in the interval day 9 to day 14. If exact desires cannot all be satisfied, choose a feasible allocation that maximizes satisfaction of requested stays while ensuring feasibility under direct-flight connectivity. Keep the travel and stay actions distinct and name them clearly by city. Target the FastDownwards solver and include any necessary numeric or temporal encodings appropriate for FastDownwards simple finite-horizon planning. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
             }
         },
         "constraints": [
-            "florence_agent.describe->orchestrator.pddl",
-            "barcelona_agent.describe->orchestrator.pddl",
-            "helsinki_agent.describe->orchestrator.pddl"
+            "florence_agent.preferences->orchestrator.pddl",
+            "barcelona_agent.preferences->orchestrator.pddl"
         ]
     }
 }

@@ -1,0 +1,16 @@
+(define (problem player1-problem)
+  (:domain blocks-world)
+  (:objects yellow red orange blue - block player1 player2 orchestrator - agent)
+  (:init
+    (on yellow red)
+    (on red orange)
+    (on orange blue)
+    (on-table blue)
+    (clear yellow)
+    (handempty player1)
+  )
+  (:goal (and
+    (on red yellow)
+    (on yellow blue)
+  ))
+)

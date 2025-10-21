@@ -1,0 +1,35 @@
+(define (domain meeting-scheduling-30min)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot meeting)
+
+  (:predicates
+    (available ?p - participant ?s - slot)
+    (meeting-at ?m - meeting ?s - slot)
+    (scheduled ?m - meeting)
+    (meeting-scheduled ?s - slot)
+    (next ?s1 - slot ?s2 - slot)
+  )
+
+  (:action schedule-meeting
+    :parameters (?m - meeting ?s - slot ?s2 - slot ?p1 - participant ?p2 - participant ?p3 - participant)
+    :precondition (and
+      (not (scheduled ?m))
+      (not (meeting-scheduled ?s))
+      (not (meeting-scheduled ?s2))
+      (next ?s ?s2)
+      (available ?p1 ?s)
+      (available ?p1 ?s2)
+      (available ?p2 ?s)
+      (available ?p2 ?s2)
+      (available ?p3 ?s)
+      (available ?p3 ?s2)
+    )
+    :effect (and
+      (meeting-at ?m ?s)
+      (meeting-at ?m ?s2)
+      (scheduled ?m)
+      (meeting-scheduled ?s)
+      (meeting-scheduled ?s2)
+    )
+  )
+)

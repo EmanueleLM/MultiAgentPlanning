@@ -4,72 +4,79 @@
     "agents": {
         "number": 3,
         "names": [
-            "venice_agent",
-            "florence_agent",
+            "traveler",
+            "flight_agent",
             "orchestrator"
         ],
-        "venice_agent": {
+        "traveler": {
             "private_information": [
-                "I prefer to visit Venice for 6 days",
-                "Venice has a direct flight connection with Zurich (direct flights available between Venice and Zurich)"
+                "I want to visit Venice for 6 days",
+                "I want to visit Florence for 6 days",
+                "I plan to stay in Zurich for 2 days"
             ],
-            "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            "goal": "Plan a 12-day trip visiting Venice, Florence, and Zurich using only available direct flights."
         },
-        "florence_agent": {
+        "flight_agent": {
             "private_information": [
-                "I prefer to visit Florence for 6 days",
-                "There is a direct flight from Zurich to Florence (directional: Zurich to Florence)"
+                "Direct flights exist between Venice and Zurich",
+                "Direct flights exist from Zurich to Florence",
+                "No direct flight between Venice and Florence is provided"
             ],
-            "goal": "Contribute facts and constraints to build a trip plan that visits Venice, Zurich, and Florence within 12 days using only direct flights."
+            "goal": "Provide feasible direct flight legs and viable travel sequences that connect the cities under the available direct flights."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Produce a single integrated PDDL domain and PDDL problem suitable for the FastDownwards solver that models the 12-day trip visiting Venice, Zurich, and Florence using only direct flights and respecting the available flight connections and day-budget."
+            "goal": "Integrate traveler preferences and flight connection constraints and produce a PDDL domain and problem targeting the FastDownwards solver to compute a valid trip schedule of 12 days using only direct flights."
         }
     },
     "environment": {
         "init": {
-            "total_days": 12
+            "total_days": 12,
+            "cities": [
+                "Venice",
+                "Florence",
+                "Zurich"
+            ]
         },
         "public_information": [
-            "Cities to consider: Venice, Zurich, Florence.",
-            "Total trip length available is 12 days.",
-            "Stated desired stays: Venice 6 days, Florence 6 days, Zurich 2 days.",
-            "Direct flights available: Venice <-> Zurich, Zurich -> Florence.",
-            "Only direct flights are allowed for commuting between cities."
+            "Total available trip duration is 12 days.",
+            "Cities under consideration are Venice, Florence, and Zurich.",
+            "Available direct flights: Venice <-> Zurich, Zurich -> Florence.",
+            "There is no listed direct flight between Venice and Florence.",
+            "Traveler stated desired stays sum to 14 days which conflicts with the 12-day total."
         ]
     },
     "workflow": {
-        "venice_agent": {
-            "report": {
+        "traveler": {
+            "analysis": {
                 "input": [],
-                "output": "venice_report",
-                "system_prompt": "You are a local planner for Venice. Provide structured facts and constraints relevant to visiting Venice. Do not produce PDDL. Report available direct flight connections that involve Venice, your preferred stay duration and flexibility, and any hard constraints about visiting Venice.",
-                "prompt": "Your name is venice_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->venice_agent->private_information} This is your contribution goal: {agents->venice_agent->goal} Provide a clear structured report describing flights, preferred days in Venice, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                "output": "traveler_plan",
+                "system_prompt": "You are a travel-preferences agent. Read the public information and the traveler's private preferences. Identify the preferred stays per city, detect any conflicts with the total days budget, and propose possible adjustments or priorities that respect the traveler's desires without generating a PDDL file.",
+                "prompt": "Agent name: traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Your objective: {agents->traveler->goal}. Produce a concise structured summary that lists desired stays, the detected conflict with the total days, and possible preference resolutions or priorities."
             }
         },
-        "florence_agent": {
-            "report": {
+        "flight_agent": {
+            "analysis": {
                 "input": [],
-                "output": "florence_report",
-                "system_prompt": "You are a local planner for Florence. Provide structured facts and constraints relevant to visiting Florence. Do not produce PDDL. Report available direct flight connections that involve Florence, your preferred stay duration and flexibility, and any hard constraints about visiting Florence.",
-                "prompt": "Your name is florence_agent. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->florence_agent->private_information} This is your contribution goal: {agents->florence_agent->goal} Provide a clear structured report describing flights, preferred days in Florence, flexibility to reduce days if necessary to meet the global total, and any other constraints that affect travel or scheduling."
+                "output": "flight_options",
+                "system_prompt": "You are a flight-connection agent. Use the public flight connectivity information to enumerate feasible direct flight legs and allowed travel sequences between the cities. Do not produce a PDDL file. Instead produce a clear representation of feasible legs and any directional restrictions.",
+                "prompt": "Agent name: flight_agent. Public information: {environment->public_information}. Your private information: {agents->flight_agent->private_information}. Your objective: {agents->flight_agent->goal}. Produce a structured list of direct flight legs, their directions (if any), and example itineraries that respect direct-flight-only constraints."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "venice_report",
-                    "florence_report"
+                    "traveler_plan",
+                    "flight_options"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent planning and in writing PDDL for the FastDownwards planner. Integrate agent reports into a single consistent PDDL domain and PDDL problem that models cities, direct flights as allowed transitions, day allocation with a total budget of 12 days, and visiting durations for each city. Keep agent actions distinct if actions represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be directly usable with FastDownwards.",
-                "prompt": "You are the orchestrator. Your inputs are the reports from the other agents: {venice_report} and {florence_report} The global goal to achieve is: {agents->orchestrator->goal} Integrate the provided facts and constraints and produce a PDDL domain and PDDL problem that model the trip planning problem so that a FastDownwards planning run can compute a valid itinerary that uses only direct flights and respects a 12 day total. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in multi-agent planning and PDDL authoring for the FastDownwards planner. Integrate the travelers' preferences and the flight connection constraints provided by the other agents and produce a complete PDDL domain and PDDL problem that encodes the trip scheduling problem for FastDownwards. The PDDL should model days, stays in cities, and flight actions with directionality. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Inputs: traveler plan summary {traveler_plan} and flight connection options {flight_options}. Global goal: {agents->orchestrator->goal}. Build a PDDL domain and problem for FastDownwards that yields a schedule of flights and city stays for exactly the available total_days and respects direct-flight-only constraints. Keep actions for different agents or roles distinct where relevant. If traveler preferences conflict with the total days, encode flexibility or priority choices so the planner can select a valid 12-day itinerary. Provide the PDDL domain enclosed in <domain></domain> and the PDDL problem enclosed in <problem></problem>."
             }
         },
         "constraints": [
-            "venice_agent.report->orchestrator.pddl",
-            "florence_agent.report->orchestrator.pddl"
+            "traveler.analysis->orchestrator.pddl",
+            "flight_agent.analysis->orchestrator.pddl"
         ]
     }
 }

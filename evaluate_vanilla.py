@@ -54,28 +54,39 @@ class ExampleResult:
     response: str
     correct: bool
     reason: str
+    judge_response: str
+    label: int
 
 
 def normalize_text(text: str) -> str:
     return " ".join(text.strip().split())
 
 
-def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str]:
-    system_prompt = "You are an expert evaluator for calendar scheduling plans."
-    prompt = (
-        "Determine whether the candidate plan achieves the same meeting time as the golden plan.\n"
-        "Ignore wording differences; focus on whether the proposed plan matches with the ground truth label. Remember that they can be written in different ways: what matters is that the result in the proposed solution matches that of the ground truth plan."
-        "\nRespond strictly in JSON with keys 'match' (true/false) and 'reason'."
-        f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
-    )
+def llm_judge(
+    llm: LLM,
+    golden: str,
+    candidate: str,
+    ignore_cost_differences: bool = False,
+) -> tuple[bool, str, str]:
+    system_prompt = "You are an expert evaluator that compares task solutions against golden references."
+    prompt_lines = [
+        "Determine whether the candidate plan achieves the same outcome as the golden plan.",
+        "Ignore superficial wording differences; focus on whether the proposed plan satisfies the goal expressed by the golden plan.",
+    ]
+    if ignore_cost_differences:
+        prompt_lines.append(
+            "If the task is Blocksworld, do not reject a candidate solely because it has a higher cost or uses more moves than the golden plan—only check that the final arrangement matches the golden plan."
+        )
+    prompt_lines.append("Respond strictly in JSON with keys 'match' (true/false) and 'reason'.")
+    prompt = "\n".join(prompt_lines) + f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
     response = llm.generate_sync(system_prompt=system_prompt, prompt=prompt)
     try:
         data = json.loads(response)
         match = bool(data.get("match"))
         reason = str(data.get("reason", ""))
-        return match, reason
+        return match, reason, response
     except (json.JSONDecodeError, TypeError):
-        return False, f"Failed to parse LLM response: {response}"
+        return False, f"Failed to parse LLM response: {response}", response
 
 
 def evaluate_dataset(
@@ -89,6 +100,7 @@ def evaluate_dataset(
     sorted_items = sorted(dataset.items(), key=lambda item: item[0])
     results: list[ExampleResult] = []
     missing = 0
+    dataset_is_blocksworld = "blocksworld" in data_path.stem.lower()
 
     for key, payload in sorted_items:
         raw_golden = payload.get("golden_plan", "")
@@ -116,8 +128,14 @@ def evaluate_dataset(
         if normalize_text(golden) == normalize_text(candidate_text):
             correct = True
             reason = "Exact match after normalization"
+            judge_raw = "Exact match after normalization (judge not invoked)"
         else:
-            correct, reason = llm_judge(llm, golden, candidate_text)
+            correct, reason, judge_raw = llm_judge(
+                llm,
+                golden,
+                candidate_text,
+                ignore_cost_differences=dataset_is_blocksworld,
+            )
 
         if verbose:
             logging.info("[%s] correct=%s reason=%s", key, correct, reason)
@@ -129,6 +147,8 @@ def evaluate_dataset(
                 response=candidate_text,
                 correct=correct,
                 reason=reason,
+                judge_response=judge_raw,
+                label=1 if correct else 0,
             )
         )
 
@@ -211,6 +231,41 @@ def append_accuracy_result(
         json.dump(results, f, indent=2)
 
 
+def write_detailed_evaluations(
+    results: list[ExampleResult],
+    dataset_name: str,
+    model: str,
+) -> Path:
+    output_dir = Path("results") / "_evaluation" / "vanilla"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{dataset_name}.json"
+
+    entries = []
+    for r in results:
+        entries.append(
+            {
+                "key": r.key,
+                "golden_plan": r.golden,
+                "response": r.response,
+                "evaluation": {
+                    "response": r.judge_response,
+                    "label": r.label,
+                },
+            }
+        )
+
+    payload = {
+        "dataset": dataset_name,
+        "model": model,
+        "examples": entries,
+    }
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+    return output_path
+
+
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -233,13 +288,13 @@ def main() -> None:
         accuracy_including_missing,
     ) = summarize(results, missing, dataset_total)
 
-    dataset_name = args.data_file
+    dataset_name = args.data_file.stem
     accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_vanilla.json"
     append_accuracy_result(
         accuracy_file,
-        str(dataset_name),
+        dataset_name,
         evaluated,
         missing,
         dataset_total,
@@ -249,6 +304,8 @@ def main() -> None:
         args.model,
     )
     logging.info("Accuracy written to %s", accuracy_file)
+    detailed_path = write_detailed_evaluations(results, dataset_name, args.model)
+    logging.info("Detailed evaluations written to %s", detailed_path)
 
 
 if __name__ == "__main__":

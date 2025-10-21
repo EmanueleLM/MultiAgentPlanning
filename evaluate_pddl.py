@@ -74,14 +74,23 @@ def find_natural_plan(experiments_root: Path, environment_name: str) -> tuple[Op
     return None, target_dir
 
 
-def llm_judge(llm: LLM, golden: str, candidate: str) -> tuple[bool, str, str]:
-    system_prompt = "You are an expert evaluator for calendar scheduling plans."
-    prompt = (
-        "Determine whether the candidate plan achieves the same meeting time as the golden plan.\n"
-        "Ignore wording differences; focus on whether the proposed plan matches with the ground truth label. Remember that they can be written in different ways: what matters is that the result in the proposed solution matches that of the ground truth plan."
-        "\nRespond strictly in JSON with keys 'match' (true/false) and 'reason'."\
-        f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
-    )
+def llm_judge(
+    llm: LLM,
+    golden: str,
+    candidate: str,
+    ignore_cost_differences: bool = False,
+) -> tuple[bool, str, str]:
+    system_prompt = "You are an expert evaluator that compares task solutions against golden references."
+    prompt_lines = [
+        "Determine whether the candidate plan achieves the same outcome as the golden plan.",
+        "Ignore superficial wording differences; focus only on whether the proposed plan satisfies the goal expressed by the golden plan.",
+    ]
+    if ignore_cost_differences:
+        prompt_lines.append(
+            "If the task is Blocksworld, do not reject a candidate solely because it has a higher cost or uses more moves than the golden plan—only check that the final arrangement matches the golden plan."
+        )
+    prompt_lines.append("Respond strictly in JSON with keys 'match' (true/false) and 'reason'.")
+    prompt = "\n".join(prompt_lines) + f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
     response = llm.generate_sync(system_prompt=system_prompt, prompt=prompt)
     try:
         data = json.loads(response)
@@ -108,6 +117,7 @@ def evaluate_dataset(
 
     accumulated_cost = 0.0
     cost_count = 0
+    dataset_is_blocksworld = "blocksworld" in data_path.stem.lower()
 
     for key, payload in sorted_items:
         raw_golden = payload.get("golden_plan", "")
@@ -135,7 +145,12 @@ def evaluate_dataset(
             reason = "Exact match after normalization"
             judge_raw = "Exact match after normalization (judge not invoked)"
         else:
-            correct, reason, judge_raw = llm_judge(llm, golden, natural)
+            correct, reason, judge_raw = llm_judge(
+                llm,
+                golden,
+                natural,
+                ignore_cost_differences=dataset_is_blocksworld,
+            )
 
         if verbose:
             logging.info(
@@ -309,7 +324,7 @@ def write_detailed_evaluations(
     dataset_name: str,
     model: str,
 ) -> Path:
-    details_dir = Path("results") / "_evaluation"
+    details_dir = Path("results") / "_evaluation" / "pddl"
     details_dir.mkdir(parents=True, exist_ok=True)
     output_path = details_dir / f"{dataset_name}.json"
 

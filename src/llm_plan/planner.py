@@ -238,13 +238,12 @@ class Planner:
                 orchestrator_prompt = (filled_prompt or "").strip()
                 note = (
                     "Note: The agent inputs above describe capabilities, goals, and constraints. "
-                    "They are not valid PDDL artefacts. Derive a consistent multi-agent PDDL domain "
+                    "They are not valid PDDL artefacts. Derive a consistent PDDL domain "
                     "and problem that satisfy the specification and remain compatible with the target solver. "
-                    "Treat natural-language preferences (avoid / would rather / earliest) as hard temporal constraints and "
-                    "ensure no unavailable slot is marked free. Prioritise the earliest time that respects every constraint. "
+                    "Treat natural-language preferences (avoid / would rather / earliest) as hard temporal constraints."
                     "Do not emit placeholder tokens such as '...' or 'None'; provide complete predicate and action definitions. "
                     "Keep :requirements limited to :strips, :typing, and :negative-preconditions (optionally :action-costs if you add matching increase effects) and remove every unsupported feature. "
-                    "Express all cost contributions through (increase ...) effects—you must not use ':cost' declarations on action headers."
+                    "Do not use ':cost' declarations on action headers: we are not interested in the final cost of the plan."
                 )
                 if orchestrator_prompt:
                     orchestrator_prompt += f"\n\n{note}"

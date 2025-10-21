@@ -1,0 +1,25 @@
+(define (domain schedule-meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person slot)
+  (:constants gerald roy barbara - person)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (gerald-pref ?s - slot)
+    (scheduled)
+    (meeting-at ?s - slot)
+  )
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (available gerald ?s)
+      (available roy ?s)
+      (available barbara ?s)
+      (gerald-pref ?s)
+      (not (scheduled))
+    )
+    :effect (and
+      (scheduled)
+      (meeting-at ?s)
+    )
+  )
+)

@@ -1,0 +1,116 @@
+{
+    "name": "BlocksworldScaling88",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can only pick up and place blocks whose labels are vowels: A, E, I.",
+                "I can move only the top block of any stack and only one block at a time.",
+                "I can place a moved block either on the table or on top of another block that is currently exposed (top of its stack)."
+            ],
+            "goal": "Contribute to rearranging the blocks so the final single tower order is L on the table, then K, J, I, H, G, F, E, D, C, B, A (A on top)."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can only pick up and place blocks whose labels are consonants: J, H, K, C, B, D, G, L, F.",
+                "I can move only the top block of any stack and only one block at a time.",
+                "I can place a moved block either on the table or on top of another block that is currently exposed."
+            ],
+            "goal": "Contribute to rearranging the blocks so the final single tower order is L on the table, then K, J, I, H, G, F, E, D, C, B, A (A on top)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the capabilities and partial models provided by the two agents and produce a complete PDDL domain and problem targeting the FastDownward planner that achieves the final tower order: L on the table, K on L, J on K, I on J, H on I, G on H, F on G, E on F, D on E, C on D, B on C, A on B."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 12,
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L"
+            ],
+            "stacks": [
+                [
+                    "J",
+                    "A",
+                    "H",
+                    "E",
+                    "D",
+                    "L",
+                    "F"
+                ],
+                [
+                    "K",
+                    "C",
+                    "B",
+                    "G",
+                    "I"
+                ]
+            ],
+            "constraints": {
+                "single_grasp": "Agents can hold at most one block at a time.",
+                "top_only": "Only top blocks of stacks can be moved.",
+                "vowel_agent_restriction": "Vowel agent may only move blocks A, E, I.",
+                "consonant_agent_restriction": "Consonant agent may only move blocks J, H, K, C, B, D, G, L, F."
+            }
+        },
+        "public_information": [
+            "There are 12 uniquely labelled blocks.",
+            "Blocks start arranged in two stacks: stack1 bottom-to-top: J, A, H, E, D, L, F; stack2 bottom-to-top: K, C, B, G, I.",
+            "Only top blocks of any stack can be moved and an agent can move only one block at a time.",
+            "One agent is restricted to vowel-labelled blocks and the other to consonant-labelled blocks.",
+            "Valid placement locations are the table or on top of another exposed block.",
+            "The global goal is to form one tower whose bottom is L on the table and whose top is A, with the exact ordering L, K, J, I, H, G, F, E, D, C, B, A."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "analysis": {
+                "input": [],
+                "output": "model_vowel",
+                "system_prompt": "You are an expert in block manipulation and partial planning models. Based on your private capabilities you should produce a concise, structured partial model describing the objects you can handle, the predicates you assume relevant, and the action schemas you can perform. Do not output a full integrated PDDL domain or problem. Focus on precise descriptions of preconditions and effects for actions you will perform, and list any assumptions or limitations.",
+                "prompt": "Your name is vowel_agent. Here is the public information: {environment->public_information}. Here is your private knowledge: {agents->vowel_agent->private_information}. Here is the global goal: {agents->vowel_agent->goal}. Provide a structured partial model that includes: objects you directly manipulate, a short list of predicates you use, action schemas with explicit preconditions and effects for pick and place operations you can perform, and any assumptions you make about the other agent or the environment. Output should be machine readable but not a full domain file. Tag the output as model_vowel."
+            }
+        },
+        "consonant_agent": {
+            "analysis": {
+                "input": [],
+                "output": "model_consonant",
+                "system_prompt": "You are an expert in block manipulation and partial planning models. Based on your private capabilities you should produce a concise, structured partial model describing the objects you can handle, the predicates you assume relevant, and the action schemas you can perform. Do not output a full integrated PDDL domain or problem. Focus on precise descriptions of preconditions and effects for actions you will perform, and list any assumptions or limitations.",
+                "prompt": "Your name is consonant_agent. Here is the public information: {environment->public_information}. Here is your private knowledge: {agents->consonant_agent->private_information}. Here is the global goal: {agents->consonant_agent->goal}. Provide a structured partial model that includes: objects you directly manipulate, a short list of predicates you use, action schemas with explicit preconditions and effects for pick and place operations you can perform, and any assumptions you make about the other agent or the environment. Output should be machine readable but not a full domain file. Tag the output as model_consonant."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_vowel",
+                    "model_consonant"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in producing PDDL suitable for the FastDownward planner. You will receive partial models from two agents. Your task is to integrate them into a single, correct PDDL domain and a PDDL problem file that FastDownward can consume. Actions coming from each agent must remain distinct and be prefixed by the agent name. Ensure object types, predicates, initial state, and goal are complete and consistent. Enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags.",
+                "prompt": "You are orchestrator. Inputs: the partial models produced by vowel_agent and consonant_agent. The overall goal to achieve is: {agents->orchestrator->goal}. Integrate the partial models {pddl_key_holder} {pddl_small_robot} using the actual inputs model_vowel and model_consonant. Resolve naming mismatches and produce a single PDDL domain and a single PDDL problem that encodes the initial stacks and the final tower order. Keep actions distinct by prefixing them with the agent name, for example (vowel_agent-pick ?b) and (consonant_agent-place ?b ?x). Ensure type declarations, objects, predicates, action definitions, initial state, and goal are complete, consistent, and compatible with FastDownward. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. The final output should be the domain and problem suitable to be given to FastDownward."
+            }
+        },
+        "constraints": [
+            "vowel_agent.analysis->orchestrator.pddl",
+            "consonant_agent.analysis->orchestrator.pddl"
+        ]
+    }
+}

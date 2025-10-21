@@ -1,3 +1,4 @@
+from fileinput import filename
 import random
 import json
 from pathlib import Path
@@ -174,19 +175,34 @@ def generate_dataset(
     return dataset
 
 
-def save_dataset_to_json(filename: str, num_instances: int = 1000):
-    dataset = generate_dataset(num_instances)
+def save_dataset_to_json(filename: str, num_instances: int = 1000, args_generate: Dict = {}):
+    dataset = generate_dataset(num_instances, **args_generate)
     with open(filename, 'w') as f:
         json.dump(dataset, f, indent=4)
 
-
 if __name__ == "__main__":
-    save_dataset_to_json("blocks_world_dataset.json", 100)
-
-
-if __name__ == "__main__":
-    save_folder = Path("./../data/blocksworld")
+    save_folder = Path("./data/blocksworld_scaling/")
     save_folder.mkdir(parents=True, exist_ok=True)
-    
-    # Generate and save 1000 instances to a JSON file
-    save_dataset_to_json(save_folder / "blocks_world_dataset.json", 100)
+
+    num_instances_per_file = 30
+    dataset_with_keys = {}
+    for i, min_steps in enumerate([20, 30, 40, 50, 60]):
+        min_blocks, max_blocks = 10, 15
+        max_steps = min_steps + 5
+        args = {
+            "min_blocks": min_blocks,
+            "max_blocks": max_blocks,
+            "min_steps": min_steps,
+            "max_steps": max_steps
+        }
+        # Generate and save 30 instances to a JSON file
+        dataset = generate_dataset(num_instances=num_instances_per_file, **args)
+        counter = 0
+        for k,v in dataset.items():
+            key = f"blocksworld_{(i*num_instances_per_file) + counter}"
+            dataset_with_keys[key] = v
+            counter += 1
+        
+    with open("./data/blocksworld_scaling/blocksworld_5_levels_scaling.json", 'w') as f:
+        json.dump(dataset_with_keys, f, indent=4)
+            

@@ -1,0 +1,62 @@
+(define (domain blocksworld)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block)
+  (:predicates
+    (on ?x - block ?y - block)
+    (ontable ?x - block)
+    (clear ?x - block)
+    (holding ?x - block)
+    (handempty)
+  )
+
+  ;; pick up a block from the table
+  (:action pickup
+    :parameters (?x - block)
+    :precondition (and (ontable ?x) (clear ?x) (handempty))
+    :effect (and
+      (holding ?x)
+      (not (ontable ?x))
+      (not (clear ?x))
+      (not (handempty))
+    )
+  )
+
+  ;; unstack a block from on top of another block
+  (:action unstack
+    :parameters (?x - block ?y - block)
+    :precondition (and (on ?x ?y) (clear ?x) (handempty))
+    :effect (and
+      (holding ?x)
+      (not (on ?x ?y))
+      (not (clear ?x))
+      (not (handempty))
+      (clear ?y)
+    )
+  )
+
+  ;; put a held block down onto the table
+  (:action putdown
+    :parameters (?x - block)
+    :precondition (and (holding ?x))
+    :effect (and
+      (ontable ?x)
+      (clear ?x)
+      (handempty)
+      (not (holding ?x))
+    )
+  )
+
+  ;; stack a held block onto another clear block
+  (:action stack
+    :parameters (?x - block ?y - block)
+    :precondition (and (holding ?x) (clear ?y))
+    :effect (and
+      (on ?x ?y)
+      (clear ?x)
+      (not (holding ?x))
+      (handempty)
+      (not (clear ?y))
+      (not (ontable ?x))
+    )
+  )
+)

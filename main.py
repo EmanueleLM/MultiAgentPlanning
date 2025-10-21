@@ -298,6 +298,7 @@ def main() -> None:
         "syntax_errors": result["syntax_errors"],
         "pddl_logs": result["pddl_logs"],
         "history": [],
+        "proposed_solution": "",
     }
 
     append_debug_log("ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4))
@@ -327,6 +328,15 @@ def main() -> None:
 
         agent_instance = agent_class(model_plan, agent_class.required_args)
         agent_response = agent_instance.run()
+        match_solution = re.search(
+            r"<proposed_solution>(.*?)</proposed_solution>",
+            agent_response,
+            re.DOTALL,
+        )
+        if match_solution:
+            prompt_args_hypervisor["proposed_solution"] = (
+                match_solution.group(1).strip()
+            )
 
         if agent_name == "NoOpAgent":
             logger.info(
@@ -403,6 +413,7 @@ def main() -> None:
             "pddl_domain": domain,
             "pddl_problem": problem,
             "pddl_plan": plan,
+            "proposed_solution": prompt_args_hypervisor.get("proposed_solution", ""),
         }
         nl_agent = AgentNaturalLanguage(model_plan, prompt_args_nl)
         natural_plan = nl_agent.run()

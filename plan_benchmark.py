@@ -31,9 +31,9 @@ from src.llm_plan.utils import (
 
 DATASET = {
     # Blocksworld Multi-agent
-    "blocksworld": {
+    "multiagent-blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "blocksworld",
+        "results": RESULTS_FOLDER / "multiagent-blocksworld",
     },
     # Google Natural Bench
     "calendar_scheduling": {
@@ -65,6 +65,15 @@ DATASET = {
         "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
         "results": RESULTS_FOLDER / "planbench",
     },
+    "blocksworld": {
+        "data": DATA_PATH / "planbench/blocksworld.json",
+        "results": RESULTS_FOLDER / "planbench",
+    },
+    # Scaling Blocksworld
+    "blocksworld_scaling": {
+        "data": DATA_PATH / "blocksworld_scaling/blocksworld_5_levels_scaling.json",
+        "results": RESULTS_FOLDER / "blocksworld_scaling",
+    },
     # Variations on Calendar Scheduling
     "calendar_easy_to_hard": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
@@ -75,6 +84,7 @@ DATASET = {
         "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted",
     },
 }
+
 
 SOLVER = {
     "POPF2": {
@@ -415,6 +425,7 @@ if __name__ == "__main__":
             "syntax_errors": result["syntax_errors"],
             "pddl_logs": result["pddl_logs"],
             "history": [],
+            "proposed_solution": "",
         }
 
         append_debug_log(
@@ -449,6 +460,15 @@ if __name__ == "__main__":
 
             new_agent = agent_class(model_plan, agent_class.required_args)
             response = new_agent.run()
+            match_solution = re.search(
+                r"<proposed_solution>(.*?)</proposed_solution>",
+                response,
+                re.DOTALL,
+            )
+            if match_solution:
+                prompt_args_hypervisor["proposed_solution"] = (
+                    match_solution.group(1).strip()
+                )
 
             # The Hypervisor decides the plan is good
             if agent_name == "NoOpAgent":
@@ -535,6 +555,9 @@ if __name__ == "__main__":
                 "pddl_domain": domain,
                 "pddl_problem": problem,
                 "pddl_plan": plan,
+                "proposed_solution": prompt_args_hypervisor.get(
+                    "proposed_solution", ""
+                ),
             }
 
             hypervisor_to_nl = AgentNaturalLanguage(

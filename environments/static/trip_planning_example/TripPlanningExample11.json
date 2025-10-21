@@ -2,103 +2,85 @@
     "name": "TripPlanningExample11",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
-            "vienna_agent",
-            "vilnius_agent",
-            "valencia_agent",
+            "traveler",
+            "flight_planner",
             "orchestrator"
         ],
-        "vienna_agent": {
+        "traveler": {
             "private_information": [
-                "I represent Vienna related trip information",
-                "Vienna has direct flights to Valencia",
-                "Vienna has direct flights to Vilnius",
-                "Planned stay in Vienna is 5 days"
+                "I plan to stay in Vienna for 5 days",
+                "I plan to stay in Vilnius for 5 days",
+                "I plan to stay in Valencia for 7 days",
+                "I must attend conferences in Valencia on day 9 and day 15"
             ],
-            "goal": "Provide structured facts about Vienna that the orchestrator can use to build a complete trip plan"
+            "goal": "Visit Vienna, Vilnius, and Valencia over 15 days using only direct flights between cities"
         },
-        "vilnius_agent": {
+        "flight_planner": {
             "private_information": [
-                "I represent Vilnius related trip information",
-                "Vilnius has a direct flight to Vienna",
-                "Planned stay in Vilnius is 5 days"
+                "Direct flights exist between Vienna and Valencia",
+                "Direct flights exist between Vilnius and Vienna",
+                "Only direct flights may be used to commute between cities"
             ],
-            "goal": "Provide structured facts about Vilnius that the orchestrator can use to build a complete trip plan"
-        },
-        "valencia_agent": {
-            "private_information": [
-                "I represent Valencia related trip information",
-                "Valencia has a direct flight to Vienna",
-                "Planned stay in Valencia is 7 days",
-                "Conferences will take place in Valencia on day 9 and day 15"
-            ],
-            "goal": "Provide structured facts about Valencia that the orchestrator can use to build a complete trip plan"
+            "goal": "Provide feasible commuting legs that respect direct flight connectivity and the travel durations"
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate the city facts and produce a final PDDL domain and PDDL problem targeting the FastDownward solver that yields a valid trip itinerary obeying direct-flight constraints and conference attendance requirements"
+            "goal": "Integrate itinerary and flight connectivity information and produce a consolidated PDDL domain and problem targeting the FastDownwards solver"
         }
     },
     "environment": {
         "init": {
-            "trip_length_days": 15,
+            "total_days": 15,
             "cities": [
                 "Vienna",
                 "Vilnius",
                 "Valencia"
+            ],
+            "conference_days": [
+                9,
+                15
             ]
         },
         "public_information": [
-            "Total trip length in days is 15",
-            "You will visit Vienna, Vilnius, and Valencia",
-            "You only take direct flights to commute between cities",
-            "Planned stays reported are Vienna 5 days, Vilnius 5 days, Valencia 7 days",
-            "Conference attendance is required in Valencia on day 9 and day 15",
-            "Direct flight connections are: Vienna<->Valencia and Vilnius<->Vienna"
+            "The trip lasts 15 days in total",
+            "You must use only direct flights to commute between cities",
+            "Direct flight connections: Vienna <-> Valencia, Vilnius <-> Vienna",
+            "Conferences are scheduled in Valencia on day 9 and day 15"
         ]
     },
     "workflow": {
-        "vienna_agent": {
-            "collect_info": {
+        "traveler": {
+            "itinerary": {
                 "input": [],
-                "output": "vienna_info",
-                "system_prompt": "You are the Vienna agent. Provide a concise structured summary containing keys: city, planned_stay_days, direct_flights_from_city, local_constraints. Do not produce PDDL. Use only the public information and your private information.",
-                "prompt": "Your agent name is vienna_agent. The environment public information is {environment->public_information}. Your private information is {agents->vienna_agent->private_information}. Your goal is {agents->vienna_agent->goal}. Produce a structured summary about Vienna that the orchestrator can consume."
+                "output": "itinerary_traveler",
+                "system_prompt": "You are the traveler who knows desired stays and conference constraints. Provide a day by day itinerary outline including arrival and departure days for each city and a candidate visitation order. Do not produce PDDL.",
+                "prompt": "Your name is traveler. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} This is your planning goal: {agents->traveler->goal} Provide an explicit day by day itinerary outline and indicate which days you will be in which city and when you would take flights."
             }
         },
-        "vilnius_agent": {
-            "collect_info": {
+        "flight_planner": {
+            "flight_plan": {
                 "input": [],
-                "output": "vilnius_info",
-                "system_prompt": "You are the Vilnius agent. Provide a concise structured summary containing keys: city, planned_stay_days, direct_flights_from_city, local_constraints. Do not produce PDDL. Use only the public information and your private information.",
-                "prompt": "Your agent name is vilnius_agent. The environment public information is {environment->public_information}. Your private information is {agents->vilnius_agent->private_information}. Your goal is {agents->vilnius_agent->goal}. Produce a structured summary about Vilnius that the orchestrator can consume."
-            }
-        },
-        "valencia_agent": {
-            "collect_info": {
-                "input": [],
-                "output": "valencia_info",
-                "system_prompt": "You are the Valencia agent. Provide a concise structured summary containing keys: city, planned_stay_days, direct_flights_from_city, local_constraints including conference days. Do not produce PDDL. Use only the public information and your private information.",
-                "prompt": "Your agent name is valencia_agent. The environment public information is {environment->public_information}. Your private information is {agents->valencia_agent->private_information}. Your goal is {agents->valencia_agent->goal}. Produce a structured summary about Valencia that the orchestrator can consume."
+                "output": "flight_plan",
+                "system_prompt": "You are an expert in flight connectivity and scheduling. Given required stays and conference days, produce feasible sequences of direct flights and feasible travel days that allow the itinerary to satisfy all constraints. Do not produce PDDL.",
+                "prompt": "Your name is flight_planner. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->flight_planner->private_information} This is your planning goal: {agents->flight_planner->goal} Provide valid commuting legs and suggested flight days that respect direct connections and the specified stay durations and conference days."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "vienna_info",
-                    "vilnius_info",
-                    "valencia_info"
+                    "itinerary_traveler",
+                    "flight_plan"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the orchestrator. Integrate the structured summaries from the city agents to create a complete PDDL domain and PDDL problem targeting the FastDownward solver. Keep actions for different travel legs and city-stay actions distinct and preserve any constraints from agents including conference attendance days. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be compatible with FastDownward.",
-                "prompt": "You are orchestrator. The environment public information is {environment->public_information}. The inputs from agents are {vienna_info}, {vilnius_info}, and {valencia_info}. Your goal is {agents->orchestrator->goal}. Think step by step and produce a PDDL domain and a PDDL problem that plans a 15 day itinerary using only direct flights and ensuring attendance at conferences in Valencia on day 9 and day 15. Keep each agent's actions distinct when relevant. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+                "system_prompt": "You are an expert at producing multi-agent PDDL formulations for FastDownwards. Integrate itinerary and flight connectivity information and output a PDDL domain and a PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and roles distinct where appropriate.",
+                "prompt": "You are the orchestrator. You will receive an itinerary outline and a flight plan from two agents. Your task is to integrate them and produce a complete PDDL domain and a PDDL problem that models days, city locations, stays, flight actions (only direct flights allowed), and conference attendance constraints. Target the FastDownwards solver. Here is the itinerary provided: {itinerary_traveler} Here is the flight connectivity and suggested flight days provided: {flight_plan} Produce a PDDL domain and problem that capture the schedule constraints and the goal of being present in Valencia on day 9 and day 15 and respecting the specified durations in each city. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "vienna_agent.collect_info->orchestrator.pddl",
-            "vilnius_agent.collect_info->orchestrator.pddl",
-            "valencia_agent.collect_info->orchestrator.pddl"
+            "traveler.itinerary->orchestrator.pddl",
+            "flight_planner.flight_plan->orchestrator.pddl"
         ]
     }
 }

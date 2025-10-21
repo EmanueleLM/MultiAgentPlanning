@@ -1,0 +1,114 @@
+{
+    "name": "BlocksworldScaling133",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can only manipulate blocks labeled with vowels: A, E, I.",
+                "I can only pick up blocks that are currently at the top of a stack.",
+                "I can only move one block at a time."
+            ],
+            "goal": "Contribute to the reconfiguration so that the blocks form the target single stack with L on the table and A on top."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can only manipulate blocks labeled with consonants: B, C, D, F, G, H, J, K, L.",
+                "I can only pick up blocks that are currently at the top of a stack.",
+                "I can only move one block at a time."
+            ],
+            "goal": "Contribute to the reconfiguration so that the blocks form the target single stack with L on the table and A on top."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the two agents and must produce a final PDDL domain and problem for the FastDownward solver."
+            ],
+            "goal": "Integrate the agents' local models and produce a complete PDDL domain and problem that achieves the global stacking goal using FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L"
+            ],
+            "stacks": [
+                [
+                    "E",
+                    "H",
+                    "I",
+                    "J",
+                    "K"
+                ],
+                [
+                    "G",
+                    "D",
+                    "L",
+                    "F",
+                    "C"
+                ],
+                [
+                    "A",
+                    "B"
+                ]
+            ],
+            "table_positions": 3
+        },
+        "public_information": [
+            "There are twelve uniquely labeled blocks A B C D E F G H I J K L arranged in stacks on a table.",
+            "Agents may only move blocks that are at the top of a stack.",
+            "Moves consist of picking up a single top block and placing it on top of another stack or on the table.",
+            "One agent is restricted to manipulating vowel-labeled blocks A E I and the other agent is restricted to manipulating consonant-labeled blocks B C D F G H J K L.",
+            "Initial stacks are: Stack1 bottom-to-top E H I J K, Stack2 bottom-to-top G D L F C, Stack3 bottom-to-top A B.",
+            "The global goal is to create a single stack with L on the table and then K J I H G F E D C B A stacked above L in that order so that A is the topmost block."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "local_model": {
+                "input": [],
+                "output": "vowel_model",
+                "system_prompt": "You are the vowel agent. You can only manipulate vowel-labeled blocks A E I. Do not emit PDDL. Provide a concise machine readable summary of your local capabilities and local initial facts.",
+                "prompt": "You are vowel_agent. Given the public information about the blockworld and your private information, produce a JSON object named vowel_model containing the following keys: controllable_blocks listing the vowel blocks you may manipulate, local_top_facts listing which of those blocks are currently at the top of a stack and on what, and allowed_actions describing the abstract move actions you can perform (pick-up and put-down) and any preconditions you require. Keep the output focused on facts and capabilities only."
+            }
+        },
+        "consonant_agent": {
+            "local_model": {
+                "input": [],
+                "output": "consonant_model",
+                "system_prompt": "You are the consonant agent. You can only manipulate consonant-labeled blocks B C D F G H J K L. Do not emit PDDL. Provide a concise machine readable summary of your local capabilities and local initial facts.",
+                "prompt": "You are consonant_agent. Given the public information about the blockworld and your private information, produce a JSON object named consonant_model containing the following keys: controllable_blocks listing the consonant blocks you may manipulate, local_top_facts listing which of those blocks are currently at the top of a stack and on what, and allowed_actions describing the abstract move actions you can perform (pick-up and put-down) and any preconditions you require. Keep the output focused on facts and capabilities only."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "vowel_model",
+                    "consonant_model"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your job is to integrate the local models provided by the agents and produce a complete PDDL domain and PDDL problem targeting the FastDownward planner. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Ensure actions remain distinct where appropriate and that the domain models the constraints that only top blocks can be moved and agent-specific controllability if needed.",
+                "prompt": "You are orchestrator. You will receive the vowel_model and consonant_model JSON objects produced by the agents. Use the public information about initial stacks and the global stacking goal to produce a final PDDL domain and PDDL problem suitable for FastDownward. The domain must define predicates for on block relationships, on-table, clear (top) status, holding if used, and actions to pick up and put down blocks. The problem must declare all blocks, the initial on/on-table/clear facts reconstructed from the provided models and public information, and the goal as a single stack with L on the table and the sequence K J I H G F E D C B A above it. Enclose the pddl domain between <domain> and </domain> tags and the pddl problem between <problem> and </problem> tags. Do not include extraneous commentary."
+            }
+        },
+        "constraints": [
+            "vowel_agent.local_model->orchestrator.pddl",
+            "consonant_agent.local_model->orchestrator.pddl"
+        ]
+    }
+}

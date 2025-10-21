@@ -488,6 +488,15 @@ if __name__ == "__main__":
 
             new_agent = agent_class(model_plan, agent_class.required_args)
             response = new_agent.run()
+            match_solution = re.search(
+                r"<proposed_solution>(.*?)</proposed_solution>",
+                response,
+                re.DOTALL,
+            )
+            if match_solution:
+                prompt_args_hypervisor["proposed_solution"] = (
+                    match_solution.group(1).strip()
+                )
 
             if agent_name == "NoOpAgent":
                 prompt_args_hypervisor["history"].append(agent_name)

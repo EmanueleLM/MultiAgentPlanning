@@ -5,76 +5,73 @@
         "number": 3,
         "names": [
             "traveler",
-            "flight_service",
+            "airline_agent",
             "orchestrator"
         ],
         "traveler": {
             "private_information": [
-                "I plan to visit 3 European cities in 6 days total",
-                "I would like to stay in Berlin for 3 days, Warsaw for 3 days, and Bucharest for 2 days",
-                "I must meet a friend in Bucharest between day 5 and day 6"
+                "Total available days: 6",
+                "Preference: stay in Bucharest for 2 days and meet a friend there between day 5 and day 6",
+                "Preferences (soft): visit Berlin for 3 days and visit Warsaw for 3 days",
+                "No explicit start city provided"
             ],
-            "goal": "Obtain a feasible 6-day itinerary that visits Berlin, Warsaw, and Bucharest using only direct flights and satisfying the meeting constraint in Bucharest."
+            "goal": "Find an itinerary visiting Berlin, Warsaw, and Bucharest for a total of 6 days that respects direct-flight connectivity and the Bucharest meeting constraint."
         },
-        "flight_service": {
+        "airline_agent": {
             "private_information": [
-                "I only provide direct flights between listed city pairs",
-                "Available direct connections: Berlin-Warsaw and Warsaw-Bucharest"
+                "Direct flights exist between Berlin and Warsaw",
+                "Direct flights exist between Warsaw and Bucharest",
+                "No direct flights exist between Berlin and Bucharest"
             ],
-            "goal": "Provide the available direct flight connections and indicate feasibility of commutes between cities for a 6-day trip."
+            "goal": "Provide feasible sequences of direct flights to commute between the three cities consistent with the traveler constraints."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate traveler preferences and flight availability to produce a PDDL domain and problem, targeting the FastDownwards solver, that encodes a feasible 6-day itinerary using only direct flights and satisfying the Bucharest meeting constraint."
+            "goal": "Integrate traveler preferences and airline connectivity to produce a final PDDL domain and problem for the trip planning task targeting the FastDownwards solver."
         }
     },
     "environment": {
         "init": {
-            "total_days": 6,
-            "cities": [
-                "Berlin",
-                "Warsaw",
-                "Bucharest"
-            ]
+            "total_days": 6
         },
         "public_information": [
-            "You plan to visit three European cities over a total of 6 days.",
-            "Only direct flights are allowed for commuting between cities.",
-            "Direct flight pairs available are: Berlin-Warsaw and Warsaw-Bucharest.",
-            "You must be in Bucharest to meet a friend sometime between day 5 and day 6."
+            "Cities to consider: Berlin, Warsaw, Bucharest",
+            "Total trip length: 6 days",
+            "You may only take direct flights to commute between cities",
+            "Direct flight connections: Berlin <-> Warsaw, Warsaw <-> Bucharest",
+            "Bucharest visit must include meeting a friend between day 5 and day 6",
+            "Traveler desires Bucharest 2 days (hard) and prefers Berlin 3 days and Warsaw 3 days (soft preferences)"
         ]
     },
     "workflow": {
         "traveler": {
-            "planning": {
+            "propose_itinerary": {
                 "input": [],
-                "output": "traveler_preferences",
-                "system_prompt": "You are an expert travel planner focusing on user preferences and temporal constraints. Produce a concise description of the traveler's preferences, required stays per city, hard constraints such as the meeting window, and any flexibility notes. Do not emit PDDL here.",
-                "prompt": "Your name is traveler. Use the public information from the environment and your private information to produce structured preferences and constraints that an orchestrator can consume. Public information: {environment->public_information}. Private information: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide stays per city, meeting time window, total days, and any notes about flexibility or conflicts."
+                "output": "traveler_itinerary",
+                "system_prompt": "You are the traveler agent. Using your private information and the environment public information, propose one or more candidate itineraries as a day-by-day allocation of the 6 days among Berlin, Warsaw, and Bucharest. Mark which parts are hard constraints and which are preferences. Do not produce PDDL. Provide structured output that lists for each day the city visited and any meeting events."
             }
         },
-        "flight_service": {
-            "planning": {
+        "airline_agent": {
+            "provide_flights": {
                 "input": [],
-                "output": "flight_service_availability",
-                "system_prompt": "You are an expert flight availability service. Provide a clear representation of available direct flight connections, travel time assumptions (e.g., one day per commute unless specified), and any ordering or feasibility constraints implied by the network. Do not emit PDDL here.",
-                "prompt": "Your name is flight_service. Use the public information from the environment and your private information to list available direct flight legs and feasible commuting patterns. Public information: {environment->public_information}. Private information: {agents->flight_service->private_information}. Goal: {agents->flight_service->goal}. Provide flight legs, travel time assumptions, and notes on connectivity limitations."
+                "output": "flight_data",
+                "system_prompt": "You are the airline agent. Provide the available direct-flight connections and feasible sequences of direct flights that enable movement between the cities. Indicate travel durations in whole days or as transitions between days and any assumptions made about flight timing. Do not produce PDDL."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "traveler_preferences",
-                    "flight_service_availability"
+                    "traveler_itinerary",
+                    "flight_data"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent planning and in producing PDDL specifications for the FastDownwards planner. Integrate the structured preferences and the flight availability information from other agents and produce a PDDL domain and a PDDL problem that encodes the 6-day itinerary planning task. The PDDL must target FastDownwards compatibility (use STRIPS-style constructs and standard numeric fluents only if needed). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions corresponding to different agents distinct where relevant.",
-                "prompt": "You are the orchestrator. You receive traveler preferences and flight availability. Traveler preferences: {traveler_preferences}. Flight availability: {flight_service_availability}. Orchestrator goal: {agents->orchestrator->goal}. Integrate the inputs, resolve any conflicts if possible (document assumptions if you make them), and produce a PDDL domain and a PDDL problem for FastDownwards that, when solved, yields a 6-day itinerary visiting Berlin, Warsaw, and Bucharest using only direct flights and satisfying the meeting in Bucharest between day 5 and day 6. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are the orchestrator. Integrate the traveler itineraries and airline flight data to produce a complete PDDL domain and a PDDL problem that models the trip planning task and can be solved with the FastDownwards planner. The PDDL should model days as discrete time steps, cities as locations, travel actions restricted to direct flights, stay actions for spending a day in a city, and a meeting requirement in Bucharest between day 5 and day 6. Preserve agent-distinct actions if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver in modeling choices such as STRIPS or ADL constructs that FastDownwards supports.",
+                "prompt": "You are the orchestrator agent. Here is the environment public information: {environment->public_information}. Here is what the traveler provided: {traveler_itinerary}. Here is the flight information provided by the airline agent: {flight_data}. Produce a PDDL domain and a PDDL problem that encode the trip planning task for 6 days using only direct flights, satisfying the Bucharest meeting constraint and the traveler's hard preferences. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Ensure the PDDL is suitable for FastDownwards."
             }
         },
         "constraints": [
-            "traveler.planning->orchestrator.pddl",
-            "flight_service.planning->orchestrator.pddl"
+            "traveler.propose_itinerary->orchestrator.pddl",
+            "airline_agent.provide_flights->orchestrator.pddl"
         ]
     }
 }

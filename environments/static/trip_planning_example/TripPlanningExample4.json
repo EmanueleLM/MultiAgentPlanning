@@ -5,80 +5,79 @@
         "number": 3,
         "names": [
             "traveler",
-            "flight_agent",
+            "flights_manager",
             "orchestrator"
         ],
         "traveler": {
             "private_information": [
-                "I plan a trip visiting Seville, Munich, and Tallinn",
-                "I want to visit Tallinn for 2 days",
-                "I want to visit Seville for 7 days",
-                "I plan to stay in Munich for 5 days",
-                "I want to meet a friend in Tallinn between day 11 and day 12",
-                "The total trip length is 12 days"
+                "I plan to visit Tallinn for 2 days.",
+                "I would like to visit Seville for 7 days.",
+                "I plan to stay in Munich for 5 days.",
+                "I want to meet a friend in Tallinn between day 11 and day 12."
             ],
-            "goal": "Find a feasible itinerary of visits and stays across Seville, Munich, and Tallinn that fits the 12 day limit and respects meeting constraints"
+            "goal": "Provide preferred visit durations and a candidate visit sequence that aims to satisfy a 12 day total trip while flagging any inconsistencies."
         },
-        "flight_agent": {
+        "flights_manager": {
             "private_information": [
-                "Only direct flights are allowed for commutes between cities",
-                "Direct flight connections available: Seville <-> Munich, Munich <-> Tallinn"
+                "Direct flights exist between Seville and Munich.",
+                "Direct flights exist between Munich and Tallinn.",
+                "There are no direct flights between Seville and Tallinn."
             ],
-            "goal": "Provide flight connectivity and feasibility information for commuting between the three cities using direct flights only"
+            "goal": "Provide the direct-flight connectivity graph and any notes about required flight legs to move between cities."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate agents information, resolve any inconsistencies, and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes a feasible 12 day trip plan using only direct flights"
+            "goal": "Integrate agents' inputs and produce a final PDDL domain and PDDL problem for the FastDownwards planner that encodes a valid 12-day itinerary using only direct flights and satisfies the meeting constraint in Tallinn."
         }
     },
     "environment": {
         "init": {
-            "days_total": 12,
+            "total_days": 12,
             "cities": [
+                "Tallinn",
                 "Seville",
-                "Munich",
-                "Tallinn"
-            ]
+                "Munich"
+            ],
+            "visibility": 1
         },
         "public_information": [
-            "You plan to visit three European cities: Seville, Munich, and Tallinn",
-            "Total trip length must be 12 days",
-            "Commute between cities is allowed only via direct flights",
-            "Direct flight connections are: Seville and Munich, Munich and Tallinn",
-            "You want to meet a friend in Tallinn between day 11 and day 12"
+            "You plan a 12 day trip across three cities: Tallinn, Seville and Munich.",
+            "Only direct flights may be used to commute between cities.",
+            "Direct flights exist between Seville and Munich and between Munich and Tallinn.",
+            "Desired visit durations are provided by the traveler as private preferences and may conflict with the total trip length."
         ]
     },
     "workflow": {
         "traveler": {
-            "analysis": {
+            "propose_schedule": {
                 "input": [],
-                "output": "itinerary_traveler",
-                "system_prompt": "You are the traveler agent responsible for expressing preferences and hard requirements about the trip. Provide a clear description of desired stays per city, any hard time windows or meeting constraints, and point out contradictions or overconstrained requests relative to the total trip length.",
-                "prompt": "Your name is traveler. You know the public facts about the trip and you have private preferences and requirements given in your private information. Produce a suggested allocation of days per city that attempts to respect your preferences but also explicitly flag any conflicts with the total trip length. Do not produce PDDL. Output a short structured suggestion named itinerary_traveler describing per city stays and the meeting constraint and any unresolved conflicts."
+                "output": "traveler_proposal",
+                "system_prompt": "You are an expert at expressing traveler preferences and producing a human-readable proposed allocation of days and a candidate visit order. Do not emit PDDL. Evaluate your private preferences against the public information and the total trip length. If there is any inconsistency between preferred durations and the total trip length, flag the inconsistency and propose one or two reasonable adjustments to fit the 12 day limit. Also provide a proposed sequence of visits and the flight legs required between consecutive cities according to your understanding.",
+                "prompt": "Your name is traveler. Here is the public context: {environment->public_information} Here is your private information: {agents->traveler->private_information} This is your local goal: {agents->traveler->goal} Provide a proposed allocation of days per city, a suggested visit order, the flight legs required between consecutive stops, and note any inconsistencies or assumptions you make."
             }
         },
-        "flight_agent": {
-            "analysis": {
+        "flights_manager": {
+            "provide_flights": {
                 "input": [],
                 "output": "flights_info",
-                "system_prompt": "You are the flight connectivity agent. Provide the direct flight graph, feasible commute sequences between cities, and note if any desired successive city visits are impossible without intermediate stops given the direct flight constraints. Do not produce PDDL.",
-                "prompt": "Your name is flight_agent. You know the public facts about flight connectivity. Produce a concise structured summary named flights_info that lists direct connections and indicates possible travel sequences that respect direct flights only. Highlight if a direct succession between two desired cities is not possible without passing through a third city."
+                "system_prompt": "You are an expert on flight connectivity between the listed cities. Do not emit PDDL. Provide a clear description of direct flight connections, and for any pair of cities that lack a direct flight, specify the minimal sequence of direct legs required to travel between them.",
+                "prompt": "Your name is flights_manager. Here is the public context: {environment->public_information} Here is your private information: {agents->flights_manager->private_information} This is your local goal: {agents->flights_manager->goal} Provide the direct-flight connectivity graph and, for each ordered pair of cities, specify whether a direct flight exists and if not provide the minimal sequence of direct legs required to travel between them."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "itinerary_traveler",
+                    "traveler_proposal",
                     "flights_info"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent planning and PDDL. Your task is to integrate the informational outputs from the other agents, resolve inconsistencies, and produce a complete PDDL domain and problem file suitable for the FastDownwards solver that encodes the planning problem of creating a feasible 12 day trip schedule using only direct flights. Keep actions for different agents or roles distinct when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL models the total number of days, stays in cities as intervals or day assignments, flight moves constrained by direct connections, and the meeting constraint in Tallinn on day 11 or day 12.",
-                "prompt": "You are the orchestrator. You will receive two inputs named itinerary_traveler and flights_info that summarize traveler desires and available direct flights. Integrate these inputs, resolve the reported conflicts, and produce a PDDL domain and PDDL problem that together encode a feasible 12 day trip plan. The PDDL should be ready for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownwards planner. Integrate information from other agents and produce a complete PDDL domain and a PDDL problem suitable for FastDownwards. Always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags. Keep the actions of distinct agents conceptually separate where relevant and document any resolution of inconsistencies. The produced PDDL must model days, city stay durations, direct-flight-only travel constraints, and the meeting constraint in Tallinn. If you must choose an interpretation for an ambiguous requirement, choose a valid one and state it briefly inside comments in the PDDL problem file.",
+                "prompt": "There are multiple agent inputs to integrate. You will receive a traveler's proposed allocation and visit order and a flights manager's direct-flight connectivity data. Your orchestrator goal is: {agents->orchestrator->goal} Here is the traveler's proposal: {traveler_proposal} Here is the flights data: {flights_info} Build a PDDL domain and PDDL problem that encode the following key constraints: the itinerary must cover exactly {environment->init->total_days} days, stays in each city must match the chosen allocation of days, only direct flights allowed for commuting between consecutive visits, and the traveler must be in Tallinn on day 11 or day 12 to meet their friend (document which day you choose). Ensure the PDDL is compatible with FastDownwards and enclose the domain and problem using <domain></domain> and <problem></problem> tags."
             }
         },
         "constraints": [
-            "traveler.analysis->orchestrator.pddl",
-            "flight_agent.analysis->orchestrator.pddl"
+            "traveler.propose_schedule->orchestrator.pddl",
+            "flights_manager.provide_flights->orchestrator.pddl"
         ]
     }
 }

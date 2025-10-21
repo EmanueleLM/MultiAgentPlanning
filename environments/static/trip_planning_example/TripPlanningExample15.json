@@ -2,31 +2,41 @@
     "name": "TripPlanningExample15",
     "author": "Human",
     "agents": {
-        "number": 3,
+        "number": 4,
         "names": [
-            "traveler",
-            "flights_db",
+            "berlin_agent",
+            "porto_agent",
+            "krakow_agent",
             "orchestrator"
         ],
-        "traveler": {
+        "berlin_agent": {
             "private_information": [
-                "I plan to visit 3 European cities over 11 days in total",
-                "Desired stays: Berlin 6 days, Porto 2 days, Krakow 5 days",
-                "I must attend a wedding in Porto between day 10 and day 11",
-                "I will only take direct flights to commute between cities"
+                "City: Berlin",
+                "Preferred stay: 6 days",
+                "Direct flights available to Porto and Krakow"
             ],
-            "goal": "Find a feasible trip schedule visiting Berlin, Porto, and Krakow within 11 days using only direct flights and respecting the wedding date"
+            "goal": "Provide structured information about Berlin stay preferences to help build a feasible 11-day itinerary."
         },
-        "flights_db": {
+        "porto_agent": {
             "private_information": [
-                "Direct flights exist between Berlin and Porto",
-                "Direct flights exist between Krakow and Berlin"
+                "City: Porto",
+                "Preferred stay: 2 days",
+                "Must attend a wedding between day 10 and day 11 (must be present in Porto at that time)",
+                "Direct flight available to Berlin"
             ],
-            "goal": "Provide the set of available direct connections and feasible city-to-city commutes consistent with direct-flight-only constraint"
+            "goal": "Provide structured information about Porto stay preferences and the wedding timing to help build a feasible 11-day itinerary."
+        },
+        "krakow_agent": {
+            "private_information": [
+                "City: Krakow",
+                "Preferred stay: 5 days",
+                "Direct flight available to Berlin"
+            ],
+            "goal": "Provide structured information about Krakow stay preferences to help build a feasible 11-day itinerary."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate traveler constraints and the flights information and produce a PDDL domain and PDDL problem for FastDownward that yields a feasible itinerary respecting direct flights and the wedding timing"
+            "goal": "Integrate the city agents' preferences and constraints, resolve conflicts (if any), and produce a feasible itinerary for 11 days using only direct flights. Output a PDDL domain and PDDL problem targeted for the FastDownwards solver that encodes the chosen itinerary and constraints."
         }
     },
     "environment": {
@@ -37,47 +47,67 @@
                 "Porto",
                 "Krakow"
             ],
-            "start_day": 1
+            "direct_flights": [
+                [
+                    "Berlin",
+                    "Porto"
+                ],
+                [
+                    "Krakow",
+                    "Berlin"
+                ]
+            ]
         },
         "public_information": [
-            "Trip involves three cities: Berlin, Porto, Krakow",
-            "Total trip duration is 11 days",
-            "Only direct flights are allowed between cities",
-            "Known direct flight connections are Berlin-Porto and Krakow-Berlin",
-            "There is a wedding in Porto between day 10 and day 11"
+            "You plan to visit 3 European cities for 11 days in total.",
+            "Cities to visit: Berlin, Porto, Krakow.",
+            "You only take direct flights to commute between cities.",
+            "Direct flight connections: Berlin <-> Porto, Krakow <-> Berlin.",
+            "Porto wedding occurs between day 10 and day 11 and must be attended.",
+            "Preferred stays (may be conflicting): Berlin 6 days, Porto 2 days, Krakow 5 days."
         ]
     },
     "workflow": {
-        "traveler": {
-            "knowledge": {
+        "berlin_agent": {
+            "info": {
                 "input": [],
-                "output": "req_traveler",
-                "system_prompt": "You are an agent that represents the traveler's preferences and constraints. Provide a concise structured description of the traveler's requirements including desired stay durations per city, hard date constraints such as the wedding, and the constraint to use only direct flights. Do not output PDDL.",
-                "prompt": "Your name is traveler. You observe the environment public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal is: {agents->traveler->goal} Provide a clear, machine-friendly summary of constraints and preferences that the orchestrator can use. Do not emit PDDL."
+                "output": "info_berlin",
+                "system_prompt": "You are an agent representing the travel preference for Berlin. Do NOT output PDDL. Provide a concise structured summary (as plain text or a small JSON-like structure) containing at least: city name, preferred_days (integer), any hard constraints (e.g., must_arrive_by, must_leave_by, must_be_present_on). Use the public information and your private information to fill the fields.",
+                "prompt": "Your name is berlin_agent. Public information available:\n{environment->public_information}\nYour private information:\n{agents->berlin_agent->private_information}\nYour goal:\n{agents->berlin_agent->goal}\nProvide the structured summary required by the system prompt."
             }
         },
-        "flights_db": {
-            "knowledge": {
+        "porto_agent": {
+            "info": {
                 "input": [],
-                "output": "flights_info",
-                "system_prompt": "You are an agent that provides authoritative flight connectivity information. Provide a concise listing of direct connections, and enumerate feasible direct flight legs between the cities. Do not output PDDL.",
-                "prompt": "Your name is flights_db. You observe the environment public information: {environment->public_information} You have the following private information: {agents->flights_db->private_information} Your goal is: {agents->flights_db->goal} Provide a clear, machine-friendly summary of available direct connections and any implications for possible city-to-city moves. Do not emit PDDL."
+                "output": "info_porto",
+                "system_prompt": "You are an agent representing the travel preference for Porto. Do NOT output PDDL. Provide a concise structured summary (as plain text or a small JSON-like structure) containing at least: city name, preferred_days (integer), any hard constraints (e.g., must_arrive_by, must_leave_by, must_be_present_on). Explicitly indicate the requirement to be in Porto for the wedding between day 10 and day 11.",
+                "prompt": "Your name is porto_agent. Public information available:\n{environment->public_information}\nYour private information:\n{agents->porto_agent->private_information}\nYour goal:\n{agents->porto_agent->goal}\nProvide the structured summary required by the system prompt."
+            }
+        },
+        "krakow_agent": {
+            "info": {
+                "input": [],
+                "output": "info_krakow",
+                "system_prompt": "You are an agent representing the travel preference for Krakow. Do NOT output PDDL. Provide a concise structured summary (as plain text or a small JSON-like structure) containing at least: city name, preferred_days (integer), any hard constraints (e.g., must_arrive_by, must_leave_by, must_be_present_on).",
+                "prompt": "Your name is krakow_agent. Public information available:\n{environment->public_information}\nYour private information:\n{agents->krakow_agent->private_information}\nYour goal:\n{agents->krakow_agent->goal}\nProvide the structured summary required by the system prompt."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "req_traveler",
-                    "flights_info"
+                    "info_berlin",
+                    "info_porto",
+                    "info_krakow"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling. Your task is to integrate structured inputs from other agents and produce a complete PDDL domain and PDDL problem targeting the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct if actions are agent-specific. Resolve inconsistencies by reporting assumptions in comments inside the PDDL problem file.",
-                "prompt": "You are the orchestrator. Your inputs are the traveler's requirements and the flights database outputs: {req_traveler} {flights_info} Your goal is: {agents->orchestrator->goal} Use the environment public information: {environment->public_information} Integrate the inputs and produce a PDDL domain and PDDL problem that models days as discrete time steps from start_day to start_day+total_days-1, models cities and direct-flight-only movement, enforces the wedding presence in Porto on days 10 to 11, and finds a feasible schedule for being in each city for the required durations while using only direct flights. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownward solver. If you must assume a start city or adjust overlapping duration requirements, state those assumptions as comments inside the PDDL problem."
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Your task is to integrate the structured summaries produced by the city agents and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. You MUST enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Represent days as discrete time steps 1..11. Encode travel actions that use only direct flights listed in the public information. Encode stay requirements so the itinerary assigns exactly one city per day and satisfies hard constraints (including being in Porto for the wedding between day 10 and day 11). If city preferred durations exceed the total available days, resolve by minimizing deviation from preferences while respecting hard constraints. Keep agent-related actions and predicates clearly namespaced where appropriate to avoid ambiguity.",
+                "prompt": "You are orchestrator. Global goal:\n{agents->orchestrator->goal}\nPublic information:\n{environment->public_information}\nHere are the structured summaries from the city agents (may be partial or conflictual):\n{info_berlin}\n{info_porto}\n{info_krakow}\nIntegrate the information, resolve conflicts if necessary (but do not invent hard constraints), and output a PDDL domain and a PDDL problem that encode a feasible 11-day itinerary using only the available direct flights and satisfying the wedding constraint. Target the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "traveler.knowledge->orchestrator.pddl",
-            "flights_db.knowledge->orchestrator.pddl"
+            "berlin_agent.info->orchestrator.pddl",
+            "porto_agent.info->orchestrator.pddl",
+            "krakow_agent.info->orchestrator.pddl"
         ]
     }
 }

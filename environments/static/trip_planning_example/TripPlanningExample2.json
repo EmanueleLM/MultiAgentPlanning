@@ -4,92 +4,86 @@
     "agents": {
         "number": 4,
         "names": [
-            "reykjavik_agent",
-            "vienna_agent",
-            "venice_agent",
+            "reykjavik",
+            "vienna",
+            "venice",
             "orchestrator"
         ],
-        "reykjavik_agent": {
+        "reykjavik": {
             "private_information": [
-                "Preferred stay: 2 days",
-                "Direct flight connection: Reykjavik <-> Vienna"
+                "I would like to visit Reykjavik for 2 days.",
+                "There is a direct flight between Reykjavik and Vienna."
             ],
-            "goal": "Contribute desired stay and connectivity information for the global trip plan."
+            "goal": "Propose a local schedule for visiting Reykjavik as part of the 11-day trip."
         },
-        "vienna_agent": {
+        "vienna": {
             "private_information": [
-                "Preferred stay: 7 days",
-                "Direct flight connections: Vienna <-> Reykjavik, Vienna <-> Venice"
+                "I would like to spend 7 days in Vienna.",
+                "There are direct flights between Vienna and Reykjavik and between Vienna and Venice."
             ],
-            "goal": "Contribute desired stay and connectivity information for the global trip plan."
+            "goal": "Propose a local schedule for visiting Vienna as part of the 11-day trip."
         },
-        "venice_agent": {
+        "venice": {
             "private_information": [
-                "Preferred stay: 4 days",
-                "Wedding attendance required in Venice between day 8 and day 11",
-                "Direct flight connection: Venice <-> Vienna"
+                "I would like to visit Venice for 4 days.",
+                "I must attend a wedding in Venice between day 8 and day 11."
             ],
-            "goal": "Contribute desired stay and event constraints for the global trip plan."
+            "goal": "Propose a local schedule for visiting Venice as part of the 11-day trip and ensure presence at the wedding."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate local constraints to produce a feasible 11-day itinerary using only direct flights and ensure attendance at the Venice wedding between day 8 and day 11."
+            "goal": "Integrate city proposals and produce a final PDDL domain and problem for the FastDownward solver representing an 11-day itinerary that uses only direct flights and ensures attendance at the wedding."
         }
     },
     "environment": {
         "init": {
-            "total_days": 11,
-            "start_day": 1
+            "total_days": 11
         },
         "public_information": [
-            "Trip length is 11 days in total",
-            "Only direct flights may be used to commute between cities",
-            "Cities involved: Reykjavik, Vienna, Venice",
-            "Direct flights exist between Reykjavik and Vienna and between Vienna and Venice",
-            "The wedding in Venice must be attended sometime between day 8 and day 11 inclusive"
+            "Cities to visit: Reykjavik, Vienna, Venice.",
+            "Total trip length is 11 days.",
+            "Only direct flights are allowed between the cities: Reykjavik <-> Vienna and Vienna <-> Venice.",
+            "You must attend a wedding in Venice between day 8 and day 11.",
+            "You will commute between cities only by direct flights listed above."
         ]
     },
     "workflow": {
-        "reykjavik_agent": {
-            "local_plan": {
+        "reykjavik": {
+            "proposal": {
                 "input": [],
-                "output": "local_plan_reykjavik",
-                "system_prompt": "You are the Reykjavik local planner. Provide a concise structured summary with keys: city, desired_stay_days, direct_flights. Do not produce PDDL.",
-                "prompt": "Your name is reykjavik_agent. You have the following public information: {environment->public_information}. Your private information: {agents->reykjavik_agent->private_information}. Your goal: {agents->reykjavik_agent->goal}. Provide the structured summary for Reykjavik."
+                "output": "proposal_reykjavik",
+                "system_prompt": "You are the Reykjavik planner. Use the public information {environment->public_information} and your private information {agents->reykjavik->private_information}. Your goal is {agents->reykjavik->goal}. Provide a concise proposed local schedule as JSON with keys arrival_day and duration (number of days). Do not produce PDDL."
             }
         },
-        "vienna_agent": {
-            "local_plan": {
+        "vienna": {
+            "proposal": {
                 "input": [],
-                "output": "local_plan_vienna",
-                "system_prompt": "You are the Vienna local planner. Provide a concise structured summary with keys: city, desired_stay_days, direct_flights. Do not produce PDDL.",
-                "prompt": "Your name is vienna_agent. You have the following public information: {environment->public_information}. Your private information: {agents->vienna_agent->private_information}. Your goal: {agents->vienna_agent->goal}. Provide the structured summary for Vienna."
+                "output": "proposal_vienna",
+                "system_prompt": "You are the Vienna planner. Use the public information {environment->public_information} and your private information {agents->vienna->private_information}. Your goal is {agents->vienna->goal}. Provide a concise proposed local schedule as JSON with keys arrival_day and duration (number of days). Do not produce PDDL."
             }
         },
-        "venice_agent": {
-            "local_plan": {
+        "venice": {
+            "proposal": {
                 "input": [],
-                "output": "local_plan_venice",
-                "system_prompt": "You are the Venice local planner. Provide a concise structured summary with keys: city, desired_stay_days, direct_flights, fixed_events. Do not produce PDDL.",
-                "prompt": "Your name is venice_agent. You have the following public information: {environment->public_information}. Your private information: {agents->venice_agent->private_information}. Your goal: {agents->venice_agent->goal}. Provide the structured summary for Venice including the wedding event."
+                "output": "proposal_venice",
+                "system_prompt": "You are the Venice planner. Use the public information {environment->public_information} and your private information {agents->venice->private_information}. Your goal is {agents->venice->goal}. Provide a concise proposed local schedule as JSON with keys arrival_day and duration (number of days) and indicate which days cover the wedding window. Do not produce PDDL."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "local_plan_reykjavik",
-                    "local_plan_vienna",
-                    "local_plan_venice"
+                    "proposal_reykjavik",
+                    "proposal_vienna",
+                    "proposal_venice"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent PDDL planning and in preparing problems for the FastDownwards planner. Integrate the structured summaries from the local planners and produce a single PDDL domain and a single PDDL problem that finds a feasible 11-day itinerary using only direct flights and ensures attendance at the Venice wedding between day 8 and day 11. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver.",
-                "prompt": "You are the orchestrator. You will receive structured summaries from three agents and must integrate them to produce a PDDL domain and problem that solve the global goal: {agents->orchestrator->goal}. Here are the summaries: {local_plan_reykjavik} {local_plan_vienna} {local_plan_venice}. Keep the actions of different cities distinct and resolve any duration conflicts to produce a feasible plan within 11 days. Think step by step and provide a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in multi-agent PDDL modeling targeting the FastDownward planner. You must integrate the city proposals and the public information {environment->public_information} to produce a complete PDDL domain and a PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep each agent's actions distinct (for example, travel actions for different agents must be clearly labeled). If the city proposals conflict with the global constraints (total days = 11, direct-flight-only connectivity, and wedding attendance), resolve the conflicts so the final plan satisfies all global constraints. Use the proposals {proposal_reykjavik}, {proposal_vienna}, and {proposal_venice} as input data to build the domain and problem."
             }
         },
         "constraints": [
-            "reykjavik_agent.local_plan->orchestrator.pddl",
-            "vienna_agent.local_plan->orchestrator.pddl",
-            "venice_agent.local_plan->orchestrator.pddl"
+            "reykjavik.proposal->orchestrator.pddl",
+            "vienna.proposal->orchestrator.pddl",
+            "venice.proposal->orchestrator.pddl"
         ]
     }
 }

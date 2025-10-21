@@ -2,44 +2,33 @@
     "name": "TripPlanningExample29",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
             "traveler",
-            "flight_planner",
-            "accommodation_planner",
+            "flights",
             "orchestrator"
         ],
         "traveler": {
             "private_information": [
-                "I plan a 10 day trip in total",
-                "I want to visit three cities: Krakow, Dubrovnik, Frankfurt",
-                "I want to spend 2 days in Krakow",
-                "I want to stay in Dubrovnik for 7 days",
-                "I would like to visit Frankfurt for 3 days",
-                "There is a wedding in Krakow between day 9 and day 10",
-                "Note: the sum of desired stays is 12 days which conflicts with the 10 day total"
+                "I plan a 10 day trip visiting three European cities: Krakow, Dubrovnik, and Frankfurt.",
+                "I would like to spend 2 days in Krakow.",
+                "I would like to spend 7 days in Dubrovnik.",
+                "I would like to spend 3 days in Frankfurt.",
+                "I will attend a wedding in Krakow between day 9 and day 10 of the overall schedule."
             ],
-            "goal": "Propose a candidate sequence of visits and a high level day allocation that respects direct flight connectivity and the wedding constraint. Flag any conflicts and propose feasible resolutions."
+            "goal": "Propose a provisional allocation of days across the three cities that aims to respect my preferences and the total 10 day limit."
         },
-        "flight_planner": {
+        "flights": {
             "private_information": [
-                "Only direct flights can be used to commute between cities",
-                "Available direct flight pairs are Frankfurt - Krakow and Dubrovnik - Frankfurt",
-                "No direct flight connects Dubrovnik and Krakow"
+                "Direct flights exist between Frankfurt and Krakow.",
+                "Direct flights exist between Dubrovnik and Frankfurt.",
+                "No direct flights are listed between Krakow and Dubrovnik."
             ],
-            "goal": "Provide a connectivity graph of direct flights and feasible flight leg sequences to visit the three cities under the direct flights only constraint."
-        },
-        "accommodation_planner": {
-            "private_information": [
-                "Total trip length must be 10 days",
-                "Wedding in Krakow must be attended between day 9 and day 10 and requires being in Krakow at that time",
-                "Traveler provided desired per-city durations but these conflict with the 10 day total"
-            ],
-            "goal": "Suggest day-by-day stay allocations and possible adjustments to durations to resolve conflicts while ensuring presence in Krakow for the wedding window."
+            "goal": "Provide the network of available direct flight legs and feasible commuting sequences connecting the three cities using only direct flights."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate the outputs of the other agents and produce a final PDDL domain and problem targeted for the FastDownwards solver that encodes the travel planning problem and a valid 10 day itinerary consistent with constraints."
+            "goal": "Integrate traveler preferences and flight connectivity and produce a feasible 10 day itinerary that uses only direct flights. Output a PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the itinerary planning problem."
         }
     },
     "environment": {
@@ -62,56 +51,44 @@
             ]
         },
         "public_information": [
-            "You plan to visit three European cities for 10 days in total",
-            "You only take direct flights to commute between cities",
-            "You want to spend 2 days in Krakow",
-            "You are going to attend a wedding in Krakow between day 9 and day 10",
-            "You plan to stay in Dubrovnik for 7 days",
-            "You would like to visit Frankfurt for 3 days",
-            "Direct flights exist between Frankfurt and Krakow and between Dubrovnik and Frankfurt"
+            "You will visit Krakow, Dubrovnik, and Frankfurt during a 10 day trip.",
+            "You only take direct flights to commute between cities.",
+            "Desired stays declared by the traveler are 2 days in Krakow, 7 days in Dubrovnik, and 3 days in Frankfurt, which together exceed the 10 day total and therefore may require compromise.",
+            "There is a wedding in Krakow that must be attended between day 9 and day 10.",
+            "Direct flight pairs are: Frankfurt-Krakow and Dubrovnik-Frankfurt."
         ]
     },
     "workflow": {
         "traveler": {
             "itinerary": {
                 "input": [],
-                "output": "itinerary_traveler",
-                "system_prompt": "You are the traveler and you know your preferences and constraints. Provide a candidate order of city visits and a high level distribution of days across the 10 day trip that tries to satisfy the desired per-city durations and the wedding constraint. If the desired durations conflict with the total trip length, clearly describe the conflict and propose reasonable resolution options. Do not produce PDDL. Base your suggestions on the public information and your private information.",
-                "prompt": "Your name is traveler. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} This is your planning goal: {agents->traveler->goal} Provide step by step reasoning and a clear candidate itinerary outline. If information is ambiguous or inconsistent, point it out and propose alternatives."
+                "output": "traveler_itinerary",
+                "system_prompt": "You are an expert travel planner. Based on public information and the traveler's private preferences, propose a provisional allocation of the 10 available days among Krakow, Dubrovnik, and Frankfurt. Highlight conflicts with the total days constraint and the wedding constraint. Do not emit PDDL. Provide a clear, structured day allocation and any assumptions you make.",
+                "prompt": "Your name is traveler. You have access to the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal is: {agents->traveler->goal} Provide a provisional itinerary as a list of city stays with assigned day ranges and note any conflicts or required compromises."
             }
         },
-        "flight_planner": {
-            "flights": {
+        "flights": {
+            "routes": {
                 "input": [],
-                "output": "flights_graph",
-                "system_prompt": "You are a flight connectivity expert. Provide a clear description of the direct flight graph between the cities, list available direct legs, and enumerate feasible flight sequences that can connect the three target cities under the direct flights only restriction. Highlight any impossibilities and transfer requirements. Do not produce PDDL.",
-                "prompt": "Your name is flight_planner. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->flight_planner->private_information} This is your planning goal: {agents->flight_planner->goal} Provide explicit flight legs and example travel routes that respect direct flight constraints. Explain any required transfers and their locations."
-            }
-        },
-        "accommodation_planner": {
-            "stays": {
-                "input": [],
-                "output": "stays_plan",
-                "system_prompt": "You are an accommodation and schedule planner. Propose day-by-day stay allocations, adjustments to requested durations to fit the 10 day total if necessary, and ensure the traveler is in Krakow for the wedding between day 9 and day 10. Provide sensible tradeoffs and clearly mark which days are spent in each city. Do not produce PDDL.",
-                "prompt": "Your name is accommodation_planner. You are in an environment with the following public information: {environment->public_information} You have the following private information: {agents->accommodation_planner->private_information} This is your planning goal: {agents->accommodation_planner->goal} Provide a concrete daily allocation plan or a small set of alternative allocations that resolve conflicts. Explain assumptions and options."
+                "output": "flight_routes",
+                "system_prompt": "You are an expert on flight connectivity. Provide the available direct flight legs and possible direct-flight commuting sequences that allow traveling between the three cities while using only direct flights. Represent results as explicit legs and feasible itineraries composed of those legs. Do not emit PDDL.",
+                "prompt": "Your name is flights. You have access to the following public information: {environment->public_information} You have the following private information: {agents->flights->private_information} Your goal is: {agents->flights->goal} Provide a clear description of direct flight legs, directional assumptions if any, and sequences that connect the cities using only direct flights."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "itinerary_traveler",
-                    "flights_graph",
-                    "stays_plan"
+                    "traveler_itinerary",
+                    "flight_routes"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert with multi-agent PDDL problems and with the FastDownwards planner. Your task is to integrate the outputs of the other agents and produce a complete PDDL domain and a PDDL problem file that encodes the travel planning problem and a valid 10 day itinerary under the direct flight constraints and the wedding constraint. Keep agent actions distinct and encode agent-specific actions if needed. The final PDDL must be suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
-                "prompt": "You are the orchestrator. The global goal is: {agents->orchestrator->goal} Here is the public environment information: {environment->public_information} Here is the traveler's suggested itinerary information: {itinerary_traveler} Here is the flight planner's connectivity information: {flights_graph} Here is the accommodation planner's day allocations and alternatives: {stays_plan} Integrate these inputs, resolve any conflicts with minimal assumptions, and produce a PDDL domain and problem targeting FastDownwards that models days as a resource, travel only by direct flights listed, per-city day counts, and the requirement to be in Krakow for the wedding between day 9 and day 10. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Integrate the outputs from the traveler and flights agents and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions that represent movement or staying in cities clearly attributable to the traveler agent. Resolve conflicts such as exceeding total days and ensure the final plan uses only direct flights and attends the wedding in Krakow between day 9 and day 10.",
+                "prompt": "Your name is orchestrator. You will receive the provisional itinerary from the traveler and the flight connectivity from flights. Integrate them to produce a consistent plan that fits the 10 day total and respects the wedding constraint. Use the following inputs: traveler itinerary: {traveler_itinerary} flight connectivity: {flight_routes} Provide a PDDL domain and a PDDL problem that model days as discrete time steps or as visits with durations so that FastDownwards can find a valid schedule. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
             "traveler.itinerary->orchestrator.pddl",
-            "flight_planner.flights->orchestrator.pddl",
-            "accommodation_planner.stays->orchestrator.pddl"
+            "flights.routes->orchestrator.pddl"
         ]
     }
 }

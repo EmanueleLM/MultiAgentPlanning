@@ -1,0 +1,118 @@
+{
+    "name": "BlocksworldScaling100",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I may only move blocks labelled with vowels: A, E, I, O, U.",
+                "I can only pick up and place one block at a time.",
+                "I can only interact with blocks that are currently at the top of a stack."
+            ],
+            "goal": "Contribute moves that help transform the initial block stacks into the target single tower where O is on the table and A is the top block."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I may only move blocks labelled with consonants: all letters except A, E, I, O, U.",
+                "I can only pick up and place one block at a time.",
+                "I can only interact with blocks that are currently at the top of a stack."
+            ],
+            "goal": "Contribute moves that help transform the initial block stacks into the target single tower where O is on the table and A is the top block."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a unified PDDL domain and problem compatible with the FastDownwards planner that achieves the target tower: A on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, J on K, K on L, L on M, M on N, N on O, and O on the table."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_stacks": 2,
+            "stack_details": {
+                "stack_1": [
+                    "B",
+                    "M",
+                    "J",
+                    "D",
+                    "N",
+                    "K",
+                    "O",
+                    "F"
+                ],
+                "stack_2": [
+                    "I",
+                    "E",
+                    "H",
+                    "G",
+                    "L",
+                    "C",
+                    "A"
+                ]
+            },
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L",
+                "M",
+                "N",
+                "O"
+            ],
+            "visibility": 1,
+            "max_move": 1
+        },
+        "public_information": [
+            "There are 15 uniquely labelled blocks on the table.",
+            "Blocks are arranged in two stacks initially. Stack 1 from bottom to top: B, M, J, D, N, K, O, F. Stack 2 from bottom to top: I, E, H, G, L, C, A.",
+            "Only the top block of any stack is movable at any time.",
+            "Agents may pick and place only one block at a time.",
+            "One agent can only move vowel-labelled blocks (A, E, I, O, U) and the other can only move consonant-labelled blocks.",
+            "The global goal is a single tower with O on the table and above it, in order from bottom to top: O, N, M, L, K, J, I, H, G, F, E, D, C, B, A (A is the top block)."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "analysis": {
+                "input": [],
+                "output": "fragment_vowel",
+                "system_prompt": "You are a block-manipulation agent restricted to vowel-labelled blocks. Based on the public information and your private knowledge, produce a structured plan fragment describing moves you can perform with vowel blocks. Describe each move as a triplet: source_stack_or_block, target_stack_or_block_or_table, block_label. Do not emit full PDDL. Focus on moves that respect the constraint that only top blocks can be moved and that you only touch vowel blocks.",
+                "prompt": "You are vowel_agent. Public information: {environment->public_information}. Your private information: {agents->vowel_agent->private_information}. Global goal: {agents->orchestrator->goal}. Provide stepwise, verifiable move fragments limited to vowel blocks. Output name: fragment_vowel."
+            }
+        },
+        "consonant_agent": {
+            "analysis": {
+                "input": [],
+                "output": "fragment_consonant",
+                "system_prompt": "You are a block-manipulation agent restricted to consonant-labelled blocks. Based on the public information and your private knowledge, produce a structured plan fragment describing moves you can perform with consonant blocks. Describe each move as a triplet: source_stack_or_block, target_stack_or_block_or_table, block_label. Do not emit full PDDL. Focus on moves that respect the constraint that only top blocks can be moved and that you only touch consonant blocks.",
+                "prompt": "You are consonant_agent. Public information: {environment->public_information}. Your private information: {agents->consonant_agent->private_information}. Global goal: {agents->orchestrator->goal}. Provide stepwise, verifiable move fragments limited to consonant blocks. Output name: fragment_consonant."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "fragment_vowel",
+                    "fragment_consonant"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must integrate agent fragments and produce a complete PDDL domain and problem targeting the FastDownwards planner. Produce a single PDDL domain and a single PDDL problem that model the blocksworld constraints: only top blocks movable, single-block moves, and agent-side constraints (distinct action signatures or predicates to keep vowel and consonant agent actions separate if needed). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards conventions.",
+                "prompt": "You are orchestrator. You will receive the move fragments from two agents: {vowel_agent->analysis->output} and {consonant_agent->analysis->output}. Integrate those fragments, resolve naming ambiguities, and produce a complete PDDL domain and problem achieving the global goal: {agents->orchestrator->goal}. Keep actions of the two agents distinct where appropriate. Enclose domain in <domain></domain> and problem in <problem></problem>. Output name: pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "vowel_agent.analysis->orchestrator.pddl",
+            "consonant_agent.analysis->orchestrator.pddl"
+        ]
+    }
+}

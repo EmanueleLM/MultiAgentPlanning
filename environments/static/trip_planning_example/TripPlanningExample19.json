@@ -2,107 +2,78 @@
     "name": "TripPlanningExample19",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
-            "traveler",
-            "flight_planner",
-            "friend_coordinator",
+            "itinerary_planner",
+            "flight_checker",
             "orchestrator"
         ],
-        "traveler": {
+        "itinerary_planner": {
             "private_information": [
-                "I want a 9-day trip visiting three European cities: Brussels, Valencia, and Nice.",
-                "My preferred stays are: Brussels for 2 days, Valencia for 3 days, and Nice for 6 days.",
-                "I am aware these preferred stays sum to 11 days, which conflicts with the 9-day total constraint."
+                "I plan to stay in Brussels for 2 days",
+                "I would like to visit Valencia for 3 days",
+                "I want to spend 6 days in Nice",
+                "Total available trip duration is 9 days"
             ],
-            "goal": "Produce a feasible 9-day itinerary visiting Brussels, Valencia, and Nice while respecting direct-flight-only travel constraints and the friend's meeting window."
+            "goal": "Produce a proposed allocation of the 9 trip days across the requested cities consistent with direct flight constraints and the meeting constraint"
         },
-        "flight_planner": {
+        "flight_checker": {
             "private_information": [
-                "Direct flights exist between Brussels and Valencia, and between Nice and Brussels.",
-                "There are no direct flights between Nice and Valencia."
+                "Direct flights exist between Brussels and Valencia",
+                "Direct flights exist between Nice and Brussels",
+                "Only direct flights may be used to commute between cities"
             ],
-            "goal": "Propose flight sequences using only available direct flights that connect the cities in support of a feasible itinerary."
-        },
-        "friend_coordinator": {
-            "private_information": [
-                "Friends are available to meet in Nice between day 1 and day 6 inclusive.",
-                "The meeting in Nice must occur during that window and be compatible with the itinerary."
-            ],
-            "goal": "Propose meeting days in Nice that fit the friend's availability and coordinate this with the traveler's itinerary preferences."
+            "goal": "Provide the set of feasible direct flight legs and possible sequences that allow visiting the requested cities under the direct flight constraint"
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate proposals from other agents, resolve conflicts, and produce a final PDDL domain and problem suitable for the FastDownwards planner to compute a valid 9-day trip plan."
+            "goal": "Integrate agent information and produce a final PDDL domain and PDDL problem for FastDownwards that finds a valid 9 day trip itinerary using only direct flights and respecting the meeting constraint in Nice"
         }
     },
     "environment": {
         "init": {
-            "days_total": 9,
-            "cities": [
-                "Brussels",
-                "Valencia",
-                "Nice"
-            ],
-            "direct_flights": [
-                [
-                    "Brussels",
-                    "Valencia"
-                ],
-                [
-                    "Nice",
-                    "Brussels"
-                ]
-            ]
+            "total_days": 9
         },
         "public_information": [
-            "You plan to visit three European cities in a total of 9 days.",
-            "Travel between cities must use direct flights only.",
-            "Available direct flights are Brussels-Valencia and Nice-Brussels.",
-            "You would like to meet friends in Nice between day 1 and day 6."
+            "You plan to visit three European cities for a total of 9 days",
+            "Cities involved are Brussels, Valencia, and Nice",
+            "You only take direct flights to commute between cities",
+            "Desired stays reported: Brussels 2 days, Valencia 3 days, Nice 6 days",
+            "You would like to meet your friends in Nice between day 1 and day 6",
+            "Direct flight pairs: Brussels - Valencia, Nice - Brussels"
         ]
     },
     "workflow": {
-        "traveler": {
-            "proposal": {
+        "itinerary_planner": {
+            "analyze": {
                 "input": [],
-                "output": "itinerary_traveler",
-                "system_prompt": "You represent the traveler's preferences and constraints. Provide an itinerary proposal that allocates days to Brussels, Valencia, and Nice, state any conflicts with the total 9-day limit, and propose adjustments or priorities.",
-                "prompt": "You are agent 'traveler'. Use the public information {environment->public_information} and your private knowledge {agents->traveler->private_information} to propose an itinerary allocation for the 9-day trip. Do not produce PDDL. Highlight any conflicts and optional reconciliations such as which city nights to shorten if needed. Keep the proposal explicit about day assignments and order of city visits."
+                "output": "itinerary_partial",
+                "system_prompt": "You are an expert travel itinerary planner. Propose an allocation of the available trip days across the requested cities. Do not emit PDDL. If the requested stays exceed the total available days, propose a justified adjustment and mark remaining uncertainties for the orchestrator to resolve.",
+                "prompt": "Agent name: itinerary_planner. Use the public information: {environment->public_information}. Use your private information: {agents->itinerary_planner->private_information}. Your goal: {agents->itinerary_planner->goal}. Provide a clear proposed day allocation per city, highlight any conflicts with the total days, and list any assumptions you make."
             }
         },
-        "flight_planner": {
-            "flights": {
+        "flight_checker": {
+            "check": {
                 "input": [],
-                "output": "flights_info",
-                "system_prompt": "You are responsible for proposing feasible flight legs between the cities using only direct flights. Provide candidate flight sequences and indicate where direct connections are not available.",
-                "prompt": "You are agent 'flight_planner'. Use public information {environment->public_information} and your private knowledge {agents->flight_planner->private_information} to list possible flight itineraries that connect the three cities using only direct flights. For each candidate, provide the sequence of city hops and note any infeasible connections. Do not produce PDDL."
-            }
-        },
-        "friend_coordinator": {
-            "availability": {
-                "input": [],
-                "output": "friends_window",
-                "system_prompt": "You coordinate the friend's availability and propose specific meeting days in Nice that fall within the allowed window.",
-                "prompt": "You are agent 'friend_coordinator'. Using public information {environment->public_information} and your private knowledge {agents->friend_coordinator->private_information}, propose one or more candidate meeting day ranges or specific days in Nice that fit the friends' availability and indicate constraints for aligning with the itinerary. Do not produce PDDL."
+                "output": "flights_available",
+                "system_prompt": "You are an expert on flight connectivity. Provide feasible direct flight legs and feasible city-to-city sequences that respect the direct flight constraint. Do not emit PDDL. If a requested route is impossible by direct flights, indicate that and propose intermediary orders that respect only direct flights.",
+                "prompt": "Agent name: flight_checker. Use the public information: {environment->public_information}. Use your private information: {agents->flight_checker->private_information}. Your goal: {agents->flight_checker->goal}. Provide the list of direct flight legs and any feasible sequences that would allow visiting all requested cities while using only direct flights. List any impossibilities."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "itinerary_traveler",
-                    "flights_info",
-                    "friends_window"
+                    "itinerary_partial",
+                    "flights_available"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent PDDL planning and in producing PDDL files compatible with the FastDownwards planner. Integrate the agents' proposals, resolve conflicts such as day-count mismatches, and produce a PDDL domain and a PDDL problem that encode the trip scheduling problem targeting FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
-                "prompt": "You are agent 'orchestrator'. You will receive the outputs itinerary_traveler, flights_info, and friends_window. Integrate these inputs, resolve inconsistencies (for example when allocated days exceed the total days available), enforce that travel between cities uses only direct flights, and ensure the friend's meeting in Nice occurs between day 1 and day 6. Keep agent actions distinct if relevant. Provide a PDDL domain and a PDDL problem that model locations, days, flight actions, stay durations, and meeting constraints. The PDDL must be suitable for FastDownwards. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Your task is to integrate partial plans and connectivity data from other agents and produce a complete PDDL domain and PDDL problem suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct when representing multi-agent steps. Resolve conflicts and explicit assumptions where necessary.",
+                "prompt": "You are the orchestrator. Integrate the outputs: {itinerary_partial} and {flights_available}. Your global goal is: {agents->orchestrator->goal}. Produce a PDDL domain and a PDDL problem that FastDownwards can solve. The domain must model days as discrete time steps from day 1 to day 9, model cities and direct flights as travel actions, model staying in a city as occupying days, and include the meeting constraint that the traveler meets friends in Nice on a day between day 1 and day 6. Make explicit any assumptions used to reconcile conflicting stay requests. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "traveler.proposal->orchestrator.pddl",
-            "flight_planner.flights->orchestrator.pddl",
-            "friend_coordinator.availability->orchestrator.pddl"
+            "itinerary_planner.analyze->orchestrator.pddl",
+            "flight_checker.check->orchestrator.pddl"
         ]
     }
 }

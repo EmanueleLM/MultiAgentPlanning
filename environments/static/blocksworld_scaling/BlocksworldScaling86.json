@@ -1,0 +1,91 @@
+{
+    "name": "BlocksworldScaling86",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can move exactly one block at a time.",
+                "I can only manipulate blocks whose labels are vowels: A E I O U.",
+                "I can only pick up blocks that are currently at the top of a stack.",
+                "When I place a block I can place it onto another block or onto the table."
+            ],
+            "goal": "Rearrange the blocks from the given initial configuration to the specified goal stack configuration."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can move exactly one block at a time.",
+                "I can only manipulate blocks whose labels are consonants: all letters except A E I O U.",
+                "I can only pick up blocks that are currently at the top of a stack.",
+                "When I place a block I can place it onto another block or onto the table."
+            ],
+            "goal": "Rearrange the blocks from the given initial configuration to the specified goal stack configuration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate observations from the two agents and produce a single PDDL domain and problem file suitable for the FastDownwards solver that achieves the block rearrangement."
+        }
+    },
+    "environment": {
+        "init": {
+            "table_positions": 10,
+            "max_stack_height": 10
+        },
+        "public_information": [
+            "This is a block world on a table with labeled blocks.",
+            "Blocks present: J, B, F, E, G, A, H, D, C, I.",
+            "Initial stacking relations: J is on the table.",
+            "B is on the table.",
+            "F is on top of J.",
+            "E is on top of B.",
+            "G is on top of F.",
+            "A is on top of G.",
+            "H is on top of E.",
+            "D is on top of A.",
+            "C is on top of H.",
+            "I is on top of C.",
+            "Allowed actions: pick up the top block of any stack and place it on top of another stack or on the table.",
+            "Only top blocks can be moved and only one block can be moved at a time.",
+            "One agent can only operate on vowel-labeled blocks and the other agent can only operate on consonant-labeled blocks.",
+            "The global goal configuration is the following stacking: A on B, B on C, C on D, D on E, E on F, F on G, G on H, H on I, I on J, and J on the table."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "perceive": {
+                "input": [],
+                "output": "obs_vowel",
+                "system_prompt": "You are vowel_agent. Your role is to observe the environment and report a structured summary of the blocks and stacks that you can legally act upon under your constraints. Do not emit PDDL. Provide a clear listing of each stack with its top block, indicate which top blocks are vowels you can move, and list for each movable block the legal target placements (other stacks or table). Use concise structured text suitable for automated parsing.",
+                "prompt": "Your name is vowel_agent. You have access to the public environment information: {environment->public_information}. Your private knowledge is: {agents->vowel_agent->private_information}. The global goal is: {agents->vowel_agent->goal}. Analyze step by step and produce a structured observation describing all top blocks you can legally pick, and for each such block list all legal placement targets given the current configuration."
+            }
+        },
+        "consonant_agent": {
+            "perceive": {
+                "input": [],
+                "output": "obs_consonant",
+                "system_prompt": "You are consonant_agent. Your role is to observe the environment and report a structured summary of the blocks and stacks that you can legally act upon under your constraints. Do not emit PDDL. Provide a clear listing of each stack with its top block, indicate which top blocks are consonants you can move, and list for each movable block the legal target placements (other stacks or table). Use concise structured text suitable for automated parsing.",
+                "prompt": "Your name is consonant_agent. You have access to the public environment information: {environment->public_information}. Your private knowledge is: {agents->consonant_agent->private_information}. The global goal is: {agents->consonant_agent->goal}. Analyze step by step and produce a structured observation describing all top blocks you can legally pick, and for each such block list all legal placement targets given the current configuration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_vowel",
+                    "obs_consonant"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are orchestrator. Your job is to integrate the structured observations from the two agents and produce a complete PDDL domain and a PDDL problem file targeting the FastDownwards solver. You must produce a single coherent domain and a single coherent problem that models the two-agent constraints while keeping the agents' actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure action names reflect agent capabilities (for example use prefixes vowel- and consonant-). Include typing and requirements appropriate for FastDownwards. The output must be a final PDDL domain and problem that, when given to FastDownwards, encodes the initial configuration and the goal configuration described in the environment.",
+                "prompt": "You are orchestrator. You have received the following observations from the vowel agent: {obs_vowel} and from the consonant agent: {obs_consonant}. The public environment information is: {environment->public_information}. Your objective is: {agents->orchestrator->goal}. Integrate the agents' observations, resolve naming or representation inconsistencies if any, and produce a PDDL domain and a PDDL problem file that encode the block world, the movement constraints, the agent-specific action capabilities, the initial stacking configuration, and the target goal configuration. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "vowel_agent.perceive->orchestrator.pddl",
+            "consonant_agent.perceive->orchestrator.pddl"
+        ]
+    }
+}

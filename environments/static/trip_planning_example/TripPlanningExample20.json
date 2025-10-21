@@ -2,39 +2,38 @@
     "name": "TripPlanningExample20",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
-            "istanbul_agent",
-            "budapest_agent",
-            "dubrovnik_agent",
+            "flight_agent",
+            "traveler",
             "orchestrator"
         ],
-        "istanbul_agent": {
+        "flight_agent": {
             "private_information": [
-                "Preferred stay: 5 days"
+                "There is a direct flight between Istanbul and Budapest in both directions",
+                "There is a direct flight from Dubrovnik to Istanbul (one-way)"
             ],
-            "goal": "Propose a local schedule for visiting Istanbul that can integrate into the global 12-day trip and specify feasible direct flights for arrival and departure."
+            "goal": "Provide accurate structured facts about direct flights between the cities to support planning."
         },
-        "budapest_agent": {
+        "traveler": {
             "private_information": [
-                "Preferred stay: 6 days"
+                "I want to visit Istanbul for 5 days",
+                "I want to visit Budapest for 6 days",
+                "I want to visit Dubrovnik for 3 days",
+                "Total trip duration must be 12 days"
             ],
-            "goal": "Propose a local schedule for visiting Budapest that can integrate into the global 12-day trip and specify feasible direct flights for arrival and departure."
-        },
-        "dubrovnik_agent": {
-            "private_information": [
-                "Preferred stay: 3 days"
-            ],
-            "goal": "Propose a local schedule for visiting Dubrovnik that can integrate into the global 12-day trip and specify feasible direct flights for arrival and departure."
+            "goal": "Provide the desired visit durations and any flexibility constraints to support planning."
         },
         "orchestrator": {
-            "private_information": [],
-            "goal": "Integrate the city proposals into a single feasible trip of 12 days using only direct flights and produce a PDDL domain and problem suitable for the FastDownwards solver."
+            "private_information": [
+                "You will assemble information from the other agents and produce a final PDDL domain and problem targeting the FastDownwards solver"
+            ],
+            "goal": "Generate a PDDL domain and problem that schedules the 12-day trip using only direct flights and satisfying the desired visit durations."
         }
     },
     "environment": {
         "init": {
-            "total_days": 12,
+            "days_total": 12,
             "cities": [
                 "Istanbul",
                 "Budapest",
@@ -42,54 +41,43 @@
             ]
         },
         "public_information": [
-            "Total trip length is 12 days.",
-            "You must visit Istanbul, Budapest, and Dubrovnik.",
-            "You may only use direct flights to commute between cities.",
-            "There is a direct flight between Istanbul and Budapest.",
-            "There is a direct flight from Dubrovnik to Istanbul."
+            "You plan to visit three European cities across a total of 12 days",
+            "Cities involved are Istanbul, Budapest, and Dubrovnik",
+            "You may only use direct flights to commute between cities",
+            "Desired visit durations are specified by the traveler agent"
         ]
     },
     "workflow": {
-        "istanbul_agent": {
-            "propose_itinerary": {
+        "flight_agent": {
+            "report": {
                 "input": [],
-                "output": "itinerary_istanbul",
-                "system_prompt": "You are an expert local travel planner for Istanbul. Use the public information {environment->public_information} and your private information {agents->istanbul_agent->private_information} to propose a suggested number of days to stay in Istanbul, explain any flexibility, and list feasible direct inbound and outbound flights given the available direct connections. Output a concise structured proposal describing days, rationale, inbound, and outbound.",
-                "prompt": "Your name is istanbul_agent. You know the public information {environment->public_information} and your private information {agents->istanbul_agent->private_information}. Produce a clear proposal for Istanbul that other agents and the orchestrator can use to build the full trip."
+                "output": "flights_info",
+                "system_prompt": "You are the flight information agent. Provide concise structured facts describing which pairs of cities have direct flights and the directionality of each direct connection. Do not produce PDDL.",
+                "prompt": "Your name is flight_agent. You see the public information: {environment->public_information} You have the following private knowledge: {agents->flight_agent->private_information} Your goal: {agents->flight_agent->goal} Provide structured facts such as direct-flight Istanbul Budapest bidirectional and direct-flight Dubrovnik Istanbul one-way and avoid inventing flights not stated."
             }
         },
-        "budapest_agent": {
-            "propose_itinerary": {
+        "traveler": {
+            "report": {
                 "input": [],
-                "output": "itinerary_budapest",
-                "system_prompt": "You are an expert local travel planner for Budapest. Use the public information {environment->public_information} and your private information {agents->budapest_agent->private_information} to propose a suggested number of days to stay in Budapest, explain any flexibility, and list feasible direct inbound and outbound flights given the available direct connections. Output a concise structured proposal describing days, rationale, inbound, and outbound.",
-                "prompt": "Your name is budapest_agent. You know the public information {environment->public_information} and your private information {agents->budapest_agent->private_information}. Produce a clear proposal for Budapest that other agents and the orchestrator can use to build the full trip."
-            }
-        },
-        "dubrovnik_agent": {
-            "propose_itinerary": {
-                "input": [],
-                "output": "itinerary_dubrovnik",
-                "system_prompt": "You are an expert local travel planner for Dubrovnik. Use the public information {environment->public_information} and your private information {agents->dubrovnik_agent->private_information} to propose a suggested number of days to stay in Dubrovnik, explain any flexibility, and list feasible direct inbound and outbound flights given the available direct connections. Output a concise structured proposal describing days, rationale, inbound, and outbound.",
-                "prompt": "Your name is dubrovnik_agent. You know the public information {environment->public_information} and your private information {agents->dubrovnik_agent->private_information}. Produce a clear proposal for Dubrovnik that other agents and the orchestrator can use to build the full trip."
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent. Provide a concise structured statement of desired visit durations for each city and indicate whether these durations are strict or flexible. Do not produce PDDL.",
+                "prompt": "Your name is traveler. You see the public information: {environment->public_information} You have the following private knowledge: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Provide the desired days per city and note that the sum must equal the total trip duration unless you indicate allowed flexibility."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "itinerary_istanbul",
-                    "itinerary_budapest",
-                    "itinerary_dubrovnik"
+                    "flights_info",
+                    "traveler_preferences"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent trip planning and PDDL for FastDownwards. You will receive the itinerary proposals from the city agents and must integrate them into a single consistent plan that visits Istanbul, Budapest, and Dubrovnik for a total of 12 days using only direct flights. Produce a PDDL domain and a PDDL problem file targeting the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure flight actions and city-visit durations are modeled, respect the direct flight connectivity given in the public information, and keep agent roles distinct if multiple agents have actions represented.",
-                "prompt": "You are the orchestrator. Integrate the following proposals from the agents to produce a final PDDL domain and problem that achieve the global goal {agents->orchestrator->goal} while respecting the public information {environment->public_information}. Here is the Istanbul proposal: {itinerary_istanbul} Here is the Budapest proposal: {itinerary_budapest} Here is the Dubrovnik proposal: {itinerary_dubrovnik} Reconcile differences, ensure the total days sum to 12, ensure only direct flights are used for commuting between cities, and output the PDDL domain and problem suitable for FastDownwards enclosed in <domain></domain> and <problem></problem> tags."
+                "system_prompt": "You are an expert multi-agent orchestrator and PDDL author. Integrate the structured facts and preferences from the other agents and produce a PDDL domain and a PDDL problem tailored for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct if modeling multiple agents, and ensure the problem enforces only using direct flights and meeting the total days and per-city visit requirements.",
+                "prompt": "Your name is orchestrator. You will receive flight facts and traveler preferences to produce a complete PDDL domain and problem for the FastDownwards solver. Here is the flights information: {flights_info} Here are the traveler preferences: {traveler_preferences} The global goal is: {agents->orchestrator->goal} Build a planning domain that models cities, direct-flight relations, travel actions that are only possible where a direct flight exists, and stay actions that allocate days spent in a city. Build a PDDL problem that represents the three cities, the 12-day horizon, the desired days per city, and any directionality constraints from the flights. Enclose the domain and problem in <domain></domain> and <problem></problem> tags respectively."
             }
         },
         "constraints": [
-            "istanbul_agent.propose_itinerary->orchestrator.pddl",
-            "budapest_agent.propose_itinerary->orchestrator.pddl",
-            "dubrovnik_agent.propose_itinerary->orchestrator.pddl"
+            "flight_agent.report->orchestrator.pddl",
+            "traveler.report->orchestrator.pddl"
         ]
     }
 }

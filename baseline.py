@@ -18,9 +18,9 @@ from src.llm_plan.llm import ChatGPT, Gemini
 
 DATASET = {
     # Blocksworld Multi-agent
-    "blocksworld": {
+    "multiagent-blocksworld": {
         "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "blocksworld",
+        "results": RESULTS_FOLDER / "multiagent-blocksworld",
     },
     # Google Natural Bench
     "calendar_scheduling": {
@@ -51,6 +51,15 @@ DATASET = {
     "obfuscated_deceptive_logistics": {
         "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
         "results": RESULTS_FOLDER / "planbench",
+    },
+    "blocksworld": {
+        "data": DATA_PATH / "planbench/blocksworld.json",
+        "results": RESULTS_FOLDER / "planbench",
+    },
+    # Scaling Blocksworld
+    "blocksworld_scaling": {
+        "data": DATA_PATH / "blocksworld_scaling/blocksworld_5_levels_scaling.json",
+        "results": RESULTS_FOLDER / "blocksworld_scaling",
     },
     # Variations on Calendar Scheduling
     "calendar_easy_to_hard": {

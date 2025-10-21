@@ -2,75 +2,110 @@
     "name": "TripPlanningExample7",
     "author": "Human",
     "agents": {
-        "number": 3,
+        "number": 4,
         "names": [
-            "itinerary_builder",
-            "flight_checker",
+            "venice_agent",
+            "dubrovnik_agent",
+            "istanbul_agent",
             "orchestrator"
         ],
-        "itinerary_builder": {
+        "venice_agent": {
             "private_information": [
-                "Desired stays: Venice 6 days, Dubrovnik 4 days, Istanbul 3 days",
-                "Total available days for the trip is 11",
-                "Prefer to prioritize Venice stay length when possible"
+                "Preferred stay in Venice: 6 days",
+                "I can take only direct flights when commuting between cities"
             ],
-            "goal": "Provide a candidate allocation of days and an ordered list of city visits that respects preferences as much as possible."
+            "goal": "Provide stay preference and constraints for the trip itinerary"
         },
-        "flight_checker": {
+        "dubrovnik_agent": {
             "private_information": [
-                "Direct flights exist from Dubrovnik to Istanbul",
-                "Direct flights exist from Dubrovnik to Venice",
-                "Only direct flights are used to commute between cities"
+                "Preferred stay in Dubrovnik: 4 days",
+                "I can take only direct flights when commuting between cities"
             ],
-            "goal": "Provide the directed graph of available direct flights and feasible connections between the three cities."
+            "goal": "Provide stay preference and constraints for the trip itinerary"
+        },
+        "istanbul_agent": {
+            "private_information": [
+                "Preferred stay in Istanbul: 3 days",
+                "I can take only direct flights when commuting between cities"
+            ],
+            "goal": "Provide stay preference and constraints for the trip itinerary"
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate preferences and flight connectivity to produce a PDDL domain and problem suitable for FastDownwards that finds a trip plan visiting the three cities for exactly 11 days using only direct flights."
+            "goal": "Integrate agents preferences and produce a final PDDL domain and problem for FastDownward to plan an 11-day trip using only direct flights"
         }
     },
     "environment": {
         "init": {
-            "total_days": 11
+            "total_days": 11,
+            "cities": [
+                "Venice",
+                "Dubrovnik",
+                "Istanbul"
+            ],
+            "direct_flights": [
+                [
+                    "Dubrovnik",
+                    "Istanbul"
+                ],
+                [
+                    "Dubrovnik",
+                    "Venice"
+                ],
+                [
+                    "Istanbul",
+                    "Venice"
+                ]
+            ]
         },
         "public_information": [
-            "You plan to visit three European cities: Venice, Dubrovnik, Istanbul.",
-            "The trip must last exactly 11 days in total.",
-            "You only take direct flights to commute between cities.",
-            "Known direct flights: from Dubrovnik to Istanbul and from Dubrovnik to Venice."
+            "Total available days for the trip: 11",
+            "You only take direct flights to commute between cities",
+            "Cities to consider: Venice, Dubrovnik, Istanbul",
+            "Direct flight connections are available as listed in init.direct_flights"
         ]
     },
     "workflow": {
-        "itinerary_builder": {
-            "analyze_preferences": {
+        "venice_agent": {
+            "preferences": {
                 "input": [],
-                "output": "itinerary_prefs",
-                "system_prompt": "You are an agent that summarizes travel preferences and desired durations. Provide a clear structured summary of preferred stays, flexibility notes, and a candidate order of visits. Do not emit PDDL.",
-                "prompt": "You are itinerary_builder. Given the public information about cities and total days and your private information about desired stays and priorities, produce a structured summary containing the desired stays per city, which stays are flexible and by how much, and one or more candidate visit orders that try to respect the preferences while noting any conflicts with the total days."
+                "output": "pref_venice",
+                "system_prompt": "You are the Venice agent. Provide your preferred number of days to stay in Venice and any local constraints. Do not produce PDDL. State preferences succinctly.",
+                "prompt": "You are venice_agent. Use the public information in environment.public_information and your private_information. Provide a concise preference statement and any constraints relevant to planning the itinerary. Output will be consumed by the orchestrator."
             }
         },
-        "flight_checker": {
-            "check_flights": {
+        "dubrovnik_agent": {
+            "preferences": {
                 "input": [],
-                "output": "flight_graph",
-                "system_prompt": "You are an agent that inspects and returns the directed connectivity of direct flights between cities. Provide the list of directed edges and note which links are missing. Do not emit PDDL.",
-                "prompt": "You are flight_checker. Given the public information about direct flights and the list of cities, produce a structured representation of the directed flight graph connecting the cities. State which city pairs are connected by a direct flight and whether any required legs are impossible under the direct-flight-only constraint."
+                "output": "pref_dubrovnik",
+                "system_prompt": "You are the Dubrovnik agent. Provide your preferred number of days to stay in Dubrovnik and any local constraints. Do not produce PDDL. State preferences succinctly.",
+                "prompt": "You are dubrovnik_agent. Use the public information in environment.public_information and your private_information. Provide a concise preference statement and any constraints relevant to planning the itinerary. Output will be consumed by the orchestrator."
+            }
+        },
+        "istanbul_agent": {
+            "preferences": {
+                "input": [],
+                "output": "pref_istanbul",
+                "system_prompt": "You are the Istanbul agent. Provide your preferred number of days to stay in Istanbul and any local constraints. Do not produce PDDL. State preferences succinctly.",
+                "prompt": "You are istanbul_agent. Use the public information in environment.public_information and your private_information. Provide a concise preference statement and any constraints relevant to planning the itinerary. Output will be consumed by the orchestrator."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "itinerary_prefs",
-                    "flight_graph"
+                    "pref_venice",
+                    "pref_dubrovnik",
+                    "pref_istanbul"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert at producing PDDL domain and problem files targeted for the FastDownwards planner. Integrate structured inputs from other agents. You must produce a PDDL domain and a PDDL problem that encode travel between cities with actions for taking direct flights and staying days in cities. The PDDL should enforce the total trip length of 11 days and allow allocation of stay days per city consistent with available days and connectivity. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Mention in your output that the files are intended for FastDownwards.",
-                "prompt": "You are orchestrator. You will receive the itinerary preferences summary and the flight connectivity graph from other agents. Reconcile any conflicts between desired stays and the total days. Produce a complete PDDL domain and a PDDL problem that models cities as locations, actions for taking direct flights (only where flight_graph allows) and actions for staying an extra day in a city. The problem must require exactly 11 days total and include initial and goal states that ensure all three cities are visited within the plan. Keep agent actions and roles explicit in comments if helpful. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Ensure the PDDL is compatible with the FastDownwards planner."
+                "system_prompt": "You are an expert in PDDL modeling and in preparing planning problems for the FastDownward solver. Use the agents' preference outputs and the public information to produce a complete PDDL domain and a PDDL problem that plans a valid itinerary visiting Venice, Dubrovnik, and Istanbul for a total of 11 days using only direct flights. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions and agent roles are represented clearly so the resulting problem is solvable by FastDownward.",
+                "prompt": "You are the orchestrator. Integrate the public information in environment.public_information and the preference statements provided by the agents in the inputs. Resolve any conflicts in desired stays to meet the global constraint of total_days equal to 11. Use only the direct flights provided in environment.init.direct_flights as valid commute actions. Produce a PDDL domain and a PDDL problem that encode the trip planning instance and is targeted to the FastDownward planner. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "itinerary_builder.analyze_preferences->orchestrator.pddl",
-            "flight_checker.check_flights->orchestrator.pddl"
+            "venice_agent.preferences->orchestrator.pddl",
+            "dubrovnik_agent.preferences->orchestrator.pddl",
+            "istanbul_agent.preferences->orchestrator.pddl"
         ]
     }
 }

@@ -1,0 +1,93 @@
+{
+    "name": "BlocksworldScaling120",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "vowel_agent",
+            "consonant_agent",
+            "orchestrator"
+        ],
+        "vowel_agent": {
+            "private_information": [
+                "I can only pick up and place vowel-labeled blocks.",
+                "Vowel blocks present: A, E, I."
+            ],
+            "goal": "Rearrange the blocks so that the final stack from bottom to top is K J I H G F E D C B A."
+        },
+        "consonant_agent": {
+            "private_information": [
+                "I can only pick up and place consonant-labeled blocks.",
+                "Consonant blocks present: B C D F G H J K."
+            ],
+            "goal": "Rearrange the blocks so that the final stack from bottom to top is K J I H G F E D C B A."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the two agents and must produce a final PDDL domain and problem suitable for FastDownward."
+            ],
+            "goal": "Integrate the observations and plans of the agents and produce a single PDDL domain and problem that achieves the final stacking K J I H G F E D C B A when solved with FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_stacks": 3,
+            "max_stack_height": 11,
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K"
+            ]
+        },
+        "public_information": [
+            "There are blocks labeled A B C D E F G H I J K.",
+            "Blocks are arranged in stacks on a table. Only the top block of any stack can be picked up or placed.",
+            "Agents can move only one block at a time.",
+            "One agent may only interact with vowel-labeled blocks. The other agent may only interact with consonant-labeled blocks.",
+            "Initial stacks are: Stack1 bottom-to-top B A E F C, Stack2 bottom-to-top G I J D K, Stack3 bottom-to-top H.",
+            "The table supports stacks and a block on the table is considered on the table and not on another block.",
+            "The target final stack bottom-to-top should be K J I H G F E D C B A with K on the table."
+        ]
+    },
+    "workflow": {
+        "vowel_agent": {
+            "perception": {
+                "input": [],
+                "output": "vowel_observation",
+                "system_prompt": "You are a block-manipulating agent that may only move vowel-labeled blocks. You have perfect local perception of stack tops and can report which vowel blocks are currently at the top of any stack and which moves you can legally perform under your capability constraints.",
+                "prompt": "Your name is vowel_agent. Public information: {environment->public_information}. Your private information: {agents->vowel_agent->private_information}. Global goal: {agents->vowel_agent->goal}. Provide a concise factual observation of which vowel blocks are currently at the top of stacks, list the legal pick-and-place moves you can perform on those top vowel blocks (one block at a time), and report any constraints or uncertainties you observe. Do not emit PDDL. Focus on capability-limited observations and possible local moves."
+            }
+        },
+        "consonant_agent": {
+            "perception": {
+                "input": [],
+                "output": "consonant_observation",
+                "system_prompt": "You are a block-manipulating agent that may only move consonant-labeled blocks. You have perfect local perception of stack tops and can report which consonant blocks are currently at the top of any stack and which moves you can legally perform under your capability constraints.",
+                "prompt": "Your name is consonant_agent. Public information: {environment->public_information}. Your private information: {agents->consonant_agent->private_information}. Global goal: {agents->consonant_agent->goal}. Provide a concise factual observation of which consonant blocks are currently at the top of stacks, list the legal pick-and-place moves you can perform on those top consonant blocks (one block at a time), and report any constraints or uncertainties you observe. Do not emit PDDL. Focus on capability-limited observations and possible local moves."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "vowel_observation",
+                    "consonant_observation"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate agent observations and produce a complete PDDL domain and PDDL problem file compatible with the FastDownward planner. The domain should model blocks, the table, stack relations, the constraint that only top blocks can be moved, and two distinct agent action schemas that preserve the constraint that one agent acts only on vowels and the other only on consonants. The problem should encode the provided initial stacks and the target goal stack K J I H G F E D C B A with K on the table. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make the PDDL suitable to be solved by FastDownward.",
+                "prompt": "You are the orchestrator. You receive the following inputs from the agents: vowel observations {vowel_observation} and consonant observations {consonant_observation}. Your task is to integrate these observations, resolve naming and representation issues, and produce a final PDDL domain and problem suitable for FastDownward that models two agent types with distinct allowable actions: one for vowels and one for consonants. Keep the actions of the two agents distinct. Ensure the domain models pick and place of top blocks only and single-block moves. Provide the PDDL domain enclosed in <domain></domain> and the PDDL problem enclosed in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "vowel_agent.perception->orchestrator.pddl",
+            "consonant_agent.perception->orchestrator.pddl"
+        ]
+    }
+}

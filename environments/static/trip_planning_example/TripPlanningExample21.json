@@ -2,110 +2,80 @@
     "name": "TripPlanningExample21",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 3,
         "names": [
-            "mykonos_planner",
-            "vienna_planner",
-            "venice_planner",
+            "traveler",
+            "flights_agent",
             "orchestrator"
         ],
-        "mykonos_planner": {
+        "traveler": {
             "private_information": [
-                "City: Mykonos",
-                "Preferred stay: 2 days",
-                "Direct flight connections: Mykonos <-> Vienna"
+                "I plan to visit Venice for 6 days.",
+                "I want to spend 2 days in Mykonos.",
+                "I plan to stay in Vienna for 4 days.",
+                "I must attend a workshop in Venice between day 5 and day 10.",
+                "Total trip length is 10 days."
             ],
-            "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            "goal": "Find a feasible itinerary visiting Mykonos, Vienna and Venice over 10 days that respects my stay durations and the workshop constraint."
         },
-        "vienna_planner": {
+        "flights_agent": {
             "private_information": [
-                "City: Vienna",
-                "Preferred stay: 4 days",
-                "Direct flight connections: Vienna <-> Mykonos and Vienna <-> Venice"
+                "Direct flights exist between Mykonos and Vienna.",
+                "Direct flights exist between Vienna and Venice.",
+                "There is no direct flight between Mykonos and Venice; commuting between them requires routing through Vienna.",
+                "Only direct flights can be used for commutes."
             ],
-            "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
-        },
-        "venice_planner": {
-            "private_information": [
-                "City: Venice",
-                "Preferred stay: 6 days",
-                "Must attend a workshop in Venice between day 5 and day 10",
-                "Direct flight connections: Venice <-> Vienna"
-            ],
-            "goal": "Contribute local constraints and preferences so a global 10-day trip plan using only direct flights can be produced."
+            "goal": "Provide the connectivity and commuting constraints between cities to enable construction of a feasible itinerary."
         },
         "orchestrator": {
             "private_information": [],
-            "goal": "Integrate city-specific inputs and produce a final PDDL domain and problem targeting the FastDownwards solver to find a feasible 10-day itinerary that uses only direct flights and satisfies scheduling constraints such as the Venice workshop."
+            "goal": "Integrate traveler preferences and flights connectivity to produce a PDDL domain and problem for the FastDownwards planner that yields a 10-day itinerary using only allowed direct flights."
         }
     },
     "environment": {
         "init": {
             "total_days": 10,
-            "cities": [
-                "Mykonos",
-                "Vienna",
-                "Venice"
-            ],
-            "direct_flights": [
-                [
-                    "Mykonos",
-                    "Vienna"
-                ],
-                [
-                    "Vienna",
-                    "Venice"
-                ]
-            ]
+            "start_day": 1
         },
         "public_information": [
-            "Total trip length is 10 days.",
-            "Only direct flights are allowed for commuting between cities.",
-            "Direct flights exist between Mykonos and Vienna, and between Vienna and Venice.",
-            "Preferred stays stated: Venice 6 days, Mykonos 2 days, Vienna 4 days. These preferences may conflict with the total days."
+            "Trip duration is 10 days in total.",
+            "Cities to visit: Venice, Mykonos, Vienna.",
+            "Only direct flights may be used to commute between cities.",
+            "Direct flight connections available: Mykonos <-> Vienna, Vienna <-> Venice.",
+            "A workshop to attend in Venice must occur between day 5 and day 10."
         ]
     },
     "workflow": {
-        "mykonos_planner": {
-            "inform": {
+        "traveler": {
+            "info": {
                 "input": [],
-                "output": "info_mykonos",
-                "system_prompt": "You are an agent responsible for Mykonos constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Mykonos. Do not produce PDDL. Keep output factual and machine-parsable.",
-                "prompt": "Your name is mykonos_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->mykonos_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
+                "output": "info_traveler",
+                "system_prompt": "You are the traveler who knows your preferences and hard constraints. Provide a clear structured summary listing required stay durations per city, immovable constraints (for example the workshop timing) and any flexible preferences. Do not generate PDDL; only provide structured facts and constraints.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and your private information {agents->traveler->private_information} to produce a concise structured summary of stays and constraints that an orchestrator can use to build a planning model. State the required days in each city and the workshop constraint."
             }
         },
-        "vienna_planner": {
-            "inform": {
+        "flights_agent": {
+            "info": {
                 "input": [],
-                "output": "info_vienna",
-                "system_prompt": "You are an agent responsible for Vienna constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, local timing constraints if any, and direct-flight connectivity from Vienna. Do not produce PDDL. Keep output factual and machine-parsable.",
-                "prompt": "Your name is vienna_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->vienna_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length, state them but do not resolve them."
-            }
-        },
-        "venice_planner": {
-            "inform": {
-                "input": [],
-                "output": "info_venice",
-                "system_prompt": "You are an agent responsible for Venice constraints and preferences. Provide a compact, precise summary of available local information including preferred stay duration, workshop or event timing constraints, and direct-flight connectivity from Venice. Do not produce PDDL. Keep output factual and machine-parsable.",
-                "prompt": "Your name is venice_planner. Here is the public context: {environment->public_information}. Here is your private information: {agents->venice_planner->private_information}. Provide a concise summary of your city's constraints and preferences for the global planner. If there are conflicts with the total trip length or workshop timing, state them but do not resolve them."
+                "output": "info_flights_agent",
+                "system_prompt": "You are an expert on flight connectivity and commuting constraints. Provide the available direct flight links, any directional or scheduling restrictions, and whether intermediate hops are required between any two cities. Do not generate PDDL; only provide structured connectivity facts and commuting rules.",
+                "prompt": "Your name is flights_agent. Use the public information {environment->public_information} and your private information {agents->flights_agent->private_information} to produce a structured description of which direct flights exist and what commuting sequences are necessary. Make clear that Mykonos and Venice are not directly connected and commuting must go through Vienna."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "info_mykonos",
-                    "info_vienna",
-                    "info_venice"
+                    "info_traveler",
+                    "info_flights_agent"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent planning and PDDL modelling. Integrate the city-specific summaries from the planners and produce a complete PDDL domain and a PDDL problem file that the FastDownwards planner can solve to find a feasible 10-day itinerary. The PDDL must model days as time steps or discrete slots, model direct-flight connectivity as allowed transitions, model stays in cities with durations, and model the Venice workshop timing constraint. If the city preferences exceed total days, encode flexible choices so the planner can find a feasible allocation. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in syntax and modeling.",
-                "prompt": "You are the orchestrator. Use the public context: {environment->public_information}. Use the reports from the city agents: {info_mykonos}, {info_vienna}, {info_venice}. Integrate their constraints, resolve or encode conflicts so the planner can find a feasible solution under the global constraint total_days=10 and only direct flights allowed. Produce a PDDL domain and a PDDL problem ready for FastDownwards. Keep agent actions distinct if you model agent-specific actions or resources. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in writing PDDL for classical planners and specifically will produce PDDL targeting the FastDownwards solver. Integrate agent-provided structured facts into a coherent PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the model encodes days as discrete steps, travel actions that use only allowed direct flights, stay actions that consume whole days in a city, and an explicit constraint that the workshop in Venice occurs on some day between day 5 and day 10. Output both domain and problem suitable for FastDownwards.",
+                "prompt": "You are the orchestrator. You will receive a structured traveler summary and flight connectivity facts. Inputs: {info_traveler} and {info_flights_agent}. Build a PDDL domain and a PDDL problem that, when solved with FastDownwards, yields a valid 10-day itinerary that assigns the required number of days in Venice, Mykonos, and Vienna, uses only direct flights for commuting, and ensures the workshop in Venice occurs between day 5 and day 10. Represent days explicitly, model travel as actions that move the agent between connected cities consuming a day if needed, and ensure the final plan covers exactly 10 days. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
             }
         },
         "constraints": [
-            "mykonos_planner.inform->orchestrator.pddl",
-            "vienna_planner.inform->orchestrator.pddl",
-            "venice_planner.inform->orchestrator.pddl"
+            "traveler.info->orchestrator.pddl",
+            "flights_agent.info->orchestrator.pddl"
         ]
     }
 }

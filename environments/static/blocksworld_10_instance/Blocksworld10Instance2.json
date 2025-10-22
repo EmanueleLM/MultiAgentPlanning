@@ -1,0 +1,75 @@
+{
+    "name": "Blocksworld10Instance2",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot_alpha",
+            "robot_beta",
+            "orchestrator"
+        ],
+        "robot_alpha": {
+            "private_information": [
+                "I can move blocks A B C D E F",
+                "I initially perceive two stacks: E on B on C on A on F, and D on the table"
+            ],
+            "goal": "Execute assigned block manipulations and report observations"
+        },
+        "robot_beta": {
+            "private_information": [
+                "I assist with block manipulations and observe the same initial stacks",
+                "I can pick up single top blocks and place them following BlocksWorld rules"
+            ],
+            "goal": "Execute assigned block manipulations and report observations"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' reports and produce a PDDL domain and problem suitable for FastDownward that represent the final arrangement of the blocks"
+        }
+    },
+    "environment": {
+        "init": {
+            "table_surface": "single",
+            "visibility": 1
+        },
+        "public_information": [
+            "Blocks present: A B C D E F",
+            "Standard BlocksWorld constraints: only the top block of a stack can be moved and only one block can be carried at a time",
+            "Initial arrangement: E is on B, B is on C, C is on A, A is on F, F is on the table, D is on the table",
+            "Action sequence to execute in order: unstack(E,B) ; putdown(E) ; pickup(D) ; stack(D,E) ; unstack(D,E) ; stack(D,E) ; unstack(D,E) ; stack(D,B) ; pickup(E) ; putdown(E)"
+        ]
+    },
+    "workflow": {
+        "robot_alpha": {
+            "execute": {
+                "input": [],
+                "output": "obs_robot_alpha",
+                "system_prompt": "You are robot_alpha. Describe actions you perform and the observed block configuration after each action. Do not produce PDDL.",
+                "prompt": "Your name is robot_alpha. Use your private information and the public information to provide a concise ordered log of which actions from the sequence you perform and the resulting configuration after those actions. Focus on observations and executed steps, do not emit PDDL."
+            }
+        },
+        "robot_beta": {
+            "execute": {
+                "input": [],
+                "output": "obs_robot_beta",
+                "system_prompt": "You are robot_beta. Describe actions you perform and the observed block configuration after each action. Do not produce PDDL.",
+                "prompt": "Your name is robot_beta. Use your private information and the public information to provide a concise ordered log of which actions from the sequence you perform and the resulting configuration after those actions. Focus on observations and executed steps, do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_robot_alpha",
+                    "obs_robot_beta"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and the FastDownward planner. Produce a BlocksWorld PDDL domain and a PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. If multiple agents contributed observations, integrate them and keep agent actions distinct if needed.",
+                "prompt": "Your name is orchestrator. Integrate the agents' execution logs and the public information to derive the final arrangement of blocks after the action sequence. Then produce a BlocksWorld PDDL domain and a PDDL problem whose goal encodes the final arrangement. Target the FastDownward solver. Enclose the domain between <domain> tags and the problem between <problem> tags."
+            }
+        },
+        "constraints": [
+            "robot_alpha.execute->orchestrator.pddl",
+            "robot_beta.execute->orchestrator.pddl"
+        ]
+    }
+}

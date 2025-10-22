@@ -1,0 +1,84 @@
+{
+    "name": "Blocksworld30Instance15",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot_a",
+            "robot_b",
+            "orchestrator"
+        ],
+        "robot_a": {
+            "private_information": [
+                "I am an agent capable of picking up, putting down, stacking and unstacking a single top block at a time.",
+                "I can only move the top block of a stack and I can carry at most one block at a time."
+            ],
+            "goal": "Execute and/or verify the given sequence of block operations and contribute observations for the orchestrator to produce a final plan."
+        },
+        "robot_b": {
+            "private_information": [
+                "I am an agent capable of picking up, putting down, stacking and unstacking a single top block at a time.",
+                "I observe the same BlocksWorld rules and can report state changes and any ambiguities."
+            ],
+            "goal": "Execute and/or verify the given sequence of block operations and contribute observations for the orchestrator to produce a final plan."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate multiple agents and produce the final PDDL domain and problem for FastDownwards.",
+                "I must keep agent actions distinct when composing a multi-agent PDDL instance."
+            ],
+            "goal": "Integrate observations from the agents and produce a PDDL domain and problem (targeting the FastDownwards solver) that encodes the BlocksWorld instance and the final goal state."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 2
+        },
+        "public_information": [
+            "Blocks present: A, B, C, D, E, F, G, H, I, J, K.",
+            "BlocksWorld rules: only the top block of a stack can be moved and only one block can be carried at a time. You may unstack(top, below), pickup(top from table), putdown(block on table), and stack(block, target).",
+            "Initial arrangement: A is on J, J is on K, K is on the table.",
+            "Initial arrangement: B is on the table, D is on B, F is on D, E is on F, H is on E (so stack B-D-F-E-H).",
+            "Initial arrangement: G is on the table, C is on G (so stack G-C).",
+            "Initial arrangement: I is on the table.",
+            "Full explicit initial stacks bottom-to-top: [K, J, A], [B, D, F, E, H], [G, C], [I].",
+            "Action sequence to execute in order: 1. unstack(H, E) 2. putdown(H) 3. pickup(H) 4. stack(H, E) 5. unstack(A, J) 6. putdown(A) 7. pickup(A) 8. stack(A, H) 9. pickup(I) 10. putdown(I) 11. unstack(A, H) 12. putdown(A) 13. pickup(I) 14. stack(I, A) 15. unstack(I, A) 16. stack(I, A) 17. unstack(H, E) 18. stack(H, C) 19. unstack(E, F) 20. stack(E, J) 21. unstack(H, C) 22. stack(H, I) 23. unstack(H, I) 24. stack(H, C) 25. unstack(F, D) 26. stack(F, D) 27. unstack(H, C) 28. stack(H, F) 29. unstack(I, A) 30. stack(I, C).",
+            "Final arrangement derived from applying the actions sequentially: stack [K, J, E] with E on J and J on K; stack [B, D, F, H] with H on F, F on D, D on B; stack [G, C, I] with I on C and C on G; and A on the table alone.",
+            "Final per-block placement: A is on the table; B is on the table; C is on G; D is on B; E is on J; F is on D; G is on the table; H is on F; I is on C; J is on K; K is on the table."
+        ]
+    },
+    "workflow": {
+        "robot_a": {
+            "observe": {
+                "input": [],
+                "output": "obs_robot_a",
+                "system_prompt": "You are a BlocksWorld agent. Based on the public information you should produce a concise observation summary of the initial state and the provided action sequence, and report any uncertainties. Do not produce PDDL. Mention the stacks you observe and whether the moves appear legal under standard BlocksWorld rules.",
+                "prompt": "Your name is robot_a. Public information: {environment->public_information}. Your private information: {agents->robot_a->private_information}. Your goal: {agents->robot_a->goal}. Provide a single-line observation summary and list any missing assumptions you require to interpret the action sequence."
+            }
+        },
+        "robot_b": {
+            "observe": {
+                "input": [],
+                "output": "obs_robot_b",
+                "system_prompt": "You are a BlocksWorld agent. Based on the public information you should produce a concise observation summary of the initial state and the provided action sequence, and report any uncertainties. Do not produce PDDL. Mention the stacks you observe and whether the moves appear legal under standard BlocksWorld rules.",
+                "prompt": "Your name is robot_b. Public information: {environment->public_information}. Your private information: {agents->robot_b->private_information}. Your goal: {agents->robot_b->goal}. Provide a single-line observation summary and list any missing assumptions you require to interpret the action sequence."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_robot_a",
+                    "obs_robot_b"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL for the FastDownwards planner. Integrate the agents' observations to produce a complete, consistent PDDL domain and a PDDL problem file encoding the BlocksWorld instance and the final goal state derived above. Keep agent actions distinct if modeling multi-agent actions. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use predicates and action names compatible with FastDownwards.",
+                "prompt": "You are the orchestrator. You will receive observation summaries from two agents: {pddl_orchestrator->input}. Public information: {environment->public_information}. Private information: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Integrate the observations and produce a PDDL domain and a PDDL problem targeting FastDownwards that encodes the initial state and the final goal state. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "robot_a.observe->orchestrator.pddl",
+            "robot_b.observe->orchestrator.pddl"
+        ]
+    }
+}

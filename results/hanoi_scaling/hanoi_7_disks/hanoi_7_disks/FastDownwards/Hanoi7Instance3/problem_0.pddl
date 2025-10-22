@@ -1,0 +1,38 @@
+(define (problem hanoi-7)
+  (:domain hanoi)
+  (:objects
+    A B C D E F G - disk
+    left middle right - peg
+    left_peg middle_peg right_peg - agent
+  )
+  (:init
+    (on-disk A B)
+    (on-disk B C)
+    (on-disk C D)
+    (on-disk D E)
+    (on-disk E F)
+    (on-disk F G)
+    (on-peg  G left)
+    (clear-disk A)
+    (clear-peg middle)
+    (clear-peg right)
+    (controls left_peg left)
+    (controls middle_peg middle)
+    (controls right_peg right)
+    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G)
+    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G)
+    (smaller C D) (smaller C E) (smaller C F) (smaller C G)
+    (smaller D E) (smaller D F) (smaller D G)
+    (smaller E F) (smaller E G)
+    (smaller F G)
+  )
+  (:goal (and
+    (on-disk A B)
+    (on-disk B C)
+    (on-disk C D)
+    (on-disk D E)
+    (on-disk E F)
+    (on-disk F G)
+    (on-peg  G right)
+  ))
+)

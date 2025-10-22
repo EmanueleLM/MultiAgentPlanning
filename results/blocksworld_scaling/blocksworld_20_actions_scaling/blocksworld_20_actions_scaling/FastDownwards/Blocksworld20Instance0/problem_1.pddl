@@ -1,0 +1,106 @@
+(define (problem blocks-ordered-sequence-instance)
+  (:domain blocks-world-ordered-sequence)
+
+  (:objects
+    A B C D E F G H I J - block
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10
+    step11 step12 step13 step14 step15 step16 step17 step18 step19 step20 - step
+  )
+
+  (:init
+    ;; Initial arrangement (public specification)
+    (ontable A)
+    (on D A)
+
+    (ontable E)
+
+    (on C H)
+    (ontable H)
+
+    (on B I)
+    (ontable I)
+
+    (on G B)
+    (on F G)
+    (on J F)
+
+    ;; initial clear (top blocks)
+    (clear D)
+    (clear C)
+    (clear J)
+    (clear E)
+
+    ;; hand state
+    (handempty)
+
+    ;; sequencing control: current step and next relations
+    (current step0)
+    (next step0 step1)
+    (next step1 step2)
+    (next step2 step3)
+    (next step3 step4)
+    (next step4 step5)
+    (next step5 step6)
+    (next step6 step7)
+    (next step7 step8)
+    (next step8 step9)
+    (next step9 step10)
+    (next step10 step11)
+    (next step11 step12)
+    (next step12 step13)
+    (next step13 step14)
+    (next step14 step15)
+    (next step15 step16)
+    (next step16 step17)
+    (next step17 step18)
+    (next step18 step19)
+    (next step19 step20)
+
+    ;; Expectations: bind each step to the exact block arguments required by the sequence
+    ;; 1. unstack(D, A)
+    (expect2 step0 D A)
+    ;; 2. stack(D, A)
+    (expect2 step1 D A)
+    ;; 3. pickup(E)
+    (expect1 step2 E)
+    ;; 4. stack(E, C)
+    (expect2 step3 E C)
+    ;; 5. unstack(D, A)
+    (expect2 step4 D A)
+    ;; 6. putdown(D)
+    (expect1 step5 D)
+    ;; 7. unstack(E, C)
+    (expect2 step6 E C)
+    ;; 8. stack(E, A)
+    (expect2 step7 E A)
+    ;; 9. unstack(C, H)
+    (expect2 step8 C H)
+    ;; 10. stack(C, J)
+    (expect2 step9 C J)
+    ;; 11. unstack(E, A)
+    (expect2 step10 E A)
+    ;; 12. stack(E, H)
+    (expect2 step11 E H)
+    ;; 13. unstack(E, H)
+    (expect2 step12 E H)
+    ;; 14. putdown(E)
+    (expect1 step13 E)
+    ;; 15. unstack(C, J)
+    (expect2 step14 C J)
+    ;; 16. stack(C, E)
+    (expect2 step15 C E)
+    ;; 17. pickup(D)
+    (expect1 step16 D)
+    ;; 18. stack(D, A)
+    (expect2 step17 D A)
+    ;; 19. unstack(J, F)
+    (expect2 step18 J F)
+    ;; 20. stack(J, C)
+    (expect2 step19 J C)
+  )
+
+  (:goal (and
+    ;; Goal is to have completed all ordered steps (i.e., reach step20)
+    (current step20)
+  ))
+)

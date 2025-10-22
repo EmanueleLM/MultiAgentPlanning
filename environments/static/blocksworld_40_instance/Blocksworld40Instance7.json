@@ -1,0 +1,80 @@
+{
+    "name": "Blocksworld40Instance7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot1",
+            "robot2",
+            "orchestrator"
+        ],
+        "robot1": {
+            "private_information": [
+                "I am agent robot1 and can move one block at a time.",
+                "I can perform unstack, stack, pickup and putdown actions subject to BlocksWorld rules.",
+                "I can observe the positions of all blocks but I only execute a subset of the steps."
+            ],
+            "goal": "Collaborate with robot2 to execute the provided action sequence on the blocks and report the actions I perform."
+        },
+        "robot2": {
+            "private_information": [
+                "I am agent robot2 and can move one block at a time.",
+                "I can perform unstack, stack, pickup and putdown actions subject to BlocksWorld rules.",
+                "I can observe the positions of all blocks but I only execute a subset of the steps."
+            ],
+            "goal": "Collaborate with robot1 to execute the provided action sequence on the blocks and report the actions I perform."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate robot1 and robot2 and synthesize their reports into a final PDDL domain and problem suitable for FastDownwards."
+            ],
+            "goal": "Integrate the agents' action reports and the environment description to produce a complete PDDL domain and problem that models the final BlocksWorld state and is ready for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: Classic BlocksWorld with blocks A B C D E F G H I J.",
+            "Rules: Only the top block of a stack can be moved and only one block can be carried at a time. Valid actions include unstack(X,Y), stack(X,Y), pickup(X), putdown(X).",
+            "Initial arrangement: A on table, E on A, H on E; B on table, F on B; D on table, I on D, C on I; G on table, J on G.",
+            "The agents will execute the following ordered action sequence: 1. unstack(J,G) 2. stack(J,H) 3. unstack(C,I) 4. putdown(C) 5. pickup(G) 6. stack(G,J) 7. unstack(G,J) 8. stack(G,I) 9. unstack(F,B) 10. stack(F,B) 11. unstack(J,H) 12. stack(J,G) 13. unstack(H,E) 14. putdown(H) 15. unstack(E,A) 16. stack(E,J) 17. pickup(C) 18. stack(C,A) 19. unstack(E,J) 20. stack(E,C) 21. pickup(H) 22. stack(H,F) 23. unstack(J,G) 24. putdown(J) 25. unstack(E,C) 26. stack(E,H) 27. pickup(J) 28. stack(J,E) 29. unstack(G,I) 30. stack(G,C) 31. unstack(J,E) 32. stack(J,I) 33. unstack(J,I) 34. putdown(J) 35. pickup(J) 36. stack(J,E) 37. unstack(J,E) 38. stack(J,I) 39. unstack(J,I) 40. stack(J,G).",
+            "Task: Starting from the initial arrangement and applying the ordered actions, derive the final location of each block indicating whether it is on the table or on top of another block."
+        ]
+    },
+    "workflow": {
+        "robot1": {
+            "plan": {
+                "input": [],
+                "output": "plan_robot1",
+                "system_prompt": "You are robot1, an agent in a BlocksWorld domain. Provide the subset of actions you will execute or observe you are responsible for from the global action sequence. Do not emit PDDL. Provide a clear numbered list of the specific actions assigned to you or that you executed and, optionally, a brief justification if any action was invalid under BlocksWorld rules.",
+                "prompt": "You are robot1. You have access to the public environment description and initial arrangement: {environment->public_information}. You have the following private information: {agents->robot1->private_information}. Your goal is: {agents->robot1->goal}. List the actions you will perform or have performed from the global ordered action sequence. If you think an action is not applicable at the time it appears, indicate that and why."
+            }
+        },
+        "robot2": {
+            "plan": {
+                "input": [],
+                "output": "plan_robot2",
+                "system_prompt": "You are robot2, an agent in a BlocksWorld domain. Provide the subset of actions you will execute or observe you are responsible for from the global action sequence. Do not emit PDDL. Provide a clear numbered list of the specific actions assigned to you or that you executed and, optionally, a brief justification if any action was invalid under BlocksWorld rules.",
+                "prompt": "You are robot2. You have access to the public environment description and initial arrangement: {environment->public_information}. You have the following private information: {agents->robot2->private_information}. Your goal is: {agents->robot2->goal}. List the actions you will perform or have performed from the global ordered action sequence. If you think an action is not applicable at the time it appears, indicate that and why."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_robot1",
+                    "plan_robot2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator for multi-agent BlocksWorld problems. Your job is to integrate the agents' action reports and the environment description to produce a complete PDDL domain and a PDDL problem suitable for the FastDownwards solver. You must keep the agents' actions distinct in the PDDL (if actions are attributed to different agents, preserve that distinction in action names or predicates). Always provide a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should model the BlocksWorld rules and the provided ordered action sequence, then set the goal to reflect the final arrangement of blocks after applying the sequence. Target the PDDL to be compatible with FastDownwards.",
+                "prompt": "You are orchestrator. Integrate the following information: environment public information: {environment->public_information}. robot1 report: {plan_robot1}. robot2 report: {plan_robot2}. Their reports may be complementary or overlapping. Use the initial arrangement and the full ordered action sequence to compute the final configuration. Provide a PDDL domain and a PDDL problem that encode the BlocksWorld initial state and a goal that corresponds to the final arrangement of all blocks after executing the full sequence. Enclose the domain between <domain></domain> tags and the problem between <problem></problem>. The resulting files should be ready for FastDownwards."
+            }
+        },
+        "constraints": [
+            "robot1.plan->orchestrator.pddl",
+            "robot2.plan->orchestrator.pddl"
+        ]
+    }
+}

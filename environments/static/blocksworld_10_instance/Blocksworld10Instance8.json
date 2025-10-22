@@ -1,0 +1,87 @@
+{
+    "name": "Blocksworld10Instance8",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "agent1",
+            "agent2",
+            "orchestrator"
+        ],
+        "agent1": {
+            "private_information": [
+                "I am responsible for blocks A, B, C, D.",
+                "I can pick up or unstack only the top block of a stack and I can hold only one block at a time."
+            ],
+            "goal": "Execute assigned moves and report stepwise state changes for blocks A, B, C, D."
+        },
+        "agent2": {
+            "private_information": [
+                "I am responsible for blocks E, F, G.",
+                "I follow standard BlocksWorld rules that only the top block can be moved and only one block can be held."
+            ],
+            "goal": "Execute assigned moves and report stepwise state changes for blocks E, F, G."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agent1 and agent2 and must produce a combined PDDL domain and problem for the FastDownwards solver."
+            ],
+            "goal": "Integrate agents' reports and produce a PDDL domain and a PDDL problem compatible with FastDownwards that models the initial state, the action sequence, and the final arrangement goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 7,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a standard BlocksWorld with blocks A, B, C, D, E, F, G.",
+            "Standard rules: only the top block of a stack can be moved, only one block can be held at a time, legal actions include pickup, putdown, stack, and unstack.",
+            "Initial arrangement: A is on B, B is on E, E is on C, C is on D, D is on the table, F is on the table, G is on the table.",
+            "Action sequence to execute in order: 1. pickup(G) 2. stack(G, F) 3. unstack(A, B) 4. stack(A, B) 5. unstack(A, B) 6. stack(A, G) 7. unstack(A, G) 8. putdown(A) 9. unstack(B, E) 10. stack(B, E).",
+            "Task: Using the initial configuration and the action sequence, derive the final arrangement of all blocks and produce a PDDL domain and problem for FastDownwards that captures the initial state and a goal representing the final arrangement."
+        ],
+        "expected_final_arrangement": [
+            "A is on the table",
+            "B is on E",
+            "C is on D",
+            "D is on the table",
+            "E is on C",
+            "F is on the table",
+            "G is on F"
+        ]
+    },
+    "workflow": {
+        "agent1": {
+            "propose_plan": {
+                "input": [],
+                "output": "plan_agent1",
+                "system_prompt": "You are agent1 with expertise in analyzing BlocksWorld actions for blocks A, B, C, D. Provide concise, stepwise state updates relevant to your blocks after each action in the global sequence. Do not emit PDDL.",
+                "prompt": "Your name is agent1. You have the following public information: {environment->public_information}. You have the following private information: {agents->agent1->private_information}. Your goal is: {agents->agent1->goal}. For each action in the given sequence, state how that action affects the blocks A, B, C, D. Provide a step number, the action, and the resulting local relationships for your blocks. If an action does not concern your blocks, state that no change occurred for your blocks. Provide only factual state updates."
+            }
+        },
+        "agent2": {
+            "propose_plan": {
+                "input": [],
+                "output": "plan_agent2",
+                "system_prompt": "You are agent2 with expertise in analyzing BlocksWorld actions for blocks E, F, G. Provide concise, stepwise state updates relevant to your blocks after each action in the global sequence. Do not emit PDDL.",
+                "prompt": "Your name is agent2. You have the following public information: {environment->public_information}. You have the following private information: {agents->agent2->private_information}. Your goal is: {agents->agent2->goal}. For each action in the given sequence, state how that action affects the blocks E, F, G. Provide a step number, the action, and the resulting local relationships for your blocks. If an action does not concern your blocks, state that no change occurred for your blocks. Provide only factual state updates."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_agent1",
+                    "plan_agent2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownwards planner. Produce a PDDL domain and a PDDL problem file that model the BlocksWorld initial state and that set the goal to the final arrangement derived from the action sequence. Ensure the PDDL is compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator coordinating two agents that analyze parts of the action sequence. You will receive their stepwise local state updates. Integrate their reports, resolve any naming or mapping ambiguities, and produce a single PDDL domain and a single PDDL problem that represent the BlocksWorld instance, the initial state given, and a goal encoding the final arrangement. Keep actions and agent attributions distinct if relevant. Target the FastDownwards solver and ensure the produced PDDL is syntactically compatible. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "agent1.propose_plan->orchestrator.pddl",
+            "agent2.propose_plan->orchestrator.pddl"
+        ]
+    }
+}

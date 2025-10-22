@@ -17,55 +17,18 @@ from time import sleep
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH, RESULTS_FOLDER
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH, RESULTS_FOLDER, SOLVER, MODELS
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import SolutionVerifierHypervisor
-from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import (
-    run_pddl_popf2_and_Val,
-    run_pddl_fast_downwards_and_uVal,
-    collect_debug_logs,
-)
+from src.llm_plan.utils import collect_debug_logs
 
 DATASET = {
     "calendar_easy_to_hard_verify": {
         "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_verify.json",
         "results": RESULTS_FOLDER / "calendar_easy_to_hard_verify",
     },
-}
-
-SOLVER = {
-    "POPF2": {
-        "solver": run_pddl_popf2_and_Val,
-        "support_optimization": False,
-        "timeout": 0,
-    },
-    "FastDownwards": {
-        "solver": run_pddl_fast_downwards_and_uVal,
-        "support_optimization": True,
-        "timeout": 60,
-    },
-}
-
-MODELS = {
-    "gpt-4o": {"model": ChatGPT("gpt-4o"), "persistent": False, "sleep": 0},
-    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
-    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
-    "gemini-2.5-flash": {
-        "model": Gemini("gemini-2.5-flash"),
-        "persistent": False,
-        "sleep": 10,
-    },
-    "gemini-2.5-pro": {
-        "model": Gemini("gemini-2.5-pro"),
-        "persistent": False,
-        "sleep": 20,
-    },
-    # "gpt-oss-120b": {"model": GPT_OSS("gpt-oss-120b"),
-    #             "persistent": True,
-    #             "sleep": 0},  # this model won't be loaded until generate_sync is called
 }
 
 DEFAULT_SYNTAX_MESSAGE = "No syntax error log was generated."

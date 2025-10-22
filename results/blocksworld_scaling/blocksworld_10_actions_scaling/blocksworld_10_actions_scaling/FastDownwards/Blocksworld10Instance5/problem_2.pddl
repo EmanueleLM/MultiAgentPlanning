@@ -1,0 +1,38 @@
+(define (problem blocksworld10instance5_sequence_check)
+  (:domain blocksworld-sequence)
+
+  (:objects
+    robot1 robot2 orchestrator - agent
+    a b c d e f g h - block
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 - step
+  )
+
+  (:init
+    (on a g)
+    (on b d)
+    (on c h)
+    (ontable d)
+    (ontable e)
+    (on f e)
+    (on g f)
+    (ontable h)
+    (clear a)
+    (clear b)
+    (clear c)
+    (handempty robot1)
+    (handempty robot2)
+    (can-manipulate robot1 a)
+    (can-manipulate robot1 c)
+    (can-manipulate robot1 g)
+    (can-manipulate robot1 h)
+    (can-manipulate robot2 b)
+    (can-manipulate robot2 d)
+    (can-manipulate robot2 e)
+    (can-manipulate robot2 f)
+    (at-step step0)
+  )
+
+  (:goal (and
+    (at-step step10)
+  ))
+)

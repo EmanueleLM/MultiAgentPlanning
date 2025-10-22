@@ -1,0 +1,82 @@
+{
+    "name": "Blocksworld30Instance4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "agent1",
+            "agent2",
+            "orchestrator"
+        ],
+        "agent1": {
+            "private_information": [
+                "I am agent1 and I can move only the top block of a stack.",
+                "I can carry at most one block at a time.",
+                "I executed the odd-numbered actions in the sequence: 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29.",
+                "The odd-numbered actions I executed are: unstack(E,I); unstack(D,G); unstack(D,G); unstack(E,I); unstack(D,G); unstack(D,G); pickup(D); unstack(D,G); unstack(E,I); unstack(G,F); unstack(G,F); unstack(F,C); unstack(F,C); unstack(F,I); unstack(F,G)."
+            ],
+            "goal": "Track and report the effects of the actions I performed and provide a clear textual description of the resulting local state changes."
+        },
+        "agent2": {
+            "private_information": [
+                "I am agent2 and I follow standard BlocksWorld rules: only the top block can be moved and only one block can be carried at a time.",
+                "I executed the even-numbered actions in the sequence: 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30.",
+                "The even-numbered actions I executed are: stack(E,I); stack(D,G); stack(D,G); stack(E,I); stack(D,G); putdown(D); stack(D,G); putdown(D); putdown(E); stack(G,F); stack(G,E); stack(F,C); stack(F,I); stack(F,G); stack(F,C)."
+            ],
+            "goal": "Track and report the effects of the actions I performed and provide a clear textual description of the resulting local state changes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the information from agent1 and agent2 and must produce the final formalization.",
+                "I must integrate the agents observations and generate a PDDL domain and a PDDL problem suitable for the FastDownwards planner.",
+                "I must keep the actions of agent1 and agent2 distinct when relevant."
+            ],
+            "goal": "Integrate agent reports and produce a complete PDDL domain and a PDDL problem that encodes the initial BlocksWorld state and the final target state after the full action sequence, optimized for use with the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a standard BlocksWorld domain with blocks labeled A B C D E F G H I.",
+            "Standard rules apply: only the top block of a stack can be moved and only one block can be carried at a time.",
+            "The initial arrangement is: A is on the table, B is on top of A, C is on the table, D is on top of G, E is on top of I, F is on top of C, G is on top of F, H is on top of B, I is on top of H.",
+            "Expressed as relations: on(A, table), on(B, A), on(C, table), on(D, G), on(E, I), on(F, C), on(G, F), on(H, B), on(I, H).",
+            "The agents execute the following actions in sequence: 1. unstack(E,I) 2. stack(E,I) 3. unstack(D,G) 4. stack(D,G) 5. unstack(D,G) 6. stack(D,G) 7. unstack(E,I) 8. stack(E,I) 9. unstack(D,G) 10. stack(D,G) 11. unstack(D,G) 12. putdown(D) 13. pickup(D) 14. stack(D,G) 15. unstack(D,G) 16. putdown(D) 17. unstack(E,I) 18. putdown(E) 19. unstack(G,F) 20. stack(G,F) 21. unstack(G,F) 22. stack(G,E) 23. unstack(F,C) 24. stack(F,C) 25. unstack(F,C) 26. stack(F,I) 27. unstack(F,I) 28. stack(F,G) 29. unstack(F,G) 30. stack(F,C).",
+            "The task is to derive the final arrangement of all blocks after applying this sequence to the given initial arrangement."
+        ]
+    },
+    "workflow": {
+        "agent1": {
+            "observe": {
+                "input": [],
+                "output": "perception_agent1",
+                "system_prompt": "You are agent1 in a BlocksWorld environment. You applied a known subset of actions from the provided global action sequence. Do not emit PDDL. Instead, provide a concise report that lists each action you performed in order and the immediate state change that action caused in terms of on, ontable, clear, holding, and handempty predicates. End with your perceived current local state of all blocks you observed."
+            }
+        },
+        "agent2": {
+            "observe": {
+                "input": [],
+                "output": "perception_agent2",
+                "system_prompt": "You are agent2 in a BlocksWorld environment. You applied a known subset of actions from the provided global action sequence. Do not emit PDDL. Instead, provide a concise report that lists each action you performed in order and the immediate state change that action caused in terms of on, ontable, clear, holding, and handempty predicates. End with your perceived current local state of all blocks you observed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "perception_agent1",
+                    "perception_agent2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. You receive the action-effect reports from agent1 and agent2. Your job is to integrate those reports, reconstruct the complete state evolution, and produce a final PDDL domain and a final PDDL problem file that encode the BlocksWorld initial state and the final target state after the full action sequence. The PDDL must be compatible with the FastDownwards planner. Keep actions corresponding to agent1 and agent2 distinct when mapping to action occurrences if helpful for clarity. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Use standard BlocksWorld predicates such as on, ontable, clear, holding, and handempty and include action schemas for unstack, stack, pickup, and putdown. Do not assume any information beyond the initial public information and the agents reports. Finally, also produce a concise human readable summary of the final arrangement of each block stating whether it is on the table or on another block."
+            },
+            "prompt": "Integrate the perceptions and produce a PDDL domain and problem suitable for FastDownwards. Provide a concise human readable final configuration after the PDDL."
+        },
+        "constraints": [
+            "agent1.observe->orchestrator.pddl",
+            "agent2.observe->orchestrator.pddl"
+        ]
+    }
+}

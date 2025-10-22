@@ -1,0 +1,94 @@
+{
+    "name": "Blocksworld10Instance16",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "worker1",
+            "worker2",
+            "orchestrator"
+        ],
+        "worker1": {
+            "private_information": [
+                "I can move one block at a time and only the top block of any stack can be moved.",
+                "I executed or observed a subset of the listed actions and can report the state changes I observed."
+            ],
+            "goal": "Help determine the final arrangement of the blocks after the provided action sequence."
+        },
+        "worker2": {
+            "private_information": [
+                "I can move one block at a time and only the top block of any stack can be moved.",
+                "I executed or observed a subset of the listed actions and can report the state changes I observed."
+            ],
+            "goal": "Help determine the final arrangement of the blocks after the provided action sequence."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate observations and produce a final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep agents' actions distinct when composing the joint planning problem."
+            ],
+            "goal": "Produce a PDDL domain and problem representing the Blocks World instance and the final desired state after the action sequence for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 7,
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G"
+            ]
+        },
+        "public_information": [
+            "There are seven blocks labeled A, B, C, D, E, F, G.",
+            "Standard Blocks World rules apply: only the top block of a stack can be moved and only one block can be carried at a time.",
+            "Initial arrangement: A is on C.",
+            "Initial arrangement: B is on the table.",
+            "Initial arrangement: C is on G.",
+            "Initial arrangement: D is on B.",
+            "Initial arrangement: E is on A.",
+            "Initial arrangement: F is on E.",
+            "Initial arrangement: G is on the table.",
+            "Action sequence to execute in order: 1. unstack(D,B) 2. putdown(D) 3. pickup(B) 4. putdown(B) 5. pickup(D) 6. putdown(D) 7. pickup(D) 8. stack(D,B) 9. unstack(F,E) 10. putdown(F).",
+            "The task is to derive the final arrangement of each block after executing the action sequence and state for each block whether it is on the table or on top of another block."
+        ]
+    },
+    "workflow": {
+        "worker1": {
+            "report": {
+                "input": [],
+                "output": "report_worker1",
+                "system_prompt": "You are an observer agent for a Blocks World scenario. Do not emit PDDL. Inspect the public information and your private information and produce a concise report describing the changes you observed or the subset of actions you executed, expressed as block state updates. Use statements of the form 'block X moved from Y to Z' or 'block X placed on table'.",
+                "prompt": "Your name is worker1. You have the following public information: {environment->public_information} You have the following private information: {agents->worker1->private_information} Your goal is: {agents->worker1->goal} Produce a concise machine-readable report of the state changes you observed or performed. If you did not observe some action, state only what you observed. The output will be consumed by the orchestrator."
+            }
+        },
+        "worker2": {
+            "report": {
+                "input": [],
+                "output": "report_worker2",
+                "system_prompt": "You are an observer agent for a Blocks World scenario. Do not emit PDDL. Inspect the public information and your private information and produce a concise report describing the changes you observed or the subset of actions you executed, expressed as block state updates. Use statements of the form 'block X moved from Y to Z' or 'block X placed on table'.",
+                "prompt": "Your name is worker2. You have the following public information: {environment->public_information} You have the following private information: {agents->worker2->private_information} Your goal is: {agents->worker2->goal} Produce a concise machine-readable report of the state changes you observed or performed. If you did not observe some action, state only what you observed. The output will be consumed by the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "report_worker1",
+                    "report_worker2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent Blocks World and PDDL targeting the FastDownwards solver. You must produce a complete PDDL domain and a PDDL problem file that represent the Blocks World instance after executing the given action sequence. Keep agent actions distinct if that matters for interpretation. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be compatible with FastDownwards conventions.",
+                "prompt": "You are the orchestrator. Integrate the public information: {environment->public_information} and the two agent reports: {report_worker1} and {report_worker2}. Your objective is: {agents->orchestrator->goal} Resolve any ambiguities conservatively using the reports and produce a PDDL domain and a PDDL problem that capture the final arrangement of the blocks after the sequence. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL must be usable with FastDownwards."
+            }
+        },
+        "constraints": [
+            "worker1.report->orchestrator.pddl",
+            "worker2.report->orchestrator.pddl"
+        ]
+    },
+    "constraints": []
+}

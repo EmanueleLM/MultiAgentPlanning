@@ -1,0 +1,80 @@
+{
+    "name": "Blocksworld20Instance1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot1",
+            "robot2",
+            "orchestrator"
+        ],
+        "robot1": {
+            "private_information": [
+                "I control one manipulator and executed the first ten actions of the sequence.",
+                "My actions were: 1. unstack(C,A), 2. stack(C,A), 3. unstack(B,F), 4. putdown(B), 5. pickup(B), 6. stack(B,F), 7. unstack(C,A), 8. putdown(C), 9. unstack(A,G), 10. stack(A,B)."
+            ],
+            "goal": "Execute the assigned actions and produce a concise report of the state changes and the resulting positions of blocks affected by my actions."
+        },
+        "robot2": {
+            "private_information": [
+                "I control a second manipulator and executed the last ten actions of the sequence.",
+                "My actions were: 11. unstack(G,D), 12. stack(G,D), 13. pickup(C), 14. stack(C,A), 15. unstack(G,D), 16. putdown(G), 17. pickup(G), 18. putdown(G), 19. pickup(G), 20. stack(G,C)."
+            ],
+            "goal": "Execute the assigned actions and produce a concise report of the state changes and the resulting positions of blocks affected by my actions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate reports from robot1 and robot2 and produce the final planning artifacts for a FastDownwards run.",
+                "I must keep the two agents actions distinct and encode the final arrangement as a PDDL goal."
+            ],
+            "goal": "Integrate the agents' reports and produce a PDDL domain and a PDDL problem file suitable for the FastDownwards solver that encode the initial state and the final arrangement derived from the full action sequence."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1,
+            "num_blocks": 8
+        },
+        "public_information": [
+            "Standard Blocks World rules apply: only the top block of a stack can be moved and only one block can be carried at a time.",
+            "Blocks involved are A, B, C, D, E, F, G, H.",
+            "Initial arrangement: C on A, A on G, G on D, D on table, B on F, F on H, H on E, E on table.",
+            "The agents execute the following actions in order: 1 unstack(C,A) 2 stack(C,A) 3 unstack(B,F) 4 putdown(B) 5 pickup(B) 6 stack(B,F) 7 unstack(C,A) 8 putdown(C) 9 unstack(A,G) 10 stack(A,B) 11 unstack(G,D) 12 stack(G,D) 13 pickup(C) 14 stack(C,A) 15 unstack(G,D) 16 putdown(G) 17 pickup(G) 18 putdown(G) 19 pickup(G) 20 stack(G,C).",
+            "Derived final arrangement after applying the full action sequence: G on C, C on A, A on B, B on F, F on H, H on E, E on table, D on table."
+        ]
+    },
+    "workflow": {
+        "robot1": {
+            "report": {
+                "input": [],
+                "output": "report_robot1",
+                "system_prompt": "You are robot1 and you executed a specified subset of blockmoving actions; produce a concise report of the state transitions you observed and list the resulting location (on which block or on table) for each block you affected.",
+                "prompt": "Your name is robot1. Public information: {environment->public_information}. Your private knowledge: {agents->robot1->private_information}. Your goal: {agents->robot1->goal}. Provide a succinct, precise report of the state changes caused by your actions and the resulting positions of affected blocks. Do not emit PDDL."
+            }
+        },
+        "robot2": {
+            "report": {
+                "input": [],
+                "output": "report_robot2",
+                "system_prompt": "You are robot2 and you executed a specified subset of blockmoving actions; produce a concise report of the state transitions you observed and list the resulting location (on which block or on table) for each block you affected.",
+                "prompt": "Your name is robot2. Public information: {environment->public_information}. Your private knowledge: {agents->robot2->private_information}. Your goal: {agents->robot2->goal}. Provide a succinct, precise report of the state changes caused by your actions and the resulting positions of affected blocks. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "report_robot1",
+                    "report_robot2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and with FastDownwards usage. You must produce a PDDL domain and a PDDL problem file that encode the Blocks World domain and the instance initial state and final goal derived from the complete action sequence. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL must be compatible with FastDownwards.",
+                "prompt": "You are the orchestrator. Public information: {environment->public_information}. You receive the agents reports: {report_robot1} and {report_robot2}. Your private knowledge: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Integrate the reports, compute the final arrangement of all blocks, and produce a PDDL domain and a PDDL problem suitable for FastDownwards where the initial state matches the given initial arrangement and the goal encodes the derived final arrangement. Enclose the domain with <domain></domain> and the problem with <problem></problem>."
+            }
+        },
+        "constraints": [
+            "robot1.report->orchestrator.pddl",
+            "robot2.report->orchestrator.pddl"
+        ]
+    }
+}

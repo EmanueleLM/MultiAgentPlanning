@@ -1,0 +1,43 @@
+(define (problem Hanoi8Instance1)
+  (:domain tower-of-hanoi-multiagent)
+  (:objects
+    a b c d e f g h - disk
+  )
+  (:init
+    ;; stack on left peg top->bottom: a b c d e f g h
+    (on-disk a b)
+    (on-disk b c)
+    (on-disk c d)
+    (on-disk d e)
+    (on-disk e f)
+    (on-disk f g)
+    (on-disk g h)
+    (on-peg h left)
+    (top a left)
+    (empty middle)
+    (empty right)
+
+    ;; size ordering (smaller X Y means X is smaller than Y)
+    (smaller a b) (smaller a c) (smaller a d) (smaller a e) (smaller a f) (smaller a g) (smaller a h)
+    (smaller b c) (smaller b d) (smaller b e) (smaller b f) (smaller b g) (smaller b h)
+    (smaller c d) (smaller c e) (smaller c f) (smaller c g) (smaller c h)
+    (smaller d e) (smaller d f) (smaller d g) (smaller d h)
+    (smaller e f) (smaller e g) (smaller e h)
+    (smaller f g) (smaller f h)
+    (smaller g h)
+  )
+  (:goal (and
+    ;; same stack on right peg top->bottom: a b c d e f g h
+    (on-disk a b)
+    (on-disk b c)
+    (on-disk c d)
+    (on-disk d e)
+    (on-disk e f)
+    (on-disk f g)
+    (on-disk g h)
+    (on-peg h right)
+    (top a right)
+    (empty left)
+    (empty middle)
+  ))
+)

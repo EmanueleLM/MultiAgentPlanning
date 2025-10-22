@@ -17,106 +17,12 @@ from time import sleep
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATA_PATH, RESULTS_FOLDER
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATASET, SOLVER, MODELS
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
-from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import (
-    run_pddl_popf2_and_Val,
-    run_pddl_fast_downwards_and_uVal,
-    collect_debug_logs,
-)
-
-DATASET = {
-    # Blocksworld Multi-agent
-    "multiagent-blocksworld": {
-        "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "multiagent-blocksworld",
-    },
-    # Google Natural Bench
-    "calendar_scheduling": {
-        "data": DATA_PATH / "natural_plan/calendar_scheduling.json",
-        "results": RESULTS_FOLDER / "google",
-    },
-    "meeting_planning": {
-        "data": DATA_PATH / "natural_plan/meeting_planning.json",
-        "results": RESULTS_FOLDER / "google",
-    },
-    "trip_planning": {
-        "data": DATA_PATH / "natural_plan/trip_planning.json",
-        "results": RESULTS_FOLDER / "google",
-    },
-    # PlanBench
-    "depots": {
-        "data": DATA_PATH / "planbench/depots.json",
-        "results": RESULTS_FOLDER / "planbench",
-    },
-    "logistics": {
-        "data": DATA_PATH / "planbench/logistics.json",
-        "results": RESULTS_FOLDER / "planbench",
-    },
-    "mystery_blocksworld": {
-        "data": DATA_PATH / "planbench/mystery_blocksworld.json",
-        "results": RESULTS_FOLDER / "planbench",
-    },
-    "obfuscated_deceptive_logistics": {
-        "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
-        "results": RESULTS_FOLDER / "planbench",
-    },
-    "blocksworld": {
-        "data": DATA_PATH / "planbench/blocksworld.json",
-        "results": RESULTS_FOLDER / "planbench",
-    },
-    # Scaling Blocksworld
-    "blocksworld_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_5_levels_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling",
-    },
-    # Variations on Calendar Scheduling
-    "calendar_easy_to_hard": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard",
-    },
-    "calendar_easy_to_hard_shifted": {
-        "data": DATA_PATH / "miscellanea/calendar_easy_to_hard_shifted.json",
-        "results": RESULTS_FOLDER / "calendar_easy_to_hard_shifted",
-    },
-}
-
-
-SOLVER = {
-    "POPF2": {
-        "solver": run_pddl_popf2_and_Val,
-        "support_optimization": False,
-        "timeout": 0,
-    },
-    "FastDownwards": {
-        "solver": run_pddl_fast_downwards_and_uVal,
-        "support_optimization": True,
-        "timeout": 120,
-    },
-}
-
-MODELS = {
-    "gpt-4o": {"model": ChatGPT("gpt-4o"), "persistent": False, "sleep": 0},
-    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
-    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
-    "gemini-2.5-flash": {
-        "model": Gemini("gemini-2.5-flash"),
-        "persistent": False,
-        "sleep": 10,
-    },
-    "gemini-2.5-pro": {
-        "model": Gemini("gemini-2.5-pro"),
-        "persistent": False,
-        "sleep": 20,
-    },
-    # "gpt-oss-120b": {"model": GPT_OSS("gpt-oss-120b"),
-    #             "persistent": True,
-    #             "sleep": 0},  # this model won't be loaded until generate_sync is called
-}
+from src.llm_plan.utils import collect_debug_logs
 
 
 def parse_args():

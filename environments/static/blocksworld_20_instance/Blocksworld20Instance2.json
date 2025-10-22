@@ -1,0 +1,75 @@
+{
+    "name": "Blocksworld20Instance2",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "manipulator_1",
+            "manipulator_2",
+            "orchestrator"
+        ],
+        "manipulator_1": {
+            "private_information": [
+                "I am responsible for executing actions 1 through 10 in the global sequence",
+                "My actions are: 1. unstack(H, A), 2. stack(H, B), 3. unstack(I, F), 4. stack(I, A), 5. unstack(I, A), 6. stack(I, H), 7. unstack(A, C), 8. putdown(A), 9. pickup(A), 10. stack(A, I)"
+            ],
+            "goal": "Execute my assigned actions in order, ensure each action is legal under standard BlocksWorld rules, and provide a concise action list with a short legality justification for each step."
+        },
+        "manipulator_2": {
+            "private_information": [
+                "I am responsible for executing actions 11 through 20 in the global sequence",
+                "My actions are: 11. unstack(C, D), 12. stack(C, A), 13. unstack(G, J), 14. stack(G, F), 15. unstack(C, A), 16. stack(C, J), 17. pickup(D), 18. putdown(D), 19. unstack(A, I), 20. stack(A, G)"
+            ],
+            "goal": "Execute my assigned actions in order, ensure each action is legal under standard BlocksWorld rules, and provide a concise action list with a short legality justification for each step."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the action descriptions produced by the two manipulators, produce a PDDL domain and a PDDL problem compatible with the FastDownwards solver that represents the BlocksWorld instance and the final goal after the given sequence, and explicitly state the final arrangement of all blocks."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are blocks labeled A, B, C, D, E, F, G, H, I, J.",
+            "Initial arrangement: A is on top of C, B is on top of E, C is on top of D, D is on the table, E is on the table, F is on the table, G is on top of J, H is on top of A, I is on top of F, J is on the table.",
+            "BlocksWorld rules: only the top block of a stack can be moved, only one block may be carried at a time, allowed actions include unstack, stack, pickup, putdown, and moves must respect the top-only constraint.",
+            "The agents will execute a fixed ordered sequence of 20 actions provided to them. The sequence must be checked for legality under BlocksWorld rules and applied in order to derive the final configuration."
+        ]
+    },
+    "workflow": {
+        "manipulator_1": {
+            "describe": {
+                "input": [],
+                "output": "manipulator1_plan",
+                "system_prompt": "You are a BlocksWorld manipulator agent responsible for the first segment of a global action sequence. Do not produce PDDL. Provide a concise ordered list of the actions you perform and for each action give a short justification that the action is legal given the current local state you track. If an action would be illegal given prior steps, flag it and explain the conflict.",
+                "prompt": "Your name is manipulator_1. You have the following public information: {environment->public_information} You have the following private information: {agents->manipulator_1->private_information} Your goal: {agents->manipulator_1->goal} Provide a concise structured output representing the ordered actions you will execute and one-sentence legality justification for each action."
+            }
+        },
+        "manipulator_2": {
+            "describe": {
+                "input": [],
+                "output": "manipulator2_plan",
+                "system_prompt": "You are a BlocksWorld manipulator agent responsible for the second segment of a global action sequence. Do not produce PDDL. Provide a concise ordered list of the actions you perform and for each action give a short justification that the action is legal given the current local state you track. If an action would be illegal given prior steps, flag it and explain the conflict.",
+                "prompt": "Your name is manipulator_2. You have the following public information: {environment->public_information} You have the following private information: {agents->manipulator_2->private_information} Your goal: {agents->manipulator_2->goal} Provide a concise structured output representing the ordered actions you will execute and one-sentence legality justification for each action."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "manipulator1_plan",
+                    "manipulator2_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent BlocksWorld planning and PDDL authoring. Your task is to integrate the action descriptions from two agents, check and reconcile any naming or ordering ambiguities, and produce a complete PDDL domain and PDDL problem compatible with the FastDownwards planner that encodes the BlocksWorld instance and the final goal state reached after executing the entire 20-action sequence. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Also produce a plain textual statement enumerating the final location of every block (on-table or on-top-of which block). Keep the agents' contributions distinct while integrating them into a single coherent encoding.",
+                "prompt": "You are the orchestrator. Public information: {environment->public_information} Agent 1 provided: {manipulator1_plan} Agent 2 provided: {manipulator2_plan} Your goal: {agents->orchestrator->goal} Reconcile the inputs, ensure the sequence is legal under BlocksWorld rules, produce a PDDL domain and problem suitable for FastDownwards that represents the instance and the final goal after the 20 actions, and finally state the final arrangement of all blocks clearly. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "manipulator_1.describe->orchestrator.pddl",
+            "manipulator_2.describe->orchestrator.pddl"
+        ]
+    }
+}

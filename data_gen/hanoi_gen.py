@@ -110,15 +110,15 @@ if __name__ == "__main__":
     save_folder = Path("./data/hanoi_scaling/")
     save_folder.mkdir(parents=True, exist_ok=True)
 
-    disks_levels = [3, 4, 5, 6, 7]
-    instances_per_level = 10
+    disks_levels = [4, 5, 6, 7, 8]
+    instances_per_level = 20
 
     for level in disks_levels:
         dataset_with_keys: Dict[str, Dict] = {}
         for idx in range(instances_per_level):
             raw_instance = generate_instance(level, idx)
             _, data = next(iter(raw_instance.items()))
-            dataset_with_keys[f"hanoi_{level}_{idx}"] = data
+            dataset_with_keys[f"hanoi_{level}_instance_{idx}"] = data
 
         output_path = save_folder / f"hanoi_{level}_disks.json"
         with open(output_path, "w") as f:

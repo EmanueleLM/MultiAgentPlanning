@@ -5,6 +5,13 @@
 2. Run:
 - ``pytest``
 
+### Run project scripts
+
+Shell helpers now live in `script/`. From the project root execute them with:
+```
+bash script/<script-name>.sh
+```
+
 ### Install GPT-OSS-20B via Ollama -- Tested on MacBook Pro M2 Sequoia 15.5 
 
 1. Install Ollama on your laptop:

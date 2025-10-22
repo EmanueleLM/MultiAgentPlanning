@@ -1,0 +1,45 @@
+(define (problem blocks-multiagent-final-goal)
+  (:domain blocks-world-multiagent)
+  (:objects A B C D E F G H I J K L - block)
+
+  (:init
+    ;; initial configuration (before executed sequence)
+    (on B I)
+    (on C B)
+    (on D E)
+    (on E F)
+    (on G D)
+    (on H G)
+    (on J L)
+    (on L K)
+    (on-table A)
+    (on-table F)
+    (on-table I)
+    (on-table K)
+
+    ;; clear blocks in the initial state
+    (clear A)
+    (clear C)
+    (clear H)
+    (clear J)
+
+    ;; both agents' hands empty initially
+    (handempty1)
+    (handempty2)
+  )
+
+  (:goal (and
+    (on-table A)
+    (on I A)
+    (on L I)
+    (on-table C)
+    (on H C)
+    (on-table F)
+    (on E F)
+    (on D E)
+    (on-table K)
+    (on B K)
+    (on-table J)
+    (on G J)
+  ))
+)

@@ -9,51 +9,18 @@ from pathlib import Path
 from time import sleep
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, RESULTS_FOLDER
+from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, RESULTS_FOLDER, SOLVER, MODELS
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
-from src.llm_plan.llm import ChatGPT, Gemini
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
     collect_debug_logs,
-    get_latest_file,
-    run_pddl_fast_downwards_and_uVal,
-    run_pddl_popf2_and_Val,
+    get_latest_file
 )
 
 ENVIRONMENT_SUBFOLDER = "miscellanea"
 RESULTS_ROOT = RESULTS_FOLDER / "miscellanea"
-
-SOLVER = {
-    "POPF2": {
-        "solver": run_pddl_popf2_and_Val,
-        "support_optimization": False,
-        "timeout": 0,
-    },
-    "FastDownwards": {
-        "solver": run_pddl_fast_downwards_and_uVal,
-        "support_optimization": True,
-        "timeout": 60,
-    },
-}
-
-MODELS = {
-    "gpt-4o": {"model": ChatGPT("gpt-4o"), "persistent": False, "sleep": 0},
-    "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
-    "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
-    "gemini-2.5-flash": {
-        "model": Gemini("gemini-2.5-flash"),
-        "persistent": False,
-        "sleep": 10,
-    },
-    "gemini-2.5-pro": {
-        "model": Gemini("gemini-2.5-pro"),
-        "persistent": False,
-        "sleep": 20,
-    },
-}
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

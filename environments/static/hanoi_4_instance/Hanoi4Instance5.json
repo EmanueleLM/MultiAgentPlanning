@@ -1,0 +1,109 @@
+{
+    "name": "Hanoi4Instance5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "left_peg",
+            "middle_peg",
+            "right_peg",
+            "orchestrator"
+        ],
+        "left_peg": {
+            "private_information": [
+                "Peg name: left",
+                "Stack (top->bottom): A, B, C, D",
+                "Disks present: A (smallest), B, C, D (largest)"
+            ],
+            "goal": "Assist in achieving the global goal: relocate all disks so the right peg has (top->bottom) A, B, C, D while respecting the rules."
+        },
+        "middle_peg": {
+            "private_information": [
+                "Peg name: middle",
+                "Stack (top->bottom): (empty)"
+            ],
+            "goal": "Assist in achieving the global goal: relocate all disks so the right peg has (top->bottom) A, B, C, D while respecting the rules."
+        },
+        "right_peg": {
+            "private_information": [
+                "Peg name: right",
+                "Stack (top->bottom): (empty)"
+            ],
+            "goal": "Assist in achieving the global goal: relocate all disks so the right peg has (top->bottom) A, B, C, D while respecting the rules."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate peg-local information and produce a PDDL domain and problem compatible with the FastDownwards planner that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": 4,
+            "disk_labels": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "move_limit": null,
+            "visibility": 3
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are 4 disks labeled A (smallest), B, C, D (largest).",
+            "Only one disk can be moved at a time.",
+            "You may never place a larger disk on top of a smaller disk.",
+            "Initial configuration: left peg has (top->bottom) A, B, C, D; middle peg empty; right peg empty.",
+            "Goal configuration: right peg has (top->bottom) A, B, C, D; left and middle pegs are empty."
+        ]
+    },
+    "workflow": {
+        "left_peg": {
+            "describe": {
+                "input": [],
+                "output": "state_left",
+                "system_prompt": "You are an agent representing the left peg. Your role is to observe and describe your local state and the legal local moves you can perform, without producing PDDL. Provide a concise, machine-readable description of the peg name, the ordered stack top-to-bottom, and the top disk (if any). Also list possible legal single-disk moves from this peg to other pegs given the public rules. Do NOT emit PDDL; produce a clear state summary that the orchestrator can consume.",
+                "prompt": "Your name is left_peg. Use the following public information about the environment:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->left_peg->private_information}\nThis is your role/goal:\n{agents->left_peg->goal}\nDescribe your local state and the set of currently legal single-disk moves (target peg names) given only your local view and the public rules. Keep the output factual and structured for downstream consumption."
+            }
+        },
+        "middle_peg": {
+            "describe": {
+                "input": [],
+                "output": "state_middle",
+                "system_prompt": "You are an agent representing the middle peg. Your role is to observe and describe your local state and the legal local moves you can perform, without producing PDDL. Provide a concise, machine-readable description of the peg name, the ordered stack top-to-bottom, and the top disk (if any). Also list possible legal single-disk moves from this peg to other pegs given the public rules. Do NOT emit PDDL; produce a clear state summary that the orchestrator can consume.",
+                "prompt": "Your name is middle_peg. Use the following public information about the environment:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->middle_peg->private_information}\nThis is your role/goal:\n{agents->middle_peg->goal}\nDescribe your local state and the set of currently legal single-disk moves (target peg names) given only your local view and the public rules. Keep the output factual and structured for downstream consumption."
+            }
+        },
+        "right_peg": {
+            "describe": {
+                "input": [],
+                "output": "state_right",
+                "system_prompt": "You are an agent representing the right peg. Your role is to observe and describe your local state and the legal local moves you can perform, without producing PDDL. Provide a concise, machine-readable description of the peg name, the ordered stack top-to-bottom, and the top disk (if any). Also list possible legal single-disk moves from this peg to other pegs given the public rules. Do NOT emit PDDL; produce a clear state summary that the orchestrator can consume.",
+                "prompt": "Your name is right_peg. Use the following public information about the environment:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->right_peg->private_information}\nThis is your role/goal:\n{agents->right_peg->goal}\nDescribe your local state and the set of currently legal single-disk moves (target peg names) given only your local view and the public rules. Keep the output factual and structured for downstream consumption."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_left",
+                    "state_middle",
+                    "state_right"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and in writing PDDL domain and problem files targeting the FastDownwards planner. Your task is to integrate the local state descriptions from the peg agents and produce a complete PDDL domain and a PDDL problem that FastDownwards can consume to solve the Tower of Hanoi instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make sure actions are specific (e.g., move-from-to) and include preconditions that prevent placing larger disks on smaller ones. Use disk names A,B,C,D and peg names left,middle,right consistently. Provide any required objects, initial state predicates, and a goal specification that matches the desired final configuration.",
+                "prompt": "You are orchestrator. You will receive state summaries from the three peg agents:\nState from left peg:\n{state_left}\nState from middle peg:\n{state_middle}\nState from right peg:\n{state_right}\nUse these inputs plus the public environment information:\n{environment->public_information}\nand the global goal:\nMove the entire stack so that the right peg has (top->bottom) A, B, C, D and left and middle pegs are empty.\nIntegrate the peg-local states, resolve naming consistently, and emit a PDDL domain and PDDL problem compatible with FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Keep agent actions distinct at the level of moves (explicit move-from-pegX-to-pegY operators)."
+            }
+        },
+        "constraints": [
+            "left_peg.describe->orchestrator.pddl",
+            "middle_peg.describe->orchestrator.pddl",
+            "right_peg.describe->orchestrator.pddl"
+        ]
+    }
+}

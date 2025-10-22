@@ -1,0 +1,33 @@
+(define (problem final-blocks)
+  (:domain blocksworld-multi)
+  (:objects a b c d e f g h - block
+            manip1 manip2 - agent)
+  (:init
+    ;; Final arrangement after the executed action sequence (encoded as initial state here)
+    (on b a)
+    (on h b)
+    (on e h)
+    (on d e)
+    (on f g)
+    (ontable a)
+    (ontable g)
+    (ontable c)
+    ;; clear tops
+    (clear d)
+    (clear f)
+    (clear c)
+    ;; both manipulators' hands are empty
+    (handempty manip1)
+    (handempty manip2)
+  )
+  (:goal (and
+    (on b a)
+    (on h b)
+    (on e h)
+    (on d e)
+    (on f g)
+    (ontable a)
+    (ontable g)
+    (ontable c)
+  ))
+)

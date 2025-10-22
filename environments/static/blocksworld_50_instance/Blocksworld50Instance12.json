@@ -1,0 +1,80 @@
+{
+    "name": "Blocksworld50Instance12",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "worker1",
+            "worker2",
+            "orchestrator"
+        ],
+        "worker1": {
+            "private_information": [
+                "I am one of two cooperative manipulators operating on the blocks.",
+                "I can pick up, put down, unstack, and stack one top block at a time."
+            ],
+            "goal": "Observe and interpret the provided action sequence and report the local state changes I can infer."
+        },
+        "worker2": {
+            "private_information": [
+                "I am the second cooperative manipulator operating on the blocks.",
+                "I can pick up, put down, unstack, and stack one top block at a time."
+            ],
+            "goal": "Observe and interpret the provided action sequence and report the local state changes I can infer."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate information from both workers and produce a final unified model of the world."
+            ],
+            "goal": "Integrate observations and produce a PDDL domain and problem for the FastDownwards solver that captures the final block arrangement."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a standard BlocksWorld with blocks labeled A B C D E F G H I J K L M N.",
+            "Rules: only the top block of a stack can be moved and only one block can be carried at a time. Blocks may be on the table or on top of another block.",
+            "Initial arrangement: A is on the table, J is on top of A, H is on top of J, I is on top of H, C is on top of I, D is on top of C.",
+            "Initial arrangement: M is on the table, E is on top of M, F is on top of E, B is on top of F, N is on top of B, L is on top of N, K is on top of L.",
+            "Initial arrangement: G is on the table.",
+            "The agents execute the following action sequence in order: pickup(G), stack(G,D), unstack(K,L), putdown(K), pickup(K), putdown(K), pickup(K), stack(K,G), unstack(L,N), stack(L,K), unstack(L,K), stack(L,N), unstack(L,N), stack(L,N), unstack(K,G), stack(K,G), unstack(K,G), putdown(K), pickup(K), stack(K,L), unstack(K,L), putdown(K), unstack(L,N), stack(L,N), unstack(G,D), stack(G,D), pickup(K), putdown(K), unstack(G,D), stack(G,D), unstack(G,D), stack(G,K), unstack(L,N), putdown(L), unstack(D,C), stack(D,G), pickup(L), stack(L,C), unstack(L,C), stack(L,C), unstack(N,B), stack(N,L), unstack(D,G), stack(D,B), unstack(N,L), putdown(N), pickup(N), stack(N,L), unstack(N,L), stack(N,D).",
+            "Task: Using the initial configuration and the actions above, derive the final arrangement of the blocks and report for each block whether it is on the table or on top of another block."
+        ]
+    },
+    "workflow": {
+        "worker1": {
+            "observe": {
+                "input": [],
+                "output": "obs_worker1",
+                "system_prompt": "You are an observer agent that interprets a BlocksWorld action sequence and tracks stack changes. Provide a concise machine-readable description of the observed final placement of blocks based only on the public information and your partial observation responsibilities.",
+                "prompt": "Your name is worker1. You have the following public information: {environment->public_information}. You have the following private knowledge: {agents->worker1->private_information}. Your task is to process the action sequence and produce a concise listing of state transitions you can infer and a local final mapping of block placements. Output should be a compact representation that can be consumed by an orchestrator and should not be a PDDL file."
+            }
+        },
+        "worker2": {
+            "observe": {
+                "input": [],
+                "output": "obs_worker2",
+                "system_prompt": "You are an observer agent that interprets a BlocksWorld action sequence and tracks stack changes. Provide a concise machine-readable description of the observed final placement of blocks based only on the public information and your partial observation responsibilities.",
+                "prompt": "Your name is worker2. You have the following public information: {environment->public_information}. You have the following private knowledge: {agents->worker2->private_information}. Your task is to process the action sequence and produce a concise listing of state transitions you can infer and a local final mapping of block placements. Output should be a compact representation that can be consumed by an orchestrator and should not be a PDDL file."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_worker1",
+                    "obs_worker2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domain and problem files targeted specifically for the FastDownwards planner. Integrate the observations from multiple workers, resolve naming or reference ambiguities, and produce a single PDDL domain and problem that model the BlocksWorld and the final block arrangement. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If there are multiple agents' observations, keep their contributing information consistent and ensure the produced PDDL is suitable for FastDownwards (classical STRIPS-style PDDL).",
+                "prompt": "You are the orchestrator. Integrate the following observed summaries: worker1: {obs_worker1} worker2: {obs_worker2} Use the known BlocksWorld rules and the provided initial state to construct a PDDL domain and a PDDL problem that encode the final arrangement after the full action sequence. The PDDL should be compatible with FastDownwards and should include objects, initial predicates, domain predicates and operators, and the goal that corresponds to the final configuration. Output the domain and problem using <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "worker1.observe->orchestrator.pddl",
+            "worker2.observe->orchestrator.pddl"
+        ]
+    }
+}

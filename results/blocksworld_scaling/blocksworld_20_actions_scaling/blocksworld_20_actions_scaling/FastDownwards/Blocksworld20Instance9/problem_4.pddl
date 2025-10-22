@@ -1,0 +1,23 @@
+(define (problem blocks-sequence-instance)
+  (:domain blocks-world-sequence)
+
+  (:init
+    (on a c)
+    (on c g)
+    (on g table)
+    (on b table)
+    (on f b)
+    (on h table)
+    (on d h)
+    (on e d)
+    (clear a)
+    (clear f)
+    (clear e)
+    (handempty robot1)
+    (handempty robot2)
+    (handempty orchestrator)
+    (step0)
+  )
+
+  (:goal (and (step20)))
+)

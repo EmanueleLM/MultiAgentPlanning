@@ -1,0 +1,93 @@
+{
+    "name": "Hanoi7Instance16",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_keeper",
+            "rules_engine",
+            "orchestrator"
+        ],
+        "disk_keeper": {
+            "private_information": [
+                "There are 7 disks labelled A (smallest) to G (largest).",
+                "Initial configuration on pegs (top->bottom): left: A, B, C, D, E, F, G; middle: empty; right: empty.",
+                "Disk labels strictly identify size ordering: A < B < C < D < E < F < G."
+            ],
+            "goal": "Reach a configuration where the right peg holds (top->bottom) A, B, C, D, E, F, G and left and middle are empty."
+        },
+        "rules_engine": {
+            "private_information": [
+                "There are three pegs named left, middle, and right.",
+                "Legal move: move the top disk from one peg to another peg.",
+                "Constraint: never place a larger disk on top of a smaller disk.",
+                "Only one disk may be moved at a time."
+            ],
+            "goal": "Provide a precise, unambiguous description of the move rules and the predicates required to represent states and moves for the Tower of Hanoi instance."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a complete PDDL domain and problem encoding the 7-disk Tower of Hanoi instance that can be solved with the FastDownward planner; keep agent actions distinct and include the required domain/operators and the problem initial/goal states."
+        }
+    },
+    "environment": {
+        "init": {
+            "number_of_disks": 7,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disk_labels": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G"
+            ]
+        },
+        "public_information": [
+            "Three pegs named left, middle, and right.",
+            "Seven disks labelled A (smallest) through G (largest).",
+            "Legal move: move the top disk from one peg to another.",
+            "Never place a larger disk on top of a smaller disk.",
+            "Initially: left peg has (top->bottom) A, B, C, D, E, F, G; middle and right pegs are empty.",
+            "Goal: right peg has (top->bottom) A, B, C, D, E, F, G; left and middle pegs empty."
+        ]
+    },
+    "workflow": {
+        "disk_keeper": {
+            "describe_state": {
+                "input": [],
+                "output": "state_spec_disk_keeper",
+                "system_prompt": "You are an agent responsible for accurately describing the instance-specific state. Provide a clear, structured description of the objects (disks and pegs), the initial placement of each disk on pegs, and an explicit listing of which disk is on top of which. Do not emit PDDL domain or problem files. Do not assume any additional disks or pegs beyond those provided.",
+                "prompt": "Your name is disk_keeper. Use the public information {environment->public_information} and your private information {agents->disk_keeper->private_information} to produce a compact structured state specification. The output should enumerate objects (disks and pegs), and describe for each peg the stack from top to bottom. Do not output PDDL; instead produce a concise machine-readable state specification labeled as state_spec_disk_keeper."
+            }
+        },
+        "rules_engine": {
+            "describe_rules": {
+                "input": [],
+                "output": "rules_spec_rules_engine",
+                "system_prompt": "You are an agent that formalizes the rules of the domain. Provide a clear set of predicates, preconditions, and effects that capture legal moves, stacking constraints, and any invariants needed to represent Tower of Hanoi transitions. Do not emit a full PDDL domain/problem. Focus on precise predicate names, parameter orders, and semantic descriptions so another component can generate PDDL from them.",
+                "prompt": "Your name is rules_engine. Using public information {environment->public_information} and your private information {agents->rules_engine->private_information}, produce a concise specification of predicates (names and arities), the canonical form of a 'move' action (parameters, preconditions, effects), and invariants (for example how to represent 'top-of' relationships and size ordering). Do not produce PDDL; produce a clear rules_spec_rules_engine output meant for a downstream PDDL generator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_spec_disk_keeper",
+                    "rules_spec_rules_engine"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a complete PDDL domain and problem for the 7-disk Tower of Hanoi instance. Consume the state and rules specifications provided by the other agents and synthesize a correct PDDL domain and problem that FastDownward can solve. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure predicates, action definitions, initial state, and goal match the provided specifications. Target the FastDownward planner (include appropriate requirements and avoid constructs unsupported by standard FastDownward setups). Keep actions corresponding to conceptual agents distinct if needed.",
+                "prompt": "You are orchestrator. You will receive two structured inputs: {state_spec_disk_keeper} and {rules_spec_rules_engine}. Integrate them to produce a PDDL domain and a PDDL problem encoding the global goal: {agents->orchestrator->goal}. Provide the PDDL domain enclosed in <domain>...</domain> tags and the PDDL problem enclosed in <problem>...</problem> tags. Use descriptive predicate and action names consistent with the rules_spec_rules_engine, include all seven disks A..G and the three pegs left,middle,right, and set the initial and goal states according to the state_spec_disk_keeper. Ensure the produced PDDL is complete and suitable for FastDownward."
+            }
+        },
+        "constraints": [
+            "disk_keeper.describe_state->orchestrator.pddl",
+            "rules_engine.describe_rules->orchestrator.pddl"
+        ]
+    }
+}

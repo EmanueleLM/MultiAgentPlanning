@@ -1,0 +1,93 @@
+{
+    "name": "Blocksworld30Instance3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover1",
+            "mover2",
+            "orchestrator"
+        ],
+        "mover1": {
+            "private_information": [
+                "I am one of two manipulators that can pick up and put down a single top block at a time.",
+                "I can only move a block if it is the top block of its stack.",
+                "I executed the odd-numbered actions in the provided sequence: 1 unstack(F,D), 3 pickup(D), 5 unstack(B,E), 7 pickup(B), 9 unstack(B,D), 11 unstack(B,C), 13 unstack(C,H), 15 unstack(E,A), 17 pickup(A), 19 unstack(A,H), 21 pickup(A), 23 unstack(A,H), 25 unstack(E,B), 27 unstack(A,H), 29 unstack(E,B)."
+            ],
+            "goal": "Coordinate with the other mover to realize the action sequence and report my perspective on initial state and the moves I executed."
+        },
+        "mover2": {
+            "private_information": [
+                "I am the second manipulator and follow the same BlocksWorld constraints: only top blocks may be moved and only one block may be carried at a time.",
+                "I executed the even-numbered actions in the provided sequence: 2 putdown(F), 4 stack(D,F), 6 putdown(B), 8 stack(B,D), 10 stack(B,C), 12 stack(B,D), 14 putdown(C), 16 stack(E,B), 18 stack(A,H), 20 putdown(A), 22 stack(A,H), 24 stack(A,H), 26 stack(E,B), 28 putdown(A), 30 stack(E,A)."
+            ],
+            "goal": "Coordinate with the other mover to realize the action sequence and report my perspective on initial state and the moves I executed."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the two movers and must integrate their reports to produce a single consistent formal description of the problem.",
+                "I will produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner that models two agents' actions distinctly where needed."
+            ],
+            "goal": "Integrate the movers' reports and produce a complete PDDL domain and problem modeling the BlocksWorld instance and the final state after the given action sequence."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 9,
+            "blocks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I"
+            ],
+            "workspace": "single table with multiple stacks allowed"
+        },
+        "public_information": [
+            "This is a standard BlocksWorld domain with nine blocks labeled A B C D E F G H I.",
+            "Only the top block of any stack can be moved. Only one block can be carried at a time.",
+            "Initial stacks (bottom to top): Stack1: A, E, B. Stack2: D, F. Stack3: G, I, H, C.",
+            "Equivalently: A is on the table, E is on A, B is on E. D is on the table, F is on D. G is on the table, I is on G, H is on I, C is on H.",
+            "The agents then execute the following action sequence in order: 1 unstack(F,D), 2 putdown(F), 3 pickup(D), 4 stack(D,F), 5 unstack(B,E), 6 putdown(B), 7 pickup(B), 8 stack(B,D), 9 unstack(B,D), 10 stack(B,C), 11 unstack(B,C), 12 stack(B,D), 13 unstack(C,H), 14 putdown(C), 15 unstack(E,A), 16 stack(E,B), 17 pickup(A), 18 stack(A,H), 19 unstack(A,H), 20 putdown(A), 21 pickup(A), 22 stack(A,H), 23 unstack(A,H), 24 stack(A,H), 25 unstack(E,B), 26 stack(E,B), 27 unstack(A,H), 28 putdown(A), 29 unstack(E,B), 30 stack(E,A).",
+            "The task is to apply the above actions in order starting from the initial configuration and derive the final location of each block (whether on the table or on another block)."
+        ]
+    },
+    "workflow": {
+        "mover1": {
+            "report": {
+                "input": [],
+                "output": "report_mover1",
+                "system_prompt": "You are an agent that witnessed and executed a subset of BlocksWorld moves. Provide a clear report of the initial configuration as you see it and list the moves you executed in order along with any local observations about intermediate states. Do not produce formal PDDL. Keep the report factual and consistent with the public information.",
+                "prompt": "Your name is mover1. Public information: {environment->public_information}. Your private information: {agents->mover1->private_information}. Provide a concise report describing the initial stacks and the exact sequence of moves you performed from your perspective, and note any observations about which blocks became free or which stacks changed height as a result of your moves. Output will be used by an orchestrator to build a formal problem."
+            }
+        },
+        "mover2": {
+            "report": {
+                "input": [],
+                "output": "report_mover2",
+                "system_prompt": "You are an agent that witnessed and executed a subset of BlocksWorld moves. Provide a clear report of the initial configuration as you see it and list the moves you executed in order along with any local observations about intermediate states. Do not produce formal PDDL. Keep the report factual and consistent with the public information.",
+                "prompt": "Your name is mover2. Public information: {environment->public_information}. Your private information: {agents->mover2->private_information}. Provide a concise report describing the initial stacks and the exact sequence of moves you performed from your perspective, and note any observations about which blocks became free or which stacks changed height as a result of your moves. Output will be used by an orchestrator to build a formal problem."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "report_mover1",
+                    "report_mover2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent BlocksWorld modeling and PDDL for the FastDownwards planner. Integrate multiple textual reports into a single consistent PDDL domain and PDDL problem. Keep actions distinct where relevant for tracing multi-agent execution. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be suitable for FastDownwards.",
+                "prompt": "You are the orchestrator. Public information: {environment->public_information}. Agent reports: {report_mover1} and {report_mover2}. Agents private information: {agents->mover1->private_information} and {agents->mover2->private_information}. Your goal: produce a complete PDDL domain and a PDDL problem that models the BlocksWorld instance, the initial state, the sequence of actions executed (as a plan trace or as actions that lead to the final state), and the final state derived after applying the given ordered action sequence. Ensure the domain models the constraints that only top blocks can be moved and only one block can be carried. Keep the two agents' moves distinguishable if needed for clarity. Output must be two blocks: the domain enclosed in <domain></domain> tags and the problem enclosed in <problem></problem> tags. Target the FastDownwards planner when selecting PDDL constructs."
+            }
+        },
+        "constraints": [
+            "mover1.report->orchestrator.pddl",
+            "mover2.report->orchestrator.pddl"
+        ]
+    },
+    "constraints": []
+}

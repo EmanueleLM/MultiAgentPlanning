@@ -1,0 +1,85 @@
+{
+    "name": "Hanoi7Instance4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot_arm",
+            "scribe",
+            "orchestrator"
+        ],
+        "robot_arm": {
+            "private_information": [
+                "I can move exactly one disk at a time between pegs.",
+                "I must never place a larger disk on top of a smaller disk.",
+                "I can pick the top disk from any non-empty peg and place it on top of another peg if rules allow."
+            ],
+            "goal": "Assist in moving the entire stack of disks from the left peg to the right peg following the puzzle rules."
+        },
+        "scribe": {
+            "private_information": [
+                "I can observe and record the exact stacking order of disks on each peg.",
+                "I know the disk labels from smallest to largest: A, B, C, D, E, F, G."
+            ],
+            "goal": "Provide an accurate, structured description of the initial and intermediate configurations of the pegs to support planning."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from other agents and produce the final formal planning files."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem compatible with the FastDownwards planner that achieves the goal configuration (all disks moved from left to right)."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 7,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are 7 disks labeled A (smallest), B, C, D, E, F, G (largest).",
+            "Only one disk may be moved at a time.",
+            "A larger disk may never be placed on top of a smaller disk.",
+            "Initial configuration (top -> bottom) on left: A, B, C, D, E, F, G; middle: empty; right: empty.",
+            "Goal configuration: left: empty; middle: empty; right (top -> bottom): A, B, C, D, E, F, G."
+        ]
+    },
+    "workflow": {
+        "robot_arm": {
+            "observe": {
+                "input": [],
+                "output": "state_robot_arm",
+                "system_prompt": "You are an agent that represents the physical mover (robot_arm). Provide a concise, structured description of the robot capabilities and the initial top-of-stack information you observe. Do not emit PDDL. Your output should enable a planner to reason about legal moves (pick and place of single disks) and the constraint that larger disks cannot be placed on smaller disks.",
+                "prompt": "Your name is robot_arm. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge about your capabilities:\n{agents->robot_arm->private_information}\nThis is your goal:\n{agents->robot_arm->goal}\nProduce a structured state summary and capability summary suitable to be consumed by a coordinator. Use a clear machine-readable phrasing (e.g., list of pegs with top disk where applicable and a brief statement of allowed move primitive). Do not produce PDDL."
+            }
+        },
+        "scribe": {
+            "observe": {
+                "input": [],
+                "output": "state_scribe",
+                "system_prompt": "You are an observing/recording agent (scribe). Provide an exact and structured description of the initial configuration of all pegs and disk ordering. Do not emit PDDL. Your output should be suitable for the orchestrator to build a PDDL problem instance (object names, initial on relationships, clear top-of-stack where applicable).",
+                "prompt": "Your name is scribe. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->scribe->private_information}\nThis is your goal:\n{agents->scribe->goal}\nProduce a structured description of the world state including explicit objects (disk labels A..G), pegs (left, middle, right), and the 'on' relationships from each disk to either another disk or a peg. Also indicate which disks are clear (top). Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_robot_arm",
+                    "state_scribe"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. Keep agent capabilities distinct if they are relevant; integrate the structured state descriptions from the other agents. Emit a PDDL domain and a PDDL problem targeting sequential planning (single mover) that enforces the Tower of Hanoi rules. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make naming consistent with the pegs (left, middle, right) and disks (A..G).",
+                "prompt": "You are the orchestrator. You must integrate information from two agents to produce a PDDL domain and problem that solves this Tower of Hanoi instance:\nGlobal goal:\n{agents->orchestrator->goal}\nHere is the structured information from robot_arm:\n{state_robot_arm}\nHere is the structured information from scribe:\n{state_scribe}\nRequirements:\n- Produce a PDDL domain that models disks, pegs, 'on' relationships, 'clear' predicate, and a single move action that moves the top disk from one peg/top-disk to another complying with the no-larger-on-smaller rule.\n- Produce a PDDL problem that instantiates objects (A..G, left, middle, right), sets the initial 'on' relations and 'clear' facts, and sets the goal where all disks are stacked on right in correct order.\n- Ensure the PDDL encoding is compatible with FastDownwards (strips/simple ADL safe constructs). Keep actions and predicates explicit and fully grounded by types where useful.\n- Enclose the domain between <domain></domain> and the problem between <problem></problem>.\nProvide both files as a single combined response."
+            }
+        },
+        "constraints": [
+            "robot_arm.observe->orchestrator.pddl",
+            "scribe.observe->orchestrator.pddl"
+        ]
+    }
+}

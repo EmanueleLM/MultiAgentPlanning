@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from plan_single import MODELS, RESULTS_ROOT, SOLVER, run_workflow
+from webapp.plan_webapp import MODELS, RESULTS_ROOT, SOLVER, run_workflow
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "multi-agent-planning-demo"

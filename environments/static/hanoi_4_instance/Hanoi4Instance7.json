@@ -1,0 +1,96 @@
+{
+    "name": "Hanoi4Instance7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_manager",
+            "peg_manager",
+            "move_verifier",
+            "orchestrator"
+        ],
+        "disk_manager": {
+            "private_information": [
+                "There are 4 disks labeled A B C D from smallest A to largest D",
+                "Initial stack on left peg from top to bottom is A B C D"
+            ],
+            "goal": "Provide a clear structured description of the disks, their sizes, and the initial stacking on pegs."
+        },
+        "peg_manager": {
+            "private_information": [
+                "There are three pegs named left middle right",
+                "Each peg holds a vertical stack of disks with the top disk accessible"
+            ],
+            "goal": "Provide a structured description of the pegs and the allowed operations for moving disks between pegs."
+        },
+        "move_verifier": {
+            "private_information": [
+                "Legal move rules: move exactly one top disk at a time and never place a larger disk on top of a smaller disk",
+                "Goal configuration is all disks moved to right peg preserving order with A on top and D at bottom"
+            ],
+            "goal": "Provide a concise formalization of the move legality rules and checks that can be used by a planner."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the models and rules from the other agents and produce a PDDL domain and PDDL problem file suitable for FastDownwards that solves the Tower of Hanoi instance moving all disks from left to right."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Solve Tower of Hanoi for 4 disks using three pegs named left middle right",
+            "Disks labeled A B C D from smallest A to largest D",
+            "Initial configuration: left peg top to bottom A B C D, middle empty, right empty",
+            "Goal configuration: right peg top to bottom A B C D, left empty, middle empty",
+            "Rules: move one top disk at a time and never place a larger disk on a smaller one"
+        ]
+    },
+    "workflow": {
+        "disk_manager": {
+            "model": {
+                "input": [],
+                "output": "disk_model",
+                "system_prompt": "You are an expert at modeling object sets for symbolic planners. Do not produce PDDL. Produce a concise structured description of the disks including identifiers, size ordering, and initial positions on pegs.",
+                "prompt": "Your agent name is disk_manager. Public information about the environment: {environment->public_information}. Your private information: {agents->disk_manager->private_information}. Your goal: {agents->disk_manager->goal}. Provide a compact structured representation labeled disk_model containing disk identifiers, size ordering from smallest to largest, and the initial peg assignment for each disk."
+            }
+        },
+        "peg_manager": {
+            "model": {
+                "input": [],
+                "output": "peg_model",
+                "system_prompt": "You are an expert at modeling containers and locations for planners. Do not produce PDDL. Produce a clear representation of the pegs, their names, and allowed move action abstraction characteristics such as capacity semantics (stack behavior) and accessibility.",
+                "prompt": "Your agent name is peg_manager. Public information about the environment: {environment->public_information}. Your private information: {agents->peg_manager->private_information}. Your goal: {agents->peg_manager->goal}. Provide a compact structured representation labeled peg_model describing the pegs left middle right, their initial contents, and the stack semantics that planners need to consider."
+            }
+        },
+        "move_verifier": {
+            "analysis": {
+                "input": [],
+                "output": "move_rules",
+                "system_prompt": "You are an expert in formalizing action preconditions and effects for move operations. Do not produce PDDL. Produce a formal, unambiguous description of move legality including preconditions and constraints that a planner must enforce.",
+                "prompt": "Your agent name is move_verifier. Public information about the environment: {environment->public_information}. Your private information: {agents->move_verifier->private_information}. Your goal: {agents->move_verifier->goal}. Provide a labeled artifact move_rules that lists move preconditions and effects in a structured form suitable for translation to PDDL (for example, conditions about top disk, size comparisons, and disk relocation outcomes)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_model",
+                    "peg_model",
+                    "move_rules"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring targeted specifically for the FastDownwards planner. You must produce a complete PDDL domain and a complete PDDL problem that encode the Tower of Hanoi instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain encodes distinct actions and types as needed and the problem encodes the initial state and the goal for FastDownwards. Keep inputs from other agents integrated and keep their conceptual actions distinct when mapping to PDDL.",
+                "prompt": "You are the orchestrator. Your inputs are the following artifacts from other agents: {disk_model}, {peg_model}, {move_rules}. Your goal is: {agents->orchestrator->goal}. Integrate the disk descriptions, peg descriptions, and move legality rules and produce a PDDL domain and a PDDL problem tailored for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Use types, predicates, and actions appropriate to represent disks, pegs, the top-of-stack condition, legal moves, and the goal state. Do not assume any additional hidden facts beyond what you receive and the public information. Output the combined PDDL as the artifact named pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "disk_manager.model->orchestrator.pddl",
+            "peg_manager.model->orchestrator.pddl",
+            "move_verifier.analysis->orchestrator.pddl"
+        ]
+    }
+}

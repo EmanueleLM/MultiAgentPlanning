@@ -1,0 +1,621 @@
+PROBLEM
+------------------------------
+Two agents manipulate labelled blocks on a table following standard BlocksWorld rules: only the top block of a stack can be moved and only one block can be carried at a time. The blocks involved are A, B, C, D, E, F, G, H, I, J. The initial arrangement is: A is on the table, B is on top of I, C is on top of H, D is on top of A, E is on the table, F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F. The agents then execute the following actions in order:
+1. unstack(D, A)
+2. stack(D, A)
+3. pickup(E)
+4. stack(E, C)
+5. unstack(D, A)
+6. putdown(D)
+7. unstack(E, C)
+8. stack(E, A)
+9. unstack(C, H)
+10. stack(C, J)
+11. unstack(E, A)
+12. stack(E, H)
+13. unstack(E, H)
+14. putdown(E)
+15. unstack(C, J)
+16. stack(C, E)
+17. pickup(D)
+18. stack(D, A)
+19. unstack(J, F)
+20. stack(J, C)
+Using the initial configuration and the actions, derive the final arrangement of the blocks. State for each block whether it is on the table or on top of another block.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+Two agents manipulate labelled blocks on a table following standard BlocksWorld rules: only the top block of a stack can be moved and only one block can be carried at a time. The blocks involved are A, B, C, D, E, F, G, H, I, J. The initial arrangement is: A is on the table, B is on top of I, C is on top of H, D is on top of A, E is on the table, F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F. The agents then execute the following actions in order:
+1. unstack(D, A)
+2. stack(D, A)
+3. pickup(E)
+4. stack(E, C)
+5. unstack(D, A)
+6. putdown(D)
+7. unstack(E, C)
+8. stack(E, A)
+9. unstack(C, H)
+10. stack(C, J)
+11. unstack(E, A)
+12. stack(E, H)
+13. unstack(E, H)
+14. putdown(E)
+15. unstack(C, J)
+16. stack(C, E)
+17. pickup(D)
+18. stack(D, A)
+19. unstack(J, F)
+20. stack(J, C)
+Using the initial configuration and the actions, derive the final arrangement of the blocks. State for each block whether it is on the table or on top of another block.
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain blocks-world)
+  (:requirements :strips :typing)
+  (:types block)
+  (:predicates
+    (on ?x - block ?y - block)
+    (ontable ?x - block)
+    (clear ?x - block)
+    (holding ?x - block)
+    (handempty)
+  )
+
+  ;; pick up a block from the table
+  (:action pickup
+    :parameters (?b - block)
+    :precondition (and (ontable ?b) (clear ?b) (handempty))
+    :effect (and
+      (holding ?b)
+      (not (ontable ?b))
+      (not (clear ?b))
+      (not (handempty))
+    )
+  )
+
+  ;; put a held block down on the table
+  (:action putdown
+    :parameters (?b - block)
+    :precondition (and (holding ?b))
+    :effect (and
+      (ontable ?b)
+      (clear ?b)
+      (handempty)
+      (not (holding ?b))
+    )
+  )
+
+  ;; unstack a block from another block (take top block off a stack)
+  (:action unstack
+    :parameters (?b - block ?c - block)
+    :precondition (and (on ?b ?c) (clear ?b) (handempty))
+    :effect (and
+      (holding ?b)
+      (clear ?c)
+      (not (on ?b ?c))
+      (not (clear ?b))
+      (not (handempty))
+    )
+  )
+
+  ;; stack a held block onto another block
+  (:action stack
+    :parameters (?b - block ?c - block)
+    :precondition (and (holding ?b) (clear ?c))
+    :effect (and
+      (on ?b ?c)
+      (clear ?b)
+      (handempty)
+      (not (holding ?b))
+      (not (clear ?c))
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem blocks-final-from-sequence)
+  (:domain blocks-world)
+  (:objects A B C D E F G H I J - block)
+  (:init
+    ;; initial table/on relations (public initial state)
+    (ontable A)
+    (on D A)
+
+    (ontable E)
+
+    (on C H)
+    (ontable H)
+
+    (on B I)
+    (ontable I)
+
+    (on G B)
+    (on F G)
+    (on J F)
+
+    ;; initial clear/top facts (top blocks at start)
+    (clear D)
+    (clear C)
+    (clear J)
+    (clear E)
+
+    ;; agent free hand at start
+    (handempty)
+  )
+
+  ;; goal = final arrangement after executing the given action sequence
+  (:goal (and
+    ;; blocks that end on the table
+    (ontable A)
+    (ontable E)
+    (ontable H)
+    (ontable I)
+
+    ;; blocks that end on other blocks (final stack relations)
+    (on D A)
+    (on C E)
+    (on J C)
+    (on F G)
+    (on G B)
+    (on B I)
+  ))
+)
+</problem>
+
+Final locations of each block after executing the given action sequence (plain text):
+- A: on the table
+- B: on I
+- C: on E
+- D: on A
+- E: on the table
+- F: on G
+- G: on B
+- H: on the table
+- I: on the table
+- J: on C
+
+Notes:
+- The domain models the standard Blocks World operators used in the public action sequence (pickup, putdown, unstack, stack).
+- The problem encodes the public initial state and uses the conjunction of atoms that represent the final arrangement derived by simulating the provided 20-step action sequence.
+- No unsupported PDDL features were used; :requirements contains only :strips and :typing to ensure compatibility with FastDownward.
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain blocks-world)
+  (:requirements :strips :typing)
+  (:types block)
+  (:predicates
+    (on ?x - block ?y - block)
+    (ontable ?x - block)
+    (clear ?x - block)
+    (holding ?x - block)
+    (handempty)
+  )
+
+  ;; pick up a block from the table
+  (:action pickup
+    :parameters (?b - block)
+    :precondition (and (ontable ?b) (clear ?b) (handempty))
+    :effect (and
+      (holding ?b)
+      (not (ontable ?b))
+      (not (clear ?b))
+      (not (handempty))
+    )
+  )
+
+  ;; put a held block down on the table
+  (:action putdown
+    :parameters (?b - block)
+    :precondition (and (holding ?b))
+    :effect (and
+      (ontable ?b)
+      (clear ?b)
+      (handempty)
+      (not (holding ?b))
+    )
+  )
+
+  ;; unstack a block from another block (take top block off a stack)
+  (:action unstack
+    :parameters (?b - block ?c - block)
+    :precondition (and (on ?b ?c) (clear ?b) (handempty))
+    :effect (and
+      (holding ?b)
+      (clear ?c)
+      (not (on ?b ?c))
+      (not (clear ?b))
+      (not (handempty))
+    )
+  )
+
+  ;; stack a held block onto another block
+  (:action stack
+    :parameters (?b - block ?c - block)
+    :precondition (and (holding ?b) (clear ?c))
+    :effect (and
+      (on ?b ?c)
+      (clear ?b)
+      (handempty)
+      (not (holding ?b))
+      (not (clear ?c))
+    )
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem blocks-final-from-sequence)
+  (:domain blocks-world)
+  (:objects A B C D E F G H I J - block)
+  (:init
+    ;; initial table/on relations (public initial state)
+    (ontable A)
+    (on D A)
+
+    (ontable E)
+
+    (on C H)
+    (ontable H)
+
+    (on B I)
+    (ontable I)
+
+    (on G B)
+    (on F G)
+    (on J F)
+
+    ;; initial clear/top facts (top blocks at start)
+    (clear D)
+    (clear C)
+    (clear J)
+    (clear E)
+
+    ;; agent free hand at start
+    (handempty)
+  )
+
+  ;; goal = final arrangement after executing the given action sequence
+  (:goal (and
+    ;; blocks that end on the table
+    (ontable A)
+    (ontable E)
+    (ontable H)
+    (ontable I)
+
+    ;; blocks that end on other blocks (final stack relations)
+    (on D A)
+    (on C E)
+    (on J C)
+    (on F G)
+    (on G B)
+    (on B I)
+  ))
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "Two agents manipulate labelled blocks on a table following standard BlocksWorld rules: only the top block of a stack can be moved and only one block can be carried at a time. The blocks involved are A, B, C, D, E, F, G, H, I, J. The initial arrangement is: A is on the table, B is on top of I, C is on top of H, D is on top of A, E is on the table, F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F. The agents then execute the following actions in order:\n1. unstack(D, A)\n2. stack(D, A)\n3. pickup(E)\n4. stack(E, C)\n5. unstack(D, A)\n6. putdown(D)\n7. unstack(E, C)\n8. stack(E, A)\n9. unstack(C, H)\n10. stack(C, J)\n11. unstack(E, A)\n12. stack(E, H)\n13. unstack(E, H)\n14. putdown(E)\n15. unstack(C, J)\n16. stack(C, E)\n17. pickup(D)\n18. stack(D, A)\n19. unstack(J, F)\n20. stack(J, C)\nUsing the initial configuration and the actions, derive the final arrangement of the blocks. State for each block whether it is on the table or on top of another block.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "Blocksworld20Instance0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "agent1",
+                "agent2",
+                "orchestrator"
+            ],
+            "agent1": {
+                "private_information": [
+                    "I perceive blocks A B C D E and their initial relative positions: A is on the table, D is on top of A, E is on the table, C is on top of H, B is on top of I."
+                ],
+                "goal": "Help determine the final arrangement of all blocks after the given action sequence by tracking the states of blocks A B C D E."
+            },
+            "agent2": {
+                "private_information": [
+                    "I perceive blocks F G H I J and their initial relative positions: F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F."
+                ],
+                "goal": "Help determine the final arrangement of all blocks after the given action sequence by tracking the states of blocks F G H I J."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the two agents' observations and produce a PDDL domain and problem compatible with the FastDownwards planner that represents the blocks world, the given initial state, and a representation of the final arrangement after the action sequence. Also state the final placement of each block."
+            }
+        },
+        "environment": {
+            "init": {
+                "grid_size": 4,
+                "visibility": 1
+            },
+            "public_information": [
+                "Standard BlocksWorld rules apply: only the top block of a stack can be moved and only one block can be carried at a time.",
+                "The set of blocks is: A, B, C, D, E, F, G, H, I, J.",
+                "Initial arrangement: A is on the table.",
+                "Initial arrangement: B is on top of I.",
+                "Initial arrangement: C is on top of H.",
+                "Initial arrangement: D is on top of A.",
+                "Initial arrangement: E is on the table.",
+                "Initial arrangement: F is on top of G.",
+                "Initial arrangement: G is on top of B.",
+                "Initial arrangement: H is on the table.",
+                "Initial arrangement: I is on the table.",
+                "Initial arrangement: J is on top of F.",
+                "Action sequence to execute in order: 1. unstack(D, A) 2. stack(D, A) 3. pickup(E) 4. stack(E, C) 5. unstack(D, A) 6. putdown(D) 7. unstack(E, C) 8. stack(E, A) 9. unstack(C, H) 10. stack(C, J) 11. unstack(E, A) 12. stack(E, H) 13. unstack(E, H) 14. putdown(E) 15. unstack(C, J) 16. stack(C, E) 17. pickup(D) 18. stack(D, A) 19. unstack(J, F) 20. stack(J, C).",
+                "Global goal: Derive the final arrangement after the above actions and state for each block whether it is on the table or on top of another block."
+            ]
+        },
+        "workflow": {
+            "agent1": {
+                "analyze": {
+                    "input": [],
+                    "output": "agent1_analysis",
+                    "system_prompt": "You are an agent that inspects part of a BlocksWorld instance. Do not emit PDDL. Produce a clear step-by-step state trace for the blocks you know (A B C D E) after each action that affects them and provide any uncertainties you detect that require integration with another agent's observations.",
+                    "prompt": "Your name is agent1. You receive the public information {environment->public_information} and you have the following private knowledge {agents->agent1->private_information}. Your task is to produce a step-by-step state trace for blocks A B C D E following the action sequence and produce a concise summary of their final positions. Do not output PDDL. If you lack information about some interactions, state what is missing."
+                }
+            },
+            "agent2": {
+                "analyze": {
+                    "input": [],
+                    "output": "agent2_analysis",
+                    "system_prompt": "You are an agent that inspects part of a BlocksWorld instance. Do not emit PDDL. Produce a clear step-by-step state trace for the blocks you know (F G H I J) after each action that affects them and provide any uncertainties you detect that require integration with another agent's observations.",
+                    "prompt": "Your name is agent2. You receive the public information {environment->public_information} and you have the following private knowledge {agents->agent2->private_information}. Your task is to produce a step-by-step state trace for blocks F G H I J following the action sequence and produce a concise summary of their final positions. Do not output PDDL. If you lack information about some interactions, state what is missing."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "agent1_analysis",
+                        "agent2_analysis"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent BlocksWorld modeling and in preparing PDDL problems for the FastDownwards planner. Your job is to integrate the agents' analyses, resolve any naming or observation mismatches, and produce a complete PDDL domain and PDDL problem representing the blocks world, the given initial state, and the final arrangement implied by the action sequence. Provide both the PDDL domain and problem, ensure compatibility with FastDownwards, and enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep actions belonging to different agents distinct if modeling multi-agent actions.",
+                    "prompt": "You are the orchestrator. You have to integrate the public information {environment->public_information} with the partial analyses from the two agents: {pddl_agent1} and {pddl_agent2} correspond to their outputs {agent1_analysis} and {agent2_analysis}. Your objective is to produce a PDDL domain and a PDDL problem file suitable for FastDownwards that capture the BlocksWorld initial state and a representation of the final arrangement after the entire action sequence. Additionally, state the final location of each block (either on the table or on top of another specific block) in plain text after the PDDL outputs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "agent1.analyze->orchestrator.pddl",
+                "agent2.analyze->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain blocks-world)\n  (:requirements :strips :typing)\n  (:types block)\n  (:predicates\n    (on ?x - block ?y - block)\n    (ontable ?x - block)\n    (clear ?x - block)\n    (holding ?x - block)\n    (handempty)\n  )\n\n  ;; pick up a block from the table\n  (:action pickup\n    :parameters (?b - block)\n    :precondition (and (ontable ?b) (clear ?b) (handempty))\n    :effect (and\n      (holding ?b)\n      (not (ontable ?b))\n      (not (clear ?b))\n      (not (handempty))\n    )\n  )\n\n  ;; put a held block down on the table\n  (:action putdown\n    :parameters (?b - block)\n    :precondition (and (holding ?b))\n    :effect (and\n      (ontable ?b)\n      (clear ?b)\n      (handempty)\n      (not (holding ?b))\n    )\n  )\n\n  ;; unstack a block from another block (take top block off a stack)\n  (:action unstack\n    :parameters (?b - block ?c - block)\n    :precondition (and (on ?b ?c) (clear ?b) (handempty))\n    :effect (and\n      (holding ?b)\n      (clear ?c)\n      (not (on ?b ?c))\n      (not (clear ?b))\n      (not (handempty))\n    )\n  )\n\n  ;; stack a held block onto another block\n  (:action stack\n    :parameters (?b - block ?c - block)\n    :precondition (and (holding ?b) (clear ?c))\n    :effect (and\n      (on ?b ?c)\n      (clear ?b)\n      (handempty)\n      (not (holding ?b))\n      (not (clear ?c))\n    )\n  )\n)",
+    "pddl_problem": "(define (problem blocks-final-from-sequence)\n  (:domain blocks-world)\n  (:objects A B C D E F G H I J - block)\n  (:init\n    ;; initial table/on relations (public initial state)\n    (ontable A)\n    (on D A)\n\n    (ontable E)\n\n    (on C H)\n    (ontable H)\n\n    (on B I)\n    (ontable I)\n\n    (on G B)\n    (on F G)\n    (on J F)\n\n    ;; initial clear/top facts (top blocks at start)\n    (clear D)\n    (clear C)\n    (clear J)\n    (clear E)\n\n    ;; agent free hand at start\n    (handempty)\n  )\n\n  ;; goal = final arrangement after executing the given action sequence\n  (:goal (and\n    ;; blocks that end on the table\n    (ontable A)\n    (ontable E)\n    (ontable H)\n    (ontable I)\n\n    ;; blocks that end on other blocks (final stack relations)\n    (on D A)\n    (on C E)\n    (on J C)\n    (on F G)\n    (on G B)\n    (on B I)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(unstack c h)\n(stack c e)\n(unstack j f)\n(stack j c)\n; cost = 4 (unit cost)\n",
+    "syntax_errors": "No syntax error log was generated.",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/domain_0.pddl results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/problem_0.pddl --sas-file output.sas\nParsing...\nParsing: [0.000s CPU, 0.002s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 21 rules.\nComputing model... [0.010s CPU, 0.004s wall-clock]\n382 relevant atoms\n250 auxiliary atoms\n632 final queue length\n1056 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.007s wall-clock]\nInstantiating: [0.010s CPU, 0.013s wall-clock]\nComputing fact groups...\nFinding invariants...\n10 initial candidates\nFinding invariants: [0.000s CPU, 0.002s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.010s CPU, 0.000s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n11 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.004s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.000s CPU, 0.008s wall-clock]\n290 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n20 propositions removed\nDetecting unreachable propositions: [0.010s CPU, 0.004s wall-clock]\nReordering and filtering variables...\n21 of 21 variables necessary.\n11 of 21 mutex groups necessary.\n200 of 200 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.010s CPU, 0.002s wall-clock]\nTranslator variables: 21\nTranslator derived variables: 0\nTranslator facts: 132\nTranslator goal facts: 10\nTranslator mutex groups: 11\nTranslator total mutex groups size: 121\nTranslator operators: 200\nTranslator axioms: 0\nTranslator task size: 1754\nTranslator peak memory: 32680 KB\nWriting output... [0.000s CPU, 0.002s wall-clock]\nDone! [0.040s CPU, 0.036s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'let(hlm,landmark_sum(lm_factory=lm_reasonable_orders_hps(lm_rhw()),transform=adapt_costs(one),pref=false),let(hff,ff(transform=adapt_costs(one)),lazy_greedy([hff,hlm],preferred=[hff,hlm],cost_type=one,reopen_closed=false)))' --internal-plan-file results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/sas_plan_0 < output.sas\n[t=0.000247s, 9964 KB] reading input...\n[t=0.001854s, 10096 KB] done reading input!\n[t=0.003696s, 10360 KB] Initializing landmark sum heuristic...\n[t=0.003771s, 10360 KB] Generating landmark graph...\n[t=0.003831s, 10360 KB] Building a landmark graph with reasonable orders.\n[t=0.003882s, 10360 KB] Initializing Exploration...\n[t=0.004029s, 10360 KB] Generating landmarks using the RPG/SAS+ approach\n[t=0.004880s, 10360 KB] Landmarks generation time: 0.001055s\n[t=0.004906s, 10360 KB] Discovered 18 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.004923s, 10360 KB] 12 edges\n[t=0.004938s, 10360 KB] approx. reasonable orders\n[t=0.005241s, 10360 KB] Landmarks generation time: 0.001464s\n[t=0.005257s, 10360 KB] Discovered 18 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.005272s, 10360 KB] 20 edges\n[t=0.005285s, 10360 KB] Landmark graph generation time: 0.001528s\n[t=0.005301s, 10360 KB] Landmark graph contains 18 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.005315s, 10360 KB] Landmark graph contains 20 orderings.\n[t=0.005485s, 10360 KB] Simplifying 780 unary operators... done! [600 unary operators]\n[t=0.005892s, 10360 KB] time to simplify: 0.000449s\n[t=0.005973s, 10492 KB] Initializing additive heuristic...\n[t=0.006002s, 10492 KB] Initializing FF heuristic...\n[t=0.006068s, 10492 KB] Building successor generator...done!\n[t=0.006203s, 10492 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.006217s, 10492 KB] time for successor generation creation: 0.000088s\n[t=0.006237s, 10492 KB] Variables: 21\n[t=0.006252s, 10492 KB] FactPairs: 132\n[t=0.006267s, 10492 KB] Bytes per state: 8\n[t=0.006313s, 10492 KB] Conducting lazy best first search, (real) bound = 2147483647\n[t=0.006392s, 10492 KB] New best heuristic value for landmark_sum_heuristic: 4\n[t=0.006409s, 10492 KB] New best heuristic value for ff: 4\n[t=0.006424s, 10492 KB] g=0, 1 evaluated, 0 expanded\n[t=0.006446s, 10492 KB] Initial heuristic value for landmark_sum_heuristic: 4\n[t=0.006461s, 10492 KB] Initial heuristic value for ff: 4\n[t=0.006554s, 10492 KB] New best heuristic value for landmark_sum_heuristic: 2\n[t=0.006569s, 10492 KB] New best heuristic value for ff: 2\n[t=0.006584s, 10492 KB] g=2, 6 evaluated, 5 expanded\n[t=0.006609s, 10492 KB] New best heuristic value for landmark_sum_heuristic: 1\n[t=0.006624s, 10492 KB] New best heuristic value for ff: 1\n[t=0.006638s, 10492 KB] g=3, 7 evaluated, 6 expanded\n[t=0.006661s, 10492 KB] Solution found!\n[t=0.006676s, 10492 KB] Actual search time: 0.000342s\nunstack c h (1)\nstack c e (1)\nunstack j f (1)\nstack j c (1)\n[t=0.006692s, 10492 KB] Plan length: 4 step(s).\n[t=0.006692s, 10492 KB] Plan cost: 4\n[t=0.006692s, 10492 KB] Expanded 7 state(s).\n[t=0.006692s, 10492 KB] Reopened 0 state(s).\n[t=0.006692s, 10492 KB] Evaluated 8 state(s).\n[t=0.006692s, 10492 KB] Evaluations: 16\n[t=0.006692s, 10492 KB] Generated 32 state(s).\n[t=0.006692s, 10492 KB] Dead ends: 0 state(s).\n[t=0.006692s, 10492 KB] Number of registered states: 8\n[t=0.006692s, 10492 KB] Int hash set load factor: 8/8 = 1.000000\n[t=0.006692s, 10492 KB] Int hash set resizes: 3\n[t=0.006692s, 10492 KB] Search time: 0.000379s\n[t=0.006692s, 10492 KB] Total time: 0.006692s\nSolution found.\nPeak memory: 10492 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.15s\n",
+    "history": [],
+    "proposed_solution": ""
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "Two agents manipulate labelled blocks on a table following standard BlocksWorld rules: only the top block of a stack can be moved and only one block can be carried at a time. The blocks involved are A, B, C, D, E, F, G, H, I, J. The initial arrangement is: A is on the table, B is on top of I, C is on top of H, D is on top of A, E is on the table, F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F. The agents then execute the following actions in order:\n1. unstack(D, A)\n2. stack(D, A)\n3. pickup(E)\n4. stack(E, C)\n5. unstack(D, A)\n6. putdown(D)\n7. unstack(E, C)\n8. stack(E, A)\n9. unstack(C, H)\n10. stack(C, J)\n11. unstack(E, A)\n12. stack(E, H)\n13. unstack(E, H)\n14. putdown(E)\n15. unstack(C, J)\n16. stack(C, E)\n17. pickup(D)\n18. stack(D, A)\n19. unstack(J, F)\n20. stack(J, C)\nUsing the initial configuration and the actions, derive the final arrangement of the blocks. State for each block whether it is on the table or on top of another block.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "Blocksworld20Instance0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "agent1",
+                "agent2",
+                "orchestrator"
+            ],
+            "agent1": {
+                "private_information": [
+                    "I perceive blocks A B C D E and their initial relative positions: A is on the table, D is on top of A, E is on the table, C is on top of H, B is on top of I."
+                ],
+                "goal": "Help determine the final arrangement of all blocks after the given action sequence by tracking the states of blocks A B C D E."
+            },
+            "agent2": {
+                "private_information": [
+                    "I perceive blocks F G H I J and their initial relative positions: F is on top of G, G is on top of B, H is on the table, I is on the table, J is on top of F."
+                ],
+                "goal": "Help determine the final arrangement of all blocks after the given action sequence by tracking the states of blocks F G H I J."
+            },
+            "orchestrator": {
+                "private_information": [],
+                "goal": "Integrate the two agents' observations and produce a PDDL domain and problem compatible with the FastDownwards planner that represents the blocks world, the given initial state, and a representation of the final arrangement after the action sequence. Also state the final placement of each block."
+            }
+        },
+        "environment": {
+            "init": {
+                "grid_size": 4,
+                "visibility": 1
+            },
+            "public_information": [
+                "Standard BlocksWorld rules apply: only the top block of a stack can be moved and only one block can be carried at a time.",
+                "The set of blocks is: A, B, C, D, E, F, G, H, I, J.",
+                "Initial arrangement: A is on the table.",
+                "Initial arrangement: B is on top of I.",
+                "Initial arrangement: C is on top of H.",
+                "Initial arrangement: D is on top of A.",
+                "Initial arrangement: E is on the table.",
+                "Initial arrangement: F is on top of G.",
+                "Initial arrangement: G is on top of B.",
+                "Initial arrangement: H is on the table.",
+                "Initial arrangement: I is on the table.",
+                "Initial arrangement: J is on top of F.",
+                "Action sequence to execute in order: 1. unstack(D, A) 2. stack(D, A) 3. pickup(E) 4. stack(E, C) 5. unstack(D, A) 6. putdown(D) 7. unstack(E, C) 8. stack(E, A) 9. unstack(C, H) 10. stack(C, J) 11. unstack(E, A) 12. stack(E, H) 13. unstack(E, H) 14. putdown(E) 15. unstack(C, J) 16. stack(C, E) 17. pickup(D) 18. stack(D, A) 19. unstack(J, F) 20. stack(J, C).",
+                "Global goal: Derive the final arrangement after the above actions and state for each block whether it is on the table or on top of another block."
+            ]
+        },
+        "workflow": {
+            "agent1": {
+                "analyze": {
+                    "input": [],
+                    "output": "agent1_analysis",
+                    "system_prompt": "You are an agent that inspects part of a BlocksWorld instance. Do not emit PDDL. Produce a clear step-by-step state trace for the blocks you know (A B C D E) after each action that affects them and provide any uncertainties you detect that require integration with another agent's observations.",
+                    "prompt": "Your name is agent1. You receive the public information {environment->public_information} and you have the following private knowledge {agents->agent1->private_information}. Your task is to produce a step-by-step state trace for blocks A B C D E following the action sequence and produce a concise summary of their final positions. Do not output PDDL. If you lack information about some interactions, state what is missing."
+                }
+            },
+            "agent2": {
+                "analyze": {
+                    "input": [],
+                    "output": "agent2_analysis",
+                    "system_prompt": "You are an agent that inspects part of a BlocksWorld instance. Do not emit PDDL. Produce a clear step-by-step state trace for the blocks you know (F G H I J) after each action that affects them and provide any uncertainties you detect that require integration with another agent's observations.",
+                    "prompt": "Your name is agent2. You receive the public information {environment->public_information} and you have the following private knowledge {agents->agent2->private_information}. Your task is to produce a step-by-step state trace for blocks F G H I J following the action sequence and produce a concise summary of their final positions. Do not output PDDL. If you lack information about some interactions, state what is missing."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "agent1_analysis",
+                        "agent2_analysis"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent BlocksWorld modeling and in preparing PDDL problems for the FastDownwards planner. Your job is to integrate the agents' analyses, resolve any naming or observation mismatches, and produce a complete PDDL domain and PDDL problem representing the blocks world, the given initial state, and the final arrangement implied by the action sequence. Provide both the PDDL domain and problem, ensure compatibility with FastDownwards, and enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep actions belonging to different agents distinct if modeling multi-agent actions.",
+                    "prompt": "You are the orchestrator. You have to integrate the public information {environment->public_information} with the partial analyses from the two agents: {pddl_agent1} and {pddl_agent2} correspond to their outputs {agent1_analysis} and {agent2_analysis}. Your objective is to produce a PDDL domain and a PDDL problem file suitable for FastDownwards that capture the BlocksWorld initial state and a representation of the final arrangement after the entire action sequence. Additionally, state the final location of each block (either on the table or on top of another specific block) in plain text after the PDDL outputs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "agent1.analyze->orchestrator.pddl",
+                "agent2.analyze->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain blocks-world-ordered-sequence)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types block step)\n\n  (:predicates\n    (on ?x - block ?y - block)\n    (ontable ?x - block)\n    (clear ?x - block)\n    (holding ?x - block)\n    (handempty)\n    (current ?s - step)\n    (next ?s1 - step ?s2 - step)\n    (expect1 ?s - step ?b - block)          ; for pickup/putdown steps\n    (expect2 ?s - step ?b - block ?c - block) ; for unstack/stack steps\n  )\n\n  ;; Unstack action constrained to a specific (step, block pair) and ordered via next/current\n  (:action unstack-step\n    :parameters (?s - step ?s2 - step ?b - block ?c - block)\n    :precondition (and\n      (current ?s)\n      (next ?s ?s2)\n      (expect2 ?s ?b ?c)\n      (on ?b ?c)\n      (clear ?b)\n      (handempty)\n    )\n    :effect (and\n      (holding ?b)\n      (clear ?c)\n      (not (on ?b ?c))\n      (not (clear ?b))\n      (not (handempty))\n      (not (current ?s))\n      (current ?s2)\n    )\n  )\n\n  ;; Stack action constrained to a specific (step, block pair) and ordered via next/current\n  (:action stack-step\n    :parameters (?s - step ?s2 - step ?b - block ?c - block)\n    :precondition (and\n      (current ?s)\n      (next ?s ?s2)\n      (expect2 ?s ?b ?c)\n      (holding ?b)\n      (clear ?c)\n    )\n    :effect (and\n      (on ?b ?c)\n      (clear ?b)\n      (handempty)\n      (not (holding ?b))\n      (not (clear ?c))\n      (not (current ?s))\n      (current ?s2)\n    )\n  )\n\n  ;; Pickup from table action constrained similarly\n  (:action pickup-step\n    :parameters (?s - step ?s2 - step ?b - block)\n    :precondition (and\n      (current ?s)\n      (next ?s ?s2)\n      (expect1 ?s ?b)\n      (ontable ?b)\n      (clear ?b)\n      (handempty)\n    )\n    :effect (and\n      (holding ?b)\n      (not (ontable ?b))\n      (not (clear ?b))\n      (not (handempty))\n      (not (current ?s))\n      (current ?s2)\n    )\n  )\n\n  ;; Put down to table action constrained similarly\n  (:action putdown-step\n    :parameters (?s - step ?s2 - step ?b - block)\n    :precondition (and\n      (current ?s)\n      (next ?s ?s2)\n      (expect1 ?s ?b)\n      (holding ?b)\n    )\n    :effect (and\n      (ontable ?b)\n      (clear ?b)\n      (handempty)\n      (not (holding ?b))\n      (not (current ?s))\n      (current ?s2)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem blocks-ordered-sequence-instance)\n  (:domain blocks-world-ordered-sequence)\n\n  (:objects\n    A B C D E F G H I J - block\n    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10\n    step11 step12 step13 step14 step15 step16 step17 step18 step19 step20 - step\n  )\n\n  (:init\n    ;; Initial arrangement (public specification)\n    (ontable A)\n    (on D A)\n\n    (ontable E)\n\n    (on C H)\n    (ontable H)\n\n    (on B I)\n    (ontable I)\n\n    (on G B)\n    (on F G)\n    (on J F)\n\n    ;; initial clear (top blocks)\n    (clear D)\n    (clear C)\n    (clear J)\n    (clear E)\n\n    ;; hand state\n    (handempty)\n\n    ;; sequencing control: current step and next relations\n    (current step0)\n    (next step0 step1)\n    (next step1 step2)\n    (next step2 step3)\n    (next step3 step4)\n    (next step4 step5)\n    (next step5 step6)\n    (next step6 step7)\n    (next step7 step8)\n    (next step8 step9)\n    (next step9 step10)\n    (next step10 step11)\n    (next step11 step12)\n    (next step12 step13)\n    (next step13 step14)\n    (next step14 step15)\n    (next step15 step16)\n    (next step16 step17)\n    (next step17 step18)\n    (next step18 step19)\n    (next step19 step20)\n\n    ;; Expectations: bind each step to the exact block arguments required by the sequence\n    ;; 1. unstack(D, A)\n    (expect2 step0 D A)\n    ;; 2. stack(D, A)\n    (expect2 step1 D A)\n    ;; 3. pickup(E)\n    (expect1 step2 E)\n    ;; 4. stack(E, C)\n    (expect2 step3 E C)\n    ;; 5. unstack(D, A)\n    (expect2 step4 D A)\n    ;; 6. putdown(D)\n    (expect1 step5 D)\n    ;; 7. unstack(E, C)\n    (expect2 step6 E C)\n    ;; 8. stack(E, A)\n    (expect2 step7 E A)\n    ;; 9. unstack(C, H)\n    (expect2 step8 C H)\n    ;; 10. stack(C, J)\n    (expect2 step9 C J)\n    ;; 11. unstack(E, A)\n    (expect2 step10 E A)\n    ;; 12. stack(E, H)\n    (expect2 step11 E H)\n    ;; 13. unstack(E, H)\n    (expect2 step12 E H)\n    ;; 14. putdown(E)\n    (expect1 step13 E)\n    ;; 15. unstack(C, J)\n    (expect2 step14 C J)\n    ;; 16. stack(C, E)\n    (expect2 step15 C E)\n    ;; 17. pickup(D)\n    (expect1 step16 D)\n    ;; 18. stack(D, A)\n    (expect2 step17 D A)\n    ;; 19. unstack(J, F)\n    (expect2 step18 J F)\n    ;; 20. stack(J, C)\n    (expect2 step19 J C)\n  )\n\n  (:goal (and\n    ;; Goal is to have completed all ordered steps (i.e., reach step20)\n    (current step20)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(unstack-step step0 step1 d a)\n(stack-step step1 step2 d a)\n(pickup-step step2 step3 e)\n(stack-step step3 step4 e c)\n(unstack-step step4 step5 d a)\n(putdown-step step5 step6 d)\n(unstack-step step6 step7 e c)\n(stack-step step7 step8 e a)\n(unstack-step step8 step9 c h)\n(stack-step step9 step10 c j)\n(unstack-step step10 step11 e a)\n(stack-step step11 step12 e h)\n(unstack-step step12 step13 e h)\n(putdown-step step13 step14 e)\n(unstack-step step14 step15 c j)\n(stack-step step15 step16 c e)\n(pickup-step step16 step17 d)\n(stack-step step17 step18 d a)\n(unstack-step step18 step19 j f)\n(stack-step step19 step20 j c)\n; cost = 20 (unit cost)\n",
+    "syntax_errors": "No syntax error log was generated.",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/domain_1.pddl results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/problem_1.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.003s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.000s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.000s CPU, 0.002s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 45 rules.\nComputing model... [0.010s CPU, 0.004s wall-clock]\n224 relevant atoms\n350 auxiliary atoms\n574 final queue length\n676 total queue pushes\nCompleting instantiation... [0.000s CPU, 0.002s wall-clock]\nInstantiating: [0.010s CPU, 0.010s wall-clock]\nComputing fact groups...\nFinding invariants...\n12 initial candidates\nFinding invariants: [0.000s CPU, 0.004s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.001s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n13 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.000s CPU, 0.006s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.000s CPU, 0.000s wall-clock]\nTranslating task: [0.010s CPU, 0.002s wall-clock]\n32 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n14 propositions removed\nDetecting unreachable propositions: [0.000s CPU, 0.001s wall-clock]\nReordering and filtering variables...\n13 of 13 variables necessary.\n11 of 13 mutex groups necessary.\n40 of 40 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.000s CPU, 0.001s wall-clock]\nTranslator variables: 13\nTranslator derived variables: 0\nTranslator facts: 55\nTranslator goal facts: 1\nTranslator mutex groups: 11\nTranslator total mutex groups size: 35\nTranslator operators: 40\nTranslator axioms: 0\nTranslator task size: 464\nTranslator peak memory: 31524 KB\nWriting output... [0.000s CPU, 0.001s wall-clock]\nDone! [0.030s CPU, 0.024s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'let(hlm,landmark_sum(lm_factory=lm_reasonable_orders_hps(lm_rhw()),transform=adapt_costs(one),pref=false),let(hff,ff(transform=adapt_costs(one)),lazy_greedy([hff,hlm],preferred=[hff,hlm],cost_type=one,reopen_closed=false)))' --internal-plan-file results/blocksworld_scaling/blocksworld_20_actions_scaling/blocksworld_20_actions_scaling/FastDownwards/Blocksworld20Instance0/sas_plan_1 < output.sas\n[t=0.000222s, 9964 KB] reading input...\n[t=0.000788s, 9964 KB] done reading input!\n[t=0.002567s, 10228 KB] Initializing landmark sum heuristic...\n[t=0.002640s, 10228 KB] Generating landmark graph...\n[t=0.002678s, 10228 KB] Building a landmark graph with reasonable orders.\n[t=0.002708s, 10228 KB] Initializing Exploration...\n[t=0.002775s, 10228 KB] Generating landmarks using the RPG/SAS+ approach\n[t=0.003920s, 10228 KB] Landmarks generation time: 0.001251s\n[t=0.003949s, 10228 KB] Discovered 37 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.003967s, 10228 KB] 358 edges\n[t=0.003982s, 10228 KB] approx. reasonable orders\n[t=0.006409s, 10228 KB] Landmarks generation time: 0.003770s\n[t=0.006432s, 10228 KB] Discovered 37 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.006447s, 10228 KB] 393 edges\n[t=0.006461s, 10228 KB] Landmark graph generation time: 0.003834s\n[t=0.006476s, 10228 KB] Landmark graph contains 37 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.006491s, 10228 KB] Landmark graph contains 393 orderings.\n[t=0.006596s, 10228 KB] Simplifying 184 unary operators... done! [184 unary operators]\n[t=0.006787s, 10228 KB] time to simplify: 0.000213s\n[t=0.006830s, 10228 KB] Initializing additive heuristic...\n[t=0.006846s, 10228 KB] Initializing FF heuristic...\n[t=0.006904s, 10228 KB] Building successor generator...done!\n[t=0.006990s, 10228 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.007004s, 10228 KB] time for successor generation creation: 0.000045s\n[t=0.007020s, 10228 KB] Variables: 13\n[t=0.007035s, 10228 KB] FactPairs: 55\n[t=0.007048s, 10228 KB] Bytes per state: 4\n[t=0.007093s, 10228 KB] Conducting lazy best first search, (real) bound = 2147483647\n[t=0.007169s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 29\n[t=0.007188s, 10364 KB] New best heuristic value for ff: 20\n[t=0.007202s, 10364 KB] g=0, 1 evaluated, 0 expanded\n[t=0.007222s, 10364 KB] Initial heuristic value for landmark_sum_heuristic: 29\n[t=0.007236s, 10364 KB] Initial heuristic value for ff: 20\n[t=0.007269s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 27\n[t=0.007284s, 10364 KB] New best heuristic value for ff: 19\n[t=0.007298s, 10364 KB] g=1, 2 evaluated, 1 expanded\n[t=0.007328s, 10364 KB] New best heuristic value for ff: 18\n[t=0.007342s, 10364 KB] g=2, 3 evaluated, 2 expanded\n[t=0.007370s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 26\n[t=0.007384s, 10364 KB] New best heuristic value for ff: 17\n[t=0.007398s, 10364 KB] g=3, 4 evaluated, 3 expanded\n[t=0.007427s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 24\n[t=0.007441s, 10364 KB] New best heuristic value for ff: 16\n[t=0.007463s, 10364 KB] g=4, 5 evaluated, 4 expanded\n[t=0.007489s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 21\n[t=0.007503s, 10364 KB] New best heuristic value for ff: 15\n[t=0.007517s, 10364 KB] g=5, 6 evaluated, 5 expanded\n[t=0.007543s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 20\n[t=0.007557s, 10364 KB] New best heuristic value for ff: 14\n[t=0.007571s, 10364 KB] g=6, 7 evaluated, 6 expanded\n[t=0.007597s, 10364 KB] New best heuristic value for ff: 13\n[t=0.007611s, 10364 KB] g=7, 8 evaluated, 7 expanded\n[t=0.007638s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 18\n[t=0.007653s, 10364 KB] New best heuristic value for ff: 12\n[t=0.007666s, 10364 KB] g=8, 9 evaluated, 8 expanded\n[t=0.007692s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 15\n[t=0.007706s, 10364 KB] New best heuristic value for ff: 11\n[t=0.007720s, 10364 KB] g=9, 10 evaluated, 9 expanded\n[t=0.007746s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 14\n[t=0.007760s, 10364 KB] New best heuristic value for ff: 10\n[t=0.007773s, 10364 KB] g=10, 11 evaluated, 10 expanded\n[t=0.007799s, 10364 KB] New best heuristic value for ff: 9\n[t=0.007813s, 10364 KB] g=11, 12 evaluated, 11 expanded\n[t=0.007836s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 11\n[t=0.007850s, 10364 KB] New best heuristic value for ff: 8\n[t=0.007864s, 10364 KB] g=12, 13 evaluated, 12 expanded\n[t=0.007888s, 10364 KB] New best heuristic value for ff: 7\n[t=0.007902s, 10364 KB] g=13, 14 evaluated, 13 expanded\n[t=0.007925s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 9\n[t=0.007939s, 10364 KB] New best heuristic value for ff: 6\n[t=0.007958s, 10364 KB] g=14, 15 evaluated, 14 expanded\n[t=0.007981s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 8\n[t=0.007995s, 10364 KB] New best heuristic value for ff: 5\n[t=0.008009s, 10364 KB] g=15, 16 evaluated, 15 expanded\n[t=0.008035s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 5\n[t=0.008049s, 10364 KB] New best heuristic value for ff: 4\n[t=0.008064s, 10364 KB] g=16, 17 evaluated, 16 expanded\n[t=0.008087s, 10364 KB] New best heuristic value for ff: 3\n[t=0.008101s, 10364 KB] g=17, 18 evaluated, 17 expanded\n[t=0.008122s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 3\n[t=0.008136s, 10364 KB] New best heuristic value for ff: 2\n[t=0.008150s, 10364 KB] g=18, 19 evaluated, 18 expanded\n[t=0.008172s, 10364 KB] New best heuristic value for landmark_sum_heuristic: 1\n[t=0.008187s, 10364 KB] New best heuristic value for ff: 1\n[t=0.008200s, 10364 KB] g=19, 20 evaluated, 19 expanded\n[t=0.008221s, 10364 KB] Solution found!\n[t=0.008236s, 10364 KB] Actual search time: 0.001119s\nunstack-step step0 step1 d a (1)\nstack-step step1 step2 d a (1)\npickup-step step2 step3 e (1)\nstack-step step3 step4 e c (1)\nunstack-step step4 step5 d a (1)\nputdown-step step5 step6 d (1)\nunstack-step step6 step7 e c (1)\nstack-step step7 step8 e a (1)\nunstack-step step8 step9 c h (1)\nstack-step step9 step10 c j (1)\nunstack-step step10 step11 e a (1)\nstack-step step11 step12 e h (1)\nunstack-step step12 step13 e h (1)\nputdown-step step13 step14 e (1)\nunstack-step step14 step15 c j (1)\nstack-step step15 step16 c e (1)\npickup-step step16 step17 d (1)\nstack-step step17 step18 d a (1)\nunstack-step step18 step19 j f (1)\nstack-step step19 step20 j c (1)\n[t=0.008251s, 10364 KB] Plan length: 20 step(s).\n[t=0.008251s, 10364 KB] Plan cost: 20\n[t=0.008251s, 10364 KB] Expanded 20 state(s).\n[t=0.008251s, 10364 KB] Reopened 0 state(s).\n[t=0.008251s, 10364 KB] Evaluated 21 state(s).\n[t=0.008251s, 10364 KB] Evaluations: 42\n[t=0.008251s, 10364 KB] Generated 20 state(s).\n[t=0.008251s, 10364 KB] Dead ends: 0 state(s).\n[t=0.008251s, 10364 KB] Number of registered states: 21\n[t=0.008251s, 10364 KB] Int hash set load factor: 21/32 = 0.656250\n[t=0.008251s, 10364 KB] Int hash set resizes: 5\n[t=0.008251s, 10364 KB] Search time: 0.001159s\n[t=0.008251s, 10364 KB] Total time: 0.008251s\nSolution found.\nPeak memory: 10364 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 0.14s\n",
+    "history": [
+        "AgentSolutionFirst"
+    ],
+    "proposed_solution": "Final placement of each block after executing the given action sequence:\n- A: on the table\n- B: on I\n- C: on E\n- D: on A\n- E: on the table\n- F: on G\n- G: on B\n- H: on the table\n- I: on the table\n- J: on C"
+}
+================================================================================
+
+
+NATURAL-PLAN sas_plan_1
+------------------------------
+Below is a human-readable, step-by-step execution of the provided plan. Each step corresponds exactly to one action in the plan (no actions added or removed). I give a simple timestamp assuming each action takes 1 second (start t=0s), a short natural-language description of the action, and the immediate effect on the blocks involved.
+
+Timestamps use seconds (s). Total actions = 20 (cost = 20).
+
+1) t = 0s — unstack D from A (step0 → step1)
+   - Action: Pick up D from on top of A.
+   - Effect: holding D; A becomes clear; D is no longer on A.
+
+2) t = 1s — stack D onto A (step1 → step2)
+   - Action: Put D back down on A.
+   - Effect: D is on A; D is clear (top); hand empty; A is no longer clear.
+
+3) t = 2s — pickup E from table (step2 → step3)
+   - Action: Pick up E from the table.
+   - Effect: holding E; E no longer on table; E is not clear while held.
+
+4) t = 3s — stack E onto C (step3 → step4)
+   - Action: Put E on top of C.
+   - Effect: E is on C; E is clear (top); C is no longer clear; hand empty.
+
+5) t = 4s — unstack D from A (step4 → step5)
+   - Action: Pick up D from on top of A.
+   - Effect: holding D; A becomes clear; D is no longer on A.
+
+6) t = 5s — putdown D on table (step5 → step6)
+   - Action: Put D down on the table.
+   - Effect: D is on the table (clear); hand empty; D no longer on A.
+
+7) t = 6s — unstack E from C (step6 → step7)
+   - Action: Pick up E from on top of C.
+   - Effect: holding E; C becomes clear; E is no longer on C.
+
+8) t = 7s — stack E onto A (step7 → step8)
+   - Action: Put E on top of A.
+   - Effect: E is on A; E is clear (top); A is no longer clear; hand empty.
+
+9) t = 8s — unstack C from H (step8 → step9)
+   - Action: Pick up C from on top of H.
+   - Effect: holding C; H becomes clear; C is no longer on H.
+
+10) t = 9s — stack C onto J (step9 → step10)
+    - Action: Put C on top of J.
+    - Effect: C is on J; C is clear (top); J is no longer clear; hand empty.
+
+11) t = 10s — unstack E from A (step10 → step11)
+    - Action: Pick up E from on top of A.
+    - Effect: holding E; A becomes clear; E is no longer on A.
+
+12) t = 11s — stack E onto H (step11 → step12)
+    - Action: Put E on top of H.
+    - Effect: E is on H; E is clear (top); H is no longer clear; hand empty.
+
+13) t = 12s — unstack E from H (step12 → step13)
+    - Action: Pick up E from on top of H.
+    - Effect: holding E; H becomes clear; E is no longer on H.
+
+14) t = 13s — putdown E on table (step13 → step14)
+    - Action: Put E down on the table.
+    - Effect: E is on the table (clear); hand empty.
+
+15) t = 14s — unstack C from J (step14 → step15)
+    - Action: Pick up C from on top of J.
+    - Effect: holding C; J becomes clear; C is no longer on J.
+
+16) t = 15s — stack C onto E (step15 → step16)
+    - Action: Put C on top of E (which is on the table).
+    - Effect: C is on E; C is clear (top); E is no longer clear; hand empty.
+
+17) t = 16s — pickup D from table (step16 → step17)
+    - Action: Pick up D from the table.
+    - Effect: holding D; D is no longer on the table.
+
+18) t = 17s — stack D onto A (step17 → step18)
+    - Action: Put D on top of A.
+    - Effect: D is on A; D is clear (top); A is no longer clear; hand empty.
+
+19) t = 18s — unstack J from F (step18 → step19)
+    - Action: Pick up J from on top of F.
+    - Effect: holding J; F becomes clear; J is no longer on F.
+
+20) t = 19s — stack J onto C (step19 → step20)
+    - Action: Put J on top of C.
+    - Effect: J is on C; J is clear (top); C is no longer clear; hand empty.
+    - Final sequencing goal reached (current step20).
+
+Final placement of each block (final arrangement):
+
+- A: on the table. D is on A (so A has D on it).
+- D: on A.
+- E: on the table. C is on E.
+- C: on E. J is on C.
+- J: on C (top of that stack).
+- H: on the table (clear).
+- I: on the table. B is on I.
+- B: on I.
+- G: on B.
+- F: on G.
+
+Restating final stacks from table upward:
+
+- Stack 1 (on table): A ← D
+- Stack 2 (on table): E ← C ← J
+- Stack 3 (on table): H
+- Stack 4 (on table): I ← B ← G ← F
+
+(Arrows indicate "on": X ← Y means Y is on X. Tops: D, J, H, F)
+
+Total plan cost: 20 (20 unit-cost actions).
+================================================================================
+

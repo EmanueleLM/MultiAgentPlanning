@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List, Tuple
 
 PEG_SEQUENCE = ("left", "middle", "right")
 
@@ -42,84 +42,223 @@ def solve_hanoi(disks: List[str], source: str, target: str, auxiliary: str) -> L
     return smaller_solution + move_largest + restore_smaller
 
 
-def generate_instance(num_disks: int, instance_id: int = 0) -> Dict[str, Dict]:
+def assign_agents_to_disks(disks: List[str], num_agents: int) -> Tuple[List[Dict[str, List[str]]], Dict[str, str]]:
+    if num_agents < 1 or num_agents > 4:
+        raise ValueError("Number of agents must be between 1 and 4.")
+    if num_agents > len(disks):
+        raise ValueError("Number of agents cannot exceed the number of disks.")
+
+    base = len(disks) // num_agents
+    remainder = len(disks) % num_agents
+
+    assignments: List[Dict[str, List[str]]] = []
+    disk_to_agent: Dict[str, str] = {}
+    cursor = 0
+
+    for idx in range(num_agents):
+        take = base + (1 if idx < remainder else 0)
+        agent_name = f"agent_{idx + 1}"
+        subset = disks[cursor:cursor + take]
+        assignments.append({"agent": agent_name, "disks": subset})
+        for disk in subset:
+            disk_to_agent[disk] = agent_name
+        cursor += take
+
+    return assignments, disk_to_agent
+
+
+def generate_instance(
+    num_agents: int,
+    instance_id: int = 0,
+    num_disks: int = 12,
+    min_moves: int = 40,
+    max_moves: int = 120,
+) -> Dict[str, Dict]:
+    if num_agents < 1 or num_agents > 4:
+        raise ValueError("Number of agents must be between 1 and 4.")
+    if num_disks < 3:
+        raise ValueError("Number of disks must be at least 3.")
+    if num_disks != 12:
+        raise ValueError("This generator is configured for 12 disks.")
+    if min_moves < 1 or max_moves < min_moves:
+        raise ValueError("Move bounds must satisfy 1 ≤ min_moves ≤ max_moves.")
+
     disks = generate_disk_labels(num_disks)
+    assignments, disk_to_agent = assign_agents_to_disks(disks, num_agents)
+
     initial_pegs = {
         "left": disks.copy(),
         "middle": [],
         "right": [],
     }
-    goal_pegs = {
-        "left": [],
-        "middle": [],
-        "right": disks.copy(),
-    }
-
     initial_state = snapshot(initial_pegs)
-    goal_state = snapshot(goal_pegs)
+    order_index = {disk: idx for idx, disk in enumerate(disks)}
 
-    solution = solve_hanoi(disks, "left", "right", "middle")
-    cost = len(solution)
+    def legal_moves(state: Dict[str, List[str]]) -> List[Tuple[str, str, str, str]]:
+        moves: List[Tuple[str, str, str, str]] = []
+        for from_peg in PEG_SEQUENCE:
+            stack = state[from_peg]
+            if not stack:
+                continue
+            disk = stack[0]
+            agent = disk_to_agent[disk]
+            for to_peg in PEG_SEQUENCE:
+                if to_peg == from_peg:
+                    continue
+                target_stack = state[to_peg]
+                if target_stack and order_index[disk] > order_index[target_stack[0]]:
+                    continue
+                moves.append((agent, disk, from_peg, to_peg))
+        return moves
 
+    def apply_move(state: Dict[str, List[str]], move: Tuple[str, str, str, str]) -> None:
+        agent, disk, from_peg, to_peg = move
+        if disk not in state[from_peg] or state[from_peg][0] != disk:
+            raise RuntimeError(f"Inconsistent state when moving disk {disk} from {from_peg}.")
+        state[from_peg].pop(0)
+        state[to_peg].insert(0, disk)
+
+    def is_reverse(move_a: Tuple[str, str, str, str], move_b: Tuple[str, str, str, str]) -> bool:
+        return (
+            move_a[1] == move_b[1]
+            and move_a[2] == move_b[3]
+            and move_a[3] == move_b[2]
+        )
+
+    plan_structured: List[Dict[str, str]]
+    plan_symbolic: List[str]
+    plan_textual: List[str]
+    goal_state: Dict[str, List[str]]
+
+    for _ in range(50):
+        current_state = snapshot(initial_pegs)
+        plan_structured = []
+        plan_symbolic = []
+        plan_textual = []
+        previous_move: Tuple[str, str, str, str] | None = None
+        target_length = random.randint(min_moves, max_moves)
+
+        while len(plan_structured) < target_length:
+            options = legal_moves(current_state)
+            if not options:
+                break
+            filtered = [m for m in options if previous_move is None or not is_reverse(m, previous_move)]
+            if not filtered:
+                filtered = options
+            move = random.choice(filtered)
+            apply_move(current_state, move)
+
+            agent, disk, from_peg, to_peg = move
+            step = {
+                "agent": agent,
+                "disk": disk,
+                "from": from_peg,
+                "to": to_peg,
+            }
+            plan_structured.append(step)
+            plan_symbolic.append(f"{agent}: move({disk}, {from_peg}, {to_peg})")
+            plan_textual.append(f"{agent}: Move disk {disk} from {from_peg} to {to_peg}.")
+            previous_move = move
+
+        goal_state = snapshot(current_state)
+
+        if len(plan_structured) >= min_moves and goal_state != initial_state:
+            break
+    else:
+        raise RuntimeError("Failed to generate a valid plan within the allotted attempts.")
+
+    cost = len(plan_structured)
     init_desc = describe_state(initial_state)
     goal_desc = describe_state(goal_state)
+    agent_descriptions = "; ".join(
+        f"{entry['agent']} ⇒ {', '.join(entry['disks']) if entry['disks'] else 'no disks'}"
+        for entry in assignments
+    )
+
     prompt = (
-        "Solve a Tower of Hanoi puzzle using three pegs named left, middle, and right. "
-        f"There are {num_disks} disks labelled {', '.join(disks)} from smallest ({disks[0]}) to largest ({disks[-1]}). "
-        "Move one disk at a time and never place a larger disk on top of a smaller one. "
-        f"Initially, {init_desc}. "
-        f"The goal configuration is: {goal_desc}."
+        f"Devise a cooperative plan for a {num_agents}-agent Tower of Hanoi with {num_disks} disks labelled "
+        f"{', '.join(disks)} (A is the smallest, {disks[-1]} the largest). "
+        f"Agents are limited to moving specific disks: {agent_descriptions}. "
+        f"Initial configuration: {init_desc}. "
+        f"Goal configuration: {goal_desc}. "
+        "Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', "
+        "respecting the agent restrictions and the Tower of Hanoi rules."
     )
 
     return {
-        f"hanoi_{instance_id}": {
-            "num_disks": num_disks,
-            "disks": disks,
-            "initial_state": initial_state,
-            "goal": goal_state,
-            "golden_plan": solution,
-            "max_cost": cost,
-            "prompt_0shot": prompt,
-        }
+        "instance_id": instance_id,
+        "num_disks": num_disks,
+        "num_agents": num_agents,
+        "disks": disks,
+        "agents": assignments,
+        "initial_state": initial_state,
+        "goal_state": goal_state,
+        "golden_plan": plan_structured,
+        "golden_plan_symbolic": plan_symbolic,
+        "golden_plan_textual": plan_textual,
+        "max_cost": cost,
+        "min_moves": min_moves,
+        "max_moves": max_moves,
+        "prompt_0shot": prompt,
     }
 
 
 def generate_dataset(
-    num_instances: int = 1000,
-    min_disks: int = 3,
-    max_disks: int = 8,
+    num_instances_per_agent: int,
+    agent_counts: Iterable[int] = (1, 2, 3, 4),
+    num_disks: int = 12,
+    min_moves: int = 40,
+    max_moves: int = 120,
+    key_prefix: str = "hanoi"
 ) -> Dict[str, Dict]:
-    if min_disks > max_disks:
-        raise ValueError("min_disks cannot be greater than max_disks.")
-
     dataset: Dict[str, Dict] = {}
-    for i in range(num_instances):
-        disk_count = random.randint(min_disks, max_disks)
-        instance = generate_instance(disk_count, i)
-        dataset.update(instance)
+    for agent_count in agent_counts:
+        if agent_count < 1 or agent_count > 4:
+            raise ValueError("agent_counts must contain values between 1 and 4.")
+        for idx in range(num_instances_per_agent):
+            key = f"{key_prefix}_{num_disks}_disks_{agent_count}_agents_instance_{idx}"
+            dataset[key] = generate_instance(
+                agent_count,
+                instance_id=idx,
+                num_disks=num_disks,
+                min_moves=min_moves,
+                max_moves=max_moves,
+            )
     return dataset
 
 
-def save_dataset_to_json(filename: str, num_instances: int = 1000, args_generate: Dict = {}) -> None:
-    dataset = generate_dataset(num_instances, **args_generate)
+def save_dataset_to_json(filename: Path, dataset: Dict[str, Dict]) -> None:
     with open(filename, "w") as f:
         json.dump(dataset, f, indent=4)
 
 
 if __name__ == "__main__":
-    save_folder = Path("./data/hanoi_scaling/")
+    save_folder = Path("./data/hanoi_multi_agent/")
     save_folder.mkdir(parents=True, exist_ok=True)
 
-    disks_levels = [4, 5, 6, 7, 8]
-    instances_per_level = 20
+    num_instances_per_agent = 20
+    agent_counts = [1, 2, 3, 4]
+    min_moves = 40
+    max_moves = 120
 
-    for level in disks_levels:
-        dataset_with_keys: Dict[str, Dict] = {}
-        for idx in range(instances_per_level):
-            raw_instance = generate_instance(level, idx)
-            _, data = next(iter(raw_instance.items()))
-            dataset_with_keys[f"hanoi_{level}_instance_{idx}"] = data
+    combined: Dict[str, Dict] = {}
+    global_index = 0
 
-        output_path = save_folder / f"hanoi_{level}_disks.json"
-        with open(output_path, "w") as f:
-            json.dump(dataset_with_keys, f, indent=4)
+    for agent_count in agent_counts:
+        dataset: Dict[str, Dict] = {}
+        for idx in range(num_instances_per_agent):
+            key = f"hanoi_{agent_count}_agents_instance_{idx}"
+            dataset[key] = generate_instance(
+                agent_count,
+                instance_id=idx,
+                num_disks=12,
+                min_moves=min_moves,
+                max_moves=max_moves,
+            )
+            combined[f"hanoi_{global_index}"] = dataset[key]
+            global_index += 1
+
+        output_path = save_folder / f"hanoi_{agent_count}_agents.json"
+        save_dataset_to_json(output_path, dataset)
+
+    save_dataset_to_json(save_folder / "hanoi_all_agents.json", combined)

@@ -1,0 +1,69 @@
+(define (problem hanoi3agents10disksinstance12-problem)
+  (:domain hanoi-3agents-10disks)
+  (:objects
+    left middle right - peg
+    a b c d e f g h i j - disk
+  )
+  (:init
+    ; initial stack (top-to-bottom): A B C D E F G H I J on left
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (on e f)
+    (on f g)
+    (on g h)
+    (on h i)
+    (on i j)
+    (on j left)
+
+    ; clear top disk and empty pegs
+    (clear a)
+    (clear middle)
+    (clear right)
+
+    ; can-place: any disk can be placed on any peg
+    (can-place a left) (can-place a middle) (can-place a right)
+    (can-place b left) (can-place b middle) (can-place b right)
+    (can-place c left) (can-place c middle) (can-place c right)
+    (can-place d left) (can-place d middle) (can-place d right)
+    (can-place e left) (can-place e middle) (can-place e right)
+    (can-place f left) (can-place f middle) (can-place f right)
+    (can-place g left) (can-place g middle) (can-place g right)
+    (can-place h left) (can-place h middle) (can-place h right)
+    (can-place i left) (can-place i middle) (can-place i right)
+    (can-place j left) (can-place j middle) (can-place j right)
+
+    ; can-place: smaller disk may be placed on larger disk (order a<b<c<d<e<f<g<h<i<j)
+    (can-place a b) (can-place a c) (can-place a d) (can-place a e) (can-place a f) (can-place a g) (can-place a h) (can-place a i) (can-place a j)
+    (can-place b c) (can-place b d) (can-place b e) (can-place b f) (can-place b g) (can-place b h) (can-place b i) (can-place b j)
+    (can-place c d) (can-place c e) (can-place c f) (can-place c g) (can-place c h) (can-place c i) (can-place c j)
+    (can-place d e) (can-place d f) (can-place d g) (can-place d h) (can-place d i) (can-place d j)
+    (can-place e f) (can-place e g) (can-place e h) (can-place e i) (can-place e j)
+    (can-place f g) (can-place f h) (can-place f i) (can-place f j)
+    (can-place g h) (can-place g i) (can-place g j)
+    (can-place h i) (can-place h j)
+    (can-place i j)
+
+    ; agent permissions (per specification)
+    (agent1_allowed a) (agent1_allowed b) (agent1_allowed c) (agent1_allowed d)
+    (agent2_allowed e) (agent2_allowed f) (agent2_allowed g)
+    (agent3_allowed h) (agent3_allowed i) (agent3_allowed j)
+  )
+
+  (:goal (and
+    ; left peg top-to-bottom: E F G H I J  (E on F, F on G, ..., I on J, J on left)
+    (on e f)
+    (on f g)
+    (on g h)
+    (on h i)
+    (on i j)
+    (on j left)
+    ; middle peg top-to-bottom: D
+    (on d middle)
+    ; right peg top-to-bottom: A B C (A on B, B on C, C on right)
+    (on a b)
+    (on b c)
+    (on c right)
+  ))
+)

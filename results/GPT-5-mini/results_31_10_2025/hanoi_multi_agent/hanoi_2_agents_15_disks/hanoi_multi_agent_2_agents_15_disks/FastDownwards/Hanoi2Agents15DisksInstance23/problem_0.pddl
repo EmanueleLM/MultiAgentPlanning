@@ -1,0 +1,86 @@
+(define (problem hanoi-15-agent)
+  (:domain hanoi-agents)
+  (:objects
+    A B C D E F G H I J K L M N O - disk
+    peg1 peg2 peg3 - peg
+  )
+  (:init
+    ;; initial stack on peg1: bottom O on peg1, N on O, M on N, ..., B on C, A on B
+    (on-peg O peg1)
+    (on-disk N O)
+    (on-disk M N)
+    (on-disk L M)
+    (on-disk K L)
+    (on-disk J K)
+    (on-disk I J)
+    (on-disk H I)
+    (on-disk G H)
+    (on-disk F G)
+    (on-disk E F)
+    (on-disk D E)
+    (on-disk C D)
+    (on-disk B C)
+    (on-disk A B)
+
+    ;; clear facts: only top disk A is clear, peg2 and peg3 are empty
+    (clear-disk A)
+    (clear-peg peg2)
+    (clear-peg peg3)
+
+    ;; agent permissions encoded as hard constraints
+    ;; agent1 allowed moves for disks A..H
+    (agent1-allowed A)
+    (agent1-allowed B)
+    (agent1-allowed C)
+    (agent1-allowed D)
+    (agent1-allowed E)
+    (agent1-allowed F)
+    (agent1-allowed G)
+    (agent1-allowed H)
+
+    ;; agent2 allowed moves for disks I..O
+    (agent2-allowed I)
+    (agent2-allowed J)
+    (agent2-allowed K)
+    (agent2-allowed L)
+    (agent2-allowed M)
+    (agent2-allowed N)
+    (agent2-allowed O)
+
+    ;; size ordering (smaller X Y means X is strictly smaller than Y)
+    ;; A is smallest, O largest; enumerate all pairs where the first is smaller than the second
+    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J) (smaller A K) (smaller A L) (smaller A M) (smaller A N) (smaller A O)
+    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J) (smaller B K) (smaller B L) (smaller B M) (smaller B N) (smaller B O)
+    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J) (smaller C K) (smaller C L) (smaller C M) (smaller C N) (smaller C O)
+    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J) (smaller D K) (smaller D L) (smaller D M) (smaller D N) (smaller D O)
+    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J) (smaller E K) (smaller E L) (smaller E M) (smaller E N) (smaller E O)
+    (smaller F G) (smaller F H) (smaller F I) (smaller F J) (smaller F K) (smaller F L) (smaller F M) (smaller F N) (smaller F O)
+    (smaller G H) (smaller G I) (smaller G J) (smaller G K) (smaller G L) (smaller G M) (smaller G N) (smaller G O)
+    (smaller H I) (smaller H J) (smaller H K) (smaller H L) (smaller H M) (smaller H N) (smaller H O)
+    (smaller I J) (smaller I K) (smaller I L) (smaller I M) (smaller I N) (smaller I O)
+    (smaller J K) (smaller J L) (smaller J M) (smaller J N) (smaller J O)
+    (smaller K L) (smaller K M) (smaller K N) (smaller K O)
+    (smaller L M) (smaller L N) (smaller L O)
+    (smaller M N) (smaller M O)
+    (smaller N O)
+  )
+
+  ;; Goal: move the full tower from peg1 to peg3 (same ordering)
+  (:goal (and
+    (on-peg O peg3)
+    (on-disk N O)
+    (on-disk M N)
+    (on-disk L M)
+    (on-disk K L)
+    (on-disk J K)
+    (on-disk I J)
+    (on-disk H I)
+    (on-disk G H)
+    (on-disk F G)
+    (on-disk E F)
+    (on-disk D E)
+    (on-disk C D)
+    (on-disk B C)
+    (on-disk A B)
+  ))
+)

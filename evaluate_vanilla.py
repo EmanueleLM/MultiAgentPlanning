@@ -72,6 +72,7 @@ def llm_judge(
     prompt_lines = [
         "Determine whether the candidate plan achieves the same outcome as the golden plan.",
         "Ignore superficial wording differences; focus on whether the proposed plan satisfies the goal expressed by the golden plan.",
+        "Something that you should not ignore is whether the initial prompt is a multi-agent task or single-agent task; make sure the candidate plan matches the agent structure of the golden plan.",
     ]
     if ignore_cost_differences:
         prompt_lines.append(
@@ -238,7 +239,7 @@ def write_detailed_evaluations(
 ) -> Path:
     output_dir = Path("results") / "_evaluation" / "vanilla"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{dataset_name}.json"
+    output_path = output_dir / f"{Path(dataset_name).stem}.json"
 
     entries = []
     for r in results:
@@ -288,7 +289,7 @@ def main() -> None:
         accuracy_including_missing,
     ) = summarize(results, missing, dataset_total)
 
-    dataset_name = args.data_file.stem
+    dataset_name = str(args.data_file)
     accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_vanilla.json"

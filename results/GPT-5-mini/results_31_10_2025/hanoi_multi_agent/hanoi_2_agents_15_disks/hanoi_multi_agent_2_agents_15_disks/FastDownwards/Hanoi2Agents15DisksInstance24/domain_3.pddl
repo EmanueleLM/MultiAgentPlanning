@@ -1,0 +1,98 @@
+(define (domain hanoi_two_agents_15)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg agent)
+
+  (:predicates
+    (on ?d - disk ?p - peg)
+    (top ?p - peg ?d - disk)
+    (empty ?p - peg)
+    (direct_below ?d1 - disk ?d2 - disk)
+    (smaller ?d1 - disk ?d2 - disk)
+    (can_move_agent1 ?d - disk)
+    (can_move_agent2 ?d - disk)
+  )
+
+  (:action move_agent_1_to_empty_with_below
+    :parameters (?d - disk ?from - peg ?to - peg ?newtop - disk)
+    :precondition (and
+      (on ?d ?from)
+      (top ?from ?d)
+      (empty ?to)
+      (direct_below ?newtop ?d)
+      (can_move_agent1 ?d)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (top ?from ?d))
+      (top ?to ?d)
+      (top ?from ?newtop)
+      (not (direct_below ?newtop ?d))
+      (not (empty ?to))
+    )
+  )
+
+  (:action move_agent_1_on_top_with_below
+    :parameters (?d - disk ?from - peg ?to - peg ?d2 - disk ?newtop - disk)
+    :precondition (and
+      (on ?d ?from)
+      (top ?from ?d)
+      (top ?to ?d2)
+      (smaller ?d ?d2)
+      (direct_below ?newtop ?d)
+      (can_move_agent1 ?d)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (top ?from ?d))
+      (top ?to ?d)
+      (not (top ?to ?d2))
+      (top ?from ?newtop)
+      (not (direct_below ?newtop ?d))
+      (direct_below ?d ?d2)
+    )
+  )
+
+  (:action move_agent_2_to_empty_with_below
+    :parameters (?d - disk ?from - peg ?to - peg ?newtop - disk)
+    :precondition (and
+      (on ?d ?from)
+      (top ?from ?d)
+      (empty ?to)
+      (direct_below ?newtop ?d)
+      (can_move_agent2 ?d)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (top ?from ?d))
+      (top ?to ?d)
+      (top ?from ?newtop)
+      (not (direct_below ?newtop ?d))
+      (not (empty ?to))
+    )
+  )
+
+  (:action move_agent_2_on_top_with_below
+    :parameters (?d - disk ?from - peg ?to - peg ?d2 - disk ?newtop - disk)
+    :precondition (and
+      (on ?d ?from)
+      (top ?from ?d)
+      (top ?to ?d2)
+      (smaller ?d ?d2)
+      (direct_below ?newtop ?d)
+      (can_move_agent2 ?d)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (top ?from ?d))
+      (top ?to ?d)
+      (not (top ?to ?d2))
+      (top ?from ?newtop)
+      (not (direct_below ?newtop ?d))
+      (direct_below ?d ?d2)
+    )
+  )
+)

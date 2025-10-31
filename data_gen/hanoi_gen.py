@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, List, Tuple
 
 PEG_SEQUENCE = ("left", "middle", "right")
 
@@ -67,6 +67,9 @@ def assign_agents_to_disks(disks: List[str], num_agents: int) -> Tuple[List[Dict
     return assignments, disk_to_agent
 
 
+Move = Tuple[str, str, str, str]
+
+
 def generate_instance(
     num_agents: int,
     instance_id: int = 0,
@@ -78,8 +81,6 @@ def generate_instance(
         raise ValueError("Number of agents must be between 1 and 4.")
     if num_disks < 3:
         raise ValueError("Number of disks must be at least 3.")
-    if num_disks != 12:
-        raise ValueError("This generator is configured for 12 disks.")
     if min_moves < 1 or max_moves < min_moves:
         raise ValueError("Move bounds must satisfy 1 ≤ min_moves ≤ max_moves.")
 
@@ -94,8 +95,8 @@ def generate_instance(
     initial_state = snapshot(initial_pegs)
     order_index = {disk: idx for idx, disk in enumerate(disks)}
 
-    def legal_moves(state: Dict[str, List[str]]) -> List[Tuple[str, str, str, str]]:
-        moves: List[Tuple[str, str, str, str]] = []
+    def legal_moves(state: Dict[str, List[str]]) -> List[Move]:
+        moves: List[Move] = []
         for from_peg in PEG_SEQUENCE:
             stack = state[from_peg]
             if not stack:
@@ -111,31 +112,26 @@ def generate_instance(
                 moves.append((agent, disk, from_peg, to_peg))
         return moves
 
-    def apply_move(state: Dict[str, List[str]], move: Tuple[str, str, str, str]) -> None:
+    def apply_move(state: Dict[str, List[str]], move: Move) -> None:
         agent, disk, from_peg, to_peg = move
         if disk not in state[from_peg] or state[from_peg][0] != disk:
             raise RuntimeError(f"Inconsistent state when moving disk {disk} from {from_peg}.")
         state[from_peg].pop(0)
         state[to_peg].insert(0, disk)
 
-    def is_reverse(move_a: Tuple[str, str, str, str], move_b: Tuple[str, str, str, str]) -> bool:
+    def is_reverse(move_a: Move, move_b: Move) -> bool:
         return (
             move_a[1] == move_b[1]
             and move_a[2] == move_b[3]
             and move_a[3] == move_b[2]
         )
 
-    plan_structured: List[Dict[str, str]]
-    plan_symbolic: List[str]
-    plan_textual: List[str]
-    goal_state: Dict[str, List[str]]
-
     for _ in range(50):
         current_state = snapshot(initial_pegs)
-        plan_structured = []
-        plan_symbolic = []
-        plan_textual = []
-        previous_move: Tuple[str, str, str, str] | None = None
+        plan_structured: List[Dict[str, str]] = []
+        plan_symbolic: List[str] = []
+        plan_textual: List[str] = []
+        previous_move: Move | None = None
         target_length = random.randint(min_moves, max_moves)
 
         while len(plan_structured) < target_length:
@@ -204,26 +200,28 @@ def generate_instance(
 
 
 def generate_dataset(
-    num_instances_per_agent: int,
-    agent_counts: Iterable[int] = (1, 2, 3, 4),
-    num_disks: int = 12,
+    agent_count: int,
+    num_disks: int,
+    num_instances: int,
     min_moves: int = 40,
     max_moves: int = 120,
-    key_prefix: str = "hanoi"
+    key_prefix: str | None = None,
 ) -> Dict[str, Dict]:
+    if agent_count < 1 or agent_count > 4:
+        raise ValueError("agent_count must be between 1 and 4.")
+    if key_prefix is None:
+        key_prefix = f"hanoi_{agent_count}_agents_{num_disks}_disks"
+
     dataset: Dict[str, Dict] = {}
-    for agent_count in agent_counts:
-        if agent_count < 1 or agent_count > 4:
-            raise ValueError("agent_counts must contain values between 1 and 4.")
-        for idx in range(num_instances_per_agent):
-            key = f"{key_prefix}_{num_disks}_disks_{agent_count}_agents_instance_{idx}"
-            dataset[key] = generate_instance(
-                agent_count,
-                instance_id=idx,
-                num_disks=num_disks,
-                min_moves=min_moves,
-                max_moves=max_moves,
-            )
+    for idx in range(num_instances):
+        key = f"{key_prefix}_instance_{idx}"
+        dataset[key] = generate_instance(
+            num_agents=agent_count,
+            instance_id=idx,
+            num_disks=num_disks,
+            min_moves=min_moves,
+            max_moves=max_moves,
+        )
     return dataset
 
 
@@ -236,29 +234,31 @@ if __name__ == "__main__":
     save_folder = Path("./data/hanoi_multi_agent/")
     save_folder.mkdir(parents=True, exist_ok=True)
 
-    num_instances_per_agent = 20
-    agent_counts = [1, 2, 3, 4]
+    num_instances_per_file = 30
     min_moves = 40
     max_moves = 120
 
-    combined: Dict[str, Dict] = {}
-    global_index = 0
+    schedule = [
+        (2, [10, 15, 20]),
+        (3, [10, 15, 20]),
+        (4, [10, 15, 20]),
+    ]
 
-    for agent_count in agent_counts:
-        dataset: Dict[str, Dict] = {}
-        for idx in range(num_instances_per_agent):
-            key = f"hanoi_{agent_count}_agents_instance_{idx}"
-            dataset[key] = generate_instance(
-                agent_count,
-                instance_id=idx,
-                num_disks=12,
+    for agent_count, disk_counts in schedule:
+        aggregated_by_agent: Dict[str, Dict] = {}
+
+        for disk_count in disk_counts:
+            dataset = generate_dataset(
+                agent_count=agent_count,
+                num_disks=disk_count,
+                num_instances=num_instances_per_file,
                 min_moves=min_moves,
                 max_moves=max_moves,
             )
-            combined[f"hanoi_{global_index}"] = dataset[key]
-            global_index += 1
 
-        output_path = save_folder / f"hanoi_{agent_count}_agents.json"
-        save_dataset_to_json(output_path, dataset)
+            filename = save_folder / f"hanoi_{agent_count}_agents_{disk_count}_disks.json"
+            save_dataset_to_json(filename, dataset)
+            aggregated_by_agent.update(dataset)
 
-    save_dataset_to_json(save_folder / "hanoi_all_agents.json", combined)
+        aggregated_filename = save_folder / f"hanoi_{agent_count}_agents_all_disks.json"
+        save_dataset_to_json(aggregated_filename, aggregated_by_agent)

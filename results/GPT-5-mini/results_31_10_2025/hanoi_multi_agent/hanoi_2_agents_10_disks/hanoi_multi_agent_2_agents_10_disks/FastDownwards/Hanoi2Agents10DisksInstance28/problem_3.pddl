@@ -1,0 +1,31 @@
+(define (problem Hanoi2Agents10DisksInstance28-problem)
+  (:domain hanoi-2agents-10)
+  (:objects
+    a b c d e f g h i j - disk
+    left middle right - peg
+  )
+  (:init
+    (on a left)
+    (on b left)
+    (on c left)
+    (on d left)
+    (on e left)
+    (on f left)
+    (on g left)
+    (on h left)
+    (on i left)
+    (on j left)
+  )
+  (:goal (and
+    (on e left)
+    (on f left)
+    (on g left)
+    (on h left)
+    (on i left)
+    (on j left)
+    (on a middle)
+    (on d middle)
+    (on b right)
+    (on c right)
+  ))
+)

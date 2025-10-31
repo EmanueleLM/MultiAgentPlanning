@@ -1,0 +1,96 @@
+{
+    "name": "Hanoi2Agents10DisksInstance19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I can move disks A, B, C, D, E",
+                "A is the smallest disk and E is larger than A through D"
+            ],
+            "goal": "Contribute to a cooperative plan that ends with disk A on the right peg and all other disks arranged as specified in the global goal"
+        },
+        "agent_2": {
+            "private_information": [
+                "I can move disks F, G, H, I, J",
+                "J is the largest disk and F is smaller than G through J"
+            ],
+            "goal": "Contribute to a cooperative plan that ends with disk A on the right peg and all other disks arranged as specified in the global goal"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agent_1 and agent_2 and integrate their proposed move sequences"
+            ],
+            "goal": "Produce a consolidated PDDL domain and PDDL problem targeting the FastDownward solver that encodes the cooperative Tower of Hanoi instance and respects each agent's disk move restrictions"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_count": 10,
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ]
+        },
+        "public_information": [
+            "This is a two agent cooperative Tower of Hanoi with 10 disks labeled A through J. A is the smallest disk and J is the largest.",
+            "There are three pegs named left, middle, and right.",
+            "Initial configuration on the left peg from top to bottom is A, B, C, D, E, F, G, H, I, J. The middle peg is empty. The right peg is empty.",
+            "Goal configuration is left peg has from top to bottom B, C, D, E, F, G, H, I, J; middle peg is empty; right peg has from top to bottom A.",
+            "Tower of Hanoi rules apply: only one disk may be moved at a time and a larger disk may never be placed on top of a smaller disk.",
+            "Agent move restrictions: agent_1 may only perform moves that move disks A, B, C, D, or E. Agent_2 may only perform moves that move disks F, G, H, I, or J."
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "plan": {
+                "input": [],
+                "output": "plan_agent_1",
+                "system_prompt": "You are agent_1. You are an expert at finding valid move sequences for the disks you are allowed to move. Your output must be an ordered list of primitive moves in the exact format 'agent_1: move disk X from peg1 to peg2'. Each line must be a single move. Only include moves for disks A, B, C, D, or E. Respect Tower of Hanoi rules. Do not emit PDDL.",
+                "prompt": "Your name is agent_1. Use the following public information: {environment->public_information}. You have this private information: {agents->agent_1->private_information}. The global goal is: {agents->agent_1->goal}. Provide a valid ordered list of primitive moves that involve only disks A, B, C, D, or E and that respects the Tower of Hanoi rules and the given initial and goal configurations. If some moves depend on disks you cannot move, note them by omitting moves for those disks and rely on the orchestrator to integrate with agent_2 moves. Output only lines in the format 'agent_1: move disk X from peg1 to peg2'. Think step by step when composing the sequence."
+            }
+        },
+        "agent_2": {
+            "plan": {
+                "input": [],
+                "output": "plan_agent_2",
+                "system_prompt": "You are agent_2. You are an expert at finding valid move sequences for the disks you are allowed to move. Your output must be an ordered list of primitive moves in the exact format 'agent_2: move disk X from peg1 to peg2'. Each line must be a single move. Only include moves for disks F, G, H, I, or J. Respect Tower of Hanoi rules. Do not emit PDDL.",
+                "prompt": "Your name is agent_2. Use the following public information: {environment->public_information}. You have this private information: {agents->agent_2->private_information}. The global goal is: {agents->agent_2->goal}. Provide a valid ordered list of primitive moves that involve only disks F, G, H, I, or J and that respects the Tower of Hanoi rules and the given initial and goal configurations. If some moves depend on disks you cannot move, omit those moves and rely on the orchestrator to integrate with agent_1 moves. Output only lines in the format 'agent_2: move disk X from peg1 to peg2'. Think step by step when composing the sequence."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_agent_1",
+                    "plan_agent_2"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. You are an expert at multi-agent PDDL modeling targeting the FastDownward planner. You will receive ordered move lists from agent_1 and agent_2. Your job is to integrate them, keep actions of the two agents distinct, ensure the final integrated plan respects the Tower of Hanoi constraints and each agent's disk move restrictions, and then produce a PDDL domain and a PDDL problem file suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should encode agent identities when necessary so actions remain distinct.",
+                "prompt": "You are the orchestrator. The overall goal is: {agents->orchestrator->goal}. Here is the public information: {environment->public_information}. Here is the proposed move sequence from agent_1: {plan_agent_1}. Here is the proposed move sequence from agent_2: {plan_agent_2}. Integrate these move sequences into a single consistent multi-agent plan. Verify that all moves obey Tower of Hanoi rules and that each move is executed by the agent permitted to move that disk. Resolve any ordering gaps by inserting necessary supporting moves and keep actions labeled by the executing agent. Produce a PDDL domain and a PDDL problem targeting the FastDownward solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. If you cannot fully reconstruct a valid integrated plan from the inputs, produce the most complete PDDL encoding you can and annotate missing information with comments inside the PDDL problem description as FastDownward comments where appropriate."
+            }
+        },
+        "constraints": [
+            "agent_1.plan->orchestrator.pddl",
+            "agent_2.plan->orchestrator.pddl"
+        ]
+    }
+}

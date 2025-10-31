@@ -1,0 +1,61 @@
+(define (problem BlocksworldScaling14-instance)
+  (:domain blocksworld-vowel-consonant)
+
+  (:objects
+    a b c d e f g h i j k l m n - block
+  )
+
+  (:init
+    (vowel a)
+    (vowel e)
+    (vowel i)
+
+    (consonant b)
+    (consonant c)
+    (consonant d)
+    (consonant f)
+    (consonant g)
+    (consonant h)
+    (consonant j)
+    (consonant k)
+    (consonant l)
+    (consonant m)
+    (consonant n)
+
+    (ontable a)
+    (on d a)
+    (on i d)
+    (on b i)
+    (on n b)
+    (on m n)
+    (on g m)
+    (on l g)
+    (on j l)
+
+    (ontable f)
+    (on e f)
+    (on k e)
+    (on c k)
+    (on h c)
+
+    (clear j)
+    (clear h)
+  )
+
+  (:goal (and
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (on e f)
+    (on f g)
+    (on g h)
+    (on h i)
+    (on i j)
+    (on j k)
+    (on k l)
+    (on l m)
+    (on m n)
+    (ontable n)
+  ))
+)

@@ -80,84 +80,42 @@ DATASET = {
         "data": DATA_PATH / "planbench/blocksworld.json",
         "results": RESULTS_FOLDER / "planbench",
     },
-    "blocksworld_10_actions_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_10_actions_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling" / "blocksworld_10_actions_scaling",
-    },
-    "blocksworld_20_actions_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_20_actions_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling" / "blocksworld_20_actions_scaling",
-    },
-    "blocksworld_30_actions_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_30_actions_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling" / "blocksworld_30_actions_scaling",
-    },
-    "blocksworld_40_actions_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_40_actions_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling" / "blocksworld_40_actions_scaling",
-    },
-    "blocksworld_50_actions_scaling": {
-        "data": DATA_PATH / "blocksworld_scaling/blocksworld_50_actions_scaling.json",
-        "results": RESULTS_FOLDER / "blocksworld_scaling" / "blocksworld_50_actions_scaling",
-    },
-    # Blocksworld Multi-agent
-    "multiagent-blocksworld": {
-        "data": DATA_PATH / "blocksworld/blocks_world_dataset.json",
-        "results": RESULTS_FOLDER / "multiagent-blocksworld",
-    },
-    "blocksworld_multi_agent_1_agent": {
-        "data": DATA_PATH / "blocksworld_multi_agent/blocksworld_1_agents.json",
-        "results": RESULTS_FOLDER / "blocksworld_multi_agent" / "blocksworld_1_agents",
-    },
-    "blocksworld_multi_agent_2_agent": {
-        "data": DATA_PATH / "blocksworld_multi_agent/blocksworld_2_agents.json",
-        "results": RESULTS_FOLDER / "blocksworld_multi_agent" / "blocksworld_2_agents",
-    },
-    "blocksworld_multi_agent_3_agent": {
-        "data": DATA_PATH / "blocksworld_multi_agent/blocksworld_3_agents.json",
-        "results": RESULTS_FOLDER / "blocksworld_multi_agent" / "blocksworld_3_agents",
-    },
-    "blocksworld_multi_agent_4_agent": {
-        "data": DATA_PATH / "blocksworld_multi_agent/blocksworld_4_agents.json",
-        "results": RESULTS_FOLDER / "blocksworld_multi_agent" / "blocksworld_4_agents",
-    },
-    # Hanoi
-    "hanoi_4_disks": {
-        "data": DATA_PATH / "hanoi_scaling/hanoi_4_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_scaling" / "hanoi_4_disks",
-    },
-    "hanoi_5_disks": {
-        "data": DATA_PATH / "hanoi_scaling/hanoi_5_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_scaling" / "hanoi_5_disks",
-    },
-    "hanoi_6_disks": {
-        "data": DATA_PATH / "hanoi_scaling/hanoi_6_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_scaling" / "hanoi_6_disks",
-    },
-    "hanoi_7_disks": {
-        "data": DATA_PATH / "hanoi_scaling/hanoi_7_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_scaling" / "hanoi_7_disks",
-    },
-    "hanoi_8_disks": {
-        "data": DATA_PATH / "hanoi_scaling/hanoi_8_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_scaling" / "hanoi_8_disks",
-    },
     # Hanoi multi-agent
-    "hanoi_multi_agent_1_agent": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_1_agents.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_1_agents",
+    "hanoi_multi_agent_2_agents_10_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_10_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_10_disks",
     },
-    "hanoi_multi_agent_2_agent": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents",
+    "hanoi_multi_agent_2_agents_15_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_15_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_15_disks",
     },
-    "hanoi_multi_agent_3_agent": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents",
+    "hanoi_multi_agent_2_agents_20_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_20_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_20_disks",
     },
-    "hanoi_multi_agent_4_agent": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents",
+    "hanoi_multi_agent_3_agents_10_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_10_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_10_disks",
+    },
+    "hanoi_multi_agent_3_agents_15_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_15_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_15_disks",
+    },
+    "hanoi_multi_agent_3_agents_20_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_20_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_20_disks",
+    },
+    "hanoi_multi_agent_4_agents_10_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_10_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_10_disks",
+    },
+    "hanoi_multi_agent_4_agents_15_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_15_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_15_disks",
+    },
+    "hanoi_multi_agent_4_agents_20_disks": {
+        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_20_disks.json",
+        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_20_disks",
     },
 }
 

@@ -1,0 +1,846 @@
+PROBLEM
+------------------------------
+Devise a cooperative plan for a 2-agent Tower of Hanoi with 20 disks labelled A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T (A is the smallest, T the largest). Agents are limited to moving specific disks: agent_1 ⇒ A, B, C, D, E, F, G, H, I, J; agent_2 ⇒ K, L, M, N, O, P, Q, R, S, T. Initial configuration: left peg has (top→bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty. Goal configuration: left peg has (top→bottom) A, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has (top→bottom) D; right peg has (top→bottom) B, C. Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', respecting the agent restrictions and the Tower of Hanoi rules.
+================================================================================
+
+
+ENVIRONMENT
+------------------------------
+Devise a cooperative plan for a 2-agent Tower of Hanoi with 20 disks labelled A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T (A is the smallest, T the largest). Agents are limited to moving specific disks: agent_1 ⇒ A, B, C, D, E, F, G, H, I, J; agent_2 ⇒ K, L, M, N, O, P, Q, R, S, T. Initial configuration: left peg has (top→bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty. Goal configuration: left peg has (top→bottom) A, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has (top→bottom) D; right peg has (top→bottom) B, C. Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', respecting the agent restrictions and the Tower of Hanoi rules.
+================================================================================
+
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain hanoi-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk small large peg)
+  (:constants
+    A B C D E F G H I J - small
+    K L M N O P Q R S T - large
+    base-left base-middle base-right - disk
+    left middle right - peg
+  )
+
+  (:predicates
+    (above ?u - disk ?l - disk)          ; ?u is immediately above ?l
+    (top ?d - disk ?p - peg)            ; ?d is the top disk on peg ?p
+    (smaller ?x - disk ?y - disk)       ; ?x is smaller than ?y (ordering)
+  )
+
+  ;; Agent 1 moves disks A..J (type small)
+  (:action agent_1-move
+    :parameters (?d - small ?from - peg ?to - peg ?below - disk ?t - disk)
+    :precondition (and
+      (top ?d ?from)
+      (above ?d ?below)
+      (top ?t ?to)
+      (smaller ?d ?t)
+    )
+    :effect (and
+      ;; update top of source peg: remove top ?d and set ?below as new top
+      (not (top ?d ?from))
+      (top ?below ?from)
+
+      ;; update top of destination peg: remove current top ?t and set ?d as new top
+      (not (top ?t ?to))
+      (top ?d ?to)
+
+      ;; update immediate-above relations
+      (not (above ?d ?below))
+      (above ?d ?t)
+    )
+  )
+
+  ;; Agent 2 moves disks K..T (type large)
+  (:action agent_2-move
+    :parameters (?d - large ?from - peg ?to - peg ?below - disk ?t - disk)
+    :precondition (and
+      (top ?d ?from)
+      (above ?d ?below)
+      (top ?t ?to)
+      (smaller ?d ?t)
+    )
+    :effect (and
+      (not (top ?d ?from))
+      (top ?below ?from)
+      (not (top ?t ?to))
+      (top ?d ?to)
+      (not (above ?d ?below))
+      (above ?d ?t)
+    )
+  )
+)
+</domain>
+
+<problem>
+(define (problem hanoi-multiagent-problem)
+  (:domain hanoi-multiagent)
+
+  (:objects
+    A B C D E F G H I J - small
+    K L M N O P Q R S T - large
+    base-left base-middle base-right - disk
+    left middle right - peg
+  )
+
+  (:init
+    ;; initial immediate-above chain on the left peg (top-to-bottom A .. T then base-left)
+    (above A B)
+    (above B C)
+    (above C D)
+    (above D E)
+    (above E F)
+    (above F G)
+    (above G H)
+    (above H I)
+    (above I J)
+    (above J K)
+    (above K L)
+    (above L M)
+    (above M N)
+    (above N O)
+    (above O P)
+    (above P Q)
+    (above Q R)
+    (above R S)
+    (above S T)
+    (above T base-left)
+
+    ;; base sentinels are top of empty pegs initially
+    (top A left)
+    (top base-middle middle)
+    (top base-right right)
+
+    ;; numeric ordering: "smaller" facts (each disk smaller than any disk below it in the size order
+    ;; and every real disk is smaller than each base sentinel)
+    ;; A smaller than B..T and base sentinels
+    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J) (smaller A K) (smaller A L) (smaller A M) (smaller A N) (smaller A O) (smaller A P) (smaller A Q) (smaller A R) (smaller A S) (smaller A T)
+    (smaller A base-left) (smaller A base-middle) (smaller A base-right)
+
+    ;; B smaller than C..T and bases
+    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J) (smaller B K) (smaller B L) (smaller B M) (smaller B N) (smaller B O) (smaller B P) (smaller B Q) (smaller B R) (smaller B S) (smaller B T)
+    (smaller B base-left) (smaller B base-middle) (smaller B base-right)
+
+    ;; C smaller than D..T and bases
+    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J) (smaller C K) (smaller C L) (smaller C M) (smaller C N) (smaller C O) (smaller C P) (smaller C Q) (smaller C R) (smaller C S) (smaller C T)
+    (smaller C base-left) (smaller C base-middle) (smaller C base-right)
+
+    ;; D smaller than E..T and bases
+    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J) (smaller D K) (smaller D L) (smaller D M) (smaller D N) (smaller D O) (smaller D P) (smaller D Q) (smaller D R) (smaller D S) (smaller D T)
+    (smaller D base-left) (smaller D base-middle) (smaller D base-right)
+
+    ;; E smaller than F..T and bases
+    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J) (smaller E K) (smaller E L) (smaller E M) (smaller E N) (smaller E O) (smaller E P) (smaller E Q) (smaller E R) (smaller E S) (smaller E T)
+    (smaller E base-left) (smaller E base-middle) (smaller E base-right)
+
+    ;; F smaller than G..T and bases
+    (smaller F G) (smaller F H) (smaller F I) (smaller F J) (smaller F K) (smaller F L) (smaller F M) (smaller F N) (smaller F O) (smaller F P) (smaller F Q) (smaller F R) (smaller F S) (smaller F T)
+    (smaller F base-left) (smaller F base-middle) (smaller F base-right)
+
+    ;; G smaller than H..T and bases
+    (smaller G H) (smaller G I) (smaller G J) (smaller G K) (smaller G L) (smaller G M) (smaller G N) (smaller G O) (smaller G P) (smaller G Q) (smaller G R) (smaller G S) (smaller G T)
+    (smaller G base-left) (smaller G base-middle) (smaller G base-right)
+
+    ;; H smaller than I..T and bases
+    (smaller H I) (smaller H J) (smaller H K) (smaller H L) (smaller H M) (smaller H N) (smaller H O) (smaller H P) (smaller H Q) (smaller H R) (smaller H S) (smaller H T)
+    (smaller H base-left) (smaller H base-middle) (smaller H base-right)
+
+    ;; I smaller than J..T and bases
+    (smaller I J) (smaller I K) (smaller I L) (smaller I M) (smaller I N) (smaller I O) (smaller I P) (smaller I Q) (smaller I R) (smaller I S) (smaller I T)
+    (smaller I base-left) (smaller I base-middle) (smaller I base-right)
+
+    ;; J smaller than K..T and bases
+    (smaller J K) (smaller J L) (smaller J M) (smaller J N) (smaller J O) (smaller J P) (smaller J Q) (smaller J R) (smaller J S) (smaller J T)
+    (smaller J base-left) (smaller J base-middle) (smaller J base-right)
+
+    ;; K smaller than L..T and bases
+    (smaller K L) (smaller K M) (smaller K N) (smaller K O) (smaller K P) (smaller K Q) (smaller K R) (smaller K S) (smaller K T)
+    (smaller K base-left) (smaller K base-middle) (smaller K base-right)
+
+    ;; L smaller than M..T and bases
+    (smaller L M) (smaller L N) (smaller L O) (smaller L P) (smaller L Q) (smaller L R) (smaller L S) (smaller L T)
+    (smaller L base-left) (smaller L base-middle) (smaller L base-right)
+
+    ;; M smaller than N..T and bases
+    (smaller M N) (smaller M O) (smaller M P) (smaller M Q) (smaller M R) (smaller M S) (smaller M T)
+    (smaller M base-left) (smaller M base-middle) (smaller M base-right)
+
+    ;; N smaller than O..T and bases
+    (smaller N O) (smaller N P) (smaller N Q) (smaller N R) (smaller N S) (smaller N T)
+    (smaller N base-left) (smaller N base-middle) (smaller N base-right)
+
+    ;; O smaller than P..T and bases
+    (smaller O P) (smaller O Q) (smaller O R) (smaller O S) (smaller O T)
+    (smaller O base-left) (smaller O base-middle) (smaller O base-right)
+
+    ;; P smaller than Q..T and bases
+    (smaller P Q) (smaller P R) (smaller P S) (smaller P T)
+    (smaller P base-left) (smaller P base-middle) (smaller P base-right)
+
+    ;; Q smaller than R..T and bases
+    (smaller Q R) (smaller Q S) (smaller Q T)
+    (smaller Q base-left) (smaller Q base-middle) (smaller Q base-right)
+
+    ;; R smaller than S,T and bases
+    (smaller R S) (smaller R T)
+    (smaller R base-left) (smaller R base-middle) (smaller R base-right)
+
+    ;; S smaller than T and bases
+    (smaller S T)
+    (smaller S base-left) (smaller S base-middle) (smaller S base-right)
+
+    ;; T smaller than base sentinels
+    (smaller T base-left) (smaller T base-middle) (smaller T base-right)
+  )
+
+  (:goal
+    (and
+      ;; Final left peg top-to-bottom: A E F G H I J K L M N O P Q R S T (then base-left)
+      (top A left)
+      (above A E)
+      (above E F)
+      (above F G)
+      (above G H)
+      (above H I)
+      (above I J)
+      (above J K)
+      (above K L)
+      (above L M)
+      (above M N)
+      (above N O)
+      (above O P)
+      (above P Q)
+      (above Q R)
+      (above R S)
+      (above S T)
+      (above T base-left)
+
+      ;; Middle peg: D alone (on top of base-middle)
+      (top D middle)
+      (above D base-middle)
+
+      ;; Right peg top-to-bottom: B C (then base-right)
+      (top B right)
+      (above B C)
+      (above C base-right)
+    )
+  )
+)
+</problem>
+================================================================================
+
+
+DOMAIN
+------------------------------
+(define (domain hanoi-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk small large peg)
+  (:constants
+    A B C D E F G H I J - small
+    K L M N O P Q R S T - large
+    base-left base-middle base-right - disk
+    left middle right - peg
+  )
+
+  (:predicates
+    (above ?u - disk ?l - disk)          ; ?u is immediately above ?l
+    (top ?d - disk ?p - peg)            ; ?d is the top disk on peg ?p
+    (smaller ?x - disk ?y - disk)       ; ?x is smaller than ?y (ordering)
+  )
+
+  ;; Agent 1 moves disks A..J (type small)
+  (:action agent_1-move
+    :parameters (?d - small ?from - peg ?to - peg ?below - disk ?t - disk)
+    :precondition (and
+      (top ?d ?from)
+      (above ?d ?below)
+      (top ?t ?to)
+      (smaller ?d ?t)
+    )
+    :effect (and
+      ;; update top of source peg: remove top ?d and set ?below as new top
+      (not (top ?d ?from))
+      (top ?below ?from)
+
+      ;; update top of destination peg: remove current top ?t and set ?d as new top
+      (not (top ?t ?to))
+      (top ?d ?to)
+
+      ;; update immediate-above relations
+      (not (above ?d ?below))
+      (above ?d ?t)
+    )
+  )
+
+  ;; Agent 2 moves disks K..T (type large)
+  (:action agent_2-move
+    :parameters (?d - large ?from - peg ?to - peg ?below - disk ?t - disk)
+    :precondition (and
+      (top ?d ?from)
+      (above ?d ?below)
+      (top ?t ?to)
+      (smaller ?d ?t)
+    )
+    :effect (and
+      (not (top ?d ?from))
+      (top ?below ?from)
+      (not (top ?t ?to))
+      (top ?d ?to)
+      (not (above ?d ?below))
+      (above ?d ?t)
+    )
+  )
+)
+================================================================================
+
+
+PROBLEM
+------------------------------
+(define (problem hanoi-multiagent-problem)
+  (:domain hanoi-multiagent)
+
+  (:objects
+    A B C D E F G H I J - small
+    K L M N O P Q R S T - large
+    base-left base-middle base-right - disk
+    left middle right - peg
+  )
+
+  (:init
+    ;; initial immediate-above chain on the left peg (top-to-bottom A .. T then base-left)
+    (above A B)
+    (above B C)
+    (above C D)
+    (above D E)
+    (above E F)
+    (above F G)
+    (above G H)
+    (above H I)
+    (above I J)
+    (above J K)
+    (above K L)
+    (above L M)
+    (above M N)
+    (above N O)
+    (above O P)
+    (above P Q)
+    (above Q R)
+    (above R S)
+    (above S T)
+    (above T base-left)
+
+    ;; base sentinels are top of empty pegs initially
+    (top A left)
+    (top base-middle middle)
+    (top base-right right)
+
+    ;; numeric ordering: "smaller" facts (each disk smaller than any disk below it in the size order
+    ;; and every real disk is smaller than each base sentinel)
+    ;; A smaller than B..T and base sentinels
+    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J) (smaller A K) (smaller A L) (smaller A M) (smaller A N) (smaller A O) (smaller A P) (smaller A Q) (smaller A R) (smaller A S) (smaller A T)
+    (smaller A base-left) (smaller A base-middle) (smaller A base-right)
+
+    ;; B smaller than C..T and bases
+    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J) (smaller B K) (smaller B L) (smaller B M) (smaller B N) (smaller B O) (smaller B P) (smaller B Q) (smaller B R) (smaller B S) (smaller B T)
+    (smaller B base-left) (smaller B base-middle) (smaller B base-right)
+
+    ;; C smaller than D..T and bases
+    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J) (smaller C K) (smaller C L) (smaller C M) (smaller C N) (smaller C O) (smaller C P) (smaller C Q) (smaller C R) (smaller C S) (smaller C T)
+    (smaller C base-left) (smaller C base-middle) (smaller C base-right)
+
+    ;; D smaller than E..T and bases
+    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J) (smaller D K) (smaller D L) (smaller D M) (smaller D N) (smaller D O) (smaller D P) (smaller D Q) (smaller D R) (smaller D S) (smaller D T)
+    (smaller D base-left) (smaller D base-middle) (smaller D base-right)
+
+    ;; E smaller than F..T and bases
+    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J) (smaller E K) (smaller E L) (smaller E M) (smaller E N) (smaller E O) (smaller E P) (smaller E Q) (smaller E R) (smaller E S) (smaller E T)
+    (smaller E base-left) (smaller E base-middle) (smaller E base-right)
+
+    ;; F smaller than G..T and bases
+    (smaller F G) (smaller F H) (smaller F I) (smaller F J) (smaller F K) (smaller F L) (smaller F M) (smaller F N) (smaller F O) (smaller F P) (smaller F Q) (smaller F R) (smaller F S) (smaller F T)
+    (smaller F base-left) (smaller F base-middle) (smaller F base-right)
+
+    ;; G smaller than H..T and bases
+    (smaller G H) (smaller G I) (smaller G J) (smaller G K) (smaller G L) (smaller G M) (smaller G N) (smaller G O) (smaller G P) (smaller G Q) (smaller G R) (smaller G S) (smaller G T)
+    (smaller G base-left) (smaller G base-middle) (smaller G base-right)
+
+    ;; H smaller than I..T and bases
+    (smaller H I) (smaller H J) (smaller H K) (smaller H L) (smaller H M) (smaller H N) (smaller H O) (smaller H P) (smaller H Q) (smaller H R) (smaller H S) (smaller H T)
+    (smaller H base-left) (smaller H base-middle) (smaller H base-right)
+
+    ;; I smaller than J..T and bases
+    (smaller I J) (smaller I K) (smaller I L) (smaller I M) (smaller I N) (smaller I O) (smaller I P) (smaller I Q) (smaller I R) (smaller I S) (smaller I T)
+    (smaller I base-left) (smaller I base-middle) (smaller I base-right)
+
+    ;; J smaller than K..T and bases
+    (smaller J K) (smaller J L) (smaller J M) (smaller J N) (smaller J O) (smaller J P) (smaller J Q) (smaller J R) (smaller J S) (smaller J T)
+    (smaller J base-left) (smaller J base-middle) (smaller J base-right)
+
+    ;; K smaller than L..T and bases
+    (smaller K L) (smaller K M) (smaller K N) (smaller K O) (smaller K P) (smaller K Q) (smaller K R) (smaller K S) (smaller K T)
+    (smaller K base-left) (smaller K base-middle) (smaller K base-right)
+
+    ;; L smaller than M..T and bases
+    (smaller L M) (smaller L N) (smaller L O) (smaller L P) (smaller L Q) (smaller L R) (smaller L S) (smaller L T)
+    (smaller L base-left) (smaller L base-middle) (smaller L base-right)
+
+    ;; M smaller than N..T and bases
+    (smaller M N) (smaller M O) (smaller M P) (smaller M Q) (smaller M R) (smaller M S) (smaller M T)
+    (smaller M base-left) (smaller M base-middle) (smaller M base-right)
+
+    ;; N smaller than O..T and bases
+    (smaller N O) (smaller N P) (smaller N Q) (smaller N R) (smaller N S) (smaller N T)
+    (smaller N base-left) (smaller N base-middle) (smaller N base-right)
+
+    ;; O smaller than P..T and bases
+    (smaller O P) (smaller O Q) (smaller O R) (smaller O S) (smaller O T)
+    (smaller O base-left) (smaller O base-middle) (smaller O base-right)
+
+    ;; P smaller than Q..T and bases
+    (smaller P Q) (smaller P R) (smaller P S) (smaller P T)
+    (smaller P base-left) (smaller P base-middle) (smaller P base-right)
+
+    ;; Q smaller than R..T and bases
+    (smaller Q R) (smaller Q S) (smaller Q T)
+    (smaller Q base-left) (smaller Q base-middle) (smaller Q base-right)
+
+    ;; R smaller than S,T and bases
+    (smaller R S) (smaller R T)
+    (smaller R base-left) (smaller R base-middle) (smaller R base-right)
+
+    ;; S smaller than T and bases
+    (smaller S T)
+    (smaller S base-left) (smaller S base-middle) (smaller S base-right)
+
+    ;; T smaller than base sentinels
+    (smaller T base-left) (smaller T base-middle) (smaller T base-right)
+  )
+
+  (:goal
+    (and
+      ;; Final left peg top-to-bottom: A E F G H I J K L M N O P Q R S T (then base-left)
+      (top A left)
+      (above A E)
+      (above E F)
+      (above F G)
+      (above G H)
+      (above H I)
+      (above I J)
+      (above J K)
+      (above K L)
+      (above L M)
+      (above M N)
+      (above N O)
+      (above O P)
+      (above P Q)
+      (above Q R)
+      (above R S)
+      (above S T)
+      (above T base-left)
+
+      ;; Middle peg: D alone (on top of base-middle)
+      (top D middle)
+      (above D base-middle)
+
+      ;; Right peg top-to-bottom: B C (then base-right)
+      (top B right)
+      (above B C)
+      (above C base-right)
+    )
+  )
+)
+================================================================================
+
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "Devise a cooperative plan for a 2-agent Tower of Hanoi with 20 disks labelled A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T (A is the smallest, T the largest). Agents are limited to moving specific disks: agent_1 \u21d2 A, B, C, D, E, F, G, H, I, J; agent_2 \u21d2 K, L, M, N, O, P, Q, R, S, T. Initial configuration: left peg has (top\u2192bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty. Goal configuration: left peg has (top\u2192bottom) A, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has (top\u2192bottom) D; right peg has (top\u2192bottom) B, C. Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', respecting the agent restrictions and the Tower of Hanoi rules.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "Hanoi2Agents20DisksInstance0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "agent_1",
+                "agent_2",
+                "orchestrator"
+            ],
+            "agent_1": {
+                "private_information": [
+                    "I can move disks A B C D E F G H I J",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "agent_2": {
+                "private_information": [
+                    "I can move disks K L M N O P Q R S T",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I coordinate agents and integrate their move sequences into a single plan",
+                    "I produce the final PDDL domain and problem targeted for the FastDownward solver"
+                ],
+                "goal": "Integrate agent move sequences and produce a correct PDDL domain and problem that achieves the specified final configuration using FastDownward"
+            }
+        },
+        "environment": {
+            "init": {
+                "pegs": 3,
+                "disks_count": 20,
+                "disks_order_top_to_bottom": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ]
+            },
+            "public_information": [
+                "This is a Tower of Hanoi with three pegs named left, middle, right",
+                "Disks are labeled A through T where A is the smallest and T is the largest",
+                "Initial configuration on left peg from top to bottom is A B C D E F G H I J K L M N O P Q R S T",
+                "Middle peg is empty and right peg is empty at start",
+                "Goal configuration is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C",
+                "Rules: only the top disk of any peg can be moved, and a larger disk cannot be placed on top of a smaller disk",
+                "Agents have move restrictions: agent_1 may only move disks A-J, agent_2 may only move disks K-T"
+            ]
+        },
+        "workflow": {
+            "agent_1": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_1",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_1: move disk X from peg1 to peg2'. You must only include moves for disks A B C D E F G H I J according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_1. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks A B C D E F G H I J. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_1: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "agent_2": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_2",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_2: move disk X from peg1 to peg2'. You must only include moves for disks K L M N O P Q R S T according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_2. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks K L M N O P Q R S T. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_2: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "moves_agent_1",
+                        "moves_agent_2"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownward planner. You will integrate the primitive move sequences provided by agents into a single correct PDDL domain and PDDL problem targeted for FastDownward. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions of the two agents distinct by naming actions with the agent prefix, for example (agent_1-move ?d ?from ?to). The domain must declare objects, predicates for disk positions and top-of-peg conditions, and actions corresponding to valid moves by each agent. The problem must declare the initial state and the goal matching the required final configuration. Use only STRIPS features and constructs supported by FastDownward. Do not rely on external assumptions beyond the provided move lists and public information.",
+                    "prompt": "You are the orchestrator. Integrate the move lists from agent_1 and agent_2 into a coherent plan and produce a PDDL domain and a PDDL problem for the FastDownward solver that realizes the final configuration: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. Here is the information from agent_1: {moves_agent_1} Here is the information from agent_2: {moves_agent_2} The public information is: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Middle peg empty. Right peg empty. Produce a PDDL domain and a PDDL problem that encode the disks A..T as objects, the three pegs, the initial state, and the goal state. Keep agent actions distinct and ensure legality of moves in preconditions and effects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "agent_1.generate_moves->orchestrator.pddl",
+                "agent_2.generate_moves->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain hanoi-multiagent)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types disk small large peg)\n  (:constants\n    A B C D E F G H I J - small\n    K L M N O P Q R S T - large\n    base-left base-middle base-right - disk\n    left middle right - peg\n  )\n\n  (:predicates\n    (above ?u - disk ?l - disk)          ; ?u is immediately above ?l\n    (top ?d - disk ?p - peg)            ; ?d is the top disk on peg ?p\n    (smaller ?x - disk ?y - disk)       ; ?x is smaller than ?y (ordering)\n  )\n\n  ;; Agent 1 moves disks A..J (type small)\n  (:action agent_1-move\n    :parameters (?d - small ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (top ?d ?from)\n      (above ?d ?below)\n      (top ?t ?to)\n      (smaller ?d ?t)\n    )\n    :effect (and\n      ;; update top of source peg: remove top ?d and set ?below as new top\n      (not (top ?d ?from))\n      (top ?below ?from)\n\n      ;; update top of destination peg: remove current top ?t and set ?d as new top\n      (not (top ?t ?to))\n      (top ?d ?to)\n\n      ;; update immediate-above relations\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n\n  ;; Agent 2 moves disks K..T (type large)\n  (:action agent_2-move\n    :parameters (?d - large ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (top ?d ?from)\n      (above ?d ?below)\n      (top ?t ?to)\n      (smaller ?d ?t)\n    )\n    :effect (and\n      (not (top ?d ?from))\n      (top ?below ?from)\n      (not (top ?t ?to))\n      (top ?d ?to)\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem hanoi-multiagent-problem)\n  (:domain hanoi-multiagent)\n\n  (:objects\n    A B C D E F G H I J - small\n    K L M N O P Q R S T - large\n    base-left base-middle base-right - disk\n    left middle right - peg\n  )\n\n  (:init\n    ;; initial immediate-above chain on the left peg (top-to-bottom A .. T then base-left)\n    (above A B)\n    (above B C)\n    (above C D)\n    (above D E)\n    (above E F)\n    (above F G)\n    (above G H)\n    (above H I)\n    (above I J)\n    (above J K)\n    (above K L)\n    (above L M)\n    (above M N)\n    (above N O)\n    (above O P)\n    (above P Q)\n    (above Q R)\n    (above R S)\n    (above S T)\n    (above T base-left)\n\n    ;; base sentinels are top of empty pegs initially\n    (top A left)\n    (top base-middle middle)\n    (top base-right right)\n\n    ;; numeric ordering: \"smaller\" facts (each disk smaller than any disk below it in the size order\n    ;; and every real disk is smaller than each base sentinel)\n    ;; A smaller than B..T and base sentinels\n    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J) (smaller A K) (smaller A L) (smaller A M) (smaller A N) (smaller A O) (smaller A P) (smaller A Q) (smaller A R) (smaller A S) (smaller A T)\n    (smaller A base-left) (smaller A base-middle) (smaller A base-right)\n\n    ;; B smaller than C..T and bases\n    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J) (smaller B K) (smaller B L) (smaller B M) (smaller B N) (smaller B O) (smaller B P) (smaller B Q) (smaller B R) (smaller B S) (smaller B T)\n    (smaller B base-left) (smaller B base-middle) (smaller B base-right)\n\n    ;; C smaller than D..T and bases\n    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J) (smaller C K) (smaller C L) (smaller C M) (smaller C N) (smaller C O) (smaller C P) (smaller C Q) (smaller C R) (smaller C S) (smaller C T)\n    (smaller C base-left) (smaller C base-middle) (smaller C base-right)\n\n    ;; D smaller than E..T and bases\n    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J) (smaller D K) (smaller D L) (smaller D M) (smaller D N) (smaller D O) (smaller D P) (smaller D Q) (smaller D R) (smaller D S) (smaller D T)\n    (smaller D base-left) (smaller D base-middle) (smaller D base-right)\n\n    ;; E smaller than F..T and bases\n    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J) (smaller E K) (smaller E L) (smaller E M) (smaller E N) (smaller E O) (smaller E P) (smaller E Q) (smaller E R) (smaller E S) (smaller E T)\n    (smaller E base-left) (smaller E base-middle) (smaller E base-right)\n\n    ;; F smaller than G..T and bases\n    (smaller F G) (smaller F H) (smaller F I) (smaller F J) (smaller F K) (smaller F L) (smaller F M) (smaller F N) (smaller F O) (smaller F P) (smaller F Q) (smaller F R) (smaller F S) (smaller F T)\n    (smaller F base-left) (smaller F base-middle) (smaller F base-right)\n\n    ;; G smaller than H..T and bases\n    (smaller G H) (smaller G I) (smaller G J) (smaller G K) (smaller G L) (smaller G M) (smaller G N) (smaller G O) (smaller G P) (smaller G Q) (smaller G R) (smaller G S) (smaller G T)\n    (smaller G base-left) (smaller G base-middle) (smaller G base-right)\n\n    ;; H smaller than I..T and bases\n    (smaller H I) (smaller H J) (smaller H K) (smaller H L) (smaller H M) (smaller H N) (smaller H O) (smaller H P) (smaller H Q) (smaller H R) (smaller H S) (smaller H T)\n    (smaller H base-left) (smaller H base-middle) (smaller H base-right)\n\n    ;; I smaller than J..T and bases\n    (smaller I J) (smaller I K) (smaller I L) (smaller I M) (smaller I N) (smaller I O) (smaller I P) (smaller I Q) (smaller I R) (smaller I S) (smaller I T)\n    (smaller I base-left) (smaller I base-middle) (smaller I base-right)\n\n    ;; J smaller than K..T and bases\n    (smaller J K) (smaller J L) (smaller J M) (smaller J N) (smaller J O) (smaller J P) (smaller J Q) (smaller J R) (smaller J S) (smaller J T)\n    (smaller J base-left) (smaller J base-middle) (smaller J base-right)\n\n    ;; K smaller than L..T and bases\n    (smaller K L) (smaller K M) (smaller K N) (smaller K O) (smaller K P) (smaller K Q) (smaller K R) (smaller K S) (smaller K T)\n    (smaller K base-left) (smaller K base-middle) (smaller K base-right)\n\n    ;; L smaller than M..T and bases\n    (smaller L M) (smaller L N) (smaller L O) (smaller L P) (smaller L Q) (smaller L R) (smaller L S) (smaller L T)\n    (smaller L base-left) (smaller L base-middle) (smaller L base-right)\n\n    ;; M smaller than N..T and bases\n    (smaller M N) (smaller M O) (smaller M P) (smaller M Q) (smaller M R) (smaller M S) (smaller M T)\n    (smaller M base-left) (smaller M base-middle) (smaller M base-right)\n\n    ;; N smaller than O..T and bases\n    (smaller N O) (smaller N P) (smaller N Q) (smaller N R) (smaller N S) (smaller N T)\n    (smaller N base-left) (smaller N base-middle) (smaller N base-right)\n\n    ;; O smaller than P..T and bases\n    (smaller O P) (smaller O Q) (smaller O R) (smaller O S) (smaller O T)\n    (smaller O base-left) (smaller O base-middle) (smaller O base-right)\n\n    ;; P smaller than Q..T and bases\n    (smaller P Q) (smaller P R) (smaller P S) (smaller P T)\n    (smaller P base-left) (smaller P base-middle) (smaller P base-right)\n\n    ;; Q smaller than R..T and bases\n    (smaller Q R) (smaller Q S) (smaller Q T)\n    (smaller Q base-left) (smaller Q base-middle) (smaller Q base-right)\n\n    ;; R smaller than S,T and bases\n    (smaller R S) (smaller R T)\n    (smaller R base-left) (smaller R base-middle) (smaller R base-right)\n\n    ;; S smaller than T and bases\n    (smaller S T)\n    (smaller S base-left) (smaller S base-middle) (smaller S base-right)\n\n    ;; T smaller than base sentinels\n    (smaller T base-left) (smaller T base-middle) (smaller T base-right)\n  )\n\n  (:goal\n    (and\n      ;; Final left peg top-to-bottom: A E F G H I J K L M N O P Q R S T (then base-left)\n      (top A left)\n      (above A E)\n      (above E F)\n      (above F G)\n      (above G H)\n      (above H I)\n      (above I J)\n      (above J K)\n      (above K L)\n      (above L M)\n      (above M N)\n      (above N O)\n      (above O P)\n      (above P Q)\n      (above Q R)\n      (above R S)\n      (above S T)\n      (above T base-left)\n\n      ;; Middle peg: D alone (on top of base-middle)\n      (top D middle)\n      (above D base-middle)\n\n      ;; Right peg top-to-bottom: B C (then base-right)\n      (top B right)\n      (above B C)\n      (above C base-right)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  A does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/domain_0.pddl results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/problem_0.pddl --sas-file output.sas\nParsing...\n\nerror: duplicate object 'a'\nerror: duplicate object 'b'\nerror: duplicate object 'c'\nerror: duplicate object 'd'\nerror: duplicate object 'e'\nerror: duplicate object 'f'\nerror: duplicate object 'g'\nerror: duplicate object 'h'\nerror: duplicate object 'i'\nerror: duplicate object 'j'\nerror: duplicate object 'k'\nerror: duplicate object 'l'\nerror: duplicate object 'm'\nerror: duplicate object 'n'\nerror: duplicate object 'o'\nerror: duplicate object 'p'\nerror: duplicate object 'q'\nerror: duplicate object 'r'\nerror: duplicate object 's'\nerror: duplicate object 't'\nerror: duplicate object 'base-left'\nerror: duplicate object 'base-middle'\nerror: duplicate object 'base-right'\nerror: duplicate object 'left'\nerror: duplicate object 'middle'\nerror: duplicate object 'right'\nplease check :constants and :objects definitions\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [],
+    "proposed_solution": ""
+}
+================================================================================
+
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "Devise a cooperative plan for a 2-agent Tower of Hanoi with 20 disks labelled A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T (A is the smallest, T the largest). Agents are limited to moving specific disks: agent_1 \u21d2 A, B, C, D, E, F, G, H, I, J; agent_2 \u21d2 K, L, M, N, O, P, Q, R, S, T. Initial configuration: left peg has (top\u2192bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty. Goal configuration: left peg has (top\u2192bottom) A, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has (top\u2192bottom) D; right peg has (top\u2192bottom) B, C. Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', respecting the agent restrictions and the Tower of Hanoi rules.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "Hanoi2Agents20DisksInstance0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "agent_1",
+                "agent_2",
+                "orchestrator"
+            ],
+            "agent_1": {
+                "private_information": [
+                    "I can move disks A B C D E F G H I J",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "agent_2": {
+                "private_information": [
+                    "I can move disks K L M N O P Q R S T",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I coordinate agents and integrate their move sequences into a single plan",
+                    "I produce the final PDDL domain and problem targeted for the FastDownward solver"
+                ],
+                "goal": "Integrate agent move sequences and produce a correct PDDL domain and problem that achieves the specified final configuration using FastDownward"
+            }
+        },
+        "environment": {
+            "init": {
+                "pegs": 3,
+                "disks_count": 20,
+                "disks_order_top_to_bottom": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ]
+            },
+            "public_information": [
+                "This is a Tower of Hanoi with three pegs named left, middle, right",
+                "Disks are labeled A through T where A is the smallest and T is the largest",
+                "Initial configuration on left peg from top to bottom is A B C D E F G H I J K L M N O P Q R S T",
+                "Middle peg is empty and right peg is empty at start",
+                "Goal configuration is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C",
+                "Rules: only the top disk of any peg can be moved, and a larger disk cannot be placed on top of a smaller disk",
+                "Agents have move restrictions: agent_1 may only move disks A-J, agent_2 may only move disks K-T"
+            ]
+        },
+        "workflow": {
+            "agent_1": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_1",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_1: move disk X from peg1 to peg2'. You must only include moves for disks A B C D E F G H I J according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_1. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks A B C D E F G H I J. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_1: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "agent_2": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_2",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_2: move disk X from peg1 to peg2'. You must only include moves for disks K L M N O P Q R S T according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_2. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks K L M N O P Q R S T. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_2: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "moves_agent_1",
+                        "moves_agent_2"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownward planner. You will integrate the primitive move sequences provided by agents into a single correct PDDL domain and PDDL problem targeted for FastDownward. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions of the two agents distinct by naming actions with the agent prefix, for example (agent_1-move ?d ?from ?to). The domain must declare objects, predicates for disk positions and top-of-peg conditions, and actions corresponding to valid moves by each agent. The problem must declare the initial state and the goal matching the required final configuration. Use only STRIPS features and constructs supported by FastDownward. Do not rely on external assumptions beyond the provided move lists and public information.",
+                    "prompt": "You are the orchestrator. Integrate the move lists from agent_1 and agent_2 into a coherent plan and produce a PDDL domain and a PDDL problem for the FastDownward solver that realizes the final configuration: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. Here is the information from agent_1: {moves_agent_1} Here is the information from agent_2: {moves_agent_2} The public information is: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Middle peg empty. Right peg empty. Produce a PDDL domain and a PDDL problem that encode the disks A..T as objects, the three pegs, the initial state, and the goal state. Keep agent actions distinct and ensure legality of moves in preconditions and effects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "agent_1.generate_moves->orchestrator.pddl",
+                "agent_2.generate_moves->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain hanoi-multiagent)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types disk small large peg)\n\n  (:constants\n    A B C D E F G H I J - small\n    K L M N O P Q R S T - large\n    base-left base-middle base-right - disk\n    left middle right - peg\n  )\n\n  (:predicates\n    (above ?u - disk ?l - disk)   ; ?u is immediately above ?l\n    (top ?d - disk ?p - peg)      ; ?d is the current top disk of peg ?p\n    (smaller ?x - disk ?y - disk) ; size order: ?x is smaller than ?y\n  )\n\n  ;; Agent 1 can move only small disks (A..J)\n  (:action agent_1-move\n    :parameters (?d - small ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (top ?d ?from)          ; ?d is top of source peg\n      (above ?d ?below)       ; ?d is immediately above ?below (below may be base sentinel)\n      (top ?t ?to)            ; ?t is current top disk on destination peg (may be base sentinel)\n      (smaller ?d ?t)         ; cannot place a larger disk on a smaller one\n    )\n    :effect (and\n      ;; update top of source peg\n      (not (top ?d ?from))\n      (top ?below ?from)\n\n      ;; update top of destination peg\n      (not (top ?t ?to))\n      (top ?d ?to)\n\n      ;; update immediate-above relations\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n\n  ;; Agent 2 can move only large disks (K..T)\n  (:action agent_2-move\n    :parameters (?d - large ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (top ?d ?from)\n      (above ?d ?below)\n      (top ?t ?to)\n      (smaller ?d ?t)\n    )\n    :effect (and\n      (not (top ?d ?from))\n      (top ?below ?from)\n      (not (top ?t ?to))\n      (top ?d ?to)\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem hanoi-multiagent-problem)\n  (:domain hanoi-multiagent)\n\n  (:objects\n    A B C D E F G H I J - small\n    K L M N O P Q R S T - large\n    base-left base-middle base-right - disk\n    left middle right - peg\n  )\n\n  (:init\n    ;; initial immediate-above chain on the left peg (top-to-bottom A .. T then base-left)\n    (above A B)\n    (above B C)\n    (above C D)\n    (above D E)\n    (above E F)\n    (above F G)\n    (above G H)\n    (above H I)\n    (above I J)\n    (above J K)\n    (above K L)\n    (above L M)\n    (above M N)\n    (above N O)\n    (above O P)\n    (above P Q)\n    (above Q R)\n    (above R S)\n    (above S T)\n    (above T base-left)\n\n    ;; initial top-of-peg facts\n    (top A left)\n    (top base-middle middle)\n    (top base-right right)\n\n    ;; size ordering: every smaller relation required to enforce legality of moves\n    ;; A smaller than B..T and base sentinels\n    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J) (smaller A K) (smaller A L) (smaller A M) (smaller A N) (smaller A O) (smaller A P) (smaller A Q) (smaller A R) (smaller A S) (smaller A T)\n    (smaller A base-left) (smaller A base-middle) (smaller A base-right)\n\n    ;; B smaller than C..T and bases\n    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J) (smaller B K) (smaller B L) (smaller B M) (smaller B N) (smaller B O) (smaller B P) (smaller B Q) (smaller B R) (smaller B S) (smaller B T)\n    (smaller B base-left) (smaller B base-middle) (smaller B base-right)\n\n    ;; C smaller than D..T and bases\n    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J) (smaller C K) (smaller C L) (smaller C M) (smaller C N) (smaller C O) (smaller C P) (smaller C Q) (smaller C R) (smaller C S) (smaller C T)\n    (smaller C base-left) (smaller C base-middle) (smaller C base-right)\n\n    ;; D smaller than E..T and bases\n    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J) (smaller D K) (smaller D L) (smaller D M) (smaller D N) (smaller D O) (smaller D P) (smaller D Q) (smaller D R) (smaller D S) (smaller D T)\n    (smaller D base-left) (smaller D base-middle) (smaller D base-right)\n\n    ;; E smaller than F..T and bases\n    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J) (smaller E K) (smaller E L) (smaller E M) (smaller E N) (smaller E O) (smaller E P) (smaller E Q) (smaller E R) (smaller E S) (smaller E T)\n    (smaller E base-left) (smaller E base-middle) (smaller E base-right)\n\n    ;; F smaller than G..T and bases\n    (smaller F G) (smaller F H) (smaller F I) (smaller F J) (smaller F K) (smaller F L) (smaller F M) (smaller F N) (smaller F O) (smaller F P) (smaller F Q) (smaller F R) (smaller F S) (smaller F T)\n    (smaller F base-left) (smaller F base-middle) (smaller F base-right)\n\n    ;; G smaller than H..T and bases\n    (smaller G H) (smaller G I) (smaller G J) (smaller G K) (smaller G L) (smaller G M) (smaller G N) (smaller G O) (smaller G P) (smaller G Q) (smaller G R) (smaller G S) (smaller G T)\n    (smaller G base-left) (smaller G base-middle) (smaller G base-right)\n\n    ;; H smaller than I..T and bases\n    (smaller H I) (smaller H J) (smaller H K) (smaller H L) (smaller H M) (smaller H N) (smaller H O) (smaller H P) (smaller H Q) (smaller H R) (smaller H S) (smaller H T)\n    (smaller H base-left) (smaller H base-middle) (smaller H base-right)\n\n    ;; I smaller than J..T and bases\n    (smaller I J) (smaller I K) (smaller I L) (smaller I M) (smaller I N) (smaller I O) (smaller I P) (smaller I Q) (smaller I R) (smaller I S) (smaller I T)\n    (smaller I base-left) (smaller I base-middle) (smaller I base-right)\n\n    ;; J smaller than K..T and bases\n    (smaller J K) (smaller J L) (smaller J M) (smaller J N) (smaller J O) (smaller J P) (smaller J Q) (smaller J R) (smaller J S) (smaller J T)\n    (smaller J base-left) (smaller J base-middle) (smaller J base-right)\n\n    ;; K smaller than L..T and bases\n    (smaller K L) (smaller K M) (smaller K N) (smaller K O) (smaller K P) (smaller K Q) (smaller K R) (smaller K S) (smaller K T)\n    (smaller K base-left) (smaller K base-middle) (smaller K base-right)\n\n    ;; L smaller than M..T and bases\n    (smaller L M) (smaller L N) (smaller L O) (smaller L P) (smaller L Q) (smaller L R) (smaller L S) (smaller L T)\n    (smaller L base-left) (smaller L base-middle) (smaller L base-right)\n\n    ;; M smaller than N..T and bases\n    (smaller M N) (smaller M O) (smaller M P) (smaller M Q) (smaller M R) (smaller M S) (smaller M T)\n    (smaller M base-left) (smaller M base-middle) (smaller M base-right)\n\n    ;; N smaller than O..T and bases\n    (smaller N O) (smaller N P) (smaller N Q) (smaller N R) (smaller N S) (smaller N T)\n    (smaller N base-left) (smaller N base-middle) (smaller N base-right)\n\n    ;; O smaller than P..T and bases\n    (smaller O P) (smaller O Q) (smaller O R) (smaller O S) (smaller O T)\n    (smaller O base-left) (smaller O base-middle) (smaller O base-right)\n\n    ;; P smaller than Q..T and bases\n    (smaller P Q) (smaller P R) (smaller P S) (smaller P T)\n    (smaller P base-left) (smaller P base-middle) (smaller P base-right)\n\n    ;; Q smaller than R..T and bases\n    (smaller Q R) (smaller Q S) (smaller Q T)\n    (smaller Q base-left) (smaller Q base-middle) (smaller Q base-right)\n\n    ;; R smaller than S,T and bases\n    (smaller R S) (smaller R T)\n    (smaller R base-left) (smaller R base-middle) (smaller R base-right)\n\n    ;; S smaller than T and bases\n    (smaller S T)\n    (smaller S base-left) (smaller S base-middle) (smaller S base-right)\n\n    ;; T smaller than base sentinels\n    (smaller T base-left) (smaller T base-middle) (smaller T base-right)\n  )\n\n  (:goal\n    (and\n      ;; Final left peg top-to-bottom: A E F G H I J K L M N O P Q R S T (then base-left)\n      (top A left)\n      (above A E)\n      (above E F)\n      (above F G)\n      (above G H)\n      (above H I)\n      (above I J)\n      (above J K)\n      (above K L)\n      (above L M)\n      (above M N)\n      (above N O)\n      (above O P)\n      (above P Q)\n      (above Q R)\n      (above R S)\n      (above S T)\n      (above T base-left)\n\n      ;; Middle peg: D alone (on top of base-middle)\n      (top D middle)\n      (above D base-middle)\n\n      ;; Right peg top-to-bottom: B C (then base-right)\n      (top B right)\n      (above B C)\n      (above C base-right)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  A does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/domain_1.pddl results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/problem_1.pddl --sas-file output.sas\nParsing...\n\nerror: duplicate object 'a'\nerror: duplicate object 'b'\nerror: duplicate object 'c'\nerror: duplicate object 'd'\nerror: duplicate object 'e'\nerror: duplicate object 'f'\nerror: duplicate object 'g'\nerror: duplicate object 'h'\nerror: duplicate object 'i'\nerror: duplicate object 'j'\nerror: duplicate object 'k'\nerror: duplicate object 'l'\nerror: duplicate object 'm'\nerror: duplicate object 'n'\nerror: duplicate object 'o'\nerror: duplicate object 'p'\nerror: duplicate object 'q'\nerror: duplicate object 'r'\nerror: duplicate object 's'\nerror: duplicate object 't'\nerror: duplicate object 'base-left'\nerror: duplicate object 'base-middle'\nerror: duplicate object 'base-right'\nerror: duplicate object 'left'\nerror: duplicate object 'middle'\nerror: duplicate object 'right'\nplease check :constants and :objects definitions\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.08s\n",
+    "history": [
+        "AgentSolutionFirst"
+    ],
+    "proposed_solution": "agent_1: move disk A from left to right\nagent_1: move disk B from left to middle\nagent_1: move disk A from right to middle\nagent_1: move disk C from left to right\nagent_1: move disk A from middle to left\nagent_1: move disk B from middle to right\nagent_1: move disk A from left to right\nagent_1: move disk D from left to middle\nagent_1: move disk A from right to left"
+}
+================================================================================
+
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "Devise a cooperative plan for a 2-agent Tower of Hanoi with 20 disks labelled A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T (A is the smallest, T the largest). Agents are limited to moving specific disks: agent_1 \u21d2 A, B, C, D, E, F, G, H, I, J; agent_2 \u21d2 K, L, M, N, O, P, Q, R, S, T. Initial configuration: left peg has (top\u2192bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty. Goal configuration: left peg has (top\u2192bottom) A, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has (top\u2192bottom) D; right peg has (top\u2192bottom) B, C. Provide an ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2', respecting the agent restrictions and the Tower of Hanoi rules.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "Hanoi2Agents20DisksInstance0",
+        "author": "Human",
+        "agents": {
+            "number": 3,
+            "names": [
+                "agent_1",
+                "agent_2",
+                "orchestrator"
+            ],
+            "agent_1": {
+                "private_information": [
+                    "I can move disks A B C D E F G H I J",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "agent_2": {
+                "private_information": [
+                    "I can move disks K L M N O P Q R S T",
+                    "I must never move a disk other than those assigned to me"
+                ],
+                "goal": "Contribute moves so the final configuration is achieved: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C"
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I coordinate agents and integrate their move sequences into a single plan",
+                    "I produce the final PDDL domain and problem targeted for the FastDownward solver"
+                ],
+                "goal": "Integrate agent move sequences and produce a correct PDDL domain and problem that achieves the specified final configuration using FastDownward"
+            }
+        },
+        "environment": {
+            "init": {
+                "pegs": 3,
+                "disks_count": 20,
+                "disks_order_top_to_bottom": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ]
+            },
+            "public_information": [
+                "This is a Tower of Hanoi with three pegs named left, middle, right",
+                "Disks are labeled A through T where A is the smallest and T is the largest",
+                "Initial configuration on left peg from top to bottom is A B C D E F G H I J K L M N O P Q R S T",
+                "Middle peg is empty and right peg is empty at start",
+                "Goal configuration is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C",
+                "Rules: only the top disk of any peg can be moved, and a larger disk cannot be placed on top of a smaller disk",
+                "Agents have move restrictions: agent_1 may only move disks A-J, agent_2 may only move disks K-T"
+            ]
+        },
+        "workflow": {
+            "agent_1": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_1",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_1: move disk X from peg1 to peg2'. You must only include moves for disks A B C D E F G H I J according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_1. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks A B C D E F G H I J. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_1: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "agent_2": {
+                "generate_moves": {
+                    "input": [],
+                    "output": "moves_agent_2",
+                    "system_prompt": "You are an expert in creating correct sequences of primitive Tower of Hanoi moves for your assigned disks. You do not produce PDDL. You must output an ordered list of primitive moves that you will perform. Each move must be in the exact format: 'agent_2: move disk X from peg1 to peg2'. You must only include moves for disks K L M N O P Q R S T according to the global rules. Ensure each move respects the rule that only a top disk may be moved and that no larger disk is placed on a smaller one. Keep actions atomic and list them in execution order.",
+                    "prompt": "You are agent_2. Use the following public information: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Goal is left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. You can move only disks K L M N O P Q R S T. Produce an ordered list of primitive moves you will perform. Use the exact move format 'agent_2: move disk X from peg1 to peg2'. Do not output PDDL. Do not make moves for disks you are not allowed to move. Ensure validity under Tower of Hanoi rules."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "moves_agent_1",
+                        "moves_agent_2"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownward planner. You will integrate the primitive move sequences provided by agents into a single correct PDDL domain and PDDL problem targeted for FastDownward. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions of the two agents distinct by naming actions with the agent prefix, for example (agent_1-move ?d ?from ?to). The domain must declare objects, predicates for disk positions and top-of-peg conditions, and actions corresponding to valid moves by each agent. The problem must declare the initial state and the goal matching the required final configuration. Use only STRIPS features and constructs supported by FastDownward. Do not rely on external assumptions beyond the provided move lists and public information.",
+                    "prompt": "You are the orchestrator. Integrate the move lists from agent_1 and agent_2 into a coherent plan and produce a PDDL domain and a PDDL problem for the FastDownward solver that realizes the final configuration: left peg top-to-bottom A E F G H I J K L M N O P Q R S T, middle peg D, right peg top-to-bottom B C. Here is the information from agent_1: {moves_agent_1} Here is the information from agent_2: {moves_agent_2} The public information is: This is a Tower of Hanoi with three pegs named left, middle, right. Disks are labeled A through T where A is the smallest and T is the largest. Initial left peg top-to-bottom is A B C D E F G H I J K L M N O P Q R S T. Middle peg empty. Right peg empty. Produce a PDDL domain and a PDDL problem that encode the disks A..T as objects, the three pegs, the initial state, and the goal state. Keep agent actions distinct and ensure legality of moves in preconditions and effects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                }
+            },
+            "constraints": [
+                "agent_1.generate_moves->orchestrator.pddl",
+                "agent_2.generate_moves->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain hanoi-multiagent)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types disk peg)\n\n  (:predicates\n    (above ?u - disk ?l - disk)\n    (top ?d - disk ?p - peg)\n    (smaller ?x - disk ?y - disk)\n    (is-small ?d - disk)\n    (is-large ?d - disk)\n  )\n\n  (:action agent_1-move\n    :parameters (?d - disk ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (is-small ?d)\n      (top ?d ?from)\n      (above ?d ?below)\n      (top ?t ?to)\n      (smaller ?d ?t)\n    )\n    :effect (and\n      (not (top ?d ?from))\n      (top ?below ?from)\n      (not (top ?t ?to))\n      (top ?d ?to)\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n\n  (:action agent_2-move\n    :parameters (?d - disk ?from - peg ?to - peg ?below - disk ?t - disk)\n    :precondition (and\n      (is-large ?d)\n      (top ?d ?from)\n      (above ?d ?below)\n      (top ?t ?to)\n      (smaller ?d ?t)\n    )\n    :effect (and\n      (not (top ?d ?from))\n      (top ?below ?from)\n      (not (top ?t ?to))\n      (top ?d ?to)\n      (not (above ?d ?below))\n      (above ?d ?t)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem hanoi-multiagent-problem)\n  (:domain hanoi-multiagent)\n\n  (:objects\n    a b c d e f g h i j k l m n o p q r s t - disk\n    base-left base-middle base-right - disk\n    left middle right - peg\n  )\n\n  (:init\n    (above a b)\n    (above b c)\n    (above c d)\n    (above d e)\n    (above e f)\n    (above f g)\n    (above g h)\n    (above h i)\n    (above i j)\n    (above j k)\n    (above k l)\n    (above l m)\n    (above m n)\n    (above n o)\n    (above o p)\n    (above p q)\n    (above q r)\n    (above r s)\n    (above s t)\n    (above t base-left)\n\n    (top a left)\n    (top base-middle middle)\n    (top base-right right)\n\n    (is-small a) (is-small b) (is-small c) (is-small d) (is-small e)\n    (is-small f) (is-small g) (is-small h) (is-small i) (is-small j)\n\n    (is-large k) (is-large l) (is-large m) (is-large n) (is-large o)\n    (is-large p) (is-large q) (is-large r) (is-large s) (is-large t)\n\n    (smaller a b) (smaller a c) (smaller a d) (smaller a e) (smaller a f) (smaller a g) (smaller a h) (smaller a i) (smaller a j) (smaller a k) (smaller a l) (smaller a m) (smaller a n) (smaller a o) (smaller a p) (smaller a q) (smaller a r) (smaller a s) (smaller a t)\n    (smaller a base-left) (smaller a base-middle) (smaller a base-right)\n\n    (smaller b c) (smaller b d) (smaller b e) (smaller b f) (smaller b g) (smaller b h) (smaller b i) (smaller b j) (smaller b k) (smaller b l) (smaller b m) (smaller b n) (smaller b o) (smaller b p) (smaller b q) (smaller b r) (smaller b s) (smaller b t)\n    (smaller b base-left) (smaller b base-middle) (smaller b base-right)\n\n    (smaller c d) (smaller c e) (smaller c f) (smaller c g) (smaller c h) (smaller c i) (smaller c j) (smaller c k) (smaller c l) (smaller c m) (smaller c n) (smaller c o) (smaller c p) (smaller c q) (smaller c r) (smaller c s) (smaller c t)\n    (smaller c base-left) (smaller c base-middle) (smaller c base-right)\n\n    (smaller d e) (smaller d f) (smaller d g) (smaller d h) (smaller d i) (smaller d j) (smaller d k) (smaller d l) (smaller d m) (smaller d n) (smaller d o) (smaller d p) (smaller d q) (smaller d r) (smaller d s) (smaller d t)\n    (smaller d base-left) (smaller d base-middle) (smaller d base-right)\n\n    (smaller e f) (smaller e g) (smaller e h) (smaller e i) (smaller e j) (smaller e k) (smaller e l) (smaller e m) (smaller e n) (smaller e o) (smaller e p) (smaller e q) (smaller e r) (smaller e s) (smaller e t)\n    (smaller e base-left) (smaller e base-middle) (smaller e base-right)\n\n    (smaller f g) (smaller f h) (smaller f i) (smaller f j) (smaller f k) (smaller f l) (smaller f m) (smaller f n) (smaller f o) (smaller f p) (smaller f q) (smaller f r) (smaller f s) (smaller f t)\n    (smaller f base-left) (smaller f base-middle) (smaller f base-right)\n\n    (smaller g h) (smaller g i) (smaller g j) (smaller g k) (smaller g l) (smaller g m) (smaller g n) (smaller g o) (smaller g p) (smaller g q) (smaller g r) (smaller g s) (smaller g t)\n    (smaller g base-left) (smaller g base-middle) (smaller g base-right)\n\n    (smaller h i) (smaller h j) (smaller h k) (smaller h l) (smaller h m) (smaller h n) (smaller h o) (smaller h p) (smaller h q) (smaller h r) (smaller h s) (smaller h t)\n    (smaller h base-left) (smaller h base-middle) (smaller h base-right)\n\n    (smaller i j) (smaller i k) (smaller i l) (smaller i m) (smaller i n) (smaller i o) (smaller i p) (smaller i q) (smaller i r) (smaller i s) (smaller i t)\n    (smaller i base-left) (smaller i base-middle) (smaller i base-right)\n\n    (smaller j k) (smaller j l) (smaller j m) (smaller j n) (smaller j o) (smaller j p) (smaller j q) (smaller j r) (smaller j s) (smaller j t)\n    (smaller j base-left) (smaller j base-middle) (smaller j base-right)\n\n    (smaller k l) (smaller k m) (smaller k n) (smaller k o) (smaller k p) (smaller k q) (smaller k r) (smaller k s) (smaller k t)\n    (smaller k base-left) (smaller k base-middle) (smaller k base-right)\n\n    (smaller l m) (smaller l n) (smaller l o) (smaller l p) (smaller l q) (smaller l r) (smaller l s) (smaller l t)\n    (smaller l base-left) (smaller l base-middle) (smaller l base-right)\n\n    (smaller m n) (smaller m o) (smaller m p) (smaller m q) (smaller m r) (smaller m s) (smaller m t)\n    (smaller m base-left) (smaller m base-middle) (smaller m base-right)\n\n    (smaller n o) (smaller n p) (smaller n q) (smaller n r) (smaller n s) (smaller n t)\n    (smaller n base-left) (smaller n base-middle) (smaller n base-right)\n\n    (smaller o p) (smaller o q) (smaller o r) (smaller o s) (smaller o t)\n    (smaller o base-left) (smaller o base-middle) (smaller o base-right)\n\n    (smaller p q) (smaller p r) (smaller p s) (smaller p t)\n    (smaller p base-left) (smaller p base-middle) (smaller p base-right)\n\n    (smaller q r) (smaller q s) (smaller q t)\n    (smaller q base-left) (smaller q base-middle) (smaller q base-right)\n\n    (smaller r s) (smaller r t)\n    (smaller r base-left) (smaller r base-middle) (smaller r base-right)\n\n    (smaller s t)\n    (smaller s base-left) (smaller s base-middle) (smaller s base-right)\n\n    (smaller t base-left) (smaller t base-middle) (smaller t base-right)\n  )\n\n  (:goal\n    (and\n      (top a left)\n      (above a e)\n      (above e f)\n      (above f g)\n      (above g h)\n      (above h i)\n      (above i j)\n      (above j k)\n      (above k l)\n      (above l m)\n      (above m n)\n      (above n o)\n      (above o p)\n      (above p q)\n      (above q r)\n      (above r s)\n      (above s t)\n      (above t base-left)\n\n      (top d middle)\n      (above d base-middle)\n\n      (top b right)\n      (above b c)\n      (above c base-right)\n    )\n  )\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "(agent_1-move a left middle b base-middle)\n(agent_1-move b left right c base-right)\n(agent_1-move a middle left base-middle c)\n(agent_1-move b right middle base-right base-middle)\n(agent_1-move a left middle c b)\n(agent_1-move c left right d base-right)\n(agent_1-move a middle left b d)\n(agent_1-move b middle right base-middle c)\n(agent_1-move a left right d b)\n(agent_1-move d left middle e base-middle)\n(agent_1-move a right left b e)\n; cost = 11 (unit cost)\n",
+    "syntax_errors": "No syntax error log was generated.",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/domain_2.pddl results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/problem_2.pddl --sas-file output.sas\nParsing...\nParsing: [0.010s CPU, 0.004s wall-clock]\nNormalizing task... [0.000s CPU, 0.000s wall-clock]\nInstantiating...\nGenerating Datalog program... [0.000s CPU, 0.001s wall-clock]\nNormalizing Datalog program...\nNormalizing Datalog program: [0.010s CPU, 0.001s wall-clock]\nPreparing model... [0.000s CPU, 0.001s wall-clock]\nGenerated 25 rules.\nComputing model... [0.430s CPU, 0.432s wall-clock]\n34778 relevant atoms\n31676 auxiliary atoms\n66454 final queue length\n168488 total queue pushes\nCompleting instantiation... [0.890s CPU, 0.880s wall-clock]\nInstantiating: [1.330s CPU, 1.321s wall-clock]\nComputing fact groups...\nFinding invariants...\n6 initial candidates\nFinding invariants: [0.010s CPU, 0.009s wall-clock]\nChecking invariant weight... [0.000s CPU, 0.000s wall-clock]\nInstantiating groups... [0.000s CPU, 0.001s wall-clock]\nCollecting mutex groups... [0.000s CPU, 0.000s wall-clock]\nChoosing groups...\n0 uncovered facts\nChoosing groups: [0.000s CPU, 0.000s wall-clock]\nBuilding translation key... [0.000s CPU, 0.000s wall-clock]\nComputing fact groups: [0.010s CPU, 0.011s wall-clock]\nBuilding STRIPS to SAS dictionary... [0.000s CPU, 0.000s wall-clock]\nBuilding dictionary for full mutex groups... [0.000s CPU, 0.000s wall-clock]\nBuilding mutex information...\nBuilding mutex information: [0.000s CPU, 0.000s wall-clock]\nTranslating task...\nProcessing axioms...\nSimplifying axioms... [0.000s CPU, 0.000s wall-clock]\nTranslator axioms removed by simplifying: 0\nProcessing axioms: [0.030s CPU, 0.032s wall-clock]\nTranslating task: [0.490s CPU, 0.485s wall-clock]\n0 effect conditions simplified\n0 implied preconditions added\nDetecting unreachable propositions...\n0 operators removed\n0 axioms removed\n23 propositions removed\nDetecting unreachable propositions: [0.290s CPU, 0.301s wall-clock]\nReordering and filtering variables...\n23 of 23 variables necessary.\n23 of 46 mutex groups necessary.\n21240 of 21240 operators necessary.\n0 of 0 axiom rules necessary.\nReordering and filtering variables: [0.060s CPU, 0.061s wall-clock]\nTranslator variables: 23\nTranslator derived variables: 0\nTranslator facts: 319\nTranslator goal facts: 23\nTranslator mutex groups: 23\nTranslator total mutex groups size: 319\nTranslator operators: 21240\nTranslator axioms: 0\nTranslator task size: 149364\nTranslator peak memory: 168888 KB\nWriting output... [0.060s CPU, 0.057s wall-clock]\nDone! [2.280s CPU, 2.271s wall-clock]\ntranslate exit code: 0\n\nINFO     Running search (release).\nINFO     search stdin: output.sas\nINFO     search time limit: None\nINFO     search memory limit: None\nINFO     search command line string: /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/downward --search 'let(hlm,landmark_sum(lm_factory=lm_reasonable_orders_hps(lm_rhw()),transform=adapt_costs(one),pref=false),let(hff,ff(transform=adapt_costs(one)),lazy_greedy([hff,hlm],preferred=[hff,hlm],cost_type=one,reopen_closed=false)))' --internal-plan-file results/hanoi_multi_agent/hanoi_2_agents_20_disks/hanoi_multi_agent_2_agents_20_disks/FastDownwards/Hanoi2Agents20DisksInstance0/sas_plan_2 < output.sas\n[t=0.000206s, 9964 KB] reading input...\n[t=0.097323s, 16840 KB] done reading input!\n[t=0.099158s, 17236 KB] Initializing landmark sum heuristic...\n[t=0.099243s, 17236 KB] Generating landmark graph...\n[t=0.100290s, 17368 KB] Building a landmark graph with reasonable orders.\n[t=0.101349s, 17764 KB] Initializing Exploration...\n[t=0.111045s, 21524 KB] Generating landmarks using the RPG/SAS+ approach\n[t=0.192614s, 22052 KB] Landmarks generation time: 0.092326s\n[t=0.192655s, 22052 KB] Discovered 28 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.192676s, 22052 KB] 5 edges\n[t=0.192692s, 22052 KB] approx. reasonable orders\n[t=0.195300s, 22052 KB] Landmarks generation time: 0.096050s\n[t=0.195315s, 22052 KB] Discovered 28 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.195329s, 22052 KB] 10 edges\n[t=0.195343s, 22052 KB] Landmark graph generation time: 0.096113s\n[t=0.195358s, 22052 KB] Landmark graph contains 28 landmarks, of which 0 are disjunctive and 0 are conjunctive.\n[t=0.195372s, 22052 KB] Landmark graph contains 10 orderings.\n[t=0.203648s, 23140 KB] Simplifying 63720 unary operators... done! [63720 unary operators]\n[t=0.253380s, 26440 KB] time to simplify: 0.049765s\n[t=0.254383s, 26440 KB] Initializing additive heuristic...\n[t=0.254412s, 26440 KB] Initializing FF heuristic...\n[t=0.254474s, 26440 KB] Building successor generator...done!\n[t=0.261441s, 26440 KB] peak memory difference for successor generator creation: 0 KB\n[t=0.261457s, 26440 KB] time for successor generation creation: 0.006914s\n[t=0.261557s, 26440 KB] Variables: 23\n[t=0.261574s, 26440 KB] FactPairs: 319\n[t=0.261588s, 26440 KB] Bytes per state: 12\n[t=0.261636s, 26440 KB] Conducting lazy best first search, (real) bound = 2147483647\n[t=0.261966s, 26440 KB] New best heuristic value for landmark_sum_heuristic: 5\n[t=0.261986s, 26440 KB] New best heuristic value for ff: 9\n[t=0.262000s, 26440 KB] g=0, 1 evaluated, 0 expanded\n[t=0.262023s, 26440 KB] Initial heuristic value for landmark_sum_heuristic: 5\n[t=0.262037s, 26440 KB] Initial heuristic value for ff: 9\n[t=0.262294s, 26440 KB] New best heuristic value for ff: 6\n[t=0.262312s, 26440 KB] g=1, 2 evaluated, 1 expanded\n[t=0.264273s, 26440 KB] New best heuristic value for ff: 5\n[t=0.264293s, 26440 KB] g=7, 10 evaluated, 9 expanded\n[t=0.264571s, 26440 KB] New best heuristic value for landmark_sum_heuristic: 3\n[t=0.264588s, 26440 KB] New best heuristic value for ff: 4\n[t=0.264602s, 26440 KB] g=8, 11 evaluated, 10 expanded\n[t=0.264830s, 26440 KB] New best heuristic value for ff: 3\n[t=0.264847s, 26440 KB] g=9, 12 evaluated, 11 expanded\n[t=0.266168s, 26440 KB] New best heuristic value for ff: 1\n[t=0.266187s, 26440 KB] g=10, 18 evaluated, 17 expanded\n[t=0.266354s, 26440 KB] Solution found!\n[t=0.266372s, 26440 KB] Actual search time: 0.004719s\nagent_1-move a left middle b base-middle (1)\nagent_1-move b left right c base-right (1)\nagent_1-move a middle left base-middle c (1)\nagent_1-move b right middle base-right base-middle (1)\nagent_1-move a left middle c b (1)\nagent_1-move c left right d base-right (1)\nagent_1-move a middle left b d (1)\nagent_1-move b middle right base-middle c (1)\nagent_1-move a left right d b (1)\nagent_1-move d left middle e base-middle (1)\nagent_1-move a right left b e (1)\n[t=0.266387s, 26440 KB] Plan length: 11 step(s).\n[t=0.266387s, 26440 KB] Plan cost: 11\n[t=0.266387s, 26440 KB] Expanded 18 state(s).\n[t=0.266387s, 26440 KB] Reopened 0 state(s).\n[t=0.266387s, 26440 KB] Evaluated 19 state(s).\n[t=0.266387s, 26440 KB] Evaluations: 38\n[t=0.266387s, 26440 KB] Generated 53 state(s).\n[t=0.266387s, 26440 KB] Dead ends: 0 state(s).\n[t=0.266387s, 26440 KB] Number of registered states: 19\n[t=0.266387s, 26440 KB] Int hash set load factor: 19/32 = 0.593750\n[t=0.266387s, 26440 KB] Int hash set resizes: 5\n[t=0.266387s, 26440 KB] Search time: 0.004753s\n[t=0.266387s, 26440 KB] Total time: 0.266387s\nSolution found.\nPeak memory: 26440 KB\nRemove intermediate file output.sas\nsearch exit code: 0\n\nINFO     Planner time: 2.65s\n",
+    "history": [
+        "AgentSolutionFirst",
+        "AgentSyntaxPDDL"
+    ],
+    "proposed_solution": "agent_1: move disk A from left to right\nagent_1: move disk B from left to middle\nagent_1: move disk A from right to middle\nagent_1: move disk C from left to right\nagent_1: move disk A from middle to left\nagent_1: move disk B from middle to right\nagent_1: move disk A from left to right\nagent_1: move disk D from left to middle\nagent_1: move disk A from right to left"
+}
+================================================================================
+
+
+NATURAL-PLAN sas_plan_2
+------------------------------
+Execution log (matches the provided plan exactly). Each step lists agent, disk, source peg, destination peg, start time and duration (assumed 10s per move for readability).
+
+1) [00:00:00 → 00:00:10] agent_1: move disk A from left to middle.
+2) [00:00:10 → 00:00:20] agent_1: move disk B from left to right.
+3) [00:00:20 → 00:00:30] agent_1: move disk A from middle to left.
+4) [00:00:30 → 00:00:40] agent_1: move disk B from right to middle.
+5) [00:00:40 → 00:00:50] agent_1: move disk A from left to middle.
+6) [00:00:50 → 00:01:00] agent_1: move disk C from left to right.
+7) [00:01:00 → 00:01:10] agent_1: move disk A from middle to left.
+8) [00:01:10 → 00:01:20] agent_1: move disk B from middle to right.
+9) [00:01:20 → 00:01:30] agent_1: move disk A from left to right.
+10) [00:01:30 → 00:01:40] agent_1: move disk D from left to middle.
+11) [00:01:40 → 00:01:50] agent_1: move disk A from right to left.
+
+Outcome: after these 11 moves (total assumed execution time 110s), the small-disk portion of the configuration matches the goal:
+
+- Left peg (top→bottom): A E F G H I J K L M N O P Q R S T
+- Middle peg: D
+- Right peg (top→bottom): B C
+
+(cost reported in plan: 11)
+================================================================================
+

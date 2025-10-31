@@ -1,0 +1,210 @@
+(define (domain hanoi_two_agent_10)
+  (:requirements :strips :negative-preconditions)
+  (:predicates
+    (at ?d ?peg)
+    (above ?upper ?lower)
+    (top ?peg ?item)
+    (clear ?item)
+    (smaller ?d1 ?d2)
+  )
+
+  (:action agent1_move_1
+    :parameters ()
+    :precondition (and
+      (at a left)
+      (top left a)
+      (top middle base_middle)
+      (above a b)
+      (smaller a base_middle)
+    )
+    :effect (and
+      (not (at a left)) (at a middle)
+      (not (top left a)) (top left b)
+      (not (top middle base_middle)) (top middle a)
+      (not (above a b)) (above a base_middle)
+      (clear a)
+      (not (clear base_middle))
+      (clear b)
+    )
+  )
+
+  (:action agent1_move_2
+    :parameters ()
+    :precondition (and
+      (at b left)
+      (top left b)
+      (top right base_right)
+      (above b c)
+      (smaller b base_right)
+    )
+    :effect (and
+      (not (at b left)) (at b right)
+      (not (top left b)) (top left c)
+      (not (top right base_right)) (top right b)
+      (not (above b c)) (above b base_right)
+      (clear b)
+      (clear c)
+      (not (clear base_right))
+    )
+  )
+
+  (:action agent1_move_3
+    :parameters ()
+    :precondition (and
+      (at a middle)
+      (top middle a)
+      (top right b)
+      (above a base_middle)
+      (smaller a b)
+    )
+    :effect (and
+      (not (at a middle)) (at a right)
+      (not (top middle a)) (top middle base_middle)
+      (not (top right b)) (top right a)
+      (not (above a base_middle)) (above a b)
+      (clear a)
+      (not (clear b))
+      (clear base_middle)
+    )
+  )
+
+  (:action agent1_move_4
+    :parameters ()
+    :precondition (and
+      (at c left)
+      (top left c)
+      (top middle base_middle)
+      (above c d)
+      (smaller c base_middle)
+    )
+    :effect (and
+      (not (at c left)) (at c middle)
+      (not (top left c)) (top left d)
+      (not (top middle base_middle)) (top middle c)
+      (not (above c d)) (above c base_middle)
+      (clear c)
+      (not (clear base_middle))
+      (clear d)
+    )
+  )
+
+  (:action agent1_move_5
+    :parameters ()
+    :precondition (and
+      (at a right)
+      (top right a)
+      (top left d)
+      (above a b)
+      (smaller a d)
+    )
+    :effect (and
+      (not (at a right)) (at a left)
+      (not (top right a)) (top right b)
+      (not (top left d)) (top left a)
+      (not (above a b)) (above a d)
+      (clear a)
+      (not (clear d))
+      (clear b)
+    )
+  )
+
+  (:action agent1_move_6
+    :parameters ()
+    :precondition (and
+      (at b right)
+      (top right b)
+      (top middle c)
+      (above b base_right)
+      (smaller b c)
+    )
+    :effect (and
+      (not (at b right)) (at b middle)
+      (not (top right b)) (top right base_right)
+      (not (top middle c)) (top middle b)
+      (not (above b base_right)) (above b c)
+      (clear b)
+      (not (clear c))
+      (clear base_right)
+    )
+  )
+
+  (:action agent1_move_7
+    :parameters ()
+    :precondition (and
+      (at a left)
+      (top left a)
+      (top middle b)
+      (above a d)
+      (smaller a b)
+    )
+    :effect (and
+      (not (at a left)) (at a middle)
+      (not (top left a)) (top left d)
+      (not (top middle b)) (top middle a)
+      (not (above a d)) (above a b)
+      (clear a)
+      (clear d)
+      (not (clear b))
+    )
+  )
+
+  (:action agent1_move_8
+    :parameters ()
+    :precondition (and
+      (at d left)
+      (top left d)
+      (top right base_right)
+      (above d e)
+      (smaller d base_right)
+    )
+    :effect (and
+      (not (at d left)) (at d right)
+      (not (top left d)) (top left e)
+      (not (top right base_right)) (top right d)
+      (not (above d e)) (above d base_right)
+      (clear d)
+      (clear e)
+      (not (clear base_right))
+    )
+  )
+
+  (:action agent1_move_9
+    :parameters ()
+    :precondition (and
+      (at a middle)
+      (top middle a)
+      (top right d)
+      (above a b)
+      (smaller a d)
+    )
+    :effect (and
+      (not (at a middle)) (at a right)
+      (not (top middle a)) (top middle b)
+      (not (top right d)) (top right a)
+      (not (above a b)) (above a d)
+      (clear a)
+      (not (clear d))
+      (clear b)
+    )
+  )
+
+  (:action agent1_move_10
+    :parameters ()
+    :precondition (and
+      (at b middle)
+      (top middle b)
+      (top left e)
+      (above b c)
+      (smaller b e)
+    )
+    :effect (and
+      (not (at b middle)) (at b left)
+      (not (top middle b)) (top middle c)
+      (not (top left e)) (top left b)
+      (not (above b c)) (above b e)
+      (clear b)
+      (not (clear e))
+      (clear c)
+    )
+  )
+)

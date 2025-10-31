@@ -1,0 +1,91 @@
+(define (domain hanoi-2agents-15)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent obj)
+  (:constants agent_1 agent_2 - agent)
+  (:predicates
+    (on ?d - obj ?s - obj)
+    (clear ?s - obj)
+    (smaller ?d1 - obj ?d2 - obj)
+    (can-move ?a - agent ?d - obj)
+    (disk ?d - obj)
+    (peg ?p - obj)
+  )
+
+  (:action agent_1_move_to_peg
+    :parameters (?d - obj ?from - obj ?to - obj)
+    :precondition (and
+      (disk ?d)
+      (peg ?to)
+      (can-move agent_1 ?d)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (clear ?d)
+    )
+  )
+
+  (:action agent_1_move_to_disk
+    :parameters (?d - obj ?from - obj ?to - obj)
+    :precondition (and
+      (disk ?d)
+      (disk ?to)
+      (can-move agent_1 ?d)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (clear ?d)
+    )
+  )
+
+  (:action agent_2_move_to_peg
+    :parameters (?d - obj ?from - obj ?to - obj)
+    :precondition (and
+      (disk ?d)
+      (peg ?to)
+      (can-move agent_2 ?d)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (clear ?d)
+    )
+  )
+
+  (:action agent_2_move_to_disk
+    :parameters (?d - obj ?from - obj ?to - obj)
+    :precondition (and
+      (disk ?d)
+      (disk ?to)
+      (can-move agent_2 ?d)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (clear ?d)
+    )
+  )
+)

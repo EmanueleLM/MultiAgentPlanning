@@ -1,0 +1,48 @@
+(define (problem hanoi2agents15-instance19)
+  (:domain hanoi_2agents_15)
+  (:objects
+    A B C D E F G H I J K L M N O - disk
+    left middle right - peg
+  )
+
+  (:init
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J K)
+    (on K L)
+    (on L M)
+    (on M N)
+    (on N O)
+    (on O left)
+    (clear A)
+    (clear middle)
+    (clear right)
+  )
+
+  (:goal
+    (and
+      (on A middle)
+      (on B right)
+      (on C D)
+      (on D E)
+      (on E F)
+      (on F G)
+      (on G H)
+      (on H I)
+      (on I J)
+      (on J K)
+      (on K L)
+      (on L M)
+      (on M N)
+      (on N O)
+      (on O left)
+    )
+  )
+)

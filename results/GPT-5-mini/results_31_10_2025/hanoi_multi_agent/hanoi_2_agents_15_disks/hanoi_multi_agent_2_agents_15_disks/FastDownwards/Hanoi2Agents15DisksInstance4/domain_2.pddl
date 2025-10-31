@@ -1,0 +1,61 @@
+(define (domain hanoi-cooperative-2agents)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg - place step agent)
+
+  (:constants agent_1 agent_2 - agent)
+
+  (:predicates
+    (on ?d - disk ?p - place)
+    (clear ?p - place)
+    (smaller ?d1 - disk ?d2 - disk)
+    (permits ?ag - agent ?d - disk)
+    (phase ?s - step)
+    (next ?s1 - step ?s2 - step)
+    (allowed-move ?s - step ?d - disk ?from - place ?to - place)
+    (can-stack ?d - disk ?p - place)
+  )
+
+  (:action move-agent_1
+    :parameters (?d - disk ?from - place ?to - place ?s - step ?s2 - step)
+    :precondition (and
+      (phase ?s)
+      (next ?s ?s2)
+      (allowed-move ?s ?d ?from ?to)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (permits agent_1 ?d)
+      (can-stack ?d ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (not (phase ?s))
+      (phase ?s2)
+    )
+  )
+
+  (:action move-agent_2
+    :parameters (?d - disk ?from - place ?to - place ?s - step ?s2 - step)
+    :precondition (and
+      (phase ?s)
+      (next ?s ?s2)
+      (allowed-move ?s ?d ?from ?to)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (permits agent_2 ?d)
+      (can-stack ?d ?to)
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (not (phase ?s))
+      (phase ?s2)
+    )
+  )
+)

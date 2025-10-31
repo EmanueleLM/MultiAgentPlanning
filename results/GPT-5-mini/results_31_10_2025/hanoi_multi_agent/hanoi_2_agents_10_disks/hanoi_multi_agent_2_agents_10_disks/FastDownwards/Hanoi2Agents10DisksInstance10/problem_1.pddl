@@ -1,0 +1,96 @@
+(define (problem hanoi_10_disks_agents)
+  (:domain hanoi_multi_agent)
+  (:objects
+    A B C D E F G H I J - disk
+    left middle right - peg
+  )
+  (:init
+    ;; initial stack on left (top -> bottom): A B C D E F G H I J
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J left)
+
+    ;; top disk A is clear; middle and right pegs are empty (clear)
+    (clear A)
+    (clear middle)
+    (clear right)
+
+    ;; agent move permissions
+    (can_move_agent_1 A)
+    (can_move_agent_1 B)
+    (can_move_agent_1 C)
+    (can_move_agent_1 D)
+    (can_move_agent_1 E)
+
+    (can_move_agent_2 F)
+    (can_move_agent_2 G)
+    (can_move_agent_2 H)
+    (can_move_agent_2 I)
+    (can_move_agent_2 J)
+
+    ;; allow placing any disk on any empty peg
+    (can_be_placed_on A left) (can_be_placed_on A middle) (can_be_placed_on A right)
+    (can_be_placed_on B left) (can_be_placed_on B middle) (can_be_placed_on B right)
+    (can_be_placed_on C left) (can_be_placed_on C middle) (can_be_placed_on C right)
+    (can_be_placed_on D left) (can_be_placed_on D middle) (can_be_placed_on D right)
+    (can_be_placed_on E left) (can_be_placed_on E middle) (can_be_placed_on E right)
+    (can_be_placed_on F left) (can_be_placed_on F middle) (can_be_placed_on F right)
+    (can_be_placed_on G left) (can_be_placed_on G middle) (can_be_placed_on G right)
+    (can_be_placed_on H left) (can_be_placed_on H middle) (can_be_placed_on H right)
+    (can_be_placed_on I left) (can_be_placed_on I middle) (can_be_placed_on I right)
+    (can_be_placed_on J left) (can_be_placed_on J middle) (can_be_placed_on J right)
+
+    ;; allowed disk-on-disk placements according to sizes A < B < C < D < E < F < G < H < I < J
+    ;; A can be placed on any larger disk
+    (can_be_placed_on A B) (can_be_placed_on A C) (can_be_placed_on A D) (can_be_placed_on A E)
+    (can_be_placed_on A F) (can_be_placed_on A G) (can_be_placed_on A H) (can_be_placed_on A I) (can_be_placed_on A J)
+    ;; B on larger
+    (can_be_placed_on B C) (can_be_placed_on B D) (can_be_placed_on B E)
+    (can_be_placed_on B F) (can_be_placed_on B G) (can_be_placed_on B H) (can_be_placed_on B I) (can_be_placed_on B J)
+    ;; C on larger
+    (can_be_placed_on C D) (can_be_placed_on C E)
+    (can_be_placed_on C F) (can_be_placed_on C G) (can_be_placed_on C H) (can_be_placed_on C I) (can_be_placed_on C J)
+    ;; D on larger
+    (can_be_placed_on D E) (can_be_placed_on D F) (can_be_placed_on D G)
+    (can_be_placed_on D H) (can_be_placed_on D I) (can_be_placed_on D J)
+    ;; E on larger
+    (can_be_placed_on E F) (can_be_placed_on E G) (can_be_placed_on E H) (can_be_placed_on E I) (can_be_placed_on E J)
+    ;; F on larger
+    (can_be_placed_on F G) (can_be_placed_on F H) (can_be_placed_on F I) (can_be_placed_on F J)
+    ;; G on larger
+    (can_be_placed_on G H) (can_be_placed_on G I) (can_be_placed_on G J)
+    ;; H on larger
+    (can_be_placed_on H I) (can_be_placed_on H J)
+    ;; I on larger
+    (can_be_placed_on I J)
+    ;; J is largest: only on pegs (already listed above)
+  )
+
+  (:goal
+    (and
+      ;; Left peg final stack (top -> bottom): D, F, G, H, I, J
+      (on D F)
+      (on F G)
+      (on G H)
+      (on H I)
+      (on I J)
+      (on J left)
+
+      ;; Right peg final stack (top -> bottom): A, B, C, E
+      (on A B)
+      (on B C)
+      (on C E)
+      (on E right)
+
+      ;; Middle peg must be empty
+      (clear middle)
+    )
+  )
+)

@@ -1,0 +1,84 @@
+{
+    "name": "MeetingPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "calendar_planner",
+            "route_estimator",
+            "orchestrator"
+        ],
+        "calendar_planner": {
+            "private_information": [
+                "I prioritize meeting as many friends as possible while respecting hard time windows and minimum meeting durations.",
+                "I discretize time into 5-minute steps and can enumerate feasible schedules from 09:00 to 21:00 starting at Fisherman's Wharf."
+            ],
+            "goal": "Propose multiple feasible day schedules that satisfy all constraints and maximize the total number of friends met, ensuring Kenneth is met for at least 90 minutes."
+        },
+        "route_estimator": {
+            "private_information": [
+                "I build a symmetric travel-time matrix between known locations and can derive earliest departure and arrival times.",
+                "If a travel time is not provided publicly, I avoid making assumptions and leave it unspecified."
+            ],
+            "goal": "Compute a travel-time matrix and derived timing constraints between locations to support schedule feasibility checks."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Select the best feasible schedule that maximizes friends met and satisfies the constraints, then compile a final PDDL domain and problem suitable for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "locations": [
+                "Fisherman's Wharf",
+                "Nob Hill"
+            ],
+            "start_location": "Fisherman's Wharf",
+            "start_time": "09:00",
+            "end_time": "21:00",
+            "time_step_minutes": 5
+        },
+        "public_information": [
+            "You arrive at Fisherman's Wharf at 09:00.",
+            "Kenneth will be at Nob Hill from 14:15 to 19:45.",
+            "You would like to meet Kenneth for a minimum of 90 minutes.",
+            "Travel time from Fisherman's Wharf to Nob Hill: 11 minutes.",
+            "Travel time from Nob Hill to Fisherman's Wharf: 11 minutes.",
+            "Objective: visit San Francisco for the day and meet as many friends as possible subject to all constraints."
+        ]
+    },
+    "workflow": {
+        "calendar_planner": {
+            "enumerate_schedules": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day-planning expert. Generate diverse, feasible schedules using discrete 5-minute time steps and respecting all stated constraints without inventing missing data. Return a compact JSON object with a list of candidate schedules, each with ordered actions, times, and feasibility notes.",
+                "prompt": "Your name is calendar_planner. Public information: {environment->public_information}. Your knowledge: {agents->calendar_planner->private_information}. Goal: {agents->calendar_planner->goal}. Enumerate several distinct feasible schedules that start at Fisherman's Wharf at 09:00, consider necessary travel to Nob Hill, ensure at least 90 minutes with Kenneth within his availability window, and minimize idle time when possible. Represent each candidate with fields: id, actions (each action has name, location, start, end), meets_kenneth_minutes, friends_met_count, notes."
+            }
+        },
+        "route_estimator": {
+            "compute_travel_times": {
+                "input": [],
+                "output": "travel_time_matrix",
+                "system_prompt": "You are a routing and timing analyst. Build a JSON travel-time matrix and derived timing helpers from the public information. Do not infer missing edges; only include the known locations and the given times.",
+                "prompt": "Your name is route_estimator. Public information: {environment->public_information}. Your knowledge: {agents->route_estimator->private_information}. Goal: {agents->route_estimator->goal}. Produce a JSON object with: locations, matrix (minutes), and helper fields like earliest_arrival(start_location, target, departure_time) definitions in prose."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "travel_time_matrix"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert coordinator and PDDL designer targeting the FastDownward solver. You must select the best feasible schedule that maximizes friends met (breaking ties by earliest finish and least idle time) and then produce a classical PDDL domain and problem encoding that schedule feasibility using discrete time steps (e.g., encode timepoints as objects or predicates) suitable for FastDownward. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You will receive candidate schedules and a travel-time matrix. Public information: {environment->public_information}. Candidates: {candidate_schedules}. Travel times: {travel_time_matrix}. Task: choose the best schedule that satisfies all constraints and maximizes the number of friends met (at minimum, ensure a 90-minute meeting with Kenneth within 14:15\u201319:45), then output a final PDDL domain and problem for FastDownward. Requirements: 1) Use a classical, STRIPS-like encoding with discrete time steps (5-minute increments). 2) Model locations, timepoints, the agent position, and meeting commitments. 3) Encode travel actions with preconditions/effects that move between locations and advance time according to the 11-minute durations by rounding to the nearest compatible discrete step you choose and documenting the choice in comments. 4) Encode waiting as an action that advances time. 5) Encode meeting actions that are permitted only when at the correct location within Kenneth's window and that accumulate at least 90 minutes total. 6) Initial state includes start location Fisherman's Wharf at time 09:00. 7) Goal requires meeting Kenneth for at least 90 minutes. Provide both <domain> and <problem> sections. If some details are missing, make conservative choices and explain them in comments within the PDDL."
+            }
+        },
+        "constraints": [
+            "calendar_planner.enumerate_schedules->orchestrator.synthesize_pddl",
+            "route_estimator.compute_travel_times->orchestrator.synthesize_pddl"
+        ]
+    }
+}

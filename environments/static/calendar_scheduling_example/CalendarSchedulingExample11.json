@@ -1,0 +1,101 @@
+{
+    "name": "CalendarSchedulingExample11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "alexander",
+            "elizabeth",
+            "walter",
+            "orchestrator"
+        ],
+        "alexander": {
+            "private_information": [
+                "Participant: Alexander",
+                "Busy (Monday): 09:30-10:00, 10:30-11:00, 12:30-13:00, 14:30-15:00, 16:00-17:00"
+            ],
+            "goal": "Provide accurate personal schedule constraints to help find a half-hour meeting time on Monday within 09:00-17:00 that works for everyone."
+        },
+        "elizabeth": {
+            "private_information": [
+                "Participant: Elizabeth",
+                "Busy (Monday): 09:00-09:30, 11:30-12:30, 13:00-14:30"
+            ],
+            "goal": "Provide accurate personal schedule constraints to help find a half-hour meeting time on Monday within 09:00-17:00 that works for everyone."
+        },
+        "walter": {
+            "private_information": [
+                "Participant: Walter",
+                "Busy (Monday): 09:00-14:30, 15:30-17:00"
+            ],
+            "goal": "Provide accurate personal schedule constraints to help find a half-hour meeting time on Monday within 09:00-17:00 that works for everyone."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate participants' constraints, compute a feasible intersection, and produce a final PDDL domain and problem for FastDownward."
+            ],
+            "goal": "Integrate all participants' constraints to select a feasible 30-minute meeting time on Monday within 09:00-17:00 and produce a PDDL domain and problem usable by the FastDownward planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "meeting_duration_minutes": 30,
+            "time_slot_granularity_minutes": 30,
+            "timezone": "Local"
+        },
+        "public_information": [
+            "Task: Schedule a 30-minute meeting for Alexander, Elizabeth, and Walter between 09:00 and 17:00 on Monday.",
+            "Alexander busy: 09:30-10:00, 10:30-11:00, 12:30-13:00, 14:30-15:00, 16:00-17:00.",
+            "Elizabeth busy: 09:00-09:30, 11:30-12:30, 13:00-14:30.",
+            "Walter busy: 09:00-14:30, 15:30-17:00.",
+            "Meeting duration: 30 minutes.",
+            "Assume time slots are aligned to 30-minute boundaries starting at 09:00."
+        ]
+    },
+    "workflow": {
+        "alexander": {
+            "availability": {
+                "input": [],
+                "output": "availability_alexander",
+                "system_prompt": "You are a calendar assistant for Alexander. Extract standardized availability information for a 30-minute meeting on Monday within 09:00-17:00 using the provided public and private information. Return only a compact JSON object with keys: participant (string), day (string), work_window (array of two strings [start,end]), duration_minutes (integer), busy (array of [start,end] string pairs in HH:MM), preferences (optional object). Do not emit PDDL or explanations.",
+                "prompt": "Your name is alexander. Public information: {environment->public_information}. Your private information: {agents->alexander->private_information}. Goal: {agents->alexander->goal}. Produce your standardized JSON availability with your busy intervals for Monday within 09:00-17:00 and duration 30."
+            }
+        },
+        "elizabeth": {
+            "availability": {
+                "input": [],
+                "output": "availability_elizabeth",
+                "system_prompt": "You are a calendar assistant for Elizabeth. Extract standardized availability information for a 30-minute meeting on Monday within 09:00-17:00 using the provided public and private information. Return only a compact JSON object with keys: participant (string), day (string), work_window (array of two strings [start,end]), duration_minutes (integer), busy (array of [start,end] string pairs in HH:MM), preferences (optional object). Do not emit PDDL or explanations.",
+                "prompt": "Your name is elizabeth. Public information: {environment->public_information}. Your private information: {agents->elizabeth->private_information}. Goal: {agents->elizabeth->goal}. Produce your standardized JSON availability with your busy intervals for Monday within 09:00-17:00 and duration 30."
+            }
+        },
+        "walter": {
+            "availability": {
+                "input": [],
+                "output": "availability_walter",
+                "system_prompt": "You are a calendar assistant for Walter. Extract standardized availability information for a 30-minute meeting on Monday within 09:00-17:00 using the provided public and private information. Return only a compact JSON object with keys: participant (string), day (string), work_window (array of two strings [start,end]), duration_minutes (integer), busy (array of [start,end] string pairs in HH:MM), preferences (optional object). Do not emit PDDL or explanations.",
+                "prompt": "Your name is walter. Public information: {environment->public_information}. Your private information: {agents->walter->private_information}. Goal: {agents->walter->goal}. Produce your standardized JSON availability with your busy intervals for Monday within 09:00-17:00 and duration 30."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_alexander",
+                    "availability_elizabeth",
+                    "availability_walter"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert planner engineer. Using the three availability JSONs as inputs, compute the intersection of free 30-minute slots on Monday between 09:00 and 17:00. Select a concrete feasible start time that satisfies all constraints (the earliest feasible slot is acceptable). Then produce a PDDL domain and problem targeting the FastDownward solver. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Requirements: classical STRIPS-compatible modeling (no durative actions) over discretized time slots at 30-minute granularity; define objects for participants and time slots; predicates should include per-participant free-at-slot facts; define a single action schedule(slot) with preconditions that the chosen slot is free for all participants and not yet scheduled; goal is that the meeting is scheduled at some selected slot; include all necessary objects and initial facts so FastDownward can find the plan; ensure consistent naming and that the problem encodes the exact free/busy facts derived from inputs.",
+                "prompt": "Inputs: {availability_alexander} {availability_elizabeth} {availability_walter}. Task: integrate these, compute all feasible 30-minute start times between 09:00 and 17:00 on Monday, pick one feasible slot that works for Alexander, Elizabeth, and Walter (for the given data, 15:00-15:30 is feasible), and generate the final PDDL domain and problem for FastDownward. Output only the PDDL enclosed within <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "alexander.availability->orchestrator.pddl",
+            "elizabeth.availability->orchestrator.pddl",
+            "walter.availability->orchestrator.pddl"
+        ]
+    }
+}

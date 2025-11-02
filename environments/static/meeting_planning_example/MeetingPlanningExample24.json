@@ -1,0 +1,105 @@
+{
+    "name": "MeetingPlanningExample24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "calendar_manager",
+            "map_reader",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I prefer to meet as many friends as possible within the day.",
+                "I can start moving immediately upon arrival.",
+                "I am flexible on meeting order as long as constraints are respected."
+            ],
+            "goal": "Maximize the number of friends met today while respecting time windows and travel times, with at least a 30-minute meeting with Matthew."
+        },
+        "calendar_manager": {
+            "private_information": [
+                "Matthew is at Presidio from 11:00 to 15:15.",
+                "A meeting with any friend must be at least 30 minutes to count as met."
+            ],
+            "goal": "Provide precise availability windows for friends and feasibility checks for minimum meeting durations."
+        },
+        "map_reader": {
+            "private_information": [
+                "Travel time from Nob Hill to Presidio is 17 minutes.",
+                "Travel time from Presidio to Nob Hill is 18 minutes."
+            ],
+            "goal": "Provide reliable travel-time estimates between known locations."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate calendars and travel times to produce an optimal day plan that maximizes unique friends met and guarantees at least a 30-minute meeting with Matthew within his availability window."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_horizon": "09:00-20:00",
+            "start_location": "Nob Hill",
+            "start_time": "09:00",
+            "time_unit_minutes": 1,
+            "locations": [
+                "Nob Hill",
+                "Presidio"
+            ],
+            "friends": [
+                "Matthew"
+            ],
+            "min_meeting_minutes": 30
+        },
+        "public_information": [
+            "You arrive at Nob Hill at 09:00.",
+            "Matthew will be at Presidio from 11:00 to 15:15.",
+            "Travel time: Nob Hill to Presidio is 17 minutes; Presidio to Nob Hill is 18 minutes.",
+            "You would like to meet Matthew for a minimum of 30 minutes.",
+            "Objective: Visit San Francisco for the day and meet as many friends as possible by considering different schedules and picking the best one under these constraints."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context": {
+                "input": [],
+                "output": "context_traveler",
+                "system_prompt": "You are the traveler summarizing personal preferences, flexibility, and any constraints that affect meeting scheduling without generating PDDL.",
+                "prompt": "Your name is traveler. Review the public information {environment->public_information} and your private notes {agents->traveler->private_information}. Provide a concise description of objectives, any hard constraints you must respect, and any soft preferences that could help a planner explore alternative schedules. Do not produce a plan or PDDL; just provide context."
+            }
+        },
+        "calendar_manager": {
+            "context": {
+                "input": [],
+                "output": "context_calendar",
+                "system_prompt": "You manage calendars and validate time-window constraints without generating PDDL.",
+                "prompt": "Your name is calendar_manager. Using the public information {environment->public_information} and your private notes {agents->calendar_manager->private_information}, list the friends, their locations, availability windows, the minimum meeting duration requirement, and any derived feasible intervals considering the travel times that will be supplied separately. Do not produce a plan or PDDL; just provide context."
+            }
+        },
+        "map_reader": {
+            "context": {
+                "input": [],
+                "output": "context_map",
+                "system_prompt": "You provide transportation details without generating PDDL.",
+                "prompt": "Your name is map_reader. Using the public information {environment->public_information} and your private notes {agents->map_reader->private_information}, provide the known locations, directed travel times between them, and any assumptions that should not be made due to missing data. Do not produce a plan or PDDL; just provide context."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "context_traveler",
+                    "context_calendar",
+                    "context_map"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert planner who integrates multi-agent context into a single planning model. You must output a PDDL domain and a PDDL problem targeting the FastDownwards solver. Always enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem> tags. Keep actions interpretable and sufficient for a temporal or sequential plan over minutes (move between locations, wait, and meet a friend for at least the minimum duration).",
+                "prompt": "You will receive context from three agents: traveler, calendar_manager, and map_reader. Your task is to integrate these contexts with the public information {environment->public_information} to produce a complete PDDL domain and problem that a FastDownwards solver can use to search for an optimal schedule. Requirements: 1) Start at Nob Hill at 09:00. 2) Respect directed travel times: Nob Hill -> Presidio 17 minutes and Presidio -> Nob Hill 18 minutes. 3) Ensure meeting with Matthew occurs at Presidio within [11:00, 15:15] for at least 30 minutes. 4) Objective is to maximize the number of distinct friends met; with the given data, this means at least ensuring the Matthew meeting is feasible and scheduled. 5) Prefer shorter total makespan when ties occur. Provide a domain with actions such as move, wait, and meet(friend, location, duration>=min_meeting). Provide a problem with objects for locations, the friend, time discretized in minutes, initial facts for current time and location, the minimum meeting duration, and availability window predicates for Matthew. Encode constraints so the solver can produce at least one valid plan and the goal captures maximizing friends met; if optimization is not directly expressible, encode a goal that ensures meeting Matthew for at least the minimum duration and include helpful metrics (e.g., minimize total time) compatible with FastDownwards. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.context->orchestrator.pddl",
+            "calendar_manager.context->orchestrator.pddl",
+            "map_reader.context->orchestrator.pddl"
+        ]
+    }
+}

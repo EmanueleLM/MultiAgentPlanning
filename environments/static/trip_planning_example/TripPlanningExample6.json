@@ -1,0 +1,82 @@
+{
+    "name": "TripPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "flight_expert",
+            "scheduler",
+            "orchestrator"
+        ],
+        "flight_expert": {
+            "private_information": [
+                "I know the available direct flight connections between the cities.",
+                "There is no direct connection between Berlin and Dubrovnik."
+            ],
+            "goal": "Enumerate feasible city-to-city hops using only direct flights that could realize an 8-day visit with Berlin on days 1 and 4."
+        },
+        "scheduler": {
+            "private_information": [
+                "I prioritize mandatory attendance in Berlin on days 1 and 4 as hard constraints.",
+                "I minimize total shortfall from the desired days per city under the 8-day limit."
+            ],
+            "goal": "Allocate the 8 days across Berlin, Munich, and Dubrovnik while respecting flight feasibility and conference days."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate routes and allocations to produce a consistent trip plan and a solvable PDDL domain and problem for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "days": 8,
+            "visibility": 1
+        },
+        "public_information": [
+            "You plan to visit three European cities: Berlin, Munich, and Dubrovnik.",
+            "Total trip length is 8 consecutive days labeled day1 through day8.",
+            "Only direct flights may be taken when moving between cities.",
+            "Direct flights exist between Berlin and Munich, and between Munich and Dubrovnik.",
+            "There is no direct flight between Berlin and Dubrovnik.",
+            "You must be in Berlin on day1 and day4 to attend a conference.",
+            "Desired visit lengths are: Berlin 4 days, Munich 3 days, Dubrovnik 3 days.",
+            "If the desires cannot all be met within 8 days, minimize the total unmet desired days while satisfying mandatory constraints."
+        ]
+    },
+    "workflow": {
+        "flight_expert": {
+            "routes": {
+                "input": [],
+                "output": "routes_flight_expert",
+                "system_prompt": "You are a flight connectivity analyst. Using the public information, list feasible movement patterns between the cities using only direct flights, especially around the mandatory Berlin days. Provide a concise set of feasible city sequences or transfer backbones that respect direct-flight constraints and can fit into an 8-day itinerary.",
+                "prompt": "Your name is flight_expert. Public information: {environment->public_information}. Your knowledge: {agents->flight_expert->private_information}. Global goal: {agents->flight_expert->goal}. Produce a compact summary of feasible direct-flight hops and example city orderings that connect Berlin on day1 and day4 without violating the direct-flight constraints. Do not produce PDDL."
+            }
+        },
+        "scheduler": {
+            "allocations": {
+                "input": [
+                    "routes_flight_expert"
+                ],
+                "output": "allocations_scheduler",
+                "system_prompt": "You are a trip scheduler. Allocate days to cities under hard constraints and available routes. If totals exceed 8 days, propose one or two candidate day-by-day assignments that minimize total unmet desired days and keep flights aligned with the feasible hops. Indicate on which evenings flights occur between consecutive days.",
+                "prompt": "Your name is scheduler. Public information: {environment->public_information}. Your knowledge: {agents->scheduler->private_information}. Global goal: {agents->scheduler->goal}. Using any feasible flight backbones from the flight expert, propose a day-by-day city assignment for 8 days with flights only along direct routes, enforcing Berlin on day1 and day4. Provide at least one concrete candidate itinerary and briefly justify the trade-offs. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "routes_flight_expert",
+                    "allocations_scheduler"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert planner who generates PDDL models for the FastDownward solver. Integrate the inputs to produce a final, consistent plan. Always output a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. The domain should include actions for staying a day in a city, flying along allowed direct edges, and attending the Berlin conference on required days. The problem should encode 8 sequential days, cities Berlin, Munich, Dubrovnik, mandatory presence in Berlin on day1 and day4, the direct-flight graph, and an initial location consistent with the itinerary. If desired-day targets cannot all be met, focus on satisfying mandatory constraints and choose a feasible itinerary accordingly. Target STRIPS-compatible PDDL that FastDownward can parse.",
+                "prompt": "You are orchestrator. Your task is to merge the feasible routes and the candidate allocations to produce a final PDDL domain and problem for FastDownward that yields a valid 8-day trip plan using only direct flights, with Berlin on day1 and day4. Inputs from flight expert: {routes_flight_expert}. Inputs from scheduler: {allocations_scheduler}. Think carefully about day transitions and ensure preconditions prevent non-direct flights. Output only the PDDL within <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "flight_expert.routes->scheduler.allocations",
+            "flight_expert.routes->orchestrator.pddl",
+            "scheduler.allocations->orchestrator.pddl"
+        ]
+    }
+}

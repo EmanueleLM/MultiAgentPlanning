@@ -136,6 +136,7 @@ SOLVER = {
 # Models configuration
 MODELS = {
     "gpt-4o": {"model": ChatGPT("gpt-4o"), "persistent": False, "sleep": 0},
+    "gpt-5": {"model": ChatGPT("gpt-5"), "persistent": False, "sleep": 0},
     "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
     "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
     "gemini-2.5-flash": {

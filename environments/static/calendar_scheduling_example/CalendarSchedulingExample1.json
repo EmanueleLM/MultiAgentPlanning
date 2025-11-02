@@ -1,0 +1,103 @@
+{
+    "name": "CalendarSchedulingExample1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "Raymond",
+            "Billy",
+            "Donald",
+            "orchestrator"
+        ],
+        "Raymond": {
+            "private_information": [
+                "My workday on Monday is 09:00-17:00.",
+                "Busy blocks on Monday: 09:00-09:30, 11:30-12:00, 13:00-13:30, 15:00-15:30."
+            ],
+            "goal": "Identify a 30-minute meeting time on Monday that works for all participants within work hours."
+        },
+        "Billy": {
+            "private_information": [
+                "My workday on Monday is 09:00-17:00.",
+                "Busy blocks on Monday: 10:00-10:30, 12:00-13:00, 16:30-17:00.",
+                "Preference: avoid meetings after 15:00 on Monday."
+            ],
+            "goal": "Identify a 30-minute meeting time on Monday that works for all participants within work hours, preferably before 15:00."
+        },
+        "Donald": {
+            "private_information": [
+                "My workday on Monday is 09:00-17:00.",
+                "Busy blocks on Monday: 09:00-09:30, 10:00-11:00, 12:00-13:00, 14:00-14:30, 16:00-17:00."
+            ],
+            "goal": "Identify a 30-minute meeting time on Monday that works for all participants within work hours."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Select a single 30-minute slot on Monday within 09:00-17:00 that all participants can attend and that respects the stated preference to avoid times after 15:00 when possible. Produce a final PDDL domain and problem for the Fast Downward solver encoding the selected slot."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "working_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "meeting_duration_minutes": 30,
+            "time_granularity_minutes": 30,
+            "solver": "FastDownward"
+        },
+        "public_information": [
+            "Participants: Raymond, Billy, Donald.",
+            "Meeting duration: 30 minutes.",
+            "Day: Monday.",
+            "Working hours for all participants: 09:00-17:00.",
+            "Billy prefers to avoid meetings after 15:00 on Monday.",
+            "Assume time slots are aligned on 30-minute boundaries within the working window.",
+            "There exists at least one feasible time that satisfies all schedules."
+        ]
+    },
+    "workflow": {
+        "Raymond": {
+            "availability": {
+                "input": [],
+                "output": "availability_raymond",
+                "system_prompt": "You are a calendar assistant for a single participant. Using the public working window and your private busy blocks, compute your free 30-minute slots on Monday aligned to 30-minute boundaries. Only return times within 09:00-17:00 and do not include any slot that overlaps a busy block.",
+                "prompt": "Your name is Raymond. Public context: {environment->public_information}. Your private calendar details: {agents->Raymond->private_information}. Your objective: {agents->Raymond->goal}. Compute all 30-minute free slots you can attend on Monday, aligned to the half-hour, limited to the 09:00-17:00 window. Output format: a single comma-separated list of intervals in HH:MM-HH:MM ascending order with no extra commentary (example: 09:30-10:00, 11:00-11:30, ...)."
+            }
+        },
+        "Billy": {
+            "availability": {
+                "input": [],
+                "output": "availability_billy",
+                "system_prompt": "You are a calendar assistant for a single participant. Using the public working window and your private busy blocks, compute your free 30-minute slots on Monday aligned to 30-minute boundaries. Respect the working hours 09:00-17:00. You also have a preference to avoid times after 15:00; when listing free slots, put slots before 15:00 first.",
+                "prompt": "Your name is Billy. Public context: {environment->public_information}. Your private calendar details: {agents->Billy->private_information}. Your objective: {agents->Billy->goal}. Compute all 30-minute free slots you can attend on Monday, aligned to the half-hour, limited to the 09:00-17:00 window. Sort the list with slots before 15:00 first to reflect your preference. Output format: a single comma-separated list of intervals in HH:MM-HH:MM order with no extra commentary."
+            }
+        },
+        "Donald": {
+            "availability": {
+                "input": [],
+                "output": "availability_donald",
+                "system_prompt": "You are a calendar assistant for a single participant. Using the public working window and your private busy blocks, compute your free 30-minute slots on Monday aligned to 30-minute boundaries. Only return times within 09:00-17:00 and do not include any slot that overlaps a busy block.",
+                "prompt": "Your name is Donald. Public context: {environment->public_information}. Your private calendar details: {agents->Donald->private_information}. Your objective: {agents->Donald->goal}. Compute all 30-minute free slots you can attend on Monday, aligned to the half-hour, limited to the 09:00-17:00 window. Output format: a single comma-separated list of intervals in HH:MM-HH:MM ascending order with no extra commentary."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_raymond",
+                    "availability_billy",
+                    "availability_donald"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent meeting scheduler and PDDL modeler targeting the Fast Downward solver. You always provide a PDDL domain and a PDDL problem file that allow the solver to produce a plan. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Use classical PDDL with :strips and :typing only (no numeric fluents, no action costs), and design the model so that a single action schedules the meeting at the chosen slot.",
+                "prompt": "You will receive each participant's 30-minute availability for Monday as comma-separated HH:MM-HH:MM intervals: Raymond: {availability_raymond} Billy: {availability_billy} Donald: {availability_donald} Public context: {environment->public_information} Goal: {agents->orchestrator->goal} 1) Compute the intersection of the three availability sets within 09:00-17:00 and select the earliest feasible 30-minute slot that satisfies everyone and respects Billy's preference to avoid times after 15:00 if any pre-15:00 intersection exists. 2) Produce the final PDDL for Fast Downward: - Domain: types person and slot; predicates (available ?p - person ?s - slot), (best ?s - slot), (scheduled ?s - slot). One action (schedule ?s - slot) with preconditions (best ?s) and (available raymond ?s) and (available billy ?s) and (available donald ?s); effect (scheduled ?s). - Problem: objects raymond billy donald of type person; slot objects for every half-hour in 09:00-17:00 (e.g., s0900_0930, s0930_1000, ... s1630_1700). Assert (available <person> <slot>) for each person and slot that is free based on the provided availability. Mark the selected meeting time as the unique (best <slot>). Initial state should not include (scheduled <slot>). The goal is (scheduled <selected-slot>). Enclose the domain in <domain></domain> and the problem in <problem></problem>. Do not include any explanation outside these tags."
+            }
+        },
+        "constraints": [
+            "Raymond.availability->orchestrator.pddl",
+            "Billy.availability->orchestrator.pddl",
+            "Donald.availability->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,108 @@
+{
+    "name": "MeetingPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "map_service",
+            "friend_locator",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "You value meeting as many friends as possible in one day.",
+                "Meeting John for at least 90 minutes is a hard requirement if feasible.",
+                "You are comfortable starting from Russian Hill at 09:00 and traveling within San Francisco."
+            ],
+            "goal": "Generate diverse feasible day schedules that maximize total friend time while guaranteeing at least a 90-minute meeting with John if possible."
+        },
+        "map_service": {
+            "private_information": [
+                "You can compute, validate, and summarize travel durations and walking/transit options.",
+                "You will respect asymmetric travel times when provided."
+            ],
+            "goal": "Validate and refine candidate schedules using travel times, detect conflicts, and produce accurate timing for each leg and activity."
+        },
+        "friend_locator": {
+            "private_information": [
+                "You maintain reliable availability windows for friends.",
+                "Currently, only John has a known availability window at Golden Gate Park."
+            ],
+            "goal": "Provide precise availability windows and minimum meeting requirements for friends, ensuring constraints are explicit and machine-usable."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate all agents' information and produce a final PDDL domain and problem suitable for Fast Downward."
+            ],
+            "goal": "Integrate candidate schedules, travel-time validation, and availability windows to produce a final PDDL domain and problem that encodes the scheduling objective and constraints for Fast Downward."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 0,
+            "time_unit_minutes": 1,
+            "time_window_start": "09:00",
+            "time_window_end": "19:00",
+            "locations": [
+                "Russian Hill",
+                "Golden Gate Park"
+            ]
+        },
+        "public_information": [
+            "Travel time from Russian Hill to Golden Gate Park is 21 minutes.",
+            "Travel time from Golden Gate Park to Russian Hill is 19 minutes.",
+            "You arrive at Russian Hill at 09:00.",
+            "John will be at Golden Gate Park from 13:00 to 18:15.",
+            "You would like to meet John for a minimum of 90 minutes.",
+            "Objective: Consider multiple feasible schedules, pick the best one that satisfies constraints and maximizes total friend time."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary_brainstorm": {
+                "input": [],
+                "output": "traveler_itineraries",
+                "system_prompt": "You are the traveler planning the day in San Francisco. Propose 3-5 diverse, feasible day schedules starting at Russian Hill at 09:00, visiting Golden Gate Park to meet John for at least 90 minutes within 13:00-18:15 if possible. Use the asymmetric travel times provided, include explicit timestamps for departures, arrivals, waits, and meetings. Do not produce PDDL; produce clear, structured schedule candidates with rationale and trade-offs.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private knowledge: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Produce candidate itineraries as structured lists of events with timestamps and durations, covering multiple options that differ in timing and sequence. Ensure at least one schedule guarantees a 90-minute meeting with John within his window."
+            }
+        },
+        "map_service": {
+            "routing": {
+                "input": [
+                    "traveler_itineraries"
+                ],
+                "output": "route_summaries",
+                "system_prompt": "You are a routing and travel-time validation expert. Given candidate itineraries, compute exact travel durations for each leg using the provided asymmetric times between Russian Hill and Golden Gate Park. Identify infeasibilities, adjust arrival and meeting times accordingly, and return corrected schedules with per-leg durations and total day metrics (total travel time, total meeting time). Do not produce PDDL.",
+                "prompt": "Your name is map_service. Public information: {environment->public_information}. Input candidate itineraries: {traveler_itineraries}. Your goal: {agents->map_service->goal}. Validate and refine each schedule, respecting 21-minute RH->GGP and 19-minute GGP->RH times, and make minimal consistent adjustments. Summarize feasibility and provide corrected schedules."
+            }
+        },
+        "friend_locator": {
+            "availability": {
+                "input": [],
+                "output": "availability_windows",
+                "system_prompt": "You manage verified friend availability. Encode John\u2019s availability window at Golden Gate Park and the minimum meeting duration as machine-usable constraints. If multiple schedules are possible, highlight those that satisfy the 90-minute minimum entirely within John\u2019s window. Do not produce PDDL.",
+                "prompt": "Your name is friend_locator. Public information: {environment->public_information}. Your goal: {agents->friend_locator->goal}. Provide a structured availability object for John: location=Golden Gate Park, window_start=13:00, window_end=18:15, min_meeting_minutes=90, and any derived numeric bounds in minutes from midnight. Also include a concise explanation of the constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_itineraries",
+                    "route_summaries",
+                    "availability_windows"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in temporal PDDL targeting the Fast Downward planner. Produce a final PDDL domain and problem that encode the one-day meeting plan. Use minutes as the time unit and a modeling style compatible with Fast Downward (e.g., PDDL 2.1 level 3 subset with durative actions or a compiled discrete-time formulation). Include locations (russian_hill, golden_gate_park), an agent (traveler), and a friend (john). Encode asymmetric travel times: 21 minutes RH->GGP and 19 minutes GGP->RH. Initial state: current_time=09:00, traveler at russian_hill. Availability: john at golden_gate_park from 13:00 to 18:15, with a required continuous meeting of at least 90 minutes. Objective: maximize total friend-meeting time subject to hard constraints (at minimum satisfy John\u2019s 90-minute meeting if feasible) and minimize unnecessary travel where ties occur. Provide both files enclosed within <domain></domain> and <problem></problem> tags and ensure they can be consumed by Fast Downward without further edits.",
+                "prompt": "You will integrate the following: public information: {environment->public_information}; traveler candidates: {traveler_itineraries}; routing validations: {route_summaries}; friend availability: {availability_windows}. Produce a single coherent PDDL domain and problem for the described planning task, ensuring the constraints are enforced (start at 09:00 at Russian Hill, meet John at Golden Gate Park for at least 90 minutes within 13:00-18:15, with the given asymmetric travel times). Enclose the PDDL domain within <domain></domain> and the PDDL problem within <problem></problem> tags, compatible with Fast Downward."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary_brainstorm->map_service.routing",
+            "traveler.itinerary_brainstorm->orchestrator.pddl",
+            "map_service.routing->orchestrator.pddl",
+            "friend_locator.availability->orchestrator.pddl"
+        ]
+    }
+}

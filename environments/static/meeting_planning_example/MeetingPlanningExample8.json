@@ -1,0 +1,99 @@
+{
+    "name": "MeetingPlanningExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "map_reader",
+            "friend_stephanie",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "You want to meet as many friends as possible during a single day in San Francisco.",
+                "You prefer schedules that are simple to follow and minimize unnecessary backtracking.",
+                "You care about on-time arrivals and respecting friends' time windows."
+            ],
+            "goal": "Construct feasible day plans that maximize the number of friend meetings while guaranteeing at least 105 minutes meeting with Stephanie and respecting known travel times and availability."
+        },
+        "map_reader": {
+            "private_information": [
+                "Only the following directed travel times are known: Chinatown to Marina District is 12 minutes; Marina District to Chinatown is 16 minutes.",
+                "No other travel times are known; do not infer or assume missing distances."
+            ],
+            "goal": "Normalize and expose the known directed travel times between locations and highlight the absence of other travel times so planners avoid unsupported assumptions."
+        },
+        "friend_stephanie": {
+            "private_information": [
+                "Stephanie will be at Marina District from 08:00 to 15:00 on the day in question."
+            ],
+            "goal": "Provide clear availability constraints and the required minimum meeting duration of 105 minutes to guide schedule feasibility checks."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate schedules, travel-time data, and Stephanie's constraints to produce a final PDDL domain and problem suitable for the FastDownwards solver that selects the best feasible plan maximizing the number of meetings and satisfying the minimum 105-minute meeting with Stephanie."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "time_unit": "minutes",
+            "time_format": "HH:MM",
+            "planning_horizon_minutes": 600,
+            "start_location": "Chinatown",
+            "start_time": "09:00"
+        },
+        "public_information": [
+            "You arrive at Chinatown at 09:00.",
+            "Stephanie will be at Marina District from 08:00 to 15:00.",
+            "You want to meet Stephanie for a minimum of 105 minutes.",
+            "Directed travel times known: Chinatown to Marina District is 12 minutes; Marina District to Chinatown is 16 minutes.",
+            "Only the above travel times are known; do not assume any other travel times.",
+            "Objective: consider different feasible schedules and pick the best one that maximizes the number of friend meetings while respecting all constraints."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "enumerate_schedules": {
+                "input": [],
+                "output": "traveler_schedules",
+                "system_prompt": "You are a careful day-planning expert. You enumerate candidate schedules that respect time windows, travel times, and minimum meeting durations, focusing on feasibility and maximizing the number of meetings. You do not produce PDDL; you produce human-readable structured options that an orchestrator can later transform into PDDL.",
+                "prompt": "Your name is traveler. Consider the following public information: {environment->public_information}. Consider your preferences and knowledge: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Enumerate several distinct feasible day plans starting at Chinatown at 09:00 that include a meeting with Stephanie at Marina District for at least 105 minutes, incorporating the directed travel times exactly as given and not assuming any missing distances. For each plan option, specify: sequence of activities with timestamps, locations, travel legs with durations and directions, exact meeting window with Stephanie and its length, and a count of total distinct friend meetings. If data is missing for other friends or travel times, note the limitation and prioritize robust options that at minimum secure Stephanie's 105-minute meeting. Return a concise list of 2 to 5 diverse options and identify the currently best option based on the objective."
+            }
+        },
+        "map_reader": {
+            "provide_distances": {
+                "input": [],
+                "output": "distance_matrix",
+                "system_prompt": "You translate textual travel information into a clean directed distance-time mapping and highlight unknown edges to prevent invalid assumptions. You do not produce PDDL.",
+                "prompt": "Your name is map_reader. Use the public information to produce a directed travel-time table over the known locations and list only the edges explicitly given. Include a clear statement that any edges not listed are unknown and must not be used by planners. Provide the distances in minutes as a simple mapping from origin to destination with values. Also provide a short note on asymmetry where applicable."
+            }
+        },
+        "friend_stephanie": {
+            "availability": {
+                "input": [],
+                "output": "stephanie_availability",
+                "system_prompt": "You clearly state availability and meeting requirements so schedulers can verify feasibility. You do not produce PDDL.",
+                "prompt": "Your name is friend_stephanie. Provide Stephanie's availability at Marina District as a closed-open interval set within the day and restate the minimum required meeting duration of 105 minutes. Include any assumptions you are not making and confirm that travel occurs outside or around the meeting window as needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_schedules",
+                    "distance_matrix",
+                    "stephanie_availability"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with multi-agent planning who converts candidate schedules and constraints into a coherent PDDL domain and problem targeting the FastDownwards solver. You always provide exactly one PDDL domain and one PDDL problem, enclosed respectively between <domain></domain> and <problem></problem> tags. You keep actions and objects interpretable, and you avoid unsupported features. Where durations are needed, either discretize time into minutes or encode time steps so that FastDownwards can solve the problem as a classical planning instance. You preserve feasibility constraints, including Stephanie's 105-minute meeting minimum and directed travel times, and you encode the objective as a plan-quality criterion if possible or otherwise provide a best feasible plan selection rationale in comments within the problem.",
+                "prompt": "You will receive candidate schedules from traveler, directed travel-time data from map_reader, and Stephanie's availability from friend_stephanie: Traveler schedules: {traveler_schedules}. Distances: {distance_matrix}. Stephanie availability: {stephanie_availability}. Integrate these to produce a final PDDL domain and problem suitable for FastDownwards. Requirements: include objects for locations (at least Chinatown and MarinaDistrict), agents or roles as needed, actions for travel with direction-specific applicability, actions for meet_stephanie subject to availability and a minimum of 105 minutes represented via discretized time steps or equivalent modeling. Encode initial state as starting at Chinatown at 09:00, incorporate known travel times only, and avoid assuming any other travel edges. Optimize for maximum meetings while guaranteeing the Stephanie constraint; if multiple candidate schedules exist, choose the best feasible one and reflect it in the initial goals or metric. Output the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.enumerate_schedules->orchestrator.pddl",
+            "map_reader.provide_distances->orchestrator.pddl",
+            "friend_stephanie.availability->orchestrator.pddl"
+        ]
+    }
+}

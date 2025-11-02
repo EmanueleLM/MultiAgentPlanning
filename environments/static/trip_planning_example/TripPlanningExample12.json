@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_expert",
+            "calendar_manager",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Preferred stay lengths: Valencia 5 days, Amsterdam 5 days, Tallinn 7 days",
+                "Total trip length must be exactly 15 days",
+                "Exactly the three cities Amsterdam, Valencia, Tallinn"
+            ],
+            "goal": "Maximize adherence to preferred stay lengths while ensuring a feasible 15-day itinerary over the three cities using only direct flights."
+        },
+        "flight_expert": {
+            "private_information": [
+                "Direct flights exist between Amsterdam and Tallinn",
+                "Direct flights exist between Valencia and Amsterdam",
+                "Flights are bidirectional and available any day"
+            ],
+            "goal": "Provide the flight connectivity graph and commuting constraints such that only direct flights or staying in place are allowed between consecutive days."
+        },
+        "calendar_manager": {
+            "private_information": [
+                "Trip runs for 15 consecutive days labeled d1 through d15",
+                "A friend will be in Tallinn during days d9 through d15 inclusive"
+            ],
+            "goal": "Provide the day timeline and the hard window constraint to be in Tallinn on at least one day between d9 and d15 inclusive."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a 15-day itinerary visiting exactly Amsterdam, Valencia, and Tallinn, commuting only via direct flights, that includes at least one day in Tallinn between d9 and d15, and that best matches the preferred stays (VLC 5, AMS 5, TLL 7) under the fixed total of 15 days."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 15,
+            "cities": [
+                "Amsterdam",
+                "Valencia",
+                "Tallinn"
+            ],
+            "start_day": "d1"
+        },
+        "public_information": [
+            "Trip length is 15 consecutive days labeled d1..d15.",
+            "Cities: Amsterdam (AMS), Valencia (VLC), Tallinn (TLL).",
+            "Only direct flights may be used to commute between cities; flights are bidirectional.",
+            "Direct flight pairs: (Amsterdam, Tallinn), (Valencia, Amsterdam).",
+            "At least one day in Tallinn must occur between d9 and d15 inclusive.",
+            "Preferred stays (soft): Valencia 5 days, Amsterdam 5 days, Tallinn 7 days; total length is fixed at 15 days so preferences should be optimized rather than enforced as hard equals."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "prefs_traveler",
+                "system_prompt": "You are the traveler preference agent. Consolidate the preferred stay lengths and hard constraints into a concise, machine-readable summary.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your knowledge: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Output a compact JSON object with fields: cities (list of the three city codes AMS,VLC,TLL), preferred_stays (object with days per city), hard_constraints (object with total_days=15 and exact_cities=true), and notes indicating that city-day targets are soft."
+            }
+        },
+        "flight_expert": {
+            "flight_graph": {
+                "input": [],
+                "output": "graph_flights",
+                "system_prompt": "You are the flight connectivity agent. Provide a clear, machine-readable and bidirectional flight graph and commuting rule.",
+                "prompt": "Your name is flight_expert. Public information: {environment->public_information}. Your knowledge: {agents->flight_expert->private_information}. Goal: {agents->flight_expert->goal}. Output a compact JSON object with fields: nodes (AMS,VLC,TLL), edges ([[AMS,TLL],[VLC,AMS]]), bidirectional=true, and rule commuting='stay or direct-edge only between consecutive days'."
+            }
+        },
+        "calendar_manager": {
+            "time_constraints": {
+                "input": [],
+                "output": "time_calendar",
+                "system_prompt": "You are the calendar and temporal constraints agent. Provide the day timeline and hard window constraints.",
+                "prompt": "Your name is calendar_manager. Public information: {environment->public_information}. Your knowledge: {agents->calendar_manager->private_information}. Goal: {agents->calendar_manager->goal}. Output a compact JSON object with fields: days=[d1..d15], successor pairs as next list [[d1,d2],...,[d14,d15]], and hard_windows [{'city':'TLL','any_day_in':['d9','d10','d11','d12','d13','d14','d15']}]."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "prefs_traveler",
+                    "graph_flights",
+                    "time_calendar"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in compiling multi-agent trip-planning constraints into classical PDDL for the FastDownward solver. Always produce a PDDL domain and a PDDL problem; enclose the domain between <domain></domain> and the problem between <problem></problem>. Use :requirements :typing :equality :fluents :action-costs and a metric to minimize total-cost. Encode days d1..d15 and cities AMS,VLC,TLL; enforce exactly one city per day; allow either staying or flying only if a direct edge exists; require at least one day in TLL between d9 and d15; treat the city-day targets (VLC 5, AMS 5, TLL 7) as soft by using action costs to penalize deviation while keeping total days fixed at 15.",
+                "prompt": "Integrate the following inputs to produce a final classical PDDL domain and problem solvable by FastDownward: Traveler preferences: {prefs_traveler}. Flight graph: {graph_flights}. Time and windows: {time_calendar}. Provide a sound and solvable encoding with: objects for days and cities; predicates for day ordering, assignment per day, and direct(city,city); numeric fluents to count days per city and total-cost; actions to assign the first day and assign subsequent days with either staying or flying if direct; a goal ensuring all 15 days are assigned and at least one of d9..d15 is assigned to TLL; a cost scheme that penalizes deviations from the preferred stays. Output the PDDL domain and problem enclosed within <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->orchestrator.pddl",
+            "flight_expert.flight_graph->orchestrator.pddl",
+            "calendar_manager.time_constraints->orchestrator.pddl"
+        ]
+    }
+}

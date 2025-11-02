@@ -1,0 +1,112 @@
+{
+    "name": "CalendarSchedulingExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "roy",
+            "kathryn",
+            "amy",
+            "orchestrator"
+        ],
+        "roy": {
+            "private_information": [
+                "Busy Monday 09:00-09:30",
+                "Busy Monday 10:00-10:30",
+                "Busy Monday 11:00-11:30",
+                "Busy Monday 12:30-13:00"
+            ],
+            "goal": "Share my Monday availability within work hours 09:00-17:00 for a 30-minute meeting with Kathryn and Amy."
+        },
+        "kathryn": {
+            "private_information": [
+                "Busy Monday 09:30-10:00",
+                "Busy Monday 16:30-17:00"
+            ],
+            "goal": "Share my Monday availability within work hours 09:00-17:00 for a 30-minute meeting with Roy and Amy."
+        },
+        "amy": {
+            "private_information": [
+                "Busy Monday 09:00-14:30",
+                "Busy Monday 15:00-16:00",
+                "Busy Monday 16:30-17:00",
+                "Preference: would rather not meet on Monday after 15:30"
+            ],
+            "goal": "Share my Monday availability and preferences for a 30-minute meeting with Roy and Kathryn within work hours 09:00-17:00."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all participants' availability and preferences to schedule a 30-minute meeting on Monday within work hours 09:00-17:00, preferring earlier slots that satisfy stated preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "working_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "meeting_duration_minutes": 30,
+            "slot_granularity_minutes": 30,
+            "time_convention": "inclusive-start exclusive-end",
+            "target_solver": "FastDownward"
+        },
+        "public_information": [
+            "Schedule a single 30-minute meeting for Roy, Kathryn, and Amy on Monday between 09:00 and 17:00.",
+            "Time is discretized in 30-minute slots and calendars use inclusive-start and exclusive-end.",
+            "All hard constraints must be satisfied and preferences should be respected when possible.",
+            "There exists at least one feasible time satisfying all hard constraints and the preference: Amy would rather not meet after 15:30."
+        ]
+    },
+    "workflow": {
+        "roy": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "availability_roy",
+                "system_prompt": "You analyze individual calendars and compute free 30-minute slots within specified working hours.",
+                "prompt": "Your name is roy. Consider the environment public information {environment->public_information} and the initialization constants {environment->init}. Using your private information {agents->roy->private_information}, list all 30-minute time slots on Monday within 09:00-17:00 during which you are free. Return a concise, machine-readable summary such as a JSON array of slots like [\"09:30-10:00\", \"10:30-11:00\", ...]. Do not produce PDDL."
+            }
+        },
+        "kathryn": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "availability_kathryn",
+                "system_prompt": "You analyze individual calendars and compute free 30-minute slots within specified working hours.",
+                "prompt": "Your name is kathryn. Consider the environment public information {environment->public_information} and the initialization constants {environment->init}. Using your private information {agents->kathryn->private_information}, list all 30-minute time slots on Monday within 09:00-17:00 during which you are free. Return a concise, machine-readable summary such as a JSON array of slots like [\"09:00-09:30\", \"10:00-10:30\", ...]. Do not produce PDDL."
+            }
+        },
+        "amy": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "availability_amy",
+                "system_prompt": "You analyze individual calendars and compute free 30-minute slots within specified working hours.",
+                "prompt": "Your name is amy. Consider the environment public information {environment->public_information} and the initialization constants {environment->init}. Using your private information {agents->amy->private_information}, list all 30-minute time slots on Monday within 09:00-17:00 during which you are free. Return a concise, machine-readable summary such as a JSON array of slots like [\"14:30-15:00\", ...]. Do not produce PDDL."
+            },
+            "share_preferences": {
+                "input": [],
+                "output": "preferences_amy",
+                "system_prompt": "You communicate scheduling preferences clearly and concisely.",
+                "prompt": "Your name is amy. From your private information {agents->amy->private_information}, summarize your scheduling preferences that should guide tie-breaking between multiple feasible slots. Return a concise, machine-readable object identifying soft constraints, such as {\"avoid_after\": \"15:30\", \"priority_order\": [\"earlier_is_better\"]}. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_roy",
+                    "availability_kathryn",
+                    "availability_amy",
+                    "preferences_amy"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-participant calendar scheduling and PDDL modeling for the Fast Downward planner. You must produce a valid PDDL domain and a PDDL problem that encode and solve the described scheduling task. Enclose the domain inside <domain></domain> and the problem inside <problem></problem>. The model should be classical STRIPS-compatible so it can be solved with Fast Downward.",
+                "prompt": "Integrate the inputs to schedule a single 30-minute meeting on Monday for Roy, Kathryn, and Amy. Public information: {environment->public_information}. Initialization constants: {environment->init}. Roy availability: {availability_roy}. Kathryn availability: {availability_kathryn}. Amy availability: {availability_amy}. Amy preferences: {preferences_amy}. 1) Compute the intersection of free 30-minute slots for all three participants within 09:00-17:00. 2) If multiple feasible slots exist, respect the soft preference from Amy to avoid times after 15:30 and otherwise prefer earlier slots. 3) Produce a PDDL domain and problem that encode the chosen slot and participants. The domain should include actions sufficient to assign the meeting to a single free time slot (e.g., schedule(slot)) with preconditions that all participants are free at that slot and effects that the meeting is scheduled at that slot. The problem should define the time slots as objects (e.g., s09_00, s09_30, ...), encode which slots are within working hours, encode busy slots for each participant, include a preferred-slot predicate if relevant, and set the goal so that the plan schedules the meeting at a feasible slot consistent with the inputs. Ensure the final instance is solvable by Fast Downward and enclose outputs using <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "roy.analyze_schedule->orchestrator.pddl",
+            "kathryn.analyze_schedule->orchestrator.pddl",
+            "amy.analyze_schedule->orchestrator.pddl",
+            "amy.share_preferences->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,62 @@
+(define (problem CalendarSchedulingExample7)
+  (:domain calendar-scheduling)
+  (:objects
+    heather nicholas zachary - attendee
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+  )
+  (:init
+    (preferred s0900)
+    (preferred s0930)
+    (preferred s1000)
+    (preferred s1030)
+    (preferred s1100)
+    (preferred s1130)
+    (preferred s1200)
+    (preferred s1230)
+    (preferred s1300)
+    (preferred s1330)
+
+    (free heather s0930)
+    (free heather s1000)
+    (free heather s1100)
+    (free heather s1130)
+    (free heather s1200)
+    (free heather s1230)
+    (free heather s1400)
+    (free heather s1500)
+    (free heather s1530)
+    (free heather s1630)
+
+    (free nicholas s0900)
+    (free nicholas s0930)
+    (free nicholas s1000)
+    (free nicholas s1030)
+    (free nicholas s1100)
+    (free nicholas s1130)
+    (free nicholas s1200)
+    (free nicholas s1230)
+    (free nicholas s1300)
+    (free nicholas s1330)
+    (free nicholas s1400)
+    (free nicholas s1430)
+    (free nicholas s1500)
+    (free nicholas s1530)
+    (free nicholas s1600)
+    (free nicholas s1630)
+
+    (free zachary s1030)
+    (free zachary s1200)
+    (free zachary s1300)
+    (free zachary s1630)
+
+    (free-for-all s1200)
+    (free-for-all s1630)
+
+    (some-preferred-available)
+  )
+  (:goal
+    (and
+      (scheduled)
+    )
+  )
+)

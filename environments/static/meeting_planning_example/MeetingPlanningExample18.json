@@ -1,0 +1,107 @@
+{
+    "name": "MeetingPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "friend_betty",
+            "router",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "You can wait at a location if you arrive early.",
+                "You want to maximize the number of distinct friends you meet."
+            ],
+            "goal": "Plan your day in San Francisco to meet as many friends as possible while respecting travel times and time windows."
+        },
+        "friend_betty": {
+            "private_information": [
+                "Betty prefers evening meetups.",
+                "Betty is available in the Richmond District later in the day."
+            ],
+            "goal": "Provide precise availability constraints for Betty and her minimum meeting duration."
+        },
+        "router": {
+            "private_information": [],
+            "goal": "Enumerate feasible schedules and travel options that respect time windows, travel times, and minimum meeting duration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all analyses and produce the final PDDL domain and problem that a FastDownwards solver can consume to generate an optimal plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minute",
+            "day_start": "09:00",
+            "day_end": "22:00",
+            "time_horizon_minutes": 780,
+            "locations": [
+                "Marina District",
+                "Richmond District"
+            ],
+            "travel_times_minutes": {
+                "Marina District->Richmond District": 11,
+                "Richmond District->Marina District": 9
+            }
+        },
+        "public_information": [
+            "You arrive at Marina District at 09:00 AM.",
+            "Betty will be at Richmond District from 08:30 PM (20:30) to 10:00 PM (22:00).",
+            "You would like to meet Betty for a minimum of 75 minutes.",
+            "Travel time from Marina District to Richmond District is 11 minutes.",
+            "Travel time from Richmond District to Marina District is 9 minutes.",
+            "Waiting at a location is allowed.",
+            "Only known friend with a time window today is Betty at Richmond District.",
+            "If information is missing, do not make assumptions; plan with available data."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preference_analysis": {
+                "input": [],
+                "output": "traveler_prefs",
+                "system_prompt": "You are the traveler. Summarize objectives and constraints you must respect for today without proposing PDDL. Return a concise JSON with fields: objectives (list), arrival (location and time), and base_assumptions (list). Keep strictly to provided information.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Your overarching goal: {agents->traveler->goal}. Produce a compact JSON summary of your objectives, arrival, and assumptions; do not create new facts."
+            }
+        },
+        "friend_betty": {
+            "availability_window": {
+                "input": [],
+                "output": "betty_profile",
+                "system_prompt": "You describe Betty's availability and the minimum meeting duration without emitting PDDL. Output a small JSON object with keys: friend, location, window_start, window_end, min_meet_minutes.",
+                "prompt": "Use only public information and your role knowledge. Fill friend='Betty', location='Richmond District', window_start='20:30', window_end='22:00', min_meet_minutes=75 based on the constraints."
+            }
+        },
+        "router": {
+            "schedule_enumerator": {
+                "input": [
+                    "traveler_prefs",
+                    "betty_profile"
+                ],
+                "output": "route_candidates",
+                "system_prompt": "You propose feasible travel and meeting schedules using only the given travel times and time windows. Do not output PDDL. Return a JSON object with fields: candidates (array of schedule objects) and rationale (short text). Each schedule object must include: depart_location, depart_time, arrive_location, arrive_time, meet_friend, meet_start, meet_end, total_meet_minutes, notes. Only include options that satisfy the minimum meeting duration and respect travel times; waiting is allowed.",
+                "prompt": "Public information: {environment->public_information}. Use travel time Marina->Richmond = 11 minutes and Richmond->Marina = 9 minutes. You start at Marina District at 09:00. The only known friend today is Betty at Richmond District with a 20:30-22:00 window and min 75 minutes. Enumerate a small set of feasible options, including the latest-departure option that still achieves 75 minutes (arrive by 20:45) and earlier arrival options that wait until 20:30. Output the JSON as specified."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_prefs",
+                    "betty_profile",
+                    "route_candidates"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-step planning and PDDL targeting the FastDownwards solver. Produce a coherent and solvable PDDL domain and PDDL problem that encode travel between Marina District and Richmond District, optional waiting, and a time-windowed meeting with Betty requiring at least 75 minutes. Represent time discretely in minutes within the 09:00-22:00 horizon or use numeric fluents consistent with FastDownwards capabilities. Keep actions and predicates minimal and unambiguous. Enclose the PDDL domain within <domain></domain> tags and the PDDL problem within <problem></problem> tags.",
+                "prompt": "Integrate the following: Public environment facts: {environment->public_information}. Traveler preferences and arrival: {traveler_prefs}. Betty's availability and requirement: {betty_profile}. Candidate schedules: {route_candidates}. Goal: {agents->orchestrator->goal}. Produce a final PDDL domain and problem suitable for the FastDownwards solver that can find a valid plan meeting Betty for at least 75 minutes within her window, starting at Marina District at 09:00, using the given asymmetric travel times. If multiple schedules are feasible, encode the problem such that the solver can choose any valid plan, but prefer modeling that allows selection of the latest-departure feasible option as optimal if cost minimization is included. Enclose outputs in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preference_analysis->orchestrator.pddl",
+            "friend_betty.availability_window->orchestrator.pddl",
+            "router.schedule_enumerator->orchestrator.pddl"
+        ]
+    }
+}

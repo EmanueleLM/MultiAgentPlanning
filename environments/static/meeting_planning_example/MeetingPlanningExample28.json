@@ -1,0 +1,102 @@
+{
+    "name": "MeetingPlanningExample28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "visitor",
+            "map_expert",
+            "friend_coordinator",
+            "orchestrator"
+        ],
+        "visitor": {
+            "private_information": [
+                "You are in San Francisco for one day and want to meet as many friends as possible.",
+                "Meeting Joshua for at least 75 minutes is a priority.",
+                "You prefer to minimize unnecessary travel."
+            ],
+            "goal": "Produce clear preferences and hard constraints for the day so a coordinator can find the best meet-up plan."
+        },
+        "map_expert": {
+            "private_information": [
+                "You can compile a symmetric travel-time graph from known locations.",
+                "You can validate and normalize travel times in minutes."
+            ],
+            "goal": "Provide accurate travel times between known locations as a compact graph."
+        },
+        "friend_coordinator": {
+            "private_information": [
+                "You collect friends' availability windows and locations.",
+                "You ensure required minimum meeting durations are captured."
+            ],
+            "goal": "List each friend's time windows and required minimums as structured data."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate constraints, travel times, and availabilities to produce the best schedule and the final PDDL domain and problem for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minute",
+            "start_location": "Union_Square",
+            "start_time_min": 540,
+            "end_of_day_min": 1440,
+            "locations": [
+                "Union_Square",
+                "Chinatown"
+            ]
+        },
+        "public_information": [
+            "You arrive at Union Square at 9:00 AM which is 540 minutes since midnight.",
+            "Joshua will be at Chinatown from 6:00 PM (1080) to 9:30 PM (1290).",
+            "You want to meet Joshua for a minimum of 75 minutes.",
+            "Travel time from Union Square to Chinatown is 7 minutes.",
+            "Travel time from Chinatown to Union Square is 7 minutes.",
+            "Consider different feasible schedules and pick the one that meets constraints and maximizes total friends met; currently, Joshua is the only specified friend."
+        ]
+    },
+    "workflow": {
+        "visitor": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_json",
+                "system_prompt": "You are the visitor. Summarize objective weights and hard constraints as compact JSON under <preferences> tags; include priorities such as meeting as many friends as possible, meeting Joshua for at least 75 minutes, and minimizing unnecessary travel.",
+                "prompt": "Your name is visitor. Using the public information {environment->public_information} and your private information {agents->visitor->private_information}, produce a concise preferences object with fields: objective (maximize_meetings), hard_constraints (list), soft_preferences (list), and notes; wrap it under <preferences> and </preferences>."
+            }
+        },
+        "map_expert": {
+            "routes": {
+                "input": [],
+                "output": "travel_graph_json",
+                "system_prompt": "You are a mapping specialist. Provide a small travel-time graph in minutes under <graph> tags with nodes and directed edges.",
+                "prompt": "Your name is map_expert. Using the public information {environment->public_information} and your private information {agents->map_expert->private_information}, output a directed travel-time graph with nodes [Union_Square, Chinatown] and edges including both directions with 7-minute costs; wrap it under <graph> and </graph>."
+            }
+        },
+        "friend_coordinator": {
+            "availability": {
+                "input": [],
+                "output": "friend_windows_json",
+                "system_prompt": "You coordinate friends' calendars. Emit availability windows as JSON under <windows> tags.",
+                "prompt": "Your name is friend_coordinator. From public information {environment->public_information} and your knowledge {agents->friend_coordinator->private_information}, produce windows for each friend with fields: name, location, start_min, end_min, min_meet_min; include an entry for Joshua at Chinatown from 1080 to 1290 with min_meet_min 75; wrap it under <windows> and </windows>."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "preferences_json",
+                    "travel_graph_json",
+                    "friend_windows_json"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert in multi-agent scheduling and PDDL targeting the FastDownward solver. Integrate inputs and produce a classical PDDL domain and problem; include only non-durative actions with numeric fluents for time and meeting progress. Enclose the domain between <domain> </domain> and the problem between <problem> </problem>.",
+                "prompt": "Integrate the visitor preferences {preferences_json}, the travel graph {travel_graph_json}, and the friend windows {friend_windows_json} together with public information {environment->public_information}. Produce a single consistent PDDL domain and problem suitable for FastDownward that models locations, the visitor position, a numeric function time in minutes since midnight, actions wait-1 that increase time by 1, travel between directed edges increasing time by the given minute cost, and meet-joshua-75 which requires being at Chinatown with time >= 1080 and time <= 1215 and sets met-joshua true while increasing time by 75; the initial state must place the visitor at Union_Square with time 540; the goal must include met-joshua true; add an optimization metric such as minimizing total time or total travel; avoid durative constructs and ensure names are simple and deterministic; output under the required tags."
+            }
+        },
+        "constraints": [
+            "visitor.preferences->orchestrator.synthesize_pddl",
+            "map_expert.routes->orchestrator.synthesize_pddl",
+            "friend_coordinator.availability->orchestrator.synthesize_pddl"
+        ]
+    }
+}

@@ -1,0 +1,250 @@
+(define (domain travel-16days)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types day city token)
+  (:predicates
+    (current ?d - day)
+    (next ?d1 - day ?d2 - day)
+    (first-day ?d - day)
+    (last-day ?d - day)
+    (assigned ?d - day)
+    (at ?d - day ?c - city)
+    (last ?c - city)
+    (flight ?c1 - city ?c2 - city)
+    (in-window ?d - day)
+    (visited ?c - city)
+    (met)
+    (schedule-complete)
+    (tok-of ?t - token ?c - city)
+    (unused ?t - token)
+  )
+  (:functions (total-cost))
+
+  ; Initialize day 1 in any city using a free token (no cost)
+  (:action start-day-with-token
+    :parameters (?d - day ?d2 - day ?c - city ?t - token)
+    :precondition (and
+      (current ?d)
+      (first-day ?d)
+      (next ?d ?d2)
+      (unused ?t)
+      (tok-of ?t ?c)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (last ?c)
+      (not (unused ?t))
+      (not (current ?d))
+      (current ?d2)
+    )
+  )
+
+  ; Initialize day 1 in any city without a token (overshoot, cost 1)
+  (:action start-day-overshoot
+    :parameters (?d - day ?d2 - day ?c - city)
+    :precondition (and
+      (current ?d)
+      (first-day ?d)
+      (next ?d ?d2)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (last ?c)
+      (not (current ?d))
+      (current ?d2)
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; Stay in the same city for a day using a free token (no cost)
+  (:action stay-with-token
+    :parameters (?d - day ?d2 - day ?c - city ?t - token)
+    :precondition (and
+      (current ?d)
+      (next ?d ?d2)
+      (last ?c)
+      (unused ?t)
+      (tok-of ?t ?c)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (not (unused ?t))
+      (not (current ?d))
+      (current ?d2)
+    )
+  )
+
+  ; Stay in the same city for a day without a token (overshoot, cost 1)
+  (:action stay-overshoot
+    :parameters (?d - day ?d2 - day ?c - city)
+    :precondition (and
+      (current ?d)
+      (next ?d ?d2)
+      (last ?c)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (not (current ?d))
+      (current ?d2)
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; Fly between cities overnight using a free token of the arrival city (no cost)
+  (:action fly-with-token
+    :parameters (?d - day ?d2 - day ?from - city ?to - city ?t - token)
+    :precondition (and
+      (current ?d)
+      (next ?d ?d2)
+      (last ?from)
+      (flight ?from ?to)
+      (unused ?t)
+      (tok-of ?t ?to)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?to)
+      (visited ?to)
+      (not (unused ?t))
+      (not (current ?d))
+      (current ?d2)
+      (not (last ?from))
+      (last ?to)
+    )
+  )
+
+  ; Fly between cities overnight without a token (overshoot, cost 1)
+  (:action fly-overshoot
+    :parameters (?d - day ?d2 - day ?from - city ?to - city)
+    :precondition (and
+      (current ?d)
+      (next ?d ?d2)
+      (last ?from)
+      (flight ?from ?to)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?to)
+      (visited ?to)
+      (not (current ?d))
+      (current ?d2)
+      (not (last ?from))
+      (last ?to)
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; Assign the last day by staying (consumes token if available)
+  (:action stay-last-with-token
+    :parameters (?d - day ?c - city ?t - token)
+    :precondition (and
+      (current ?d)
+      (last-day ?d)
+      (last ?c)
+      (unused ?t)
+      (tok-of ?t ?c)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (not (unused ?t))
+      (not (current ?d))
+      (schedule-complete)
+    )
+  )
+
+  ; Assign the last day by staying without a token (overshoot, cost 1)
+  (:action stay-last-overshoot
+    :parameters (?d - day ?c - city)
+    :precondition (and
+      (current ?d)
+      (last-day ?d)
+      (last ?c)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?c)
+      (visited ?c)
+      (not (current ?d))
+      (schedule-complete)
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; Assign the last day by flying (consumes token if available)
+  (:action fly-last-with-token
+    :parameters (?d - day ?from - city ?to - city ?t - token)
+    :precondition (and
+      (current ?d)
+      (last-day ?d)
+      (last ?from)
+      (flight ?from ?to)
+      (unused ?t)
+      (tok-of ?t ?to)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?to)
+      (visited ?to)
+      (not (unused ?t))
+      (not (current ?d))
+      (not (last ?from))
+      (last ?to)
+      (schedule-complete)
+    )
+  )
+
+  ; Assign the last day by flying without a token (overshoot, cost 1)
+  (:action fly-last-overshoot
+    :parameters (?d - day ?from - city ?to - city)
+    :precondition (and
+      (current ?d)
+      (last-day ?d)
+      (last ?from)
+      (flight ?from ?to)
+    )
+    :effect (and
+      (assigned ?d)
+      (at ?d ?to)
+      (visited ?to)
+      (not (current ?d))
+      (not (last ?from))
+      (last ?to)
+      (schedule-complete)
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; After scheduling, pay 1 cost per unused token (undershoot)
+  (:action pay-missing
+    :parameters (?t - token ?c - city)
+    :precondition (and
+      (schedule-complete)
+      (unused ?t)
+      (tok-of ?t ?c)
+    )
+    :effect (and
+      (not (unused ?t))
+      (increase (total-cost) 1)
+    )
+  )
+
+  ; Witness the meeting requirement: Reykjavik on any day in [12..16]
+  (:action witness-meeting
+    :parameters (?d - day)
+    :precondition (and
+      (assigned ?d)
+      (in-window ?d)
+      (at ?d reykjavik)
+    )
+    :effect (met)
+  )
+)

@@ -1,0 +1,119 @@
+{
+    "name": "MeetingPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "commute_estimator",
+            "friend_scheduler",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Haight-Ashbury at 09:00.",
+                "I want to meet as many friends as possible in one day.",
+                "I must meet Jessica for at least 90 consecutive minutes.",
+                "I can plan in 15-minute increments."
+            ],
+            "goal": "Create feasible day plans that respect availability windows and travel times, and that maximize the number of friends met while ensuring a continuous 90-minute meeting with Jessica."
+        },
+        "commute_estimator": {
+            "private_information": [
+                "I model travel as fixed-time moves between neighborhoods.",
+                "I will provide pairwise travel time estimates consistent with public information.",
+                "I round to the nearest 15-minute increment."
+            ],
+            "goal": "Provide a reliable travel time matrix between the given locations for use in schedule feasibility checks and planning."
+        },
+        "friend_scheduler": {
+            "private_information": [
+                "I maintain friend availability windows and locations.",
+                "Friends are considered met only when co-located within their availability window.",
+                "Jessica is a key friend to meet with a minimum continuous meeting time of 90 minutes."
+            ],
+            "goal": "Provide availability windows and meeting constraints for each friend, focusing on Jessica's required 90-minute continuous meeting."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate itineraries, travel times, and availability windows to select the best plan that meets all hard constraints and maximizes the number of friends met, then produce a final PDDL domain and problem compatible with the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit_minutes": 15,
+            "day_start": "09:00",
+            "day_end": "21:00",
+            "locations": [
+                "Haight-Ashbury",
+                "Sunset District"
+            ]
+        },
+        "public_information": [
+            "You arrive at Haight-Ashbury at 09:00.",
+            "Travel time Haight-Ashbury to Sunset District: 15 minutes.",
+            "Travel time Sunset District to Haight-Ashbury: 15 minutes.",
+            "Jessica will be at Sunset District from 15:15 to 20:15.",
+            "You want to meet Jessica for at least 90 consecutive minutes.",
+            "Objective: meet as many friends as possible while respecting travel times and availability windows."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_preferences": {
+                "input": [],
+                "output": "traveler_prefs",
+                "system_prompt": "You are the traveler specifying personal objectives and constraints for a one-day visit in San Francisco. Return a compact JSON object describing hard constraints, soft preferences, objective, and tie-breakers; do not output PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Return traveler_prefs as a JSON object with keys hard_constraints, soft_preferences, objective, tiebreakers. Keep it concise and actionable."
+            },
+            "propose_itineraries": {
+                "input": [
+                    "traveler_prefs",
+                    "travel_times_matrix",
+                    "friends_availability"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You enumerate feasible schedules without emitting PDDL. You reason over time windows, travel times, and preferences to create several concrete, timestamped options.",
+                "prompt": "Use public information {environment->public_information}, traveler_prefs {traveler_prefs}, travel_times_matrix {travel_times_matrix}, and friends_availability {friends_availability}. Generate at least three distinct candidate day schedules as a JSON array under key candidate_schedules. Each schedule must list ordered steps with timestamps HH:MM, locations, actions such as wait, travel, meet, and must include at least one continuous meeting with Jessica of 90 minutes or more within her availability. Compute basic metrics per schedule including total meeting time with friends, whether constraints are satisfied, and a simple score that first maximizes number_of_friends_met then prefers earlier completion time then minimizes travel. Do not output PDDL."
+            }
+        },
+        "commute_estimator": {
+            "estimate_travel": {
+                "input": [],
+                "output": "travel_times_matrix",
+                "system_prompt": "You provide a minimal travel time matrix consistent with public information, using minutes as integers and 15-minute granularity; do not output PDDL.",
+                "prompt": "Public information: {environment->public_information}. Return travel_times_matrix as a JSON object mapping ordered pairs of locations to minutes, covering Haight-Ashbury, Sunset District, and identity moves as zero."
+            }
+        },
+        "friend_scheduler": {
+            "list_availability": {
+                "input": [],
+                "output": "friends_availability",
+                "system_prompt": "You produce structured availability windows and meeting constraints; do not output PDDL.",
+                "prompt": "Public information: {environment->public_information}. Return friends_availability as a JSON object listing each friend, their location during each availability window with start and end times in HH:MM, and any minimum meeting duration constraints. Include Jessica at Sunset District from 15:15 to 20:15 with a minimum continuous meeting of 90 minutes."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "traveler_prefs",
+                    "travel_times_matrix",
+                    "friends_availability",
+                    "candidate_schedules"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert planning engineer. Produce a single PDDL domain and a single PDDL problem compatible with the FastDownward solver. Use discrete 15-minute time steps between day_start and day_end. Model locations (Haight-Ashbury, Sunset District), movement actions with 15-minute duration encoded via step transitions, waiting, and meeting actions restricted to friend availability windows. Enforce a continuous 90-minute meeting with Jessica within her window. Initial state places the traveler at Haight-Ashbury at 09:00. Ensure the problem is solvable and consistent with the chosen best schedule. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>, and include no additional commentary.",
+                "prompt": "Inputs: traveler_prefs {traveler_prefs}, travel_times_matrix {travel_times_matrix}, friends_availability {friends_availability}, candidate_schedules {candidate_schedules}. 1) Reconcile naming (locations and people) and select the best schedule that maximizes the number of friends met while satisfying all hard constraints; if ties remain, pick the earliest finishing schedule, then the one with least travel. 2) Produce a PDDL domain and problem for FastDownward using 15-minute discrete steps. Avoid durative actions; instead represent time as a sequence of step predicates or successor relations and use action preconditions to respect availability windows. Include actions: wait, move between locations using given travel times, start_meeting and continue_meeting with Jessica, ensuring at least 6 consecutive 15-minute steps of meeting. 3) The problem should instantiate all required time steps from 09:00 to 21:00, the initial traveler location, availability windows, and goal conditions that guarantee the continuous 90-minute meeting with Jessica and completion at or before day_end. Enclose the domain and problem in the required tags and do not include any extra text."
+            }
+        },
+        "constraints": [
+            "commute_estimator.estimate_travel->traveler.propose_itineraries",
+            "friend_scheduler.list_availability->traveler.propose_itineraries",
+            "traveler.propose_preferences->traveler.propose_itineraries",
+            "traveler.propose_itineraries->orchestrator.synthesize_pddl",
+            "commute_estimator.estimate_travel->orchestrator.synthesize_pddl",
+            "friend_scheduler.list_availability->orchestrator.synthesize_pddl",
+            "traveler.propose_preferences->orchestrator.synthesize_pddl"
+        ]
+    }
+}

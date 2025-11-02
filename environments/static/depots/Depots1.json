@@ -1,0 +1,110 @@
+{
+    "name": "Depots1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "domain_extractor",
+            "instance_builder",
+            "orchestrator"
+        ],
+        "domain_extractor": {
+            "private_information": [
+                "Expert at reading natural language action descriptions and converting them into precise, lifted STRIPS-style operator schemas.",
+                "Identifies predicates, objects, and action dependencies without emitting PDDL."
+            ],
+            "goal": "Extract a clean, unambiguous domain model (predicates and action schemas with preconditions and add/delete effects) from the public information so others can instantiate problems."
+        },
+        "instance_builder": {
+            "private_information": [
+                "Expert at turning textual initial conditions, goals, and candidate plans into grounded instances against a provided domain spec.",
+                "Validates plan feasibility step-by-step without emitting PDDL."
+            ],
+            "goal": "Build grounded instances for the provided scenarios, list all needed objects, and validate the provided plan for the first scenario without producing PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinates domain extraction and instance building and compiles the final artifacts for a planner.",
+                "Produces the final PDDL domain and problems compatible with the Fast Downward solver."
+            ],
+            "goal": "Integrate the extracted domain and instances to produce one PDDL domain and PDDL problem files targeting the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8"
+            ],
+            "predicates": [
+                "cats ?x",
+                "collect ?x ?y",
+                "hand ?x",
+                "next ?x ?y",
+                "sneeze ?x",
+                "spring ?x",
+                "stupendous ?x",
+                "texture ?x",
+                "vase ?x ?y"
+            ],
+            "notes": "Actions are: paltry(x,y,z), sip(x,y,z), clip(x,y,z), wretched(x,y,z,w), memory(x,y,z), tightfisted(x,y,z)."
+        },
+        "public_information": [
+            "Action paltry(x,y,z) preconditions: hand x, cats y, texture z, vase x y, next y z. Effects: add next x z; delete vase x y.",
+            "Action sip(x,y,z) preconditions: hand x, cats y, texture z, next x z, next y z. Effects: add vase x y; delete next x z.",
+            "Action clip(x,y,z) preconditions: hand x, sneeze y, texture z, next y z, next x z. Effects: add vase x y; delete next x z.",
+            "Action wretched(x,y,z,w) preconditions: sneeze x, texture y, texture z, stupendous w, next x y, collect y w, collect z w. Effects: add next x z; delete next x y.",
+            "Action memory(x,y,z) preconditions: cats x, spring y, spring z, next x y. Effects: add next x z; delete next x y.",
+            "Action tightfisted(x,y,z) preconditions: hand x, sneeze y, texture z, next y z, vase x y. Effects: add next x z; delete vase x y.",
+            "Statement A initial conditions: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_3, hand object_8, next object_0 object_7, next object_1 object_7, next object_4 object_6, next object_5 object_7, next object_8 object_7, sneeze object_4, sneeze object_5, spring object_6, spring object_7, stupendous object_2, stupendous object_3, texture object_6, texture object_7.",
+            "Statement A goal: next object_8 object_6.",
+            "Statement A candidate plan (in order): sip object_8 object_1 object_7; memory object_1 object_7 object_6; paltry object_8 object_1 object_6.",
+            "Statement B initial conditions: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_5, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6.",
+            "Statement B goals: next object_7 object_6 and next object_8 object_6.",
+            "Modeling guidance: All predicates are boolean. Use STRIPS add/delete lists. Keep action names lowercase and hyphen-free for Fast Downward compatibility. No negative preconditions. Prefer :strips and, if needed, :typing may be omitted by using untyped objects."
+        ]
+    },
+    "workflow": {
+        "domain_extractor": {
+            "spec": {
+                "input": [],
+                "output": "domain_spec",
+                "system_prompt": "You are a domain modeler. From the provided public information, infer a precise STRIPS-like domain specification without emitting PDDL. Produce a compact, machine-readable outline listing: (1) predicates; (2) actions with parameters and their preconditions, add, and delete effects; (3) any notes about invariants or mutexes. Keep names lowercase and avoid introducing new predicates.",
+                "prompt": "Your name is domain_extractor. Use this information: {environment->public_information}. Use the known objects if relevant: {environment->init->objects}. Output a concise, unambiguous domain description that can be consumed by another agent to ground problem instances. Do not write PDDL; focus on data fidelity and consistency."
+            }
+        },
+        "instance_builder": {
+            "instances": {
+                "input": [
+                    "domain_spec"
+                ],
+                "output": "instances_spec",
+                "system_prompt": "You are an instance builder. Using the provided domain specification, construct grounded problem instances for Statement A and Statement B. Enumerate the full initial state and the goals for each, list the set of objects actually used, and validate Statement A's candidate plan step-by-step by simulating preconditions and applying effects. Do not emit PDDL; provide a structured, machine-readable report.",
+                "prompt": "Your name is instance_builder. You will receive a domain specification: {domain_spec}. The environment contains the following public information with two scenarios: {environment->public_information}. Build two instances: A and B. For A, include plan validation results showing the state progression and whether the goal is achieved. For B, no plan is given; ensure the initial state and goals are consistent and note any reachable hints (but do not synthesize a plan)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_spec",
+                    "instances_spec"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert PDDL author targeting the Fast Downward solver. Integrate the domain_spec and instances_spec to produce: (a) one PDDL domain file; (b) two PDDL problem files (problem A and problem B). Ensure action names, predicate names, and arities match the extracted domain. Use untyped objects or simple typing if strictly necessary; prefer requirements :strips and :equality only if used. Ensure initial states and goals mirror the scenarios exactly. Validate that problem A can accommodate the provided candidate plan sequence even if you do not include a plan in the output. Enclose the domain between <domain></domain> tags. Enclose each problem between <problem id=\"A\"></problem> and <problem id=\"B\"></problem> tags.",
+                "prompt": "You will receive a domain specification and two grounded instances: {domain_spec} and {instances_spec}. Produce the final PDDL artifacts for Fast Downward: a single coherent domain and two problem files (A and B). Maintain naming consistency, avoid extraneous requirements, and ensure that the add/delete effects exactly match the intended semantics."
+            }
+        },
+        "constraints": [
+            "domain_extractor.spec->instance_builder.instances",
+            "domain_extractor.spec->orchestrator.pddl",
+            "instance_builder.instances->orchestrator.pddl"
+        ]
+    }
+}

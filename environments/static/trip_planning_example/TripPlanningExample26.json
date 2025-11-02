@@ -1,0 +1,121 @@
+{
+    "name": "TripPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "flight_mapper",
+            "preference_modeler",
+            "calendar_keeper",
+            "orchestrator"
+        ],
+        "flight_mapper": {
+            "private_information": [
+                "You specialize in extracting transport topology from textual briefs.",
+                "Normalize city names to lowercase single tokens: porto, berlin, reykjavik.",
+                "When two cities have a direct flight, the connection is bidirectional."
+            ],
+            "goal": "Produce a concise, normalized list of cities and direct flight connections derived from the public information."
+        },
+        "preference_modeler": {
+            "private_information": [
+                "Treat desired stay lengths as soft preferences because their sum may exceed the total trip length.",
+                "Encode preferences as target days per city with linear penalties per day of deviation (missing or extra) so that a planner can minimize total penalty.",
+                "Maintain that each city must be visited at least one day."
+            ],
+            "goal": "Turn user stay desires into normalized requirements with explicit targets and deviation penalties without emitting PDDL."
+        },
+        "calendar_keeper": {
+            "private_information": [
+                "The trip spans a fixed, discrete horizon of 16 consecutive days indexed 1..16.",
+                "Meeting a friend in Reykjavik between days 12 and 16 inclusive is a hard constraint.",
+                "Direct flights are taken only to move between cities at day boundaries; one city is occupied per day."
+            ],
+            "goal": "Provide normalized calendar constraints: day horizon, one city per day, meeting window in Reykjavik, and direct-flight-only commuting."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate the other agents' outputs and generate the final planning model.",
+                "Use classical PDDL compatible with the Fast Downward planner.",
+                "Model day-by-day occupancy with move (flight) and stay actions; enforce hard constraints and represent soft preferences via action costs/penalties."
+            ],
+            "goal": "Produce a final PDDL domain and problem suitable for Fast Downward that finds a 16-day city sequence using only direct flights and ensures presence in Reykjavik between day 12 and 16, while minimizing deviation from desired stays."
+        }
+    },
+    "environment": {
+        "init": {
+            "horizon_days": 16,
+            "cities": [
+                "porto",
+                "berlin",
+                "reykjavik"
+            ],
+            "direct_flights": [
+                [
+                    "berlin",
+                    "reykjavik"
+                ],
+                [
+                    "porto",
+                    "berlin"
+                ]
+            ],
+            "meeting_window": {
+                "city": "reykjavik",
+                "start_day": 12,
+                "end_day": 16
+            }
+        },
+        "public_information": [
+            "You plan to visit exactly 3 cities over a total of 16 days: Porto, Berlin, Reykjavik.",
+            "Only direct flights are allowed between cities.",
+            "Direct flights exist between Berlin and Reykjavik, and between Porto and Berlin.",
+            "Desired stays: Porto 7 days, Berlin 6 days, Reykjavik 5 days (these sum to 18 and must be treated as soft preferences under the 16-day horizon).",
+            "You must meet a friend in Reykjavik on at least one day between day 12 and day 16 inclusive.",
+            "Exactly one city is occupied per day; flights occur only between consecutive days."
+        ]
+    },
+    "workflow": {
+        "flight_mapper": {
+            "analysis": {
+                "input": [],
+                "output": "facts_flight_graph",
+                "system_prompt": "You map transport topology for trip planning. Extract normalized cities and bidirectional direct-flight edges from the public information. Do not emit PDDL or code; return compact normalized facts.",
+                "prompt": "Your name is flight_mapper. Public information: {environment->public_information}. Normalize to lowercase tokens. Output a short structured list with: CITIES: <list> and DIRECT_FLIGHTS: <pair list>, assuming bidirectional connectivity for each listed pair."
+            }
+        },
+        "preference_modeler": {
+            "analysis": {
+                "input": [],
+                "output": "requirements_preferences",
+                "system_prompt": "You transform user desires into soft requirements suitable for cost-based planning. Do not emit PDDL. Declare targets per city, minimum visit requirement, and linear penalties per day of deviation.",
+                "prompt": "Your name is preference_modeler. Public information: {environment->public_information}. Produce a concise specification with: TARGETS: {porto:7, berlin:6, reykjavik:5}, MIN_PER_CITY: 1, and PENALTY_PER_DAY_DEVIATION: 1. Explain in one sentence that penalties apply for both missing and extra days because the total horizon is 16."
+            }
+        },
+        "calendar_keeper": {
+            "analysis": {
+                "input": [],
+                "output": "calendar_constraints",
+                "system_prompt": "You formalize calendar constraints for discrete-day trip scheduling. Do not emit PDDL. Keep it compact and explicit.",
+                "prompt": "Your name is calendar_keeper. Public information: {environment->public_information}. Init: horizon_days={environment->init->horizon_days}, meeting_window={environment->init->meeting_window}, direct_flights={environment->init->direct_flights}. Output the following items: HORIZON_DAYS: 16; DAYS: 1..16; ONE_CITY_PER_DAY: true; DIRECT_FLIGHTS_ONLY: true; MEETING_REQUIREMENT: be in reykjavik on some day in [12..16]."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "facts_flight_graph",
+                    "requirements_preferences",
+                    "calendar_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL for the Fast Downward planner. Produce a single-agent classical planning model with action costs. Provide only a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. Model: discrete days 1..16; predicate at(day, city); flight(city1, city2) per direct edge; actions: stay-in-city for a day, fly-between-cities overnight; enforce exactly one city per day and a contiguous day progression; include a hard goal to assign all 16 days and to be in reykjavik on at least one day in the window [12..16]; include soft preferences by minimizing total-cost using linear penalties for deviation from targets per city (both undershoot and overshoot). Ensure the PDDL is compatible with Fast Downward (use :action-costs / total-cost).",
+                "prompt": "Integrate the following inputs to build the final model and instance for Fast Downward. Flight facts: {facts_flight_graph}. Preference requirements: {requirements_preferences}. Calendar constraints: {calendar_constraints}. Use the city names: porto, berlin, reykjavik; the day index set 1..16; direct flights from the inputs only. Enforce that all three cities are visited at least one day. Represent deviation penalties as costs: staying beyond each city's target day accrues +1 per extra day; at the end, add +1 cost per missing day for each city using auxiliary bookkeeping so that the planner minimizes total deviation while satisfying all hard constraints. Return only the PDDL domain and problem within the required tags."
+            }
+        },
+        "constraints": [
+            "flight_mapper.analysis->orchestrator.synthesize_pddl",
+            "preference_modeler.analysis->orchestrator.synthesize_pddl",
+            "calendar_keeper.analysis->orchestrator.synthesize_pddl"
+        ]
+    }
+}

@@ -1,0 +1,101 @@
+{
+    "name": "TripPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "flight_analyst",
+            "itinerary_planner",
+            "orchestrator"
+        ],
+        "flight_analyst": {
+            "private_information": [
+                "I have access to airline route maps and can confirm which city pairs have direct flights.",
+                "I will not assume additional routes beyond those listed in public information."
+            ],
+            "goal": "Summarize the direct flight graph between Vienna, Vilnius, and Valencia and provide only the allowed commutes."
+        },
+        "itinerary_planner": {
+            "private_information": [
+                "I handle day allocations, event constraints, and feasibility checks.",
+                "I will highlight inconsistencies between total trip duration and per-city stay targets and propose adjustment options without changing the hard constraints."
+            ],
+            "goal": "Produce a 15-day high-level itinerary skeleton that honors direct-flight connectivity and must place the traveler in Valencia on days 9 and 15; treat per-city stay targets as preferences that may need minor adjustment."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate flight connectivity and itinerary targets into a single planning model and produce a final PDDL domain and problem suitable for the FastDownward solver that enforces a 15-day horizon, only direct-flight moves, and presence in Valencia on days 9 and 15."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 15,
+            "cities": [
+                "Vienna",
+                "Vilnius",
+                "Valencia"
+            ],
+            "direct_flights": [
+                [
+                    "Vienna",
+                    "Valencia"
+                ],
+                [
+                    "Vilnius",
+                    "Vienna"
+                ]
+            ],
+            "events": [
+                {
+                    "name": "Conference",
+                    "city": "Valencia",
+                    "days": [
+                        9,
+                        15
+                    ]
+                }
+            ]
+        },
+        "public_information": [
+            "You plan a 15-day trip across three cities: Vienna, Vilnius, Valencia.",
+            "Planned stays: Vienna 5 days, Vilnius 5 days, Valencia 7 days (note: these sum to 17 days, which exceeds the 15-day trip and requires adjusting by 2 days overall).",
+            "Only direct flights are allowed for city-to-city moves.",
+            "Available direct flights (bidirectional): Vienna <-> Valencia, Vilnius <-> Vienna.",
+            "You must be in Valencia on day 9 and day 15 for a conference.",
+            "A valid trip plan must respect the 15-day horizon and only use the listed direct connections."
+        ]
+    },
+    "workflow": {
+        "flight_analyst": {
+            "graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You analyze and summarize direct-flight connectivity between the listed cities. Provide a compact, machine-readable summary of the direct routes only. Do not emit PDDL.",
+                "prompt": "Your name is flight_analyst. Public information: {environment->public_information}. Private information: {agents->flight_analyst->private_information}. Goal: {agents->flight_analyst->goal}. Output a concise JSON object with keys: cities (list of city names), direct_flights (list of bidirectional pairs as [cityA, cityB]), and notes (short text). Include only the routes explicitly listed in public information."
+            }
+        },
+        "itinerary_planner": {
+            "stays": {
+                "input": [],
+                "output": "stay_targets",
+                "system_prompt": "You design a high-level itinerary skeleton for a fixed 15-day horizon using only direct connections and honoring event days. Identify inconsistencies and propose adjustment options succinctly. Do not emit PDDL.",
+                "prompt": "Your name is itinerary_planner. Public information: {environment->public_information}. Private information: {agents->itinerary_planner->private_information}. Goal: {agents->itinerary_planner->goal}. Provide a structured JSON object with keys: days_total (int), hard_constraints (list of statements including Valencia on days 9 and 15, direct-flight-only rule), preferred_stays (map of city to desired days), discrepancy (if any, quantify overage or shortage), adjustment_options (short list of feasible ways to reduce total to 15 while keeping Valencia on days 9 and 15), and any additional notes about start/end city feasibility given direct flights."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "flight_graph",
+                    "stay_targets"
+                ],
+                "output": "pddl_trip",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Produce a classical PDDL domain and problem suitable for the FastDownward (Fast Downward) solver. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and predicates clearly defined and avoid conditional effects unsupported by standard STRIPS.",
+                "prompt": "Integrate the connectivity from the flight_analyst and the itinerary constraints from the itinerary_planner to produce a final PDDL domain and problem that enforces the following: 1) A 15-day horizon represented as a linear sequence of day objects with a next relation; 2) The agent is located in exactly one city each day; 3) Movement between consecutive days is either staying in place or flying along a listed direct route; 4) The agent must be in Valencia on day 9 and day 15; 5) Only the listed direct flights may be used; 6) Prefer, when feasible, the provided preferred_stays, but enforce the 15-day total as a hard constraint. Use types such as city and day. Include static facts for cities and direct_flights from {flight_graph}. Include initial day objects 1..15 and next relations. Choose a feasible start city consistent with constraints and routes. Ensure the problem is solvable by FastDownward. Inputs from flight_analyst: {flight_graph}. Inputs from itinerary_planner: {stay_targets}. Provide the final PDDL domain and problem enclosed within the required tags."
+            }
+        },
+        "constraints": [
+            "flight_analyst.graph->orchestrator.pddl",
+            "itinerary_planner.stays->orchestrator.pddl"
+        ]
+    }
+}

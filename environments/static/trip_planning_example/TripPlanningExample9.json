@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "city_scheduler",
+            "flight_validator",
+            "orchestrator"
+        ],
+        "city_scheduler": {
+            "private_information": [
+                "I specialize in allocating day-by-day city stays under hard constraints and soft preferences.",
+                "I do not check flight connectivity beyond direct-flight adjacency; the flight validator does that."
+            ],
+            "goal": "Propose a 10-day sequence assigning each day to one of the three cities that satisfies the hard requirements (3 days in Frankfurt, 3 days in Bucharest), places at least one Stuttgart day between day 5 and day 10, and maximizes Stuttgart days given the 10-day horizon and connectivity rules."
+        },
+        "flight_validator": {
+            "private_information": [
+                "I verify that transitions between consecutive days are supported by direct flights or by staying in the same city.",
+                "Direct flights exist only between Bucharest and Frankfurt, and between Frankfurt and Stuttgart; there is no direct flight between Bucharest and Stuttgart."
+            ],
+            "goal": "Validate that the proposed 10-day city-by-day plan is feasible with only direct flights, preserve the required day counts per city, and ensure that at least one Stuttgart day occurs within days 5 to 10; if infeasible, propose minimal adjustments."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate scheduling and validation results and produce the final PDDL domain and problem for the FastDownward solver."
+            ],
+            "goal": "Emit a consistent PDDL domain and problem that encode the 10-day travel plan, enforce the hard constraints, honor the workshop window, and optimize for as many Stuttgart days as possible up to 6 within the 10-day horizon."
+        }
+    },
+    "environment": {
+        "init": {
+            "days": 10,
+            "day_range": [
+                1,
+                10
+            ],
+            "cities": [
+                "Frankfurt",
+                "Bucharest",
+                "Stuttgart"
+            ],
+            "direct_flights": [
+                [
+                    "Bucharest",
+                    "Frankfurt"
+                ],
+                [
+                    "Frankfurt",
+                    "Stuttgart"
+                ]
+            ],
+            "workshop_window": [
+                5,
+                10
+            ]
+        },
+        "public_information": [
+            "Time horizon: 10 consecutive days labeled 1 through 10.",
+            "Cities available: Frankfurt (FRA), Bucharest (BUH), Stuttgart (STR).",
+            "Direct flights are available only between Bucharest and Frankfurt, and between Frankfurt and Stuttgart; there is no direct flight between Bucharest and Stuttgart.",
+            "Hard requirements: spend exactly 3 days in Frankfurt and exactly 3 days in Bucharest.",
+            "Soft preference: spend up to 6 days in Stuttgart; given the 10-day horizon and the hard requirements, the maximum feasible days in Stuttgart is 4.",
+            "Workshop constraint: be located in Stuttgart on at least one day within days 5 to 10 inclusive.",
+            "Movement rule: you may change cities only across consecutive days if a direct flight exists between them; staying in the same city between consecutive days requires no flight.",
+            "Objective: produce a feasible 10-day sequence satisfying all hard constraints and the workshop constraint while maximizing the number of days in Stuttgart.",
+            "A feasible outline consistent with all constraints is: days 1-3 Bucharest, days 4-6 Frankfurt, days 7-10 Stuttgart."
+        ]
+    },
+    "workflow": {
+        "city_scheduler": {
+            "schedule": {
+                "input": [],
+                "output": "city_schedule",
+                "system_prompt": "You are a travel schedule specialist. Allocate a 10-day day-by-day city plan that respects hard constraints and soft preferences while considering direct-flight adjacency, but do not perform flight validation.",
+                "prompt": "Your name is city_scheduler. Public information: {environment->public_information}. Your knowledge: {agents->city_scheduler->private_information}. Goal: {agents->city_scheduler->goal}. Produce a compact JSON object with fields: assignment (map from day 1..10 to a city), counts_per_city, workshop_days_in_stuttgart (list of days), and rationale. Do not emit PDDL; leave flight feasibility checks to the flight_validator."
+            }
+        },
+        "flight_validator": {
+            "validate": {
+                "input": [
+                    "city_schedule"
+                ],
+                "output": "validated_schedule",
+                "system_prompt": "You are a flight connectivity validator for direct flights only. Verify adjacency feasibility day-to-day and minimally adjust if needed while preserving required city-day counts and the workshop window.",
+                "prompt": "Your name is flight_validator. Public information: {environment->public_information}. Your knowledge: {agents->flight_validator->private_information}. Your input proposal: {city_schedule}. Goal: {agents->flight_validator->goal}. Return a compact JSON object with fields: valid (boolean), issues (list), final_assignment (map day 1..10 to city), counts_per_city, workshop_days_in_stuttgart (list), and notes. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "city_schedule",
+                    "validated_schedule"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-constraint planning with PDDL targeting the FastDownward solver. You must output a PDDL domain and a PDDL problem that encode the validated 10-day city plan with actions for staying and for flying along allowed edges, enforce exact day counts for Frankfurt and Bucharest, require at least one Stuttgart day in the workshop window, and optimize for as many Stuttgart days as possible up to 6 within the 10-day horizon. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags; ensure the model is compatible with FastDownward (use STRIPS with total-cost if you introduce costs).",
+                "prompt": "Integrate the schedule and validation to produce final PDDL. Task objective: {agents->orchestrator->goal}. Public context: {environment->public_information}. Candidate schedule: {city_schedule}. Validated schedule: {validated_schedule}. Requirements: encode 10 days, three cities, direct-flight graph (BUH<->FRA, FRA<->STR), exact counts of 3 for Frankfurt and 3 for Bucharest, at least one Stuttgart day within days 5..10, and a goal or cost structure that maximizes Stuttgart days without exceeding 6 overall. Use clear object typing for days and cities, predicates for at(day,city), and actions for stay and fly constrained by direct flights only. Enclose the PDDL domain within <domain></domain> and the PDDL problem within <problem></problem> tags suitable for FastDownward."
+            }
+        },
+        "constraints": [
+            "city_scheduler.schedule->flight_validator.validate",
+            "city_scheduler.schedule->orchestrator.pddl",
+            "flight_validator.validate->orchestrator.pddl"
+        ]
+    }
+}

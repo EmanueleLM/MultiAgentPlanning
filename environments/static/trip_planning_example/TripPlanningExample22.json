@@ -1,0 +1,96 @@
+{
+    "name": "TripPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "berlin_agent",
+            "frankfurt_agent",
+            "bucharest_agent",
+            "orchestrator"
+        ],
+        "berlin_agent": {
+            "private_information": [
+                "Strong requirement to be in Berlin on days 1 through 7 to attend the annual show.",
+                "Preference to maximize time in Berlin if feasible."
+            ],
+            "goal": "Contribute Berlin-specific constraints and preferences to build a feasible 11-day itinerary visiting Berlin, Frankfurt, and Bucharest while using only direct flights."
+        },
+        "frankfurt_agent": {
+            "private_information": [
+                "Would like to spend 4 days in Frankfurt but can accept fewer days if necessary to meet the 11-day total.",
+                "At least 2 days in Frankfurt is acceptable if trade-offs are required."
+            ],
+            "goal": "Contribute Frankfurt-specific constraints and preferences to build a feasible 11-day itinerary visiting Berlin, Frankfurt, and Bucharest while using only direct flights."
+        },
+        "bucharest_agent": {
+            "private_information": [
+                "Wants to spend 2 days in Bucharest.",
+                "Flexible on exact dates as long as flights are direct via Frankfurt when coming from or going to Berlin."
+            ],
+            "goal": "Contribute Bucharest-specific constraints and preferences to build a feasible 11-day itinerary visiting Berlin, Frankfurt, and Bucharest while using only direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate city contexts and produce a final 11-day trip plan using only direct flights, ensuring Berlin is visited on days 1-7 for the show, including Bucharest for 2 days, and allocating the remaining days to Frankfurt. Output the final PDDL domain and problem for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "start_day": 1,
+            "cities": 3
+        },
+        "public_information": [
+            "You will visit three cities: Berlin, Frankfurt, and Bucharest.",
+            "Total trip length is 11 days.",
+            "Only direct flights will be taken to commute between cities.",
+            "Direct flights exist between Berlin and Frankfurt; direct flights exist between Frankfurt and Bucharest.",
+            "There is an annual show in Berlin from day 1 to day 7 that you want to attend.",
+            "Desired stays: Berlin 7 days, Frankfurt 4 days, Bucharest 2 days (note that this totals 13 and exceeds the 11-day trip, so preferences may need adjustment)."
+        ]
+    },
+    "workflow": {
+        "berlin_agent": {
+            "context": {
+                "input": [],
+                "output": "berlin_context",
+                "system_prompt": "You are a city-specific trip context generator. Return a compact JSON object summarizing constraints, preferences, and direct-flight partners for your city, without emitting PDDL.",
+                "prompt": "Your name is berlin_agent. Public information: {environment->public_information}. Your private information: {agents->berlin_agent->private_information}. Global objective: {agents->orchestrator->goal}. Produce a concise JSON object with keys: city, hard_constraints, soft_preferences, required_days, preferred_days, direct_flights_to, notes. Keep it factual and minimal."
+            }
+        },
+        "frankfurt_agent": {
+            "context": {
+                "input": [],
+                "output": "frankfurt_context",
+                "system_prompt": "You are a city-specific trip context generator. Return a compact JSON object summarizing constraints, preferences, and direct-flight partners for your city, without emitting PDDL.",
+                "prompt": "Your name is frankfurt_agent. Public information: {environment->public_information}. Your private information: {agents->frankfurt_agent->private_information}. Global objective: {agents->orchestrator->goal}. Produce a concise JSON object with keys: city, hard_constraints, soft_preferences, required_days, preferred_days, direct_flights_to, notes. Keep it factual and minimal."
+            }
+        },
+        "bucharest_agent": {
+            "context": {
+                "input": [],
+                "output": "bucharest_context",
+                "system_prompt": "You are a city-specific trip context generator. Return a compact JSON object summarizing constraints, preferences, and direct-flight partners for your city, without emitting PDDL.",
+                "prompt": "Your name is bucharest_agent. Public information: {environment->public_information}. Your private information: {agents->bucharest_agent->private_information}. Global objective: {agents->orchestrator->goal}. Produce a concise JSON object with keys: city, hard_constraints, soft_preferences, required_days, preferred_days, direct_flights_to, notes. Keep it factual and minimal."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "berlin_context",
+                    "frankfurt_context",
+                    "bucharest_context"
+                ],
+                "output": "trip_pddl",
+                "system_prompt": "You are an expert in integrating multi-agent trip contexts and writing PDDL for the FastDownward solver. You must output a PDDL domain and a PDDL problem using STRIPS-compatible constructs only (no action costs and no durative actions). Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags and ensure the problem is solvable by FastDownward.",
+                "prompt": "Aggregate the city contexts below to produce a consistent 11-day itinerary that uses only direct flights. If preferences conflict with the 11-day limit, prioritize: (1) be in Berlin on days d1-d7 for the show; (2) include Bucharest for 2 days; (3) allocate the remaining days to Frankfurt. Use the following feasible allocation that satisfies direct-flight constraints: d1-d7 Berlin, d8-d9 Frankfurt, d10-d11 Bucharest. Build a PDDL domain that models sequential days with objects of type day and city, predicates such as next, direct, in, current, last-city, and assigned, and actions assign-day (to choose the city for the current day subject to staying or flying only if direct(from,to) holds) and advance (to move from the current day to the next). Provide a PDDL problem with objects d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 and cities berlin frankfurt bucharest; include the successor chain with next(d1,d2) ... next(d10,d11); include symmetric direct-flight facts for Berlin-Frankfurt and Frankfurt-Bucharest; initialize current(d1) and last-city(berlin); and set goals requiring in(d1,berlin) ... in(d7,berlin), in(d8,frankfurt), in(d9,frankfurt), in(d10,bucharest), in(d11,bucharest). Provide only the PDDL inside the required tags. City contexts to integrate: {berlin_context} {frankfurt_context} {bucharest_context}"
+            }
+        },
+        "constraints": [
+            "berlin_agent.context->orchestrator.pddl",
+            "frankfurt_agent.context->orchestrator.pddl",
+            "bucharest_agent.context->orchestrator.pddl"
+        ]
+    }
+}

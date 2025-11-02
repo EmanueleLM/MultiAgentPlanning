@@ -1,0 +1,111 @@
+{
+    "name": "TripPlanningExample25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "calendar_agent",
+            "flight_agent",
+            "orchestrator"
+        ],
+        "calendar_agent": {
+            "private_information": [
+                "I prioritize hard constraints first (total length, fixed-date events, mandatory minimum stays).",
+                "I treat the Lyon 6-day wish as a soft preference that can be adjusted to fit the 16-day limit."
+            ],
+            "goal": "Propose a feasible day-by-day allocation over 16 days that satisfies all hard constraints and notes trade-offs for soft preferences."
+        },
+        "flight_agent": {
+            "private_information": [
+                "I verify day-to-day transitions only follow direct flight edges.",
+                "I ensure the traveler reaches Split by the morning of day 10 to attend the show from day 10 through day 16."
+            ],
+            "goal": "Validate or minimally adjust the proposed allocation so that every city change is connected by available direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate calendar and flight constraints to produce a final, solvable PDDL domain and problem for the FastDownward solver that encodes the concrete 16-day itinerary using only allowed direct flights and honoring all hard constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 16,
+            "cities": [
+                "valencia",
+                "lyon",
+                "split"
+            ],
+            "start_day_index": 1,
+            "show_window": {
+                "city": "split",
+                "start_day": 10,
+                "end_day": 16
+            },
+            "direct_flights": [
+                [
+                    "valencia",
+                    "lyon"
+                ],
+                [
+                    "lyon",
+                    "valencia"
+                ],
+                [
+                    "lyon",
+                    "split"
+                ],
+                [
+                    "split",
+                    "lyon"
+                ]
+            ]
+        },
+        "public_information": [
+            "The total trip length is 16 consecutive days (indexed 1 to 16).",
+            "Direct flights exist between Lyon and Split.",
+            "Direct flights exist between Valencia and Lyon.",
+            "There are no direct flights between Valencia and Split.",
+            "You want to spend 5 days in Valencia (hard requirement).",
+            "You want to spend 7 days in Split (hard requirement).",
+            "From day 10 to day 16 inclusive there is an annual show in Split that you want to attend, so you must be in Split for those days (hard requirement).",
+            "You would like to visit Lyon for 6 days (soft preference that may need adjustment to satisfy the total-length constraint).",
+            "Only direct flights may be used to commute between cities; staying multiple consecutive days in the same city is allowed."
+        ]
+    },
+    "workflow": {
+        "calendar_agent": {
+            "plan": {
+                "input": [],
+                "output": "calendar_context",
+                "system_prompt": "You are a travel calendar analyst. Build a feasible 16-day day-by-day city allocation that respects all hard requirements (total days = 16, Split on days 10-16 inclusive, 5 days in Valencia, 7 days in Split) and treat the Lyon 6-day wish as a soft preference that may be adjusted. If a direct conflict exists with total days, explain the trade-off and propose a specific allocation that satisfies the hard constraints.",
+                "prompt": "Your name is calendar_agent. You have access to the following public information: {environment->public_information}. Your knowledge: {agents->calendar_agent->private_information}. Goal: {agents->calendar_agent->goal}. Produce a concise JSON summary containing: hard_constraints, soft_preferences, proposed_allocation (a mapping from day numbers 1..16 to one of valencia, lyon, split), and rationale. Do not emit PDDL."
+            }
+        },
+        "flight_agent": {
+            "validate": {
+                "input": [
+                    "calendar_context"
+                ],
+                "output": "flight_context",
+                "system_prompt": "You are a flight routing analyst. Use the direct flight graph and the candidate allocation to verify that each consecutive pair of days either remains in the same city or moves along a direct flight edge. Ensure arrival in Split no later than day 10 so that days 10-16 are all Split. If the allocation is invalid, minimally adjust it while preserving all hard constraints. Prefer using Valencia->Lyon and Lyon->Split for transfers; Valencia->Split is not allowed directly.",
+                "prompt": "Your name is flight_agent. You have access to the following public information: {environment->public_information}. Your knowledge: {agents->flight_agent->private_information}. You are given the calendar agent output: {calendar_context}. Validate or minimally adjust the allocation and return a concise JSON with fields: flight_graph (edges you use), validation (true or false), adjusted_allocation (days 1..16 to city), and notes. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "calendar_context",
+                    "flight_context"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in generating PDDL for the FastDownward solver. Integrate the calendar and flight contexts to produce a single solvable PDDL domain and problem. Use a STRIPS-style typed domain without numeric fluents or disjunction. Model days as objects d1..d16 with a next relation, cities as objects, and static direct-flight facts. Provide actions that assign the first day and then advance to the next day either staying in the same city or flying along a direct edge. The problem should encode the final concrete itinerary as goals (at dX cityY) for each day d1..d16, include the next chain and direct flight facts, and use predicates like assigned(d) to prevent multiple assignments per day. Wrap the domain in <domain></domain> and the problem in <problem></problem>.",
+                "prompt": "You coordinate the outputs from the calendar and flight agents to produce the final PDDL domain and problem for FastDownward. Use the following information: Calendar context: {calendar_context} Flight context: {flight_context} Requirements: 1) Days are d1..d16 with next(d1,d2), next(d2,d3), ..., next(d15,d16). 2) Cities are valencia, lyon, split. 3) Only direct flights as specified may be used to move between different cities on consecutive days; remaining in the same city across days is allowed. 4) The final goals should match the validated or adjusted allocation from the flight agent exactly, ensuring Split on days 10..16 and meeting the 5-day Valencia and 7-day Split constraints. 5) Keep the domain minimal with actions such as assign_first, advance_same, advance_fly. 6) Ensure the output is ready for FastDownward. Return only the PDDL enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "calendar_agent.plan->flight_agent.validate",
+            "calendar_agent.plan->orchestrator.pddl",
+            "flight_agent.validate->orchestrator.pddl"
+        ]
+    }
+}

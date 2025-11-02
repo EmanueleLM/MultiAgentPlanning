@@ -1,0 +1,105 @@
+{
+    "name": "TripPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "stay_allocator",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to visit three European cities: Venice, Dubrovnik, and Istanbul.",
+                "Total available time is 11 days.",
+                "I would like to stay 6 days in Venice, 4 days in Dubrovnik, and 3 days in Istanbul.",
+                "I only take direct flights to commute between cities."
+            ],
+            "goal": "Produce a concise requirement brief that states hard constraints, soft preferences, and any conflicts so that a planner can build a feasible 11-day itinerary visiting the three cities using only direct flights."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Known direct flights: between Dubrovnik and Venice; between Dubrovnik and Istanbul.",
+                "There are no known direct flights between Istanbul and Venice.",
+                "Treat the provided direct flights as bidirectional unless explicitly stated otherwise."
+            ],
+            "goal": "Provide a clear connectivity summary and feasible visiting orders that respect direct-flight-only commuting across Venice, Dubrovnik, and Istanbul."
+        },
+        "stay_allocator": {
+            "private_information": [
+                "Total days available: 11.",
+                "Desired stays sum to 13 (Venice 6, Dubrovnik 4, Istanbul 3), which conflicts with the 11-day limit.",
+                "Propose a feasible allocation close to preferences under the 11-day budget. Example allocation that minimizes deviation: Venice 5 days, Dubrovnik 4 days, Istanbul 2 days."
+            ],
+            "goal": "Recommend one or more feasible day allocations across Venice, Dubrovnik, and Istanbul that total exactly 11 days and stay as close as possible to the stated preferences."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate constraints and preferences to produce a final PDDL domain and problem for a Fast Downward solver that plans an 11-day trip visiting Venice, Dubrovnik, and Istanbul using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "planning_horizon_days": 11,
+            "solver": "FastDownward",
+            "allow_bidirectional_flights": true
+        },
+        "public_information": [
+            "Total trip duration is 11 days.",
+            "Cities to visit: Venice, Dubrovnik, Istanbul.",
+            "You only take direct flights between cities.",
+            "Direct flights exist between Dubrovnik and Venice.",
+            "Direct flights exist between Dubrovnik and Istanbul.",
+            "No direct flights are known between Istanbul and Venice.",
+            "Desired stays (preferences): Venice 6 days; Dubrovnik 4 days; Istanbul 3 days; these may need adjustment to fit 11 days total.",
+            "Start city is flexible and can be chosen to satisfy the constraints."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context": {
+                "input": [],
+                "output": "context_traveler",
+                "system_prompt": "You are the traveler requirements expert. Produce a precise and concise brief that distinguishes hard constraints (total 11 days, direct flights only, must visit Venice, Dubrovnik, Istanbul) from soft preferences (desired days per city), highlights conflicts, and notes acceptable relaxations.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private knowledge: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide a compact structured summary with: hard constraints; soft preferences; detected conflicts; tie-breaking or prioritization guidance. Do not emit PDDL."
+            }
+        },
+        "flight_planner": {
+            "context": {
+                "input": [],
+                "output": "context_flights",
+                "system_prompt": "You are a flight connectivity expert. Summarize the direct-flight graph, explicitly listing allowed city pairs and feasible city orders that visit all three cities without violating the direct-flight-only rule.",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information}. Your private knowledge: {agents->flight_planner->private_information}. Goal: {agents->flight_planner->goal}. Output a connectivity summary with: direct-flight pairs; at least one feasible visiting sequence covering all three cities using only the listed direct flights; assumptions about bidirectionality only if stated. Do not emit PDDL."
+            }
+        },
+        "stay_allocator": {
+            "context": {
+                "input": [
+                    "context_traveler"
+                ],
+                "output": "context_stays",
+                "system_prompt": "You are a trip day-allocation expert. Resolve over-specified preferences into a feasible 11-day allocation that is close to the desired stays, and provide alternatives if useful.",
+                "prompt": "Your name is stay_allocator. Public information: {environment->public_information}. Your private knowledge: {agents->stay_allocator->private_information}. Traveler brief: {context_traveler}. Goal: {agents->stay_allocator->goal}. Provide one primary 11-day allocation across Venice, Dubrovnik, and Istanbul that minimizes deviation from preferences and one optional alternative. State the objective used for tie-breaking (e.g., least squares deviation). Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "context_traveler",
+                    "context_flights",
+                    "context_stays"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert trip-planning orchestrator. Using the provided contexts, synthesize a valid PDDL 2.1 domain and problem compatible with the Fast Downward solver. Model cities, direct flights, location, and an 11-day budget. Use a numeric fluent to track remaining days and per-city days if needed. Ensure actions allow only direct flights, and the plan visits Venice, Dubrovnik, and Istanbul with a feasible day allocation summing to 11 days. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the following inputs to produce the final PDDL for Fast Downward. Traveler requirements: {context_traveler}. Flight connectivity: {context_flights}. Stay allocation recommendations: {context_stays}. Requirements: 1) Domain must declare types, predicates, and numeric fluents required to enforce an 11-day budget and direct-flight-only mobility. 2) Problem must include objects for the three cities, initial location (choose a start city consistent with the feasible visiting order), direct-flight facts matching the inputs, the total days budget set to 11, and target per-city stays following the recommended feasible allocation. 3) Goals must require that all three cities are visited and the day budget is fully allocated across stays; use numeric constraints to ensure the sum of stay-days equals 11. 4) The final output must be enclosed in <domain></domain> and <problem></problem> tags and be directly solvable by Fast Downward without additional assumptions."
+            }
+        },
+        "constraints": [
+            "traveler.context->stay_allocator.context",
+            "traveler.context->orchestrator.pddl",
+            "flight_planner.context->orchestrator.pddl",
+            "stay_allocator.context->orchestrator.pddl"
+        ]
+    }
+}

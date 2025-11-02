@@ -1,0 +1,94 @@
+{
+    "name": "TripPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I will start the trip in Brussels",
+                "I am flexible on preferred day counts if they conflict with the total length",
+                "Meeting friends in Nice during the early part of the trip is the top priority"
+            ],
+            "goal": "Find a feasible 9-day trip plan visiting Brussels, Valencia, and Nice using only direct flights between cities, meeting friends in Nice between day 1 and day 6, and satisfying as many preferred stay lengths as possible."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Only direct flights are allowed for city-to-city moves",
+                "There is no direct flight between Valencia and Nice"
+            ],
+            "goal": "Identify feasible city sequences and day allocations over 9 days that respect direct-flight connectivity and enable meeting friends in Nice on a day within the window day 1 to day 6."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate constraints and connectivity to produce a PDDL domain and problem for a FastDownward-compatible planner that yields a 9-day itinerary visiting all three cities with only direct flights and meeting friends in Nice within the required window, while treating city stay-lengths as preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "days": 9,
+            "cities": [
+                "brussels",
+                "valencia",
+                "nice"
+            ],
+            "friend_window_start_day": 1,
+            "friend_window_end_day": 6,
+            "direct_flights": [
+                [
+                    "brussels",
+                    "valencia"
+                ],
+                [
+                    "brussels",
+                    "nice"
+                ]
+            ]
+        },
+        "public_information": [
+            "Trip length is exactly 9 days labeled d1 to d9.",
+            "Cities to visit: Brussels, Valencia, Nice.",
+            "Direct flights exist only between Brussels and Valencia, and between Brussels and Nice; there is no direct flight between Valencia and Nice.",
+            "You only take direct flights to commute between cities; each day must be assigned to exactly one city.",
+            "Planned preferences: Brussels 2 days, Valencia 3 days, Nice 6 days; these sum to 11 and therefore cannot all be satisfied within 9 days.",
+            "You must meet friends in Nice on at least one day within day 1 to day 6 inclusive."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "constraints_analysis": {
+                "input": [],
+                "output": "traveler_constraints",
+                "system_prompt": "You are a travel-preferences analyst. Extract hard constraints and soft preferences from the context, highlight conflicts, and clarify priorities. Do not produce PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Global objective: {agents->traveler->goal}. Output a concise list with sections: 1) Hard constraints that must hold, 2) Soft preferences ranked by importance, 3) Conflicts and how to resolve them, 4) Any assumptions avoided. Keep it short and actionable for a planner."
+            }
+        },
+        "flight_planner": {
+            "connectivity_and_itinerary_options": {
+                "input": [],
+                "output": "flight_connectivity",
+                "system_prompt": "You are an airline network and itinerary feasibility analyst. Using the direct-flight graph and the 9-day limit, propose feasible city-visit orders and day-allocation templates that meet the meeting-in-Nice window. Do not produce PDDL.",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information}. Your private information: {agents->flight_planner->private_information}. Global objective: {agents->flight_planner->goal}. Provide: 1) The directed connectivity you will use, 2) One or more feasible city orders that visit all three cities using only direct flights, 3) Example 9-day allocations that enable being in Nice on at least one day in the range day 1 to day 6, 4) Notes on unavoidable tradeoffs due to lack of a Valencia-Nice direct flight."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_constraints",
+                    "flight_connectivity"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in classical PDDL planning for the FastDownward solver. Produce a complete, solvable PDDL domain and problem. Use only STRIPS-compatible constructs supported by FastDownward. Enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem>. Modeling directives: - Types: city, day. - Predicates: at ?c - city ?d - day; next ?d ?d2; filled ?d; direct ?a - city ?b - city; in_window ?d; visited ?c; met_friends. - Initial state: next forms a chain d1->d2->...->d8->d9; at brussels d1; filled d1; visited brussels; in_window true for d1..d6; direct facts for Brussels-Valencia and Brussels-Nice in both directions. - Actions: stay and fly advance from day d to next day n, require at current city c and next d n, require not filled n, set at destination for n, set filled n, and set visited for the destination. Fly additionally requires direct connectivity. Include an action meet_friends that requires at nice d and in_window d and not met_friends, and makes met_friends true. - Goal: filled d2..d9, visited brussels, visited valencia, visited nice, and met_friends. - Treat per-city day counts as soft preferences and do not enforce them as hard goals. Provide a brief comment header inside the PDDL as comments to clarify objects and intentions.",
+                "prompt": "Integrate the following analyses to produce the final PDDL domain and problem for FastDownward: Traveler constraints: {traveler_constraints}. Flight connectivity and options: {flight_connectivity}. Ensure the problem contains the three cities brussels, valencia, nice and days d1..d9 with the next chain and window facts, and only the allowed direct flight pairs. Include an example-friendly initial state where the trip starts in Brussels on day d1. Enclose your output in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.constraints_analysis->orchestrator.pddl",
+            "flight_planner.connectivity_and_itinerary_options->orchestrator.pddl"
+        ]
+    }
+}

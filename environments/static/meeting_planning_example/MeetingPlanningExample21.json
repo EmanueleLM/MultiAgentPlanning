@@ -1,0 +1,85 @@
+{
+    "name": "MeetingPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_suggester",
+            "travel_time_estimator",
+            "orchestrator"
+        ],
+        "itinerary_suggester": {
+            "private_information": [
+                "Preference: start meetings as early as feasible after arrival.",
+                "Preference: prioritize longer meetings when possible.",
+                "Assume the day is limited to the afternoon departure after meetings."
+            ],
+            "goal": "Propose feasible and diverse day schedules that maximize meetings while respecting time windows and travel durations."
+        },
+        "travel_time_estimator": {
+            "private_information": [
+                "Travel times are reliable baseline estimates for walking or rideshare.",
+                "Use a conservative 0 minute buffer unless instructed otherwise."
+            ],
+            "goal": "Provide an asymmetric travel-time matrix and derived helpers (e.g., earliest feasible arrival) consistent with the public constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate itineraries and travel-time data, select the best feasible schedule that meets Margaret for at least 30 minutes, and produce a final PDDL domain and problem suitable for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_format": "HH:MM",
+            "time_step_minutes": 5,
+            "start_location": "Mission_District",
+            "arrival_time": "09:00",
+            "locations": [
+                "Mission_District",
+                "Haight_Ashbury"
+            ]
+        },
+        "public_information": [
+            "You are visiting San Francisco for one day to meet friends.",
+            "You arrive at Mission District at 09:00.",
+            "Margaret will be at Haight-Ashbury from 08:00 to 15:45.",
+            "You want to meet Margaret for at least 30 minutes.",
+            "Travel time from Mission District to Haight-Ashbury is 12 minutes.",
+            "Travel time from Haight-Ashbury to Mission District is 11 minutes.",
+            "Objective: consider different schedules and pick the best feasible one that maximizes meetings and respects constraints."
+        ]
+    },
+    "workflow": {
+        "itinerary_suggester": {
+            "candidates": {
+                "input": [],
+                "output": "candidate_itineraries",
+                "system_prompt": "You generate candidate day schedules using availability windows and travel durations. Produce a small set of diverse feasible itineraries that all meet the minimum constraints and vary in meeting duration or start time. Return only a concise structured list (e.g., JSON) capturing departure_time_from_Mission, arrival_time_at_Haight, meet_start, meet_end, and notes. Do not emit PDDL.",
+                "prompt": "Your name is itinerary_suggester. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->itinerary_suggester->private_information} This is your goal: {agents->itinerary_suggester->goal} Generate 3 to 5 candidate schedules that start no earlier than 09:00 departure from Mission District, arrive at Haight-Ashbury considering a 12 minute travel, and propose meeting windows with Margaret that last at least 30 minutes and end by 15:45. Return only a compact machine-readable list of itineraries without explanations."
+            }
+        },
+        "travel_time_estimator": {
+            "matrix": {
+                "input": [],
+                "output": "travel_time_matrix",
+                "system_prompt": "You provide asymmetric travel-time information and helper calculations consistent with the scenario. Return a compact, self-contained structure with locations, directed travel times in minutes, earliest possible arrival time at Haight-Ashbury given a 09:00 presence at Mission District, and a simple feasibility check function description. Do not emit PDDL.",
+                "prompt": "Your name is travel_time_estimator. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->travel_time_estimator->private_information} This is your goal: {agents->travel_time_estimator->goal} Provide a small JSON block with keys: locations, directed_times (Mission_District->Haight_Ashbury: 12, Haight_Ashbury->Mission_District: 11), earliest_feasible_arrival_at_Haight_given_0900_at_Mission, and a brief textual rule for feasibility. Return only the compact JSON block."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "candidate_itineraries",
+                    "travel_time_matrix"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent schedule synthesis and PDDL for the FastDownward solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You must select the best feasible itinerary using the inputs and then encode a solvable planning model for that itinerary. Use STRIPS-compatible PDDL suitable for FastDownward; prefer :strips and :typing and keep the model simple. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "There are two assistants that will provide candidate schedules and travel-time data. Your task is to integrate their outputs, choose the best feasible schedule that meets Margaret for at least 30 minutes and respects the availability and travel durations, and then produce a final PDDL domain and problem encoding a simple movement and meeting task. Inputs: {candidate_itineraries} and {travel_time_matrix}. Selection guidelines: prioritize earliest feasible start after 09:00 with at least 30 minutes of meeting; if multiple tie, choose the one with longer meeting duration. Modeling guidelines: keep domain minimal with actions such as move_mission_to_haight and meet_margaret_30; include objects for locations and person; initial state places you at Mission_District; goal asserts met_margaret. Use classical STRIPS preconditions and effects; avoid time or numeric fluents; encode feasibility via symbolic predicates (e.g., margaret_available) derived from the chosen itinerary. Output strictly two blocks: one <domain> ... </domain> and one <problem> ... </problem> targeting FastDownward."
+            }
+        },
+        "constraints": [
+            "itinerary_suggester.candidates->orchestrator.pddl",
+            "travel_time_estimator.matrix->orchestrator.pddl"
+        ]
+    }
+}

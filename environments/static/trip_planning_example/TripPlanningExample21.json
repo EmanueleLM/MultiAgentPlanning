@@ -1,0 +1,94 @@
+{
+    "name": "TripPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_expert",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Desired stay: Venice 6 days",
+                "Desired stay: Mykonos 2 days",
+                "Desired stay: Vienna 4 days",
+                "Hard constraint: attend a workshop in Venice between day 5 and day 10 (inclusive)",
+                "Trip length: 10 days total",
+                "Only direct flights between cities are permitted"
+            ],
+            "goal": "Summarize hard constraints and soft preferences, highlight conflicts, and propose at least one feasible 10-day day-by-day city assignment that uses only direct flights and includes attending the Venice workshop within days 5\u201310."
+        },
+        "flight_expert": {
+            "private_information": [
+                "Direct flights available: Mykonos <-> Vienna, Vienna <-> Venice",
+                "There is no direct flight between Mykonos and Venice",
+                "Assume at most one intercity move per day"
+            ],
+            "goal": "Analyze connectivity and routing implications for a 10-day trip across Mykonos, Vienna, and Venice using only direct flights. Validate that any proposed day-by-day itinerary changes city only when a direct edge exists."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the preference and connectivity reports to produce a consistent 10-day plan visiting all three cities, using only direct flights, and attending the workshop in Venice within days 5\u201310. Emit a final PDDL domain and problem suitable for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "days": 10,
+            "cities": [
+                "mykonos",
+                "vienna",
+                "venice"
+            ],
+            "workshop_window": {
+                "start_day": 5,
+                "end_day": 10
+            },
+            "allow_direct_flights_only": true
+        },
+        "public_information": [
+            "Trip duration: 10 days.",
+            "Cities to visit: Venice, Vienna, Mykonos.",
+            "Only direct flights are allowed for city changes.",
+            "Direct connections: Mykonos <-> Vienna; Vienna <-> Venice.",
+            "Attend a workshop in Venice on one day between day 5 and day 10 (inclusive).",
+            "Preference: spend 6 days in Venice.",
+            "Preference: spend 2 days in Mykonos.",
+            "Preference: spend 4 days in Vienna.",
+            "If preferences conflict with total duration or connectivity, prioritize feasibility (10 days total, direct-flight moves only, and attending the workshop) and minimize deviation from the stated preferences."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preference_report": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are a travel preference analyst. Produce a concise, structured report (not PDDL) that separates hard constraints from soft preferences, identifies conflicts, and proposes at least one feasible 10-day day-by-day city assignment that respects only-direct-flights and includes attending the Venice workshop between days 5 and 10.",
+                "prompt": "Your name is traveler. You are in an environment with the following public information: {environment->public_information}. You have the following personal preferences and constraints: {agents->traveler->private_information}. Task: 1) List HardConstraints. 2) List SoftPreferences. 3) Identify any Conflicts (e.g., total desired nights vs. 10-day limit). 4) Provide at least one FeasibleItinerary of length 10 as Day1..Day10 with a city per day that respects direct-flight moves between consecutive days; include the day within [5..10] when you will be in Venice to attend the workshop."
+            }
+        },
+        "flight_expert": {
+            "connectivity_report": {
+                "input": [],
+                "output": "flight_connectivity",
+                "system_prompt": "You are a flight connectivity expert. Describe the direct flight graph, its implications for multi-city routing across 10 consecutive days with at most one intercity move per day, and state necessary conditions on any feasible itinerary covering Mykonos, Vienna, and Venice using only the given direct edges. Do not produce PDDL.",
+                "prompt": "Your name is flight_expert. Consider the following public information: {environment->public_information}. Provide: 1) DirectFlightGraph as ordered pairs and symmetry notes. 2) RoutingImplications describing valid city orderings to cover all three cities. 3) FeasibilityNotes about day-by-day transitions and one move per day. 4) A RecommendedRouting order that is feasible under direct-flight constraints (e.g., Mykonos -> Vienna -> Venice)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "flight_connectivity"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent travel planning and PDDL targeting the FastDownward (classical) solver. You must output a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. Use STRIPS with typing (:requirements :strips :typing). Model days as a linear chain d1..d10 via a static next(?d ?d2) relation. Use predicates: current-day(?d), at(?c), visited(?c), next(?d ?d2), direct(?c ?c2), window(?d) for workshop-window days, and attended. Provide actions: stay (remain in the same city and advance from d to d2), fly (change city from ?from to ?to requiring direct(?from ?to) and advance day), and attend-workshop (can be applied only when current-day is in window and at venice; sets attended). Each stay/fly action must advance from day d to its successor d2 to ensure exactly one decision per day and a total of 10 actions. Goal must require reaching day d10, having visited all three cities (mykonos, vienna, venice), and attended. Ensure the instance is solvable by FastDownward without additional features.",
+                "prompt": "Integrate the following inputs to construct a consistent planning model and instance: Traveler report: {traveler_preferences}. Flight connectivity analysis: {flight_connectivity}. Hard constraints to encode: exactly 10 days, only direct flights when changing cities, attend the workshop in Venice on one day between day 5 and day 10 inclusive, and visit all three cities at least once. Preferences may request Venice 6 days, Mykonos 2 days, and Vienna 4 days; when preferences conflict with feasibility, prioritize feasibility and minimize deviation. Build the PDDL domain and a problem instance with objects mykonos, vienna, venice and days d1..d10, with next(d1,d2), ..., next(d9,d10); mark window(d5)..window(d10); direct edges for both directions between (mykonos,vienna) and (vienna,venice). Choose a feasible starting city and initial facts that yield a valid 10-day path; a feasible target itinerary that satisfies all hard constraints is: Day1-2 Mykonos, Day3-4 Vienna, Day5-10 Venice. Enclose the domain in <domain></domain> and the problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preference_report->orchestrator.pddl",
+            "flight_expert.connectivity_report->orchestrator.pddl"
+        ]
+    }
+}

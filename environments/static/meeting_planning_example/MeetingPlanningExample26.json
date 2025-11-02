@@ -1,0 +1,131 @@
+{
+    "name": "MeetingPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "time_analyst",
+            "route_planner",
+            "utility_evaluator",
+            "orchestrator"
+        ],
+        "time_analyst": {
+            "private_information": [
+                "Expert in time window reasoning and feasibility checks",
+                "Uses minute-by-minute discretization for accuracy"
+            ],
+            "goal": "Derive all feasible meeting intervals that satisfy availability, travel times, and minimum meeting durations."
+        },
+        "route_planner": {
+            "private_information": [
+                "Expert in generating efficient travel sequences and itineraries",
+                "Optimizes for short travel time and early feasible arrivals"
+            ],
+            "goal": "Enumerate candidate travel schedules with precise arrival and departure times across locations."
+        },
+        "utility_evaluator": {
+            "private_information": [
+                "Expert in multi-criteria decision analysis",
+                "Primary objective: maximize number of friends met; secondary: maximize total meeting minutes; tertiary: minimize idle time"
+            ],
+            "goal": "Rank and filter schedule options to select the best plan that satisfies all constraints while optimizing the objectives."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Expert in converting schedules into PDDL for the Fast Downward planner"
+            ],
+            "goal": "Integrate agents' outputs, select the best schedule, and produce a PDDL domain and problem compatible with Fast Downward to realize the selected plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1,
+            "time_unit_minutes": 1,
+            "day_start": "09:00",
+            "day_end": "17:00",
+            "start_location": "richmond_district",
+            "locations": [
+                "richmond_district",
+                "presidio"
+            ],
+            "travel_times_minutes": [
+                {
+                    "from": "richmond_district",
+                    "to": "presidio",
+                    "minutes": 7
+                },
+                {
+                    "from": "presidio",
+                    "to": "richmond_district",
+                    "minutes": 7
+                }
+            ],
+            "friends": [
+                {
+                    "name": "Sarah",
+                    "location": "presidio",
+                    "available_from": "13:15",
+                    "available_to": "15:15",
+                    "min_meeting_minutes": 105
+                }
+            ]
+        },
+        "public_information": [
+            "You arrive at Richmond District at 09:00.",
+            "Travel time Richmond District -> Presidio: 7 minutes.",
+            "Travel time Presidio -> Richmond District: 7 minutes.",
+            "Sarah will be at Presidio from 13:15 to 15:15.",
+            "You want to meet Sarah for at least 105 minutes.",
+            "Primary objective: meet as many friends as possible; secondary: maximize total meeting time; tertiary: minimize idle time.",
+            "Available locations: Richmond District and Presidio.",
+            "Time granularity is 1 minute and the day ends at 17:00."
+        ]
+    },
+    "workflow": {
+        "time_analyst": {
+            "analyze_constraints": {
+                "input": [],
+                "output": "time_windows",
+                "system_prompt": "You analyze temporal constraints and compute feasible meeting intervals using minute-level resolution. Only produce strictly valid JSON with keys: feasible_windows (per friend), earliest_departure_times, latest_return_times, assumptions. Do not produce PDDL.",
+                "prompt": "Your name is time_analyst. Public information: {environment->public_information}. Friends and constraints: {environment->init->friends}. Travel times: {environment->init->travel_times_minutes}. Start location and time: {environment->init->start_location} at {environment->init->day_start}. Provide feasible meeting intervals that satisfy Sarah's minimum 105-minute meeting requirement while accounting for 7-minute travel between Richmond District and Presidio. Respect the day end at {environment->init->day_end}. Return only JSON."
+            }
+        },
+        "route_planner": {
+            "enumerate_routes": {
+                "input": [],
+                "output": "route_options",
+                "system_prompt": "You generate concrete travel and meeting itineraries with minute timestamps. Only produce strictly valid JSON with keys: routes (each with steps including depart_time, from, to, arrive_time), candidate_meet_segments (friend, start, end), and feasibility_notes. Do not produce PDDL.",
+                "prompt": "Your name is route_planner. Public information: {environment->public_information}. Travel times: {environment->init->travel_times_minutes}. Start at Richmond District at {environment->init->day_start}. Enumerate several distinct schedules covering plausible departure times to the Presidio to meet Sarah within her window, ensuring any proposed meet segment for Sarah satisfies at least 105 minutes of continuous time at Presidio. Include options with early arrival, just-in-time arrival, and buffer time. Return only JSON."
+            }
+        },
+        "utility_evaluator": {
+            "score_plans": {
+                "input": [
+                    "time_windows",
+                    "route_options"
+                ],
+                "output": "ranked_plans",
+                "system_prompt": "You evaluate and rank schedules by lexicographic preference: 1) maximize number of friends met, 2) maximize total meeting minutes, 3) minimize idle time and unnecessary travel. Enforce all constraints strictly. Only produce strictly valid JSON with keys: ranked (list of plans with score, meets, total_meeting_minutes, idle_minutes, feasibility), chosen_index, and rationale.",
+                "prompt": "Your name is utility_evaluator. You will receive time windows and route options. Optimize for meeting as many friends as possible while ensuring Sarah is met for at least 105 minutes within 13:15-15:15 at Presidio. Break ties by total meeting minutes, then by less idle time. Return top 5 ranked plans and identify the chosen plan. Return only JSON."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "time_windows",
+                    "route_options",
+                    "ranked_plans"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent scheduling and PDDL for the Fast Downward planner. You must produce a PDDL domain and a PDDL problem that are compatible with Fast Downward. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Use a classical STRIPS-style encoding; to handle time, discretize minutes explicitly via objects or compiled actions and avoid unsupported temporal constructs. Model locations (richmond_district, presidio), travel actions with 7-minute cost or discrete steps, presence at locations, and meeting actions that accumulate meeting minutes for Sarah. Encode the requirement that Sarah is met for at least 105 minutes within her availability window. Ensure the initial state matches the chosen plan from the ranked outputs (start at Richmond District at 09:00) and that goals include satisfying the minimum meeting requirement. Target the Fast Downward solver.",
+                "prompt": "There is a one-day visit planning problem. Public information: {environment->public_information}. Travel times and friends: {environment->init->travel_times_minutes}, {environment->init->friends}. Inputs from other agents: time windows: {time_windows}; route options: {route_options}; ranked plans: {ranked_plans}. Select the chosen plan and integrate it into a coherent PDDL domain and problem that a Fast Downward run can solve to produce the chosen schedule. Keep actions and predicates simple and compatible with Fast Downward. Return only the PDDL domain and problem wrapped in the required tags."
+            }
+        },
+        "constraints": [
+            "time_analyst.analyze_constraints->utility_evaluator.score_plans",
+            "route_planner.enumerate_routes->utility_evaluator.score_plans",
+            "utility_evaluator.score_plans->orchestrator.pddl"
+        ]
+    }
+}

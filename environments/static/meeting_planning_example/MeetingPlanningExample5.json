@@ -1,0 +1,102 @@
+{
+    "name": "MeetingPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "calendar_agent",
+            "map_agent",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "You arrive at Nob Hill at 09:00.",
+                "You want to meet as many friends as possible.",
+                "Hard constraint: Meet William for at least 75 minutes."
+            ],
+            "goal": "Plan a day in San Francisco that maximizes the number of friend meetings while satisfying the hard constraints."
+        },
+        "calendar_agent": {
+            "private_information": [
+                "William will be at The Castro from 12:15 to 22:00."
+            ],
+            "goal": "Provide availability constraints and feasible meeting windows for friends, especially William."
+        },
+        "map_agent": {
+            "private_information": [
+                "Travel time from Nob Hill to The Castro is 17 minutes.",
+                "Travel time from The Castro to Nob Hill is 16 minutes."
+            ],
+            "goal": "Summarize routes and travel times between neighborhoods relevant to the day plan."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate schedule options, availability checks, and routing to produce a final PDDL domain and problem for Fast Downward that achieves a feasible plan to meet William for at least 75 minutes while minimizing travel cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_start_clock": "09:00",
+            "time_end_clock": "22:00",
+            "time_step_minutes": 1,
+            "start_location": "nob_hill",
+            "friend_location_william": "the_castro",
+            "visibility": 1
+        },
+        "public_information": [
+            "You arrive at Nob Hill at 09:00.",
+            "William will be at The Castro from 12:15 to 22:00.",
+            "You want to meet William for a minimum of 75 minutes.",
+            "Travel time from Nob Hill to The Castro is 17 minutes.",
+            "Travel time from The Castro to Nob Hill is 16 minutes.",
+            "Objective: meet as many friends as possible during the day while obeying the constraints.",
+            "The planning horizon ends at 22:00."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "enumerate_schedules": {
+                "input": [],
+                "output": "schedule_candidates",
+                "system_prompt": "You are a day-planning analyst. Generate diverse feasible schedule options for the traveler considering public information, the travel graph, and constraints. Do not output PDDL; instead, list options with activities, locations, and times.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Produce 3 to 5 distinct day-plan schedule candidates that differ in departure times and meeting start times with William at The Castro, ensuring at least 75 minutes of meeting duration. For each schedule, provide a concise rationale and compute approximate arrival, meeting start, meeting end, and return times using minutes since 09:00 as a convenient reference."
+            }
+        },
+        "calendar_agent": {
+            "validate_constraints": {
+                "input": [
+                    "schedule_candidates"
+                ],
+                "output": "constraint_checks",
+                "system_prompt": "You are a calendar constraint checker. Validate availability windows and minimum meeting durations without emitting PDDL.",
+                "prompt": "Using public information {environment->public_information} and the proposed schedules {schedule_candidates}, verify which schedules satisfy William's availability window from 12:15 to 22:00 and the minimum 75-minute contiguous meeting duration. For each schedule, mark it as feasible or infeasible and explain any violations clearly."
+            }
+        },
+        "map_agent": {
+            "compute_routes": {
+                "input": [],
+                "output": "routing_info",
+                "system_prompt": "You are a routing specialist. Summarize travel times and simple paths between the neighborhoods discussed. Do not output PDDL.",
+                "prompt": "From public information {environment->public_information} and initialization data {environment->init}, provide a compact travel-time matrix for the locations involved (nob_hill and the_castro), list directed edge costs in minutes, and compute the earliest possible arrival time at The Castro if departing Nob Hill at different candidate departure times during the morning and midday. Include a brief note on asymmetry in travel times."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "routing_info",
+                    "schedule_candidates",
+                    "constraint_checks"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeting the Fast Downward solver. You must output a PDDL domain and a PDDL problem that encode a feasible and cost-sensitive plan. Always enclose the domain between <domain></domain> and the problem between <problem></problem>. Use STRIPS with action costs via (total-cost). Represent two locations (nob_hill and the_castro), one traveler agent, a discrete minute-based time chain from 09:00 to 22:00, move actions that advance time by their travel durations and increase total-cost accordingly, a wait action that advances time by one minute per application, and a meet-william-75 macro that requires being at the_castro and consumes 75 consecutive minutes within William's availability window to achieve the goal predicate. The objective is to achieve met-william while minimizing total-cost.",
+                "prompt": "Here is the routing information: {routing_info}. Here are the schedule candidates: {schedule_candidates}. Here are the constraint checks: {constraint_checks}. Select the best feasible schedule that minimizes total travel time while ensuring a contiguous 75-minute meeting with William within 12:15 to 22:00. Produce a PDDL domain and a PDDL problem for Fast Downward. In the domain, include predicates for at, current-time, next, william-available, and met-william, and a numeric function total-cost. Provide actions: move-nob_hill-to-the_castro and move-the_castro-to-nob_hill that advance along the next chain by 17 and 16 steps respectively and increase total-cost by the same amount, wait-1 that advances one minute and increases total-cost by 1, and meet-william-75 that requires the traveler at the_castro, 75 consecutive steps of william-available, advances time by 75 steps, and sets met-william. In the problem, include objects nob_hill, the_castro, and a sequence of timepoints t0 to t780 representing minutes from 09:00 to 22:00, initialize at(traveler, nob_hill), current-time t0, the successor relation next(ti, t(i+1)) for all minutes, william-available for timepoints covering 12:15 to 21:59 inclusive, and total-cost 0. Set the goal to met-william and include (:metric minimize (total-cost)). Enclose the PDDL inside <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.enumerate_schedules->orchestrator.synthesize_pddl",
+            "calendar_agent.validate_constraints->orchestrator.synthesize_pddl",
+            "map_agent.compute_routes->orchestrator.synthesize_pddl"
+        ]
+    }
+}

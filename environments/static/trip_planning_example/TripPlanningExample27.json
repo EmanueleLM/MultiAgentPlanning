@@ -1,0 +1,126 @@
+{
+    "name": "TripPlanningExample27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "amsterdam_planner",
+            "istanbul_planner",
+            "santorini_planner",
+            "orchestrator"
+        ],
+        "amsterdam_planner": {
+            "private_information": [
+                "I prefer the trip to start in Amsterdam.",
+                "I plan to stay in Amsterdam for 7 days.",
+                "Amsterdam has direct flights to Santorini and Istanbul."
+            ],
+            "goal": "Provide Amsterdam-specific constraints, feasible stay segments, and flight connectivity details to support a 14-day itinerary over three cities using only direct flights."
+        },
+        "istanbul_planner": {
+            "private_information": [
+                "I would like to visit Istanbul for up to 6 days.",
+                "Istanbul has direct flights to Amsterdam only."
+            ],
+            "goal": "Provide Istanbul-specific preferences and constraints that are consistent with a 14-day trip using only direct flights, deferring to hard constraints when conflicts arise."
+        },
+        "santorini_planner": {
+            "private_information": [
+                "I would like to visit Santorini for exactly 3 days.",
+                "I plan to visit relatives in Santorini between day 12 and day 14 inclusive.",
+                "Santorini has direct flights to Amsterdam only."
+            ],
+            "goal": "Provide hard constraints for the Santorini visit and connectivity details so the overall 14-day itinerary is feasible with only direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Synthesize a feasible 14-day itinerary across Amsterdam, Istanbul, and Santorini using only direct flights, honoring hard constraints (Santorini exactly on days 12 to 14, Santorini stay 3 days, Amsterdam stay 7 days), allocating the remaining days to Istanbul, and output a final PDDL domain and problem compatible with the Fast Downward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "day_start": 1,
+            "day_end": 14,
+            "cities": [
+                "Amsterdam",
+                "Istanbul",
+                "Santorini"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Santorini"
+                ],
+                [
+                    "Santorini",
+                    "Amsterdam"
+                ],
+                [
+                    "Istanbul",
+                    "Amsterdam"
+                ],
+                [
+                    "Amsterdam",
+                    "Istanbul"
+                ]
+            ],
+            "solver_target": "fast-downward"
+        },
+        "public_information": [
+            "Total trip length is 14 consecutive days labeled 1 through 14.",
+            "Cities to visit: Amsterdam, Istanbul, Santorini.",
+            "Direct flights exist between Amsterdam and Santorini, and between Istanbul and Amsterdam.",
+            "No direct flight exists between Istanbul and Santorini; routing between them must pass through Amsterdam using only direct legs.",
+            "Only direct flights are allowed between cities; at most one flight may occur at a day boundary.",
+            "Each calendar day must be spent in exactly one city.",
+            "Santorini must be visited for exactly 3 days between day 12 and day 14 inclusive.",
+            "Amsterdam stay must total exactly 7 days across the itinerary.",
+            "Istanbul is preferred for up to 6 days but may be reduced to satisfy the hard constraints and total duration.",
+            "A concrete feasible pattern that satisfies all hard constraints and the flight network is: Days 1 to 6 in Amsterdam, Days 7 to 10 in Istanbul, Day 11 in Amsterdam, Days 12 to 14 in Santorini."
+        ]
+    },
+    "workflow": {
+        "amsterdam_planner": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_amsterdam",
+                "system_prompt": "You are the Amsterdam city specialist. Summarize hard and soft constraints related to Amsterdam, including preferred start location, exact 7-day total stay, and direct flight connectivity to Santorini and Istanbul. Provide clear, structured constraints without generating PDDL.",
+                "prompt": "Your name is amsterdam_planner. Use the following public information {environment->public_information} and your knowledge {agents->amsterdam_planner->private_information} to produce a concise list of constraints and preferences for Amsterdam. Include the requirement that total days in Amsterdam equal 7, identify valid direct flight neighbors, and suggest early-trip placement so that Santorini can occur on days 12 to 14. Do not emit PDDL; output constraints and assumptions only."
+            }
+        },
+        "istanbul_planner": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_istanbul",
+                "system_prompt": "You are the Istanbul city specialist. Summarize Istanbul preferences and constraints consistent with the 14-day trip and direct flights. Provide clear, structured constraints without generating PDDL.",
+                "prompt": "Your name is istanbul_planner. Use the following public information {environment->public_information} and your knowledge {agents->istanbul_planner->private_information} to produce a concise list of constraints and preferences for Istanbul. Note that Istanbul connects directly only to Amsterdam, honor the total 14-day limit, and treat the 6-day stay as a preference that can be shortened to accommodate hard constraints. Do not emit PDDL; output constraints and assumptions only."
+            }
+        },
+        "santorini_planner": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_santorini",
+                "system_prompt": "You are the Santorini city specialist. Summarize hard constraints for the Santorini visit and connectivity details. Provide clear, structured constraints without generating PDDL.",
+                "prompt": "Your name is santorini_planner. Use the following public information {environment->public_information} and your knowledge {agents->santorini_planner->private_information} to produce a concise list of hard constraints for Santorini. Enforce exactly 3 days in Santorini and that those days are 12, 13, and 14; indicate that only Amsterdam is a direct neighbor for flights. Do not emit PDDL; output constraints and assumptions only."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "constraints_amsterdam",
+                    "constraints_istanbul",
+                    "constraints_santorini"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert travel-planning orchestrator and PDDL engineer. Integrate the city constraints to synthesize a consistent 14-day, 3-city itinerary using only direct flights. Produce a single classical PDDL domain and a matching PDDL problem compatible with the Fast Downward planner (use :strips and :typing, avoid conditional effects). Model days as integers 1..14, exactly one city per day, at most one flight at a day boundary, and flights only along allowed direct edges. Encode hard constraints: Santorini must be exactly on days 12, 13, 14; Amsterdam must total exactly 7 days across the trip; the total horizon is 14 days; flights must respect the network (Amsterdam-Santorini and Amsterdam-Istanbul only). Treat Istanbul duration as a soft preference to fill remaining days. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the following city-specific constraints and preferences to build the final model and problem instance: Amsterdam constraints: {constraints_amsterdam} Istanbul constraints: {constraints_istanbul} Santorini constraints: {constraints_santorini} Use the public information {environment->public_information} as shared context. Target a feasible schedule that satisfies all hard constraints and uses only direct flights. A concrete satisfying itinerary you should enable via the model is: Days 1-6 in Amsterdam, Days 7-10 in Istanbul, Day 11 in Amsterdam, Days 12-14 in Santorini, with flights occurring at day boundaries along direct edges only. Provide a PDDL domain and a PDDL problem suitable for the Fast Downward solver, enclosed in the required tags."
+            }
+        },
+        "constraints": [
+            "amsterdam_planner.constraints->orchestrator.pddl",
+            "istanbul_planner.constraints->orchestrator.pddl",
+            "santorini_planner.constraints->orchestrator.pddl"
+        ]
+    }
+}

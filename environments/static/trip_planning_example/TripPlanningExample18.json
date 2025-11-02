@@ -1,0 +1,115 @@
+{
+    "name": "TripPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Preference: Stay 5 days in Amsterdam.",
+                "Preference: Stay 2 days in Vilnius.",
+                "Preference: Stay 6 days in Bucharest.",
+                "Hard requirement: Meet friends in Bucharest on any day between day 6 and day 11 inclusive.",
+                "You only take direct flights when changing cities."
+            ],
+            "goal": "Provide clear constraints, hard requirements, and preference targets for an 11-day trip visiting Amsterdam, Vilnius, and Bucharest, without producing PDDL."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Known direct flights (bidirectional as listed): Amsterdam \u2194 Bucharest; Vilnius \u2194 Amsterdam.",
+                "Only direct flights are allowed when changing cities.",
+                "Staying in the same city from one day to the next requires no flight.",
+                "At most one flight per day is assumed."
+            ],
+            "goal": "Provide the flight network, movement constraints, and any feasibility notes as structured context, without producing PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate constraints and flight network to produce a final, solvable PDDL domain and problem for an 11-day itinerary using only direct flights, visiting all three cities, and meeting friends in Bucharest between day 6 and day 11. Target the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Amsterdam",
+                "Vilnius",
+                "Bucharest"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Bucharest"
+                ],
+                [
+                    "Bucharest",
+                    "Amsterdam"
+                ],
+                [
+                    "Vilnius",
+                    "Amsterdam"
+                ],
+                [
+                    "Amsterdam",
+                    "Vilnius"
+                ]
+            ],
+            "rules": {
+                "only_direct_flights": true,
+                "one_city_per_day": true,
+                "visit_all_cities_at_least_once": true,
+                "meeting": {
+                    "city": "Bucharest",
+                    "window_start_day": 6,
+                    "window_end_day": 11
+                }
+            }
+        },
+        "public_information": [
+            "Trip length is exactly 11 consecutive days labeled d1 through d11.",
+            "Cities: Amsterdam, Vilnius, Bucharest.",
+            "Only direct flights are allowed when changing cities.",
+            "Direct flights exist between Amsterdam and Bucharest, and between Vilnius and Amsterdam (both directions).",
+            "You plan to stay 5 days in Amsterdam, 2 days in Vilnius, and 6 days in Bucharest (these sum to 13 and must be reconciled with the 11-day limit).",
+            "You want to meet friends in Bucharest on a day between day 6 and day 11 inclusive.",
+            "The itinerary must visit all three cities at least once."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the Traveler agent. Provide a compact, strictly-JSON context describing hard constraints and preference targets for the 11-day trip without emitting PDDL.",
+                "prompt": "Return a single JSON object with keys: total_days (11), required_cities (list of city names), stay_targets (object mapping city to desired days: Amsterdam 5, Vilnius 2, Bucharest 6), constraints (object with direct_flights_only true, one_city_per_day true, visit_all_cities_at_least_once true), meeting (object with city 'Bucharest' and window [6, 11]), and conflict_resolution (object describing how to handle that 5 + 2 + 6 exceeds 11; set policy to treat Amsterdam 5 and Vilnius 2 as hard, then allocate remaining days to Bucharest so total equals 11). Do not include explanations or PDDL; return only the JSON object."
+            }
+        },
+        "flight_planner": {
+            "context": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are the Flight Planner agent. Provide the flight network and movement rules as a concise JSON schema without emitting PDDL.",
+                "prompt": "Return a single JSON object with keys: cities (list of city names), direct_flights (list of 2-element arrays representing allowed directed edges, include both directions where applicable), movement_rules (object with only_direct_flights true, at_most_one_flight_per_day true, can_stay_without_flight true). Use the cities and direct flights from the public information. Do not include explanations or PDDL; return only the JSON object."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_context",
+                    "flight_graph"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent trip planner and PDDL modeler targeting the FastDownward solver. You must output exactly one PDDL domain and one PDDL problem, enclosed in <domain></domain> and <problem></problem> tags. Use classical STRIPS-compatible constructs only (no preferences, no durative actions).",
+                "prompt": "Integrate the human goal and the agents' contexts to build a solvable classical PDDL model for FastDownward. Use the environment information {environment->public_information} and {environment->init}, the Traveler context {traveler_context}, and the Flight Planner context {flight_graph}. Model requirements: 1) Days are discrete objects d1..d11 linked by next(d_i, d_{i+1}). 2) Types: city, day, quota. 3) Predicates: at(?c - city, ?d - day), next(?d1 - day, ?d2 - day), direct(?c1 - city, ?c2 - city), assigned(?d - day), visited(?c - city), quota_for(?q - quota, ?c - city), available(?q - quota), used(?q - quota), in_window(?d - day), met_friends. 4) Actions: (a) assign_day1 to consume a quota for day d1 at the starting city; (b) stay_step to remain in the same city from day d to day d_next while consuming a quota for the next day; (c) fly_step to move from city c to city c2 from day d to day d_next if direct(c, c2) holds, consuming a quota for the next day; (d) meet_friends_on_day to set met_friends when at Bucharest on any in-window day. Ensure each step action requires not assigned(d_next) so exactly one city is set per day. 5) Conflict resolution: Since 5 + 2 + 6 exceeds 11, apply the Traveler policy to treat Amsterdam=5 and Vilnius=2 as hard and compute Bucharest quota as 11 - 5 - 2 = 4. Instantiate 5 Amsterdam quota tokens, 2 Vilnius quota tokens, and 4 Bucharest quota tokens; goal requires all quota tokens to be used. 6) Start assumptions: Choose the start at Amsterdam on d1 to satisfy the 5-day target and maintain connectivity via the provided direct flights. 7) Problem requirements: Objects include all cities, all days d1..d11, and the quota tokens (a1..a5, v1..v2, b1..b4). Initial state: at(Amsterdam, d1), next-chain d1->d2->...->d11, direct facts from the flight graph, available(quota) for all tokens, quota_for mappings, in_window(d) for d6..d11, visited facts can be established by actions (do not set them initially), and assigned(d) should be false except possibly as produced by actions. Goal: used for all quota tokens, visited(Amsterdam), visited(Vilnius), visited(Bucharest), met_friends, and assigned(d11) to ensure full progression. Output the PDDL domain inside <domain></domain> and the PDDL problem inside <problem></problem>, ready for FastDownward."
+            }
+        },
+        "constraints": [
+            "traveler.context->orchestrator.pddl",
+            "flight_planner.context->orchestrator.pddl"
+        ]
+    }
+}

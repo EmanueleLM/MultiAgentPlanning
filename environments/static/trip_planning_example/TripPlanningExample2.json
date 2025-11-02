@@ -1,0 +1,118 @@
+{
+    "name": "TripPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "reykjavik_planner",
+            "vienna_planner",
+            "venice_planner",
+            "orchestrator"
+        ],
+        "reykjavik_planner": {
+            "private_information": [
+                "Reykjavik segment should be compact and at the start to leverage the direct flight to Vienna.",
+                "Two full days in Reykjavik are preferred."
+            ],
+            "goal": "Propose Reykjavik-specific constraints and recommendations that fit within an 11-day multi-city itinerary using only direct flights."
+        },
+        "vienna_planner": {
+            "private_information": [
+                "Vienna is centrally connected: direct flights to Reykjavik and to Venice.",
+                "Seven days in Vienna are desired but can be reduced if required by the global 11-day limit."
+            ],
+            "goal": "Propose Vienna-specific constraints and recommendations that coexist with Reykjavik and Venice segments while respecting direct flight connections."
+        },
+        "venice_planner": {
+            "private_information": [
+                "A wedding must be attended in Venice from day 8 through day 11 inclusive.",
+                "Four days in Venice are required and fixed at the end of the trip to cover the wedding window."
+            ],
+            "goal": "Propose Venice-specific hard constraints, including the fixed wedding window, and any implications for preceding segments."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Resolve over-constrained durations by prioritizing hard constraints: total trip length is 11 days, the Venice wedding on days 8-11 is mandatory, and Reykjavik for 2 days is strongly preferred.",
+                "Only direct flights may be used: Reykjavik-Vienna and Vienna-Venice.",
+                "To remain feasible within 11 days, Vienna will receive the remaining 5 days after allocating Reykjavik (2) and Venice (4)."
+            ],
+            "goal": "Integrate city-specific constraints into a single feasible itinerary and produce a final PDDL domain and problem suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "days": [
+                "d1",
+                "d2",
+                "d3",
+                "d4",
+                "d5",
+                "d6",
+                "d7",
+                "d8",
+                "d9",
+                "d10",
+                "d11"
+            ],
+            "cities": [
+                "reykjavik",
+                "vienna",
+                "venice"
+            ],
+            "start_day": "d1"
+        },
+        "public_information": [
+            "Trip length is exactly 11 consecutive days (days 1 to 11).",
+            "Cities to visit: Reykjavik, Vienna, Venice.",
+            "Only direct flights can be taken between cities.",
+            "Direct flights exist between Reykjavik and Vienna, and between Vienna and Venice; there is no direct flight between Reykjavik and Venice.",
+            "Desired stays: Reykjavik 2 days, Vienna 7 days, Venice 4 days.",
+            "A wedding must be attended in Venice from day 8 to day 11 inclusive.",
+            "The itinerary must be contiguous by days and follow allowed direct connections when changing cities."
+        ]
+    },
+    "workflow": {
+        "reykjavik_planner": {
+            "analyze": {
+                "input": [],
+                "output": "reykjavik_constraints",
+                "system_prompt": "You are a city-segment planner for Reykjavik. Analyze the public information and your private notes to emit a concise, structured set of constraints and recommendations for the Reykjavik segment only. Do not produce PDDL.",
+                "prompt": "Your name is reykjavik_planner. Public information: {environment->public_information}. Your notes: {agents->reykjavik_planner->private_information}. Task: propose Reykjavik-specific constraints and recommendations, including a minimum of 2 full days and placement at the start of the itinerary so that a direct flight to Vienna can be taken afterward. Keep the output as clear bullet points or short structured text and avoid generating PDDL."
+            }
+        },
+        "vienna_planner": {
+            "analyze": {
+                "input": [],
+                "output": "vienna_constraints",
+                "system_prompt": "You are a city-segment planner for Vienna. Analyze the public information and your private notes to emit constraints and recommendations for the Vienna segment only. Do not produce PDDL.",
+                "prompt": "Your name is vienna_planner. Public information: {environment->public_information}. Your notes: {agents->vienna_planner->private_information}. Task: propose Vienna-specific constraints and recommendations, acknowledging only direct flights (to and from Reykjavik and Venice), a desired stay of 7 days, and the need to remain within the global 11-day limit and the fixed Venice wedding window. Provide flexible guidance that can be reduced to 5 days if necessary. Output concise bullet points or short structured text without generating PDDL."
+            }
+        },
+        "venice_planner": {
+            "analyze": {
+                "input": [],
+                "output": "venice_constraints",
+                "system_prompt": "You are a city-segment planner for Venice. Analyze the public information and your private notes to emit hard constraints and recommendations for the Venice segment only. Do not produce PDDL.",
+                "prompt": "Your name is venice_planner. Public information: {environment->public_information}. Your notes: {agents->venice_planner->private_information}. Task: declare Venice hard constraints: the trip must place Venice on days 8 through 11 inclusive for the wedding, totaling 4 days, implying the Venice segment comes last with a direct flight from Vienna into Venice. Output concise bullet points or short structured text without generating PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "reykjavik_constraints",
+                    "vienna_constraints",
+                    "venice_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent constraint integration and PDDL modeling targeting the FastDownwards (Fast Downward) solver. Integrate the inputs, resolve any conflicts by prioritizing hard constraints (11 total days and Venice wedding on days 8-11), and produce a single PDDL domain and problem that a standard FastDownwards configuration can solve. You must enclose the domain in <domain></domain> and the problem in <problem></problem> tags.",
+                "prompt": "Integrate the city constraints: {reykjavik_constraints}, {vienna_constraints}, {venice_constraints}. Respect only direct flights (Reykjavik-Vienna, Vienna-Venice), enforce Venice on days 8-11, and keep the total trip exactly 11 days. Adopt the feasible itinerary: days 1-2 Reykjavik, days 3-7 Vienna, days 8-11 Venice. Produce PDDL suitable for FastDownwards with a minimal action model: types city and day; predicates next(?d ?d2), at(?d ?c), filled(?d), connected(?from ?to); actions stay(?c ?d ?d2) and fly(?from ?to ?d ?d2) that require next(d,d2) and not filled(d2); initial state includes day objects d1..d11, cities reykjavik vienna venice, next(d1,d2)...next(d10,d11), connected(reykjavik,vienna), connected(vienna,reykjavik), connected(vienna,venice), connected(venice,vienna), at(d1,reykjavik), filled(d1); goal requires at(d1,reykjavik), at(d2,reykjavik), at(d3,vienna), at(d4,vienna), at(d5,vienna), at(d6,vienna), at(d7,vienna), at(d8,venice), at(d9,venice), at(d10,venice), at(d11,venice). Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "reykjavik_planner.analyze->orchestrator.pddl",
+            "vienna_planner.analyze->orchestrator.pddl",
+            "venice_planner.analyze->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,28 @@
+(define (domain trip-scheduling)
+ (:requirements :strips :typing :negative-preconditions)
+ (:types city day)
+ (:predicates
+  (connected ?c1 - city ?c2 - city)
+  (next ?d - day ?d2 - day)
+  (cursor ?d - day)
+  (pos ?c - city)
+  (assigned ?d - day)
+  (in ?c - city ?d - day)
+  (start)
+ )
+ (:action start-in
+  :parameters (?c - city ?d - day ?d2 - day)
+  :precondition (and (start) (cursor ?d) (next ?d ?d2) (not (assigned ?d)))
+  :effect (and (in ?c ?d) (assigned ?d) (pos ?c) (not (start)) (not (cursor ?d)) (cursor ?d2))
+ )
+ (:action assign-stay
+  :parameters (?c - city ?d - day ?d2 - day)
+  :precondition (and (pos ?c) (cursor ?d) (next ?d ?d2) (not (assigned ?d)))
+  :effect (and (in ?c ?d) (assigned ?d) (not (cursor ?d)) (cursor ?d2))
+ )
+ (:action assign-fly
+  :parameters (?from - city ?to - city ?d - day ?d2 - day)
+  :precondition (and (pos ?from) (connected ?from ?to) (cursor ?d) (next ?d ?d2) (not (assigned ?d)))
+  :effect (and (in ?to ?d) (assigned ?d) (pos ?to) (not (pos ?from)) (not (cursor ?d)) (cursor ?d2))
+ )
+)

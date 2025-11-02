@@ -1,0 +1,109 @@
+{
+    "name": "MeetingPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "map_service",
+            "scheduler",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to meet as many friends as possible during the day.",
+                "I arrive at Golden Gate Park at 09:00.",
+                "I am flexible on transportation between listed locations.",
+                "Priority: Meet James for at least 15 minutes within his availability window."
+            ],
+            "goal": "Maximize friend meetings subject to availability windows and travel times, ensuring a meeting with James for at least 15 minutes."
+        },
+        "map_service": {
+            "private_information": [
+                "Travel times may be asymmetric between locations.",
+                "Only the provided location pairs are guaranteed accurate."
+            ],
+            "goal": "Provide accurate, concise travel-time data and identify feasible movement options between locations."
+        },
+        "scheduler": {
+            "private_information": [
+                "Generate several candidate schedules that respect time windows, travel times, and minimum meeting durations.",
+                "Score schedules by number of meetings first, then by total travel time, and provide the best shortlist."
+            ],
+            "goal": "Enumerate feasible day plans, evaluate them, and produce a ranked shortlist for decision-making."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate context, travel data, and candidate schedules, then produce a final PDDL domain and problem compatible with the FastDownward solver that achieves the selected schedule and satisfies all constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "time_format": "HH:MM",
+            "discretization": 1,
+            "locations": [
+                "golden_gate_park",
+                "marina_district"
+            ]
+        },
+        "public_information": [
+            "Objective: Consider various schedules and choose the best one to maximize the number of friend meetings.",
+            "Locations: Golden Gate Park (golden_gate_park), Marina District (marina_district).",
+            "Travel time from Golden Gate Park to Marina District: 16 minutes.",
+            "Travel time from Marina District to Golden Gate Park: 18 minutes.",
+            "Arrival: You arrive at Golden Gate Park at 09:00.",
+            "James availability: James will be at Marina District from 10:15 to 13:30.",
+            "Meeting requirement: Meet James for at least 15 minutes within his availability window.",
+            "Assumptions: Only provided travel times are guaranteed; other friends or locations are unspecified."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "gather_preferences": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the traveler. Summarize personal goals, hard constraints, soft preferences, starting location and time, and any relevant flexibility or priorities.",
+                "prompt": "Your name is traveler. Use the public information to restate the scenario, then list your goals and constraints in a concise, structured form. Include at minimum: starting location and time, meeting requirement for James, preferred optimization criteria, and any assumptions you are willing to make. Public info: {environment->public_information}. Private info: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide a compact, structured summary for downstream scheduling."
+            }
+        },
+        "map_service": {
+            "compile_travel_times": {
+                "input": [],
+                "output": "travel_matrix",
+                "system_prompt": "You are a routing assistant. Provide clean, unambiguous travel-time data between known locations and flag asymmetries.",
+                "prompt": "Your name is map_service. From the public information, extract locations and known directional travel times. Produce a small, structured travel-time matrix with entries like (from, to, minutes). If times are asymmetric, include both directions. Public info: {environment->public_information}. Private info: {agents->map_service->private_information}. Goal: {agents->map_service->goal}."
+            }
+        },
+        "scheduler": {
+            "generate_schedules": {
+                "input": [
+                    "travel_matrix",
+                    "traveler_context"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day-planning scheduler. Propose multiple feasible schedules that respect availability windows, travel times, and minimum meeting durations. Rank and justify briefly.",
+                "prompt": "Your name is scheduler. Using the travel matrix and traveler context, generate several feasible day schedules starting at 09:00 from Golden Gate Park, respecting James's availability at Marina District (10:15 to 13:30) and a minimum 15-minute meeting. Include travel legs with start times and durations, arrival times, waiting if needed, and the meeting block. Produce at least three distinct candidate schedules if feasible, score each by number of meetings first (higher is better) then by total travel time (lower is better), and provide a ranked shortlist. Inputs: Travel matrix: {travel_matrix}. Traveler context: {traveler_context}. Private info: {agents->scheduler->private_information}. Goal: {agents->scheduler->goal}."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "travel_matrix",
+                    "traveler_context",
+                    "candidate_schedules"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert planner for multi-agent scheduling who outputs a PDDL domain and problem tailored for the FastDownward solver. Use classical STRIPS-style modeling with discretized time steps (in minutes) encoded via predicates or successor functions without requiring temporal or numeric fluents. Include action costs if you choose to guide optimization. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the travel matrix, traveler context, and candidate schedules to select a single best schedule that maximizes meetings (given known friends) and satisfies all constraints. Then produce a PDDL domain and problem compatible with FastDownward that achieves the selected schedule. Requirements: discretize time in minutes; model locations golden_gate_park and marina_district; include move actions with durations encoded via sequences of minute-advance actions or pre-expanded macro-moves consistent with the given travel times (16 minutes GGP->MAR, 18 minutes MAR->GGP); include a meet action that ensures at least 15 consecutive minutes with James within [10:15, 13:30]; initial state reflects arrival at golden_gate_park at 09:00; goal ensures the meeting-with-James constraint is satisfied. If multiple candidates are feasible, pick the one with minimal travel time as a tiebreaker. Provide only the PDDL enclosed in the prescribed tags. Public info: {environment->public_information}. Traveler context: {traveler_context}. Travel matrix: {travel_matrix}. Candidate schedules: {candidate_schedules}."
+            }
+        },
+        "constraints": [
+            "traveler.gather_preferences->scheduler.generate_schedules",
+            "map_service.compile_travel_times->scheduler.generate_schedules",
+            "scheduler.generate_schedules->orchestrator.pddl",
+            "traveler.gather_preferences->orchestrator.pddl",
+            "map_service.compile_travel_times->orchestrator.pddl"
+        ]
+    }
+}

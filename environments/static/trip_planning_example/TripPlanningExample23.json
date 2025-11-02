@@ -1,0 +1,128 @@
+{
+    "name": "TripPlanningExample23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "calendar_planner",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Desired per-city stays: London 3 days, Bucharest 3 days, Riga 4 days.",
+                "Total available days: 8.",
+                "Hard constraint: Be in Riga during days 5 to 8 to attend a workshop.",
+                "Only take direct flights when moving between cities."
+            ],
+            "goal": "Summarize hard requirements and preferences for the 8-day trip across London, Bucharest, and Riga, clearly distinguishing hard constraints from soft preferences."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Direct flights exist between London and Bucharest.",
+                "Direct flights exist between Bucharest and Riga."
+            ],
+            "goal": "Describe the connectivity graph of direct flights and propose at least one feasible visitation order that respects only direct flights."
+        },
+        "calendar_planner": {
+            "private_information": [
+                "Days are indexed from 1 to 8 inclusive.",
+                "The workshop in Riga must be attended between day 5 and day 8 inclusive.",
+                "If preferences exceed the total available days, adjust soft preferences while preserving hard constraints."
+            ],
+            "goal": "Reconcile time windows, total trip length, and connectivity to produce a feasible set of requirements for an 8-day plan that visits all three cities and satisfies the workshop constraint."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and problem compatible with the FastDownward solver that models an 8-day single-traveler itinerary with only direct flights, visiting London, Bucharest, and Riga, and being in Riga during days 5 to 8."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 8,
+            "day_start": 1,
+            "day_end": 8,
+            "cities": [
+                "London",
+                "Bucharest",
+                "Riga"
+            ],
+            "start_city": "London",
+            "direct_flights": [
+                [
+                    "London",
+                    "Bucharest"
+                ],
+                [
+                    "Bucharest",
+                    "London"
+                ],
+                [
+                    "Bucharest",
+                    "Riga"
+                ],
+                [
+                    "Riga",
+                    "Bucharest"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 8 days total.",
+            "Cities: London, Bucharest, Riga.",
+            "Only direct flights are allowed when moving between cities.",
+            "Direct flights exist only between London and Bucharest, and between Bucharest and Riga.",
+            "Trip starts in London on day 1.",
+            "You must be in Riga during days 5 to 8 to attend a workshop.",
+            "You want to spend 4 days in Riga.",
+            "You prefer to spend 3 days in London and 3 days in Bucharest, but the total trip is only 8 days; treat these as soft preferences to be reconciled."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_json",
+                "system_prompt": "You are a travel preferences analyst. From the given context, produce a single-line JSON object with keys hard_requirements, soft_preferences, and notes. Do not produce PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Output a single-line JSON with hard_requirements, soft_preferences, and notes, using only information provided."
+            }
+        },
+        "flight_planner": {
+            "connectivity": {
+                "input": [],
+                "output": "connectivity_json",
+                "system_prompt": "You are an airline connectivity expert. Output a single-line JSON object describing nodes (cities), undirected edges (direct_flights), a validation of reachability to visit all cities using only those edges, and at least one feasible visit_order that starts in London and reaches Riga through Bucharest.",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information}. Your private information: {agents->flight_planner->private_information}. Your goal: {agents->flight_planner->goal}. Output a single-line JSON with fields cities, direct_flights, reachability, and visit_order that respects only direct flights."
+            }
+        },
+        "calendar_planner": {
+            "time_alignment": {
+                "input": [
+                    "preferences_json",
+                    "connectivity_json"
+                ],
+                "output": "feasible_requirements",
+                "system_prompt": "You are a trip calendar designer. Reconcile preferences with total days and the fixed Riga workshop window. Prioritize hard constraints: total days = 8, be in Riga on days 5 to 8 inclusive, only direct flights, and visit all three cities. Treat the 3-day stays in London and Bucharest as soft preferences and adjust them to fit the total. Output a single-line JSON with fields fixed_days (mapping day to city for days 5..8 = Riga), target_stay_per_city (mapping whose values sum to 8), visit_order, flight_edges, and rationale.",
+                "prompt": "Your name is calendar_planner. Public information: {environment->public_information}. Your private information: {agents->calendar_planner->private_information}. Inputs: {preferences_json} {connectivity_json}. Produce a single-line JSON that specifies fixed_days for the workshop window, a feasible target_stay_per_city that sums to 8, a visit_order that respects direct flights, and a brief rationale."
+            }
+        },
+        "orchestrator": {
+            "compile_pddl": {
+                "input": [
+                    "preferences_json",
+                    "connectivity_json",
+                    "feasible_requirements"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in PDDL for classical planning and FastDownward. Using the provided inputs, produce a PDDL domain and problem that encode an 8-day single-traveler itinerary planning task with STRIPS and typing, supported by FastDownward. Model days 1..8, cities London Bucharest Riga, actions to stay or fly that advance the day by one, enforce only direct flights, exactly one action per day, visiting all cities at least once, and being in Riga on days 5..8. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "There are three planning inputs that you must integrate to solve the task: {preferences_json} {connectivity_json} {feasible_requirements}. Your task: {agents->orchestrator->goal}. Think carefully to reconcile soft preferences with hard constraints. Produce a clean PDDL domain and a PDDL problem that FastDownward can solve, using STRIPS with typing, with days 1..8, direct flights only, a single traveler, and goals that include visiting all three cities and being in Riga during days 5..8. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->calendar_planner.time_alignment",
+            "flight_planner.connectivity->calendar_planner.time_alignment",
+            "calendar_planner.time_alignment->orchestrator.compile_pddl"
+        ]
+    }
+}

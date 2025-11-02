@@ -1,0 +1,114 @@
+{
+    "name": "TripPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "scheduler",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I am flexible about the starting city as long as the trip is feasible.",
+                "I accept flying only when a direct connection exists.",
+                "If both 7-day preferences cannot be met together due to the 17-day total, I prefer to keep Lyon fixed on days 13 through 17 and then allocate remaining days to Manchester first and Bucharest second."
+            ],
+            "goal": "Produce a feasible 17-day itinerary across Manchester, Bucharest, and Lyon, using only direct flights between consecutive city changes, keeping Lyon fixed for 5 consecutive days on days 13 to 17 inclusive, and satisfying the two 7-day preferences as much as possible under feasibility."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Only direct flights are allowed between cities.",
+                "Direct flights exist between Manchester and Bucharest.",
+                "Direct flights exist between Bucharest and Lyon.",
+                "There is no direct flight between Manchester and Lyon, so travel between them must connect via Bucharest."
+            ],
+            "goal": "Provide a reliable connectivity structure for direct flights that can be used to validate city-to-city transitions between consecutive days in the itinerary."
+        },
+        "scheduler": {
+            "private_information": [
+                "Days are indexed from 1 to 17 inclusive.",
+                "Lyon must be scheduled on days 13, 14, 15, 16, and 17 consecutively.",
+                "The remaining 12 days must be split between Manchester and Bucharest in a way that respects direct-flight connectivity when changing cities on consecutive days.",
+                "If the two 7-day preferences conflict with the 17-day total, maintain all hard constraints and allocate the first 12 days to satisfy 7 in Manchester if possible, and assign the remainder to Bucharest."
+            ],
+            "goal": "Construct a concrete day-by-day assignment of cities over 17 days satisfying all hard constraints and using the flight connectivity to validate allowable transitions."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the constraints, flight graph, and a calendar proposal into a single coherent PDDL domain and problem instance that a FastDownward solver can solve to produce a 17-day city-by-day plan satisfying all hard constraints and as many soft preferences as possible, using only direct flights between consecutive city changes."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 17,
+            "cities": [
+                "Manchester",
+                "Bucharest",
+                "Lyon"
+            ],
+            "day_index_start": 1,
+            "day_index_end": 17
+        },
+        "public_information": [
+            "The trip lasts 17 days in total, from day 1 to day 17 inclusive.",
+            "You plan to visit exactly these cities: Manchester, Bucharest, Lyon.",
+            "Only direct flights may be taken when moving between different cities on consecutive days.",
+            "Direct flights exist between Manchester and Bucharest, and between Bucharest and Lyon.",
+            "There is no direct flight between Manchester and Lyon.",
+            "You plan to stay in Lyon for 5 days, and this stay is fixed to days 13 through 17 inclusive.",
+            "You would like to visit Bucharest for 7 days.",
+            "You want to spend 7 days in Manchester.",
+            "The two 7-day preferences combined with 5 days in Lyon exceed 17 days, so they cannot both be fully satisfied under the hard 17-day total; treat them as soft preferences with the Lyon window as a hard constraint."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "constraints": {
+                "input": [],
+                "output": "traveler_constraints",
+                "system_prompt": "You are a travel-preference analyst. Your task is to extract and structure hard constraints, soft preferences, required cities, and fixed windows from the provided context. Do not output PDDL. Return a compact JSON object with keys: hard_constraints, soft_preferences, must_visit_cities, required_windows, and notes.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private knowledge: {agents->traveler->private_information}. Summarize the trip requirements as structured JSON with the requested keys. Clearly mark which constraints are hard versus soft. Keep it concise and self-contained."
+            }
+        },
+        "flight_planner": {
+            "graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an airline connectivity expert. Build a direct-flight connectivity structure for the cities in this problem. Do not output PDDL. Return a compact JSON object with keys: cities (list of city names), undirected_pairs (list of two-element lists with direct connections), and adjacency (map from city to list of directly connected cities).",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information}. Your private knowledge: {agents->flight_planner->private_information}. Produce the direct-flight graph as structured JSON with the requested keys. Ensure symmetry in adjacency for undirected direct flights."
+            }
+        },
+        "scheduler": {
+            "calendar": {
+                "input": [
+                    "traveler_constraints",
+                    "flight_graph"
+                ],
+                "output": "calendar_proposal",
+                "system_prompt": "You are a calendar scheduler. Using the constraints and the direct-flight graph, produce a 17-day city-by-day assignment that satisfies all hard constraints. If soft preferences conflict with the 17-day total, keep the Lyon window fixed on days 13-17 and allocate the first 12 days by giving Manchester 7 days if feasible and the remainder to Bucharest, while ensuring that any city change between consecutive days is allowed by the direct-flight graph. Do not output PDDL. Return a compact JSON object with keys: day_to_city (a list of 17 entries, each an object with day and city), segment_summary (map city to number of days), transitions (list of pairs [from_city, to_city] for each day change), and violations (list of any soft preference violations or an empty list).",
+                "prompt": "Your name is scheduler. Public information: {environment->public_information}. Your private knowledge: {agents->scheduler->private_information}. Inputs you may rely on: {traveler_constraints} and {flight_graph}. Produce a concrete day-to-city assignment that satisfies all hard constraints and uses only allowed direct-flight transitions between consecutive days. If there are multiple valid options, choose the lexicographically earliest by city name for the first day, and otherwise minimize the number of city switches."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_constraints",
+                    "flight_graph",
+                    "calendar_proposal"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling targeting the FastDownward solver. You must produce a classical STRIPS-compatible PDDL domain and problem that encode a 17-day itinerary over the specified cities with only direct flights allowed between consecutive days when the city changes. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Avoid PDDL3 preferences and durative actions; compile constraints into classical predicates and actions compatible with FastDownward.",
+                "prompt": "Integrate the provided constraints, direct-flight graph, and the calendar proposal to produce a final PDDL domain and problem that a FastDownward solver can run. Goal: construct a 17-day day-by-day city assignment satisfying all hard constraints: exactly 17 days labeled d1 to d17; Lyon must be assigned on days d13 through d17 inclusive; only direct flights are allowed when the city changes between consecutive days; visits are restricted to Manchester, Bucharest, and Lyon. Use the calendar proposal if it satisfies all hard constraints; otherwise, compute a feasible assignment that does. Encode days as discrete objects d1..d17 and cities as constants. Provide predicates sufficient to represent the city chosen for each day and to validate transitions between consecutive days using the adjacency from the flight graph. Ensure the problem contains objects for all days and cities, initial facts for adjacency, and a goal that binds each day to exactly one allowed city with the Lyon window fixed. Output only the two PDDL blocks enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.constraints->scheduler.calendar",
+            "flight_planner.graph->scheduler.calendar",
+            "traveler.constraints->orchestrator.pddl",
+            "flight_planner.graph->orchestrator.pddl",
+            "scheduler.calendar->orchestrator.pddl"
+        ]
+    }
+}

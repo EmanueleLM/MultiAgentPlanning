@@ -1,0 +1,85 @@
+{
+    "name": "MysteryBlocksworld23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "actions_engineer",
+            "state_engineer",
+            "orchestrator"
+        ],
+        "actions_engineer": {
+            "private_information": [
+                "You specialize in normalizing action schemas for classical planning problems.",
+                "You never output PDDL; you return clean, minimal JSON descriptions of operators."
+            ],
+            "goal": "Extract and normalize the six operator schemas (paltry, sip, clip, wretched, memory, tightfisted) with parameterized preconditions and effects suitable for a STRIPS-style planner."
+        },
+        "state_engineer": {
+            "private_information": [
+                "You specialize in curating object universes, initial states, goals, and example plans.",
+                "You never output PDDL; you return clean, minimal JSON instances."
+            ],
+            "goal": "Aggregate all objects, initial facts, goals, and the demonstration plan into two planning instances based on the provided statements."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate upstream JSON artifacts and produce a final PDDL domain and problem that run with the Fast Downward solver."
+            ],
+            "goal": "Produce a single consistent PDDL domain and a single PDDL problem targeting the second planning statement, using the provided operator schemas and instance data."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain overview: You are playing with a set of symbolic objects named object_0 to object_13 (and possibly more as referenced). The world contains unary predicates hand, cats, texture, sneeze, spring, stupendous, and binary predicates vase(x y), next(x y), collect(x y).",
+            "Action paltry(x y z): Preconditions: hand x, cats y, texture z, vase x y, next y z. Add effects: next x z. Delete effects: vase x y.",
+            "Action sip(x y z): Preconditions: hand x, cats y, texture z, next x z, next y z. Add effects: vase x y. Delete effects: next x z.",
+            "Action clip(x y z): Preconditions: hand x, sneeze y, texture z, next y z, next x z. Add effects: vase x y. Delete effects: next x z.",
+            "Action wretched(x y z w): Preconditions: sneeze x, texture y, texture z, stupendous w, next x y, collect y w, collect z w. Add effects: next x z. Delete effects: next x y.",
+            "Action memory(x y z): Preconditions: cats x, spring y, spring z, next x y. Add effects: next x z. Delete effects: next x y.",
+            "Action tightfisted(x y z): Preconditions: hand x, sneeze y, texture z, next y z, vase x y. Add effects: next x z. Delete effects: vase x y.",
+            "Statement 1 initial conditions: cats object_0, collect object_10 object_2, collect object_5 object_1, collect object_6 object_1, collect object_7 object_1, collect object_8 object_2, collect object_9 object_2, hand object_11, hand object_12, next object_0 object_8, next object_11 object_6, next object_12 object_10, next object_3 object_7, next object_4 object_10, sneeze object_3, sneeze object_4, spring object_5, spring object_8, stupendous object_1, stupendous object_2, texture object_10, texture object_5, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Statement 1 goal: next object_11 object_7 and next object_12 object_8.",
+            "Statement 1 example plan: clip object_12 object_4 object_10; wretched object_4 object_10 object_8 object_2; tightfisted object_12 object_4 object_8; wretched object_3 object_7 object_6 object_1; clip object_11 object_3 object_6; wretched object_3 object_6 object_7 object_1; tightfisted object_11 object_3 object_7.",
+            "Statement 2 initial conditions: cats object_0, cats object_1, collect object_10 object_3, collect object_11 object_3, collect object_6 object_2, collect object_7 object_2, collect object_8 object_2, collect object_9 object_3, hand object_12, hand object_13, next object_0 object_9, next object_1 object_9, next object_12 object_11, next object_13 object_7, next object_4 object_8, next object_5 object_11, sneeze object_4, sneeze object_5, spring object_6, spring object_9, stupendous object_2, stupendous object_3, texture object_10, texture object_11, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Statement 2 goal: next object_12 object_10 and next object_13 object_9."
+        ]
+    },
+    "workflow": {
+        "actions_engineer": {
+            "extract": {
+                "input": [],
+                "output": "action_schemas",
+                "system_prompt": "You normalize operator schemas for classical planning. Using the provided public information, extract the six operators paltry, sip, clip, wretched, memory, and tightfisted as a compact JSON. Use parameter vector for each action in positional order: paltry(?x ?y ?z), sip(?x ?y ?z), clip(?x ?y ?z), wretched(?x ?y ?z ?w), memory(?x ?y ?z), tightfisted(?x ?y ?z). Provide fields: name, parameters (list of parameter symbols), preconditions (list of predicate strings with parameters), add_effects (list), del_effects (list). Keep predicate names exactly as in the public information. Do not emit PDDL.",
+                "prompt": "Your task is to read the environment public information and return the six operator schemas as normalized JSON with generic parameters, preserving the exact predicates and their arities. Use only the specified six operators and the predicates hand, cats, texture, sneeze, spring, stupendous, vase, next, collect. Public information: {environment->public_information}."
+            }
+        },
+        "state_engineer": {
+            "compile_instances": {
+                "input": [],
+                "output": "planning_instances",
+                "system_prompt": "You curate planning instances. From the public information, build a JSON artifact with keys: objects (a list of all symbols seen, including all object_i mentioned), instance_1 (init facts list, goal facts list, plan list), instance_2 (init facts list, goal facts list). The facts should be strings like predicate arg1 arg2. For instance_1 include the provided demonstration plan as a list of action strings in order. Do not emit PDDL.",
+                "prompt": "Return a single JSON object containing: objects, instance_1 with fields init, goal, plan, and instance_2 with fields init, goal. Extract exactly what appears in the public information without inventing new symbols, and do not alter argument orders. Public information: {environment->public_information}."
+            }
+        },
+        "orchestrator": {
+            "compile_pddl": {
+                "input": [
+                    "action_schemas",
+                    "planning_instances"
+                ],
+                "output": "pddl_fd",
+                "system_prompt": "You are an expert at integrating operator schemas and instance data to produce PDDL that runs with the Fast Downward solver. Build a single PDDL domain and a single PDDL problem targeting the second statement (instance_2). Use untyped STRIPS with :requirements :strips. Keep predicate names exactly: hand, cats, texture, sneeze, spring, stupendous, vase, next, collect. Define six actions paltry, sip, clip, wretched, memory, tightfisted with parameters and preconditions/effects matching the normalized schemas. Use a clear domain name such as mysteryblocksworld23 and a problem name such as mysteryblocksworld23-instance-2. List all objects from the objects field. The initial state must be exactly instance_2.init, and the goal must conjunct exactly instance_2.goal. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Ensure formatting and syntax are compatible with Fast Downward.",
+                "prompt": "You will receive normalized operator schemas and two planning instances. Produce a PDDL domain and a PDDL problem that solves instance_2. Do not invent new predicates or actions. Respect the exact symbols and arities. Output only two blocks: one <domain>...</domain> and one <problem>...</problem>. Operator schemas: {action_schemas}. Planning instances: {planning_instances}."
+            }
+        },
+        "constraints": [
+            "actions_engineer.extract->orchestrator.compile_pddl",
+            "state_engineer.compile_instances->orchestrator.compile_pddl"
+        ]
+    }
+}

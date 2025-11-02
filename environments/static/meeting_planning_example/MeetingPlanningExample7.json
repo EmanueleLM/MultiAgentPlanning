@@ -1,0 +1,93 @@
+{
+    "name": "MeetingPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "calendar_planner",
+            "routing_planner",
+            "orchestrator"
+        ],
+        "calendar_planner": {
+            "private_information": [
+                "I maintain personal calendars, time windows, and minimum meeting durations.",
+                "I translate human constraints into precise temporal windows and soft objectives.",
+                "I can propose several alternative day-level schedules that satisfy hard constraints."
+            ],
+            "goal": "Plan a one-day visit in San Francisco to meet as many friends as possible, ensuring a minimum 75-minute meeting with John within his availability, while respecting the arrival time and locations."
+        },
+        "routing_planner": {
+            "private_information": [
+                "I compute asymmetric travel times, feasible sequences of visits, and identify route bottlenecks.",
+                "I generate multiple route options and estimate slack around meeting windows.",
+                "I optimize for shortest travel time while preserving feasibility of required meetings."
+            ],
+            "goal": "Produce feasible and efficient route options that enable meeting as many friends as possible, guaranteeing at least 75 minutes with John during his availability window."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate availability and routing options, choose the best plan under stated objectives, and produce a final PDDL domain and problem.",
+                "I target the FastDownward solver and ensure outputs are solver-ready.",
+                "I keep upstream agent assumptions explicit and avoid inventing data beyond public information."
+            ],
+            "goal": "Coordinate agents to select the best day plan that maximizes number of friends met and guarantees at least 75 minutes with John, then produce a final PDDL domain and problem for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Today",
+            "start_location": "Richmond District",
+            "start_time": "09:00",
+            "time_unit": "minutes",
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "You arrive at Richmond District at 9:00 AM.",
+            "John is available at North Beach from 3:15 PM to 5:15 PM.",
+            "You would like to meet John for a minimum of 75 minutes.",
+            "Travel time Richmond District -> North Beach: 17 minutes.",
+            "Travel time North Beach -> Richmond District: 18 minutes.",
+            "Primary objective: meet as many friends as possible.",
+            "Secondary objectives (tie-breakers): maximize total quality time, minimize travel time, preserve feasibility under hard constraints.",
+            "Known locations in scope: Richmond District, North Beach.",
+            "Assume walking or transit-level travel; times are asymmetric as stated and measured in minutes."
+        ]
+    },
+    "workflow": {
+        "calendar_planner": {
+            "analyze_availability": {
+                "input": [],
+                "output": "availability_summary",
+                "system_prompt": "You reconcile all temporal constraints into precise, machine-readable availability windows and hard constraints. You do not emit PDDL. Be concise and unambiguous.",
+                "prompt": "Your name is calendar_planner. Use the public information to compute feasible meeting windows and day-level constraints. Identify mandatory constraints (arrival at Richmond District at 09:00; meet John at North Beach for at least 75 minutes within 15:15-17:15) and any implied buffers needed around travel. Propose several alternative high-level schedules that could satisfy these constraints and list their time blocks, labeled and timestamped to the minute. Provide a compact, structured bullet list including: assumptions used, hard constraints, soft objectives, candidate schedule blocks (with start, end, location, purpose), and minimal data needed by a routing engine."
+            }
+        },
+        "routing_planner": {
+            "enumerate_routes": {
+                "input": [
+                    "availability_summary"
+                ],
+                "output": "route_candidates",
+                "system_prompt": "You generate routing options, compute travel feasibility with asymmetric times, and score route candidates. You do not emit PDDL. Be explicit about feasibility and buffers.",
+                "prompt": "Your name is routing_planner. Based on the availability_summary, enumerate multiple route candidates that respect: Richmond District start at 09:00; minimum 75-minute meeting with John in North Beach strictly within 15:15-17:15; asymmetric travel times (Richmond->North Beach 17 min, North Beach->Richmond 18 min). For each candidate, list a timeline of moves and stays with timestamps, total travel time, slack before and after John\u2019s meeting, and a feasibility flag. If useful, propose small variants to increase slack or total meeting time. Provide a concise, structured bullet list of route candidates."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_summary",
+                    "route_candidates"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert in multi-agent coordination and classical planning encodings. Synthesize a final PDDL domain and problem that a FastDownward solver can run. Use classical STRIPS-compatible modeling with predicates and actions; if time is needed, discretize time explicitly with objects and ordering constraints rather than durative actions. Ensure the problem captures: start at Richmond District at 09:00, option to travel between Richmond District and North Beach with given asymmetric costs, and a mandatory meeting with John at North Beach for at least 75 minutes within 15:15-17:15. Choose the best candidate schedule using availability_summary and route_candidates to maximize number of friends met (here, ensure John is met) and minimize travel time as a secondary objective. Then emit: 1) <domain>...PDDL domain...</domain> and 2) <problem>...PDDL problem...</problem>. Keep the output strictly within these two tags and ensure FastDownward-friendly syntax.",
+                "prompt": "Integrate the availability_summary and route_candidates to pick the best feasible schedule that meets John for at least 75 minutes within 15:15-17:15, starting at Richmond District at 09:00, using asymmetric travel times. Encode the chosen schedule and constraints into a classical PDDL domain and problem that FastDownward can solve. Clearly model locations, movement actions with appropriate costs, meeting actions tied to North Beach and restricted time discretization, and the goal to have completed the mandatory meeting. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "calendar_planner.analyze_availability->routing_planner.enumerate_routes",
+            "calendar_planner.analyze_availability->orchestrator.pddl",
+            "routing_planner.enumerate_routes->orchestrator.pddl"
+        ]
+    }
+}

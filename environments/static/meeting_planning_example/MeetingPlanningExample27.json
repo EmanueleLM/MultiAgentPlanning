@@ -1,0 +1,114 @@
+{
+    "name": "MeetingPlanningExample27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "route_planner",
+            "scheduler",
+            "friend_agent",
+            "orchestrator"
+        ],
+        "route_planner": {
+            "private_information": [
+                "Knows how to compute shortest travel times between neighborhoods in San Francisco.",
+                "Understands directed travel asymmetries (e.g., A->B time may differ from B->A).",
+                "Capable of merging fixed travel facts with candidate routes."
+            ],
+            "goal": "Provide a minimal, correct travel-time graph and feasible neighborhood-to-neighborhood route segments that respect the public facts."
+        },
+        "scheduler": {
+            "private_information": [
+                "Capable of discretizing the day in minutes.",
+                "Understands earliest start time constraints and day horizon.",
+                "Can generate multiple candidate schedules that trade off waiting versus early arrival at meetings."
+            ],
+            "goal": "Enumerate diverse, feasible day schedules starting at Marina District at 09:00 that respect travel times and meeting windows, highlighting alternatives that could maximize the number of friend meetings while guaranteeing mandatory constraints."
+        },
+        "friend_agent": {
+            "private_information": [
+                "Maintains the list of friends, their locations, time windows, and minimum meeting durations.",
+                "Does not invent unavailable data; only includes friends and windows provided by public information."
+            ],
+            "goal": "Supply accurate friend availability windows and mandatory meeting requirements, including minimum durations and locations."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Expert at compiling multi-source constraints into a single PDDL domain and problem for the FastDownward solver.",
+                "Ensures STRIPS-compatible modeling with numeric fluents for time and cost, producing plans that satisfy hard constraints and allow optimization.",
+                "Keeps actions and objects well-scoped and unambiguous."
+            ],
+            "goal": "Integrate candidate routes, schedules, and friend availabilities; then produce a final PDDL domain and problem that guarantee meeting Margaret for at least 15 minutes within her availability window and allow the solver to search for the best schedule under the given constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minute",
+            "day_horizon_min": 1440,
+            "start_time_min": 540,
+            "start_location": "marina_district",
+            "locations": [
+                "marina_district",
+                "pacific_heights"
+            ],
+            "directed_travel_minutes": {
+                "marina_district->pacific_heights": 7,
+                "pacific_heights->marina_district": 6
+            }
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day and want to meet as many friends as possible.",
+            "You arrive at Marina District at 9:00 AM.",
+            "Travel time Marina District -> Pacific Heights is 7 minutes.",
+            "Travel time Pacific Heights -> Marina District is 6 minutes.",
+            "Margaret will be at Pacific Heights from 7:00 PM (1140 minutes) to 7:45 PM (1185 minutes).",
+            "You would like to meet Margaret for a minimum of 15 minutes.",
+            "Time unit is minutes; the planning horizon is a single day."
+        ]
+    },
+    "workflow": {
+        "route_planner": {
+            "analysis": {
+                "input": [],
+                "output": "routes_output",
+                "system_prompt": "You are a transit and routing analyst. Your task is to deliver a compact, directed travel-time graph between neighborhoods and list feasible route segments that may be used to travel between Marina District and Pacific Heights. Respect asymmetric travel times when present. Do not produce PDDL; focus on clean, unambiguous data useful for later planning.",
+                "prompt": "Given the public information and initialization constants, produce a minimal travel-time graph with directed arcs and integer minutes, including Marina District <-> Pacific Heights. Include assumptions only if they are explicitly supported by public information. Provide a concise representation suitable for downstream integration."
+            }
+        },
+        "scheduler": {
+            "enumeration": {
+                "input": [
+                    "routes_output"
+                ],
+                "output": "schedules_output",
+                "system_prompt": "You are a day-schedule strategist. Generate several distinct feasible schedules that start at Marina District at 09:00 and consider travel to and from Pacific Heights. Explore reasonable variations such as early arrival with waiting, just-in-time arrival, or returning to Marina after the meeting. Do not produce PDDL; produce clear schedule candidates with timestamps and locations.",
+                "prompt": "Using the travel-time graph and public constraints, enumerate multiple candidate itineraries that all satisfy hard constraints. Each itinerary should list ordered steps with start time, end time, location, and action (move, wait, meet). Ensure at least one itinerary arrives at Pacific Heights in time to meet Margaret for at least 15 minutes between 19:00 and 19:45."
+            }
+        },
+        "friend_agent": {
+            "availability": {
+                "input": [],
+                "output": "friends_output",
+                "system_prompt": "You are a contact and availability coordinator. Compile friends, locations, availability windows, and minimum meeting durations strictly from public information. Do not fabricate entries and do not produce PDDL.",
+                "prompt": "List each friend with: name, location, available_from_min, available_to_min, and min_meeting_min. Include Margaret at Pacific Heights available from 1140 to 1185 with a minimum meeting duration of 15."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "routes_output",
+                    "schedules_output",
+                    "friends_output"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with multi-agent PDDL planning targeting the FastDownward solver. Produce a final PDDL domain and problem that are self-contained, solvable by FastDownward, and respect all hard constraints. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep actions explicit. Model time in minutes with a numeric fluent current-time to enforce windowed constraints and a total-cost accumulator for optimization. Include actions such as move-marina-to-pacific, move-pacific-to-marina, wait, and meet-margaret-15min where meeting increases current-time by 15 and is only allowed if current-time >= 1140 and current-time + 15 <= 1185 and the agent is at Pacific Heights. Initialize current-time to 540 (09:00) at Marina District. Add a goal that requires meeting Margaret and optionally being at any location at the end. Provide a metric to minimize total-cost (e.g., sum of travel and waiting minutes) to allow the solver to select the best schedule. Do not include extraneous commentary outside the required tags.",
+                "prompt": "Integrate the travel-time graph, schedule candidates, and friend availability to generate a single coherent PDDL domain and problem. Use objects for locations (marina_district, pacific_heights) and a single traveler agent if needed. Encode directed move actions with their respective durations and costs (7 minutes Marina->Pacific, 6 minutes Pacific->Marina), a wait action that increases both current-time and total-cost by a chosen wait step (you may use a fixed 1-minute wait applied repeatedly), and a meet-margaret-15min action that increases current-time and total-cost by 15 and sets a predicate met-margaret. The initial state is at marina_district with current-time 540 and total-cost 0. The goal is to have met-margaret true. Add a metric to minimize total-cost. Ensure numeric preconditions correctly enforce Margaret's window: 1140 <= current-time and current-time + 15 <= 1185. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "route_planner.analysis->orchestrator.pddl",
+            "scheduler.enumeration->orchestrator.pddl",
+            "friend_agent.availability->orchestrator.pddl"
+        ]
+    }
+}

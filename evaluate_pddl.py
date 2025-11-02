@@ -326,7 +326,7 @@ def write_detailed_evaluations(
 ) -> Path:
     details_dir = Path("results") / "_evaluation" / "pddl"
     details_dir.mkdir(parents=True, exist_ok=True)
-    output_path = details_dir / f"{dataset_name}.json"
+    output_path = details_dir / f"{Path(dataset_name).stem}.json"
 
     entries = []
     for r in results:

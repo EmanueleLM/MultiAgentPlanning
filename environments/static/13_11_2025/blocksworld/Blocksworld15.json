@@ -1,0 +1,169 @@
+{
+    "name": "Blocksworld15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "state_modeler",
+            "planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "state_modeler": {
+            "private_information": [
+                "Canonical Blocks World predicates: on(x,y), ontable(x), clear(x), holding(x), handempty",
+                "Objects are colored blocks: red, blue, yellow, orange"
+            ],
+            "goal": "Extract precise, machine-readable objects, predicates, initial states, and goals for each scenario described in the public information without inventing facts."
+        },
+        "planner": {
+            "private_information": [
+                "Use standard Blocks World operator schemas (pickup, putdown, unstack, stack) and reason about preconditions and effects symbolically",
+                "Do not emit PDDL; instead, produce normalized JSON-like operator schemas and plans"
+            ],
+            "goal": "Summarize operator schemas, validate the provided plan for Scenario 1 step-by-step, and synthesize a valid plan for Scenario 2 using the extracted states/goals."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Audit temporal/causal soundness with STRIPS-like reasoning",
+                "Remove bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, magic resets). Ensure all state changes stem only from operator effects and all preconditions hold at execution time"
+            ],
+            "goal": "Audit both scenarios (and any plans) for temporal/causal consistency, flag violations, and propose minimally invasive corrections that preserve constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrate extracted states/goals, operator schemas, and audit reports",
+                "Produce final PDDL domain and problems targeting the FastDownward solver with STRIPS-compatible constructs"
+            ],
+            "goal": "Synthesize a single Blocks World PDDL domain and two PDDL problem files (one per scenario) ready for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "scenarios": 2,
+            "domain": "BlocksWorld-STRIPS",
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "Actions available: pick up a block; unstack a block from on top of another block; put down a block; stack a block on top of another block.",
+            "Restrictions: Only one block can be picked up or unstacked at a time.",
+            "Restrictions: The hand must be empty to pick up or unstack.",
+            "Restrictions: A block can be picked up only if it is on the table and clear. A block is clear if it has no other block on top and is not currently being held.",
+            "Restrictions: Unstacking is allowed only if the source block is actually on top of the target block.",
+            "Restrictions: Unstacking requires the source block to be clear.",
+            "Restrictions: After pick up or unstack, you are holding the block.",
+            "Restrictions: You can only put down a block that you are holding.",
+            "Restrictions: You can only stack a block onto another block if you are holding the block being stacked.",
+            "Restrictions: You can only stack a block onto another block if the destination block is clear.",
+            "Restrictions: After putting down or stacking, the hand becomes empty.",
+            "Restrictions: After stacking a block on a second block, the second block is no longer clear.",
+            "Scenario 1 Initial: red is clear; blue is clear; yellow is clear; hand is empty; yellow is on orange; red is on the table; blue is on the table; orange is on the table.",
+            "Scenario 1 Goal: orange is on blue; yellow is on red.",
+            "Scenario 1 Provided Plan (to be validated): unstack the yellow block from on top of the orange block; stack the yellow block on top of the red block; pick up the orange block; stack the orange block on top of the blue block.",
+            "Scenario 2 Initial: red is clear; blue is clear; hand is empty; red is on yellow; yellow is on orange; blue is on the table; orange is on the table.",
+            "Scenario 2 Goal: blue is on orange; orange is on yellow."
+        ]
+    },
+    "workflow": {
+        "state_modeler": {
+            "extract_v1": {
+                "input": [],
+                "output": "bw_v1",
+                "system_prompt": "You are a knowledge engineer for Blocks World. Extract objects, predicates, initial state, and goal for the described scenario using canonical predicates on(x,y), ontable(x), clear(x), holding(x), handempty. Output a concise, unambiguous JSON object only.",
+                "prompt": "Your name is state_modeler. Use the public information to extract Scenario 1. Keep to the given blocks {environment->init->objects}. Do not invent blocks or facts. Encode the initial state and goal with predicates: on, ontable, clear, holding, handempty. No PDDL; just a clean JSON object summarizing objects, init, and goal."
+            },
+            "extract_v2": {
+                "input": [],
+                "output": "bw_v2",
+                "system_prompt": "You are a knowledge engineer for Blocks World. Extract objects, predicates, initial state, and goal for the described scenario using canonical predicates on(x,y), ontable(x), clear(x), holding(x), handempty. Output a concise, unambiguous JSON object only.",
+                "prompt": "Your name is state_modeler. Use the public information to extract Scenario 2. Keep to the given blocks {environment->init->objects}. Do not invent blocks or facts. Encode the initial state and goal with predicates: on, ontable, clear, holding, handempty. No PDDL; just a clean JSON object summarizing objects, init, and goal."
+            }
+        },
+        "planner": {
+            "action_schema": {
+                "input": [],
+                "output": "bw_schema",
+                "system_prompt": "You are a Blocks World planner. Produce a normalized operator schema description for pickup(x), putdown(x), unstack(x,y), stack(x,y) with explicit preconditions and effects using predicates on, ontable, clear, holding, handempty. Do not emit PDDL; emit a compact JSON-like structure suitable for translation into PDDL later.",
+                "prompt": "Your name is planner. Based on the public restrictions, write the canonical operator schemas including add and delete effects. Do not include derived predicates or conditional effects. Keep parameter names consistent across actions and ensure effects respect hand capacity of 1."
+            },
+            "validate_plan_v1": {
+                "input": [
+                    "bw_v1",
+                    "bw_schema"
+                ],
+                "output": "plan_v1_validation",
+                "system_prompt": "You reason symbolically about operator preconditions and effects. Given an initial state, goal, and operator schemas, check a candidate plan step-by-step for applicability and compute the resulting state sequence.",
+                "prompt": "Your name is planner. Validate the Scenario 1 provided plan from the public information. Use {bw_v1} and {bw_schema}. For each step, state whether preconditions hold, list applied effects, and produce the updated state snapshot. Conclude with whether the goal is achieved. Do not produce PDDL."
+            },
+            "suggest_plan_v2": {
+                "input": [
+                    "bw_v2",
+                    "bw_schema"
+                ],
+                "output": "plan_v2_suggestion",
+                "system_prompt": "You synthesize valid Blocks World plans using the provided operator schemas. Plans must be temporally and causally sound with no shortcuts.",
+                "prompt": "Your name is planner. Synthesize a minimal or near-minimal valid plan for Scenario 2 using {bw_v2} and {bw_schema}. Output the plan as an ordered list of grounded actions using the verbs unstack, stack, pickup, putdown. Do not produce PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit_v1": {
+                "input": [
+                    "bw_v1",
+                    "bw_schema",
+                    "plan_v1_validation"
+                ],
+                "output": "audit_v1",
+                "system_prompt": "You audit temporal and causal consistency. Reject bookkeeping shortcuts (quota tokens, post-hoc penalties, magic clearance). Ensure every state change is justified by operator effects and every operator is applicable when used.",
+                "prompt": "Your name is consistency_auditor. Audit Scenario 1 using {bw_v1}, {bw_schema}, and {plan_v1_validation}. Identify any violations and propose minimal corrections if needed. If valid, explicitly state that the plan is sound under the schema."
+            },
+            "audit_v2": {
+                "input": [
+                    "bw_v2",
+                    "bw_schema",
+                    "plan_v2_suggestion"
+                ],
+                "output": "audit_v2",
+                "system_prompt": "You audit temporal and causal consistency. Reject bookkeeping shortcuts (quota tokens, post-hoc penalties, magic clearance). Ensure every state change is justified by operator effects and every operator is applicable when used.",
+                "prompt": "Your name is consistency_auditor. Audit Scenario 2 using {bw_v2}, {bw_schema}, and {plan_v2_suggestion}. Identify any violations and propose minimal corrections if needed. If valid, explicitly state that the plan is sound under the schema."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "bw_schema",
+                    "bw_v1",
+                    "bw_v2",
+                    "audit_v1",
+                    "audit_v2",
+                    "plan_v1_validation",
+                    "plan_v2_suggestion"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-instance PDDL targeting the FastDownward solver. Produce a single Blocks World PDDL domain and two PDDL problem files (one per scenario). Use STRIPS-compatible constructs with predicates: on, ontable, clear, holding, handempty. Keep actions as pickup, putdown, unstack, stack with delete effects. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem></problem> tags. Ensure object lists, init, and goals reflect the audited scenarios. No extra commentary.",
+                "prompt": "Aggregate the inputs to synthesize the final artifacts. Use {bw_schema} as the operator basis. Build Problem 1 from {bw_v1} validated by {audit_v1} and Problem 2 from {bw_v2} validated by {audit_v2}. If audits suggest corrections, apply them. Provide exactly one domain and exactly two problems in order: first the domain, then the Scenario 1 problem, then the Scenario 2 problem."
+            }
+        },
+        "constraints": [
+            "state_modeler.extract_v1->planner.validate_plan_v1",
+            "planner.action_schema->planner.validate_plan_v1",
+            "state_modeler.extract_v1->consistency_auditor.audit_v1",
+            "planner.validate_plan_v1->consistency_auditor.audit_v1",
+            "state_modeler.extract_v2->planner.suggest_plan_v2",
+            "planner.suggest_plan_v2->consistency_auditor.audit_v2",
+            "state_modeler.extract_v2->consistency_auditor.audit_v2",
+            "planner.action_schema->orchestrator.pddl",
+            "state_modeler.extract_v1->orchestrator.pddl",
+            "state_modeler.extract_v2->orchestrator.pddl",
+            "consistency_auditor.audit_v1->orchestrator.pddl",
+            "consistency_auditor.audit_v2->orchestrator.pddl",
+            "planner.validate_plan_v1->orchestrator.pddl",
+            "planner.suggest_plan_v2->orchestrator.pddl"
+        ]
+    }
+}

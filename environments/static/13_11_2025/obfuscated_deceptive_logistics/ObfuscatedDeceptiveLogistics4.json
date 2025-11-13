@@ -1,0 +1,104 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "describer",
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "describer": {
+            "private_information": [
+                "I specialize in translating natural descriptions into structured symbolic facts and action schemata.",
+                "I am not allowed to emit PDDL directly. I produce normalized preconditions, effects, and object lists."
+            ],
+            "goal": "Extract and normalize the action definitions, preconditions, and effects from the human specification into a consistent fact base."
+        },
+        "manipulator": {
+            "private_information": [
+                "I propose concrete multi-step candidate plans using the available actions and objects.",
+                "I maintain concrete sequences of action instances and the object bindings used."
+            ],
+            "goal": "Produce planned action sequences that attempt to reach the stated goals given the fact base from the describer."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and eliminate bookkeeping shortcuts like quota tokens or post-hoc penalties.",
+                "I flag contradictions, unreachable preconditions, and implicit assumptions, and I propose fixes."
+            ],
+            "goal": "Verify and repair candidate plans and the fact base so that the plan is temporally and causally consistent without bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate outputs from the other agents and produce the final PDDL domain and problem for FastDownwards.",
+                "I keep agent actions distinct in the resulting multi-agent model where appropriate."
+            ],
+            "goal": "Emit a complete PDDL domain and a PDDL problem targeting the FastDownwards planner that encodes the verified facts and a plan-capable problem instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 2
+        },
+        "public_information": [
+            "Available action schemata are paltry, sip, clip, wretched, memory, and tightfisted with various object arities.",
+            "Predicates referenced include hand, cats, texture, vase, next, sneeze, stupendous, collect, spring and others over object identifiers.",
+            "Two independent statement blocks describe initial facts and goals offering multiple scenarios to analyze and plan for.",
+            "The orchestrator will synthesize a PDDL domain and problem suitable for FastDownwards from the agent inputs."
+        ]
+    },
+    "workflow": {
+        "describer": {
+            "analysis": {
+                "input": [],
+                "output": "facts_describer",
+                "system_prompt": "You are an extraction specialist. Translate the human specification into a consistent symbolic fact base and normalized action templates. Do not emit PDDL. Provide a list of object identifiers, predicate instances in the initial state, explicit action templates with named parameters, required preconditions, add effects, and delete effects. Keep names canonical and consistent across all templates.",
+                "prompt": "You are describer. Use the public information about available actions and predicates and your private information. Extract objects and normalize all action schemata and initial facts from the specification. Return a single structured report of objects, initial predicate instances, and for each action template list parameter names, preconditions, add effects, and delete effects. Do not invent predicates. Do not produce PDDL. Keep outputs declarative and consistent."
+            }
+        },
+        "manipulator": {
+            "propose": {
+                "input": [
+                    "facts_describer"
+                ],
+                "output": "plan_manipulator",
+                "system_prompt": "You are a plan proposer. Using a normalized fact base, propose concrete sequential plans that bind template parameters to concrete object identifiers. Do not produce PDDL. Focus on feasible action sequences and note any uncertain preconditions that require auditor attention.",
+                "prompt": "You are manipulator. Given the facts_describer output and the public information, create one or more concrete candidate plans that attempt to reach the stated goals in the provided scenarios. For each plan provide step by step actions with object bindings and the expected changes to relevant predicates. Mark steps that rely on implicit assumptions."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "facts_describer",
+                    "plan_manipulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Your role is to detect bookkeeping shortcuts, temporal locality errors, post-hoc penalties, and any implicit quota tokens. You should not introduce new shortcut mechanisms. Produce a corrected fact base or plan repairs when possible.",
+                "prompt": "You are auditor. Inspect facts_describer and plan_manipulator. Identify any contradictions in preconditions and effects, impossible or circular dependencies, and any use of bookkeeping shortcuts. Propose concrete fixes or alternative sequences that remove shortcuts and ensure causal consistency. Output a concise audit_report that lists issues and recommended corrections, and produce a revised fact base or repaired plan fragments if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_describer",
+                    "plan_manipulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an integrator that must produce a final PDDL domain and PDDL problem tailored for the FastDownwards planner. Keep actions distinct where multiple agents or roles imply separable actions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, objects, predicates, action names, and initial and goal states are syntactically valid for FastDownwards. Resolve any remaining ambiguities conservatively using only information from inputs.",
+                "prompt": "You are orchestrator. Receive the describer, manipulator and auditor outputs. Integrate them to create one PDDL domain and one PDDL problem suitable for FastDownwards. Keep multi-agent actions distinct by prefixing agent-specific actions if needed. If the auditor reported necessary repairs, incorporate them. Do not alter verified logical facts arbitrarily. Enclose domain in <domain></domain> and problem in <problem></problem> and target FastDownwards compatibility."
+            }
+        },
+        "constraints": [
+            "describer.analysis->manipulator.propose",
+            "describer.analysis->auditor.review",
+            "manipulator.propose->auditor.review",
+            "describer.analysis->orchestrator.pddl",
+            "manipulator.propose->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

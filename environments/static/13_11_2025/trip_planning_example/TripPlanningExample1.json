@@ -1,0 +1,122 @@
+{
+    "name": "TripPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I will visit exactly three cities: Riga, Manchester, and Split.",
+                "I can only take direct flights when moving between cities.",
+                "Requested stays: Split 6 days, Manchester 4 days, Riga 7 days (sum requested = 17 days).",
+                "Total trip duration must be 15 days, so two days must be removed while keeping preferences as much as possible."
+            ],
+            "goal": "Provide the desired per-city stay lengths and indicate acceptable flexibility so the total sum matches 15 days."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Known direct flights: Riga <-> Manchester (both directions), Manchester -> Split (one-way).",
+                "No known direct flight between Riga and Split.",
+                "Only direct flights may be used; no multi-hop within a single flight action."
+            ],
+            "goal": "Provide a directed flight graph and enumerate feasible city visit orders that use only these direct flights and cover all three cities exactly once."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across preferences and connectivity.",
+                "Ensure the total days equal exactly 15 and that every inter-city transition is a direct flight in the flight graph.",
+                "Disallow bookkeeping shortcuts such as quota tokens or post-hoc penalties; require explicit, conserved quantities for days and city needs.",
+                "Prefer minimally invasive adjustments to reconcile over-specified requests (17 days) to the fixed horizon (15 days)."
+            ],
+            "goal": "Integrate traveler preferences with the flight graph, detect inconsistencies, and output a consistent day allocation and an order of cities that is achievable using only direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the traveler, flight planner, and auditor outputs and produce a final PDDL domain and problem for the FastDownward(s) solver that encodes the 15-day itinerary with only direct flights and the audited per-city day totals."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 15,
+            "cities": [
+                "Riga",
+                "Manchester",
+                "Split"
+            ],
+            "direct_flights": [
+                [
+                    "Riga",
+                    "Manchester"
+                ],
+                [
+                    "Manchester",
+                    "Riga"
+                ],
+                [
+                    "Manchester",
+                    "Split"
+                ]
+            ]
+        },
+        "public_information": [
+            "You will visit Riga, Manchester, and Split in a 15-day trip.",
+            "Only direct flights may be used to move between cities.",
+            "Known direct flights: Riga <-> Manchester; Manchester -> Split.",
+            "There is no known direct flight between Riga and Split.",
+            "Requested stays: Split 6 days, Manchester 4 days, Riga 7 days (requested total is 17, which exceeds the 15-day horizon)."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_report",
+                "system_prompt": "You gather traveler preferences and constraints for visiting Riga, Manchester, and Split during a 15-day trip that uses only direct flights. Summarize the requested per-city days, the fixed 15-day horizon, and clearly state any mismatch if the requested total differs from 15. Return a compact JSON report with keys: requested_days_by_city, total_requested_days, hard_constraints, soft_preferences, notes. Do not generate PDDL.",
+                "prompt": "Your name is traveler. Public info: {environment->public_information}. Your private info: {agents->traveler->private_information}. Your goal: {agents->traveler->goal}. Provide a concise JSON report as specified in the system prompt, without PDDL."
+            }
+        },
+        "flight_planner": {
+            "flight_graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an air-route planner. Build a directed flight graph from the public information, respecting directionality exactly as stated. Enumerate all feasible city visit orders that cover the three cities exactly once using only direct flights. Return a compact JSON with keys: nodes, directed_edges, undirected_pairs_for_clarity, feasible_orders, assumptions. Do not invent flights and do not generate PDDL.",
+                "prompt": "Your name is flight_planner. Public info: {environment->public_information}. Your private info: {agents->flight_planner->private_information}. Your goal: {agents->flight_planner->goal}. Produce the JSON specified in the system prompt, without PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "preferences_report",
+                    "flight_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency. Reconcile the 15-day horizon with the requested city-day totals and the flight connectivity. Enforce: total days must equal exactly 15; each move between cities must be a direct flight from the graph; no hidden bookkeeping tricks (no quota tokens or post-hoc penalties). Prefer minimal change to preferences. Return a compact JSON with keys: final_allocation_by_city (sums to 15), route_order (a feasible single-pass order of the three cities using only direct flights), justification, constraints_verified. Do not generate PDDL.",
+                "prompt": "Your name is auditor. Inputs: preferences={preferences_report}, flights={flight_graph}. Your private info: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Produce the JSON report specified in the system prompt. If requested totals exceed 15, minimally adjust to sum to 15 while preserving feasibility. Avoid PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_report",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_trip_plan",
+                "system_prompt": "You are an expert with multi-agent PDDL problems for the FastDownward(s) solver. You must produce a final PDDL domain and problem that encode: (1) exactly 15 total days; (2) per-city day requirements taken from the auditor's final_allocation_by_city; (3) the directed flight constraints; (4) initial city equal to the first city in the auditor's route_order; (5) a legal plan exists that uses only direct flights and spends exactly the specified days in each city. Target FastDownward by using classical planning with :typing and :numeric-fluents. Represent days as a numeric fluent (days-remaining) initialized to 15. Represent per-city needs as numeric fluents (need-riga, need-manchester, need-split) initialized from the audit. Provide actions: fly(x,y) with preconditions at(x) and direct(x,y) and effects move the agent to y; stay(c) with preconditions at(c), (> days-remaining 0), (> need-c 0) and effects decrement both days-remaining and the relevant need by 1. The goal is (= days-remaining 0) and all needs equal 0. Do not use ad hoc quota tokens or post-hoc penalties. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Inputs: preferences={preferences_report}; flights={flight_graph}; audit={audit_report}. Use the audit to set initial city and per-city needs, use the flights to assert direct edges. Produce a single self-contained pair of PDDL files (domain and problem) enclosed in the required tags for FastDownward(s)."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->auditor.audit",
+            "flight_planner.flight_graph->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.preferences->orchestrator.pddl",
+            "flight_planner.flight_graph->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,113 @@
+{
+    "name": "MeetingPlanningExample4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "availability_modeler",
+            "route_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "availability_modeler": {
+            "private_information": [
+                "Skilled at extracting hard constraints and normalizing time windows",
+                "Prefers minute-level time discretization"
+            ],
+            "goal": "Maximize the number of friend meetings while respecting travel times, availabilities, and a 60-minute minimum meeting with Jessica."
+        },
+        "route_planner": {
+            "private_information": [
+                "Knows shortest-walk times between Presidio and Marina District are 10 minutes one-way",
+                "Can enumerate multiple feasible itineraries with slack and buffers"
+            ],
+            "goal": "Generate multiple feasible itineraries that maximize meetings while respecting availability and travel-time constraints."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency across candidate schedules",
+                "Prohibits bookkeeping shortcuts such as quota tokens or post-hoc penalties and requires explicit time allocation and feasible transitions",
+                "Ensures at least 60 contiguous minutes with Jessica"
+            ],
+            "goal": "Filter and refine proposed schedules to those that are temporally consistent, causally grounded, and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinates agents and produces the final PDDL domain and problem for the FastDownwards solver",
+                "Selects the best schedule according to the objective and constraints"
+            ],
+            "goal": "Integrate analyses, pick the best feasible schedule, and produce a final PDDL domain and problem that encode the chosen plan for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minute",
+            "start_time": "09:00",
+            "latest_end_time": "18:00",
+            "locations": [
+                "Presidio",
+                "MarinaDistrict"
+            ],
+            "agent": "you"
+        },
+        "public_information": [
+            "You arrive at Presidio at 09:00.",
+            "Jessica is at Marina District from 09:15 to 17:45.",
+            "Minimum required meeting duration with Jessica is 60 minutes.",
+            "Travel time Presidio to Marina District is 10 minutes.",
+            "Travel time Marina District to Presidio is 10 minutes.",
+            "Goal is to meet as many friends as possible subject to constraints; currently only Jessica has a known availability window."
+        ]
+    },
+    "workflow": {
+        "availability_modeler": {
+            "extract": {
+                "input": [],
+                "output": "availability_model",
+                "system_prompt": "You are an expert in extracting scheduling constraints. Parse the public information and produce a normalized availability and travel-time model. Do not emit PDDL.",
+                "prompt": "Your name is availability_modeler. Public information: {environment->public_information}. Private information: {agents->availability_modeler->private_information}. Goal: {agents->availability_modeler->goal}. Extract entities (locations, friends), time windows, travel times, and the initial state at 09:00 in Presidio. Return a concise JSON object with keys: start_time, locations, travel, friends (each friend has location, window_start, window_end, min_meet_minutes), and hard_constraints. Do not invent friends beyond those stated."
+            }
+        },
+        "route_planner": {
+            "enumerate": {
+                "input": [
+                    "availability_model"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a routing and scheduling expert. Enumerate multiple feasible itineraries with explicit timestamps and travel segments. Do not emit PDDL.",
+                "prompt": "Your name is route_planner. Use: {availability_model}. Private information: {agents->route_planner->private_information}. Goal: {agents->route_planner->goal}. Enumerate several distinct feasible schedules over the day. Each schedule must include actions with absolute times such as depart, travel, arrive, wait, and meet, honoring the 10-minute travel and Jessica's 09:15 to 17:45 availability with at least 60 contiguous minutes of meeting. Provide at least three variants that differ in timing or slack. Return a JSON object with a schedules list; each schedule includes a name, actions (ordered list), total_meeting_minutes, waiting_minutes, and notes."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules",
+                    "availability_model"
+                ],
+                "output": "feasibility_audit",
+                "system_prompt": "You audit temporal and causal consistency. Remove any schedule that relies on bookkeeping shortcuts such as quota tokens or post-hoc penalties. Require explicit feasible transitions, contiguous 60-minute meeting with Jessica, and no overlapping actions. Do not emit PDDL.",
+                "prompt": "Your name is consistency_auditor. Inputs: {candidate_schedules} and {availability_model}. Private information: {agents->consistency_auditor->private_information}. Verify that each schedule has consistent times, legal travel, and contiguous meeting blocks that satisfy minimum duration. Reject schedules with overlaps, negative slack, or missing travel. Return a JSON object with valid_schedules (each with reasons_why_valid) and rejected_schedules (each with reasons_why_rejected)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_model",
+                    "candidate_schedules",
+                    "feasibility_audit"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with PDDL for classical planners targeting the FastDownwards solver. You must output a PDDL domain and a PDDL problem for the selected schedule. Always enclose the domain between <domain></domain> and the problem between <problem></problem>. Use a representation suitable for FastDownwards, for example classical PDDL with discretized time steps as objects or predicates. Encode locations, discrete timepoints, move actions with 10-minute steps, optional wait actions, and a meet action requiring occupancy at the same location across at least 60 consecutive minutes. Ensure initial state has the agent at Presidio at 09:00 and that Jessica is only present at Marina District within her window. The goal should include having met Jessica for at least 60 minutes within her availability window.",
+                "prompt": "Inputs: availability model {availability_model}, candidate schedules {candidate_schedules}, and audit results {feasibility_audit}. Select the best audited schedule that maximizes total friend meetings and satisfies constraints. Then produce a PDDL domain and problem that capture the chosen schedule as a solvable planning instance for FastDownwards. Keep the modeling classical by discretizing time into 1-minute or 5-minute steps; ensure travel between Presidio and Marina District consumes 10 minutes in the model; ensure meeting with Jessica lasts at least 60 consecutive minutes occurring between 09:15 and 17:45. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "availability_modeler.extract->route_planner.enumerate",
+            "availability_modeler.extract->consistency_auditor.audit",
+            "route_planner.enumerate->consistency_auditor.audit",
+            "availability_modeler.extract->orchestrator.pddl",
+            "route_planner.enumerate->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

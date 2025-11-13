@@ -1,0 +1,115 @@
+{
+    "name": "TripPlanningExample4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "trip_planner",
+            "flight_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "trip_planner": {
+            "private_information": [
+                "You prioritize simple, contiguous stays to minimize transfers.",
+                "You aim to respect hard constraints first and satisfy preferences when possible."
+            ],
+            "goal": "Propose an ordered list of cities with day allocations for a 12-day trip, honoring direct-flight connectivity and the Tallinn meeting window."
+        },
+        "flight_expert": {
+            "private_information": [
+                "Direct flights exist only between Seville and Munich, and between Munich and Tallinn.",
+                "There is no direct flight between Seville and Tallinn."
+            ],
+            "goal": "Validate and, if needed, minimally adjust city transitions to ensure all inter-city moves use only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to strictly enforce temporal and causal consistency.",
+                "You remove bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties) and resolve conflicts by prioritizing hard constraints: total 12 days, Tallinn exactly 2 days, Tallinn scheduled during days 11-12, direct flights only."
+            ],
+            "goal": "Audit the itinerary for feasibility; reconcile preferences with hard constraints; output a corrected itinerary that is temporally and causally consistent."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrate multi-agent inputs to produce a final, solver-ready planning model."
+            ],
+            "goal": "Generate the final PDDL domain and problem targeting the FastDownwards solver that encodes the audited trip plan and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 12,
+            "start_day_index": 1,
+            "time_unit": "day",
+            "cities": [
+                "Seville",
+                "Munich",
+                "Tallinn"
+            ]
+        },
+        "public_information": [
+            "You will visit exactly three European cities: Seville, Munich, and Tallinn.",
+            "The total trip length is 12 days.",
+            "You would like to spend 2 days in Tallinn.",
+            "You would like to spend 7 days in Seville.",
+            "You plan to spend 5 days in Munich.",
+            "You want to meet a friend in Tallinn between day 11 and day 12; therefore Tallinn must be scheduled for days 11-12.",
+            "Direct flights exist between Seville and Munich, and between Munich and Tallinn.",
+            "There is no direct flight between Seville and Tallinn.",
+            "Hard constraints: total duration 12 days, use only direct flights between cities, be in Tallinn on days 11 and 12, spend exactly 2 days in Tallinn.",
+            "Soft preferences: Seville for 7 days, Munich for 5 days; these may be adjusted to satisfy the hard constraints."
+        ]
+    },
+    "workflow": {
+        "trip_planner": {
+            "draft_itinerary": {
+                "input": [],
+                "output": "itinerary_draft",
+                "system_prompt": "You are an expert travel itinerary planner. Use the public information and your private notes to propose an ordered list of the three cities and a day allocation totaling exactly 12 days, prioritizing hard constraints and honoring preferences when feasible.",
+                "prompt": "Your name is trip_planner; public information: {environment->public_information}; your knowledge: {agents->trip_planner->private_information}; goal: {agents->trip_planner->goal}. Propose a contiguous itinerary with an ordered city list and integer days per city that sums to 12; ensure the order can be flown using only the given direct connections; ensure Tallinn is positioned so it can occupy days 11-12 for 2 days; if preferences conflict with hard constraints, clearly mark them as soft and proceed with a feasible plan. Return a compact JSON object with fields: order (array of city names), stays_by_city (object mapping city to days), total_days (integer), assumptions (short note), rationale (short note). Do not emit PDDL."
+            }
+        },
+        "flight_expert": {
+            "validate_routes": {
+                "input": [
+                    "itinerary_draft"
+                ],
+                "output": "route_validation",
+                "system_prompt": "You are a flight network validator focusing on direct-flight feasibility and minimal rerouting.",
+                "prompt": "Your name is flight_expert; public information: {environment->public_information}; your knowledge: {agents->flight_expert->private_information}; goal: {agents->flight_expert->goal}. Given the itinerary draft: {itinerary_draft}, verify that each transition between consecutive cities uses only the available direct flights; if a transition is invalid, propose the minimally invasive reordering or insertion of an intermediate city (if available) to restore feasibility; do not change day totals unless absolutely required by connectivity; return a JSON object with fields: valid (boolean), corrected_order (array), notes (short text), connectivity (list of edges used). Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "itinerary_draft",
+                    "route_validation"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency; you enforce hard constraints and remove bookkeeping shortcuts. You reconcile conflicts by prioritizing feasibility over preferences.",
+                "prompt": "Your name is auditor; public information: {environment->public_information}; your knowledge: {agents->auditor->private_information}; goal: {agents->auditor->goal}. Using the itinerary draft and route validation: {itinerary_draft} and {route_validation}, produce a corrected itinerary that strictly satisfies all hard constraints: total of 12 days, Tallinn exactly 2 days and scheduled on days 11-12, and only direct flights between consecutive cities; adjust soft preferences if needed and explain why. Return a JSON object with fields: final_order (array), stays_by_city (object), day_assignments (object mapping day index 1..12 to city), justification (list of brief points), preference_deviations (list of any differences from requested durations). Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "compile_pddl": {
+                "input": [
+                    "itinerary_draft",
+                    "route_validation",
+                    "audit_report"
+                ],
+                "output": "pddl_trip",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem, enclosed respectively in <domain></domain> and <problem></problem> tags. Use STRIPS/ADL constructs that FastDownwards supports.",
+                "prompt": "Integrate the itinerary draft, route validation, and the audited report to produce a final model for the 12-day trip. Always output a PDDL domain and a PDDL problem enclosed within <domain></domain> and <problem></problem> tags. Model requirements: objects include the three cities and day steps d1..d12; include a successor relation next(di,dj) over consecutive days; include predicates such as at(?c ?d) or current(?c ?d) to assert exactly one city per day; include adjacency predicates for allowed direct flights; actions should allow either staying in a city for the next day or moving along a direct edge to the next day's city while advancing the day via next; initial state reflects day d1 at the first city in the audited final_order; goal conditions must enforce Tallinn on days d11 and d12 and occupancy of exactly one city per day across d1..d12; ensure the total horizon is 12 steps; encode only the audited stays and order from {audit_report}; if preferences were relaxed by the auditor, do not reintroduce them as hard constraints. Keep the model minimal and compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "trip_planner.draft_itinerary->flight_expert.validate_routes",
+            "trip_planner.draft_itinerary->auditor.consistency_audit",
+            "flight_expert.validate_routes->auditor.consistency_audit",
+            "trip_planner.draft_itinerary->orchestrator.compile_pddl",
+            "flight_expert.validate_routes->orchestrator.compile_pddl",
+            "auditor.consistency_audit->orchestrator.compile_pddl"
+        ]
+    }
+}

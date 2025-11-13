@@ -1,0 +1,175 @@
+{
+    "name": "Blocksworld19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_modeler",
+            "consistency_auditor",
+            "pddl_translator",
+            "orchestrator"
+        ],
+        "block_modeler": {
+            "private_information": [
+                "I specialize in abstracting Blocks World dynamics and invariants into a clean, solver-ready conceptual model.",
+                "I normalize entities (blocks, table, hand), predicates (on, ontable, clear, holding, handempty), and legal action schemas.",
+                "I will not produce PDDL; I only produce a high-fidelity conceptual and symbolic model."
+            ],
+            "goal": "Derive a consistent symbolic model of the Blocks World based on the provided action descriptions and scenarios."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans and constraints.",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other non-causal artifacts.",
+                "I verify preconditions and effects per step and check invariants (e.g., single location per block, acyclicity of on-relations, one-block capacity of the hand).",
+                "I will not produce PDDL; I only produce a detailed audit report."
+            ],
+            "goal": "Validate the provided sample plan against the modeled rules and highlight any discrepancies or unsafe assumptions."
+        },
+        "pddl_translator": {
+            "private_information": [
+                "I convert the approved conceptual model into typed symbols, predicate signatures, and canonical action schemas compatible with FastDownward.",
+                "I keep semantics faithful to the constraints and avoid inventing shortcuts.",
+                "I will not emit full PDDL; I only provide a structured symbol table and action schema templates."
+            ],
+            "goal": "Translate the consensus model and audit outcomes into a clean symbol table and STRIPS-style action schemas with types."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate upstream artifacts to synthesize the final PDDL domain and a single PDDL problem instance for the active case.",
+                "I target FastDownward with a classical, typed, STRIPS-compatible formulation.",
+                "I will emit the PDDL domain and problem enclosed in <domain> and <problem> tags."
+            ],
+            "goal": "Produce the final PDDL domain and the problem for the active scenario so a FastDownward solver can plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "cases": [
+                "case_a",
+                "case_b"
+            ],
+            "active_case": "case_b",
+            "deterministic": true,
+            "metric": "minimize number of steps"
+        },
+        "public_information": [
+            "You are arranging colored blocks into stacks using four actions: Pick up, Unstack, Put down, Stack.",
+            "Restrictions: operate on one block at a time; the hand must be empty to Pick up or Unstack; Pick up requires the block to be on the table and clear; Unstack requires the top relation to be real and the top block clear; after Pick up or Unstack you are holding the block; Put down requires holding; Stack requires holding and a clear destination; after Put down or Stack the hand becomes empty; stacking onto a block makes that destination block not clear.",
+            "A block is clear iff nothing is on it and it is not being held.",
+            "Case A initial: clear(blue), clear(orange), handempty, on(blue,yellow), on(orange,red), ontable(red), ontable(yellow).",
+            "Case A goal: on(blue,red), on(orange,yellow), on(yellow,blue).",
+            "Case A plan: [1] unstack(orange, red), [2] putdown(orange), [3] unstack(blue, yellow), [4] stack(blue, red), [5] pickup(yellow), [6] stack(yellow, blue), [7] pickup(orange), [8] stack(orange, yellow).",
+            "Case B initial: clear(blue), clear(yellow), handempty, on(red, orange), on(yellow, red), ontable(blue), ontable(orange).",
+            "Case B goal: on(red, orange), on(blue, yellow), on(yellow, red)."
+        ],
+        "cases": {
+            "case_a": {
+                "objects": [
+                    "blue",
+                    "orange",
+                    "red",
+                    "yellow"
+                ],
+                "init": [
+                    "clear(blue)",
+                    "clear(orange)",
+                    "handempty",
+                    "on(blue, yellow)",
+                    "on(orange, red)",
+                    "ontable(red)",
+                    "ontable(yellow)"
+                ],
+                "goal": [
+                    "on(blue, red)",
+                    "on(orange, yellow)",
+                    "on(yellow, blue)"
+                ],
+                "plan": [
+                    "unstack(orange, red)",
+                    "putdown(orange)",
+                    "unstack(blue, yellow)",
+                    "stack(blue, red)",
+                    "pickup(yellow)",
+                    "stack(yellow, blue)",
+                    "pickup(orange)",
+                    "stack(orange, yellow)"
+                ]
+            },
+            "case_b": {
+                "objects": [
+                    "blue",
+                    "yellow",
+                    "red",
+                    "orange"
+                ],
+                "init": [
+                    "clear(blue)",
+                    "clear(yellow)",
+                    "handempty",
+                    "on(red, orange)",
+                    "on(yellow, red)",
+                    "ontable(blue)",
+                    "ontable(orange)"
+                ],
+                "goal": [
+                    "on(red, orange)",
+                    "on(blue, yellow)",
+                    "on(yellow, red)"
+                ],
+                "plan": []
+            }
+        }
+    },
+    "workflow": {
+        "block_modeler": {
+            "model": {
+                "input": [],
+                "output": "state_model",
+                "system_prompt": "You build a precise conceptual model of the Blocks World from the provided public information and cases. Specify the core entities (blocks, table, single hand), predicates (on ?x ?y, ontable ?x, clear ?x, holding ?x, handempty), legal actions (pickup, putdown, unstack, stack) with their natural-language preconditions and effects, and invariants (e.g., at most one support per block, no cycles, single-block capacity of the hand). Do not produce PDDL.",
+                "prompt": "Your name is block_modeler. Use the environment public information and cases to produce a normalized, unambiguous symbolic model and invariants that cover both Case A and Case B. Keep the output explanatory but formal. Do not emit PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "state_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You verify temporal and causal correctness of the provided sample plan against the modeled rules. Check each step's preconditions and effects, confirm frame conditions, ensure the hand capacity and clarity constraints, and confirm no bookkeeping shortcuts (quota tokens, post-hoc penalties) are used. Summarize any discrepancies and provide a verdict. Do not produce PDDL.",
+                "prompt": "Your name is consistency_auditor. Audit Case A using the state model: assess whether the given plan reaches the stated goal from the initial state without violating constraints. Report any mismatches between the stated goal and achievable, acyclic stacks. Do not emit PDDL."
+            }
+        },
+        "pddl_translator": {
+            "translate": {
+                "input": [
+                    "state_model",
+                    "audit_report"
+                ],
+                "output": "symbol_table",
+                "system_prompt": "You translate the consensus model and audit outcomes into a canonical, typed symbol table and STRIPS-compatible action schemas that are suitable for FastDownward. Provide: types, objects per case, predicate signatures, action schemas with parameter types and intended preconditions/effects. Do not output a full PDDL domain or problem; only the structured content needed by the orchestrator.",
+                "prompt": "Your name is pddl_translator. Produce a compact symbol table and action schema templates faithful to the constraints. Keep it solver-friendly and typed. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_model",
+                    "audit_report",
+                    "symbol_table"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration for classical planning. Using the upstream artifacts, produce the final PDDL domain and a single PDDL problem for the active case. Target FastDownward with typed, STRIPS-compatible PDDL. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Ensure action schemas: pickup, putdown, unstack, stack. Preconditions: pickup requires clear(x) and ontable(x) and handempty; putdown requires holding(x); unstack requires on(x,y) and clear(x) and handempty; stack requires holding(x) and clear(y). Effects: pickup yields holding(x) and not ontable(x) and not clear(x) and not handempty; putdown yields ontable(x) and clear(x) and handempty and not holding(x); unstack yields holding(x) and clear(y) and not on(x,y) and not handempty and not clear(x); stack yields on(x,y) and clear(x) and handempty and not holding(x) and not clear(y). Include standard invariants via schema design; avoid negative preconditions. Use :typing and :strips requirements only.",
+                "prompt": "Your name is orchestrator. Integrate the state model, audit report, and symbol table. Use the environment cases, with active_case set in environment.init, to generate the domain and problem. Validate that objects and facts match Case B for the problem. Output one domain and one problem, enclosed in tags, ready for FastDownward."
+            }
+        },
+        "constraints": [
+            "block_modeler.model->consistency_auditor.audit",
+            "block_modeler.model->pddl_translator.translate",
+            "consistency_auditor.audit->pddl_translator.translate",
+            "block_modeler.model->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl",
+            "pddl_translator.translate->orchestrator.pddl"
+        ]
+    }
+}

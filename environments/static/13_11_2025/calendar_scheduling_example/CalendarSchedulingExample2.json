@@ -1,0 +1,141 @@
+{
+    "name": "CalendarSchedulingExample2",
+    "author": "Human",
+    "agents": {
+        "number": 6,
+        "names": [
+            "roy",
+            "kathryn",
+            "amy",
+            "preference_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "roy": {
+            "private_information": [
+                "I am Roy.",
+                "My Monday busy intervals are: 09:00-09:30, 10:00-10:30, 11:00-11:30, 12:30-13:00."
+            ],
+            "goal": "Help schedule a 30-minute meeting for Roy, Kathryn, and Amy on Monday within work hours while respecting everyone's existing commitments and stated preferences."
+        },
+        "kathryn": {
+            "private_information": [
+                "I am Kathryn.",
+                "My Monday busy intervals are: 09:30-10:00, 16:30-17:00."
+            ],
+            "goal": "Help schedule a 30-minute meeting for Roy, Kathryn, and Amy on Monday within work hours while respecting everyone's existing commitments and stated preferences."
+        },
+        "amy": {
+            "private_information": [
+                "I am Amy.",
+                "My Monday busy intervals are: 09:00-14:30, 15:00-16:00, 16:30-17:00."
+            ],
+            "goal": "Help schedule a 30-minute meeting for Roy, Kathryn, and Amy on Monday within work hours while respecting everyone's existing commitments and stated preferences."
+        },
+        "preference_manager": {
+            "private_information": [
+                "Preference catalog: Amy would rather not meet on Monday after 15:30 (soft preference).",
+                "No other explicit time preferences are provided."
+            ],
+            "goal": "Aggregate stated time preferences and express them as normalized, slot-level soft constraints to guide the meeting scheduling."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, normalize time formats and slot boundaries, and eliminate bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I ensure only logically grounded constraints remain and that all times align to the declared slot granularity and work hours."
+            ],
+            "goal": "Validate and reconcile the participants' constraints and preferences into consistent candidate time slots that satisfy hard constraints and annotate any soft constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate all inputs to select a feasible time and produce the final PDDL domain and problem for the FastDownwards solver that encodes the scheduling task and enforces the validated constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "slot_minutes": 30,
+            "time_format": "HH:MM",
+            "time_zone": "local"
+        },
+        "public_information": [
+            "Participants: Roy, Kathryn, Amy.",
+            "Workday: Monday.",
+            "Work hours: 09:00 to 17:00.",
+            "Meeting duration: 30 minutes.",
+            "Assume there exists at least one feasible time that satisfies all hard constraints."
+        ]
+    },
+    "workflow": {
+        "roy": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_roy",
+                "system_prompt": "You are Roy's calendar agent. Use only the provided public information and Roy's private schedule to enumerate busy intervals and deduce free 30-minute slots within work hours. Provide a compact JSON with fields: busy (list of intervals), free (list of intervals), assumptions (should be empty), notes (optional). Use the HH:MM format and align to 30-minute boundaries.",
+                "prompt": "Your name is roy. Public information: {environment->public_information}. Your private knowledge: {agents->roy->private_information}. Goal: {agents->roy->goal}. Output a minimal JSON of Roy's busy and free slots aligned to 30-minute boundaries within 09:00-17:00."
+            }
+        },
+        "kathryn": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_kathryn",
+                "system_prompt": "You are Kathryn's calendar agent. Use only the provided public information and Kathryn's private schedule to enumerate busy intervals and deduce free 30-minute slots within work hours. Provide a compact JSON with fields: busy (list of intervals), free (list of intervals), assumptions (should be empty), notes (optional). Use the HH:MM format and align to 30-minute boundaries.",
+                "prompt": "Your name is kathryn. Public information: {environment->public_information}. Your private knowledge: {agents->kathryn->private_information}. Goal: {agents->kathryn->goal}. Output a minimal JSON of Kathryn's busy and free slots aligned to 30-minute boundaries within 09:00-17:00."
+            }
+        },
+        "amy": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_amy",
+                "system_prompt": "You are Amy's calendar agent. Use only the provided public information and Amy's private schedule to enumerate busy intervals and deduce free 30-minute slots within work hours. Provide a compact JSON with fields: busy (list of intervals), free (list of intervals), assumptions (should be empty), notes (optional). Use the HH:MM format and align to 30-minute boundaries.",
+                "prompt": "Your name is amy. Public information: {environment->public_information}. Your private knowledge: {agents->amy->private_information}. Goal: {agents->amy->goal}. Output a minimal JSON of Amy's busy and free slots aligned to 30-minute boundaries within 09:00-17:00."
+            }
+        },
+        "preference_manager": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_all",
+                "system_prompt": "You are the preference manager. Normalize provided preferences into slot-level soft constraints within the declared work hours and slot granularity. Provide a compact JSON with fields: soft_preferences (list of objects with fields person, rule, discouraged_after or encouraged_before as applicable, applicable_slots), hard_preferences (list, possibly empty). Do not invent new preferences.",
+                "prompt": "Public information: {environment->public_information}. Private preferences: {agents->preference_manager->private_information}. Produce normalized soft preferences mapped to 30-minute slots on Monday between 09:00 and 17:00 in HH:MM-HH:MM format."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "constraints_roy",
+                    "constraints_kathryn",
+                    "constraints_amy",
+                    "preferences_all"
+                ],
+                "output": "validated_constraints",
+                "system_prompt": "You are the temporal and causal consistency auditor. Validate that all intervals use HH:MM, align to 30-minute boundaries, fall within 09:00-17:00, and that free slots are correctly derived from busy slots. Compute the intersection of free slots across all participants to obtain candidate slots satisfying hard constraints. Annotate which candidate slots comply with soft preferences without using bookkeeping shortcuts (no token budgets, no post-hoc penalties). Provide a compact JSON with fields: candidate_slots (list of HH:MM-HH:MM), soft_compatibility (mapping from slot to list of satisfied or violated soft preferences), issues (list, possibly empty), notes (optional). Do not change the meaning of participants' schedules.",
+                "prompt": "Inputs to audit: Roy's constraints: {constraints_roy}, Kathryn's constraints: {constraints_kathryn}, Amy's constraints: {constraints_amy}, Preferences: {preferences_all}. Produce validated candidate slots that satisfy all hard constraints and annotate soft preference compatibility."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "constraints_roy",
+                    "constraints_kathryn",
+                    "constraints_amy",
+                    "preferences_all",
+                    "validated_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent scheduling PDDL for the FastDownwards solver. Produce one PDDL domain and one PDDL problem that encode selecting exactly one 30-minute slot on Monday within 09:00-17:00 that is free for Roy, Kathryn, and Amy, using only the validated candidate slots. Treat the schedules as hard constraints; treat preferences as soft by selecting a candidate that best respects them (e.g., prefer slots not violating Amy's after-15:30 preference). Use classical PDDL compatible with FastDownwards (types, predicates, STRIPS-style actions, no derived predicates or numeric fluents). Enclose the domain in <domain></domain> and the problem in <problem></problem>. Ensure the initial state enumerates persons, slots, and hard constraints (busy/allowed) derived from the inputs, and that the goal asserts that the meeting is scheduled. Do not require specialized preference syntax; resolve soft preferences by restricting to the earliest candidate that does not violate them when multiple options exist.",
+                "prompt": "Task: Schedule a 30-minute meeting for Roy, Kathryn, and Amy on Monday during 09:00-17:00. Use the audited candidate slots and preferences to instantiate objects and facts. Inputs: Roy: {constraints_roy}; Kathryn: {constraints_kathryn}; Amy: {constraints_amy}; Preferences: {preferences_all}; Audited candidates: {validated_constraints}. Provide a complete PDDL domain and problem between the specified tags, ready for FastDownwards."
+            }
+        },
+        "constraints": [
+            "roy.constraints->auditor.audit",
+            "kathryn.constraints->auditor.audit",
+            "amy.constraints->auditor.audit",
+            "preference_manager.preferences->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

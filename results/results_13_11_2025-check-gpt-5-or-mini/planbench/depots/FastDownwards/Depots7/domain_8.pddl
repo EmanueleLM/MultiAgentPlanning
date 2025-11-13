@@ -1,0 +1,132 @@
+(define (domain depots7)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types obj stage)
+  (:predicates
+    (cats ?x - obj)
+    (collect ?x - obj ?y - obj)
+    (hand ?x - obj)
+    (next ?x - obj ?y - obj)
+    (sneeze ?x - obj)
+    (spring ?x - obj)
+    (stupendous ?x - obj)
+    (texture ?x - obj)
+    (vase ?x - obj ?y - obj)
+    (at_step ?t - stage)
+    (succ ?t - stage ?t2 - stage)
+  )
+
+  (:action paltry
+    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (vase ?x ?y)
+      (next ?y ?z)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (vase ?x ?y))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+
+  (:action sip
+    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (next ?x ?z)
+      (next ?y ?z)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (vase ?x ?y)
+      (not (next ?x ?z))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+
+  (:action clip
+    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (next ?x ?z)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (vase ?x ?y)
+      (not (next ?x ?z))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+
+  (:action wretched
+    :parameters (?x - obj ?y - obj ?z - obj ?w - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (sneeze ?x)
+      (texture ?y)
+      (texture ?z)
+      (stupendous ?w)
+      (next ?x ?y)
+      (collect ?y ?w)
+      (collect ?z ?w)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (next ?x ?y))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+
+  (:action memory
+    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (cats ?x)
+      (spring ?y)
+      (spring ?z)
+      (next ?x ?y)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (next ?x ?y))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+
+  (:action tightfisted
+    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (vase ?x ?y)
+      (at_step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (vase ?x ?y))
+      (not (at_step ?t))
+      (at_step ?t2)
+    )
+  )
+)

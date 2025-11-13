@@ -1,0 +1,18 @@
+(define (problem scenario1)
+  (:domain blocksworld)
+  (:objects red blue orange yellow - block)
+  (:init
+    (clear red)
+    (clear blue)
+    (clear orange)
+    (handempty)
+    (on blue yellow)
+    (ontable red)
+    (ontable orange)
+    (ontable yellow)
+  )
+  (:goal (and
+    (on blue orange)
+    (on yellow red)
+  ))
+)

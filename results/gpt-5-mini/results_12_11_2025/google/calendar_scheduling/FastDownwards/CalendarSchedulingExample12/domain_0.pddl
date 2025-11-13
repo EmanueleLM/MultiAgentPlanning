@@ -1,0 +1,25 @@
+(define (domain single_meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant timeslot)
+  (:constants david debra kevin - participant)
+  (:predicates
+    (available ?p - participant ?t - timeslot)
+    (within_hours ?t - timeslot)
+    (succ ?t1 - timeslot ?t2 - timeslot)
+    (meeting_scheduled ?t1 - timeslot ?t2 - timeslot)
+  )
+  (:action schedule_meeting
+    :parameters (?t1 - timeslot ?t2 - timeslot)
+    :precondition (and
+      (succ ?t1 ?t2)
+      (within_hours ?t1)
+      (within_hours ?t2)
+      (available david ?t1) (available david ?t2)
+      (available debra ?t1) (available debra ?t2)
+      (available kevin ?t1) (available kevin ?t2)
+    )
+    :effect (and
+      (meeting_scheduled ?t1 ?t2)
+    )
+  )
+)

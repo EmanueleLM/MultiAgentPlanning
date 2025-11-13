@@ -3,6 +3,7 @@ import re
 import string
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, List, Dict
 
@@ -76,6 +77,59 @@ def get_latest_file(
     return highest_file, highest_number
 
 
+global_timeout = 10 * 60  # seconds
+_subprocess_execution_times: list[float] = []
+
+
+class SubprocessGlobalTimeoutError(RuntimeError):
+    """Raised when an individual subprocess.run call exceeds the global timeout."""
+
+    def __init__(self, elapsed_seconds: float, command_repr: str):
+        self.elapsed_seconds = elapsed_seconds
+        self.command_repr = command_repr
+        super().__init__(
+            f"Subprocess exceeded global timeout ({elapsed_seconds:.2f}s): {command_repr}"
+        )
+
+
+def _format_command_for_logging(command: Any) -> str:
+    if isinstance(command, (list, tuple)):
+        return " ".join(map(str, command))
+    return str(command)
+
+
+def _run_with_global_timer(*args, **kwargs) -> subprocess.CompletedProcess:
+    """
+    Wrap subprocess.run to measure execution time and enforce the global timeout.
+    """
+    command = kwargs.get("args")
+    if command is None and args:
+        command = args[0]
+    command_repr = _format_command_for_logging(command)
+
+    start = time.monotonic()
+    proc = subprocess.run(*args, **kwargs)
+    elapsed = time.monotonic() - start
+    _subprocess_execution_times.append(elapsed)
+    print(
+        f"[GlobalTimer] Command finished in {elapsed:.2f}s "
+        f"(threshold {global_timeout}s): {command_repr}"
+    )
+
+    if elapsed > global_timeout:
+        raise SubprocessGlobalTimeoutError(elapsed, command_repr)
+
+    return proc
+
+
+def _timeout_result() -> dict[str, str]:
+    return {
+        "pddl_plan": "Timeout. FastDownwards took too long to finish. In the next call, you should generate a domain and problem with less variables. You can use AgentReduceVariables to achieve that.",
+        "syntax_errors": "No syntax error log was generated.",
+        "pddl_logs": "No log was generated.",
+    }
+
+
 def run_pddl_fast_downwards_and_uVal(
     base_folder: Path,
     domain_path: str | Path,
@@ -111,83 +165,11 @@ def run_pddl_fast_downwards_and_uVal(
         "syntax_errors": "No syntax error log was generated.",
         "pddl_logs": "No log was generated.",
     }
-        
-    with open(base_folder / "logs.txt", "w+") as logfile:
-        # No optimization
-        if optimize == 0:
-            print("Running command with no optimization.")
-            command = [
-                str(solver_fd_binary),
-                *map(str, solver_fd_args),
-                str(sas_plan_path),
-                str(domain_path),
-                str(problem_path),
-            ]
-
-            subprocess.run(
-                command,
-                stdout=logfile,
-                stderr=subprocess.STDOUT
-            )
-        # Optimization for int(optimize) seconds
-        else:
-            try:
-                print(f"Running command with optimization timeout = {optimize} [s].")
-                optimize_args = list(solver_fd_optimize_args) or [
-                    "--search",
-                    "astar(lmcut())",
-                    "--plan-file",
-                ]
-                command = [
-                    sys.executable,
-                    str(solver_fd_binary),
-                    *optimize_args,
-                    str(sas_plan_path),
-                    str(domain_path),
-                    str(problem_path),
-                ]
-
-                print("COMMAND:", command)
-                proc = subprocess.run(
-                    command,
-                    stdout=logfile,
-                    stderr=subprocess.STDOUT,
-                    timeout=optimize
-                )
-                if proc.returncode == 0:
-                    print("Optimization completed successfully!")
-                    logfile.seek(0, os.SEEK_END)
-                else:
-                    logfile.flush()
-                    logfile.seek(0)
-                    snapshot = logfile.read()
-                    quoting_bug = (
-                        "FileNotFoundError" in snapshot and "astar(lmcut())" in snapshot
-                    )
-                    if quoting_bug:
-                        print(
-                            "Detected Fast Downward quoting issue for --search argument; retrying without optimization flags."
-                        )
-                        logfile.seek(0)
-                        logfile.truncate()
-                        fallback_command = [
-                            str(solver_fd_binary),
-                            *map(str, solver_fd_args),
-                            str(sas_plan_path),
-                            str(domain_path),
-                            str(problem_path),
-                        ]
-                        subprocess.run(
-                            fallback_command,
-                            stdout=logfile,
-                            stderr=subprocess.STDOUT,
-                        )
-                    else:
-                        logfile.seek(0, os.SEEK_END)
-                
-            # If the optimization times out, run without optimization  
-            except subprocess.TimeoutExpired:
-                print("Optimization timed out, running without optimization.")
+    try:
+        with open(base_folder / "logs.txt", "w+") as logfile:
+            # No optimization
+            if optimize == 0:
+                print("Running command with no optimization.")
                 command = [
                     str(solver_fd_binary),
                     *map(str, solver_fd_args),
@@ -195,30 +177,115 @@ def run_pddl_fast_downwards_and_uVal(
                     str(domain_path),
                     str(problem_path),
                 ]
-                subprocess.run(
+
+                _run_with_global_timer(
                     command,
                     stdout=logfile,
                     stderr=subprocess.STDOUT
                 )
+            # Optimization for int(optimize) seconds
+            else:
+                try:
+                    print(f"Running command with optimization timeout = {optimize} [s].")
+                    optimize_args = list(solver_fd_optimize_args) or [
+                        "--search",
+                        "astar(lmcut())",
+                        "--plan-file",
+                    ]
+                    command = [
+                        sys.executable,
+                        str(solver_fd_binary),
+                        *optimize_args,
+                        str(sas_plan_path),
+                        str(domain_path),
+                        str(problem_path),
+                    ]
 
-        logfile.seek(0)
-        result["pddl_logs"] = logfile.read()
+                    print("COMMAND:", command)
+                    proc = _run_with_global_timer(
+                        command,
+                        stdout=logfile,
+                        stderr=subprocess.STDOUT,
+                        timeout=optimize
+                    )
+                    if proc.returncode == 0:
+                        print("Optimization completed successfully!")
+                        logfile.seek(0, os.SEEK_END)
+                    else:
+                        logfile.flush()
+                        logfile.seek(0)
+                        snapshot = logfile.read()
+                        quoting_bug = (
+                            "FileNotFoundError" in snapshot and "astar(lmcut())" in snapshot
+                        )
+                        if quoting_bug:
+                            print(
+                                "Detected Fast Downward quoting issue for --search argument; retrying without optimization flags."
+                            )
+                            logfile.seek(0)
+                            logfile.truncate()
+                            fallback_command = [
+                                str(solver_fd_binary),
+                                *map(str, solver_fd_args),
+                                str(sas_plan_path),
+                                str(domain_path),
+                                str(problem_path),
+                            ]
+                            _run_with_global_timer(
+                                fallback_command,
+                                stdout=logfile,
+                                stderr=subprocess.STDOUT,
+                            )
+                        else:
+                            logfile.seek(0, os.SEEK_END)
 
-    if Path(sas_plan_path).exists():
-        result["pddl_plan"] = open(Path(sas_plan_path)).read()
+                # If the optimization times out, run without optimization
+                except subprocess.TimeoutExpired:
+                    print("Optimization timed out, running without optimization.")
+                    command = [
+                        str(solver_fd_binary),
+                        *map(str, solver_fd_args),
+                        str(sas_plan_path),
+                        str(domain_path),
+                        str(problem_path),
+                    ]
+                    _run_with_global_timer(
+                        command,
+                        stdout=logfile,
+                        stderr=subprocess.STDOUT
+                    )
 
-    # Validate the plan with uVal
-    command = f"{universal_validator_bin} -cv \
-        {domain_path} \
-        {problem_path} \
-        {sas_plan_path}"
+            logfile.seek(0)
+            result["pddl_logs"] = logfile.read()
 
-    out = subprocess.run(command, shell=True, capture_output=True, text=True)
+        if Path(sas_plan_path).exists():
+            result["pddl_plan"] = open(Path(sas_plan_path)).read()
 
-    if out.stderr:
-        result["syntax_errors"] = out.stderr
+        # Validate the plan with uVal
+        command = f"{universal_validator_bin} -cv \
+            {domain_path} \
+            {problem_path} \
+            {sas_plan_path}"
 
-    return result
+        out = _run_with_global_timer(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+
+        if out.stderr:
+            result["syntax_errors"] = out.stderr
+
+        return result
+
+    except SubprocessGlobalTimeoutError as exc:
+        print(
+            f"[GlobalTimer] Timeout triggered after {exc.elapsed_seconds:.2f}s. "
+            f"Command: {exc.command_repr}"
+        )
+        timeout_result = _timeout_result()
+        return timeout_result
 
 
 def run_pddl_popf2_and_Val(

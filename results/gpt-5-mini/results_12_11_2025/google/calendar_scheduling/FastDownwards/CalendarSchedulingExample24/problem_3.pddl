@@ -1,0 +1,80 @@
+(define (problem schedule-meeting)
+  (:domain meeting-scheduling)
+  (:objects
+    benjamin hannah brenda - participant
+    s09_00_09_30 s09_30_10_00 s10_00_10_30 s10_30_11_00 s11_00_11_30
+    s11_30_12_00 s12_00_12_30 s12_30_13_00 s13_00_13_30 s13_30_14_00
+    s14_00_14_30 s14_30_15_00 s15_00_15_30 s15_30_16_00 s16_00_16_30 s16_30_17_00 - slot
+  )
+
+  (:init
+    ;; slots in the work window (30-minute granularity)
+    (slot-in-window s09_00_09_30)
+    (slot-in-window s09_30_10_00)
+    (slot-in-window s10_00_10_30)
+    (slot-in-window s10_30_11_00)
+    (slot-in-window s11_00_11_30)
+    (slot-in-window s11_30_12_00)
+    (slot-in-window s12_00_12_30)
+    (slot-in-window s12_30_13_00)
+    (slot-in-window s13_00_13_30)
+    (slot-in-window s13_30_14_00)
+    (slot-in-window s14_00_14_30)
+    (slot-in-window s14_30_15_00)
+    (slot-in-window s15_00_15_30)
+    (slot-in-window s15_30_16_00)
+    (slot-in-window s16_00_16_30)
+    (slot-in-window s16_30_17_00)
+
+    ;; successor order over slots (explicit temporal ordering)
+    (slot-successor s09_00_09_30 s09_30_10_00)
+    (slot-successor s09_30_10_00 s10_00_10_30)
+    (slot-successor s10_00_10_30 s10_30_11_00)
+    (slot-successor s10_30_11_00 s11_00_11_30)
+    (slot-successor s11_00_11_30 s11_30_12_00)
+    (slot-successor s11_30_12_00 s12_00_12_30)
+    (slot-successor s12_00_12_30 s12_30_13_00)
+    (slot-successor s12_30_13_00 s13_00_13_30)
+    (slot-successor s13_00_13_30 s13_30_14_00)
+    (slot-successor s13_30_14_00 s14_00_14_30)
+    (slot-successor s14_00_14_30 s14_30_15_00)
+    (slot-successor s14_30_15_00 s15_00_15_30)
+    (slot-successor s15_00_15_30 s15_30_16_00)
+    (slot-successor s15_30_16_00 s16_00_16_30)
+    (slot-successor s16_00_16_30 s16_30_17_00)
+
+    ;; availability facts (constructed from provided calendars and the stated preference)
+    ;; Benjamin: preference enforced (does not want to meet after 09:30) -> available only 09:00-09:30
+    (available benjamin s09_00_09_30)
+
+    ;; Hannah: free entire day
+    (available hannah s09_00_09_30)
+    (available hannah s09_30_10_00)
+    (available hannah s10_00_10_30)
+    (available hannah s10_30_11_00)
+    (available hannah s11_00_11_30)
+    (available hannah s11_30_12_00)
+    (available hannah s12_00_12_30)
+    (available hannah s12_30_13_00)
+    (available hannah s13_00_13_30)
+    (available hannah s13_30_14_00)
+    (available hannah s14_00_14_30)
+    (available hannah s14_30_15_00)
+    (available hannah s15_00_15_30)
+    (available hannah s15_30_16_00)
+    (available hannah s16_00_16_30)
+    (available hannah s16_30_17_00)
+
+    ;; Brenda: busy 09:30-10:00, 11:30-12:30, 14:00-16:30 -> availability elsewhere
+    (available brenda s09_00_09_30)
+    (available brenda s10_00_10_30)
+    (available brenda s10_30_11_00)
+    (available brenda s11_00_11_30)
+    (available brenda s12_30_13_00)
+    (available brenda s13_00_13_30)
+    (available brenda s13_30_14_00)
+    (available brenda s16_30_17_00)
+  )
+
+  (:goal (meeting-scheduled))
+)

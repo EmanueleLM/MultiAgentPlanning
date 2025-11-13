@@ -1,0 +1,152 @@
+{
+    "name": "Hanoi2Agents10DisksInstance8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "auditor",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I can move only disks A, B, C, D, E.",
+                "I should minimize disturbance to disks F, G, H, I, J which I cannot move."
+            ],
+            "goal": "Relocate disk C to the middle peg while restoring A and B to the top of the left peg, respecting Tower of Hanoi rules and agent move restrictions."
+        },
+        "agent_2": {
+            "private_information": [
+                "I can move only disks F, G, H, I, J.",
+                "I cannot move disks A, B, C, D, E."
+            ],
+            "goal": "Support the plan without moving unless necessary; ensure no moves with disks F, G, H, I, J are required."
+        },
+        "auditor": {
+            "private_information": [
+                "I must audit temporal and causal consistency.",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or any non-causal simplifications.",
+                "I ensure moves obey: one disk at a time; no larger on a smaller; only topmost disks can be moved; agent-to-disk capability limits are enforced."
+            ],
+            "goal": "Verify that the ordered primitive plan is legally executable under Tower of Hanoi rules and agent capabilities, and that it achieves the specified goal configuration."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses into a final, executable, and verified plan.",
+                "I must produce the final PDDL domain and problem compatible with the FastDownward solver."
+            ],
+            "goal": "Produce a globally consistent ordered plan with explicit responsible agent for each move, and emit a final PDDL domain and problem targeting FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_top_to_bottom": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "disk_sizes_smallest_to_largest": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "agent_capabilities": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                "agent_2": [
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ]
+            },
+            "solver": "FastDownward"
+        },
+        "public_information": [
+            "We have a 3-peg Tower of Hanoi with 10 disks labeled A (smallest) through J (largest).",
+            "Initial configuration: left peg has top-to-bottom A, B, C, D, E, F, G, H, I, J; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has top-to-bottom A, B, D, E, F, G, H, I, J; middle peg has top-to-bottom C; right peg is empty.",
+            "Rules: move one disk at a time; only the top disk of any stack can be moved; no disk may be placed on a smaller disk.",
+            "Agent capabilities: agent_1 may move disks A, B, C, D, E; agent_2 may move disks F, G, H, I, J."
+        ],
+        "ordered_primitive_moves": [
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk B from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk C from left to middle",
+            "agent_1: move disk A from right to middle",
+            "agent_1: move disk B from right to left",
+            "agent_1: move disk A from middle to left"
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "analyze_moves": {
+                "input": [],
+                "output": "agent1_analysis",
+                "system_prompt": "You are agent_1 and can move A, B, C, D, E only. Reason about the minimal sequence of primitive moves needed to extract disk C from the left peg and place it on the middle peg, then restore A and B to the top of the left peg, without moving any of F, G, H, I, J. Do not emit PDDL; provide reasoning about feasibility and list candidate primitive moves in the format 'move disk X from peg1 to peg2'.",
+                "prompt": "Context: {environment->public_information}. Capabilities: {agents->agent_1->private_information}. Goal: {agents->agent_1->goal}. Propose a minimal, rules-compliant set of candidate primitive moves to achieve the goal without touching disks F-J."
+            }
+        },
+        "agent_2": {
+            "analyze_moves": {
+                "input": [],
+                "output": "agent2_analysis",
+                "system_prompt": "You are agent_2 and can move F, G, H, I, J only. Analyze whether any moves with your disks are necessary to achieve the specified goal. Do not emit PDDL; provide a short justification whether moves are required or not, and if not, state that no moves are needed.",
+                "prompt": "Context: {environment->public_information}. Capabilities: {agents->agent_2->private_information}. Goal: {agents->agent_2->goal}. Determine whether any moves with F-J are required to reach the goal."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "agent1_analysis",
+                    "agent2_analysis"
+                ],
+                "output": "audited_moves",
+                "system_prompt": "You are the auditor for temporal and causal consistency. Remove bookkeeping shortcuts such as quota tokens or post-hoc penalties. Ensure the Tower of Hanoi rules and agent capability constraints are satisfied at each step. Validate preconditions for each move and that the sequence achieves the goal configuration. Output a cleaned, ordered list of primitive moves and briefly note any corrections.",
+                "prompt": "Use the environment info: {environment->public_information}. Review: {agent1_analysis} and {agent2_analysis}. Produce a validated ordered list of primitive moves with no rule violations."
+            }
+        },
+        "orchestrator": {
+            "synthesize_and_emit_pddl": {
+                "input": [
+                    "audited_moves"
+                ],
+                "output": "final_artifacts",
+                "system_prompt": "You are the orchestrator. Produce the final ordered primitive move list with explicit agent prefixes in the format 'agent_i: move disk X from peg1 to peg2'. Then produce the final PDDL domain and PDDL problem targeting the FastDownward solver. The domain should include types (disk, peg, agent), a subtype hierarchy for supports (peg and disk as supports), predicates on(disk support), clear(support), smaller(disk disk), and allowed(disk agent). Provide two actions: move-to-peg(?a - agent ?x - disk ?from - support ?to - peg) and move-to-disk(?a - agent ?x - disk ?from - support ?to - disk) with preconditions enforcing top-of-stack movement, agent-disk permission, and size constraint smaller(?x ?to) when moving onto a disk. The problem must encode the 10 disks A-J, three pegs left, middle, right, agents agent_1 and agent_2, the total order smaller over disks, allowed relations for each agent, the initial configuration with all disks stacked on left (A on B on C on ... on J on left), and the goal configuration with C on middle, A on B on D on E on F on G on H on I on J on left, and right empty. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Inputs: {audited_moves}. Environment: {environment->public_information}. Capabilities: {agents->agent_1->private_information} and {agents->agent_2->private_information}. First, output the final ordered primitive move list. Then output the PDDL domain and PDDL problem as specified."
+            }
+        },
+        "constraints": [
+            "agent_1.analyze_moves->auditor.audit",
+            "agent_2.analyze_moves->auditor.audit",
+            "auditor.audit->orchestrator.synthesize_and_emit_pddl"
+        ]
+    }
+}

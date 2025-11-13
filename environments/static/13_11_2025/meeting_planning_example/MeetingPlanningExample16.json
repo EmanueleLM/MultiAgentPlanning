@@ -1,0 +1,110 @@
+{
+    "name": "MeetingPlanningExample16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "route_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "You value punctuality and simple plans.",
+                "Waiting is acceptable if it improves meeting duration.",
+                "You prefer fewer location changes."
+            ],
+            "goal": "Consider multiple feasible schedules for the day in San Francisco and choose the one that allows meeting as many friends as possible, with the hard requirement to meet Ronald at Russian Hill for at least 105 minutes given all constraints."
+        },
+        "route_planner": {
+            "private_information": [
+                "You can enumerate alternative itineraries as discrete, checkable schedules.",
+                "You compute times deterministically using provided travel times."
+            ],
+            "goal": "Propose multiple feasible schedules that satisfy all hard constraints and aim to maximize total useful meeting time, especially ensuring the minimum 105-minute meeting with Ronald."
+        },
+        "auditor": {
+            "private_information": [
+                "You audit temporal and causal consistency and remove bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, ungrounded time compressions).",
+                "You strictly enforce time arithmetic and resource feasibility."
+            ],
+            "goal": "Validate, correct, or reject proposed schedules using the stated constraints and travel times; output only schedules that are temporally and causally consistent and that meet the 105-minute minimum with Ronald within his availability window."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate audited schedules and finalize a concrete plan.",
+                "Your final output is a PDDL domain and problem suitable for the FastDownward solver."
+            ],
+            "goal": "Integrate the validated schedules and produce a final PDDL domain and problem that selects the best feasible schedule and achieves the minimum meeting requirement with Ronald."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "time_unit": "minutes",
+            "start_location": "Chinatown",
+            "arrival_time": "09:00",
+            "time_horizon_end": "21:30",
+            "friend": "Ronald",
+            "friend_location": "Russian Hill",
+            "friend_available_start": "15:15",
+            "friend_available_end": "21:30",
+            "min_meeting_minutes": 105
+        },
+        "public_information": [
+            "Travel times: Chinatown to Russian Hill is 7 minutes; Russian Hill to Chinatown is 9 minutes.",
+            "You arrive at Chinatown at 09:00.",
+            "Friend Ronald is at Russian Hill from 15:15 to 21:30.",
+            "You want to meet Ronald for at least 105 minutes.",
+            "Goal: Consider multiple schedules and choose the one that best meets your goals under the constraints."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler. Provide a compact and unambiguous summary of objectives and hard constraints without producing PDDL.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and arrival context at {environment->init->start_location} at {environment->init->arrival_time}. Produce a compact JSON object with keys objectives, hard_constraints, soft_preferences, and notes that captures the requirement to meet Ronald for at least {environment->init->min_meeting_minutes} minutes within his availability at {environment->init->friend_location}."
+            }
+        },
+        "route_planner": {
+            "enumerate": {
+                "input": [
+                    "traveler_preferences"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a combinatorial scheduler for urban meetings. Enumerate multiple feasible schedules using provided travel times and constraints; do not produce PDDL.",
+                "prompt": "Your name is route_planner. City context: {environment->init->city}. Public info: {environment->public_information}. Traveler preferences: {traveler_preferences}. Enumerate at least two distinct feasible schedules that meet Ronald at {environment->init->friend_location} for at least {environment->init->min_meeting_minutes} minutes within [{environment->init->friend_available_start}, {environment->init->friend_available_end}] given arrival at {environment->init->start_location} at {environment->init->arrival_time}. Use deterministic travel times: Chinatown\u2192Russian Hill 7 minutes, Russian Hill\u2192Chinatown 9 minutes. Output a compact JSON object with key schedules as an array; each schedule should include id, legs with ordered segments (depart_time, from, to, travel_minutes or wait_minutes), meetings with friend, start_time, end_time, duration_minutes, and a brief rationale."
+            }
+        },
+        "auditor": {
+            "check": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal and causal consistency and remove bookkeeping shortcuts. Enforce time arithmetic exactly and reject or repair invalid schedules; do not produce PDDL.",
+                "prompt": "Your name is auditor. Validate candidate schedules: {candidate_schedules}. Enforce constraints from public information {environment->public_information}. Rules: travel times are deterministic (Chinatown\u2192Russian Hill 7 minutes; Russian Hill\u2192Chinatown 9 minutes), meetings with Ronald must be continuous and at least {environment->init->min_meeting_minutes} minutes within [{environment->init->friend_available_start}, {environment->init->friend_available_end}], no negative or overlapping times unless explicitly waiting is represented, and ordering must be causal. Remove bookkeeping shortcuts and post-hoc penalties. If possible, minimally repair otherwise valid schedules; otherwise reject with reasons. Output a compact JSON object with keys valid_schedules (array of corrected schedules) and rejections (array of {id, reason})."
+            }
+        },
+        "orchestrator": {
+            "compose_pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "audited_schedules"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent planning and PDDL. Produce a final PDDL domain and problem for the FastDownward solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Use a simple selection model: schedules are objects; predicates capture feasibility and best choice; actions select the best audited schedule and execute the meeting to achieve the goal. Keep to classical STRIPS + typing; no durative actions or metrics are required.",
+                "prompt": "You will integrate traveler preferences {traveler_preferences} and audited schedules {audited_schedules}. Construct a minimal PDDL model that allows selecting exactly one audited feasible schedule that is marked as best and then executing the meeting to achieve the goal. Domain requirements: :strips and :typing. Types: schedule. Predicates: feasible(?s - schedule), best(?s - schedule), selected(?s - schedule), choice-open, met-ronald. Actions: choose-best(?s) with preconditions choice-open, feasible(?s), best(?s) and effects selected(?s), not choice-open; execute-meeting(?s) with precondition selected(?s) and effect met-ronald. The problem should declare one or more schedule objects derived from audited_schedules, assert feasible for all valid ones, assert best for exactly one that maximizes meeting duration per the audited data, set choice-open true initially, and set the goal to met-ronald and existence of a selected schedule that is best. Output only the PDDL domain and problem enclosed in the specified tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->route_planner.enumerate",
+            "route_planner.enumerate->auditor.check",
+            "traveler.preferences->orchestrator.compose_pddl",
+            "auditor.check->orchestrator.compose_pddl"
+        ]
+    }
+}

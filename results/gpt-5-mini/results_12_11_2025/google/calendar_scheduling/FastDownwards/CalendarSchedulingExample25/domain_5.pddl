@@ -1,0 +1,31 @@
+(define (domain schedule_meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot segment)
+  (:predicates
+    (available ?p - participant ?seg - segment)
+    (covers ?s - slot ?seg - segment)
+    (next ?seg1 - segment ?seg2 - segment)
+    (chosen ?s - slot)
+    (scheduled)
+  )
+
+  (:action select_slot
+    :parameters (?s - slot ?a - segment ?b - segment ?p1 - participant ?p2 - participant ?p3 - participant)
+    :precondition (and
+      (covers ?s ?a)
+      (covers ?s ?b)
+      (next ?a ?b)
+      (not (chosen ?s))
+      (available ?p1 ?a)
+      (available ?p1 ?b)
+      (available ?p2 ?a)
+      (available ?p2 ?b)
+      (available ?p3 ?a)
+      (available ?p3 ?b)
+    )
+    :effect (and
+      (chosen ?s)
+      (scheduled)
+    )
+  )
+)

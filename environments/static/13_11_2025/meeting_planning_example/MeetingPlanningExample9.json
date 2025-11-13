@@ -1,0 +1,107 @@
+{
+    "name": "MeetingPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Union Square at 09:00.",
+                "I want to meet as many friends as possible; Mary is a priority meeting.",
+                "Minimum meeting time with Mary is 75 minutes."
+            ],
+            "goal": "Plan the day to maximize friend meetings while ensuring a meeting with Mary for at least 75 minutes within her availability."
+        },
+        "scheduler": {
+            "private_information": [
+                "Uses 5-minute time discretization.",
+                "Knows directional travel times between Union Square and Nob Hill."
+            ],
+            "goal": "Enumerate diverse feasible itineraries that respect all hard constraints and prepare them for auditing."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency checking.",
+                "Removes bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties) and enforces direction-dependent travel times."
+            ],
+            "goal": "Audit the candidate schedules for feasibility against time windows, travel times, and minimum meeting duration, then identify the best schedule."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate all agents and produce the final PDDL domain and problem targeting the FastDownwards solver to realize the chosen schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit_minutes": 5,
+            "time_notation": "24h",
+            "locations": [
+                "union_square",
+                "nob_hill"
+            ],
+            "start_location": "union_square",
+            "arrival_time": "09:00"
+        },
+        "public_information": [
+            "Directional travel times (minutes): Union Square -> Nob Hill = 9; Nob Hill -> Union Square = 7.",
+            "You arrive at Union Square at 09:00.",
+            "Mary will be at Nob Hill from 12:00 to 16:15.",
+            "You want to meet Mary for a minimum of 75 minutes.",
+            "Planning granularity is 5 minutes; use local time.",
+            "Optimize to meet as many friends as possible; currently only Mary is specified."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context_summary": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the traveler. Summarize constraints, preferences, and hard requirements in a concise, machine-parseable way without producing PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private knowledge: {agents->traveler->private_information}. Global goal: {agents->traveler->goal}. Produce a single compact JSON object with fields: constraints (hard timing and travel facts), preferences (soft goals), objectives (optimization targets), and open_questions (unknowns that would change decisions). Keep it factual; do not invent data."
+            }
+        },
+        "scheduler": {
+            "candidate_schedules": {
+                "input": [
+                    "traveler_context"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a trip scheduler that enumerates diverse feasible itineraries using 5-minute granularity and direction-dependent travel times. Do not produce PDDL.",
+                "prompt": "You are scheduler. Use the public information {environment->public_information} and the traveler context {traveler_context}. Propose at least three distinct candidate schedules. Each schedule must provide a list of steps with fields: step_id, action (wait, move, meet), location, start_time, end_time, duration_minutes, and if move then include from and to; compute mary_meeting_duration_minutes for the schedule and ensure all times are aligned to 5-minute increments. Do not assume additional friends; focus on Mary while exploring different start times and buffer strategies. Return a JSON object with candidates: [ ... ], where each candidate has id, description, steps, total_travel_minutes, total_wait_minutes, mary_meeting_duration_minutes."
+            }
+        },
+        "auditor": {
+            "temporal_audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are a temporal and causal consistency auditor. Verify feasibility using directional travel times, Mary\u2019s availability (12:00 to 16:15), minimum meeting duration 75 minutes, no time travel, non-overlapping actions, and correct arithmetic. Remove bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties) and repair minor time rounding issues only if consistent. Do not produce PDDL.",
+                "prompt": "You are auditor. Audit the scheduler\u2019s candidates {candidate_schedules} against the public facts {environment->public_information}. For each candidate, mark feasible true/false, list violations if any, and compute normalized metrics: mary_meeting_duration_minutes, total_travel_minutes, slack_minutes before and after the meeting. Return a JSON object with fields: feasible_candidates (sorted by feasibility then descending mary_meeting_duration_minutes then ascending total_travel_minutes), rejected_candidates (with reasons), and best_schedule_id pointing to the top feasible candidate. Do not introduce new locations or people."
+            }
+        },
+        "orchestrator": {
+            "final_pddl": {
+                "input": [
+                    "traveler_context",
+                    "candidate_schedules",
+                    "audited_schedules"
+                ],
+                "output": "pddl_fastdownward",
+                "system_prompt": "You are an expert with PDDL for the FastDownwards (Fast Downward) solver. Produce a final PDDL domain and PDDL problem capturing a discretized-time meeting-planning task using 5-minute increments. Enclose outputs within <domain></domain> and <problem></problem>. Keep action schemas minimal and solver-friendly, and include comments.",
+                "prompt": "Integrate the traveler context {traveler_context}, the scheduler proposals {candidate_schedules}, and the audited result {audited_schedules}. Select the best_schedule_id and encode a planning model that can realize a meeting with Mary of at least 75 minutes starting and ending within 12:00 to 16:15, starting from union_square at 09:00. Use objects union_square, nob_hill, traveler, mary. Provide actions such as wait_5, move_union_square_to_nob_hill_9, move_nob_hill_to_union_square_7, and meet_mary_5, with appropriate preconditions and effects and a discrete time resource (e.g., a numeric time counter in 5-minute ticks). The problem should set the initial time at 9:00 and define a goal requiring at least 15 ticks (75 minutes) of cumulative meeting with Mary within her window; if needed, encode cumulative meeting time as a numeric fluent and constrain via goal and simple preferences or a numeric constraint that Fast Downward can handle. Ensure the model is solvable by FastDownwards, keep the output strictly within <domain></domain> and <problem></problem> tags, and do not include escape sequences."
+            }
+        },
+        "constraints": [
+            "traveler.context_summary->scheduler.candidate_schedules",
+            "scheduler.candidate_schedules->auditor.temporal_audit",
+            "auditor.temporal_audit->orchestrator.final_pddl",
+            "traveler.context_summary->orchestrator.final_pddl"
+        ]
+    }
+}

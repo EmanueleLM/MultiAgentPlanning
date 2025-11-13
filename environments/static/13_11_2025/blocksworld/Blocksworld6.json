@@ -1,0 +1,133 @@
+{
+    "name": "Blocksworld6",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "domain_modeler",
+            "scenario_analyst",
+            "plan_synthesizer",
+            "causal_auditor",
+            "orchestrator"
+        ],
+        "domain_modeler": {
+            "private_information": [
+                "Expert in classical planning and the Blocksworld domain",
+                "Familiar with FastDownward operator naming and STRIPS conventions",
+                "Focus on clean predicate vocabulary and well-formed action schemas"
+            ],
+            "goal": "Produce a precise domain vocabulary and action schema specification for Blocksworld without emitting raw PDDL."
+        },
+        "scenario_analyst": {
+            "private_information": [
+                "Skilled at extracting objects, initial states, and goals from natural language",
+                "Normalizes names and resolves potential ambiguities"
+            ],
+            "goal": "Extract structured scenarios, objects, and goals from the public statements and plans without emitting PDDL."
+        },
+        "plan_synthesizer": {
+            "private_information": [
+                "Designs step-by-step plans under given action restrictions",
+                "Avoids ambiguous shortcuts and spells out each causal step explicitly"
+            ],
+            "goal": "Propose a valid, detailed plan for the second scenario, referencing action preconditions and effects, without emitting PDDL."
+        },
+        "causal_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency of plans and state transitions",
+                "Eliminates bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Ensures that hand state and clear predicates are updated correctly"
+            ],
+            "goal": "Verify that the extracted scenarios and proposed plans obey all action restrictions and causality, producing a corrective audit report if needed, without emitting PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinates multi-agent inputs into a final PDDL domain and problem pair",
+                "Targets the FastDownward solver with STRIPS-compliant operators",
+                "Keeps operator names standard: pickup, putdown, unstack, stack"
+            ],
+            "goal": "Integrate the specifications, scenario extraction, synthesized plan, and audit feedback to output a final PDDL domain and a PDDL problem for the second scenario, suitable for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "domain": "blocksworld",
+            "objects": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "visibility": "global"
+        },
+        "public_information": [
+            "Actions available: Pick up a block; Unstack a block from on top of another block; Put down a block; Stack a block on top of another block.",
+            "Restrictions: Only one block can be picked up or unstacked at a time; You can only pick up or unstack if the hand is empty; You can only pick up a block if it is on the table and clear; A block is clear if no block is on top of it and it is not being held; You can only unstack a block if it was really on top of the other block and is clear; Once picked up or unstacked, you are holding the block; You can only put down a block you are holding; You can only stack a block you are holding onto a block that is clear; After put down or stack, the hand becomes empty; After stacking a block on a second block, the second block is no longer clear.",
+            "[STATEMENT 1] Initial: red is clear; hand is empty; red is on yellow; blue is on orange; yellow is on blue; orange is on the table. Goal: red is on orange.",
+            "[PLAN 1] Steps: unstack red from yellow; put down red; unstack yellow from blue; put down yellow; unstack blue from orange; put down blue; pick up red; stack red on orange.",
+            "[STATEMENT 2] Initial: red is clear; blue is clear; yellow is clear; hand is empty; blue is on orange; red is on the table; orange is on the table; yellow is on the table. Goal: red is on blue; blue is on yellow; yellow is on orange.",
+            "[PLAN 2] Steps: to be synthesized."
+        ]
+    },
+    "workflow": {
+        "domain_modeler": {
+            "spec": {
+                "input": [],
+                "output": "domain_spec",
+                "system_prompt": "You are a knowledge engineer for the Blocksworld domain. Provide a concise, unambiguous domain specification in structured prose or JSON (no PDDL). Include: predicate vocabulary (e.g., on ?x ?y, ontable ?x, clear ?x, holding ?x, handempty), object categories (blocks), action schemas (pickup, putdown, unstack, stack) with precise preconditions and effects, and invariants (e.g., antisymmetry for on, mutual exclusion between holding and handempty).",
+                "prompt": "Your name is domain_modeler. Use the public information to formalize the domain concepts and action schemas without emitting raw PDDL. Keep operator names aligned with FastDownward norms (pickup, putdown, unstack, stack). If any detail is missing, state safe defaults instead of inventing new actions. Public info: {environment->public_information}"
+            }
+        },
+        "scenario_analyst": {
+            "extract": {
+                "input": [],
+                "output": "scenario_specs",
+                "system_prompt": "You extract structured objects, initial states, and goal conditions from text. You normalize names, deduplicate facts, and flag ambiguities.",
+                "prompt": "Your name is scenario_analyst. From the public information, produce structured summaries for the two scenarios: list of blocks, initial facts, and goal facts. Mark the first scenario as having a provided plan, and the second as needing plan synthesis. Do not emit PDDL. Public info: {environment->public_information}"
+            }
+        },
+        "plan_synthesizer": {
+            "synthesize": {
+                "input": [
+                    "domain_spec",
+                    "scenario_specs"
+                ],
+                "output": "candidate_plan_2",
+                "system_prompt": "You propose step-by-step, causally justified plans under the given action restrictions. You avoid shortcuts and ensure each step's preconditions and effects are satisfied.",
+                "prompt": "Your name is plan_synthesizer. Using the extracted second scenario and the domain constraints, propose a concrete sequence of steps to achieve the goal for scenario 2. Justify that each step meets preconditions and effects and that hand and clear status updates are sound. Do not emit PDDL. Inputs: {scenario_specs} {environment->public_information}"
+            }
+        },
+        "causal_auditor": {
+            "audit": {
+                "input": [
+                    "scenario_specs",
+                    "candidate_plan_2"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency, removing bookkeeping shortcuts and enforcing action restrictions. You correct errors and clearly state any modifications.",
+                "prompt": "Your name is causal_auditor. Check that the second scenario plan respects all restrictions: one block at a time, handempty gating pickup/unstack, clear status, proper updates after stack/putdown, and correctness of on relations. Identify and correct discrepancies. Produce a brief report of verified transitions and any corrections. Inputs: {candidate_plan_2} {scenario_specs}"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_spec",
+                    "scenario_specs",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing PDDL for FastDownward. Output a PDDL domain and a PDDL problem for the Blocksworld second scenario only. Use STRIPS-compatible constructs (no conditional effects, no quantifiers, no negative preconditions in effects). Use standard operator names: pickup, putdown, unstack, stack. Predicates should include at minimum: (on ?x ?y), (ontable ?x), (clear ?x), (holding ?x), (handempty). Objects: red, blue, yellow, orange of type block (you may declare :typing but keep it simple). Ensure preconditions/effects implement the given restrictions. Enclose the domain between <domain></domain> and the problem between <problem></problem>.",
+                "prompt": "Integrate the specification, the extracted scenarios, and the audit to produce final PDDL for FastDownward. Use the second scenario initial state and goal exactly as extracted and audited: Initial facts include red clear, blue clear, yellow clear, handempty, on blue orange, ontable red, ontable orange, ontable yellow. Goal facts include on red blue, on blue yellow, on yellow orange. If the audit indicates corrected facts, prefer the audited version. Output only one domain and one problem, enclosed in the required tags. Inputs: {domain_spec} {scenario_specs} {audit_report}"
+            }
+        },
+        "constraints": [
+            "domain_modeler.spec->plan_synthesizer.synthesize",
+            "scenario_analyst.extract->plan_synthesizer.synthesize",
+            "scenario_analyst.extract->causal_auditor.audit",
+            "plan_synthesizer.synthesize->causal_auditor.audit",
+            "domain_modeler.spec->orchestrator.pddl",
+            "scenario_analyst.extract->orchestrator.pddl",
+            "causal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

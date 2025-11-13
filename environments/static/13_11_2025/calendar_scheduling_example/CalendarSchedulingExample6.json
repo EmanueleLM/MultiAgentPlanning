@@ -1,0 +1,122 @@
+{
+    "name": "CalendarSchedulingExample6",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "thomas",
+            "dylan",
+            "jerry",
+            "auditor",
+            "orchestrator"
+        ],
+        "thomas": {
+            "private_information": [
+                "You are Thomas.",
+                "Your calendar on Monday is completely free between 09:00 and 17:00."
+            ],
+            "goal": "Schedule a one-hour meeting for Thomas, Dylan, and Jerry on Monday within 09:00-17:00, respecting existing events, selecting the earliest feasible slot."
+        },
+        "dylan": {
+            "private_information": [
+                "You are Dylan.",
+                "Busy on Monday at: 10:30-11:00 and 13:30-14:00."
+            ],
+            "goal": "Schedule a one-hour meeting for Thomas, Dylan, and Jerry on Monday within 09:00-17:00, respecting existing events, selecting the earliest feasible slot."
+        },
+        "jerry": {
+            "private_information": [
+                "You are Jerry.",
+                "Busy on Monday at: 09:00-11:00, 11:30-14:30, and 16:00-17:00."
+            ],
+            "goal": "Schedule a one-hour meeting for Thomas, Dylan, and Jerry on Monday within 09:00-17:00, respecting existing events, selecting the earliest feasible slot."
+        },
+        "auditor": {
+            "private_information": [
+                "You audit temporal and causal consistency across agents.",
+                "You remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "Work strictly with HH:MM 24-hour times and closed-world information only.",
+                "Meeting must be a continuous 60-minute interval fully within work hours."
+            ],
+            "goal": "Verify that the computed availabilities and the chosen meeting time satisfy all constraints; compute the intersection windows and confirm the earliest valid 60-minute slot."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate the participants' availabilities with the auditor's report.",
+                "You will produce the final PDDL domain and problem for the FastDownwards solver."
+            ],
+            "goal": "Select the earliest feasible one-hour slot that satisfies all constraints and produce a PDDL domain and problem for the FastDownwards solver encoding the scheduling task and the chosen solution."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "duration_minutes": 60,
+            "time_granularity_minutes": 30,
+            "timezone": "local"
+        },
+        "public_information": [
+            "Participants: Thomas, Dylan, Jerry.",
+            "Work hours: 09:00 to 17:00 on Monday.",
+            "Meeting duration: 60 minutes.",
+            "There exists a solution compatible with all calendars.",
+            "Prefer earliest feasible time if multiple options exist."
+        ]
+    },
+    "workflow": {
+        "thomas": {
+            "availability": {
+                "input": [],
+                "output": "availability_thomas",
+                "system_prompt": "You are a precise calendar analyst who extracts free time windows and computes feasible intervals for a meeting duration.",
+                "prompt": "Your name is Thomas. Use the public information {environment->public_information} and your private information {agents->thomas->private_information}. Compute your free windows within {environment->init->work_start}-{environment->init->work_end} on {environment->init->day} and derive feasible start-end windows that can host a continuous {environment->init->duration_minutes}-minute meeting. Return a compact JSON object with keys: agent, free_windows, feasible_windows_for_duration."
+            }
+        },
+        "dylan": {
+            "availability": {
+                "input": [],
+                "output": "availability_dylan",
+                "system_prompt": "You are a precise calendar analyst who extracts free time windows and computes feasible intervals for a meeting duration.",
+                "prompt": "Your name is Dylan. Use the public information {environment->public_information} and your private information {agents->dylan->private_information}. Compute your free windows within {environment->init->work_start}-{environment->init->work_end} on {environment->init->day} and derive feasible start-end windows that can host a continuous {environment->init->duration_minutes}-minute meeting. Return a compact JSON object with keys: agent, free_windows, feasible_windows_for_duration."
+            }
+        },
+        "jerry": {
+            "availability": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You are a precise calendar analyst who extracts free time windows and computes feasible intervals for a meeting duration.",
+                "prompt": "Your name is Jerry. Use the public information {environment->public_information} and your private information {agents->jerry->private_information}. Compute your free windows within {environment->init->work_start}-{environment->init->work_end} on {environment->init->day} and derive feasible start-end windows that can host a continuous {environment->init->duration_minutes}-minute meeting. Return a compact JSON object with keys: agent, free_windows, feasible_windows_for_duration."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_thomas",
+                    "availability_dylan",
+                    "availability_jerry"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor who validates time arithmetic, prevents shortcuts, and computes intersection windows.",
+                "prompt": "You will receive the availability outputs from Thomas, Dylan, and Jerry. Normalize HH:MM ranges, verify that each agent's feasible windows are correctly derived from their free windows and the required duration {environment->init->duration_minutes}, compute the intersection of feasible windows across all agents within the work hours, and select the earliest feasible 60-minute slot. Return a JSON object with keys: normalized_free_windows_by_agent, intersection_windows, earliest_feasible_slot."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audit_report"
+                ],
+                "output": "pddl_schedule",
+                "system_prompt": "You are an expert with multi-agent scheduling and PDDL. Produce a PDDL domain and a PDDL problem targeting the FastDownwards solver. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Use the public information {environment->public_information} and the auditor's report {audit_report}. Confirm the earliest feasible slot and generate a PDDL domain and problem that encode: timepoints/slots as objects at {environment->init->time_granularity_minutes}-minute granularity within {environment->init->work_start}-{environment->init->work_end} on {environment->init->day}, participant availability constraints, and the goal of scheduling one 60-minute meeting that starts at the earliest feasible slot. Ensure predicates and actions are compatible with classical planning for the FastDownwards solver (no durative actions required; represent a 60-minute meeting as consecutive discrete slots). Enclose the PDDL domain within <domain></domain> and the PDDL problem within <problem></problem>."
+            }
+        },
+        "constraints": [
+            "thomas.availability->auditor.audit",
+            "dylan.availability->auditor.audit",
+            "jerry.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

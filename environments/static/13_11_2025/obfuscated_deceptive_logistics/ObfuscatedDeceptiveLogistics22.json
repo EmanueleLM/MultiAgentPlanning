@@ -1,0 +1,105 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "You control a set of parametric actions: paltry, sip, clip, wretched, memory, tightfisted.",
+                "Each action is parameterized over objects and has explicit preconditions and effects. Example schemas are paltry(object0,object1,object2) requires hand object0 and cats object1 and texture object2 and vase object0 object1 and next object1 object2 and yields next object0 object2 while deleting vase object0 object1.",
+                "Sip requires hand object0 and cats object1 and texture object2 and next object0 object2 and next object1 object2 and yields vase object0 object1 while deleting next object0 object2.",
+                "Clip requires hand object0 and sneeze object1 and texture object2 and next object1 object2 and next object0 object2 and yields vase object0 object1 while deleting next object0 object2.",
+                "Wretched requires sneeze object0 and texture object1 and texture object2 and stupendous object3 and next object0 object1 and collect object1 object3 and collect object2 object3 and yields next object0 object2 while deleting next object0 object1.",
+                "Memory requires cats object0 and spring object1 and spring object2 and next object0 object1 and yields next object0 object2 while deleting next object0 object1.",
+                "Tightfisted requires hand object0 and sneeze object1 and texture object2 and next object1 object2 and vase object0 object1 and yields next object0 object2 while deleting vase object0 object1."
+            ],
+            "goal": "Analyze the action schemata, produce a canonical internal action model mapping each action to its preconditions and effects in a structured JSON representation that is explicit about deleted and added predicates and that does not assume unprovided facts."
+        },
+        "simulator": {
+            "private_information": [
+                "You can perform deterministic simulation of state transitions given an initial state and a structured action model.",
+                "You can apply action instances in sequence and return the resulting state sequence and any contradictions or unmet preconditions encountered."
+            ],
+            "goal": "Given the player's action model and an initial state statement and a candidate plan, produce a step by step state trace and flag any unmet preconditions or conflicting effects."
+        },
+        "auditor": {
+            "private_information": [
+                "You specialize in temporal and causal consistency checks and in removing bookkeeping shortcuts.",
+                "Bookkeeping shortcuts include quota tokens, post-hoc penalties, invented aggregation predicates used only to hide temporal dependencies, and other artificial conveniences that make a plan appear valid without explicit causal links.",
+                "You should transform representations to explicit causal chains, remove or mark bookkeeping shims, and recommend explicit locks or ordering constraints when needed."
+            ],
+            "goal": "Audit the player model and the simulator trace for temporal and causal consistency, remove or flag bookkeeping shortcuts, and provide a cleaned model and a causal report suitable for synthesis into a formal planner input."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the models, traces, and audit report and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver. The PDDL must keep agent actions distinct if relevant and must be syntactically valid for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 13,
+            "description": "A heterogeneous set of named objects referred to as object_0 through object_12 with various initial predicate facts."
+        },
+        "public_information": [
+            "Available predicates include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Available actions are paltry, sip, clip, wretched, memory, tightfisted each parameterized over objects.",
+            "Actions have deterministic add and delete effects affecting next relationships and vase and related predicates.",
+            "Goals typically require establishing particular next relations between objects.",
+            "Plans should preserve causal chains and avoid relying on ephemeral bookkeeping predicates."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "model": {
+                "input": [],
+                "output": "model_player",
+                "system_prompt": "You are an expert action modeler. Your output should be a structured JSON action model and not PDDL. The model must enumerate for each action its parameters, preconditions, add effects, and delete effects explicitly and must not invent unstated global invariants.",
+                "prompt": "You are the player agent. Using the environment public information and your private information about action schemata and the initial statements, produce a canonical JSON action model that lists each action name, parameter list, preconditions as a list of predicates, add effects as a list of predicates, and delete effects as a list of predicates. Do not emit PDDL. Be explicit about which predicates are changed and which remain unchanged."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "model_player"
+                ],
+                "output": "trace_simulator",
+                "system_prompt": "You are a deterministic simulator. Your job is to apply a provided structured action model to an initial state and a candidate plan. Output a step by step state trace, list any unmet preconditions, and provide the final state. Do not output PDDL.",
+                "prompt": "You are the simulator agent. Receive the player's JSON action model and an initial state described in the statement. Also take the candidate plan if provided. Simulate each action instance in order, return each intermediate state, and flag any action whose preconditions are not satisfied or whose effects conflict with prior effects. Provide explicit predicate additions and deletions per step."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_player",
+                    "trace_simulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert in temporal and causal analysis. Your job is to eliminate bookkeeping shortcuts and to annotate causal dependencies explicitly. Provide a cleaned model and a causal report in JSON. Do not emit PDDL.",
+                "prompt": "You are the auditor agent. Using the player's model and the simulator trace, examine for temporal shortcuts such as quota tokens, post-hoc penalties, or implicit aggregations. Remove or explain such shortcuts by replacing them with explicit causal predicates or ordering constraints. Output a cleaned action model and a report of all corrections and required ordering constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_player",
+                    "trace_simulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert multi-agent integrator and PDDL author. Your goal is to produce a PDDL domain and a PDDL problem syntactically compatible with the FastDownwards solver. Preserve action distinctions when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Ensure typing, predicates, objects, initial state, and goal are coherent and that the domain uses STRIPS or ADL constructs accepted by FastDownwards.",
+                "prompt": "You are the orchestrator. Integrate the cleaned action model and the simulator trace and the auditor report. Resolve naming inconsistencies and produce a final PDDL domain and a PDDL problem that captures the environment predicates, the action schemas, the initial state from the statement, and the stated goal of establishing the required next relations. Output the domain between <domain></domain> and the problem between <problem></problem>. Target the FastDownwards planner and ensure compatibility."
+            }
+        },
+        "constraints": [
+            "player.model->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

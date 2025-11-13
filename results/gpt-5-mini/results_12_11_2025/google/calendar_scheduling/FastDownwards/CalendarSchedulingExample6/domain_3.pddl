@@ -1,0 +1,36 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot)
+
+  (:predicates
+    (slot ?s - slot)
+    (next ?s1 - slot ?s2 - slot)
+    (free ?p - participant ?s - slot)
+    (earliest_start ?s - slot)
+    (meeting_scheduled)
+    (scheduled_start ?s - slot)
+    (required ?p - participant)
+    (distinct ?p1 - participant ?p2 - participant)
+  )
+
+  (:action schedule-meeting
+    :parameters (?s1 - slot ?s2 - slot ?a - participant ?b - participant ?c - participant)
+    :precondition (and
+      (next ?s1 ?s2)
+      (earliest_start ?s1)
+      (required ?a) (required ?b) (required ?c)
+      (distinct ?a ?b) (distinct ?a ?c) (distinct ?b ?c)
+      (free ?a ?s1) (free ?a ?s2)
+      (free ?b ?s1) (free ?b ?s2)
+      (free ?c ?s1) (free ?c ?s2)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled_start ?s1)
+      (not (free ?a ?s1)) (not (free ?a ?s2))
+      (not (free ?b ?s1)) (not (free ?b ?s2))
+      (not (free ?c ?s1)) (not (free ?c ?s2))
+    )
+  )
+)

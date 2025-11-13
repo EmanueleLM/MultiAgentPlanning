@@ -1,0 +1,96 @@
+(define (domain hanoi-multiagent)
+  (:requirements :strips :typing)
+  (:types
+    agent disk peg
+  )
+  (:predicates
+    (on ?d1 - disk ?d2 - disk)
+    (on-peg ?d - disk ?p - peg)
+    (clear ?x)
+    (top ?d - disk)
+    (smaller ?d1 - disk ?d2 - disk)
+    (can-move ?ag - agent ?d - disk)
+  )
+
+  ; move a disk from on top of another disk to on top of a destination disk
+  (:action move
+    :parameters (?ag - agent ?x - disk ?from - disk ?to - disk)
+    :precondition (and
+      (can-move ?ag ?x)
+      (on ?x ?from)
+      (top ?x)
+      (clear ?to)
+      (smaller ?x ?to)
+    )
+    :effect (and
+      (not (on ?x ?from))
+      (on ?x ?to)
+      (clear ?from)
+      (top ?from)
+      (not (clear ?to))
+      (not (top ?to))
+      (clear ?x)
+      (top ?x)
+    )
+  )
+
+  ; move a disk from on top of another disk to an empty peg
+  (:action move-to-peg
+    :parameters (?ag - agent ?x - disk ?from - disk ?p - peg)
+    :precondition (and
+      (can-move ?ag ?x)
+      (on ?x ?from)
+      (top ?x)
+      (clear ?p)
+    )
+    :effect (and
+      (not (on ?x ?from))
+      (on-peg ?x ?p)
+      (clear ?from)
+      (top ?from)
+      (not (clear ?p))
+      (clear ?x)
+      (top ?x)
+    )
+  )
+
+  ; lift a disk from a peg onto a destination disk
+  (:action lift-to-disk
+    :parameters (?ag - agent ?x - disk ?p - peg ?to - disk)
+    :precondition (and
+      (can-move ?ag ?x)
+      (on-peg ?x ?p)
+      (top ?x)
+      (clear ?to)
+      (smaller ?x ?to)
+    )
+    :effect (and
+      (not (on-peg ?x ?p))
+      (clear ?p)
+      (on ?x ?to)
+      (not (clear ?to))
+      (not (top ?to))
+      (clear ?x)
+      (top ?x)
+    )
+  )
+
+  ; lift a disk from a peg onto an empty peg
+  (:action lift-to-peg
+    :parameters (?ag - agent ?x - disk ?p1 - peg ?p2 - peg)
+    :precondition (and
+      (can-move ?ag ?x)
+      (on-peg ?x ?p1)
+      (top ?x)
+      (clear ?p2)
+    )
+    :effect (and
+      (not (on-peg ?x ?p1))
+      (clear ?p1)
+      (on-peg ?x ?p2)
+      (not (clear ?p2))
+      (clear ?x)
+      (top ?x)
+    )
+  )
+)

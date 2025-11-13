@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+from typing import Dict, List
 
-from src.llm_plan.llm import ChatGPT, Gemini
+from src.llm_plan.llm import ChatGPT, Gemini, DeepSeekR170B
 from src.llm_plan.utils import (
     run_pddl_popf2_and_Val,
     run_pddl_fast_downwards_and_uVal,
@@ -119,6 +120,36 @@ DATASET = {
     },
 }
 
+# LLM-as-a-judge prompts
+PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
+    "trip_planning": [
+        "Verify that the duration of each city visitation strictly matches the original prompt (prompt_0shot); when judging against the golden reference plan, keep in mind that the proposed plan may visit each city in a different order and with multiple flights; unless otherwise stated, what matters is that the stay duration in each city is correct and the meetings with other people happen as planned. This is also important: if one flies between two cities, that counts as a day spent in both cities!",
+    ],
+    "meeting_planning": [
+        "Ensure every scheduled meeting matches the golden plan in start time and duration. It is important that you check whether the proposed plan matches the constraints in the original prompt (prompt_0shot), rather than the golden plan, as the proposed plan may schedule events in a different order or time slots, as long as all constraints are satisfied.",
+    ],
+    "calendar_scheduling": [
+        "Check that every calendar event in the golden plan appears at the same time, with the same participants and resources.",
+    ],
+    "logistics": [
+        "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the proposed plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
+    ],
+    "depots": [
+        "Ensure hoist, truck, and pallet interactions mirror the golden plan exactly, including pickup/drop ordering.",
+        "Reject plans that leave objects at different depots, but keep those that introduce alternative lifting sequences or drop-off points, if they still achieve the same overall goal.",
+    ],
+    "blocksworld": [
+        "Check that every block stack configuration matches the golden plan at the end. If the intermediate steps differ but the final arrangement is identical and all the actions in the proposed plan are allowed, accept the plan.",
+        "Ignore cost differences only if the final arrangement is identical to the golden plan.",
+    ],
+    "mystery_blocksworld": [
+        "Treat the golden plan as the authoritative block arrangement; ensure the candidate builds identical towers and ordering. If the candidate plan achieves the same final arrangement with different intermediate steps, accept it, as long as the actions are allowed.",
+    ],
+    "obfuscated_deceptive_logistics": [
+        "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the proposed plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
+    ],
+}
+
 # Solvers configuration
 SOLVER = {
     "POPF2": {
@@ -148,5 +179,10 @@ MODELS = {
         "model": Gemini("gemini-2.5-pro"),
         "persistent": False,
         "sleep": 20,
+    },
+    "deepseek-r1-70B": {
+        "model": DeepSeekR170B("deepseek-r1-70B"),
+        "persistent": True,
+        "sleep": 0,
     }
 }

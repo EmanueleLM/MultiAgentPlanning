@@ -1,0 +1,38 @@
+(define (problem MeetingPlanningExample11-problem)
+  (:domain MeetingPlanningExample11)
+  (:objects
+    ;; locations
+    Nob_Hill Sunset_District - location
+    ;; person
+    Carol - person
+    ;; slots s0..s23 representing 09:00..20:30 in 30-minute steps
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 - slot
+  )
+  (:init
+    ;; initial time and location: at Nob_Hill at 09:00 (s0)
+    (at Nob_Hill s0)
+
+    ;; successor relation: every slot has a next except final s23
+    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4) (next s4 s5)
+    (next s5 s6) (next s6 s7) (next s7 s8) (next s8 s9) (next s9 s10)
+    (next s10 s11) (next s11 s12) (next s12 s13) (next s13 s14) (next s14 s15)
+    (next s15 s16) (next s16 s17) (next s17 s18) (next s18 s19) (next s19 s20)
+    (next s20 s21) (next s21 s22) (next s22 s23)
+
+    ;; Carol availability: from 14:00 (s10) through 20:30 (s23) inclusive
+    (carol_available s10) (carol_available s11) (carol_available s12) (carol_available s13)
+    (carol_available s14) (carol_available s15) (carol_available s16) (carol_available s17)
+    (carol_available s18) (carol_available s19) (carol_available s20) (carol_available s21)
+    (carol_available s22) (carol_available s23)
+
+    ;; meeting state: not started
+    (meeting_0)
+
+    ;; initial total cost
+    (= (total-cost) 0)
+  )
+  ;; Goal requires that the contiguous meeting progression has been completed (meeting_done).
+  ;; This does not name specific slots: the domain enforces contiguity and availability.
+  (:goal (and (meeting_done)))
+  (:metric minimize (total-cost))
+)

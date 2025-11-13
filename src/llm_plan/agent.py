@@ -460,6 +460,101 @@ class AgentDeepThinkConstraints(Agent):
         )
 
 
+class AgentTemporalConsistency(Agent):
+    """
+    Agent that audits temporal and causal consistency, ensuring specifications with ordered phases or durations
+    are encoded explicitly without relying on bookkeeping shortcuts such as penalty tokens or quota pay-offs.
+    """
+
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The structured task description (JSON).",
+        "pddl_domain": "(str) The current PDDL domain.",
+        "pddl_problem": "(str) The current PDDL problem.",
+        "pddl_plan": "(str) The latest plan produced for the model (may be empty).",
+        "pddl_logs": "(str) The solver logs for the latest attempt (may be empty).",
+        "syntax_errors": "(str) Validator or parser feedback (may be empty).",
+        "target_solver": "(str) The target solver that must accept the artefacts.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentTemporalConsistency"
+        self.llm = llm
+
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a planning engineer focused on temporal and causal consistency.
+            Ensure that enumerated phases, resource limits, and ordering constraints from the specification
+            are encoded as hard requirements. Eliminate bookkeeping shortcuts (quota tokens, “pay shortfall”
+            actions, optional penalty payments, or oscillating transitions) that allow violations after the fact.
+            Model discrete time or stage progression explicitly (e.g., via ordered objects and successor predicates),
+            require contiguous occupancy when durations are specified, and enforce terminal conditions exactly as
+            described. Keep :requirements within (:strips :typing :negative-preconditions) unless a matching
+            (increase ...) effect justifies :action-costs. Never leave placeholders or assume extra connectivity.
+            """
+        )
+
+        self.prompt = inspect.cleandoc(
+            """\
+            Human specification of the task:
+            <human_specification>{human_specification}</human_specification>
+
+            Structured JSON specification:
+            <specification>{specification}</specification>
+
+            Previously hypothesised solution (confirm or revise as needed):
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
+            Current PDDL domain:
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem:
+            <problem>{pddl_problem}</problem>
+
+            Latest plan produced for the {target_solver} solver (may be empty):
+            <plan>{pddl_plan}</plan>
+
+            Solver logs (may be empty):
+            <logs>{pddl_logs}</logs>
+
+            Validator or syntax feedback (may be empty):
+            <errors>{syntax_errors}</errors>
+
+            Rebuild the domain and problem, if needed, so that:
+            - Ordered stages or time windows appear as explicit objects/predicates the solver must respect.
+            - Durations or quotas are enforced structurally, without slack tokens or post-hoc penalty actions.
+            - Actions cannot oscillate between states when the specification requires contiguous occupancy.
+            - Initial state and goals capture every mandatory completion condition instead of auxiliary bookkeeping.
+            - No placeholders remain and the :requirements list contains only features supported by the target solver.
+
+            Return the revised domain between <domain></domain> and the problem between <problem></problem>. Do not add commentary outside the tags.
+            """
+        )
+
+    def run(self) -> str:
+        """Ensure temporal and causal consistency in the PDDL artefacts."""
+        self.upload_args(self.prompt_args)
+
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            pddl_plan=self.prompt_args.get("pddl_plan", ""),
+            pddl_logs=self.prompt_args.get("pddl_logs", ""),
+            syntax_errors=self.prompt_args.get("syntax_errors", ""),
+            target_solver=self.prompt_args.get("target_solver", ""),
+        )
+
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
 class AgentEnforceMultiAgency(Agent):
     required_args = {
         "human_specification": "(str) The human-readable specification of the task.",
@@ -639,6 +734,87 @@ class AgentFastDownwardsAdapter(Agent):
             pddl_problem=self.prompt_args["pddl_problem"],
         )
 
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentReduceVariables(Agent):
+    """
+    Agent that shrinks the initial state of a PDDL problem by reducing the number of predicates
+    listed inside the :init section while keeping the task faithful to the specification.
+    """
+
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The structured description of the task (JSON).",
+        "pddl_domain": "(str) The PDDL domain to revise.",
+        "pddl_problem": "(str) The PDDL problem whose :init must be reduced.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
+    }  # Static!
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        """
+        This agent rewrites the domain/problem pair to keep the task semantics intact while explicitly
+        reducing the number of predicates enumerated in the :init section of the problem.
+        It removes redundant objects, factors symmetries, and encodes invariants structurally so that fewer
+        ground facts are required to express the same constraints, improving Fast Downward scalability.
+        """
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentReduceVariables"
+        self.llm = llm
+
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a classical planning engineer focused on trimming the initial state cardinality.
+            Rewrite the PDDL domain/problem so that the :init section contains as few predicate instances as
+            possible without altering the real constraints described by the specification.
+            Strategies include removing unused objects, merging symmetric resources, introducing helper types
+            or predicates that encode invariants once, and ensuring duplicate or implied facts are dropped.
+            Maintain Fast Downward compatibility (:typing, :negative-preconditions, optional :action-costs only
+            when justified by matching (increase ...) effects) and never relax the specification's constraints.
+            """
+        )
+        self.prompt = inspect.cleandoc(
+            """\
+            Human specification of the task:
+            <human_specification>{human_specification}</human_specification>
+
+            JSON description of the task:
+            <specification>{specification}</specification>
+
+            Previously hypothesised solution (may be empty; confirm or adjust as needed):
+            <proposed_solution>{proposed_solution}</proposed_solution>
+
+            Current PDDL domain:
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem:
+            <problem>{pddl_problem}</problem>
+
+            Produce a revised domain/problem pair that preserves the task semantics but **reduces the number of
+            predicates listed inside the :init block**. Ensure:
+            - Remove or merge redundant objects and facts while keeping every goal-supporting predicate reachable.
+            - Encode shared invariants or ordering through domain rules rather than enumerating all combinations
+              inside :init.
+            - Keep :requirements limited to (:strips :typing :negative-preconditions) plus justified :action-costs,
+              and remove placeholder tokens such as '...' or 'None'.
+            Return the updated domain between <domain></domain> and the updated problem between
+            <problem></problem>. Output only the tagged PDDL artefacts.
+            """
+        )
+
+    def run(self) -> str:
+        """Reduce the number of predicates declared in the :init section while keeping semantics intact."""
+        self.upload_args(self.prompt_args)
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            proposed_solution=self.prompt_args.get("proposed_solution", ""),
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+        )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,
             prompt=prompt,

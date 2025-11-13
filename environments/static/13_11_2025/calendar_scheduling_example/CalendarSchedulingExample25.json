@@ -1,0 +1,123 @@
+{
+    "name": "CalendarSchedulingExample25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "availability_extractor",
+            "preferences_solver",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "availability_extractor": {
+            "private_information": [
+                "I translate natural-language schedules into normalized time windows.",
+                "I compute each participant's free windows from work hours minus busy intervals.",
+                "I assume all times are same-day, 24-hour format, and inclusive of start, exclusive of end."
+            ],
+            "goal": "Produce normalized availability for all participants and the meeting constraints."
+        },
+        "preferences_solver": {
+            "private_information": [
+                "I intersect participants' free windows to produce fixed-duration candidate slots.",
+                "I respect working hours and duration constraints.",
+                "I treat stated participant preferences as hard constraints unless explicitly labeled as soft."
+            ],
+            "goal": "Generate all feasible 60-minute joint windows that satisfy availability and stated preferences."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal arithmetic and causal consistency across inputs.",
+                "I remove bookkeeping shortcuts such as token quotas, post-hoc penalties, or retroactive changes.",
+                "I verify that candidate slots do not overlap any busy intervals and comply with preferences.",
+                "I provide a recommended slot and rationale if multiple candidates exist (earliest valid slot by start time)."
+            ],
+            "goal": "Validate feasibility, eliminate inconsistent options, and recommend a final slot with justification."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the other agents' outputs.",
+                "I compile a final discrete-time PDDL domain and problem compatible with the FastDownwards solver.",
+                "I model time slots as objects and provide a simple STRIPS-style plan that schedules the meeting."
+            ],
+            "goal": "Produce the final PDDL domain and problem that encode the chosen meeting slot and yield a solvable plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "meeting_duration_minutes": 60,
+            "time_granularity_minutes": 30,
+            "participants": [
+                "Anthony",
+                "Pamela",
+                "Zachary"
+            ],
+            "timezone": "local-office"
+        },
+        "public_information": [
+            "Schedule a 60-minute meeting on Monday within work hours 09:00-17:00.",
+            "Participants: Anthony, Pamela, Zachary.",
+            "Anthony busy: 09:30-10:00, 12:00-13:00, 16:00-16:30.",
+            "Pamela busy: 09:30-10:00, 16:30-17:00.",
+            "Zachary busy: 09:00-11:30, 12:00-12:30, 13:00-13:30, 14:30-15:00, 16:00-17:00.",
+            "Preference: Pamela does not want to meet after 14:30.",
+            "Assume all times are in 24-hour format on the same Monday and a feasible solution exists."
+        ]
+    },
+    "workflow": {
+        "availability_extractor": {
+            "analyze": {
+                "input": [],
+                "output": "availability_windows",
+                "system_prompt": "You convert public schedule statements into normalized availability. Compute per-participant busy and free windows within work hours and produce a concise JSON summary.",
+                "prompt": "Your name is availability_extractor. Public information: {environment->public_information}. Your knowledge: {agents->availability_extractor->private_information}. Goal: {agents->availability_extractor->goal}. Output a JSON object with keys: work_hours, duration_minutes, participants, busy_by_participant (map of name -> list of {start,end}), free_by_participant (same format), and any derived assumptions kept minimal."
+            }
+        },
+        "preferences_solver": {
+            "propose": {
+                "input": [
+                    "availability_windows"
+                ],
+                "output": "candidate_slots",
+                "system_prompt": "You intersect free windows across all participants to find fixed-duration candidates. Respect work hours and hard preferences. Output machine-readable candidates.",
+                "prompt": "Your name is preferences_solver. You receive normalized availability: {availability_windows}. Public information: {environment->public_information}. Your knowledge: {agents->preferences_solver->private_information}. Goal: {agents->preferences_solver->goal}. Produce a JSON object with keys: duration_minutes, candidates (list of {start,end}), and notes summarizing any pruning logic used."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "availability_windows",
+                    "candidate_slots"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency, eliminate any invalid or redundant candidates, and reject bookkeeping shortcuts (token quotas, post-hoc penalties, retroactive changes).",
+                "prompt": "Your name is consistency_auditor. Inputs: availability {availability_windows}; candidates {candidate_slots}. Public information: {environment->public_information}. Your knowledge: {agents->consistency_auditor->private_information}. Goal: {agents->consistency_auditor->goal}. Output a JSON object with keys: valid_candidates (list of {start,end}), rejected (list with reason), recommended_slot ({start,end}), and rationale (string). Choose the earliest valid slot by start time."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_windows",
+                    "candidate_slots",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems targeting the FastDownwards solver. Produce a classic STRIPS-style typed PDDL domain and problem that schedule the meeting in the recommended slot. Enclose the domain in <domain></domain> and the problem in <problem></problem>. The domain should model participants and discrete time slots as objects, include predicates like (slot) (participant) (available ?p ?s) (chosen ?s) (scheduled), and at least one action that selects the audited recommended slot and marks the meeting scheduled. Keep actions minimal and solvable by FastDownwards without durative constructs.",
+                "prompt": "Coordinator: orchestrator. You will integrate availability {availability_windows}, candidates {candidate_slots}, and the audited recommendation {audit_report}. Public information for context: {environment->public_information}. Your knowledge: {agents->orchestrator->private_information}. Goal: {agents->orchestrator->goal}. Use the recommended slot as the unique slot to schedule. Provide a PDDL domain and problem for FastDownwards with types (participant slot), objects for Anthony, Pamela, Zachary, and a slot object representing the audited recommended interval (e.g., s_1330_1430). Ensure the problem initial state asserts that the slot exists and that all participants are available for it, and the goal is (scheduled). Output only <domain>...</domain> followed by <problem>...</problem>."
+            }
+        },
+        "constraints": [
+            "availability_extractor.analyze->preferences_solver.propose",
+            "availability_extractor.analyze->consistency_auditor.audit",
+            "preferences_solver.propose->consistency_auditor.audit",
+            "availability_extractor.analyze->orchestrator.pddl",
+            "preferences_solver.propose->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

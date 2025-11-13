@@ -1,0 +1,25 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant timeslot)
+  (:constants katherine nicole kevin - participant)
+  (:predicates
+    (consecutive ?s1 - timeslot ?s2 - timeslot)
+    (available ?p - participant ?s - timeslot)
+    (scheduled)
+    (meeting-start ?s - timeslot)
+  )
+  (:action schedule-meeting
+    :parameters (?s - timeslot ?s2 - timeslot)
+    :precondition (and
+      (consecutive ?s ?s2)
+      (not (scheduled))
+      (available katherine ?s) (available katherine ?s2)
+      (available nicole ?s) (available nicole ?s2)
+      (available kevin ?s) (available kevin ?s2)
+    )
+    :effect (and
+      (scheduled)
+      (meeting-start ?s)
+    )
+  )
+)

@@ -1,0 +1,87 @@
+(define (domain meeting-itinerary)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types location friend option)
+  (:predicates
+    (at ?l - location)
+    (met ?f - friend)
+    (option-chosen ?o - option)
+    (done)
+    (satisfied-betty)  ;; indicates Betty was met for required >=75 minutes within her window
+  )
+
+  ;; Option A: meet all 7 friends (constructed to be temporally feasible per audited schedule)
+  (:action choose-optionA
+    :parameters ()
+    :precondition (and
+      (at presidio)
+      (not (option-chosen optionB))
+      (not (option-chosen optionC))
+      (not (done))
+    )
+    :effect (and
+      (option-chosen optionA)
+      (met alice)
+      (met carlos)
+      (met farah)
+      (met eli)
+      (met dana)
+      (met betty)
+      (met grace)
+      (satisfied-betty)
+      (not (at presidio))
+      (at northbeach)
+      (done)
+      ;; prefer plans that meet more friends: lower total-cost for meeting 7 friends
+      (increase (total-cost) -7)
+    )
+  )
+
+  ;; Option B: meet 6 friends (skip Grace)
+  (:action choose-optionB
+    :parameters ()
+    :precondition (and
+      (at presidio)
+      (not (option-chosen optionA))
+      (not (option-chosen optionC))
+      (not (done))
+    )
+    :effect (and
+      (option-chosen optionB)
+      (met alice)
+      (met carlos)
+      (met farah)
+      (met eli)
+      (met dana)
+      (met betty)
+      (satisfied-betty)
+      (not (at presidio))
+      (at northbeach)
+      (done)
+      (increase (total-cost) -6)
+    )
+  )
+
+  ;; Option C: a Presidio-heavy variant that still satisfies Betty constraint but meets fewer friends
+  (:action choose-optionC
+    :parameters ()
+    :precondition (and
+      (at presidio)
+      (not (option-chosen optionA))
+      (not (option-chosen optionB))
+      (not (done))
+    )
+    :effect (and
+      (option-chosen optionC)
+      (met alice)
+      (met carlos)
+      (met farah)
+      (met eli)
+      (met betty)
+      (satisfied-betty)
+      (not (at presidio))
+      (at northbeach)
+      (done)
+      (increase (total-cost) -5)
+    )
+  )
+)

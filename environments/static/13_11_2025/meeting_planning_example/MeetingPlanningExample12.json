@@ -1,0 +1,117 @@
+{
+    "name": "MeetingPlanningExample12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_enumerator",
+            "travel_time_estimator",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "itinerary_enumerator": {
+            "private_information": [
+                "Expertise: combinatorial enumeration of feasible day plans and qualitative trade-off exploration."
+            ],
+            "goal": "List diverse feasible itineraries that satisfy all public constraints while varying departure and meeting choices to enable a best schedule selection."
+        },
+        "travel_time_estimator": {
+            "private_information": [
+                "Expertise: deterministic propagation of travel and waiting times with precise timestamps and totals."
+            ],
+            "goal": "Augment each candidate itinerary with exact travel and waiting durations and produce fully timestamped schedules and objective metrics."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency, enforce time windows and minimum durations, and remove bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, artificial time compression)."
+            ],
+            "goal": "Validate that each schedule is feasible given travel times, windows, and ordering; reject and explain noncompliant schedules; pass through only consistent schedules."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: coordinate agents, select the best feasible schedule according to the stated objectives, and produce a final PDDL domain and problem for Fast Downward."
+            ],
+            "goal": "Pick the best audited schedule and synthesize a solvable classical planning model and instance (domain and problem) suitable for the Fast Downward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "time_format": "HH:MM",
+            "time_unit_minutes": 1,
+            "arrival_location": "North Beach",
+            "start_time": "09:00",
+            "locations": [
+                "North Beach",
+                "Alamo Square"
+            ],
+            "friends": [
+                {
+                    "name": "Barbara",
+                    "location": "Alamo Square",
+                    "available_from": "18:00",
+                    "available_until": "21:30",
+                    "min_meeting_minutes": 90
+                }
+            ],
+            "distance_matrix_minutes": {
+                "North Beach->Alamo Square": 16,
+                "Alamo Square->North Beach": 15
+            },
+            "objective": "Meet as many friends as possible; must meet Barbara for at least 90 minutes; secondary tie-breakers: maximize total meaningful meeting time then minimize idle time and travel."
+        },
+        "public_information": [
+            "You arrive at North Beach at 09:00.",
+            "Barbara will be at Alamo Square from 18:00 to 21:30.",
+            "You would like to meet Barbara for a minimum of 90 minutes.",
+            "Travel time from North Beach to Alamo Square is 16 minutes.",
+            "Travel time from Alamo Square to North Beach is 15 minutes.",
+            "Goal: consider multiple schedules and pick the best one that optimizes the objectives while respecting all constraints."
+        ]
+    },
+    "workflow": {
+        "itinerary_enumerator": {
+            "enumerate_schedules": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are an itinerary generator that enumerates distinct feasible meet-up schedules using the provided public facts and constraints. Do not write PDDL. Produce multiple clearly different alternatives that vary departure times from North Beach, waiting choices, and meeting start times, all satisfying Barbara's minimum 90-minute meeting requirement. Return a compact JSON object with key 'schedules', where each schedule contains ordered steps with timestamps and locations and a short rationale.",
+                "prompt": "Your name is itinerary_enumerator. Public facts: {environment->public_information}. Start from {environment->init->arrival_location} at {environment->init->start_time}. Friends and windows: {environment->init->friends}. Distances: {environment->init->distance_matrix_minutes}. Objective: {environment->init->objective}. Enumerate at least 5 diverse feasible day itineraries with different choices for when to depart North Beach for Alamo Square and when to start the meeting with Barbara, ensuring at least 90 minutes with Barbara. Include steps like wait, travel, meet, and optional return."
+            }
+        },
+        "travel_time_estimator": {
+            "estimate_times": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "timed_schedules",
+                "system_prompt": "You compute precise times for each step using deterministic travel durations and explicit waiting as needed. Do not change the high-level structure except to insert required travel and minimal waits to align with availability windows. Do not write PDDL. For each schedule, annotate exact arrival and departure times, total meeting time with Barbara, total travel time, total idle time, and indicate whether it satisfies the minimum 90-minute meeting requirement.",
+                "prompt": "Your name is travel_time_estimator. Use these facts: {environment->public_information}. Distances: {environment->init->distance_matrix_minutes}. Take input schedules: {candidate_schedules}. For each schedule, compute arrival times to Alamo Square from North Beach (16 minutes) and back (15 minutes if present). If the schedule reaches Barbara before 18:00, insert a wait. Ensure the meeting is at least 90 minutes and within 18:00 to 21:30. Produce an updated JSON under 'schedules' with precise timestamps and metrics."
+            }
+        },
+        "temporal_auditor": {
+            "audit_temporals": {
+                "input": [
+                    "timed_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal and causal consistency and remove bookkeeping shortcuts. Enforce that timestamps are non-decreasing, travel durations exactly match the given matrix, meetings occur fully within availability windows, the Barbara meeting lasts at least 90 minutes, and there are no overlapping steps. Reject noncompliant schedules with concise reasons; pass through compliant schedules unchanged. Do not write PDDL.",
+                "prompt": "Your name is temporal_auditor. Facts: {environment->public_information}. Auditing target: {timed_schedules}. Apply strict checks: exact travel minutes, no negative or skipped time, no post-hoc penalties, no token devices, and no compression beyond given distances. Output a JSON with 'accepted' schedules that pass and a 'rejected' list with reasons."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "audited_schedules"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert multi-agent orchestrator. Select the best audited schedule by the stated objective (maximize number of friends met; tie-breakers: maximize meeting time with Barbara, then minimize idle time and travel). Then produce a final PDDL domain and problem suitable for the Fast Downward solver (classical planning, STRIPS). Keep actions non-temporal; compile time-window requirements into ordering constraints and preconditions using discrete phases or predicates (e.g., window-open) rather than durative actions. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Keep actions for travel, waiting, and meeting Barbara distinct and grounded to avoid ambiguity.",
+                "prompt": "Your name is orchestrator. Public facts: {environment->public_information}. Input audited schedules: {audited_schedules}. Choose the best schedule. Then construct a PDDL domain with types (location, agent, friend), predicates (at ?a ?l, connected ?l1 ?l2, window_open_barbara, met_barbara, met ?a ?f), and actions such as move-north_beach-to-alamo_square, wait-until-window-open, meet-barbara-90, optionally return. Provide a problem file that instantiates the chosen schedule as an achievable goal (met_barbara) with initial state at North Beach at start phase and with appropriate connectivity facts. Target the Fast Downward solver by using classical STRIPS features only and no durative actions."
+            }
+        },
+        "constraints": [
+            "itinerary_enumerator.enumerate_schedules->travel_time_estimator.estimate_times",
+            "travel_time_estimator.estimate_times->temporal_auditor.audit_temporals",
+            "temporal_auditor.audit_temporals->orchestrator.synthesize_pddl"
+        ]
+    }
+}

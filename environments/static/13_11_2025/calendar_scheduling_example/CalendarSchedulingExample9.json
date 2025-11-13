@@ -1,0 +1,115 @@
+{
+    "name": "CalendarSchedulingExample9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "calendar_reader",
+            "preference_analyst",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "calendar_reader": {
+            "private_information": [
+                "Has read-only access to participants' Monday calendars",
+                "Understands half-hour slot discretization and closed-open intervals [start,end)"
+            ],
+            "goal": "Transform the public busy schedules into canonical 30-minute availability windows and compute the intersection of free slots for all participants within work hours."
+        },
+        "preference_analyst": {
+            "private_information": [
+                "No explicit personal preferences provided by participants",
+                "Default global preference is to choose the earliest feasible time within work hours when ties occur"
+            ],
+            "goal": "Summarize preferences and choose a recommended slot from the intersection that aligns with default preferences and constraints."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency",
+                "Removes bookkeeping shortcuts and rejects quota tokens or post-hoc penalties",
+                "Ensures all slots are contiguous 30-minute units aligned to HH:00 or HH:30 marks"
+            ],
+            "goal": "Verify that the recommended slot is feasible for all participants, aligns with work hours, uses the correct closed-open convention, and is free of any temporal inconsistencies or shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinates agent outputs and compiles the final planning artifacts",
+                "Targets FastDownward; uses classical STRIPS without durative actions; discretizes time as 30-minute slots"
+            ],
+            "goal": "Produce a valid PDDL domain and problem for FastDownward that encodes the meeting scheduling choice and allows a plan that schedules the meeting for all participants within constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "duration_minutes": 30,
+            "time_granularity_minutes": 30,
+            "time_convention": "closed-open [start,end)",
+            "timezone": "local"
+        },
+        "public_information": [
+            "Task: Schedule a 30-minute meeting on Monday between 09:00 and 17:00 for Diane, Kelly, and Deborah.",
+            "Participants: Diane, Kelly, Deborah.",
+            "Busy schedules (Monday, closed-open intervals [start,end)):",
+            "Diane busy: [09:00,09:30), [12:00,12:30), [14:30,15:30).",
+            "Kelly busy: [09:30,10:00), [10:30,11:00).",
+            "Deborah busy: [09:00,09:30), [10:00,14:00), [14:30,17:00).",
+            "A feasible solution exists that satisfies all constraints."
+        ]
+    },
+    "workflow": {
+        "calendar_reader": {
+            "compute_free_slots": {
+                "input": [],
+                "output": "free_slots",
+                "system_prompt": "You convert busy calendars into canonical 30-minute free slots within work hours and compute the intersection across all participants. Respect closed-open time windows [start,end), the 30-minute granularity, and the given Monday work hours.",
+                "prompt": "Your name is calendar_reader. Use the public information to list, for each participant, all free 30-minute slots within [09:00,17:00) that do not overlap their busy intervals, then compute the intersection of those free slots (common to Diane, Kelly, and Deborah). Provide a concise JSON summary with fields: per_participant_free (mapping participant to array of HH:MM-HH:MM ranges), intersection_free (array of HH:MM-HH:MM ranges), and notes (any subtle boundary decisions). Do not emit PDDL."
+            }
+        },
+        "preference_analyst": {
+            "summarize_preferences": {
+                "input": [
+                    "free_slots"
+                ],
+                "output": "prefs_summary",
+                "system_prompt": "You assess timing preferences and select a recommended slot respecting constraints without generating PDDL.",
+                "prompt": "Your name is preference_analyst. Given the computed free slots: {free_slots}. There are no explicit user preferences; apply the default policy to choose the earliest feasible common 30-minute slot within work hours. Output a short JSON object with fields: policy (string), recommended_slot (one HH:MM-HH:MM), and justification (string). Do not emit PDDL."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "free_slots",
+                    "prefs_summary"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You audit temporal and causal consistency, remove shortcuts, and ensure the final recommendation is valid and aligned to the slot granularity and boundary conventions. You do not generate PDDL.",
+                "prompt": "Your name is temporal_auditor. Review the computed slots {free_slots} and the preferences summary {prefs_summary}. Verify that the recommended slot is a member of the intersection, lies within [09:00,17:00), uses 30-minute closed-open windows aligned to HH:00 or HH:30, and does not conflict with any participant's busy intervals. Confirm or revise the recommended slot if necessary. Return a JSON with fields: final_slot (HH:MM-HH:MM), validation (array of checks performed), and rationale (string). Reject any bookkeeping shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "free_slots",
+                    "prefs_summary",
+                    "audited_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL and FastDownward. You always produce a PDDL domain and a PDDL problem targeting the FastDownward solver. You must use classical STRIPS (no :durative-actions, no numeric fluents). Discretize time into 30-minute slots as objects (e.g., s0900, s0930, ..., s1630). Encode availability with predicates so that scheduling at a slot requires that all participants are free at that slot. Provide exactly one action that schedules the meeting at a chosen slot. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>.",
+                "prompt": "Integrate the environment context {environment->public_information} and the agents' results {free_slots}, {prefs_summary}, {audited_plan}. Produce a PDDL domain and problem for FastDownward that models participants (Diane, Kelly, Deborah), time slots at 30-minute granularity within Monday work hours, and availability facts consistent with the audited final slot. Use STRIPS predicates such as participant(?p), slot(?s), free(?p ?s), chosen(?s), scheduled, and not-use durative actions. Provide one action schedule_at(?s - slot) with preconditions that all three participants are free at ?s and the meeting is not yet scheduled, and effects that mark the meeting scheduled and remember the chosen slot. In the problem file, declare all slot objects from 09:00 to 17:00 at 30-minute steps and encode free facts that reflect the public busy schedules; ensure the audited final_slot is free for all. Set the goal to (scheduled). Enclose outputs within <domain></domain> and <problem></problem> only."
+            }
+        },
+        "constraints": [
+            "calendar_reader.compute_free_slots->preference_analyst.summarize_preferences",
+            "calendar_reader.compute_free_slots->temporal_auditor.audit",
+            "preference_analyst.summarize_preferences->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "calendar_reader.compute_free_slots->orchestrator.pddl",
+            "preference_analyst.summarize_preferences->orchestrator.pddl"
+        ]
+    }
+}

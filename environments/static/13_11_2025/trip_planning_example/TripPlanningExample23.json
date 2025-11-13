@@ -1,0 +1,122 @@
+{
+    "name": "TripPlanningExample23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I only take direct flights between cities",
+                "I am visiting London, Bucharest, and Riga",
+                "I prefer to minimize unnecessary city switches"
+            ],
+            "goal": "Provide clear hard constraints and soft preferences for an 8-day trip covering London, Bucharest, and Riga with only direct flights."
+        },
+        "flight_planner": {
+            "private_information": [
+                "I have access to direct flight topology information",
+                "I can enumerate route orders consistent with the available direct flights"
+            ],
+            "goal": "Map the direct-flight graph and propose feasible city visit orders and rough day allocations that respect the workshop window and total duration."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency",
+                "I eliminate bookkeeping shortcuts such as quota tokens, post-hoc penalty fixes, or retroactive adjustments"
+            ],
+            "goal": "Detect and resolve inconsistencies between requested stays and total days, validate feasibility with direct-flight topology and workshop timing, and output minimally deviating, consistent options."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all inputs and produce a consistent final itinerary and a PDDL domain and problem suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8,
+            "cities": [
+                "London",
+                "Bucharest",
+                "Riga"
+            ],
+            "workshop_city": "Riga",
+            "workshop_window": {
+                "start_day": 5,
+                "end_day": 8
+            },
+            "direct_flights": [
+                [
+                    "London",
+                    "Bucharest"
+                ],
+                [
+                    "Bucharest",
+                    "Riga"
+                ]
+            ],
+            "policy": "Only direct flights are allowed; no layovers; travel occurs between consecutive city stays."
+        },
+        "public_information": [
+            "Total trip duration is 8 days.",
+            "Cities to visit: London, Bucharest, Riga.",
+            "Only direct flights are allowed.",
+            "Direct flights exist between London and Bucharest, and between Bucharest and Riga (both directions).",
+            "A workshop must be attended in Riga between day 5 and day 8 inclusive.",
+            "Intended stays: London 3 days, Bucharest 3 days, Riga 4 days.",
+            "The sum of intended stays is 10 days which exceeds the 8-day total, so the plan must reconcile durations while honoring the mandatory workshop and direct-flight topology."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "requirements": {
+                "input": [],
+                "output": "user_requirements",
+                "system_prompt": "You are a travel requirements analyst who extracts constraints and preferences for an 8-day three-city trip with only direct flights allowed.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and your knowledge {agents->traveler->private_information} to produce a concise JSON object with keys hard_constraints, soft_preferences, and priorities. Hard constraints must include total_days=8, cities={London,Bucharest,Riga}, direct_flights_only=true, workshop_city=Riga with workshop_window days 5 to 8 inclusive. Soft preferences should reflect the intended stays (London 3, Bucharest 3, Riga 4) and minimal city switches. Do not emit PDDL and do not invent flights."
+            }
+        },
+        "flight_planner": {
+            "candidates": {
+                "input": [],
+                "output": "route_candidates",
+                "system_prompt": "You are a flight planner that reasons over direct-flight graphs and visit orders.",
+                "prompt": "Your name is flight_planner. Using the public information {environment->public_information} and the init constants {environment->init}, provide a concise JSON object containing direct_flight_graph (undirected edges), visit_orders covering all cities that are feasible with the given topology (for example London->Bucharest->Riga and Riga->Bucharest->London), and a small set of example day-allocation sketches that sum to 8 and place the Riga stay within days 5 to 8. Do not emit PDDL and do not resolve contradictions; simply enumerate topology-consistent orders and example allocations."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "user_requirements",
+                    "route_candidates"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are a temporal and causal consistency auditor who removes bookkeeping shortcuts and enforces feasibility.",
+                "prompt": "Your name is consistency_auditor. Audit the user requirements {user_requirements} against the flight planner outputs {route_candidates}. Identify contradictions such as total requested stay days exceeding 8. Propose a small set of minimally deviating, feasible options with explicit day-by-city allocations that sum to 8 and satisfy the workshop-in-Riga requirement between days 5 and 8 and the direct-flight topology. For each option, include route_order, day_assignments per city, justification, and deviation_from_intentions. Output a concise JSON report; do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "user_requirements",
+                    "route_candidates",
+                    "consistency_report"
+                ],
+                "output": "pddl_trip_plan",
+                "system_prompt": "You are an expert in multi-agent planning with PDDL targeting the FastDownwards solver; you must produce a valid PDDL domain and problem that encode days, cities, direct flights, contiguous stays, and the workshop window.",
+                "prompt": "Integrate the traveler requirements {user_requirements}, flight planner candidates {route_candidates}, and the auditor report {consistency_report}. Select one consistent itinerary that satisfies all hard constraints and direct-flight connectivity; clearly indicate the selected city order and day allocations. Then produce a PDDL domain and a PDDL problem targeting the FastDownwards solver. The domain and problem must be enclosed within <domain></domain> and <problem></problem> tags. Use standard STRIPS-compatible constructs accepted by FastDownwards, define objects for days 1..8 and the three cities, encode direct-flight adjacency, model staying and flying actions ensuring exactly one city per day, contiguous blocks for each city stay, and enforce that Riga is occupied during days 5..8 for the workshop. Ensure the initial state and goal allow a valid plan consistent with the selected itinerary. Do not include metrics or unsupported features."
+            }
+        },
+        "constraints": [
+            "traveler.requirements->consistency_auditor.audit",
+            "flight_planner.candidates->consistency_auditor.audit",
+            "traveler.requirements->orchestrator.pddl",
+            "flight_planner.candidates->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,53 @@
+(define (problem monday-meeting)
+  (:domain meeting-scheduler)
+  (:objects
+    raymond billy donald - person
+    s0900_0930 s0930_1000 s1000_1030 s1030_1100 s1100_1130 s1130_1200 s1200_1230 s1230_1300
+    s1300_1330 s1330_1400 s1400_1430 s1430_1500 s1500_1530 s1530_1600 s1600_1630 s1630_1700 - slot
+  )
+  (:init
+    ; Raymond availability
+    (available raymond s0930_1000)
+    (available raymond s1000_1030)
+    (available raymond s1030_1100)
+    (available raymond s1100_1130)
+    (available raymond s1200_1230)
+    (available raymond s1230_1300)
+    (available raymond s1330_1400)
+    (available raymond s1400_1430)
+    (available raymond s1430_1500)
+    (available raymond s1530_1600)
+    (available raymond s1600_1630)
+    (available raymond s1630_1700)
+
+    ; Billy availability
+    (available billy s0900_0930)
+    (available billy s0930_1000)
+    (available billy s1030_1100)
+    (available billy s1100_1130)
+    (available billy s1130_1200)
+    (available billy s1300_1330)
+    (available billy s1330_1400)
+    (available billy s1400_1430)
+    (available billy s1430_1500)
+    (available billy s1500_1530)
+    (available billy s1530_1600)
+    (available billy s1600_1630)
+
+    ; Donald availability
+    (available donald s0930_1000)
+    (available donald s1100_1130)
+    (available donald s1130_1200)
+    (available donald s1300_1330)
+    (available donald s1330_1400)
+    (available donald s1430_1500)
+    (available donald s1500_1530)
+    (available donald s1530_1600)
+
+    ; Selected best slot
+    (best s0930_1000)
+  )
+  (:goal (and
+    (scheduled s0930_1000)
+  ))
+)

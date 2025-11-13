@@ -1,0 +1,15 @@
+(define (domain calendar_scheduling_example27)
+  (:requirements :typing :negative-preconditions)
+  (:types participant timeslot)
+  (:predicates
+    (free ?p - participant ?t - timeslot)
+    (free-all ?t - timeslot)
+    (scheduled ?t - timeslot)
+    (meeting-scheduled)
+  )
+  (:action schedule-meeting
+    :parameters (?t - timeslot)
+    :precondition (and (free-all ?t) (not (meeting-scheduled)))
+    :effect (and (scheduled ?t) (meeting-scheduled))
+  )
+)

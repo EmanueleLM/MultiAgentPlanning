@@ -1,0 +1,33 @@
+(define (domain calendar-scheduling-monday)
+  (:requirements :strips :typing)
+  (:types timeslot person)
+  (:predicates
+    (working-slot ?s - timeslot)
+    (allowed-slot ?s - timeslot)
+    (preferred-slot ?s - timeslot)
+
+    (free ?p - person ?s - timeslot)
+    (busy ?p - person ?s - timeslot)
+
+    (open)
+    (scheduled)
+    (scheduled-at ?s - timeslot)
+  )
+
+  (:action schedule-meeting
+    :parameters (?s - timeslot)
+    :precondition (and
+      (open)
+      (working-slot ?s)
+      (allowed-slot ?s)
+      (free roy ?s)
+      (free kathryn ?s)
+      (free amy ?s)
+    )
+    :effect (and
+      (scheduled)
+      (scheduled-at ?s)
+      (not (open))
+    )
+  )
+)

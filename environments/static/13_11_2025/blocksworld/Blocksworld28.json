@@ -1,0 +1,157 @@
+{
+    "name": "Blocksworld28",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "domain_modeler",
+            "scenario_a_analyst",
+            "scenario_b_analyst",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_modeler": {
+            "private_information": [
+                "You are a specialist in formalizing action schemas for classical planning domains.",
+                "Use canonical predicates: on(x,y), ontable(x), clear(x), holding(x), handempty.",
+                "Use canonical actions: pickup(x), putdown(x), stack(x,y), unstack(x,y).",
+                "Do not emit PDDL. Provide a concise, machine-readable conceptual model instead."
+            ],
+            "goal": "Produce a precise conceptual action model (predicates, actions with preconditions and effects, invariants) for the described Blocksworld without emitting PDDL."
+        },
+        "scenario_a_analyst": {
+            "private_information": [
+                "You analyze instances: extract objects, initial state, goal, and validate the given plan step-by-step.",
+                "You compute a full state trace, checking preconditions and applying effects, and flag any violations.",
+                "Do not emit PDDL. Output a machine-readable trace and verdict."
+            ],
+            "goal": "Validate the plan for Statement A against the described rules; produce a state trace and verdict."
+        },
+        "scenario_b_analyst": {
+            "private_information": [
+                "You synthesize a valid plan for an instance when only initial state and goal are provided.",
+                "You must respect the action restrictions and ensure causal/temporal correctness.",
+                "Do not emit PDDL. Output a machine-readable sequence of steps with rationale."
+            ],
+            "goal": "Propose a valid plan for Statement B consistent with the Blocksworld rules."
+        },
+        "auditor": {
+            "private_information": [
+                "You audit temporal/causal consistency across analyses.",
+                "You remove bookkeeping shortcuts (quota tokens, post-hoc penalties, unverifiable assumptions).",
+                "You enforce the stated action semantics strictly and derive invariants and corrections where needed.",
+                "Do not emit PDDL. Output corrected traces/plans and confirmed invariants."
+            ],
+            "goal": "Audit and reconcile the conceptual model and both scenarios\u2019 plans/traces, returning corrected, consistent specifications and invariants."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate the conceptual model and audited outputs to produce final PDDL artifacts.",
+                "Target the FastDownwards solver with a classic Blocksworld domain and one problem file.",
+                "Emit exactly one PDDL domain and one PDDL problem enclosed in <domain></domain> and <problem></problem>."
+            ],
+            "goal": "Produce a correct PDDL domain and a single problem file (for Statement A) suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": "global",
+            "seed": 28
+        },
+        "public_information": [
+            "Domain: Blocksworld with actions: Pick up a block; Unstack a block from on top of another block; Put down a block; Stack a block on top of another block.",
+            "Restrictions:",
+            "- Only one block can be picked up or unstacked at a time.",
+            "- Hand must be empty to pick up or unstack.",
+            "- Pick up is allowed only if the block is on the table and is clear. A block is clear if no block is on top of it and it is not being held.",
+            "- Unstack(x,y) is allowed only if x was on y and x is clear.",
+            "- After picking up or unstacking, you are holding the block.",
+            "- Put down is allowed only if you are holding the block.",
+            "- Stack(x,y) is allowed only if you are holding x and y is clear.",
+            "- After putting down or stacking, the hand becomes empty.",
+            "- After stacking x on y, y is no longer clear.",
+            "Statement A initial conditions:",
+            "- clear(red), clear(orange), handempty",
+            "- on(red, yellow), on(orange, blue)",
+            "- ontable(blue), ontable(yellow)",
+            "Statement A goal:",
+            "- on(blue, red), on(orange, blue), on(yellow, orange)",
+            "Statement A plan (proposed):",
+            "1) unstack(red, yellow)",
+            "2) putdown(red)",
+            "3) unstack(orange, blue)",
+            "4) stack(orange, yellow)",
+            "5) pickup(blue)",
+            "6) stack(blue, red)",
+            "7) unstack(orange, yellow)",
+            "8) stack(orange, blue)",
+            "9) pickup(yellow)",
+            "10) stack(yellow, orange)",
+            "Statement B initial conditions:",
+            "- clear(orange), clear(yellow), handempty",
+            "- on(blue, red), on(yellow, blue)",
+            "- ontable(red), ontable(orange)",
+            "Statement B goal:",
+            "- on(blue, yellow), on(yellow, orange)"
+        ]
+    },
+    "workflow": {
+        "domain_modeler": {
+            "model": {
+                "input": [],
+                "output": "concept_domain",
+                "system_prompt": "You are a rigorous domain modeler for classical planning. Given public descriptions, produce a compact, machine-readable conceptual model of the Blocksworld domain: list predicates, action schemas (with preconditions and effects), and invariants. Use canonical predicate names: on(x,y), ontable(x), clear(x), holding(x), handempty. Use canonical actions: pickup(x), putdown(x), stack(x,y), unstack(x,y). Do not emit PDDL. Output inside <model></model> as a minimal JSON object with fields: predicates, actions, invariants.",
+                "prompt": "Your name is domain_modeler.\nPublic information:\n{environment->public_information}\nPrivate knowledge:\n{agents->domain_modeler->private_information}\nGoal:\n{agents->domain_modeler->goal}\nInstructions:\n- Normalize terminology (e.g., Unstack(x,y) meaning x on y; Stack(x,y) meaning place x on y).\n- Include action preconditions and effects faithful to the restrictions.\n- Include key invariants (e.g., a block cannot be both ontable and on another block; at most one block held; on is acyclic; clear/holding/handempty mutual constraints).\n- Output only the <model>{...}</model> JSON, no PDDL."
+            }
+        },
+        "scenario_a_analyst": {
+            "derive_trace": {
+                "input": [],
+                "output": "trace_a",
+                "system_prompt": "You are a planning instance analyst. Parse Statement A, extract objects, initial state, goal, and the provided plan. Validate each step by checking action preconditions and applying effects, producing a complete state trace. Flag any violations and propose minimal repairs if needed. Do not emit PDDL. Output inside <trace></trace> as JSON with fields: objects, init, goal, steps (list of {action, args, precondition_ok, applied_effects, state_hash}), violations (if any), repaired_steps (if any), final_state_satisfies_goal (bool).",
+                "prompt": "Your name is scenario_a_analyst.\nPublic information:\n{environment->public_information}\nPrivate knowledge:\n{agents->scenario_a_analyst->private_information}\nGoal:\n{agents->scenario_a_analyst->goal}\nInstructions:\n- Use objects: red, blue, yellow, orange (all blocks).\n- Use only actions: pickup, putdown, stack, unstack with arguments appropriate to the action.\n- Validate the given plan exactly in order, then suggest minimal repairs only if violations are found.\n- Output only the <trace>{...}</trace> JSON."
+            }
+        },
+        "scenario_b_analyst": {
+            "synthesize_plan": {
+                "input": [],
+                "output": "plan_b",
+                "system_prompt": "You are a planning instance analyst and synthesizer. Parse Statement B, extract objects, initial state, and goal, then produce a valid plan using the allowed actions. Ensure causal and temporal correctness at every step. Do not emit PDDL. Output inside <plan></plan> as JSON with fields: objects, init, goal, steps (list of {action, args}), justification (short).",
+                "prompt": "Your name is scenario_b_analyst.\nPublic information:\n{environment->public_information}\nPrivate knowledge:\n{agents->scenario_b_analyst->private_information}\nGoal:\n{agents->scenario_b_analyst->goal}\nInstructions:\n- Use objects: red, blue, yellow, orange (all blocks).\n- Respect the action semantics provided in the restrictions.\n- Produce a concise, correct plan that achieves the goal for Statement B.\n- Output only the <plan>{...}</plan> JSON."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "concept_domain",
+                    "trace_a",
+                    "plan_b"
+                ],
+                "output": "audited_spec",
+                "system_prompt": "You are a temporal and causal consistency auditor. You verify that the conceptual model and both scenario artifacts obey the declared action semantics. Remove any bookkeeping shortcuts (quota tokens, post-hoc penalties, unverifiable assumptions). Reconcile naming/term mismatches and produce corrected, consistent specifications and invariants suitable for compiling to PDDL. Do not emit PDDL. Output inside <audited></audited> as JSON with fields: normalized_predicates, normalized_actions, invariants, corrected_trace_a (if needed), validated_plan_b (possibly adjusted), notes.",
+                "prompt": "Your name is auditor.\nPublic information:\n{environment->public_information}\nInputs to audit:\n{concept_domain}\n{trace_a}\n{plan_b}\nPrivate knowledge:\n{agents->auditor->private_information}\nGoal:\n{agents->auditor->goal}\nInstructions:\n- Enforce the restrictions precisely.\n- Prefer minimal edits; document any corrections.\n- Ensure final outputs use canonical names: on, ontable, clear, holding, handempty; actions: pickup, putdown, stack, unstack.\n- Output only the <audited>{...}</audited> JSON."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "concept_domain",
+                    "audited_spec",
+                    "trace_a",
+                    "plan_b"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL and multi-agent integration for classical planning. You must produce a final PDDL domain and a single PDDL problem file targeting the FastDownwards solver. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Use canonical Blocksworld actions: pickup, putdown, stack, unstack; predicates: on, ontable, clear, holding, handempty. Use :requirements :strips :typing. Ensure semantic correctness and solvability by FastDownwards.",
+                "prompt": "Context:\n- Public information:\n{environment->public_information}\n- Conceptual model:\n{concept_domain}\n- Audited normalization and corrections:\n{audited_spec}\n- Scenario A detailed trace (for reference only):\n{trace_a}\n- Scenario B synthesized plan (for cross-checking):\n{plan_b}\nTask:\n- Integrate the audited model; if any conflicts exist, prefer the audited_spec.\n- Produce exactly one PDDL domain and one PDDL problem targeting Statement A (the scenario with a complete initial state and goal). Objects: red, blue, yellow, orange - block.\n- Initial state (Statement A): clear(red), clear(orange), handempty, on(red, yellow), on(orange, blue), ontable(blue), ontable(yellow).\n- Goal (Statement A): on(blue, red), on(orange, blue), on(yellow, orange).\n- Ensure no extraneous predicates or actions are introduced.\n- Output only the PDDL enclosed within <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "domain_modeler.model->auditor.audit",
+            "scenario_a_analyst.derive_trace->auditor.audit",
+            "scenario_b_analyst.synthesize_plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "domain_modeler.model->orchestrator.pddl"
+        ]
+    }
+}

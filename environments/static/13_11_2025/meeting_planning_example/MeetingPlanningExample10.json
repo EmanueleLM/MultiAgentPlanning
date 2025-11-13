@@ -1,0 +1,105 @@
+{
+    "name": "MeetingPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I value punctuality and realistic travel buffers.",
+                "I arrive at Golden Gate Park at 09:00.",
+                "I want to meet as many friends as possible today.",
+                "I must meet James for at least 15 minutes within his availability window."
+            ],
+            "goal": "Maximize number of friends met today while ensuring a meeting with James for at least 15 minutes."
+        },
+        "planner": {
+            "private_information": [
+                "I generate multiple candidate day schedules using constraints and travel times.",
+                "I include buffers and compute earliest arrival and latest departure times given windows."
+            ],
+            "goal": "Propose several feasible itineraries that satisfy constraints and rank them by meetings achieved, meeting quality, and slack."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency.",
+                "I eliminate bookkeeping shortcuts such as quota tokens, post-hoc penalties, or unspecified teleports.",
+                "I enforce that every meeting has sufficient dwell time and legally precedes subsequent travel."
+            ],
+            "goal": "Validate and, if needed, minimally repair candidate itineraries so that all timing, travel, and causality constraints are strictly satisfied."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate agents and compile the final PDDL domain and problem for FastDownwards to select the best feasible schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit_minutes": 1,
+            "time_horizon_minutes": 600,
+            "locations": [
+                "Golden Gate Park",
+                "Marina District"
+            ]
+        },
+        "public_information": [
+            "Travel times (minutes): Golden Gate Park -> Marina District: 16; Marina District -> Golden Gate Park: 18.",
+            "You arrive at Golden Gate Park at 09:00.",
+            "James is at Marina District from 10:15 to 13:30.",
+            "You would like to meet James for a minimum of 15 minutes.",
+            "Objective: meet as many friends as possible today while respecting all constraints."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the traveler providing personal constraints, soft preferences, and any known friend availabilities relevant to meeting planning.",
+                "prompt": "Your name is traveler. Consider the public information {environment->public_information} and your private information {agents->traveler->private_information}. Summarize constraints, available time windows, preferred slack buffers, and any hard requirements without proposing PDDL or a final plan."
+            }
+        },
+        "planner": {
+            "schedules": {
+                "input": [
+                    "traveler_context"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day-planning expert who enumerates alternative feasible itineraries under travel-time and availability constraints.",
+                "prompt": "Your name is planner. Using public information {environment->public_information} and the traveler context {traveler_context}, enumerate several distinct candidate schedules that start at Golden Gate Park at 09:00, respect direction-dependent travel times, and meet James at Marina District for at least 15 minutes between 10:15 and 13:30. For each schedule, list ordered activities with start and end times, travel legs with durations, buffers, number of friends met, and a brief rationale. Rank schedules by primary objective (maximize friends met; if tied, maximize slack; then minimize total travel). Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are a rigorous temporal/causal consistency auditor who removes shortcuts and enforces realism.",
+                "prompt": "Your name is auditor. Audit the candidate schedules {candidate_schedules} for feasibility: no time travel, no overlapping commitments, correct application of asymmetric travel times, required dwell time of at least 15 minutes with James, and inclusion of buffers if declared. Remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and reject or minimally repair infeasible schedules. Return a set of cleaned schedules with explicit justifications and a final ranking. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "audited_schedules"
+                ],
+                "output": "pddl_plan",
+                "system_prompt": "You are an expert with PDDL for the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file suitable for solving and validating the best audited schedule. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Use the candidate schedules {candidate_schedules} and the audited schedules {audited_schedules}. Select the top feasible schedule according to the auditor's ranking. Produce a PDDL domain and problem compatible with the FastDownwards solver that encode time as discrete minutes, locations Golden Gate Park and Marina District, actions for travel with asymmetric durations (GGP_to_Marina = 16, Marina_to_GGP = 18), wait or idle actions, and meet actions requiring a minimum 15-minute duration with James within his availability window [10:15, 13:30]. Set the initial time to 09:00 at Golden Gate Park. Include goals that require the meeting-with-James constraint and optionally allow maximizing meetings via a metric; if using a metric, include a suitable optimization directive supported by FastDownwards such as minimizing total travel time or maximizing meeting utility. Enclose the domain in <domain></domain> and the problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->planner.schedules",
+            "planner.schedules->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner.schedules->orchestrator.pddl"
+        ]
+    }
+}

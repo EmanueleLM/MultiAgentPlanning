@@ -1,0 +1,187 @@
+{
+    "name": "Hanoi3Agents15DisksInstance4",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "agent_3",
+            "orchestrator",
+            "consistency_auditor"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I am allowed to move only disks A, B, C, D, E.",
+                "I must never place a larger disk on top of a smaller disk.",
+                "I should minimize disturbance to disks D..O which must remain stacked on the left peg."
+            ],
+            "goal": "Propose a correct, minimal sequence of primitive moves for disks A, B, C to achieve the target configuration while leaving disks D..O on the left peg in their original order."
+        },
+        "agent_2": {
+            "private_information": [
+                "I am allowed to move only disks F, G, H, I, J.",
+                "I will not move any disk unless required by the plan; here, no larger disks should be moved because the goal affects only the smallest three disks."
+            ],
+            "goal": "Review the proposed small-disk moves and confirm no moves require me to act, and that larger disks F..O remain undisturbed."
+        },
+        "agent_3": {
+            "private_information": [
+                "I am allowed to move only disks K, L, M, N, O.",
+                "I will stay idle unless explicitly needed; in this task, larger disks must remain on the left peg."
+            ],
+            "goal": "Review the proposed small-disk moves and confirm that disks K..O remain on the left peg throughout."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agents to produce a unified move sequence and a final PDDL domain and problem for Fast Downward."
+            ],
+            "goal": "Integrate the audited plan into a single ordered list of primitive moves and produce the final PDDL domain and problem suitable for the FastDownward solver, keeping agent-specific actions distinct."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across all moves.",
+                "I remove bookkeeping shortcuts such as implicit tokens, side-channel penalties, or post-hoc fixes.",
+                "I verify Tower of Hanoi invariants and agent capability restrictions."
+            ],
+            "goal": "Audit the candidate moves for legality, ensure no larger disks are moved, ensure each move operates on the current top disk of a peg, and confirm the final state matches the specified goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_top_to_bottom": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L",
+                "M",
+                "N",
+                "O"
+            ],
+            "agent_disk_permissions": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                "agent_2": [
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "agent_3": [
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O"
+                ]
+            }
+        },
+        "public_information": [
+            "This is a 3-peg Tower of Hanoi with 15 disks labelled A (smallest) through O (largest).",
+            "Initial configuration: left peg has (top\u2192bottom) A, B, C, D, E, F, G, H, I, J, K, L, M, N, O; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has (top\u2192bottom) D, E, F, G, H, I, J, K, L, M, N, O; middle peg has (top\u2192bottom) A; right peg has (top\u2192bottom) B, C.",
+            "Legal move rule: move exactly one disk at a time; only the top disk of any peg can be moved; never place a larger disk on top of a smaller disk.",
+            "Agent movement restrictions: agent_1 can move A..E; agent_2 can move F..J; agent_3 can move K..O.",
+            "No larger disk (D..O) should be moved for this task because the goal involves only A, B, C."
+        ],
+        "solution": {
+            "moves": [
+                "agent_1: move disk A from left to right",
+                "agent_1: move disk B from left to middle",
+                "agent_1: move disk A from right to middle",
+                "agent_1: move disk C from left to right",
+                "agent_1: move disk A from middle to left",
+                "agent_1: move disk B from middle to right",
+                "agent_1: move disk A from left to middle"
+            ],
+            "expected_move_count": 7,
+            "notes": "This sequence moves only A, B, C and leaves D..O on the left peg in order, achieving the exact goal layout."
+        }
+    },
+    "workflow": {
+        "agent_1": {
+            "propose_moves": {
+                "input": [],
+                "output": "moves_agent_1",
+                "system_prompt": "You are agent_1. You can move only disks A, B, C, D, E. Produce a legal, minimal sequence of primitive moves for disks A, B, C to achieve the goal while leaving disks D..O undisturbed. Use the exact format 'agent_1: move disk X from peg1 to peg2'.",
+                "prompt": "Your name is agent_1. Public info: {environment->public_information}. You are allowed to move only A..E: {agents->agent_1->private_information}. The target is: {agents->agent_1->goal}. Validate and, if correct, emit the following ordered move list; otherwise, correct it: {environment->solution->moves}."
+            }
+        },
+        "agent_2": {
+            "constraints_review": {
+                "input": [
+                    "moves_agent_1"
+                ],
+                "output": "constraints_agent_2",
+                "system_prompt": "You are agent_2. You can move only disks F..J. In this task you should not move any disk. Review the candidate moves for small disks and confirm that no step requires your intervention or moves any of F..J.",
+                "prompt": "Your name is agent_2. Public info: {environment->public_information}. Your permissions: {agents->agent_2->private_information}. Goal: {agents->agent_2->goal}. Review moves: {moves_agent_1}. Output a short confirmation or a list of violations if found."
+            }
+        },
+        "agent_3": {
+            "constraints_review": {
+                "input": [
+                    "moves_agent_1"
+                ],
+                "output": "constraints_agent_3",
+                "system_prompt": "You are agent_3. You can move only disks K..O. In this task you should not move any disk. Review the candidate moves and confirm that disks K..O remain on the left peg throughout.",
+                "prompt": "Your name is agent_3. Public info: {environment->public_information}. Your permissions: {agents->agent_3->private_information}. Goal: {agents->agent_3->goal}. Review moves: {moves_agent_1}. Output a short confirmation or a list of violations if found."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "moves_agent_1",
+                    "constraints_agent_2",
+                    "constraints_agent_3"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the consistency_auditor. Audit the full move sequence for temporal and causal consistency; ensure only top disks are moved; ensure no larger-on-smaller violations; ensure agent permissions are respected; ensure that the final configuration matches the goal. Remove bookkeeping shortcuts and justify any correction.",
+                "prompt": "Your name is consistency_auditor. Public info: {environment->public_information}. Task: {agents->consistency_auditor->goal}. Inputs: moves = {moves_agent_1}; agent_2 review = {constraints_agent_2}; agent_3 review = {constraints_agent_3}. Produce a clear pass/fail verdict and, if necessary, a corrected ordered list of moves in the format 'agent_i: move disk X from peg1 to peg2'."
+            }
+        },
+        "orchestrator": {
+            "compile_moves": {
+                "input": [
+                    "audit_report"
+                ],
+                "output": "ordered_moves",
+                "system_prompt": "You are the orchestrator. Integrate the auditor-approved plan into a single ordered move list for all agents, resolving any minor nomenclature inconsistencies and keeping agent actions explicit.",
+                "prompt": "Public info: {environment->public_information}. Goal: {agents->orchestrator->goal}. Use the auditor report to finalize the ordered list of primitive moves. If the auditor provided corrections, adopt them; otherwise, adopt {environment->solution->moves}. Output only the final ordered list."
+            },
+            "pddl": {
+                "input": [
+                    "ordered_moves"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL for Fast Downward. Produce a final PDDL domain and problem that model this multi-agent Tower of Hanoi instance with types (agent, disk, peg). Keep agent-specific actions distinct by including an agent parameter for the move action and validating agent-disk permission via predicates. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Ensure object names match the environment: pegs = left, middle, right; disks = A..O; agents = agent_1, agent_2, agent_3. Use a representation compatible with Fast Downward STRIPS/ADL.",
+                "prompt": "Integrate the final ordered moves: {ordered_moves}. Build a domain 'hanoi_multiagent' with a single action move that requires: agent permission for disk, disk is top on source peg, source is the current location of disk, target peg top is either empty or has a larger disk. Effects: update disk location and peg tops. Build a problem 'hanoi_15disks_instance4' with initial and goal states exactly as in {environment->public_information}. Do not assume extra features beyond standard Fast Downward support. Enclose outputs using <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "agent_1.propose_moves->consistency_auditor.audit",
+            "agent_2.constraints_review->consistency_auditor.audit",
+            "agent_3.constraints_review->consistency_auditor.audit",
+            "consistency_auditor.audit->orchestrator.compile_moves",
+            "orchestrator.compile_moves->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,58 @@
+(define (problem monday-0900-1700-60min)
+  (:domain meeting-scheduling)
+  (:objects
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+    m1 - meeting
+  )
+  (:init
+    ; adjacency (30-minute consecutive pairs)
+    (consecutive s0900 s0930)
+    (consecutive s0930 s1000)
+    (consecutive s1000 s1030)
+    (consecutive s1030 s1100)
+    (consecutive s1100 s1130)
+    (consecutive s1130 s1200)
+    (consecutive s1200 s1230)
+    (consecutive s1230 s1300)
+    (consecutive s1300 s1330)
+    (consecutive s1330 s1400)
+    (consecutive s1400 s1430)
+    (consecutive s1430 s1500)
+    (consecutive s1500 s1530)
+    (consecutive s1530 s1600)
+    (consecutive s1600 s1630)
+
+    ; Stephen's free slots
+    (free stephen s0900)
+    (free stephen s0930)
+    (free stephen s1030)
+    (free stephen s1100)
+    (free stephen s1130)
+    (free stephen s1200)
+    (free stephen s1230)
+    (free stephen s1330)
+    (free stephen s1400)
+    (free stephen s1500)
+    (free stephen s1530)
+    (free stephen s1630)
+
+    ; Edward's free slots
+    (free edward s0930)
+    (free edward s1030)
+    (free edward s1100)
+    (free edward s1130)
+    (free edward s1200)
+    (free edward s1230)
+    (free edward s1300)
+    (free edward s1430)
+    (free edward s1600)
+    (free edward s1630)
+
+    ; Angela's free slots
+    (free angela s1130)
+    (free angela s1200)
+    (free angela s1300)
+    (free angela s1530)
+  )
+  (:goal (and (scheduled m1)))
+)

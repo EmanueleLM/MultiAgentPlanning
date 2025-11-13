@@ -1,0 +1,201 @@
+{
+    "name": "Hanoi3Agents20DisksInstance2",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "agent_3",
+            "orchestrator",
+            "auditor"
+        ],
+        "agent_1": {
+            "private_information": [
+                "You can move only disks A, B, C, D, E, F, G.",
+                "You cannot touch disks H, I, J, K, L, M, N, O, P, Q, R, S, T."
+            ],
+            "goal": "Relocate disks A, B, and C from the left peg to the middle peg legally while keeping disks D through T undisturbed."
+        },
+        "agent_2": {
+            "private_information": [
+                "You can move only disks H, I, J, K, L, M, N.",
+                "Do not move any other disks."
+            ],
+            "goal": "Stand by and ensure no moves are required for H through N in this instance."
+        },
+        "agent_3": {
+            "private_information": [
+                "You can move only disks O, P, Q, R, S, T.",
+                "Do not move any other disks."
+            ],
+            "goal": "Stand by and ensure no moves are required for O through T in this instance."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinate agents and compile the final PDDL domain and problem compatible with FastDownward (FastDownwards) solver."
+            ],
+            "goal": "Integrate the audited move sequence and produce a correct PDDL domain and problem for this Tower of Hanoi instance."
+        },
+        "auditor": {
+            "private_information": [
+                "Audit temporal and causal consistency of the move plan; verify Tower of Hanoi legality; remove bookkeeping shortcuts such as quota tokens or post-hoc penalties."
+            ],
+            "goal": "Validate that the proposed move sequence is legal, ordered, and sufficient to achieve the goal; correct any violations and return the final legal plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L",
+                "M",
+                "N",
+                "O",
+                "P",
+                "Q",
+                "R",
+                "S",
+                "T"
+            ],
+            "initial_stacks": {
+                "left": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ],
+                "middle": [],
+                "right": []
+            },
+            "goal_stacks": {
+                "left": [
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ],
+                "middle": [
+                    "A",
+                    "B",
+                    "C"
+                ],
+                "right": []
+            }
+        },
+        "public_information": [
+            "This is a 3-peg Tower of Hanoi with 20 disks labelled A (smallest) to T (largest).",
+            "Agents are restricted by disk ownership: agent_1 \u21d2 A..G, agent_2 \u21d2 H..N, agent_3 \u21d2 O..T.",
+            "Initial: left peg has A..T (top to bottom), middle empty, right empty.",
+            "Goal: left peg has D..T (top to bottom), middle peg has A..C (top to bottom), right empty.",
+            "Only one disk may be moved at a time; a larger disk may never be placed on a smaller disk; a disk must be the top-most on its support to move."
+        ],
+        "ordered_moves": [
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk B from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk C from left to middle",
+            "agent_1: move disk A from right to left",
+            "agent_1: move disk B from right to middle",
+            "agent_1: move disk A from left to middle"
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "plan_moves_small": {
+                "input": [],
+                "output": "moves_agent_1",
+                "system_prompt": "You are agent_1, responsible for moving disks A through G only. Provide a minimal, legal sequence of primitive moves to relocate disks A, B, and C from the left peg to the middle peg using the right peg as needed. Use the exact format 'agent_1: move disk X from peg1 to peg2'. Do not propose any move involving disks H through T.",
+                "prompt": "Use the environment description and the initial and goal configurations in {environment->init}. Emit the ordered move list that achieves the goal without moving any disk larger than C and respecting Tower of Hanoi rules."
+            }
+        },
+        "agent_2": {
+            "guard_oversized": {
+                "input": [],
+                "output": "constraints_agent_2",
+                "system_prompt": "You are agent_2. You can move only disks H through N. For this instance, declare that no moves are required for your disks and state the safety constraints enforced (never place a larger disk on a smaller one; do not move H..N unless strictly necessary). Output a concise justification.",
+                "prompt": "Review the public information {environment->public_information}. Confirm no moves for H..N are needed to achieve the stated goal involving only A..C."
+            }
+        },
+        "agent_3": {
+            "guard_oversized": {
+                "input": [],
+                "output": "constraints_agent_3",
+                "system_prompt": "You are agent_3. You can move only disks O through T. For this instance, declare that no moves are required for your disks and state the safety constraints enforced (never place a larger disk on a smaller one; do not move O..T unless strictly necessary). Output a concise justification.",
+                "prompt": "Review the public information {environment->public_information}. Confirm no moves for O..T are needed to achieve the stated goal involving only A..C."
+            }
+        },
+        "auditor": {
+            "audit_plan": {
+                "input": [
+                    "moves_agent_1",
+                    "constraints_agent_2",
+                    "constraints_agent_3"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You audit temporal and causal consistency. Verify that the sequence obeys Tower of Hanoi rules, respects agent permissions, and achieves the goal. Remove bookkeeping shortcuts and fix any illegal steps by replacing them with legal ones; if the plan is already correct, return it verbatim. Output the final ordered list of primitive moves, same format as input.",
+                "prompt": "Inputs are {moves_agent_1}, {constraints_agent_2}, and {constraints_agent_3}. Validate and return the legal plan that moves A..C to the middle peg while leaving D..T on the left peg."
+            }
+        },
+        "orchestrator": {
+            "compile_pddl": {
+                "input": [
+                    "audited_plan"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are the orchestrator. Produce a complete PDDL domain and problem for this Tower of Hanoi instance targeting the FastDownward (FastDownwards) solver. Use STRIPS with typing and a single action 'move' that moves a clear top disk onto a clear support (peg or larger disk) and forbids placing larger on smaller. Enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem> tags.",
+                "prompt": "Use the instance data from {environment->init} and the validated plan {audited_plan} as guidance. Keep the domain general for any number of disks and pegs while the problem is specific to 20 disks (A..T) and pegs left, middle, right."
+            }
+        },
+        "constraints": [
+            "agent_1.plan_moves_small->auditor.audit_plan",
+            "agent_2.guard_oversized->auditor.audit_plan",
+            "agent_3.guard_oversized->auditor.audit_plan",
+            "auditor.audit_plan->orchestrator.compile_pddl"
+        ]
+    }
+}

@@ -1,0 +1,6 @@
+(define (problem scenario1)
+  (:domain blocks)
+  (:objects red blue yellow orange - block)
+  (:init)
+  (:goal (and))
+)

@@ -7,12 +7,13 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Dict, List
 
+from src.llm_plan.config import DATASET, PROMPTS_LLM_JUDGE
 from src.llm_plan.llm import ChatGPT, Gemini, LLM
 
 
-LLM_FACTORIES: dict[str, Callable[[], LLM]] = {
+LLM_FACTORIES: Dict[str, Callable[[], LLM]] = {
     "gpt-4o": lambda: ChatGPT("gpt-4o"),
     "gpt-5-mini": lambda: ChatGPT("gpt-5-mini"),
     "gpt-5-nano": lambda: ChatGPT("gpt-5-nano"),
@@ -20,6 +21,9 @@ LLM_FACTORIES: dict[str, Callable[[], LLM]] = {
     "gemini-2.5-pro": lambda: Gemini("gemini-2.5-pro"),
 }
 
+DATASET_KEYS: List[str] = sorted(DATASET.keys())
+GENERIC_PROMPT_KEY = ""
+PROMPT_CHOICES: List[str] = [GENERIC_PROMPT_KEY, *DATASET_KEYS]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -44,6 +48,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Log per-example evaluation details.",
     )
+    parser.add_argument(
+        "--dataset-name",
+        choices=DATASET_KEYS,
+        help=(
+            "Logical dataset identifier from src.llm_plan.config.DATASET. "
+            "If omitted, the path to the data_file is used in reports."
+        ),
+    )
+    parser.add_argument(
+        "--prompt-key",
+        choices=PROMPT_CHOICES,
+        default=GENERIC_PROMPT_KEY,
+        help=(
+            "Choose a handcrafted judge prompt. "
+            "Leave empty (default) to use the generic prompt or select a dataset key."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -56,10 +77,22 @@ class ExampleResult:
     reason: str
     judge_response: str
     label: int
+    prompt_0shot: str = ""
 
 
 def normalize_text(text: str) -> str:
     return " ".join(text.strip().split())
+
+
+def build_judge_prompt_lines(prompt_key: str) -> list[str]:
+    base_lines = [
+        "Determine whether the candidate plan achieves the same outcome as the golden plan.",
+        "Ignore superficial wording differences; focus on whether the proposed plan satisfies the goal expressed by the golden plan.",
+        "Something that you should not ignore is whether the initial prompt is a multi-agent task or single-agent task; make sure the candidate plan matches the agent structure of the golden plan.",
+    ]
+    if prompt_key:
+        base_lines.extend(PROMPTS_LLM_JUDGE.get(prompt_key, []))
+    return base_lines
 
 
 def llm_judge(
@@ -67,19 +100,30 @@ def llm_judge(
     golden: str,
     candidate: str,
     ignore_cost_differences: bool = False,
+    prompt_key: str = GENERIC_PROMPT_KEY,
+    prompt_0shot: str = "",
 ) -> tuple[bool, str, str]:
     system_prompt = "You are an expert evaluator that compares task solutions against golden references."
-    prompt_lines = [
-        "Determine whether the candidate plan achieves the same outcome as the golden plan.",
-        "Ignore superficial wording differences; focus on whether the proposed plan satisfies the goal expressed by the golden plan.",
-        "Something that you should not ignore is whether the initial prompt is a multi-agent task or single-agent task; make sure the candidate plan matches the agent structure of the golden plan.",
+    prompt_lines = build_judge_prompt_lines(prompt_key)
+    prompt_header = [
+        "You will receive three artefacts in this order:",
+        "1. The original prompt that the model responded to (prompt_0shot).",
+        "2. The golden reference plan.",
+        "3. The candidate plan to evaluate.",
+        "Read the prompt first to understand the task constraints, then examine the golden plan, and finally judge whether the candidate satisfies the golden plan under the prompt.",
     ]
+    prompt_lines = prompt_header + prompt_lines
     if ignore_cost_differences:
         prompt_lines.append(
             "If the task is Blocksworld, do not reject a candidate solely because it has a higher cost or uses more moves than the golden plan—only check that the final arrangement matches the golden plan."
         )
     prompt_lines.append("Respond strictly in JSON with keys 'match' (true/false) and 'reason'.")
-    prompt = "\n".join(prompt_lines) + f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
+    prompt = (
+        "\n".join(prompt_lines)
+        + "\n\nOriginal prompt (prompt_0shot):\n"
+        + (prompt_0shot or "[none provided]")
+        + f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
+    )
     response = llm.generate_sync(system_prompt=system_prompt, prompt=prompt)
     try:
         data = json.loads(response)
@@ -94,6 +138,7 @@ def evaluate_dataset(
     data_path: Path,
     llm: LLM,
     verbose: bool = False,
+    prompt_key: str = GENERIC_PROMPT_KEY,
 ) -> tuple[list[ExampleResult], int, int]:
     with open(data_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
@@ -101,9 +146,12 @@ def evaluate_dataset(
     sorted_items = sorted(dataset.items(), key=lambda item: item[0])
     results: list[ExampleResult] = []
     missing = 0
-    dataset_is_blocksworld = "blocksworld" in data_path.stem.lower()
+    dataset_is_blocksworld = "blocksworld" in data_path.stem.lower() or (
+        prompt_key and prompt_key.lower() == "blocksworld"
+    )
 
     for key, payload in sorted_items:
+        raw_prompt = payload.get("prompt_0shot", "")
         raw_golden = payload.get("golden_plan", "")
         if isinstance(raw_golden, list):
             golden = " ".join(str(item) for item in raw_golden).strip()
@@ -111,6 +159,11 @@ def evaluate_dataset(
             golden = json.dumps(raw_golden, ensure_ascii=False).strip()
         else:
             golden = str(raw_golden).strip()
+        prompt_text = (
+            " ".join(str(item) for item in raw_prompt).strip()
+            if isinstance(raw_prompt, list)
+            else (json.dumps(raw_prompt, ensure_ascii=False).strip() if isinstance(raw_prompt, dict) else str(raw_prompt).strip())
+        )
 
         response = payload.get("response")
         if response is None:
@@ -136,6 +189,8 @@ def evaluate_dataset(
                 golden,
                 candidate_text,
                 ignore_cost_differences=dataset_is_blocksworld,
+                prompt_key=prompt_key,
+                prompt_0shot=prompt_text,
             )
 
         if verbose:
@@ -150,6 +205,7 @@ def evaluate_dataset(
                 reason=reason,
                 judge_response=judge_raw,
                 label=1 if correct else 0,
+                prompt_0shot=prompt_text,
             )
         )
 
@@ -206,6 +262,7 @@ def append_accuracy_result(
     coverage_outputs: float,
     accuracy_including_missing: float,
     model: str,
+    prompt_key: str,
 ) -> None:
     results: list[dict] = []
     if accuracy_file.exists():
@@ -225,6 +282,7 @@ def append_accuracy_result(
             "accuracy_including_missing": accuracy_including_missing,
             "coverage_outputs_vs_dataset": coverage_outputs,
             "model": model,
+            "prompt_key": prompt_key if prompt_key else "generic",
         }
     )
 
@@ -236,6 +294,7 @@ def write_detailed_evaluations(
     results: list[ExampleResult],
     dataset_name: str,
     model: str,
+    prompt_key: str,
 ) -> Path:
     output_dir = Path("results") / "_evaluation" / "vanilla"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -247,6 +306,7 @@ def write_detailed_evaluations(
             {
                 "key": r.key,
                 "golden_plan": r.golden,
+                "prompt_0shot": r.prompt_0shot,
                 "response": r.response,
                 "evaluation": {
                     "response": r.judge_response,
@@ -258,6 +318,7 @@ def write_detailed_evaluations(
     payload = {
         "dataset": dataset_name,
         "model": model,
+        "prompt_key": prompt_key if prompt_key else "generic",
         "examples": entries,
     }
 
@@ -274,11 +335,18 @@ def main() -> None:
     if args.model not in LLM_FACTORIES:
         raise ValueError(f"Unsupported model '{args.model}'.")
 
+    dataset_label = args.dataset_name or str(args.data_file)
+    prompt_key = args.prompt_key or GENERIC_PROMPT_KEY
+
+    logging.info("Dataset label        : %s", dataset_label)
+    logging.info("Hand-made prompt key : %s", prompt_key if prompt_key else "generic")
+
     llm = LLM_FACTORIES[args.model]()
     results, missing, dataset_total = evaluate_dataset(
         args.data_file,
         llm,
         verbose=args.verbose,
+        prompt_key=prompt_key,
     )
     (
         evaluated,
@@ -289,13 +357,12 @@ def main() -> None:
         accuracy_including_missing,
     ) = summarize(results, missing, dataset_total)
 
-    dataset_name = str(args.data_file)
     accuracy_dir = Path("results") / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_vanilla.json"
     append_accuracy_result(
         accuracy_file,
-        dataset_name,
+        dataset_label,
         evaluated,
         missing,
         dataset_total,
@@ -303,9 +370,10 @@ def main() -> None:
         coverage_outputs,
         accuracy_including_missing,
         args.model,
+        prompt_key,
     )
     logging.info("Accuracy written to %s", accuracy_file)
-    detailed_path = write_detailed_evaluations(results, dataset_name, args.model)
+    detailed_path = write_detailed_evaluations(results, dataset_label, args.model, prompt_key)
     logging.info("Detailed evaluations written to %s", detailed_path)
 
 

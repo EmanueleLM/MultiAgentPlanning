@@ -1,0 +1,31 @@
+(define (domain calendar-scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot)
+  (:constants brittany emily doris - participant)
+  (:predicates
+    (free-slot ?p - participant ?s - slot)
+    (next ?s1 - slot ?s2 - slot)
+    (earliest ?s - slot)
+    (selected-slot ?s - slot)
+    (attends-slot ?p - participant ?s - slot)
+    (meeting-scheduled)
+  )
+
+  (:action select-earliest
+    :parameters (?s - slot)
+    :precondition (and
+      (earliest ?s)
+      (free-slot brittany ?s)
+      (free-slot emily ?s)
+      (free-slot doris ?s)
+      (not (meeting-scheduled))
+    )
+    :effect (and
+      (meeting-scheduled)
+      (selected-slot ?s)
+      (attends-slot brittany ?s)
+      (attends-slot emily ?s)
+      (attends-slot doris ?s)
+    )
+  )
+)

@@ -1,0 +1,32 @@
+(define (domain hanoi_multiagent_20)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg agent)
+  (:predicates
+    (on ?x - disk ?y - disk)
+    (onpeg ?x - disk ?p - peg)
+    (clear ?x - disk)
+    (clearpeg ?p - peg)
+    (smaller ?x - disk ?y - disk)
+    (can-move ?a - agent ?x - disk)
+  )
+  (:action move-from-peg-to-peg
+    :parameters (?a - agent ?x - disk ?p - peg ?q - peg)
+    :precondition (and (can-move ?a ?x) (onpeg ?x ?p) (clear ?x) (clearpeg ?q))
+    :effect (and (not (onpeg ?x ?p)) (onpeg ?x ?q) (clearpeg ?p) (not (clearpeg ?q)))
+  )
+  (:action move-from-peg-to-disk
+    :parameters (?a - agent ?x - disk ?p - peg ?y - disk)
+    :precondition (and (can-move ?a ?x) (onpeg ?x ?p) (clear ?x) (clear ?y) (smaller ?x ?y))
+    :effect (and (not (onpeg ?x ?p)) (on ?x ?y) (clearpeg ?p) (not (clear ?y)))
+  )
+  (:action move-from-disk-to-peg
+    :parameters (?a - agent ?x - disk ?y - disk ?q - peg)
+    :precondition (and (can-move ?a ?x) (on ?x ?y) (clear ?x) (clearpeg ?q))
+    :effect (and (not (on ?x ?y)) (onpeg ?x ?q) (not (clearpeg ?q)) (clear ?y))
+  )
+  (:action move-from-disk-to-disk
+    :parameters (?a - agent ?x - disk ?y - disk ?z - disk)
+    :precondition (and (can-move ?a ?x) (on ?x ?y) (clear ?x) (clear ?z) (smaller ?x ?z))
+    :effect (and (not (on ?x ?y)) (on ?x ?z) (clear ?y) (not (clear ?z)))
+  )
+)

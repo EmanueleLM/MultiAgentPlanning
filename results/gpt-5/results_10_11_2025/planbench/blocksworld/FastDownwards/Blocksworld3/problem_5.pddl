@@ -1,0 +1,16 @@
+(define (problem bworld-s1)
+  (:domain blocksworld3)
+  (:objects red orange yellow blue - block)
+  (:init
+    (clear yellow)
+    (handempty)
+    (on red orange)
+    (on orange blue)
+    (on yellow red)
+    (ontable blue)
+  )
+  (:goal (and
+    (on red yellow)
+    (on yellow blue)
+  ))
+)

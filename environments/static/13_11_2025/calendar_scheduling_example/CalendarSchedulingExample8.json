@@ -1,0 +1,121 @@
+{
+    "name": "CalendarSchedulingExample8",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "adam_agent",
+            "jerry_agent",
+            "matthew_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "adam_agent": {
+            "private_information": [
+                "I am Adam.",
+                "My Monday busy intervals: 10:00-10:30, 12:30-13:00, 13:30-14:30."
+            ],
+            "goal": "Report all 30-minute free slots between 09:00 and 17:00 on Monday that do not overlap with my busy intervals."
+        },
+        "jerry_agent": {
+            "private_information": [
+                "I am Jerry.",
+                "My Monday busy intervals: 9:00-9:30, 12:00-12:30, 15:00-16:00."
+            ],
+            "goal": "Report all 30-minute free slots between 09:00 and 17:00 on Monday that do not overlap with my busy intervals."
+        },
+        "matthew_agent": {
+            "private_information": [
+                "I am Matthew.",
+                "My Monday busy intervals: 9:30-11:00, 11:30-12:30, 13:00-14:00, 14:30-17:00."
+            ],
+            "goal": "Report all 30-minute free slots between 09:00 and 17:00 on Monday that do not overlap with my busy intervals."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency.",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties."
+            ],
+            "goal": "Intersect and validate availability across all participants, ensure consistency with duration and work hours, and return conflict-free candidate meeting slots."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate agents and produce a final PDDL domain and problem that schedules a 30-minute Monday meeting for Adam, Jerry, and Matthew within 09:00-17:00, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "work_hours": {
+                "day": "Monday",
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "duration_minutes": 30,
+            "time_granularity_minutes": 30,
+            "timezone": "local"
+        },
+        "public_information": [
+            "Participants: Adam, Jerry, Matthew.",
+            "Work hours on Monday are 09:00 to 17:00.",
+            "Meeting duration is 30 minutes.",
+            "Adam busy: 10:00-10:30, 12:30-13:00, 13:30-14:30.",
+            "Jerry busy: 9:00-9:30, 12:00-12:30, 15:00-16:00.",
+            "Matthew busy: 9:30-11:00, 11:30-12:30, 13:00-14:00, 14:30-17:00.",
+            "A solution is guaranteed to exist."
+        ]
+    },
+    "workflow": {
+        "adam_agent": {
+            "availability": {
+                "input": [],
+                "output": "availability_adam",
+                "system_prompt": "You extract personal availability from busy intervals and work-hour constraints. You return strictly the free 30-minute slots as a structured list of ranges.",
+                "prompt": "Your name is adam_agent. Use the public information and your private information to list all 30-minute slots within 09:00-17:00 on Monday that do not overlap your busy intervals. Return a concise JSON with the key available_slots and values like 11:00-11:30."
+            }
+        },
+        "jerry_agent": {
+            "availability": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You extract personal availability from busy intervals and work-hour constraints. You return strictly the free 30-minute slots as a structured list of ranges.",
+                "prompt": "Your name is jerry_agent. Use the public information and your private information to list all 30-minute slots within 09:00-17:00 on Monday that do not overlap your busy intervals. Return a concise JSON with the key available_slots and values like 11:00-11:30."
+            }
+        },
+        "matthew_agent": {
+            "availability": {
+                "input": [],
+                "output": "availability_matthew",
+                "system_prompt": "You extract personal availability from busy intervals and work-hour constraints. You return strictly the free 30-minute slots as a structured list of ranges.",
+                "prompt": "Your name is matthew_agent. Use the public information and your private information to list all 30-minute slots within 09:00-17:00 on Monday that do not overlap your busy intervals. Return a concise JSON with the key available_slots and values like 11:00-11:30."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_adam",
+                    "availability_jerry",
+                    "availability_matthew"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You ensure temporal and causal consistency, intersect the availability sets, respect the 30-minute duration and work hours, and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "prompt": "Combine the three availability inputs and return conflict-free 30-minute slots that work for all participants. If multiple slots exist, include them all in ascending time, and highlight the earliest suitable slot. Return a concise JSON with keys candidate_meeting_slots and earliest_slot."
+            }
+        },
+        "orchestrator": {
+            "compose_pddl": {
+                "input": [
+                    "audited_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The domain should model participants, discrete 30-minute timeslots for Monday between 09:00 and 17:00, predicates for free/occupied per participant, and an action to schedule a single meeting when a slot is free for all. Keep the model minimal, syntactically valid, and solvable by FastDownwards.",
+                "prompt": "Use the audited availability to produce a final PDDL plan for scheduling a single 30-minute Monday meeting for Adam, Jerry, and Matthew within 09:00-17:00. Include all relevant objects (participants and timeslots) and initial facts that respect the busy intervals derived from the public information and the audited availability. Ensure the problem is solvable and that the goal asserts that the meeting is scheduled at a slot free for all. Return the PDDL domain and problem enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "adam_agent.availability->auditor.audit",
+            "jerry_agent.availability->auditor.audit",
+            "matthew_agent.availability->auditor.audit",
+            "auditor.audit->orchestrator.compose_pddl"
+        ]
+    }
+}

@@ -1,0 +1,128 @@
+{
+    "name": "TripPlanningExample20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "travel_analyst",
+            "duration_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "travel_analyst": {
+            "private_information": [
+                "Treat direct flights as directed edges unless explicitly stated as bidirectional.",
+                "Normalize city names to lowercase with underscores when emitting identifiers.",
+                "Only use the cities listed in the environment."
+            ],
+            "goal": "Model the connectivity between cities using only direct flights and enumerate viable transfer sequences."
+        },
+        "duration_planner": {
+            "private_information": [
+                "Total trip length is fixed and cannot be exceeded.",
+                "Individual city stays must be whole days and non-negative.",
+                "When exact wishes conflict with the total length, propose near-feasible allocations that minimize total deviation."
+            ],
+            "goal": "Propose one or more 12-day allocations across the cities that respect the total and are as close as possible to the requested stays."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Audit temporal and causal consistency without introducing artificial bookkeeping devices (no quota tokens, dummy penalties, or post-hoc credits).",
+                "Verify that every inter-city move corresponds to an allowed direct flight.",
+                "Ensure total days equal the budget and that stays align with audit-adjusted allocations."
+            ],
+            "goal": "Check feasibility of the connectivity and day allocations, highlight conflicts, and recommend a corrected, implementable itinerary basis."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinate the other agents, resolve minor inconsistencies using the auditor's recommendations, and produce the final planning model.",
+                "Output must be a PDDL domain and problem suitable for the FastDownward/FastDownwards solver."
+            ],
+            "goal": "Synthesize a solvable PDDL planning problem that fits a 12-day trip over the given cities using only allowed direct flights, prioritizing requested stays while respecting feasibility."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 12,
+            "cities": [
+                "Istanbul",
+                "Budapest",
+                "Dubrovnik"
+            ],
+            "requested_stays": {
+                "Istanbul": 5,
+                "Budapest": 6,
+                "Dubrovnik": 3
+            },
+            "direct_flights": [
+                {
+                    "from": "Istanbul",
+                    "to": "Budapest"
+                },
+                {
+                    "from": "Budapest",
+                    "to": "Istanbul"
+                },
+                {
+                    "from": "Dubrovnik",
+                    "to": "Istanbul"
+                }
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities within a fixed budget of 12 total days.",
+            "Requested stays are Istanbul 5 days, Budapest 6 days, Dubrovnik 3 days (sum 14 > 12, creating a conflict that must be resolved).",
+            "Only direct flights may be used to commute between cities.",
+            "There are direct flights between Istanbul and Budapest in both directions.",
+            "There is a direct flight from Dubrovnik to Istanbul; no direct flight is given from Istanbul to Dubrovnik and none is given between Dubrovnik and Budapest."
+        ]
+    },
+    "workflow": {
+        "travel_analyst": {
+            "graph": {
+                "input": [],
+                "output": "city_graph",
+                "system_prompt": "You are a travel connectivity analyst. Build a compact, unambiguous representation of the travel graph using only the direct flights allowed. Include nodes (city identifiers), directed_edges (ordered pairs), and a note field describing missing edges implied by the wishes. Keep identifiers lowercase with underscores (e.g., istanbul, budapest, dubrovnik). Output concise JSON only.",
+                "prompt": "Your name is travel_analyst. Consider the public information: {environment->public_information}. You may also use your private knowledge: {agents->travel_analyst->private_information}. Produce a minimal JSON object with fields nodes and directed_edges that reflects only the allowed direct flights among the listed cities {environment->init->cities}."
+            }
+        },
+        "duration_planner": {
+            "allocation": {
+                "input": [],
+                "output": "stay_plan_options",
+                "system_prompt": "You are a trip duration planner. Generate one or more candidate allocations of whole days that sum exactly to the total days and stay close to the requested per-city durations. Report the options as a short JSON array of objects with fields allocation (mapping city to days), total_days, and total_deviation from the request.",
+                "prompt": "Your name is duration_planner. Total days: {environment->init->total_days}. Requested stays: {environment->init->requested_stays}. Cities: {environment->init->cities}. Provide 2-3 candidate allocations that sum to the total and minimize the absolute deviation from the request across cities."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "city_graph",
+                    "stay_plan_options"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor for temporal and causal consistency. Use the connectivity and the proposed stays to check feasibility, remove bookkeeping shortcuts, and ensure that every move is backed by an allowed direct flight. Confirm totals equal the day budget, recommend a single corrected allocation if needed, and suggest an admissible visit order that satisfies flight constraints. Do not write PDDL; return a concise JSON object with fields chosen_allocation, visit_order, and notes.",
+                "prompt": "Your name is consistency_auditor. Public info: {environment->public_information}. Connectivity: {city_graph}. Candidate stays: {stay_plan_options}. Produce a compact JSON audit that selects a feasible 12-day allocation and a city visit order consistent with direct flights only; if the requested stays cannot all be met due to the total-day budget, choose the closest feasible allocation and explain briefly."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "city_graph",
+                    "stay_plan_options",
+                    "audit_report"
+                ],
+                "output": "pddl_trip_plan",
+                "system_prompt": "You are an expert in PDDL for classical planning and target the FastDownward (aka FastDownwards) solver. Produce the final PDDL domain and problem for the trip-planning task. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Use STRIPS-compatible constructs supported by FastDownward. Model actions to stay one day in a city and to fly between cities using only the allowed directed edges. Encode the selected 12-day allocation and a feasible route consistent with the auditor's recommendations. The problem must be solvable without introducing fictitious resources or penalty gadgets.",
+                "prompt": "Inputs from other agents: city graph {city_graph}, duration options {stay_plan_options}, audit {audit_report}. Construct a clean PDDL domain and a single problem instance that achieves exactly 12 total stay days allocated across the cities, starting in a city that makes the route feasible with the provided direct flights, and using only allowed fly actions. Respect the auditor's chosen allocation and visit order."
+            }
+        },
+        "constraints": [
+            "travel_analyst.graph->consistency_auditor.audit",
+            "duration_planner.allocation->consistency_auditor.audit",
+            "consistency_auditor.audit->orchestrator.pddl",
+            "travel_analyst.graph->orchestrator.pddl",
+            "duration_planner.allocation->orchestrator.pddl"
+        ]
+    }
+}

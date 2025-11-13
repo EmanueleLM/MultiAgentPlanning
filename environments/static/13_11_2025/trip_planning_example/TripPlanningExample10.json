@@ -1,0 +1,120 @@
+{
+    "name": "TripPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Preference to minimize travel complexity by using only direct flights",
+                "Relatives live in Valencia and are available between day 5 and day 9",
+                "Flexible about Dublin stay if it conflicts with hard constraints"
+            ],
+            "goal": "Find a feasible 9-day itinerary over Oslo, Dublin, and Valencia using only direct flights that satisfies: spend 3 days in Oslo, spend 5 days in Valencia, and ensure the Valencia visit occurs between day 5 and day 9. If any conflict arises with the total trip length, prefer minimal relaxation of soft constraints."
+        },
+        "flight_agent": {
+            "private_information": [
+                "Direct flights exist only between Oslo and Dublin, and between Dublin and Valencia",
+                "There is no direct flight between Oslo and Valencia"
+            ],
+            "goal": "Provide accurate connectivity constraints and reachable sequences that use only direct flights between the cities."
+        },
+        "auditor": {
+            "private_information": [
+                "Treat total days and city-stay counts for Oslo and Valencia as hard constraints; the requested Dublin stay is soft and can be relaxed to achieve feasibility",
+                "Enforce temporal and causal consistency across consecutive days and city transitions",
+                "Remove bookkeeping shortcuts such as abstract quota tokens and post-hoc penalties; rely on explicit day assignments and direct-flight adjacency only"
+            ],
+            "goal": "Audit the preferences and connectivity for feasibility, identify conflicts, and recommend the minimal relaxation necessary to achieve a consistent 9-day plan without using bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs and produce a final PDDL domain and problem compatible with the FastDownward solver that encode a feasible 9-day itinerary satisfying direct-flight constraints; enforce 3 days in Oslo, 5 days in Valencia, Valencia stay within days 5-9, and apply the auditor\u2019s recommended minimal relaxation for Dublin if required."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 9,
+            "cities": [
+                "oslo",
+                "dublin",
+                "valencia"
+            ],
+            "days_labels": [
+                "d1",
+                "d2",
+                "d3",
+                "d4",
+                "d5",
+                "d6",
+                "d7",
+                "d8",
+                "d9"
+            ],
+            "solver_target": "FastDownward"
+        },
+        "public_information": [
+            "Total trip length is 9 days.",
+            "You want to spend 3 days in Oslo.",
+            "You want to spend 5 days in Valencia.",
+            "You plan to visit relatives in Valencia between day 5 and day 9.",
+            "You initially planned to stay in Dublin for 3 days.",
+            "Only the following direct flights exist: Oslo <-> Dublin, Dublin <-> Valencia.",
+            "There is no direct flight between Oslo and Valencia.",
+            "Only direct flights may be taken between cities."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_summary",
+                "system_prompt": "You consolidate user intents and constraints into a precise, machine-readable summary without emitting PDDL. Capture hard constraints, soft preferences, and any potential conflicts with total duration.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and your private knowledge {agents->traveler->private_information} to produce a concise summary of the trip constraints. Include: hard constraints (must hold), soft constraints (relaxable), and conflicts (e.g., city-day totals vs total length). Do not produce PDDL; provide a clear structured narrative suitable for downstream planning."
+            }
+        },
+        "flight_agent": {
+            "connectivity": {
+                "input": [],
+                "output": "connectivity_map",
+                "system_prompt": "You provide direct-flight connectivity, reachable city sequences respecting direct flights only, and note impossibilities such as nonexistent direct routes.",
+                "prompt": "Your name is flight_agent. Use the public information {environment->public_information} and your private knowledge {agents->flight_agent->private_information} to produce a precise connectivity map and constraints: list direct city pairs (bidirectional), enumerate example feasible sequences over 9 consecutive days that respect staying-in-place or moving along direct flights only, and explicitly state that Oslo and Valencia are not directly connected. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "temporal_audit": {
+                "input": [
+                    "preferences_summary",
+                    "connectivity_map"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency, forbidding bookkeeping shortcuts. You identify conflicts and recommend the smallest relaxation needed to achieve feasibility while preserving hard constraints and direct-flight adjacency.",
+                "prompt": "Your name is auditor. You receive the traveler preferences {preferences_summary} and the connectivity constraints {connectivity_map}. Audit the 9-day plan requirements for feasibility. Treat the 3 days in Oslo, 5 days in Valencia, and the Valencia relatives window (days 5-9) as hard constraints along with direct-flight-only moves. Identify the conflict with the requested 3 days in Dublin (since 3+5+3 exceeds 9), and recommend a minimal relaxation that preserves feasibility and connectivity. Provide the reconciled target schedule by day (e.g., D1-D3 Oslo, D4 Dublin, D5-D9 Valencia) and justify why it is the minimal relaxation. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_summary",
+                    "connectivity_map",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL for classical planning compatible with the FastDownward solver. You must output a PDDL domain and a PDDL problem between <domain></domain> and <problem></problem> tags. Use typed objects (city, day). Use simple STRIPS/ADL predicates and actions; avoid durative actions and numeric bookkeeping. Model days as a linear chain with next relations, a predicate at(day, city) for assignment, a predicate assigned(day) to prevent duplicate assignments, and connected(city, city) to represent allowed stays or direct flights. Provide two actions: set-first-day to assign the first day, and set-next-day to assign each subsequent day conditioned on adjacency and the previous day\u2019s city. The problem must define days d1..d9, cities {environment->init->cities}, next relations d1->d2->...->d9, connected relations for all self-stays and direct flights only, and goals that enumerate the reconciled target city for each day as provided by the auditor. Ensure the instance is solvable by FastDownward.",
+                "prompt": "Coordinate all inputs to produce the final plan. Consider the public information {environment->public_information}, the traveler\u2019s constraints {preferences_summary}, the flights connectivity {connectivity_map}, and the auditor\u2019s reconciliation {audit_report}. Adopt the auditor\u2019s minimal relaxation and encode the exact per-day city assignment in the goal: D1-D3 Oslo, D4 Dublin, D5-D9 Valencia. Output a complete PDDL domain and problem between <domain></domain> and <problem></problem> tags suitable for FastDownward."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->auditor.temporal_audit",
+            "flight_agent.connectivity->auditor.temporal_audit",
+            "traveler.preferences->orchestrator.pddl",
+            "flight_agent.connectivity->orchestrator.pddl",
+            "auditor.temporal_audit->orchestrator.pddl"
+        ]
+    }
+}

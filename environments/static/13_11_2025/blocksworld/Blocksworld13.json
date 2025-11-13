@@ -1,0 +1,114 @@
+{
+    "name": "Blocksworld13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "symbolic_modeler",
+            "auditor",
+            "plan_curator",
+            "orchestrator"
+        ],
+        "symbolic_modeler": {
+            "private_information": [
+                "I specialize in formalizing Blocksworld using classical planning primitives.",
+                "I define predicates, action schemas, object types, and invariants consistent with STRIPS and FastDownward.",
+                "I avoid emitting PDDL directly; instead I provide canonical symbols, schemas, and consistency notes."
+            ],
+            "goal": "Produce a concise but complete symbolic specification for Blocksworld: canonical predicate names, operator schemas (pickup, putdown, unstack, stack) with preconditions/effects matching the restrictions, object naming conventions, invariant relations, and a synonym map between natural-language steps and canonical operators."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal/causal consistency step-by-step and disallow bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, implicit clears).",
+                "I ensure hand state and clear relations evolve only through legal actions.",
+                "I output corrected, causally valid plans using canonical operators without emitting PDDL."
+            ],
+            "goal": "Validate the provided plan for the first scenario, correct it if needed; derive a sound plan for the second scenario; report causal justifications and any necessary fixes, all using operator names: pickup(x), putdown(x), unstack(x,y), stack(x,y)."
+        },
+        "plan_curator": {
+            "private_information": [
+                "I extract entities, attributes, and relations from text and normalize them to canonical predicate forms defined by the symbolic modeler.",
+                "I keep the two scenarios separate and produce structured initial states and goals for each."
+            ],
+            "goal": "From the public information, produce normalized object lists and fact sets for both scenarios (S1 and S2) using canonical predicates: on(x,y), ontable(x), clear(x), holding(x), handempty."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agents and consolidate their outputs.",
+                "I produce the final PDDL domain and problems targeting the FastDownward solver."
+            ],
+            "goal": "Integrate the canonical model, curated states/goals, and audited plans to emit a single Blocksworld PDDL domain and two PDDL problems (S1 and S2) that conform to FastDownward STRIPS constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "workspace": "tabletop",
+            "objects": {
+                "blocks": [
+                    "red",
+                    "blue",
+                    "orange",
+                    "yellow"
+                ]
+            },
+            "visibility": "full"
+        },
+        "public_information": [
+            "Actions available: pick up a block; unstack a block from on top of another block; put down a block; stack a block on top of another block.",
+            "Restrictions: only one block can be picked up or unstacked at a time; the hand must be empty to pick up or unstack; to pick up a block, it must be on the table and clear; a block is clear if no block is on top of it and it is not being held; unstack(x,y) is allowed only if on(x,y) holds and x is clear; picking up or unstacking results in holding(x); putdown(x) requires holding(x); stack(x,y) requires holding(x) and clear(y); after putdown or stack, the hand becomes empty; stacking a block on another makes the lower block not clear.",
+            "Scenario S1 initial state: red is clear; hand is empty; on(red, blue); on(blue, orange); on(orange, yellow); ontable(yellow).",
+            "Scenario S1 goal: on(blue, orange); on(orange, yellow); on(yellow, red).",
+            "Scenario S1 provided plan (natural language, to be audited): unstack red from blue; put down red; unstack blue from orange; put down blue; unstack orange from yellow; stack orange on blue; pick up yellow; stack yellow on red; unstack orange from blue; stack orange on yellow; pick up blue; stack blue on orange.",
+            "Scenario S2 initial state: red is clear; orange is clear; hand is empty; on(blue, yellow); on(orange, blue); ontable(red); ontable(yellow).",
+            "Scenario S2 goal: on(red, orange); on(blue, red)."
+        ]
+    },
+    "workflow": {
+        "symbolic_modeler": {
+            "model": {
+                "input": [],
+                "output": "model_notes",
+                "system_prompt": "You are a senior knowledge engineer for classical planning in Blocksworld. Provide a canonical specification without emitting PDDL: list the predicates (on ?x ?y, ontable ?x, clear ?x, holding ?x, handempty), the operator schemas (pickup, putdown, unstack, stack) with exact preconditions and effects that satisfy the given restrictions, object typing and naming conventions, invariants (e.g., at most one support per block, exclusivity of holding vs on/ontable, uniqueness of hand state), and a synonym map from natural language steps to canonical operators.",
+                "prompt": "Your name is symbolic_modeler. Use the environment public information: {environment->public_information}. Produce: 1) canonical predicate list; 2) operator schemas (names, parameters, preconditions, effects) consistent with the restrictions; 3) invariants and state exclusivity notes; 4) a mapping from phrases like 'unstack X from Y' to unstack(X,Y), 'stack X on Y' to stack(X,Y), 'pick up X' to pickup(X), 'put down X' to putdown(X). Do not emit PDDL."
+            }
+        },
+        "plan_curator": {
+            "extract": {
+                "input": [],
+                "output": "curated_states",
+                "system_prompt": "You extract and normalize scenario data into canonical facts using the modeler's predicate names.",
+                "prompt": "Your name is plan_curator. From the environment public information: {environment->public_information}, produce for Scenario S1 and Scenario S2: objects list, initial facts, and goal facts using only the canonical predicates on, ontable, clear, holding, handempty and the objects red, blue, orange, yellow. Keep each scenario separate (S1, S2). Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_notes",
+                    "curated_states"
+                ],
+                "output": "audited_plans",
+                "system_prompt": "You audit temporal/causal correctness, forbidding bookkeeping shortcuts, ensuring every precondition is met and effects are applied legally.",
+                "prompt": "Your name is auditor. Using the canonical model: {model_notes} and curated states: {curated_states}, 1) audit the provided Scenario S1 plan step-by-step, identify violations, and output a corrected minimal plan using canonical operators: pickup(x), putdown(x), unstack(x,y), stack(x,y); 2) derive a valid plan for Scenario S2; 3) explain briefly the causal reasoning (why each step is needed) and confirm hand/clear flow. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_notes",
+                    "curated_states",
+                    "audited_plans"
+                ],
+                "output": "pddl_fd",
+                "system_prompt": "You are an expert in multi-agent planning orchestration and PDDL authoring for the FastDownward solver. You must output a single PDDL domain and two PDDL problem instances (S1 and S2). Always enclose the PDDL domain in <domain></domain> and each PDDL problem in <problem name=\"S1\"></problem> and <problem name=\"S2\"></problem>. Use only STRIPS-compatible constructs (no conditional effects, no quantified preconditions, no derived predicates). Use consistent naming for predicates and operators, and ensure problems reflect the curated initial states and goals and are solvable with the audited plans.",
+                "prompt": "Coordinate the inputs to emit final PDDL for FastDownward. Integrate the canonical model: {model_notes}, the curated scenarios: {curated_states}, and the auditor's corrected plans and notes: {audited_plans}. Produce one PDDL domain 'blocksworld' with operators: pickup, putdown, unstack, stack and predicates: on, ontable, clear, holding, handempty; type 'block' is optional but allowed. Then produce two problem instances: S1 and S2 with objects red, blue, orange, yellow and initial states and goals exactly matching the curated facts; do not include any constructs outside STRIPS and ensure naming aligns with FastDownward expectations. Enclose outputs within the required tags."
+            }
+        },
+        "constraints": [
+            "symbolic_modeler.model->auditor.audit",
+            "plan_curator.extract->auditor.audit",
+            "symbolic_modeler.model->orchestrator.pddl",
+            "plan_curator.extract->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

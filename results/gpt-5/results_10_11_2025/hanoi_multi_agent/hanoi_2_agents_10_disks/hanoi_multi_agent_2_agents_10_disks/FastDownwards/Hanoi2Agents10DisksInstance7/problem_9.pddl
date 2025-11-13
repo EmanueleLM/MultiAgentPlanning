@@ -1,0 +1,76 @@
+(define (problem hanoi-2agents-10-Instance7-staged)
+  (:domain hanoi-3peg-2agents-staged)
+  (:objects
+    agent_1 agent_2 - agent
+    left middle right - peg
+    A B C D E F G H I J - disk
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 - stage
+  )
+
+  (:init
+    (allowed agent_1 A)
+    (allowed agent_1 B)
+    (allowed agent_1 C)
+    (allowed agent_1 D)
+    (allowed agent_1 E)
+    (allowed agent_2 F)
+    (allowed agent_2 G)
+    (allowed agent_2 H)
+    (allowed agent_2 I)
+    (allowed agent_2 J)
+
+    (smaller A B) (smaller A C) (smaller A D) (smaller A E) (smaller A F) (smaller A G) (smaller A H) (smaller A I) (smaller A J)
+    (smaller B C) (smaller B D) (smaller B E) (smaller B F) (smaller B G) (smaller B H) (smaller B I) (smaller B J)
+    (smaller C D) (smaller C E) (smaller C F) (smaller C G) (smaller C H) (smaller C I) (smaller C J)
+    (smaller D E) (smaller D F) (smaller D G) (smaller D H) (smaller D I) (smaller D J)
+    (smaller E F) (smaller E G) (smaller E H) (smaller E I) (smaller E J)
+    (smaller F G) (smaller F H) (smaller F I) (smaller F J)
+    (smaller G H) (smaller G I) (smaller G J)
+    (smaller H I) (smaller H J)
+    (smaller I J)
+
+    (on A B)
+    (on B C)
+    (on C D)
+    (on D E)
+    (on E F)
+    (on F G)
+    (on G H)
+    (on H I)
+    (on I J)
+    (on J left)
+
+    (clear A)
+    (clear middle)
+    (clear right)
+
+    (current s0)
+    (next s0 s1)
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
+    (next s5 s6)
+    (next s6 s7)
+    (next s7 s8)
+  )
+
+  (:goal
+    (and
+      (on A B)
+      (on B D)
+      (on D E)
+      (on E F)
+      (on F G)
+      (on G H)
+      (on H I)
+      (on I J)
+      (on J left)
+      (on C middle)
+      (clear right)
+      (clear A)
+      (clear C)
+      (current s8)
+    )
+  )
+)

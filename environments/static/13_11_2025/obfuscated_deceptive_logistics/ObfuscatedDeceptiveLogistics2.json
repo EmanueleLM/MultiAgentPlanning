@@ -1,0 +1,103 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyzer",
+            "proposer",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyzer": {
+            "private_information": [
+                "I can parse textual action descriptions and extract predicates, parameters, preconditions and effects.",
+                "I normalize object and predicate names and detect naming mismatches."
+            ],
+            "goal": "Extract and normalize action schemas and the predicate vocabulary present in the use-case."
+        },
+        "proposer": {
+            "private_information": [
+                "I can generate candidate plan fragments consistent with a local interpretation of the action schemas.",
+                "I prefer to keep proposed fragments minimal and annotated with the assumptions they require."
+            ],
+            "goal": "Propose local plan fragments that aim to reach stated goals given my interpretation of objects and actions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as implicit quota tokens and post-hoc penalties.",
+                "I detect and flag plans that rely on ephemeral bookkeeping facts or inconsistent temporal assumptions."
+            ],
+            "goal": "Validate proposed models and plans for causal soundness and remove or annotate any bookkeeping shortcuts so downstream planners see only rigorous facts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate models and plans from other agents and produce a final PDDL domain and problem tailored to the FastDownwards solver.",
+                "I keep agent contributions distinct and annotate which agent produced which fragment."
+            ],
+            "goal": "Integrate inputs and produce a final PDDL domain and problem targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "There is a finite set of objects named object_0 through object_8 and additional mentions of object_5 and object_6 in collects.",
+            "Available actions in the vocabulary: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates used: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Action preconditions and effects are described in the use-case and may refer to different objects across statements.",
+            "Two problem variants are present. First variant initial facts include cats object_0 and goal next object_7 object_6 and next object_8 object_6. Second variant shifts goals to next object_7 object_5 and next object_8 object_5.",
+            "Example plan fragments are provided in the use-case and may be partial or conflicting. Some fragments reuse bookkeeping-like facts which must be audited."
+        ]
+    },
+    "workflow": {
+        "analyzer": {
+            "analysis": {
+                "input": [],
+                "output": "model_analyzer",
+                "system_prompt": "You are an analyst that extracts a normalized action vocabulary and predicate schema from informal task descriptions. Do not emit PDDL. Provide a structured description of actions, their parameter lists, tentative preconditions and effects, and a mapping of object names. Mark any ambiguities or missing information explicitly.",
+                "prompt": "Your name is analyzer. Use the public information and the use-case statements to extract a normalized list of predicate names and action schemas. List for each action the parameters and the preconditions and effects you can derive. Mark any assumptions or naming mismatches you detect. Return a compact structured summary ready for integration."
+            }
+        },
+        "proposer": {
+            "propose": {
+                "input": [
+                    "model_analyzer"
+                ],
+                "output": "proposal_proposer",
+                "system_prompt": "You are a planner that proposes concise local plan fragments consistent with a provided action model. Do not emit PDDL. Attach assumptions and required facts for each fragment.",
+                "prompt": "Your name is proposer. Given the analyzer's model, propose candidate plan fragments that aim to achieve the stated goals. Provide each fragment as an ordered list of actions with explicit parameter bindings and list the required preconditions at each step. Highlight where additional facts would be needed."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_analyzer",
+                    "proposal_proposer"
+                ],
+                "output": "audit_auditor",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. You detect and remove bookkeeping shortcuts that produce apparent but unsound solutions. Do not emit PDDL. Produce a cleaned model or annotated corrections.",
+                "prompt": "Your name is auditor. Inspect the analyzer model and proposer fragments. Identify any ephemeral bookkeeping facts, post-hoc adjustments, or implicit tokens that make plans unsound. Produce a corrected action model and/or annotations that remove these shortcuts. Indicate any preconditions or effects that must be changed or made explicit for causal soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_analyzer",
+                    "proposal_proposer",
+                    "audit_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards solver. Using the inputs from other agents, produce a single coherent PDDL domain and a PDDL problem for the specified goal variant. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem>. Ensure types, predicates, and action names are consistent, remove bookkeeping shortcuts, and keep agent contributions annotated as comments where helpful. Generate PDDL that is compatible with FastDownwards and reasonably grounded for search.",
+                "prompt": "Your name is orchestrator. Integrate the analyzer model, the proposer fragments, and the auditor corrections to produce a final PDDL domain and problem for FastDownwards. Keep actions distinct and preserve which agent contributed each fragment via comments. Choose the problem variant to target based on the input instructions or produce both variants if ambiguity remains. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "analyzer.analysis->orchestrator.pddl",
+            "proposer.propose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

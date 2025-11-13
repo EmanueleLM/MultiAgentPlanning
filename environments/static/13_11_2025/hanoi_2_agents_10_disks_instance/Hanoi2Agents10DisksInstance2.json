@@ -1,0 +1,154 @@
+{
+    "name": "Hanoi2Agents10DisksInstance2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "orchestrator",
+            "auditor"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I can move only disks A, B, C, D, E",
+                "I must follow Tower of Hanoi rules: move one disk at a time; only the top disk of a peg can be moved; never place a larger disk on a smaller disk"
+            ],
+            "goal": "Propose a correct, minimal sequence of primitive moves to relocate disks A, B, C, D from the left peg to the right peg using the middle peg as auxiliary, without moving disks F, G, H, I, J and optionally without moving E."
+        },
+        "agent_2": {
+            "private_information": [
+                "I can move only disks F, G, H, I, J",
+                "I must ensure that the larger disks remain undisturbed unless explicitly required"
+            ],
+            "goal": "Review the proposed move sequence to ensure that no action violates the agent capability constraints and that no moves are assigned to me unless they involve disks F, G, H, I, J."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate all agents and compile the final PDDL domain and problem for Fast Downward"
+            ],
+            "goal": "Integrate the validated move sequence and constraints into a final PDDL domain and problem compatible with the Fast Downward planner and encode agent-specific permissions and Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency step by step, ensuring that each move operates on the topmost movable disk, respects size ordering, and adheres to agent permissions",
+                "I remove and forbid bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other non-causal mechanisms"
+            ],
+            "goal": "Verify that the ordered move list is causally valid, adheres to the Tower of Hanoi rules at every step, and uses only permitted agents for each disk; report any inconsistencies."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disk_labels_small_to_large": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "agent_move_permissions": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                "agent_2": [
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ]
+            }
+        },
+        "public_information": [
+            "Two-agent Tower of Hanoi with 10 disks labelled A (smallest) through J (largest).",
+            "Agent move permissions: agent_1 can move A, B, C, D, E; agent_2 can move F, G, H, I, J.",
+            "Initial configuration: left peg has (top\u2192bottom) A, B, C, D, E, F, G, H, I, J; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has (top\u2192bottom) E, F, G, H, I, J; middle peg is empty; right peg has (top\u2192bottom) A, B, C, D.",
+            "Follow Tower of Hanoi rules: move one disk at a time, only the top disk can be moved, and never place a larger disk on a smaller disk.",
+            "The ordered primitive move list is provided under environment.reference_plan.primitive_moves and is to be treated as the canonical plan to achieve the goal."
+        ],
+        "reference_plan": {
+            "description": "Minimal 15-move sequence to move the four smallest disks (A, B, C, D) from left to right using middle as auxiliary while leaving E, F, G, H, I, J on the left peg.",
+            "primitive_moves": [
+                "agent_1: move disk A from left to middle",
+                "agent_1: move disk B from left to right",
+                "agent_1: move disk A from middle to right",
+                "agent_1: move disk C from left to middle",
+                "agent_1: move disk A from right to left",
+                "agent_1: move disk B from right to middle",
+                "agent_1: move disk A from left to middle",
+                "agent_1: move disk D from left to right",
+                "agent_1: move disk A from middle to right",
+                "agent_1: move disk B from middle to left",
+                "agent_1: move disk A from right to left",
+                "agent_1: move disk C from middle to right",
+                "agent_1: move disk A from left to middle",
+                "agent_1: move disk B from left to right",
+                "agent_1: move disk A from middle to right"
+            ]
+        }
+    },
+    "workflow": {
+        "agent_1": {
+            "propose_moves": {
+                "input": [],
+                "output": "moves_agent_1",
+                "system_prompt": "You are a cooperative planning agent responsible for proposing legal primitive moves for disks A, B, C, D, E under Tower of Hanoi rules while respecting agent permissions.",
+                "prompt": "Your name is agent_1. Use the public information and the canonical ordered primitive moves provided in the environment to state the exact move sequence needed to reach the goal, ensuring you only assign moves to yourself and only for disks A, B, C, D, E. Provide the moves in the format 'agent_1: move disk X from peg1 to peg2' and match environment.reference_plan.primitive_moves exactly."
+            }
+        },
+        "agent_2": {
+            "review_moves": {
+                "input": [
+                    "moves_agent_1"
+                ],
+                "output": "review_agent_2",
+                "system_prompt": "You are a reviewer ensuring that the proposed sequence respects agent capability constraints for the larger disks F, G, H, I, J and does not assign any prohibited moves.",
+                "prompt": "Your name is agent_2. Review the proposed moves from agent_1 and confirm that no moves are assigned to you and that none of your disks F, G, H, I, J are moved. If any violation exists, list the exact offending steps and explain why they are invalid; otherwise, explicitly state that the sequence is compliant."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "moves_agent_1"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a strict temporal and causal auditor. You verify that each move is applicable at the time it is made, that only top disks are moved, that smaller-on-larger ordering is preserved, that agent permissions are enforced, and that no bookkeeping shortcuts are used.",
+                "prompt": "Your name is auditor. Given the ordered move list, simulate the state step by step from the initial configuration. For every move, check and document preconditions (disk is top, destination is clear and not smaller than the moved disk, agent is allowed to move the disk) and postconditions. Report any violation precisely with its index; if none exist, state that the sequence is temporally and causally consistent. Do not introduce artificial tokens or penalties."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "moves_agent_1",
+                    "review_agent_2",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL modeling for the Fast Downward solver. You must output a final PDDL domain and a PDDL problem that encode this two-agent Tower of Hanoi instance with 10 disks and agent-specific movement permissions. Use :requirements at least :strips :typing :adl. Use types agent, obj, peg - obj, disk - obj. Model predicates on(disk, obj), clear(obj), smaller(disk, disk), can-move(agent, disk). Provide two actions: move-to-peg and move-to-disk, each with agent parameter, enforcing can-move and, for move-to-disk, the smaller constraint. Ensure the problem encodes the initial and goal configurations exactly and includes all can-move facts per agent. Enclose the domain in <domain></domain> and the problem in <problem></problem> tags and target Fast Downward compatibility.",
+                "prompt": "Integrate the validated move sequence and audit to produce the final PDDL. The domain must define types, predicates, and two actions move-to-peg and move-to-disk that respect agent permissions via can-move and the Tower of Hanoi constraints. The problem must declare objects for agents agent_1 and agent_2, pegs left, middle, right, and disks A, B, C, D, E, F, G, H, I, J; set initial on-relations to reflect left peg with A on left, B on A, C on B, D on C, E on D, F on E, G on F, H on G, I on H, J on I; clear predicates for A, middle, right; smaller relations for all ordered pairs where the first disk is smaller; can-move(agent_1, A..E) and can-move(agent_2, F..J). The goal must require the final stacks: right has A on B on C on D on right, left has E on F on G on H on I on J on left, and middle is empty. Keep the actions general and do not hardcode the specific plan in the domain; the plan can be validated against the model by a planner."
+            }
+        },
+        "constraints": [
+            "agent_1.propose_moves->agent_2.review_moves",
+            "agent_1.propose_moves->auditor.audit",
+            "agent_1.propose_moves->orchestrator.pddl",
+            "agent_2.review_moves->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

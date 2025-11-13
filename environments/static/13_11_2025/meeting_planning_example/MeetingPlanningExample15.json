@@ -1,0 +1,135 @@
+{
+    "name": "MeetingPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "city_mapper",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I value longer, unrushed meetups with friends.",
+                "I am comfortable walking or taking quick transit between nearby neighborhoods.",
+                "I prefer to avoid unnecessary waiting time at locations."
+            ],
+            "goal": "Meet John for at least 90 minutes today while arriving in San Francisco at Russian Hill at 09:00. If multiple schedules are feasible, prefer the one that maximizes meeting time with John and minimizes idle time and unnecessary travel."
+        },
+        "city_mapper": {
+            "private_information": [
+                "I maintain a lightweight city graph for travel time lookups.",
+                "I can reconcile asymmetric travel times between the same two locations."
+            ],
+            "goal": "Provide consistent, direction-aware travel durations between relevant locations so downstream agents can schedule feasible itineraries."
+        },
+        "scheduler": {
+            "private_information": [
+                "I construct multiple candidate schedules using provided time windows and travel times.",
+                "I attempt to create options that start and end at practical times with slack for uncertainty."
+            ],
+            "goal": "Enumerate diverse feasible schedules that satisfy mandatory constraints and present trade-offs between early arrival, longest meeting, and minimal idle time."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency over proposed schedule options.",
+                "I remove or flag any shortcuts such as quota tokens, post-hoc penalties, or invented buffers not justified by travel times or availability windows."
+            ],
+            "goal": "Audit each schedule for strict feasibility with respect to time windows, travel durations, and minimum meeting length, and ensure no bookkeeping tricks are used."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate audited plans and produce a final formal planning model.",
+                "I target the FastDownward solver with a clean PDDL domain and problem."
+            ],
+            "goal": "Select the best feasible schedule and produce a final PDDL domain and problem for FastDownward that encodes locations, travel actions, and a meeting action satisfying John's availability and minimum duration."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "time_format": "HH:MM",
+            "start_location": "Russian Hill",
+            "arrival_time": "09:00",
+            "locations": [
+                "Russian Hill",
+                "Golden Gate Park"
+            ],
+            "travel_times": {
+                "Russian Hill->Golden Gate Park": 21,
+                "Golden Gate Park->Russian Hill": 19
+            }
+        },
+        "public_information": [
+            "You arrive at Russian Hill at 09:00.",
+            "Travel time from Russian Hill to Golden Gate Park is 21 minutes.",
+            "Travel time from Golden Gate Park to Russian Hill is 19 minutes.",
+            "John is at Golden Gate Park from 13:00 to 18:15.",
+            "You want to meet John for at least 90 minutes.",
+            "Objective: consider multiple feasible schedules and pick the best one that satisfies constraints and optimizes meeting time and efficiency."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "declare_preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler clarifying objectives and tie-breakers for a one-day visit in San Francisco.",
+                "prompt": "Summarize the key preferences and decision criteria given the public information and your private priorities. Include the minimum acceptable meeting duration with John, preference for minimizing idle time, and whether returning to Russian Hill after the meeting is necessary or optional."
+            }
+        },
+        "city_mapper": {
+            "consolidate_travel_times": {
+                "input": [],
+                "output": "city_travel_times",
+                "system_prompt": "You are the city mapper normalizing direction-aware travel times across locations.",
+                "prompt": "Provide a compact, direction-aware travel time table for the relevant locations, confirming asymmetry where applicable. Ensure the data is consistent with the environment's public information and suitable for time-window scheduling."
+            }
+        },
+        "scheduler": {
+            "enumerate_schedules": {
+                "input": [
+                    "traveler_preferences",
+                    "city_travel_times"
+                ],
+                "output": "schedule_options",
+                "system_prompt": "You are a day-trip scheduler generating multiple candidate itineraries with time feasibility checks.",
+                "prompt": "Generate several distinct feasible schedules starting from Russian Hill at 09:00 that meet John at Golden Gate Park within his availability window of 13:00 to 18:15 for at least 90 minutes. Provide at least three options that trade off earliest arrival, longest meeting, and minimal idle time. For each option, include departure times, arrival times, meeting interval, total meeting length, and whether a return to Russian Hill is included. Do not output PDDL; provide human-readable, structured schedules."
+            }
+        },
+        "auditor": {
+            "audit_temporal_consistency": {
+                "input": [
+                    "schedule_options",
+                    "city_travel_times"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal and causal consistency and remove bookkeeping shortcuts.",
+                "prompt": "Audit each candidate schedule for feasibility. Verify travel durations match the direction-specific times, the meeting occurs strictly within John's 13:00 to 18:15 window, and the meeting lasts at least 90 minutes. Remove or flag any schedule that uses unjustified buffers, quota tokens, post-hoc penalties, or any invented mechanisms. Output only the feasible, clean schedules ranked by the traveler\u2019s preferences."
+            }
+        },
+        "orchestrator": {
+            "integrate_and_compile_pddl": {
+                "input": [
+                    "audited_schedules",
+                    "traveler_preferences",
+                    "city_travel_times"
+                ],
+                "output": "fd_pddl",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling targeting the FastDownward solver. You must produce a single coherent PDDL domain and problem that encode locations, travel actions with direction-aware durations, and a meeting action constrained to occur within the availability window and satisfy a minimum duration.",
+                "prompt": "Select the best audited schedule according to the traveler\u2019s preferences and efficiency. Then produce a PDDL domain and problem for FastDownward. Include objects for locations (Russian Hill, Golden Gate Park), the agent, and time-relevant constructs. Encode direction-aware travel actions with appropriate durations and a meeting action with a minimum duration of 90 minutes that must be scheduled within John\u2019s availability of 13:00 to 18:15. Ensure initial state reflects arrival at Russian Hill at 09:00 and include goal conditions that the meeting with John is achieved with the minimum duration. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Do not include any extraneous commentary."
+            }
+        },
+        "constraints": [
+            "traveler.declare_preferences->scheduler.enumerate_schedules",
+            "city_mapper.consolidate_travel_times->scheduler.enumerate_schedules",
+            "scheduler.enumerate_schedules->auditor.audit_temporal_consistency",
+            "city_mapper.consolidate_travel_times->auditor.audit_temporal_consistency",
+            "auditor.audit_temporal_consistency->orchestrator.integrate_and_compile_pddl",
+            "traveler.declare_preferences->orchestrator.integrate_and_compile_pddl",
+            "city_mapper.consolidate_travel_times->orchestrator.integrate_and_compile_pddl"
+        ]
+    }
+}

@@ -1,0 +1,205 @@
+{
+    "name": "Hanoi3Agents10DisksInstance17",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "agent_3",
+            "auditor",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I can move disks A, B, C, D"
+            ],
+            "goal": "Contribute moves involving disks A-D to reach the specified target configuration without violating Tower of Hanoi rules."
+        },
+        "agent_2": {
+            "private_information": [
+                "I can move disks E, F, G"
+            ],
+            "goal": "Stand by to move disks E-G if required while preserving rule compliance and supporting the global objective."
+        },
+        "agent_3": {
+            "private_information": [
+                "I can move disks H, I, J"
+            ],
+            "goal": "Stand by to move disks H-J if required while preserving rule compliance and supporting the global objective."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of the plan and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties."
+            ],
+            "goal": "Validate that the move sequence respects single-top moves, size ordering constraints, agent permissions, and achieves the exact goal configuration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate agents, use the auditor\u2019s validation, and produce a final PDDL domain and problem for the FastDownwards solver encoding the instance with agent-specific move permissions."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "ordering_smallest_to_largest": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "agent_permissions": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ],
+                "agent_2": [
+                    "E",
+                    "F",
+                    "G"
+                ],
+                "agent_3": [
+                    "H",
+                    "I",
+                    "J"
+                ]
+            },
+            "initial_configuration": {
+                "left": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "middle": [],
+                "right": []
+            },
+            "goal_configuration": {
+                "left": [
+                    "B",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "middle": [
+                    "C",
+                    "D"
+                ],
+                "right": [
+                    "A"
+                ]
+            }
+        },
+        "public_information": [
+            "Three-peg Tower of Hanoi with 10 disks A (smallest) to J (largest).",
+            "Only the top disk of any peg may be moved.",
+            "No disk may be placed on top of a smaller disk.",
+            "Agent permissions: agent_1 moves A-D, agent_2 moves E-G, agent_3 moves H-J.",
+            "Initial configuration: left has A,B,C,D,E,F,G,H,I,J (top to bottom); middle empty; right empty.",
+            "Goal configuration: left has B,E,F,G,H,I,J (top to bottom); middle has C,D (top to bottom); right has A."
+        ],
+        "move_sequence": [
+            "agent_1: move disk A from left to right",
+            "agent_1: move disk B from left to middle",
+            "agent_1: move disk A from right to middle",
+            "agent_1: move disk C from left to right",
+            "agent_1: move disk A from middle to left",
+            "agent_1: move disk B from middle to right",
+            "agent_1: move disk A from left to right",
+            "agent_1: move disk D from left to middle",
+            "agent_1: move disk A from right to middle",
+            "agent_1: move disk B from right to left",
+            "agent_1: move disk A from middle to left",
+            "agent_1: move disk C from right to middle",
+            "agent_1: move disk A from left to right"
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "local_context": {
+                "input": [],
+                "output": "ctx_agent_1",
+                "system_prompt": "You are agent_1 and can move disks A, B, C, D; reason about legal top-only moves and size ordering without generating PDDL.",
+                "prompt": "Summarize constraints affecting disks A-D and how they support the target arrangement, focusing on preserving the larger-under-smaller rule and agent permissions."
+            }
+        },
+        "agent_2": {
+            "local_context": {
+                "input": [],
+                "output": "ctx_agent_2",
+                "system_prompt": "You are agent_2 and can move disks E, F, G; provide situational awareness without generating PDDL.",
+                "prompt": "Explain when moving E-G might be necessary or should be avoided to keep E-J anchored on the left unless required, considering the global goal."
+            }
+        },
+        "agent_3": {
+            "local_context": {
+                "input": [],
+                "output": "ctx_agent_3",
+                "system_prompt": "You are agent_3 and can move disks H, I, J; provide situational awareness without generating PDDL.",
+                "prompt": "Explain why keeping H-J stationary on the left is desirable for this instance and how to avoid unnecessary disruptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "ctx_agent_1",
+                    "ctx_agent_2",
+                    "ctx_agent_3",
+                    "move_sequence"
+                ],
+                "output": "audited_moves",
+                "system_prompt": "You are a rigorous temporal and causal consistency auditor; validate that the move list respects Tower of Hanoi rules, agent permissions, and achieves the exact goal; remove bookkeeping shortcuts such as quota tokens and post-hoc penalties; return the original list if sound or a corrected list in the same format.",
+                "prompt": "Audit the proposed moves {environment->move_sequence} against the initial and goal configurations and the agent permissions; if valid, return the same ordered list; if not, return a corrected ordered list using the exact format 'agent_i: move disk X from peg1 to peg2'."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "audited_moves"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with PDDL and the FastDownwards solver; produce a complete PDDL domain and a PDDL problem for this exact 3-peg Tower of Hanoi instance with agent-specific move permissions; enclose the domain between <domain></domain> and the problem between <problem></problem> tags; ensure the model is solvable by FastDownwards.",
+                "prompt": "Generate a PDDL domain and problem capturing disks A-J with strict size ordering, pegs {left, middle, right}, initial and goal states from the environment, and agent-specific permissions (agent_1 moves A-D, agent_2 moves E-G, agent_3 moves H-J); optionally include the audited move list {audited_moves} as comments; target FastDownwards."
+            }
+        },
+        "constraints": [
+            "agent_1.local_context->auditor.audit",
+            "agent_2.local_context->auditor.audit",
+            "agent_3.local_context->auditor.audit",
+            "auditor.audit->orchestrator.synthesize_pddl"
+        ]
+    }
+}

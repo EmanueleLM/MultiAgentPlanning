@@ -1,0 +1,18 @@
+(define (domain calendar-meeting)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types person timeslot)
+  (:constants kathryn charlotte lauren - person)
+  (:predicates
+    (free ?p - person ?t - timeslot)
+    (allowed ?t - timeslot)
+    (next ?t1 - timeslot ?t2 - timeslot)
+    (scheduled)
+  )
+  (:action schedule-at
+    :parameters (?t - timeslot)
+    :precondition (and (not (scheduled)) (allowed ?t)
+                       (free kathryn ?t) (free charlotte ?t) (free lauren ?t))
+    :effect (and (scheduled)
+                 (not (free kathryn ?t)) (not (free charlotte ?t)) (not (free lauren ?t)))
+  )
+)

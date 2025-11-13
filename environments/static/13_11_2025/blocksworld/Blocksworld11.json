@@ -1,0 +1,123 @@
+{
+    "name": "Blocksworld11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "manipulator",
+            "world_modeler",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "manipulator": {
+            "private_information": [
+                "I specialize in formalizing action schemas for classic STRIPS-like planning tasks.",
+                "I know the canonical Blocksworld operators: pick-up, put-down, unstack, stack.",
+                "I avoid emitting PDDL; instead I provide structured operator specifications and invariants."
+            ],
+            "goal": "Provide a precise, implementation-agnostic specification of Blocksworld operators including parameters, preconditions, add effects, and delete effects that faithfully match the stated action restrictions."
+        },
+        "world_modeler": {
+            "private_information": [
+                "I extract objects, initial fluents, and goals from natural language task statements.",
+                "I align synonyms such as on top of with the canonical predicate on and on the table with ontable.",
+                "I avoid emitting PDDL; instead I output a clean, normalized state description."
+            ],
+            "goal": "Identify the unique objects, normalize predicates, and build structured initial and goal states for each scenario described by the human."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across plans and state transitions.",
+                "I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and insist on explicit causal links and correct preconditions for each step.",
+                "I do not emit PDDL; I provide correctness judgements, minimal repairs, and ordering constraints."
+            ],
+            "goal": "Verify that the given plan for scenario 1 is causally and temporally consistent with the operator specs and initial state, propose minimal fixes if needed, and summarize causal links and ordering constraints. For scenario 2, flag missing steps and outline a causally sound sequence without shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate operator specs, world states, and audit reports to produce a final planning model.",
+                "I target the FastDownward solver and must output a PDDL domain and a single PDDL problem wrapped in <domain></domain> and <problem></problem> tags."
+            ],
+            "goal": "Produce a final PDDL domain for classic Blocksworld and a single PDDL problem for scenario 1, fully compatible with the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "seed": 0,
+            "max_blocks": 8,
+            "predicates": [
+                "on(x,y)",
+                "ontable(x)",
+                "clear(x)",
+                "holding(x)",
+                "handempty"
+            ]
+        },
+        "public_information": [
+            "You are arranging blocks into stacks in a classic Blocksworld setting.",
+            "Available actions: Pick up a block; Unstack a block from on top of another block; Put down a block; Stack a block on top of another block.",
+            "Restrictions: You may only pick up or unstack one block at a time and only if your hand is empty.",
+            "Restrictions: You may only pick up a block if it is on the table and clear.",
+            "Restrictions: You may only unstack a block if it is actually on top of the other block you are unstacking from and it is clear.",
+            "Restrictions: After pick-up or unstack, you are holding the block.",
+            "Restrictions: You may only put down a block you are holding.",
+            "Restrictions: You may only stack a block on another block if you are holding the block to be stacked and the target block is clear.",
+            "Restrictions: After put-down or stack, your hand becomes empty.",
+            "Restrictions: Once you stack a block on a second block, the second block is no longer clear.",
+            "Scenario 1 initial conditions: red is clear, blue is clear, orange is clear, hand is empty, blue is on top of yellow, red is on the table, orange is on the table, yellow is on the table.",
+            "Scenario 1 goal: blue on top of orange and yellow on top of red.",
+            "Scenario 1 provided plan: unstack blue from yellow; stack blue on orange; pick up yellow; stack yellow on red.",
+            "Scenario 2 initial conditions: orange is clear, yellow is clear, hand is empty, orange is on top of blue, yellow is on top of red, red is on the table, blue is on the table.",
+            "Scenario 2 goal: red on top of blue.",
+            "Scenario 2 plan: not provided; must be derived while respecting all restrictions."
+        ]
+    },
+    "workflow": {
+        "manipulator": {
+            "specify_actions": {
+                "input": [],
+                "output": "opspec",
+                "system_prompt": "You are an expert in operator modeling for STRIPS-like planning. Provide a concise JSON specification of the Blocksworld operators pick-up, put-down, unstack, and stack with parameters, preconditions, add effects, delete effects, and key invariants. Use canonical predicates on(x,y), ontable(x), clear(x), holding(x), handempty. Do not emit PDDL; only provide structured JSON suitable for downstream compilation.",
+                "prompt": "Your name is manipulator. Consider the public rules and restrictions and your private knowledge. Produce a JSON object with fields: actions (list of actions with name, parameters, preconditions, add_effects, del_effects), invariants (list), and notes. Ensure the operators exactly respect the provided restrictions and avoid any bookkeeping shortcuts."
+            }
+        },
+        "world_modeler": {
+            "extract_state": {
+                "input": [],
+                "output": "state_model",
+                "system_prompt": "You normalize world descriptions into a clean symbolic state model without emitting PDDL. Map phrases like on top of to on and on the table to ontable. Collect objects, initial states, and goals for each scenario.",
+                "prompt": "Your name is world_modeler. From the public information, extract the set of unique blocks and produce a JSON object with fields: objects (list of block symbols), scenarios (object with scenario_1 and scenario_2), where each scenario has init (list of predicate atoms), goal (list of predicate atoms), and plan (list of natural language steps if provided, otherwise empty). Maintain consistency with the predicates listed in environment.init."
+            }
+        },
+        "temporal_auditor": {
+            "audit_plan": {
+                "input": [
+                    "opspec",
+                    "state_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency in plans. Use only the provided operator specs and normalized state. Provide reasoning about preconditions, effects, causal links, and ordering constraints. Do not emit PDDL.",
+                "prompt": "Your name is temporal_auditor. Using the operator specs (opspec) and the normalized states (state_model), audit Scenario 1's provided plan for correctness step by step. If any step is missing prerequisites or has extraneous shortcuts, provide minimal repairs. Summarize causal links, open preconditions resolved by each step, and a partial order over the steps. For Scenario 2, propose a minimal valid sequence of steps that achieves the goal from the initial state with explicit justifications and no bookkeeping shortcuts. Output JSON with fields: scenario_1 {status, repaired_plan_if_any, causal_links, ordering_constraints}, scenario_2 {proposed_plan, justifications}."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "opspec",
+                    "state_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL and the FastDownward planner. Always produce one PDDL domain and one PDDL problem wrapped respectively in <domain></domain> and <problem></problem> tags. Ensure compatibility with FastDownward: use :strips (and optionally :typing), avoid negative preconditions, and represent effects via add and delete lists. Use canonical predicates on, ontable, clear, holding, handempty. Encode the four actions: pick-up, put-down, unstack, stack. The problem should target Scenario 1. Keep names and object symbols consistent with the inputs. Do not include explanations outside the tags.",
+                "prompt": "Integrate the operator specs from opspec, the normalized objects and states from state_model, and the consistency results from audit_report. Produce a final PDDL domain for classic Blocksworld and a single PDDL problem instance for Scenario 1 using the objects red, blue, orange, yellow. The initial state must match Scenario 1 init, and the goal must match Scenario 1 goal. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "manipulator.specify_actions->temporal_auditor.audit_plan",
+            "world_modeler.extract_state->temporal_auditor.audit_plan",
+            "manipulator.specify_actions->orchestrator.pddl",
+            "world_modeler.extract_state->orchestrator.pddl",
+            "temporal_auditor.audit_plan->orchestrator.pddl"
+        ]
+    }
+}

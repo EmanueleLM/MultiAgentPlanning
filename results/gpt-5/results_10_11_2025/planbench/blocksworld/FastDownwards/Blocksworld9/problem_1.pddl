@@ -1,0 +1,17 @@
+(define (problem bw-s2)
+  (:domain blocksworld-strips)
+  (:objects red blue yellow orange - block)
+  (:init
+    (handempty)
+    (on red yellow)
+    (on blue orange)
+    (ontable yellow)
+    (ontable orange)
+    (clear red)
+    (clear blue)
+  )
+  (:goal (and
+    (on blue yellow)
+    (on yellow red)
+  ))
+)

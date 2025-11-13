@@ -1,0 +1,114 @@
+{
+    "name": "TripPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_planner",
+            "constraints_auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I design multi-city trips under flight connectivity constraints.",
+                "I prefer to honor user stay preferences when feasible.",
+                "I understand that only direct flights are allowed between consecutive cities."
+            ],
+            "goal": "Propose candidate 14-day itineraries across Barcelona, Florence, and Helsinki, using only direct flights, aiming for stays close to Florence: 6 days, Barcelona: 5 days, Helsinki: 5 days, and indicate when the friend can be met in Florence between day 9 and day 14."
+        },
+        "constraints_auditor": {
+            "private_information": [
+                "I audit temporal feasibility and causal correctness (you must be in a city to stay there; you must be in the origin to take a flight; only direct flights may be used; days must sum to exactly the trip length).",
+                "I convert conflicting user wishes into prioritized soft constraints, then produce a consistent repaired specification.",
+                "I remove bookkeeping shortcuts such as quota tokens, hidden counters, or post-hoc penalties; I use explicit state variables and constraints instead.",
+                "I verify that the friend meeting occurs in Florence within the specified window."
+            ],
+            "goal": "Audit and normalize the itinerary candidates into a single consistent and exactly-14-day plan that respects direct-flight connectivity and meets the friend in Florence between days 9 and 14; explain any deviations from the preferred day allocations and output explicit constraints suitable for planning."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited plan and produce the final PDDL domain and problem for the Fast Downward solver, modeling days, city stays, direct flights, and the Florence meeting-window constraint to yield a valid 14-day plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "cities": [
+                "barcelona",
+                "florence",
+                "helsinki"
+            ],
+            "direct_flights": [
+                [
+                    "barcelona",
+                    "florence"
+                ],
+                [
+                    "florence",
+                    "barcelona"
+                ],
+                [
+                    "helsinki",
+                    "barcelona"
+                ],
+                [
+                    "barcelona",
+                    "helsinki"
+                ]
+            ],
+            "preferred_stays": {
+                "florence": 6,
+                "barcelona": 5,
+                "helsinki": 5
+            },
+            "meeting_window": {
+                "city": "florence",
+                "start_day": 9,
+                "end_day": 14
+            },
+            "day_index_starts_at": 1
+        },
+        "public_information": [
+            "Trip length is exactly 14 days, indexed starting at day 1.",
+            "Target cities to visit are Barcelona, Florence, and Helsinki.",
+            "Only direct flights may be taken between consecutive cities.",
+            "Known direct-flight pairs are: Barcelona \u2194 Florence and Helsinki \u2194 Barcelona.",
+            "Preferred stays are Florence: 6 days, Barcelona: 5 days, Helsinki: 5 days; these preferences may conflict with the 14-day total and should be treated as soft.",
+            "You must meet the friend in Florence on one of the days in the inclusive range day 9 to day 14."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "propose_itineraries": {
+                "input": [],
+                "output": "draft_itineraries",
+                "system_prompt": "You are a travel itinerary planner who produces compact, structured candidate itineraries. Respect the trip length and flight connectivity, aim to satisfy the preferred stays when possible, and clearly mark the feasible Florence meeting window.",
+                "prompt": "Context: {environment->public_information}. Your knowledge: {agents->itinerary_planner->private_information}. Goal: {agents->itinerary_planner->goal}. Task: Propose 1\u20133 candidate itineraries that each sum to exactly 14 days, list the city order and per-city stay lengths, and annotate at least one feasible meeting day in Florence within the required window. Use only cities and direct flights specified in the public information. Return a concise JSON object with an 'options' array; each option should include 'city_order', 'stays', 'daily_plan_summary', and 'notes'. Do not output PDDL."
+            }
+        },
+        "constraints_auditor": {
+            "audit_and_normalize": {
+                "input": [
+                    "draft_itineraries"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You audit temporal and causal consistency, detect infeasible requirements, and normalize into explicit constraints without using quota tokens or post-hoc penalties.",
+                "prompt": "Inputs: {environment->public_information} and {draft_itineraries}. Your knowledge: {agents->constraints_auditor->private_information}. Task: 1) Check that each candidate sums to 14 days, uses only direct flights, and schedules the friend meeting in Florence in the required window. 2) If preferences conflict with the 14-day total, treat the preferred stays as soft and select a single consistent plan that meets the meeting-window requirement and flight connectivity. 3) Output a normalized JSON with fields: 'final_city_order', 'final_stays', 'meeting_day_in_florence', 'hard_constraints', 'soft_preferences', and 'rationale'. Use explicit constraints only (no quota tokens or post-hoc penalties). Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_plan"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with PDDL for travel planning targeting the Fast Downward (a.k.a. FastDownwards) solver. You must output a PDDL domain and a PDDL problem, enclosed in <domain></domain> and <problem></problem> tags.",
+                "prompt": "Context: {environment->public_information}. Audited specification: {audited_plan}. Goal: {agents->orchestrator->goal}. Requirements: 1) Produce a classical STRIPS-style PDDL domain modeling days, the next-day relation, being-in-city, flying between directly connected cities, staying in the current city for a day, and meeting the friend in Florence within the inclusive window from day 9 to day 14. 2) Encode only the provided direct-flight edges (Barcelona \u2194 Florence, Helsinki \u2194 Barcelona). 3) Ensure exactly 14 days are modeled (e.g., objects d1..d14) and ensure the plan accounts for every day. 4) The problem should instantiate objects for the three cities and days, set the initial city (consistent with the audited plan), specify direct-flight facts, and set goals that enforce completing all 14 days with the required Florence meeting within the window. 5) Keep naming consistent with the audited plan and avoid features not supported by Fast Downward's classical planning (e.g., avoid numeric fluents unless compiled away). 6) Enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.propose_itineraries->constraints_auditor.audit_and_normalize",
+            "constraints_auditor.audit_and_normalize->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,71 @@
+(define (domain meetingplanningexample3-domain)
+  (:requirements :strips :typing)
+  (:types agent person location time level)
+  (:constants bayview goldengatepark - location)
+  (:predicates
+    (at ?a - agent ?l - location)
+    (current ?t - time)
+    (next ?t1 - time ?t2 - time)
+    (offset22 ?t1 - time ?t2 - time)
+    (offset23 ?t1 - time ?t2 - time)
+    (avail-barbara ?t - time)
+    (need ?lv - level)
+    (prev ?lp - level ?ln - level)
+  )
+  (:action move-bayview-to-ggp
+    :parameters (?a - agent ?t1 - time ?t2 - time)
+    :precondition (and
+      (at ?a bayview)
+      (current ?t1)
+      (offset22 ?t1 ?t2)
+    )
+    :effect (and
+      (not (at ?a bayview))
+      (at ?a goldengatepark)
+      (not (current ?t1))
+      (current ?t2)
+    )
+  )
+  (:action move-ggp-to-bayview
+    :parameters (?a - agent ?t1 - time ?t2 - time)
+    :precondition (and
+      (at ?a goldengatepark)
+      (current ?t1)
+      (offset23 ?t1 ?t2)
+    )
+    :effect (and
+      (not (at ?a goldengatepark))
+      (at ?a bayview)
+      (not (current ?t1))
+      (current ?t2)
+    )
+  )
+  (:action wait-1min
+    :parameters (?t1 - time ?t2 - time)
+    :precondition (and
+      (current ?t1)
+      (next ?t1 ?t2)
+    )
+    :effect (and
+      (not (current ?t1))
+      (current ?t2)
+    )
+  )
+  (:action meet-barbara-1min
+    :parameters (?a - agent ?t1 - time ?t2 - time ?lp - level ?ln - level)
+    :precondition (and
+      (at ?a goldengatepark)
+      (current ?t1)
+      (next ?t1 ?t2)
+      (avail-barbara ?t1)
+      (need ?ln)
+      (prev ?lp ?ln)
+    )
+    :effect (and
+      (not (need ?ln))
+      (need ?lp)
+      (not (current ?t1))
+      (current ?t2)
+    )
+  )
+)

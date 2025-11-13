@@ -1,0 +1,164 @@
+{
+    "name": "Hanoi2Agents10DisksInstance18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "orchestrator",
+            "auditor"
+        ],
+        "agent_1": {
+            "private_information": [
+                "You can move only disks A, B, C, D, E.",
+                "You must always move exactly one disk at a time.",
+                "You cannot place a larger disk on top of a smaller disk.",
+                "You can move a disk only if it has no disk on top (i.e., it is clear)."
+            ],
+            "goal": "Help achieve the final configuration with minimal interference to larger disks: left peg top->bottom B, E, F, G, H, I, J; middle peg empty; right peg top->bottom A, C, D."
+        },
+        "agent_2": {
+            "private_information": [
+                "You can move only disks F, G, H, I, J.",
+                "You must always move exactly one disk at a time.",
+                "You cannot place a larger disk on top of a smaller disk.",
+                "You can move a disk only if it has no disk on top (i.e., it is clear)."
+            ],
+            "goal": "Assist by safeguarding and, only if necessary, repositioning larger disks F..J while respecting Tower of Hanoi rules so the final configuration is reached."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinate agents, reconcile constraints, and produce the final PDDL domain and problem for the Fast Downward solver.",
+                "Keep agent actions distinct and respect disk move permissions."
+            ],
+            "goal": "Integrate the agents' contributions and the audited plan into a single consistent move sequence and generate the final PDDL domain and problem targeting the Fast Downward solver."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency of the plan and remove shortcuts such as bookkeeping tokens, quotas, or post-hoc penalties.",
+                "Verify that each move respects the Tower of Hanoi constraints and agent disk-permission constraints.",
+                "Ensure the plan achieves the specified goal from the given initial state with no illegal intermediate states."
+            ],
+            "goal": "Certify that the move sequence is valid, respects all rules, and achieves the target configuration without extraneous artifacts."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_ordered_small_to_large": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "agent_permissions": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                "agent_2": [
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ]
+            }
+        },
+        "public_information": [
+            "This is a cooperative 2-agent Tower of Hanoi with 10 disks labeled A (smallest) to J (largest).",
+            "Initial configuration: left peg has top->bottom A, B, C, D, E, F, G, H, I, J; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has top->bottom B, E, F, G, H, I, J; middle peg is empty; right peg has top->bottom A, C, D.",
+            "Agent movement permissions: agent_1 may move only disks A, B, C, D, E; agent_2 may move only disks F, G, H, I, J.",
+            "Rules: move exactly one disk at a time; a disk can be moved only if it is clear; never place a larger disk on top of a smaller disk."
+        ],
+        "primitive_moves": [
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk B from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk C from left to middle",
+            "agent_1: move disk A from right to left",
+            "agent_1: move disk B from right to middle",
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk D from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk B from middle to left",
+            "agent_1: move disk A from right to left",
+            "agent_1: move disk C from middle to right",
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk B from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk A from right to middle",
+            "agent_1: move disk B from right to left",
+            "agent_1: move disk A from middle to right"
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "decompose": {
+                "input": [],
+                "output": "plan_agent_1",
+                "system_prompt": "You are agent_1, responsible for disks A, B, C, D, E. Provide a clear, stepwise plan using only allowed disks and respecting Tower of Hanoi rules. Do not emit PDDL. Return an ordered list of primitive moves in the format 'agent_1: move disk X from peg1 to peg2'.",
+                "prompt": "Context: Initial left peg has top->bottom A, B, C, D, E, F, G, H, I, J; middle empty; right empty. Goal: left top->bottom B, E, F, G, H, I, J; middle empty; right top->bottom A, C, D. Constraints: move one disk at a time, never place larger on smaller, only move clear disks, and you can only move disks A..E. Provide the ordered list of moves that achieves the goal. If larger disks need not move, avoid moving them."
+            }
+        },
+        "agent_2": {
+            "constraints": {
+                "input": [],
+                "output": "constraints_agent_2",
+                "system_prompt": "You are agent_2, responsible for disks F, G, H, I, J. Analyze whether moving any of your disks is necessary given the initial and goal states. Do not emit PDDL. Summarize the constraints you must enforce and explicitly state whether you plan to execute any moves.",
+                "prompt": "Context: Initial left peg has all disks A..J stacked smallest on top; goal leaves disks F..J on the left peg beneath E, with no moves required if avoidable. Provide a short justification on whether you must move any of F..J to achieve the goal while respecting Hanoi rules."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_agent_1",
+                    "constraints_agent_2"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are the plan auditor. Verify temporal and causal consistency, ensure no illegal move occurs, and remove any bookkeeping shortcuts. Check agent permissions per move, disk-clearness preconditions, and larger-on-smaller violations. Do not emit PDDL. Approve or return a corrected ordered list of primitive moves.",
+                "prompt": "Audit the proposed plan for correctness from the given initial state to the specified goal. Ensure each move is legal, respects agent permissions, and that the final configuration matches the target exactly with the middle peg empty."
+            }
+        },
+        "orchestrator": {
+            "integrate": {
+                "input": [
+                    "plan_agent_1",
+                    "audited_plan"
+                ],
+                "output": "final_plan",
+                "system_prompt": "You are the orchestrator. Integrate the agents' inputs and the auditor's verification into a single authoritative ordered list of primitive moves. Keep agent actions distinct and respect all constraints.",
+                "prompt": "Produce the final ordered list of primitive moves in the exact format 'agent_i: move disk X from peg1 to peg2'. Use the audited plan if available. Ensure it achieves: left top->bottom B, E, F, G, H, I, J; middle empty; right top->bottom A, C, D."
+            },
+            "pddl": {
+                "input": [
+                    "final_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and Fast Downward. Produce a complete PDDL domain and problem that model a two-agent Tower of Hanoi with agent-specific disk permissions. Enclose the domain between <domain></domain> and the problem between <problem></problem>. The domain must include actions that enforce legality of moves and agent permissions. The problem must encode the initial and goal configurations described in the context. Target the Fast Downward solver.",
+                "prompt": "Construct a PDDL domain with types agent, disk, peg; predicates smaller(d1 d2), clear(x) for disk or peg, on(d x) where x is either a disk or a peg, and assigned(agent disk). Provide actions to move a clear disk from a peg or disk to a peg or disk subject to legality (no larger on smaller) and agent permission constraints. Problem: objects pegs left, middle, right; disks A..J with size ordering A<B<...<J; agents agent_1 and agent_2 with assigned pairs agent_1 to {A,B,C,D,E}, agent_2 to {F,G,H,I,J}. Initial: on(A B), on(B C), on(C D), on(D E), on(E F), on(F G), on(G H), on(H I), on(I J), on(J left), clear(A), clear(middle), clear(right). Goal: right has A on C on D and left has B on E on F on G on H on I on J on left, with middle empty. Enclose outputs in the requested tags."
+            }
+        },
+        "constraints": [
+            "agent_1.decompose->auditor.audit",
+            "agent_2.constraints->auditor.audit",
+            "auditor.audit->orchestrator.integrate",
+            "orchestrator.integrate->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "flight_validator",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "You specialize in constructing compact multi-city itineraries over fixed horizons.",
+                "You prioritize hard constraints over soft preferences when conflicts arise.",
+                "You aim to minimize unnecessary flights and respect direct-flight-only rules."
+            ],
+            "goal": "Propose a feasible 6-day city-by-day itinerary that visits Berlin, Warsaw, and Bucharest, uses only direct flights between cities, and places the traveler in Bucharest on days 5 and 6."
+        },
+        "flight_validator": {
+            "private_information": [
+                "You maintain a verified list of direct flights between the cities of interest.",
+                "You reject any itinerary step that requires a non-direct connection."
+            ],
+            "goal": "Provide and enforce the direct-flight adjacency for Berlin, Warsaw, and Bucharest to ensure all inter-city moves in the itinerary are direct."
+        },
+        "auditor": {
+            "private_information": [
+                "You audit temporal and causal consistency of plans.",
+                "You eliminate bookkeeping shortcuts (quota tokens, post-hoc penalties, or self-fulfilling assumptions).",
+                "You ensure exactly one city per day, exactly 6 days total, and that every inter-city transition corresponds to a direct flight."
+            ],
+            "goal": "Audit and finalize a day-by-day plan of 6 days that is temporally and causally consistent, uses only direct flights, and satisfies being in Bucharest on days 5 and 6."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited itinerary and flight graph into a coherent PDDL domain and problem that can be solved by the FastDownward planner, yielding a valid 6-day plan that respects direct flights and places the traveler in Bucharest on days 5 and 6."
+        }
+    },
+    "environment": {
+        "init": {
+            "trip_days": 6,
+            "cities": [
+                "berlin",
+                "warsaw",
+                "bucharest"
+            ],
+            "start_city": "berlin",
+            "visibility": 1
+        },
+        "public_information": [
+            "Trip length is 6 consecutive days labeled d1, d2, d3, d4, d5, d6.",
+            "Cities to visit: Berlin, Warsaw, Bucharest.",
+            "Direct flights exist only between Berlin and Warsaw, and between Warsaw and Bucharest, in both directions.",
+            "Flights must be direct; no connections or multi-leg hops within a day are allowed.",
+            "Hard constraint: Be in Bucharest on day 5 and day 6 to both meet the friend and satisfy the 2-day Bucharest stay requirement.",
+            "Soft preferences: Spend 3 days in Berlin and 3 days in Warsaw, but since the total is 6 days and two must be in Bucharest, these preferences cannot both be fully satisfied.",
+            "Unless overridden by audit, assume starting in Berlin on day 1."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "intent": {
+                "input": [],
+                "output": "itinerary_intent",
+                "system_prompt": "You are a travel itinerary planner. Produce a concise, feasible outline for a 6-day trip across Berlin, Warsaw, and Bucharest using only direct flights. Respect hard constraints first (Bucharest on days 5 and 6), minimize flights, and keep the proposal easy to audit. Do not emit PDDL.",
+                "prompt": "Your name is itinerary_planner. Public information: {environment->public_information}. Your task: propose a single feasible city-per-day assignment for days d1..d6 that respects direct flights and sets Bucharest on d5 and d6. Prefer balanced allocation of remaining days between Berlin and Warsaw to minimize regret, and minimize flights by grouping consecutive days per city. Return a compact, single-line summary including the day-by-day cities and implied flights."
+            }
+        },
+        "flight_validator": {
+            "graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You validate direct flight availability between cities and provide an explicit adjacency list for planning and auditing. Do not emit PDDL.",
+                "prompt": "Your name is flight_validator. Public information: {environment->public_information}. Provide the undirected direct-flight adjacency among the cities as pairs and a simple rule statement that only listed direct pairs are permitted for inter-city moves."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_intent",
+                    "flight_graph"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are the temporal/causal consistency auditor. Your role is to check that the itinerary spans exactly 6 days, assigns exactly one city per day, uses only direct flights between consecutive days, and places the traveler in Bucharest on days 5 and 6. Remove any bookkeeping shortcuts such as quota tokens or post-hoc penalties. When preferences conflict with hard constraints, keep hard constraints and clearly state any compromises. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Here is the planner's proposed itinerary: {itinerary_intent}. Here is the validated direct-flight graph: {flight_graph}. Produce a finalized audited plan that satisfies all hard constraints, lists the city for each day d1..d6, and specifies the flight legs taken between days when the city changes. If the proposal violates constraints, correct it with minimal changes. Provide a brief one-line rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_plan",
+                    "flight_graph"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You integrate audited constraints and produce a final PDDL domain and problem for the FastDownward solver. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions standard STRIPS/ADL and include action costs via total-cost to ensure FastDownward compatibility.",
+                "prompt": "Goal: Generate a PDDL domain and a PDDL problem for a 6-day trip across Berlin, Warsaw, and Bucharest using only direct flights. Use days d1..d6 and cities berlin, warsaw, bucharest. Accept the audited plan and flight graph as authoritative: {audited_plan} and {flight_graph}. Modeling guidelines: 1) Types: city, day. 2) Predicates: (cur ?d - day), (next ?d ?d - day), (at ?c - city), (booked ?d - day ?c - city), (direct ?c1 - city ?c2 - city). 3) Actions: stay (book the current day at the current city and advance to the next day), fly (book the current day at the current city and move to a direct-flight neighbor as the new current city, then advance day), finalize-last-day (book day d6 without advancing). 4) Initial state: cur d1, at berlin unless the audited plan states a different day-1 city, next links d1->d2->d3->d4->d5->d6, direct edges according to the flight graph (both directions). 5) Hard goals: every day d1..d6 is booked to exactly one city; booked d5 bucharest and booked d6 bucharest. 6) Use action costs with total-cost and a metric minimize total-cost; assign cost 1 to each action. 7) Ensure the problem objects include all cities and days, and the goal conjunctively requires that all six days are booked and the Bucharest days are enforced. Output format: provide <domain>...</domain> followed by <problem>...</problem> only."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.intent->auditor.audit",
+            "flight_validator.graph->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "flight_validator.graph->orchestrator.pddl"
+        ]
+    }
+}

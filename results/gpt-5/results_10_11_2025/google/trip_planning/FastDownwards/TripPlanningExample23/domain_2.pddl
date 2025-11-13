@@ -1,0 +1,53 @@
+(define (domain trip-planning)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+  (:predicates
+    (next ?d - day ?d2 - day)
+    (current ?d - day)
+    (loc ?c - city)
+    (at ?c - city ?d - day)
+    (filled ?d - day)
+    (adj ?c1 - city ?c2 - city)
+    (ok ?d - day ?c - city)
+    (visited ?c - city)
+  )
+
+  (:action stay
+    :parameters (?c - city ?d - day ?d2 - day)
+    :precondition (and
+      (current ?d)
+      (loc ?c)
+      (next ?d ?d2)
+      (not (filled ?d2))
+      (ok ?d2 ?c)
+    )
+    :effect (and
+      (at ?c ?d2)
+      (filled ?d2)
+      (visited ?c)
+      (not (current ?d))
+      (current ?d2)
+    )
+  )
+
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?d2 - day)
+    :precondition (and
+      (current ?d)
+      (loc ?from)
+      (next ?d ?d2)
+      (not (filled ?d2))
+      (adj ?from ?to)
+      (ok ?d2 ?to)
+    )
+    :effect (and
+      (at ?to ?d2)
+      (filled ?d2)
+      (visited ?to)
+      (not (current ?d))
+      (current ?d2)
+      (not (loc ?from))
+      (loc ?to)
+    )
+  )
+)

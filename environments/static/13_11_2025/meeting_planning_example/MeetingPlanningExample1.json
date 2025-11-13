@@ -1,0 +1,106 @@
+{
+    "name": "MeetingPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mapper",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "mapper": {
+            "private_information": [
+                "I translate narrative travel facts into a canonical directed weighted graph with asymmetric edge weights measured in minutes.",
+                "I normalize place names and maintain a synonyms map to avoid ambiguity across agents."
+            ],
+            "goal": "Produce a normalized travel graph and location vocabulary for San Francisco locations involved in the task."
+        },
+        "scheduler": {
+            "private_information": [
+                "I design multiple feasible day plans using the travel graph and time windows, seeking to maximize successful friend meetings while respecting constraints.",
+                "I compute concrete departure, arrival, and meeting times in HH:MM local time and in minutes from midnight for machine-checkable auditing."
+            ],
+            "goal": "Enumerate diverse feasible schedules that meet Betty for at least 60 minutes within her availability at the Financial District and respect travel times from the Richmond District."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of proposed schedules and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or teleportation-like assumptions.",
+                "I validate that every movement corresponds to an edge in the travel graph, that accumulated time matches edge weights, that waits are explicit, and that meeting durations and windows are satisfied."
+            ],
+            "goal": "Verify and, if necessary, correct schedules so they are temporally and causally consistent, explicitly account for all travel and waiting time, and satisfy the minimum 60-minute meeting with Betty."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the normalized travel graph, candidate schedules, and the audit report into a single consistent planning model.",
+                "I produce the final PDDL domain and problem for the FastDownward solver using STRIPS plus numeric fluents (no durative-actions), modeling time in minutes and cumulative meeting minutes."
+            ],
+            "goal": "Coordinate all inputs and output a final PDDL domain and problem that enables planning to meet Betty for at least 60 minutes given the starting conditions and travel times."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "time_horizon_minutes": 1440,
+            "arrival_location": "richmond_district",
+            "arrival_time_local": "09:00",
+            "city": "San Francisco"
+        },
+        "public_information": [
+            "Objective: You are spending a day in San Francisco to meet as many friends as possible; currently, only Betty is known and you want to meet her for a minimum of 60 minutes.",
+            "You arrive at Richmond District at 09:00.",
+            "Betty will be at Financial District from 17:15 to 21:45.",
+            "Travel time from Richmond District to Financial District is 22 minutes.",
+            "Travel time from Financial District to Richmond District is 21 minutes.",
+            "Meeting location for Betty is Financial District; meeting duration must be at least 60 minutes within her availability window."
+        ]
+    },
+    "workflow": {
+        "mapper": {
+            "build_graph": {
+                "input": [],
+                "output": "travel_graph",
+                "system_prompt": "You convert narrative travel and location facts into a normalized directed weighted graph in minutes, handling asymmetric travel times and normalizing location names.",
+                "prompt": "Your name is mapper. Using the public information {environment->public_information}, produce a normalized travel graph with nodes, directed edges, and weights in minutes; include a synonyms map that maps any variant place names to canonical identifiers such as richmond_district and financial_district; return a compact JSON object with keys nodes, edges, synonyms."
+            }
+        },
+        "scheduler": {
+            "enumerate_schedules": {
+                "input": [
+                    "travel_graph"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a trip planner that enumerates several diverse feasible schedules to maximize successful friend meetings, respecting travel times and availability windows.",
+                "prompt": "Your name is scheduler. Consider the public information {environment->public_information} and the travel graph {travel_graph}. Enumerate at least three diverse feasible day schedules starting at Richmond District at 09:00 that achieve a meeting with Betty at Financial District for at least 60 minutes between 17:15 and 21:45. For each schedule provide: a name, a chronological list of steps with timestamps (HH:MM) and cumulative minutes-from-midnight, explicit travel or wait actions with durations consistent with the travel graph, the meeting start and end times with total meeting minutes, and a short rationale. Do not emit PDDL; produce a structured JSON array under key schedules."
+            }
+        },
+        "auditor": {
+            "audit_temporal_consistency": {
+                "input": [
+                    "candidate_schedules",
+                    "travel_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a rigorous temporal and causal auditor who validates that schedules are feasible without bookkeeping shortcuts; you ensure every claimed action has support in the travel graph and time arithmetic is correct.",
+                "prompt": "Your name is auditor. Audit the candidate schedules {candidate_schedules} against the travel graph {travel_graph}. For each schedule, verify that all movements follow directed edges with the stated weights, waiting is explicit, time-of-day and minutes-from-midnight arithmetic is exact, and the meeting with Betty occurs at Financial District within 17:15\u201321:45 for at least 60 minutes. Flag and fix any violations; remove any shortcut reasoning like quota tokens or post-hoc penalties. Return a JSON object with keys: validated_schedules (corrected list), violations (per schedule), and recommended_schedule (the best valid one maximizing meeting minutes, breaking ties by earlier finish time). Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "travel_graph",
+                    "candidate_schedules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL for the FastDownward solver. Produce a PDDL domain and a PDDL problem wrapped in <domain></domain> and <problem></problem>. Target FastDownward compatibility by using STRIPS plus numeric fluents and avoiding durative-actions; model time in minutes as a numeric fluent time and cumulative meeting minutes with betty as met-betty. Encode locations as predicates (at-richmond) and (at-financial) that are mutually exclusive. Provide actions for traveling between districts with numeric time increases matching the graph, a small wait action (e.g., wait-5) to advance time, and meeting actions (meet-betty-60 and meet-betty-15) that increase both time and met-betty subject to the availability window. Include initial time 540 (09:00), availability window start 1035 (17:15), end 1305 (21:45), and a goal that requires met-betty >= 60 and time <= 1305. Add a metric to maximize met-betty.",
+                "prompt": "Integrate the normalized graph {travel_graph}, the enumerated schedules {candidate_schedules}, and the audit findings {audit_report}. Resolve naming with the synonyms map to use canonical identifiers richmond_district and financial_district. Produce a PDDL domain and a PDDL problem for FastDownward that capture: initial state at-richmond with (time 540), asymmetric travel times richmond->financial 22 and financial->richmond 21, a wait-5 action to align with the meeting window, and meeting actions that can accumulate minutes. Enforce Betty's availability by constraining meeting actions to only apply when (time) >= 1035 and (time) <= 1245 for meet-betty-60 and (time) <= 1290 for meet-betty-15, and include a goal of (>= (met-betty) 60) and (<= (time) 1305). Enclose the PDDL domain in <domain></domain> and the problem in <problem></problem> and ensure it is directly usable with FastDownward."
+            }
+        },
+        "constraints": [
+            "mapper.build_graph->scheduler.enumerate_schedules",
+            "scheduler.enumerate_schedules->auditor.audit_temporal_consistency",
+            "auditor.audit_temporal_consistency->orchestrator.pddl"
+        ]
+    }
+}

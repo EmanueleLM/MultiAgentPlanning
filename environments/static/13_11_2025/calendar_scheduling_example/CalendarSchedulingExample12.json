@@ -1,0 +1,136 @@
+{
+    "name": "CalendarSchedulingExample12",
+    "author": "Human",
+    "agents": {
+        "number": 6,
+        "names": [
+            "david",
+            "debra",
+            "kevin",
+            "coordinator",
+            "auditor",
+            "orchestrator"
+        ],
+        "david": {
+            "private_information": [
+                "I have no meetings on Monday.",
+                "No time-of-day preference."
+            ],
+            "goal": "Provide my free times within work hours so a 60-minute meeting can be scheduled with others."
+        },
+        "debra": {
+            "private_information": [
+                "My Monday busy times are reliable and cannot be moved.",
+                "I prefer not to meet during lunch if avoidable."
+            ],
+            "goal": "Provide my free times within work hours so a 60-minute meeting can be scheduled with others."
+        },
+        "kevin": {
+            "private_information": [
+                "My Monday calendar is blocked 09:00-12:00 and 14:00-17:00.",
+                "I can meet only within the remaining feasible windows."
+            ],
+            "goal": "Provide my free times within work hours so a 60-minute meeting can be scheduled with others."
+        },
+        "coordinator": {
+            "private_information": [
+                "I merge individual availabilities at 30-minute granularity and compute intersections that satisfy a 60-minute duration.",
+                "I do not produce PDDL; I return candidate one-hour windows."
+            ],
+            "goal": "Combine all participants' availability and produce candidate one-hour windows that satisfy the constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, enforce work-hour bounds and duration, and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, retroactive allocations, and time-warp assumptions."
+            ],
+            "goal": "Verify that proposed windows are simultaneously free for all participants, contiguous for the full duration, and within work hours; return a vetted recommendation."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and problem for Fast Downward that schedules a single 60-minute meeting in a vetted window."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "Monday",
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "duration_minutes": 60,
+            "time_granularity_minutes": 30,
+            "timezone": "America/New_York",
+            "solver": "fast_downward"
+        },
+        "public_information": [
+            "Schedule a 60-minute meeting for David, Debra, and Kevin on Monday within work hours 09:00-17:00.",
+            "David has no meetings on Monday.",
+            "Debra is busy Monday 09:30-10:00, 11:00-11:30, 12:00-13:00, 14:00-14:30, 16:00-16:30.",
+            "Kevin is busy Monday 09:00-12:00 and 14:00-17:00.",
+            "A solution exists that satisfies all constraints."
+        ]
+    },
+    "workflow": {
+        "david": {
+            "availability_analysis": {
+                "input": [],
+                "output": "availability_david",
+                "system_prompt": "You are David. Analyze the public schedule and report your free 30-minute slots within 09:00-17:00 and the feasible one-hour windows as contiguous pairs, using 24-hour times and Monday only. Return a concise, unambiguous list.",
+                "prompt": "Your name is david. Public information: {environment->public_information}. Your knowledge: {agents->david->private_information}. Goal: {agents->david->goal}. Produce your free 30-minute slots and one-hour windows without assuming others' availability."
+            }
+        },
+        "debra": {
+            "availability_analysis": {
+                "input": [],
+                "output": "availability_debra",
+                "system_prompt": "You are Debra. From the public busy periods, compute your free 30-minute slots within 09:00-17:00 and list feasible one-hour windows as contiguous pairs. Be precise and avoid assumptions about others.",
+                "prompt": "Your name is debra. Public information: {environment->public_information}. Your knowledge: {agents->debra->private_information}. Goal: {agents->debra->goal}. Return your free 30-minute slots and one-hour windows in 24-hour format."
+            }
+        },
+        "kevin": {
+            "availability_analysis": {
+                "input": [],
+                "output": "availability_kevin",
+                "system_prompt": "You are Kevin. Based on the public busy blocks, list your free 30-minute slots within 09:00-17:00 and the feasible one-hour windows as contiguous pairs. Keep the output unambiguous.",
+                "prompt": "Your name is kevin. Public information: {environment->public_information}. Your knowledge: {agents->kevin->private_information}. Goal: {agents->kevin->goal}. Provide your free 30-minute slots and one-hour windows in 24-hour format."
+            }
+        },
+        "coordinator": {
+            "merge_availability": {
+                "input": [
+                    "availability_david",
+                    "availability_debra",
+                    "availability_kevin"
+                ],
+                "output": "merged_candidates",
+                "system_prompt": "You consolidate availabilities at 30-minute granularity and compute intersections that satisfy a single 60-minute meeting. Express results as normalized ranges like 13:00-14:00.",
+                "prompt": "You are coordinator. Combine the following availability summaries: {availability_david}, {availability_debra}, {availability_kevin}. Respect work hours {environment->init->work_start}-{environment->init->work_end} and duration {environment->init->duration_minutes}. Output the intersected one-hour candidate windows in ascending order."
+            }
+        },
+        "auditor": {
+            "audit_temporal_consistency": {
+                "input": [
+                    "merged_candidates"
+                ],
+                "output": "audited_candidates",
+                "system_prompt": "You audit temporal and causal consistency. Verify each candidate is within Monday work hours, contiguous for 60 minutes, and free for all participants. Remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, retroactive allocations, or time-warp assumptions. Return the vetted list and, if unique, mark the final choice.",
+                "prompt": "You are auditor. Public info: {environment->public_information}. Candidates to audit: {merged_candidates}. If exactly one window satisfies all constraints, mark it as the final recommendation; otherwise return the vetted set with notes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_candidates"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL targeting the Fast Downward solver. Produce a valid, minimal PDDL domain and problem that captures selecting a single 60-minute meeting window as two adjacent 30-minute slots on Monday. Use typed, classical STRIPS only (no durative actions, no numeric fluents). Encode participants, timeslots, adjacency, within-hours, and availability predicates. Provide exactly one action that schedules the meeting to a pair of adjacent slots when all participants are available. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags. Ensure object names are lowercase, no spaces, and the initial state and goal make the task solvable in Fast Downward.",
+                "prompt": "Task: {agents->orchestrator->goal}. Public information: {environment->public_information}. Audited candidates: {audited_candidates}. Choose the 13:00-14:00 window if it appears in the audited list; otherwise choose a single vetted window. Emit only the PDDL domain and problem."
+            }
+        },
+        "constraints": [
+            "david.availability_analysis->coordinator.merge_availability",
+            "debra.availability_analysis->coordinator.merge_availability",
+            "kevin.availability_analysis->coordinator.merge_availability",
+            "coordinator.merge_availability->auditor.audit_temporal_consistency",
+            "auditor.audit_temporal_consistency->orchestrator.pddl"
+        ]
+    }
+}

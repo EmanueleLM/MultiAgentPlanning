@@ -1,0 +1,112 @@
+{
+    "name": "TripPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "trip_planner",
+            "flight_mapper",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "trip_planner": {
+            "private_information": [
+                "I will summarize user preferences and priorities without inventing missing facts",
+                "I will not assume flight symmetry or add cities not listed",
+                "I treat city-stay durations as desires unless marked infeasible by the auditor"
+            ],
+            "goal": "Provide a clear, structured summary of the target cities, total days, desired day allocations, and priority ordering, suitable for downstream auditing and orchestration."
+        },
+        "flight_mapper": {
+            "private_information": [
+                "I only use the direct-flight facts explicitly stated in public information",
+                "I do not infer reverse or additional routes unless explicitly given",
+                "I will produce a directed flight graph and identify reachability issues"
+            ],
+            "goal": "Construct a directed flight graph for the cities using only the provided direct flight information and highlight any connectivity gaps relevant to visiting all cities."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and disallow bookkeeping shortcuts",
+                "I will reject token budgets, post-hoc penalties, and any unverifiable assumptions",
+                "I will verify that day allocations sum to the total trip length and that the route sequence is reachable under the direct-flight graph",
+                "If the original goals are infeasible, I propose minimally relaxed goals and day allocations with justification"
+            ],
+            "goal": "Check whether the desired itinerary is feasible under the time and direct-flight constraints, produce a justification for feasibility or infeasibility, and propose a minimal relaxation plan and sequence that is reachable and sums to the total trip days."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate preferences, the flight graph, and the auditor's feasibility conclusions",
+                "I will target the FastDownward solver with classical PDDL domain and problem files",
+                "If the original goal is infeasible, I will use the auditor's relaxed feasible target"
+            ],
+            "goal": "Produce a final PDDL domain and problem for FastDownward that captures visiting the feasible set of cities across exactly the total number of days with only allowed direct flights, following the auditor-approved sequence and allocations."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Venice",
+                "Dubrovnik",
+                "Istanbul"
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities: Venice, Dubrovnik, and Istanbul.",
+            "The total trip length is 11 days.",
+            "Only direct flights are allowed to commute between cities.",
+            "Known direct flights: from Dubrovnik to Istanbul and from Dubrovnik to Venice.",
+            "Desired stays: Venice for 6 days, Dubrovnik for 4 days, Istanbul for 3 days.",
+            "Note: Desired stays sum to 13 days which exceeds the total of 11 days, so reconciliation is required."
+        ]
+    },
+    "workflow": {
+        "trip_planner": {
+            "preferences": {
+                "input": [],
+                "output": "trip_preferences",
+                "system_prompt": "You are a structured trip-preferences analyst. Extract and summarize cities, total trip days, desired per-city days, and priority ordering from the given public information. Do not invent missing flight facts or assume bidirectionality. Provide a compact, machine-usable summary.",
+                "prompt": "Your name is trip_planner. Use the public information to list the cities to visit, the total days, and the desired days in each city. Include a proposed priority ordering to guide trade-offs if all desires cannot be met. Return a concise JSON summary with fields: cities, total_days, desired_stays (map city->days), priorities (ordered list), hard_constraints (if any)."
+            }
+        },
+        "flight_mapper": {
+            "graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are a flight connectivity mapper. Build a directed graph of direct flights using only explicitly stated facts. Do not add reverse edges unless explicitly stated. Identify strongly connected components and reachability from possible start cities if relevant.",
+                "prompt": "Your name is flight_mapper. From the public information, produce a directed adjacency list for direct flights and a brief note on reachability between the listed cities. Return a concise JSON object with fields: nodes, edges (list of {from, to}), notes."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "trip_preferences",
+                    "flight_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency and remove bookkeeping shortcuts. Verify that desired stays sum to total days and that the route to visit the target cities is reachable given the directed flight graph. If infeasible, propose a minimally relaxed feasible target with justified day reallocation and a reachable sequence. Do not assume additional flights or reverse routes.",
+                "prompt": "Your name is temporal_auditor. Given preferences and the flight graph, check for two things: 1) time feasibility (day totals), 2) route feasibility (reachable sequence that visits the intended cities using only the given direct flights). If infeasible, propose a minimal relaxation that respects the flight graph and keeps total days at 11, prioritizing cities per the provided priorities. Return JSON with fields: feasible (boolean), issues (list), recommended_cities (ordered list), day_allocations (map city->days summing to 11), sequence (ordered list of cities), justification."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "trip_preferences",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent planning who must produce classical PDDL for FastDownward. Always provide a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use only the directed flights provided and adhere to the auditor's feasible recommendation if the original goal is infeasible. Model actions such as fly(from,to) allowed only on listed edges and stay(city,day) or an equivalent representation that enforces exactly total_days. Ensure the problem is solvable by FastDownward under the given constraints.",
+                "prompt": "Integrate the trip preferences, flight graph, and the auditor report to produce final PDDL. If the auditor says the original target is infeasible, encode the auditor's recommended cities, sequence, and day allocations. Include objects for cities and day counters as needed. The goal should reflect visiting the recommended cities and allocating exactly 11 total days while respecting flight edges. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "trip_planner.preferences->temporal_auditor.audit",
+            "flight_mapper.graph->temporal_auditor.audit",
+            "trip_planner.preferences->orchestrator.pddl",
+            "flight_mapper.graph->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

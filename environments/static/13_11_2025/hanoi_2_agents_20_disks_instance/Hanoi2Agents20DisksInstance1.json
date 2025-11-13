@@ -1,0 +1,162 @@
+{
+    "name": "Hanoi2Agents20DisksInstance1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "auditor",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "I am allowed to move only these disks: A, B, C, D, E, F, G, H, I, J.",
+                "I must always follow Tower of Hanoi legality: move exactly one disk at a time, never place a larger disk onto a smaller disk, and only move a clear (topmost) disk."
+            ],
+            "goal": "Collaborate to achieve the goal configuration by proposing legal local subplans for disks A..J that can be integrated into a globally valid move sequence."
+        },
+        "agent_2": {
+            "private_information": [
+                "I am allowed to move only these disks: K, L, M, N, O, P, Q, R, S, T.",
+                "I must always follow Tower of Hanoi legality: move exactly one disk at a time, never place a larger disk onto a smaller disk, and only move a clear (topmost) disk."
+            ],
+            "goal": "Collaborate to achieve the goal configuration by proposing legal local subplans for disks K..T that can be integrated into a globally valid move sequence."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of the proposed move list.",
+                "I must reject or correct any bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, implicit teleports).",
+                "I ensure every move is legal, agents respect disk-permission constraints, preconditions are met before each move, and the final state matches the specified goal."
+            ],
+            "goal": "Validate and, if needed, minimally repair the integrated move list so that it is temporally consistent, causally sound, obeys Tower of Hanoi rules, respects agent restrictions, and achieves the goal configuration."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agents, integrate their inputs, and produce the final plan and PDDL artifacts."
+            ],
+            "goal": "Produce a globally valid, fully ordered list of primitive moves and a final PDDL domain and problem suitable for the FastDownwards solver that encode this instance and goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J",
+                "K",
+                "L",
+                "M",
+                "N",
+                "O",
+                "P",
+                "Q",
+                "R",
+                "S",
+                "T"
+            ],
+            "agent_permissions": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "agent_2": [
+                    "K",
+                    "L",
+                    "M",
+                    "N",
+                    "O",
+                    "P",
+                    "Q",
+                    "R",
+                    "S",
+                    "T"
+                ]
+            },
+            "move_format": "agent_i: move disk X from peg1 to peg2"
+        },
+        "public_information": [
+            "This is a 2-agent Tower of Hanoi with 20 disks labeled A (smallest) through T (largest).",
+            "Agents have disjoint move permissions: agent_1 may move A..J; agent_2 may move K..T.",
+            "Initial configuration: left peg has, from top to bottom, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has, from top to bottom, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T; middle peg has, from top to bottom, A; right peg is empty.",
+            "Tower of Hanoi legality rules apply: move exactly one disk at a time; only the top disk of a peg may be moved; a disk may be placed on an empty peg or atop a strictly larger disk; no other changes are implicit.",
+            "All outputs must use the primitive-move format: 'agent_i: move disk X from peg1 to peg2'."
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "decompose": {
+                "input": [],
+                "output": "subplan_agent_1",
+                "system_prompt": "You are agent_1, responsible for disks A..J. Do not emit PDDL. Propose a clear, human-readable recursive strategy and concrete local subplans you could perform under the Tower of Hanoi rules, noting any dependencies on the positions of larger disks. Respect the final goal and your disk-permission limits.",
+                "prompt": "Your name is agent_1. Use the environment public information to propose local subplans for disks A..J that could help achieve the goal. Outline key subproblems, constraints, and safe primitive-move templates in the format 'agent_1: move disk X from peg1 to peg2'. Do not total-order the entire plan and do not produce PDDL; focus on feasible steps and dependencies you can contribute, including the immediate feasibility of moving disk A from left to middle."
+            }
+        },
+        "agent_2": {
+            "decompose": {
+                "input": [],
+                "output": "subplan_agent_2",
+                "system_prompt": "You are agent_2, responsible for disks K..T. Do not emit PDDL. Propose a clear, human-readable recursive strategy and concrete local subplans you could perform under the Tower of Hanoi rules, noting dependencies with smaller disks. Respect the final goal and your disk-permission limits.",
+                "prompt": "Your name is agent_2. Use the environment public information to propose local subplans for disks K..T that keep the stack stable and legal while agent_1 handles smaller disks. Provide feasible move templates in the format 'agent_2: move disk X from peg1 to peg2'. Do not total-order the entire plan and do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "integrate_plan": {
+                "input": [
+                    "subplan_agent_1",
+                    "subplan_agent_2"
+                ],
+                "output": "ordered_moves_proposed",
+                "system_prompt": "You are the orchestrator. Integrate the two agents' subplans into a single globally valid ordered list of primitive moves that achieves the exact goal. Ensure agent disk-permission constraints and Tower of Hanoi legality are respected.",
+                "prompt": "Integrate the subplans into a complete, strictly ordered move list formatted 'agent_i: move disk X from peg1 to peg2'. Only include moves that are necessary to reach the stated goal. If a minimal direct solution exists, prefer it. Ensure preconditions are satisfied step by step."
+            },
+            "finalize_pddl": {
+                "input": [
+                    "ordered_moves_validated"
+                ],
+                "output": "fd_pddl_bundle",
+                "system_prompt": "You are the orchestrator. Produce a final PDDL domain and problem suitable for the FastDownwards solver (Fast Downward). Use STRIPS with typing only (avoid numeric fluents). Include predicates for on, on-peg, clear, clear-peg, and smaller relations. Encode the exact initial state and the exact goal state for this instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Produce: (1) The final ordered list of primitive moves (validated) that achieves the goal, using the exact format 'agent_i: move disk X from peg1 to peg2'. (2) A PDDL domain 'hanoi_2agents_20_disks' with types disk and peg, an action 'move' that moves a clear disk between a source support (disk or peg) and a destination support (disk or peg) while respecting the smaller relation; and (3) A PDDL problem 'hanoi_instance_20_disks_goal_A_to_middle' with objects for disks A..T and pegs left, middle, right, initial state matching the specified initial stack, and goal matching the specified goal configuration. The PDDL must be compatible with FastDownwards (e.g., fast-downward.py --alias seq-sat-lama-2011). Keep actions single-agent and domain-generic; agent restrictions are enforced in the move list, not in PDDL. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "ordered_moves_proposed",
+                    "subplan_agent_1",
+                    "subplan_agent_2"
+                ],
+                "output": "ordered_moves_validated",
+                "system_prompt": "You are the auditor. Check temporal and causal consistency of the proposed ordered move list against the Tower of Hanoi rules and agent restrictions. Remove bookkeeping shortcuts and correct minimal issues if found.",
+                "prompt": "Audit the proposed ordered move list for legality and correctness. Verify each step moves a clear disk, never places a larger disk on a smaller disk, respects agent_1 and agent_2 disk permissions, and that the final configuration matches the goal. If issues exist, minimally repair and output the corrected, validated list. If the list is already valid and minimal, pass it through unchanged."
+            }
+        },
+        "constraints": [
+            "agent_1.decompose->orchestrator.integrate_plan",
+            "agent_2.decompose->orchestrator.integrate_plan",
+            "orchestrator.integrate_plan->auditor.audit",
+            "auditor.audit->orchestrator.finalize_pddl"
+        ]
+    }
+}

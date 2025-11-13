@@ -1,0 +1,28 @@
+(define (domain meeting-scheduling)
+ (:requirements :strips :typing :negative-preconditions)
+ (:types participant timeslot)
+ (:predicates
+  (busy ?p - participant ?t - timeslot)
+  (next ?t1 - timeslot ?t2 - timeslot)
+  (work-hour ?t - timeslot)
+  (meeting-scheduled)
+  (scheduled-at ?t - timeslot)
+ )
+ (:action schedule-meeting
+  :parameters (?t - timeslot)
+  :precondition (and
+    (work-hour ?t)
+    (not (meeting-scheduled))
+    (not (busy adam ?t))
+    (not (busy jerry ?t))
+    (not (busy matthew ?t))
+  )
+  :effect (and
+    (meeting-scheduled)
+    (scheduled-at ?t)
+    (busy adam ?t)
+    (busy jerry ?t)
+    (busy matthew ?t)
+  )
+ )
+)

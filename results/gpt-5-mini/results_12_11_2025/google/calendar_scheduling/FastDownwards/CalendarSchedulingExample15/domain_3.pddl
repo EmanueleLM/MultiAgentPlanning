@@ -1,0 +1,33 @@
+(define (domain meeting-scheduler)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot day)
+  (:predicates
+    (slot ?s - slot)
+    (participant ?p - participant)
+    (day ?d - day)
+    (slot-of-day ?s - slot ?d - day)
+    (next ?s1 - slot ?s2 - slot)
+    (available ?p - participant ?s - slot)
+    (audited-slot ?s - slot)
+    (scheduled-on ?s - slot)
+  )
+
+  (:action schedule-slot
+    :parameters (?s - slot ?p1 - participant ?p2 - participant ?p3 - participant)
+    :precondition (and
+      (slot ?s)
+      (participant ?p1) (participant ?p2) (participant ?p3)
+      (audited-slot ?s)
+      (available ?p1 ?s)
+      (available ?p2 ?s)
+      (available ?p3 ?s)
+      (not (scheduled-on ?s))
+    )
+    :effect (and
+      (scheduled-on ?s)
+      (not (available ?p1 ?s))
+      (not (available ?p2 ?s))
+      (not (available ?p3 ?s))
+    )
+  )
+)

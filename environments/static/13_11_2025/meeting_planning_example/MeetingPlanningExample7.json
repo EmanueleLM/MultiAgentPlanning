@@ -1,0 +1,125 @@
+{
+    "name": "MeetingPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "trip_planner",
+            "temporal_auditor",
+            "utility_analyzer",
+            "orchestrator"
+        ],
+        "trip_planner": {
+            "private_information": [
+                "You enumerate concrete, clock-referenced schedules from the public information without inventing new distances or availability data.",
+                "You consider alternative travel directions with their asymmetric durations.",
+                "You avoid adding hypothetical friends or locations not listed in the public information."
+            ],
+            "goal": "Generate a diverse set of feasible day schedules that respect all hard constraints while aiming to meet as many known friends as possible."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "You strictly enforce temporal and causal consistency, rejecting any bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, or unexplained time jumps).",
+                "You normalize and validate times on a real clock, ensure travel durations are properly added, and require continuous meeting intervals of at least the mandated length.",
+                "You document any elimination with precise reasons and return only sound, feasible schedules."
+            ],
+            "goal": "Audit candidate schedules for feasibility against travel times, availability windows, and minimum meeting duration; remove any schedule that violates causality or relies on shortcuts."
+        },
+        "utility_analyzer": {
+            "private_information": [
+                "Primary objective: maximize the number of distinct friends met.",
+                "Secondary tie-breakers (in order): earliest day finish time, then minimum total travel time.",
+                "No made-up utility terms; do not reward schedules that violate constraints."
+            ],
+            "goal": "Score audited schedules and select the best one according to the stated objectives and tie-breakers."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate structured inputs from other agents and resolve any residual ambiguities.",
+                "You target the FastDownward solver and must produce a classical PDDL (STRIPS/ADL) domain and problem enclosed in <domain></domain> and <problem></problem> tags.",
+                "Model time discretely (e.g., explicit timepoints or step counters) so that asymmetric travel durations and minimum meeting length are respected without using durative actions."
+            ],
+            "goal": "Coordinate agents, choose the final schedule, and produce a valid classical PDDL domain and problem for FastDownward that encodes the chosen plan and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_units": "minutes",
+            "start_location": "Richmond District",
+            "arrival_time": "09:00",
+            "solver_target": "FastDownward",
+            "locations": [
+                "Richmond District",
+                "North Beach"
+            ],
+            "travel_times": {
+                "Richmond District->North Beach": 17,
+                "North Beach->Richmond District": 18
+            },
+            "friends": [
+                {
+                    "name": "John",
+                    "location": "North Beach",
+                    "availability": {
+                        "start": "15:15",
+                        "end": "17:15"
+                    },
+                    "min_meet_minutes": 75
+                }
+            ]
+        },
+        "public_information": [
+            "You arrive at Richmond District at 09:00.",
+            "Travel times (minutes): Richmond District -> North Beach: 17; North Beach -> Richmond District: 18.",
+            "John will be at North Beach from 15:15 to 17:15.",
+            "You want to meet John for at least 75 minutes.",
+            "Objective: Meet as many friends as possible; tie-breakers are earliest finish time, then minimum total travel time."
+        ]
+    },
+    "workflow": {
+        "trip_planner": {
+            "schedule_generation": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a meticulous day-trip scheduler. From the provided public information, enumerate multiple feasible, clock-referenced schedules that include travel, waiting, and meeting segments; do not invent new friends, locations, or distances.",
+                "prompt": "Your name is trip_planner. Public information: {environment->public_information}. Your knowledge: {agents->trip_planner->private_information}. Goal: {agents->trip_planner->goal}. Produce a compact list of candidate schedules with explicit timestamps for departures, arrivals, waits, and meetings, ensuring each schedule shows how the minimum 75-minute meeting with John at North Beach could be satisfied if feasible."
+            }
+        },
+        "temporal_auditor": {
+            "consistency_audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal and causal consistency with zero tolerance for shortcuts. Verify travel durations exactly, enforce availability windows, and require contiguous meeting intervals of at least the mandated length. Remove any schedule that violates causality or uses bookkeeping tricks.",
+                "prompt": "Your name is temporal_auditor. Public information: {environment->public_information}. Your knowledge: {agents->temporal_auditor->private_information}. Given the candidate schedules: {candidate_schedules}. Return only the feasible schedules, each annotated with any checks performed; eliminate infeasible ones with brief reasons."
+            }
+        },
+        "utility_analyzer": {
+            "utility_scoring": {
+                "input": [
+                    "audited_schedules"
+                ],
+                "output": "best_schedule",
+                "system_prompt": "You compute utilities to select the best schedule: maximize the number of distinct friends met; tie-break using earliest finish time, then minimum total travel time. Do not introduce unlisted friends or fabricated data.",
+                "prompt": "Your name is utility_analyzer. Public information: {environment->public_information}. Your knowledge: {agents->utility_analyzer->private_information}. Given the audited schedules: {audited_schedules}. Score and rank them; output the single best schedule with a short justification and computed metrics."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "best_schedule",
+                    "audited_schedules"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with classical PDDL (STRIPS/ADL) targeting the FastDownward solver. Always output a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. Model time discretely (e.g., explicit timepoints or step counters) so that asymmetric travel durations and the 75-minute meeting are respected without using durative actions. Include actions such as move, wait, and meet_john; encode initial location (Richmond District at 09:00), John\u2019s availability at North Beach (15:15\u201317:15), and the minimum meeting length. Ensure the problem is solvable by FastDownward with a clearly defined goal and, if using action costs, a metric on total-cost.",
+                "prompt": "There are coordinating agents that propose and audit schedules. Your task is to integrate their information and produce the final planning model. Objective: {agents->orchestrator->goal}. Public information: {environment->public_information}. Best schedule to encode: {best_schedule}. You may consult audited candidates for disambiguation: {audited_schedules}. Provide a classical PDDL domain and problem for FastDownward using discrete time modeling. Keep the actions clearly defined for a single traveler."
+            }
+        },
+        "constraints": [
+            "trip_planner.schedule_generation->temporal_auditor.consistency_audit",
+            "temporal_auditor.consistency_audit->utility_analyzer.utility_scoring",
+            "utility_analyzer.utility_scoring->orchestrator.pddl"
+        ]
+    }
+}

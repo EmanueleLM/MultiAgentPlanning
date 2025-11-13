@@ -1,0 +1,118 @@
+{
+    "name": "MeetingPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mapper",
+            "calendar_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "mapper": {
+            "private_information": [
+                "You specialize in modeling asymmetric travel times and realistic city travel assumptions.",
+                "You convert raw distances and times into reusable route templates without inventing missing data."
+            ],
+            "goal": "Extract and structure feasible door-to-door routes between Golden Gate Park and Pacific Heights using the provided asymmetric travel times, and expose reusable route primitives that downstream agents can compose into day schedules."
+        },
+        "calendar_planner": {
+            "private_information": [
+                "You build multiple day schedules that respect time windows and minimum meeting durations.",
+                "You prefer constructing several distinct schedule options that can be ranked later."
+            ],
+            "goal": "Generate diverse, feasible schedule options for the day that start at Golden Gate Park at 09:00, ensure at least 45 minutes with John at Pacific Heights during his 19:45\u201320:45 window, and leave optional slack that could be used for additional friends if later specified (do not invent friends)."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "You are responsible for temporal and causal consistency.",
+                "You reject bookkeeping shortcuts such as token quotas, artificial penalties, or post-hoc fixes.",
+                "You enforce that all actions have explicit preconditions and time consumption that sums correctly."
+            ],
+            "goal": "Audit the candidate schedules for strict temporal feasibility, causality, and resource soundness. Remove shortcuts and ensure that the minimum 45-minute meeting with John is explicitly represented by continuous time occupancy at the same location, with travel legs consuming the exact provided minutes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate route primitives, schedules, and audit feedback into a single consistent plan.",
+                "You translate the final audited schedule into a clean PDDL domain and problem for the FastDownwards solver."
+            ],
+            "goal": "Select the best audited schedule that maximizes the primary goal (meet John for at least 45 minutes within his availability) and preserves flexibility for additional friends if later added, then produce a final PDDL domain and problem that encode discrete time progression (minute-level), movement with asymmetric durations, and meeting occupancy requirements, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_granularity_minutes": 1,
+            "start_time": "09:00",
+            "start_location": "golden_gate_park",
+            "locations": [
+                "golden_gate_park",
+                "pacific_heights"
+            ],
+            "travel_times_minutes": {
+                "golden_gate_park_to_pacific_heights": 16,
+                "pacific_heights_to_golden_gate_park": 15
+            },
+            "john": {
+                "location": "pacific_heights",
+                "availability_start": "19:45",
+                "availability_end": "20:45",
+                "min_meeting_minutes": 45
+            }
+        },
+        "public_information": [
+            "Objective: Visit San Francisco for the day and meet as many friends as possible without inventing unprovided details; John is the only confirmed friend.",
+            "You arrive at Golden Gate Park at 09:00.",
+            "John will be at Pacific Heights from 19:45 to 20:45.",
+            "You want to meet John for a minimum of 45 minutes.",
+            "Asymmetric travel times: Golden Gate Park to Pacific Heights = 16 minutes; Pacific Heights to Golden Gate Park = 15 minutes.",
+            "Use exact minute-level time accounting; do not use quota tokens or post-hoc penalties."
+        ]
+    },
+    "workflow": {
+        "mapper": {
+            "routes": {
+                "input": [],
+                "output": "routes_data",
+                "system_prompt": "You are a mobility and routing expert for urban settings with asymmetric travel times. Build accurate, reusable route primitives and do not fabricate missing distances or locations.",
+                "prompt": "Your name is mapper. Use the public information to enumerate feasible route primitives between the known locations, respecting asymmetric travel times and minute-level accounting. Provide compact, structured JSON describing directed legs (from, to, duration_minutes), plus assumptions explicitly tied to the provided data only. Include both directions for Golden Gate Park and Pacific Heights. Do not produce PDDL."
+            }
+        },
+        "calendar_planner": {
+            "schedules": {
+                "input": [
+                    "routes_data"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day-schedule designer who explores multiple feasible timelines under time windows and minimum durations.",
+                "prompt": "Your name is calendar_planner. Starting at Golden Gate Park at 09:00, generate several distinct, feasible day schedules that ensure a continuous meeting with John of at least 45 minutes within 19:45\u201320:45 at Pacific Heights. Use the provided routes_data to account for exact travel minutes and include arrival, waiting, and meeting periods explicitly. Do not invent additional friends; you may leave labeled idle or buffer slots that could host additional meetings if later specified. Output a small set (3\u20135) of diverse schedules as structured JSON with fields: id, timeline (ordered segments with start, end, action, location), feasibility_notes. Do not produce PDDL."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "routes_data",
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are a temporal and causal consistency auditor who forbids bookkeeping shortcuts and enforces exact time usage and precondition satisfaction.",
+                "prompt": "Your name is temporal_auditor. Validate each candidate schedule for strict feasibility: travel durations must match the provided asymmetric times; the meeting with John must be at Pacific Heights for at least 45 continuous minutes within 19:45\u201320:45; arrival must occur before meeting; no overlapping actions; and idle time is allowed but explicitly represented. Remove or fix any schedule that relies on shortcuts (quota tokens, post-hoc penalties, or unspecified time jumps). Return a curated set with only the feasible schedules, adding detailed audit annotations and any minimal corrections, as structured JSON. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl_plan": {
+                "input": [
+                    "audited_schedules"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert multi-agent coordinator and PDDL author. You must produce a final PDDL domain and problem targeting the FastDownwards solver. Use minute-level discrete time modeling (objects for minutes and a successor relation), encode locations, the agent, and John, model asymmetric travel with actions that consume the correct number of minute steps, and model meeting John as continuous occupancy at Pacific Heights within the valid time window for at least 45 minutes. Do not rely on numeric fluents or soft constraints; use explicit time progression and predicates. Enclose the PDDL domain within <domain></domain> and the PDDL problem within <problem></problem> tags.",
+                "prompt": "There are three upstream products: routes_data, candidate_schedules (audited and curated as audited_schedules), and the public information about times, locations, and constraints. Select the best audited schedule prioritizing meeting John for at least 45 minutes within 19:45\u201320:45 and minimizing idle time before the meeting without inventing new friends. Then output the PDDL domain and problem for the FastDownwards solver. Requirements: 1) Use a classical STRIPS-style encoding with objects for minutes and a successor relation next(t, t+1) to represent time; 2) Represent locations (golden_gate_park, pacific_heights), the traveler agent, and John; 3) Provide movement actions that advance time minute-by-minute and enforce asymmetric durations by requiring the correct count of successive minutes; 4) Represent John's presence at pacific_heights only within the 19:45\u201320:45 window; 5) Meeting action requires co-location and advances time for 45 consecutive minutes; 6) Initial state: at traveler golden_gate_park at 09:00; 7) Goal: met_john_45 true. Keep the domain and problem minimal and consistent. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mapper.routes->calendar_planner.schedules",
+            "mapper.routes->temporal_auditor.audit",
+            "calendar_planner.schedules->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl_plan"
+        ]
+    }
+}

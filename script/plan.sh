@@ -6,13 +6,9 @@ MODEL=gpt-5
 
 # === PDDL based approaches ===
 # Standard planning
-datasets=("calendar_scheduling"
-# "meeting_planning"
-# "trip_planning"
-# "depots"
-# "logistics"
-# "mystery_blocksworld"
-# "obfuscated_deceptive_logistics"
+datasets=(
+"trip_planning"
+"logistics"
 )
 for data in "${datasets[@]}"; do
     echo "Running plan_benchmark.py with $data"

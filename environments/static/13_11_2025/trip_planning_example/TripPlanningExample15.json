@@ -1,0 +1,152 @@
+{
+    "name": "TripPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "trip_planner",
+            "flight_mapper",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "trip_planner": {
+            "private_information": [
+                "I optimize for feasibility under direct-flight constraints and mandatory events.",
+                "When desired city-stays exceed the total available days, I propose minimally invasive adjustments, prioritizing the wedding first, then preserving the largest specified stays."
+            ],
+            "goal": "Prepare a candidate 11-day city-by-day itinerary using only direct flights and respecting the wedding in Porto on days 10 and 11; if impossible under stated preferences (Berlin 6 days, Porto 2 days, Krakow 5 days), propose minimally adjusted alternatives."
+        },
+        "flight_mapper": {
+            "private_information": [
+                "I formalize the direct flight network and day-to-day movement rules; layovers are not allowed.",
+                "I validate that consecutive days in an itinerary either stay in the same city or move via a direct flight pair only."
+            ],
+            "goal": "Provide the direct-flight adjacency and validate each day-to-day move in the candidate itinerary; suggest legal reroutes when violations occur."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency with no bookkeeping shortcuts (no half-days, quota tokens, or post-hoc penalties).",
+                "I check exactly one city per day across 11 days, only direct flights between different consecutive days, and presence in Porto on days 10 and 11.",
+                "If desired stays exceed the total days, I propose a single feasible itinerary that minimally deviates from the stated durations while honoring mandatory constraints."
+            ],
+            "goal": "Return either violations with specific fixes or a normalized feasible itinerary; when conflicts exist, choose and justify one feasible resolution."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the proposed itinerary, flight constraints, and the audit report to produce a final PDDL domain and problem for the FastDownward solver that encodes the selected feasible itinerary, direct-flight adjacency, and day-to-day movements."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "days_label": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11
+            ],
+            "cities": [
+                "Berlin",
+                "Porto",
+                "Krakow"
+            ],
+            "direct_flights": [
+                [
+                    "Berlin",
+                    "Porto"
+                ],
+                [
+                    "Porto",
+                    "Berlin"
+                ],
+                [
+                    "Berlin",
+                    "Krakow"
+                ],
+                [
+                    "Krakow",
+                    "Berlin"
+                ]
+            ],
+            "preferences": {
+                "Berlin": 6,
+                "Porto": 2,
+                "Krakow": 5
+            },
+            "wedding_city": "Porto",
+            "wedding_days": [
+                10,
+                11
+            ],
+            "only_direct_flights": true,
+            "movement_semantics": "Flights occur only between the end of day d and the start of day d+1; otherwise you stay in the same city."
+        },
+        "public_information": [
+            "Trip length is 11 consecutive days labeled 1 through 11.",
+            "Cities to visit: Berlin, Porto, Krakow.",
+            "Only direct flights are allowed between visited cities.",
+            "Direct flight pairs: Berlin-Porto and Berlin-Krakow; travel is permitted in both directions.",
+            "Desired stays: Berlin 6 days, Porto 2 days, Krakow 5 days; this sum exceeds the available 11 days.",
+            "A wedding occurs in Porto on days 10 and 11; you must be in Porto on both days.",
+            "Flights, if any, occur at day boundaries between day d and day d+1.",
+            "The route must be continuous with exactly one city assigned per day.",
+            "The starting city is not fixed; the schedule should end in Porto to satisfy the wedding days."
+        ]
+    },
+    "workflow": {
+        "trip_planner": {
+            "itinerary_draft": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are a travel itinerary planner. Produce clear, compact artifacts that a downstream planner can consume. Do not output PDDL.",
+                "prompt": "Your name is trip_planner. Public information: {environment->public_information}. Your knowledge: {agents->trip_planner->private_information}. Objective: {agents->trip_planner->goal}. Produce a JSON artifact with key 'candidate_itineraries' as a list; each item includes 'days' (a map from day numbers 1..11 to one of Berlin, Porto, Krakow), 'moves' (list of day-to-day transitions), and 'rationale'. If constraints conflict, include 'conflicts' and 'proposed_adjustments' showing minimally deviating options. Keep city names consistent with the public information and avoid PDDL."
+            }
+        },
+        "flight_mapper": {
+            "flight_graph": {
+                "input": [
+                    "itinerary_proposal"
+                ],
+                "output": "flight_graph_data",
+                "system_prompt": "You are a flight network specialist. Build the direct-flight adjacency and validate proposed day-to-day moves. Do not output PDDL.",
+                "prompt": "Your name is flight_mapper. Public information: {environment->public_information}. Your knowledge: {agents->flight_mapper->private_information}. Objective: {agents->flight_mapper->goal}. Using the proposed itineraries: {itinerary_proposal}, produce a JSON artifact with keys 'adjacency' (mapping each city to its directly connected cities), 'validation' (per-candidate list of valid or invalid transitions with reasons), and 'suggested_reroutes' where violations exist. Keep city names and transitions consistent with the direct flight pairs."
+            }
+        },
+        "consistency_auditor": {
+            "consistency_check": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_graph_data"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Eliminate bookkeeping shortcuts and enforce explicit, feasible schedules. Do not output PDDL.",
+                "prompt": "Your name is consistency_auditor. Public information: {environment->public_information}. Your knowledge: {agents->consistency_auditor->private_information}. Objective: {agents->consistency_auditor->goal}. Review the itineraries {itinerary_proposal} with flight validations {flight_graph_data}. Return a JSON artifact including: 'violations' (if any), 'justification', and 'feasible_itinerary' (a single normalized 11-day day-to-city mapping that satisfies direct-flight rules and wedding in Porto on days 10 and 11). If preferences exceed total days, choose a minimal-deviation resolution and explain."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_graph_data",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning. You must produce a PDDL domain and a PDDL problem targeting the FastDownward solver. Always enclose the domain in <domain></domain> and the problem in <problem></problem> tags. Use a classical STRIPS-compatible model with discrete days and adjacency; avoid numeric fluents and advanced features.",
+                "prompt": "Integrate the candidate itineraries {itinerary_proposal}, the flight network and validations {flight_graph_data}, and the audited resolution {audit_report}. Select the single feasible itinerary recommended by the auditor (or, if none, select the most feasible candidate and justify). Then produce a self-contained PDDL domain and problem that a FastDownward planner can solve to yield that itinerary. Model days as ordered objects d1..d11, cities as objects (Berlin, Porto, Krakow), and predicates such as next(d_i, d_j), at(d, city), and adjacent(city, city). Include actions that either stay in the same city between consecutive days or move via direct flights only. Encode adjacency from the public information and enforce being in Porto on days d10 and d11. Ensure the problem goals encode the selected day-to-city assignment (or an equivalent set of constraints that uniquely leads to it). Enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "trip_planner.itinerary_draft->flight_mapper.flight_graph",
+            "trip_planner.itinerary_draft->consistency_auditor.consistency_check",
+            "flight_mapper.flight_graph->consistency_auditor.consistency_check",
+            "consistency_auditor.consistency_check->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,104 @@
+{
+    "name": "MeetingPlanningExample23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "map_reader",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "map_reader": {
+            "private_information": [
+                "I can normalize neighborhood names and build symmetric travel-time matrices.",
+                "If a travel time is not specified, I will mark it as unknown and not infer it."
+            ],
+            "goal": "Produce an accurate, symmetric travel-time matrix for the neighborhoods mentioned in the public information."
+        },
+        "scheduler": {
+            "private_information": [
+                "I construct multiple candidate day plans and clearly separate travel, waiting, and meeting times.",
+                "I avoid assuming extra friends or locations beyond the public information."
+            ],
+            "goal": "Propose multiple feasible candidate schedules to maximize the number of friends met while ensuring the required meeting with John."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I reject or correct schedules that violate time windows, travel times, or imply hidden time leaps.",
+                "I enforce that all time advances are explicitly accounted for by travel, waiting, or meetings."
+            ],
+            "goal": "Audit candidate schedules for feasibility against the specified time windows and travel times, normalize them, and select or recommend the best feasible option."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Coordinate the planning, integrate audited schedules with travel data, select the best option, and produce the final PDDL domain and problem targeting the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "today",
+            "time_unit": "minutes",
+            "clock_start": "09:00",
+            "start_location": "Bayview"
+        },
+        "public_information": [
+            "Locations in scope: Bayview, Russian Hill.",
+            "Arrival condition: You arrive at Bayview at 9:00AM (540 minutes).",
+            "Travel times (in minutes): Bayview to Russian Hill: 23; Russian Hill to Bayview: 23.",
+            "John will be at Russian Hill from 5:30PM (1050 minutes) to 9:00PM (1260 minutes).",
+            "You would like to meet John for a minimum of 75 minutes.",
+            "Objective: Meet as many friends as possible today while satisfying the minimum 75-minute meeting with John. The only specified friend is John."
+        ]
+    },
+    "workflow": {
+        "map_reader": {
+            "distances": {
+                "input": [],
+                "output": "distance_matrix",
+                "system_prompt": "You are a map and travel-time analyst. Build a symmetric travel-time matrix using only the public information. If a pair is not specified, set it to unknown. Output a compact JSON object with fields: locations (list of strings), times (object with keys 'from->to' mapped to integer minutes or 'unknown').",
+                "prompt": "Context:\nPublic information:\n{environment->public_information}\nTask:\n- Normalize neighborhood names and construct a symmetric travel-time matrix.\n- Known nodes: Bayview, Russian Hill.\n- Known times: Bayview <-> Russian Hill = 23 minutes.\n- Output only the JSON object (no prose)."
+            }
+        },
+        "scheduler": {
+            "analysis": {
+                "input": [
+                    "distance_matrix"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day planner. Generate diverse, feasible candidate itineraries given start time/location, travel times, and friend availability. Clearly itemize actions with absolute times (HH:MM) and durations in minutes. Separate travel, waiting, and meeting. Prefer arriving slightly early to guarantee windows. Avoid assuming additional friends beyond the public info.",
+                "prompt": "Your name is scheduler.\nPublic information:\n{environment->public_information}\nStart state: at Bayview at 09:00.\nTravel-time data:\n{distance_matrix}\nRequirements:\n- Meet John at Russian Hill for at least 75 minutes within 17:30\u201321:00.\n- Consider multiple different schedules (at least 3) that differ in departure/arrival choices and meeting lengths (while respecting the minimum).\n- Represent schedules as a JSON array. Each schedule must include: name, steps (ordered list of {type: 'travel'|'wait'|'meet', from, to, start, end, duration}), feasibility_notes, and a score heuristic (e.g., number_friends_met, total_travel_min, slack_min).\n- Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules",
+                    "distance_matrix"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal/causal consistency. Remove bookkeeping shortcuts (quota tokens, post-hoc penalties). Enforce that all time changes are accounted for by explicit steps. Check travel durations against the matrix and the meeting against the 17:30\u201321:00 window and 75-minute minimum. Reject infeasible schedules with clear reasons. Normalize feasible schedules and recommend the best schedule that meets objectives (here: meeting John for >=75 minutes; number of friends is effectively 1).",
+                "prompt": "Inputs:\n- Candidate schedules:\n{candidate_schedules}\n- Distance matrix:\n{distance_matrix}\nTasks:\n1) Verify each schedule: chronological ordering, correct travel durations (>= specified minutes), waiting modeled explicitly, meeting with John within 17:30\u201321:00 for at least 75 minutes.\n2) Normalize feasible schedules into a canonical JSON with fields: feasible_schedules (array), rejected (array with {name, reasons}), and recommendation (the chosen schedule name with justification).\n3) Ensure no hidden time leaps or implicit penalties/rewards.\n4) Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_schedules",
+                    "distance_matrix"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL and multi-agent planning targeting the FastDownward solver. You must produce a complete PDDL domain and problem that capture the audited best schedule and allow a planner to find a valid plan. Use numeric fluents for time. Support actions: travel (advances time by the matrix value), sync-to-john-start (optionally set current_time up to window start if early), and meet-john (advances time by at least 75). Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Prefer PDDL 2.1 numeric constructs compatible with FastDownward. Keep actions agent-agnostic (single traveler).",
+                "prompt": "Goal:\n- Generate a PDDL domain and problem that allow achieving 'met-john' while respecting time windows and travel times.\nAvailable data:\n- Audited schedules and recommendation:\n{audited_schedules}\n- Distance matrix:\n{distance_matrix}\nGuidance:\n- Objects: locations (bayview, russian_hill), person (john), traveler (you).\n- Fluents (numeric): (current_time), (travel-time ?l1 ?l2), (john-window-start), (john-window-end), (meet-min-john).\n- Predicates: (at ?l), (met-john), (known-location ?l).\n- Actions:\n  1) travel ?from ?to: preconditions (at ?from) (known-location ?to), effects: not (at ?from), (at ?to), increase (current_time) by (travel-time ?from ?to).\n  2) sync-to-john-start: precondition (at russian_hill) and (< (current_time) (john-window-start)); effect: assign (current_time) to (john-window-start).\n  3) meet-john: preconditions (at russian_hill) and (>= (current_time) (john-window-start)) and (<= (+ (current_time) (meet-min-john)) (john-window-end)) and (not (met-john)); effects: increase (current_time) by (meet-min-john), (met-john).\n- Initial state: (at bayview), current_time = 540, travel-time(bayview,russian_hill)=23, travel-time(russian_hill,bayview)=23, john-window-start=1050, john-window-end=1260, meet-min-john=75.\n- Goal: (met-john).\n- Metric: minimize (current_time) to prefer earlier completion.\n- Output only the PDDL enclosed in the specified tags."
+            }
+        },
+        "constraints": [
+            "map_reader.distances->scheduler.analysis",
+            "map_reader.distances->auditor.audit",
+            "scheduler.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "map_reader.distances->orchestrator.pddl"
+        ]
+    }
+}

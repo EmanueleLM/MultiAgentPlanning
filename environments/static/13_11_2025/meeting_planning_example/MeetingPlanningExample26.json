@@ -1,0 +1,117 @@
+{
+    "name": "MeetingPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Richmond District at 09:00",
+                "I want to meet as many friends as possible today",
+                "I would like to minimize unnecessary travel and idle time",
+                "Hard requirement: meet Sarah for at least 105 minutes within her availability"
+            ],
+            "goal": "Plan the day to meet as many friends as possible while respecting availability windows and travel times; at minimum, ensure a valid meeting with Sarah for at least 105 minutes."
+        },
+        "scheduler": {
+            "private_information": [
+                "I can enumerate and compare feasible schedules using discrete minutes and travel durations",
+                "I compute metrics such as total meeting minutes, total travel minutes, and slack",
+                "I will not assume travel times or locations beyond those provided in the public information and traveler context"
+            ],
+            "goal": "Generate multiple feasible itineraries, compute metrics, and identify the best candidate according to the stated objectives and constraints."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of schedules",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or hidden time compression",
+                "I ensure that availability windows, travel durations, and meeting duration constraints are strictly enforced"
+            ],
+            "goal": "Verify and, if necessary, correct the candidate schedules for feasibility; reject or amend any option that violates time windows, travel durations, or minimum meeting requirements."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate context, candidate schedules, and the audit report into a single coherent plan",
+                "I will compile the final plan as a PDDL domain and problem suitable for the FastDownward solver using discrete time steps"
+            ],
+            "goal": "Select the best feasible schedule and produce a final PDDL domain and problem that enforce the constraints, especially meeting Sarah for at least 105 minutes."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_format": "HH:MM",
+            "day_start": "09:00",
+            "planning_horizon": "18:00",
+            "time_granularity_minutes": 1,
+            "locations": [
+                "Richmond_District",
+                "Presidio"
+            ],
+            "agent_name_in_pddl": "traveler"
+        },
+        "public_information": [
+            "Travel time from Richmond District to Presidio is 7 minutes.",
+            "Travel time from Presidio to Richmond District is 7 minutes.",
+            "Arrival at Richmond District at 09:00.",
+            "Sarah is available at Presidio from 13:15 to 15:15.",
+            "You would like to meet Sarah for a minimum of 105 minutes.",
+            "Objective: consider various feasible schedules and pick the best one that optimizes the goals while satisfying all constraints; do not invent additional distances or locations."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the traveler. Read the public information and your private information, then normalize them into a compact context for planning without producing PDDL. Extract: locations, travel_times (in minutes), initial_state (location and time), availability_windows (e.g., Sarah at Presidio from 13:15 to 15:15), hard_constraints (e.g., meet Sarah at least 105 minutes), and preferences (e.g., minimize travel, maximize meetings). Do not assume any additional locations or distances beyond what is provided.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your private information: {agents->traveler->private_information}. Your objective: {agents->traveler->goal}. Produce a normalized planning context listing: locations, travel_times_minutes, initial_state, availability_windows, hard_constraints, soft_preferences. Do not produce PDDL."
+            }
+        },
+        "scheduler": {
+            "schedules": {
+                "input": [
+                    "traveler_context"
+                ],
+                "output": "schedule_options",
+                "system_prompt": "You are a routing and schedule enumeration expert. Using only the provided context, enumerate multiple feasible day itineraries with concrete timestamps at minute-level granularity. For each option, list the sequence of actions (wait, move, meet), locations, start and end times, and compute metrics: total_travel_minutes, total_meeting_minutes_by_person, total_wait_minutes, and slack with respect to availability windows. Consider various departure times from Richmond District to align with Sarah\u2019s window and ensure a meeting of at least 105 minutes. Do not produce PDDL.",
+                "prompt": "Use the normalized traveler context: {traveler_context}. Enumerate at least three distinct feasible schedules that differ in departure/return times or meeting durations while respecting the 7-minute travel time and Sarah\u2019s availability window. For each schedule, provide: timeline steps with timestamps, meeting durations, and the computed metrics. Do not invent new locations or distances and do not produce PDDL."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "traveler_context",
+                    "schedule_options"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Validate each candidate schedule against strict rules: (1) travel actions must consume the stated duration (7 minutes between Richmond District and Presidio in either direction), (2) meetings must occur only when both the traveler and the friend are co-located, (3) meetings with Sarah must lie within 13:15 to 15:15 and total at least 105 minutes, (4) no overlapping actions for the traveler, (5) no bookkeeping shortcuts or time compression. Remove or correct any invalid schedule and clearly state the reason for rejection or the applied correction. Output only feasible and audited schedules with their metrics and a short justification for feasibility.",
+                "prompt": "Audit the schedules using: context {traveler_context} and options {schedule_options}. Enforce availability windows, travel durations, and minimum meeting duration. Remove invalid options, fix correctable minor issues conservatively, and output the validated set with reasons. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_context",
+                    "schedule_options",
+                    "audited_schedules"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with scheduling-to-PDDL compilation for the FastDownward planner. You must produce a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. Target FastDownward classical planning: use discrete minute steps from the day_start to the planning_horizon, encode a successor relation over time steps, model move actions that advance time by exactly 7 steps between Richmond_District and Presidio, model wait actions that advance time by 1 step, and model meeting actions that advance time by 1 step only when the friend is available and co-located. Introduce predicates such as (at ?loc ?t), (next ?t ?t2), (time ?t), (loc ?l), and a tracker for current time (curr ?t). Enforce that meeting Sarah for at least 105 consecutive minutes is achievable by requiring a derived or compiled goal condition that indicates at least 105 successive meeting steps within her availability window; you may encode this via helper fluents or via a counter over time-indexed meeting-fluents. Keep the model within classical PDDL (no durative actions); progress time with state variables and next-relations. Set action costs compatible with FastDownward (use (:metric minimize (total-cost))) and assign small positive costs (e.g., 1 per travel minute, 0 per meeting minute, and 0 per wait) so that any satisfying plan that meets the hard constraints is preferred with minimal travel. Do not include any narrative text; only provide the domain and problem blocks.",
+                "prompt": "Integrate the context and audited schedules to select the best feasible schedule that satisfies meeting Sarah for at least 105 minutes: {traveler_context} {audited_schedules}. Then produce a PDDL domain and problem for a single agent traveler with locations Richmond_District and Presidio, time steps from 09:00 to 18:00 at 1-minute granularity, travel time 7 minutes each way, Sarah\u2019s availability 13:15 to 15:15, and initial state at Richmond_District at 09:00. Encode a solvable goal that guarantees at least 105 minutes of meeting with Sarah within her availability window. Enclose the PDDL in <domain></domain> and <problem></problem> tags only."
+            }
+        },
+        "constraints": [
+            "traveler.context->scheduler.schedules",
+            "traveler.context->temporal_auditor.audit",
+            "scheduler.schedules->temporal_auditor.audit",
+            "traveler.context->orchestrator.pddl",
+            "scheduler.schedules->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

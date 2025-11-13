@@ -1,0 +1,31 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :negative-preconditions)
+  (:predicates
+    (available ?p ?t)
+    (selected)
+    (chosen ?t)
+    (assigned ?p ?t)
+    (assigned_any ?p)
+    (preferred ?t)
+  )
+
+  (:action select
+    :parameters (?t)
+    :precondition (and
+      (not (selected))
+      (available ralph ?t)
+      (available peter ?t)
+      (available daniel ?t)
+    )
+    :effect (and
+      (selected)
+      (chosen ?t)
+      (assigned ralph ?t)
+      (assigned peter ?t)
+      (assigned daniel ?t)
+      (assigned_any ralph)
+      (assigned_any peter)
+      (assigned_any daniel)
+    )
+  )
+)

@@ -1,0 +1,142 @@
+{
+    "name": "MeetingPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "route_planner",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to see as many friends as possible today without wasting time.",
+                "I am comfortable traveling between districts by any reasonable means.",
+                "I prefer meeting Stephanie for at least 120 minutes, ideally closer to the start of her window to keep flexibility later."
+            ],
+            "goal": "Maximize the number of friend meetings subject to time-window and travel constraints. Satisfy a hard requirement to meet Stephanie for a minimum of 120 minutes within her stated availability, starting the day at 9:00 AM in the Marina District. Prefer plans that minimize idle time and unnecessary back-and-forth travel."
+        },
+        "route_planner": {
+            "private_information": [
+                "I can enumerate feasible travel arcs and compute earliest/latest feasible departure and arrival times using the directional travel durations.",
+                "I treat travel durations as deterministic and additive."
+            ],
+            "goal": "From the traveler profile and public constraints, produce a small set of feasible routing options that honor direction-specific travel times and protect at least 120 minutes of overlap with Stephanie's availability."
+        },
+        "scheduler": {
+            "private_information": [
+                "I propose concrete candidate daily schedules with timestamps, sequencing travel, waiting, and meetings.",
+                "I score schedules on feasibility first, then coverage (friends met), then meeting duration with Stephanie, then total travel and idle time."
+            ],
+            "goal": "Enumerate multiple feasible schedules, evaluate them, and select a best plan that guarantees at least 120 minutes with Stephanie within her availability window while maximizing the number of friends met overall."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed schedules.",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, retroactive edits, or implicit time compression.",
+                "I ensure that no schedule violates directional travel times, overlaps mutually exclusive events, or uses time travel."
+            ],
+            "goal": "Certify whether the best schedule is temporally and causally consistent. If not, produce a minimally edited correction that restores feasibility while preserving the traveler\u2019s objectives as much as possible."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the traveler profile, routing options, schedules, and audit results into a final PDDL domain and problem that encode meeting-planning with directional travel times and Stephanie\u2019s time window, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "time_unit": "minutes",
+            "time_horizon_start": "09:00",
+            "time_horizon_end": "17:00",
+            "start_location": "Marina District",
+            "travel_times": {
+                "Marina District": {
+                    "Mission District": 20
+                },
+                "Mission District": {
+                    "Marina District": 19
+                }
+            },
+            "friends": [
+                {
+                    "name": "Stephanie",
+                    "base_location": "Mission District",
+                    "availability_start": "10:30",
+                    "availability_end": "13:30",
+                    "minimum_meeting_minutes": 120
+                }
+            ]
+        },
+        "public_information": [
+            "You arrive at the Marina District at 9:00 AM local time.",
+            "Travel time from Marina District to Mission District is 20 minutes.",
+            "Travel time from Mission District to Marina District is 19 minutes.",
+            "Stephanie is available in Mission District from 10:30 AM to 1:30 PM.",
+            "You would like to meet Stephanie for a minimum of 120 minutes.",
+            "Objective: meet as many friends as possible while respecting all constraints; prioritize feasibility and the Stephanie meeting requirement."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "profile": {
+                "input": [],
+                "output": "profile_data",
+                "system_prompt": "You are the traveler. Extract hard constraints, soft preferences, and optimization criteria from the public information. Identify start time and location, mandatory meeting with Stephanie and its minimum duration, and any assumptions that are safe and necessary for planning. Do not emit PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Your knowledge: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Produce a concise planning profile capturing start location and time, mandatory meeting with Stephanie (>=120 minutes within 10:30-13:30 at Mission), directional travel times, and optimization priorities (maximize friends met, minimize idle and travel time)."
+            }
+        },
+        "route_planner": {
+            "routes": {
+                "input": [
+                    "profile_data"
+                ],
+                "output": "candidate_routes",
+                "system_prompt": "You are a mobility planner for the city. Using the profile and the known directional travel durations, enumerate feasible travel arcs and time windows that ensure at least 120 minutes of overlap with Stephanie\u2019s availability. Provide 2-4 routing patterns that include earliest departure and latest feasible arrival bounds, considering Marina-to-Mission (20) and Mission-to-Marina (19). Do not emit PDDL.",
+                "prompt": "Your name is route_planner. Public information: {environment->public_information}. Known travel times: {environment->init->travel_times}. Use the traveler profile: {profile_data}. Return a small set of routing options with clear timestamp bounds that protect a >=120-minute meeting with Stephanie in Mission between 10:30 and 13:30, starting from Marina at 09:00."
+            }
+        },
+        "scheduler": {
+            "schedules": {
+                "input": [
+                    "candidate_routes"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a day-schedule constructor. Turn routing options into concrete candidate schedules with explicit timestamps for travel, waiting if needed, and meeting blocks. Ensure feasibility and compute metrics: number of friends met, Stephanie meeting duration, total travel minutes, idle minutes. Identify the best schedule and briefly justify the choice. Do not emit PDDL.",
+                "prompt": "Your name is scheduler. Use routes: {candidate_routes}. Public information: {environment->public_information}. Create multiple feasible schedules that meet Stephanie for at least 120 minutes in Mission and start at 09:00 at Marina. Pick a best schedule that maximizes friends met and then minimizes travel and idle time."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal consistency auditor. Check that no schedule contains time travel, overlapping actions for the traveler, or violations of directional travel times. Remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or retroactive edits. Confirm the Stephanie meeting block is within 10:30-13:30 and lasts at least 120 minutes. If issues are found, repair the minimum necessary. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Public information: {environment->public_information}. Assess schedules: {candidate_schedules}. Produce a verdict (pass or fail) and, if needed, a corrected best-feasible schedule with a brief explanation."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "profile_data",
+                    "candidate_routes",
+                    "candidate_schedules",
+                    "audit_report"
+                ],
+                "output": "pddl_meeting_plan",
+                "system_prompt": "You are an expert with multi-agent PDDL planning. Integrate all prior outputs and produce a final PDDL domain and problem targeting the FastDownwards solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Model at least these actions: travel with direction-specific durations (Marina->Mission:20, Mission->Marina:19), wait, and meet(Stephanie) with a constraint of at least 120 minutes within her availability window in Mission from 10:30 to 13:30. Represent time as discrete steps or via supported numeric constructs so that FastDownwards can solve it; if uncertain, prefer a discrete time progression with a finite horizon. Use clear object and predicate naming, avoid ambiguities, and only include objects present in the public information.",
+                "prompt": "Goal: {agents->orchestrator->goal}. Inputs: profile {profile_data}; routes {candidate_routes}; schedules {candidate_schedules}; audit {audit_report}. Produce a self-contained PDDL domain and problem that encode the meeting-planning task with the given locations, travel durations, starting state at 09:00 in Marina, and Stephanie's Mission availability (10:30-13:30) with a minimum meeting duration of 120 minutes. If information is missing, avoid inventing new entities; keep the model minimal yet solvable by FastDownwards."
+            }
+        },
+        "constraints": [
+            "traveler.profile->route_planner.routes",
+            "route_planner.routes->scheduler.schedules",
+            "scheduler.schedules->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.profile->orchestrator.pddl"
+        ]
+    }
+}

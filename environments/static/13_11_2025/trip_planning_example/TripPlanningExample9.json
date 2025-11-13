@@ -1,0 +1,146 @@
+{
+    "name": "TripPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Preference to keep total travel simple and minimize unnecessary flights",
+                "Comfortable starting in any of the three cities",
+                "Soft preference: spend more time in Stuttgart if possible"
+            ],
+            "goal": "Provide clear preferences and hard requirements to enable finding a 10-day city-by-city plan using only direct flights."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Direct flight edges are bidirectional unless stated otherwise",
+                "Plan must avoid multi-leg same-day hops; if a change of city occurs between consecutive days, the cities must be directly connected"
+            ],
+            "goal": "Provide a concise representation of the direct flight graph and day-to-day transition rules."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Detect temporal and causal inconsistencies (day quotas exceeding horizon, illegal transitions, missing workshop attendance)",
+                "Do not use bookkeeping shortcuts such as token quotas or post-hoc penalties; instead, convert soft preferences into explicit trade-offs and reconcile them to meet hard constraints",
+                "Flag hard vs soft requirements and produce a conflict-free, normalized constraint set"
+            ],
+            "goal": "Audit the inputs, reconcile soft vs hard requirements, and output a consistent set of constraints and at least one feasible canonical sequence over 10 days."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrate audited constraints, traveler preferences, and flight graph",
+                "Target the FastDownward planner; keep PDDL classical and solver-friendly"
+            ],
+            "goal": "Produce a final PDDL domain and problem that encodes the 10-day trip planning task and is solvable by FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "horizon_days": 10,
+            "day_labels": [
+                "day1",
+                "day2",
+                "day3",
+                "day4",
+                "day5",
+                "day6",
+                "day7",
+                "day8",
+                "day9",
+                "day10"
+            ],
+            "cities": [
+                "Frankfurt",
+                "Bucharest",
+                "Stuttgart"
+            ],
+            "direct_flights": [
+                [
+                    "Bucharest",
+                    "Frankfurt"
+                ],
+                [
+                    "Frankfurt",
+                    "Stuttgart"
+                ]
+            ],
+            "direct_flight_only": true,
+            "workshop_city": "Stuttgart",
+            "workshop_window_inclusive": [
+                5,
+                10
+            ],
+            "requested_stays": {
+                "Frankfurt": 3,
+                "Bucharest": 3
+            },
+            "soft_preferences": {
+                "Stuttgart": 6
+            }
+        },
+        "public_information": [
+            "You will travel for exactly 10 consecutive days labeled day1..day10.",
+            "Cities: Frankfurt, Bucharest, Stuttgart.",
+            "Direct flights exist only between Bucharest and Frankfurt, and between Frankfurt and Stuttgart; there is no direct flight between Bucharest and Stuttgart.",
+            "You only take direct flights to commute between cities; day-to-day city changes must follow a direct edge, or you may remain in the same city.",
+            "Hard requirements: spend exactly 3 days in Frankfurt, exactly 3 days in Bucharest, attend a workshop in Stuttgart on at least one day between day5 and day10 inclusive.",
+            "Soft preference: spend 6 days in Stuttgart overall; if infeasible with hard requirements and the 10-day horizon, prefer the closest feasible number of Stuttgart days.",
+            "Each day must be assigned to exactly one city.",
+            "A feasible canonical sequence that respects connectivity is, for example, three consecutive days in Bucharest, then three in Frankfurt, then four in Stuttgart, which also satisfies attending the workshop between day5 and day10."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_traveler",
+                "system_prompt": "You are the traveler describing desired stays and non-negotiable constraints; do not produce PDDL; produce structured, unambiguous preferences and must-haves suitable for integration.",
+                "prompt": "Your name is traveler. Public info: {environment->public_information}. Your knowledge: {agents->traveler->private_information}. Goal: {agents->traveler->goal}. Provide a compact structured summary including: required days per city (hard), workshop requirement, the 10-day horizon, and soft preferences (e.g., 6 days in Stuttgart). If any combination is infeasible, clearly mark which items are soft and propose acceptable trade-offs."
+            }
+        },
+        "flight_planner": {
+            "direct_flights": {
+                "input": [],
+                "output": "flight_graph_data",
+                "system_prompt": "You are a flight expert; do not produce PDDL; produce a precise representation of the direct flight graph and day-to-day transition rules.",
+                "prompt": "Your name is flight_planner. Public info: {environment->public_information}. Your knowledge: {agents->flight_planner->private_information}. Goal: {agents->flight_planner->goal}. Output a clear adjacency list for direct flights among the cities and state the rule that day-to-day changes must either be staying in the same city or moving along one direct edge."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "preferences_traveler",
+                    "flight_graph_data"
+                ],
+                "output": "audited_plan_constraints",
+                "system_prompt": "You audit temporal and causal consistency; no PDDL; remove bookkeeping shortcuts; classify constraints as hard or soft; if soft preferences conflict with hard constraints or the 10-day horizon, propose a reconciled set and at least one feasible canonical order of cities over the 10 days that obeys direct-flight connectivity.",
+                "prompt": "Your name is consistency_auditor. Public info: {environment->public_information}. Your knowledge: {agents->consistency_auditor->private_information}. Your inputs: {preferences_traveler} and {flight_graph_data}. Verify that total days sum to 10, that city transitions are legal via direct flights, and that at least one Stuttgart day occurs between day5 and day10 inclusive. Reconcile the 6-day Stuttgart soft preference with the hard totals for Frankfurt and Bucharest; if conflict arises, produce a feasible allocation (e.g., Stuttgart for 4 days) and a canonical sequence (e.g., Bucharest days 1-3, Frankfurt days 4-6, Stuttgart days 7-10). Output a normalized, machine-readable constraint set and the exemplar sequence."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_traveler",
+                    "flight_graph_data",
+                    "audited_plan_constraints"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert in multi-agent planning integration. Produce a complete PDDL domain and problem targeting the FastDownward solver. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Use a classical modeling style compatible with FastDownward (e.g., STRIPS/ADL with finite objects and optionally numeric fluents if needed).",
+                "prompt": "You are the orchestrator. Integrate these inputs: traveler preferences {preferences_traveler}, flight graph {flight_graph_data}, and audited constraints {audited_plan_constraints}. Build a PDDL domain that models days as objects (day1..day10), cities as objects, a successor relation next(day_i, day_j) for consecutive days, predicates such as at(day, city), next, window(day), and possibly a current-day pointer and last-city marker to enforce day-by-day assignment and direct-flight transitions when changing cities. Encode hard requirements: exactly 3 days in Frankfurt, exactly 3 in Bucharest, the remaining days in Stuttgart to meet the 10-day horizon as reconciled by the auditor, and attending the workshop by having at least one Stuttgart day within the window (day5..day10). You may use numeric fluents or compiled counters to enforce exact day counts per city. Actions should assign each day in order and allow either staying in the same city or moving along a direct flight edge; illegal jumps must be impossible. The problem must instantiate objects for all days and cities, define the direct-flight adjacency, define the workshop window days, and set the goal to have all days assigned consistently with counts satisfied and the workshop attended. Output only the PDDL with <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->consistency_auditor.audit",
+            "flight_planner.direct_flights->consistency_auditor.audit",
+            "traveler.preferences->orchestrator.pddl",
+            "flight_planner.direct_flights->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

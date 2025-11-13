@@ -1,0 +1,28 @@
+(define (domain meeting_scheduler)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types attendee timeslot)
+  (:predicates
+    (available ?a - attendee ?t - timeslot)
+    (feasible ?t - timeslot)
+    (chosen ?t - timeslot)
+    (scheduled)
+    (next ?t1 - timeslot ?t2 - timeslot)
+    (occupied ?t - timeslot)
+  )
+  (:action choose-slot
+    :parameters (?t - timeslot ?p1 - attendee ?p2 - attendee ?p3 - attendee)
+    :precondition (and
+      (feasible ?t)
+      (not (scheduled))
+      (available ?p1 ?t)
+      (available ?p2 ?t)
+      (available ?p3 ?t)
+    )
+    :effect (and
+      (chosen ?t)
+      (scheduled)
+      (occupied ?t)
+      (not (feasible ?t))
+    )
+  )
+)

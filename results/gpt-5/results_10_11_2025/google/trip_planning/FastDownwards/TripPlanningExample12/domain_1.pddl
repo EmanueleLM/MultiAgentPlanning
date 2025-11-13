@@ -1,0 +1,132 @@
+(define (domain trip15)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+  (:predicates
+    (at ?c - city ?d - day)
+    (current ?d - day)
+    (succ ?d - day ?nd - day)
+    (direct ?a - city ?b - city)
+    (window ?d - day)
+    (is-tallinn ?c - city)
+    (assigned ?c - city ?d - day)
+    (visited ?c - city)
+    (met)
+  )
+
+  (:action stay-non-tallinn
+    :parameters (?c - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?c ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (not (is-tallinn ?c))
+    )
+    :effect (and
+      (not (at ?c ?d))
+      (at ?c ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?c ?nd)
+      (visited ?c)
+    )
+  )
+
+  (:action stay-tallinn-window
+    :parameters (?t - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?t ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (is-tallinn ?t)
+      (window ?nd)
+    )
+    :effect (and
+      (not (at ?t ?d))
+      (at ?t ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?t ?nd)
+      (visited ?t)
+      (met)
+    )
+  )
+
+  (:action stay-tallinn-nonwindow
+    :parameters (?t - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?t ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (is-tallinn ?t)
+      (not (window ?nd))
+    )
+    :effect (and
+      (not (at ?t ?d))
+      (at ?t ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?t ?nd)
+      (visited ?t)
+    )
+  )
+
+  (:action fly-to-non-tallinn
+    :parameters (?from - city ?to - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?from ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (direct ?from ?to)
+      (not (is-tallinn ?to))
+    )
+    :effect (and
+      (not (at ?from ?d))
+      (at ?to ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?to ?nd)
+      (visited ?to)
+    )
+  )
+
+  (:action fly-to-tallinn-window
+    :parameters (?from - city ?t - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?from ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (is-tallinn ?t)
+      (direct ?from ?t)
+      (window ?nd)
+    )
+    :effect (and
+      (not (at ?from ?d))
+      (at ?t ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?t ?nd)
+      (visited ?t)
+      (met)
+    )
+  )
+
+  (:action fly-to-tallinn-nonwindow
+    :parameters (?from - city ?t - city ?d - day ?nd - day)
+    :precondition (and
+      (at ?from ?d)
+      (current ?d)
+      (succ ?d ?nd)
+      (is-tallinn ?t)
+      (direct ?from ?t)
+      (not (window ?nd))
+    )
+    :effect (and
+      (not (at ?from ?d))
+      (at ?t ?nd)
+      (not (current ?d))
+      (current ?nd)
+      (assigned ?t ?nd)
+      (visited ?t)
+    )
+  )
+)

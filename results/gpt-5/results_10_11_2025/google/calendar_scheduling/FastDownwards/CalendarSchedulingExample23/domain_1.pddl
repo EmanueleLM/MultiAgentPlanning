@@ -1,0 +1,28 @@
+(define (domain calendar-scheduling-example23)
+  (:requirements :strips :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:predicates
+    (valid-start ?s - slot)
+    (available-billy ?s - slot)
+    (available-maria ?s - slot)
+    (available-william ?s - slot)
+    (scheduled)
+    (chosen ?s - slot)
+  )
+  (:functions (total-cost))
+  (:action schedule-meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (valid-start ?s)
+      (available-billy ?s)
+      (available-maria ?s)
+      (available-william ?s)
+      (not (scheduled))
+    )
+    :effect (and
+      (scheduled)
+      (chosen ?s)
+      (increase (total-cost) 1)
+    )
+  )
+)

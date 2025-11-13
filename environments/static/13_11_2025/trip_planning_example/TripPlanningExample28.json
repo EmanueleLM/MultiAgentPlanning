@@ -1,0 +1,105 @@
+{
+    "name": "TripPlanningExample28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I prefer longer stays in Venice and Florence compared to Zurich",
+                "Total available vacation days are fixed at 12",
+                "I can adjust preferred stay lengths if they conflict with the total"
+            ],
+            "goal": "Find a feasible 12-day trip across Venice, Zurich, and Florence using only direct flights, staying as close as possible to the stated preferences."
+        },
+        "flight_planner": {
+            "private_information": [
+                "I know the direct flight connectivity: Venice and Zurich are directly connected; there is a direct flight from Zurich to Florence",
+                "No indirect connections are allowed to be used"
+            ],
+            "goal": "Propose feasible city sequences that use only direct flights and visit all three cities in a viable order."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and remove bookkeeping shortcuts",
+                "I verify that total days equal 12, that direct flight constraints are respected (including directionality), and that the itinerary is realizable without hidden assumptions or quota tricks"
+            ],
+            "goal": "Detect and resolve inconsistencies between preferences, total duration, and flight connectivity; produce a corrected, minimal-adjustment itinerary that is feasible."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs and produce the final PDDL domain and problem targeting the FastDownwards solver that encodes a feasible 12-day trip with only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1,
+            "days_total": 12
+        },
+        "public_information": [
+            "Cities under consideration: Venice, Zurich, Florence",
+            "Total trip duration: 12 days",
+            "Traveler preferences: Venice 6 days, Florence 6 days, Zurich 2 days",
+            "Connectivity constraint: only direct flights are permitted; no indirect connections",
+            "Direct flights available: Venice and Zurich are directly connected; there is a direct flight from Zurich to Florence",
+            "Objective: find a feasible 12-day route and day allocation visiting all three cities using only the available direct flights"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "preferences_summary",
+                "system_prompt": "You collect and structure travel preferences and hard constraints into a compact, machine-usable summary without emitting PDDL. Return a concise JSON-like summary that another agent can consume.",
+                "prompt": "Your name is traveler. Consider the public information: {environment->public_information}. Consider your knowledge: {agents->traveler->private_information}. Target goal: {agents->traveler->goal}. Produce a minimal, compact summary with fields: total_days, cities, desired_stays (per city), flight_policy (direct_only), and flexibility_notes. Do not emit PDDL and avoid verbose prose; return just the compact content."
+            }
+        },
+        "flight_planner": {
+            "routes": {
+                "input": [
+                    "preferences_summary"
+                ],
+                "output": "routes_graph",
+                "system_prompt": "You analyze connectivity and propose feasible city sequences using only direct flights. Do not emit PDDL. Return a compact representation that captures directed edges and feasible orders to visit all cities exactly once or with minimal revisits as permitted by the graph.",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information}. Your knowledge: {agents->flight_planner->private_information}. Input preferences: {preferences_summary}. Build a minimal connectivity summary with fields: directed_edges, undirected_edges (if any), feasible_sequences (ordered city lists that respect direct flights), and notes on directionality. Keep it concise and machine-usable. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "preferences_summary",
+                    "routes_graph"
+                ],
+                "output": "audited_itinerary",
+                "system_prompt": "You audit temporal and causal consistency, remove bookkeeping shortcuts, and resolve inconsistencies between desired stays and total days. You ensure the itinerary obeys direct-flight directionality and sums exactly to the total days. Do not emit PDDL. Return a compact, final itinerary recommendation.",
+                "prompt": "Your name is auditor. Public information: {environment->public_information}. Inputs: {preferences_summary} and {routes_graph}. If desired stays exceed the total, propose the smallest adjustment that fits 12 total days while respecting flight directionality and visiting all three cities. Output a compact JSON-like object with fields: resolved_stays (per city), route (ordered cities), start_city, end_city, and rationale. Ensure the route is realizable exclusively via the provided direct flights."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_summary",
+                    "routes_graph",
+                    "audited_itinerary"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with trip-planning PDDL for classical planners. Produce a final PDDL domain and problem targeting the FastDownwards solver. Use only information available in the inputs and public information. Encode 12 discrete days and enforce the audited itinerary using sequential day advancement and direct-flight constraints. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Do not include any commentary outside those tags.",
+                "prompt": "Integrate the following: preferences: {preferences_summary}; connectivity: {routes_graph}; audited itinerary: {audited_itinerary}. Build a classical STRIPS-style domain suitable for FastDownwards that includes objects for cities and days, a successor relation between days, predicates to track the current city, direct flight availability, and scheduling of each day in its city. Provide actions to stay in the current city for the current day advancing to the next day, and to fly between cities only when a direct flight is declared. Encode the audited resolved_stays and route explicitly in the problem goals so that the resulting plan schedules exactly 12 days with city assignments matching the audited itinerary and uses only direct flights. Start in the first city of the audited route on day 1 and require that all 12 days be scheduled and the final day cursor reaches the terminal day. Enclose your output strictly within <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->flight_planner.routes",
+            "traveler.preferences->auditor.audit",
+            "flight_planner.routes->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "flight_planner.routes->orchestrator.pddl",
+            "traveler.preferences->orchestrator.pddl"
+        ]
+    }
+}

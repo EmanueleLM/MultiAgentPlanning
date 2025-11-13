@@ -1,0 +1,163 @@
+{
+    "name": "Blocksworld17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_modeler",
+            "consistency_auditor",
+            "task_planner",
+            "orchestrator"
+        ],
+        "domain_modeler": {
+            "private_information": [
+                "I specialize in translating informal domains into precise symbolic specifications without emitting PDDL.",
+                "I keep action semantics consistent with classical STRIPS assumptions."
+            ],
+            "goal": "Deliver a precise, non-PDDL specification of the Blocksworld domain semantics that others can audit and plan with."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I produce normalized step-by-step traces and corrected plans when necessary."
+            ],
+            "goal": "Validate the given plan for Scenario A against the domain semantics and initial state, correcting any issues and producing a final audited report."
+        },
+        "task_planner": {
+            "private_information": [
+                "I synthesize action sequences that respect the provided domain semantics and audited constraints.",
+                "I avoid shortcuts and provide explicitly grounded steps."
+            ],
+            "goal": "Propose a valid, grounded action sequence for Scenario B that achieves the stated goal."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate semantic models, audits, and draft plans to produce the final PDDL artifacts.",
+                "I target the Fast Downward solver with STRIPS and typing."
+            ],
+            "goal": "Produce the final PDDL domain and problem for Scenario B that are directly consumable by the Fast Downward planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "yellow",
+                "red",
+                "blue",
+                "orange"
+            ],
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "There are four solid blocks: yellow, red, blue, and orange.",
+            "Available actions: pick-up a block, unstack a block from on top of another block, put down a block, stack a block on top of another block.",
+            "The hand can hold at most one block.",
+            "You can only pick up or unstack one block at a time.",
+            "You can only pick up or unstack a block if your hand is empty.",
+            "You can only pick up a block if it is on the table and clear.",
+            "A block is clear if no block is on top of it and it is not being held.",
+            "You can only unstack a block from another if it is actually on top of that other block.",
+            "You can only unstack a block if the block being unstacked is clear.",
+            "After a pick up or unstack, you are holding that block.",
+            "You can only put down a block you are holding.",
+            "You can only stack a block if you are holding it and the destination block is clear.",
+            "After put down or stack, the hand becomes empty.",
+            "After stacking a block onto another, the lower block becomes not clear."
+        ],
+        "scenarios": {
+            "a": {
+                "description": "Scenario A (plan provided for audit).",
+                "init": [
+                    "clear(yellow)",
+                    "handempty",
+                    "on(red, orange)",
+                    "on(blue, red)",
+                    "on(yellow, blue)",
+                    "ontable(orange)"
+                ],
+                "goal": [
+                    "on(blue, orange)",
+                    "on(orange, yellow)"
+                ],
+                "plan": [
+                    "unstack(yellow, blue)",
+                    "putdown(yellow)",
+                    "unstack(blue, red)",
+                    "putdown(blue)",
+                    "unstack(red, orange)",
+                    "putdown(red)",
+                    "pickup(orange)",
+                    "stack(orange, yellow)",
+                    "pickup(blue)",
+                    "stack(blue, orange)"
+                ]
+            },
+            "b": {
+                "description": "Scenario B (no plan provided; produce final PDDL for this).",
+                "init": [
+                    "clear(blue)",
+                    "clear(orange)",
+                    "handempty",
+                    "on(red, yellow)",
+                    "on(orange, red)",
+                    "ontable(blue)",
+                    "ontable(yellow)"
+                ],
+                "goal": [
+                    "on(red, blue)",
+                    "on(orange, red)",
+                    "on(yellow, orange)"
+                ]
+            }
+        }
+    },
+    "workflow": {
+        "domain_modeler": {
+            "domain_semantics": {
+                "input": [],
+                "output": "semantics",
+                "system_prompt": "You model grounded symbolic domains. Provide a non-PDDL, solver-agnostic description of Blocksworld suitable for later PDDL compilation. Include: types, predicates, state invariants, and action schemas with parameters, preconditions, and effects. Be concise and precise. Do not output PDDL.",
+                "prompt": "Your name is domain_modeler. Use the public information {environment->public_information} and the block set {environment->init->blocks}. Provide domain semantics for actions: pickup(x), putdown(x), unstack(x, y), stack(x, y). Define predicates such as on(x, y), ontable(x), clear(x), holding(x), handempty, and any necessary invariants. Do not propose plans or emit PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit_plan_a": {
+                "input": [
+                    "semantics"
+                ],
+                "output": "audit_report_a",
+                "system_prompt": "You audit temporal and causal consistency without using bookkeeping shortcuts. Simulate the plan step by step from the initial state using the provided semantics, verifying preconditions before each action and applying effects to update the state. If any step is invalid, provide a corrected minimal fix and a normalized canonical plan. Produce a clear state trace and final verdict.",
+                "prompt": "Your name is consistency_auditor. Audit Scenario A. Semantics: {semantics}. Initial state: {environment->scenarios->a->init}. Candidate plan: {environment->scenarios->a->plan}. Output a report including: validity verdict, per-step checks, corrected plan if needed, and the final resulting state. Do not emit PDDL."
+            }
+        },
+        "task_planner": {
+            "construct_plan_b": {
+                "input": [
+                    "semantics",
+                    "audit_report_a"
+                ],
+                "output": "candidate_plan_b",
+                "system_prompt": "You propose a grounded, linear action sequence that achieves the goal from the given initial state using the provided semantics and lessons from the audit. Avoid shortcuts, ensure all preconditions are met at each step, and keep the plan minimal and clear. Do not emit PDDL.",
+                "prompt": "Your name is task_planner. Produce a valid action sequence for Scenario B. Semantics: {semantics}. Initial state: {environment->scenarios->b->init}. Goal: {environment->scenarios->b->goal}. Use insights from the audit report {audit_report_a} to avoid known pitfalls. Output a simple ordered list of grounded actions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "semantics",
+                    "audit_report_a",
+                    "candidate_plan_b"
+                ],
+                "output": "pddl_blocksworld",
+                "system_prompt": "You are an expert in generating PDDL for the Fast Downward solver. Produce exactly one PDDL domain and one PDDL problem that encode Blocksworld with actions pickup, putdown, unstack, and stack, using predicates on, ontable, clear, holding, and handempty. Use :requirements :strips :typing and ensure compatibility with Fast Downward. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Do not include explanations, comments, or any text outside those tags.",
+                "prompt": "Integrate the provided semantics {semantics}, the audit findings {audit_report_a}, and the candidate plan for Scenario B {candidate_plan_b}. Output a final PDDL domain and a single PDDL problem for Scenario B only. Objects are the blocks {environment->init->blocks}. The initial state must reflect {environment->scenarios->b->init}, and the goal must reflect {environment->scenarios->b->goal}. Ensure action preconditions and effects exactly capture the public rules and are consistent with the audited semantics."
+            }
+        },
+        "constraints": [
+            "domain_modeler.domain_semantics->consistency_auditor.audit_plan_a",
+            "domain_modeler.domain_semantics->task_planner.construct_plan_b",
+            "consistency_auditor.audit_plan_a->orchestrator.pddl",
+            "task_planner.construct_plan_b->orchestrator.pddl"
+        ]
+    }
+}

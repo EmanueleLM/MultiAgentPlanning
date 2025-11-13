@@ -1,0 +1,115 @@
+{
+    "name": "TripPlanningExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "route_planner",
+            "constraints_modeler",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "route_planner": {
+            "private_information": [
+                "I know how to explore city sequences that respect direct-flight connectivity and minimize unnecessary hops.",
+                "I can propose concrete day-by-day itineraries and clearly mark flight transition days.",
+                "I prioritize hard constraints first and then shape the plan toward stated preferences."
+            ],
+            "goal": "Propose a concrete 16-day city-by-day itinerary that only uses direct flights between cities, satisfies mandatory visit windows, and gets as close as possible to the preferred per-city day counts."
+        },
+        "constraints_modeler": {
+            "private_information": [
+                "I translate natural-language requirements into explicit, machine-readable constraints.",
+                "I distinguish hard constraints (must hold) from soft preferences (optimize if feasible).",
+                "I ensure constraints are precise for downstream planning and verification."
+            ],
+            "goal": "Produce a precise, unambiguous set of constraints and preferences describing the 16-day trip, city connectivity via direct flights, and the desired per-city stays."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across itineraries and constraints.",
+                "I remove bookkeeping shortcuts and post-hoc penalty schemes; I prefer explicit, checkable constraints.",
+                "I surface infeasibilities and propose minimal, principled adjustments that preserve hard constraints."
+            ],
+            "goal": "Detect and explain any inconsistencies between the candidate itinerary and the formal constraints. If preferences conflict with hard facts, recommend a minimal relaxation strategy and provide a corrected, consistent plan rationale."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from planning, constraint modeling, and auditing.",
+                "I produce the final PDDL domain and problem for the FastDownward solver, using only information provided by the other agents and the environment."
+            ],
+            "goal": "Generate a final integrated PDDL domain and problem that models a 16-day trip across Athens, Zurich, and Krakow with only direct flights, enforces hard constraints, and encodes soft preferences as comments or optional goal structure when strict satisfaction is impossible."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Athens",
+                "Zurich",
+                "Krakow"
+            ]
+        },
+        "public_information": [
+            "You will travel for exactly 16 consecutive days labeled day 1 through day 16 inclusive.",
+            "Target cities: Athens, Zurich, Krakow.",
+            "Direct flights exist only between the following city pairs: Zurich <-> Krakow, Athens <-> Zurich.",
+            "No direct flights exist between Athens and Krakow.",
+            "You want to spend 6 days in Krakow.",
+            "You would like to visit Athens for 7 days.",
+            "You plan to visit relatives in Athens between day 1 and day 7 inclusive.",
+            "You would like to visit Zurich for 5 days.",
+            "Only direct flights are allowed for inter-city moves between consecutive days.",
+            "Exactly one city must be assigned to each day.",
+            "Preferences may conflict with the total day budget; hard constraints must take precedence."
+        ]
+    },
+    "workflow": {
+        "route_planner": {
+            "analysis": {
+                "input": [],
+                "output": "plan_draft",
+                "system_prompt": "You are a travel routing strategist. You produce a concrete day-by-day city sequence that respects direct-flight connectivity and mandatory windows first, then aligns with preferences when feasible. You clearly annotate flight transition days and do not emit PDDL.",
+                "prompt": "Your name is route_planner. Public context: {environment->public_information}. Private context: {agents->route_planner->private_information}. Goal: {agents->route_planner->goal}. Task: Propose at least one feasible 16-day itinerary. Enforce hard constraints: days are 1..16, only direct flights, exactly one city per day, visit Athens on days 1..7 inclusive. Then fit city-day preferences as closely as possible. Output a compact plan as: Day i: City (Flight from X->Y if a city change occurs between day i-1 and day i). Do not produce PDDL."
+            }
+        },
+        "constraints_modeler": {
+            "formalize_constraints": {
+                "input": [],
+                "output": "formal_constraints",
+                "system_prompt": "You are a constraint engineer. You convert natural-language trip requirements into explicit hard constraints and soft preferences that are easy for planners and auditors to verify. You do not emit PDDL.",
+                "prompt": "Your name is constraints_modeler. Public context: {environment->public_information}. Private context: {agents->constraints_modeler->private_information}. Goal: {agents->constraints_modeler->goal}. Task: Provide a structured description including: 1) Hard constraints (exactly 16 days; one city per day; Athens on days 1..7 inclusive; flights only on day transitions and only along direct edges Athens<->Zurich and Zurich<->Krakow); 2) Soft preferences for total stay counts (Krakow 6, Athens 7, Zurich 5), noting that total preference days exceed 16 and must be reconciled; 3) The city connectivity graph and any symmetry (bidirectional edges); 4) Any assumptions you avoided making. Represent the result as a clear bullet list of facts and do not produce PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "plan_draft",
+                    "formal_constraints"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency. You forbid bookkeeping shortcuts and post-hoc penalty schemes; instead, you rely on explicit constraints and verifiable plan properties. You produce a brief diagnosis and, if needed, a minimally relaxed preference set that preserves all hard constraints. You do not emit PDDL.",
+                "prompt": "Your name is consistency_auditor. Public context: {environment->public_information}. Private context: {agents->consistency_auditor->private_information}. Inputs: {plan_draft} and {formal_constraints}. Goal: {agents->consistency_auditor->goal}. Task: 1) Verify the candidate itinerary respects hard constraints and direct-flight connectivity; 2) Identify conflicts between the preferred day counts and the 16-day budget; 3) Recommend a minimal adjustment strategy prioritizing the hard Athens days 1..7, then keeping Krakow at 6 if feasible, and reducing Zurich days as needed; 4) Provide a corrected day allocation and flight sequence consistent with direct flights if changes are required. Output a concise audit with an explicit final recommended day allocation per city and the flight hops."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_draft",
+                    "formal_constraints",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning integration. Produce the final PDDL domain and problem for the FastDownward solver. Include exactly one <domain>...</domain> section and one <problem>...</problem> section. The model must: represent days 1..16 as discrete steps; represent cities Athens, Zurich, Krakow; allow exactly one city assignment per day; allow moves between consecutive days only via direct flights (Athens<->Zurich, Zurich<->Krakow); encode the hard constraint that days 1..7 are in Athens; and reflect the auditor\u2019s recommended resolution of preference conflicts. Keep actions simple and compatible with classical FastDownward (no numeric fluents required). If soft preferences cannot be strictly satisfied, include them as commented notes in the problem. Do not rely on external data.",
+                "prompt": "You are the orchestrator. Your goal is: {agents->orchestrator->goal}. Public context: {environment->public_information}. Inputs to integrate: Candidate itinerary: {plan_draft}; Formal constraints: {formal_constraints}; Audit and recommended resolution: {audit_report}. Task: Produce a self-contained PDDL domain and problem suitable for FastDownward that enforces all hard constraints and incorporates the auditor\u2019s final recommended allocation and flight order. Keep agent-agnostic actions (assign-city-for-day and fly-between-days) with predicates over day indices and city constants. Enclose the PDDL domain in <domain></domain> and the PDDL problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "route_planner.analysis->consistency_auditor.audit",
+            "constraints_modeler.formalize_constraints->consistency_auditor.audit",
+            "route_planner.analysis->orchestrator.pddl",
+            "constraints_modeler.formalize_constraints->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

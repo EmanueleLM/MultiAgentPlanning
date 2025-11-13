@@ -1,0 +1,54 @@
+(define (problem scenario_b_instance)
+  (:domain scenario_b)
+  (:objects
+    object_0 object_1 object_2 object_3 object_4
+    object_5 object_6 object_7 object_8 object_9
+    object_10 object_11 object_12 object_13 object_14
+  )
+  (:init
+    ; static facts (invariants)
+    (hand object_14)
+    (hand object_13)
+    (hand object_12)
+
+    (cats object_1)
+
+    (sneeze object_4)
+    (sneeze object_5)
+
+    (spring object_6)
+    (spring object_9)
+
+    (stupendous object_2)
+    (stupendous object_3)
+
+    (texture object_6)
+    (texture object_7)
+    (texture object_8)
+    (texture object_9)
+    (texture object_10)
+    (texture object_11)
+
+    (collect object_7 object_2)
+    (collect object_8 object_2)
+    (collect object_6 object_2)
+
+    (collect object_10 object_3)
+    (collect object_9 object_3)
+    (collect object_11 object_3)
+
+    ; dynamic initial state
+    (next object_4 object_7)
+    (next object_14 object_8)
+    (next object_13 object_8)
+    (next object_5 object_10)
+    (next object_12 object_11)
+    (next object_1 object_6)
+    ; no initial vase facts
+  )
+  (:goal (and
+    (next object_12 object_6)
+    (next object_13 object_10)
+    (next object_14 object_11)
+  ))
+)

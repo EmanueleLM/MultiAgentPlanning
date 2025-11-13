@@ -1,0 +1,188 @@
+{
+    "name": "Hanoi2Agents10DisksInstance17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "auditor",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "You can move only disks: A, B, C, D, E.",
+                "You cannot move disks F, G, H, I, J.",
+                "You must obey Tower of Hanoi rules: move one disk at a time; never place a larger disk on a smaller one; only the top disk of a peg is movable."
+            ],
+            "goal": "Cooperate to reach the goal configuration by proposing a valid, ordered list of primitive moves you can execute."
+        },
+        "agent_2": {
+            "private_information": [
+                "You can move only disks: F, G, H, I, J.",
+                "You cannot move disks A, B, C, D, E.",
+                "You must obey Tower of Hanoi rules: move one disk at a time; never place a larger disk on a smaller one; only the top disk of a peg is movable."
+            ],
+            "goal": "Cooperate to reach the goal configuration by proposing a valid, ordered list of primitive moves you can execute."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency across the proposed moves.",
+                "Remove any bookkeeping shortcuts or artificial mechanisms (e.g., quota tokens, post-hoc penalties, budget transfers) and insist on explicit legal moves only.",
+                "Ensure that each move is justified by the current state and that no rules are violated."
+            ],
+            "goal": "Produce a single, legal, temporally consistent sequence of primitive moves that transforms the initial state into the goal state while respecting agent move restrictions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate the team and compile the final artifacts for planning."
+            ],
+            "goal": "Integrate the audited move sequence and compile a final PDDL domain and problem (for FastDownward) that encode this Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "ownership": {
+                "agent_1": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                ],
+                "agent_2": [
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ]
+            },
+            "initial": {
+                "left": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "middle": [],
+                "right": []
+            },
+            "goal": {
+                "left": [
+                    "B",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J"
+                ],
+                "middle": [],
+                "right": [
+                    "A",
+                    "C"
+                ]
+            },
+            "rules": [
+                "Move exactly one disk per action.",
+                "Only the top disk of a peg can be moved.",
+                "A disk may be placed only on an empty peg or on top of a larger disk.",
+                "Only agent_1 may move disks A, B, C, D, E.",
+                "Only agent_2 may move disks F, G, H, I, J."
+            ]
+        },
+        "public_information": [
+            "Two-agent Tower of Hanoi with 10 disks labeled A (smallest) through J (largest).",
+            "Agents are restricted: agent_1 moves A-E; agent_2 moves F-J.",
+            "Initial: left has A,B,C,D,E,F,G,H,I,J (top to bottom); middle empty; right empty.",
+            "Goal: left has B,D,E,F,G,H,I,J (top to bottom); middle empty; right has A,C (top to bottom).",
+            "All moves must obey Tower of Hanoi rules and agent restrictions."
+        ],
+        "reference_solution": {
+            "description": "One valid ordered list of primitive moves achieving the goal while respecting all constraints.",
+            "plan": [
+                "agent_1: move disk A from left to right",
+                "agent_1: move disk B from left to middle",
+                "agent_1: move disk A from right to middle",
+                "agent_1: move disk C from left to right",
+                "agent_1: move disk A from middle to right",
+                "agent_1: move disk B from middle to left"
+            ],
+            "plan_length": 6,
+            "post_checks": [
+                "All moves are legal Tower of Hanoi moves.",
+                "Only agent_1 moves disks A, B, C; agent_2 moves none.",
+                "Final state: left = [B,D,E,F,G,H,I,J], middle = [], right = [A,C]."
+            ]
+        }
+    },
+    "workflow": {
+        "agent_1": {
+            "propose_moves": {
+                "input": [],
+                "output": "moves_agent_1",
+                "system_prompt": "You are agent_1 responsible for disks A, B, C, D, E. Propose a sequence of primitive moves that you personally can perform to help reach the goal, strictly following the rules and your ownership limits. Use the exact format 'agent_1: move disk X from peg1 to peg2' for each step.",
+                "prompt": "Context: pegs={environment->init->pegs}; disks={environment->init->disks}; initial={environment->init->initial}; goal={environment->init->goal}; rules={environment->init->rules}. Output only your proposed moves in order, no commentary."
+            }
+        },
+        "agent_2": {
+            "propose_moves": {
+                "input": [],
+                "output": "moves_agent_2",
+                "system_prompt": "You are agent_2 responsible for disks F, G, H, I, J. Propose a sequence of primitive moves that you personally can perform to help reach the goal, strictly following the rules and your ownership limits. Use the exact format 'agent_2: move disk X from peg1 to peg2' for each step.",
+                "prompt": "Context: pegs={environment->init->pegs}; disks={environment->init->disks}; initial={environment->init->initial}; goal={environment->init->goal}; rules={environment->init->rules}. Output only your proposed moves in order, no commentary."
+            }
+        },
+        "auditor": {
+            "audit_plan": {
+                "input": [
+                    "moves_agent_1",
+                    "moves_agent_2"
+                ],
+                "output": "audited_moves",
+                "system_prompt": "You are the audit agent. Merge and validate the candidate moves from agent_1 and agent_2 into a single linear plan. Enforce strict temporal and causal consistency, disallow any bookkeeping shortcuts (e.g., quota tokens, post-hoc penalties, budget transfers), and ensure each step is legal under the Tower of Hanoi rules and agent ownership constraints.",
+                "prompt": "Use initial={environment->init->initial}, goal={environment->init->goal}, rules={environment->init->rules}. Integrate the inputs {moves_agent_1} and {moves_agent_2} into one valid ordered list of primitive moves in the exact format 'agent_i: move disk X from peg1 to peg2'. If an input move is illegal, reorder or discard it and insert necessary legal moves, but never violate the rules. Ensure the final sequence achieves the goal with middle peg empty."
+            }
+        },
+        "orchestrator": {
+            "integrate_and_compile": {
+                "input": [
+                    "audited_moves"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are the orchestrator coordinating the two-agent Tower of Hanoi. First, output the finalized ordered list of primitive moves in the format 'agent_i: move disk X from peg1 to peg2'. Then produce a complete PDDL domain and problem for this exact instance, suitable for the FastDownward planner (classical STRIPS with :typing). Enclose the domain between <domain></domain> and the problem between <problem></problem>. Use predicates such as (disk ?x), (peg ?p), (smaller ?x ?y), (on ?x ?y), (on-peg ?x ?p), (clear ?x), and an action that moves a disk from a peg or disk to a peg or disk subject to size and clearance constraints. Encode the initial and goal states exactly as specified. Do not introduce macros or non-primitive actions.",
+                "prompt": "Context: pegs={environment->init->pegs}; disks={environment->init->disks}; ownership={environment->init->ownership}; initial={environment->init->initial}; goal={environment->init->goal}; rules={environment->init->rules}. Inputs: {audited_moves}. Output the final move list first, then the PDDL <domain> and <problem> targeting FastDownward."
+            }
+        },
+        "constraints": [
+            "agent_1.propose_moves->auditor.audit_plan",
+            "agent_2.propose_moves->auditor.audit_plan",
+            "auditor.audit_plan->orchestrator.integrate_and_compile"
+        ]
+    }
+}

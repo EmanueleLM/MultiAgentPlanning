@@ -86,6 +86,7 @@ class Planner:
             - Set the "name" field to "{env_name}".
             - Include an "orchestrator" agent that coordinates the other agents (use the exact name "orchestrator").
             - Provide context for each agent without requesting them to emit PDDL directly.
+            - Add at least one agent whose role is to audit temporal/causal consistency and remove bookkeeping shortcuts (quota tokens, post-hoc penalties, etc.).
             - Ensure the orchestrator action produces the final PDDL domain and problem targeting the {target_solver} solver.
             - Avoid inserting escape sequences such as \n inside string literals.
             - Present clean indentation and do not wrap the output in quotes.
@@ -236,14 +237,18 @@ class Planner:
                     continue
 
                 orchestrator_prompt = (filled_prompt or "").strip()
-                note = (
-                    "Note: The agent inputs above describe capabilities, goals, and constraints. "
-                    "They are not valid PDDL artefacts. Derive a consistent PDDL domain "
-                    "and problem that satisfy the specification and remain compatible with the target solver. "
-                    "Treat natural-language preferences (avoid / would rather / earliest) as hard temporal constraints."
-                    "Do not emit placeholder tokens such as '...' or 'None'; provide complete predicate and action definitions. "
-                    "Keep :requirements limited to :strips, :typing, and :negative-preconditions (optionally :action-costs if you add matching increase effects) and remove every unsupported feature. "
-                    "Do not use ':cost' declarations on action headers: we are not interested in the final cost of the plan."
+                note = inspect.cleandoc(
+                    """\
+                    Note: The agent inputs above describe capabilities, goals, and constraints. They are not executable PDDL.
+                    Derive a consistent PDDL domain and problem that satisfy the specification and remain compatible with the target solver.
+                    Treat natural-language preferences (avoid / would rather / earliest / exactly / at most) as hard constraints over the timeline.
+                    Prohibit bookkeeping shortcuts such as post-hoc “pay shortfall”, quota tokens, or generic penalty actions—encode the constraints directly so that violating plans become impossible.
+                    When the specification enumerates discrete phases or time slots, model them explicitly (e.g., day objects with successor links) and enforce contiguity rather than allowing ping-pong transitions.
+                    Do not emit placeholder tokens such as '...' or 'None'; provide complete predicate and action definitions.
+                    Keep :requirements limited to :strips, :typing, and :negative-preconditions (optionally :action-costs if you add matching increase effects) and remove every unsupported feature.
+                    Do not use ':cost' declarations on action headers: use (increase ...) effects instead, and only when the task genuinely requires action costs.
+                    Ensure the problem goal fixes every mandated terminal condition (e.g., final locations, completed tasks) instead of relying on auxiliary bookkeeping predicates alone.
+                    """
                 )
                 if orchestrator_prompt:
                     orchestrator_prompt += f"\n\n{note}"
@@ -251,10 +256,14 @@ class Planner:
                     orchestrator_prompt = note
 
                 orchestrator_system_prompt = (filled_system_prompt or "").strip()
-                system_note = (
-                    "Agent inputs are descriptive summaries rather than executable PDDL. "
-                    "Do not invent availability beyond the provided data, and encode preferences as strict constraints. "
-                    "Double-check that both the domain and problem contain fully expanded content (no placeholders) and that the :requirements list only contains solver-supported flags."
+                system_note = inspect.cleandoc(
+                    """\
+                    Agent inputs are descriptive summaries rather than executable PDDL artefacts.
+                    Do not invent resources, availability, or connectivity beyond the provided data, and encode every preference as a strict constraint.
+                    Eliminate penalty-accounting constructs (tokens, shortfalls, quota closures) that would allow violations after the fact.
+                    Make sure both the domain and problem contain fully expanded content (no placeholders) and that the :requirements list only contains solver-supported flags.
+                    Whenever the specification implies an ordered sequence, enforce it with explicit predicates or goal facts so the solver cannot reorder steps arbitrarily.
+                    """
                 )
                 if orchestrator_system_prompt:
                     orchestrator_system_prompt += f"\n{system_note}"

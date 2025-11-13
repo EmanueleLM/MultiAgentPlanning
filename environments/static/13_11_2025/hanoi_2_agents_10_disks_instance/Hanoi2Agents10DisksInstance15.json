@@ -1,0 +1,127 @@
+{
+    "name": "Hanoi2Agents10DisksInstance15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "agent_1",
+            "agent_2",
+            "auditor",
+            "orchestrator"
+        ],
+        "agent_1": {
+            "private_information": [
+                "You can move only these disks: A, B, C, D, E.",
+                "You are responsible for positioning the small disks to achieve the target configuration.",
+                "You never move disks F, G, H, I, J."
+            ],
+            "goal": "Cooperatively reach the target state: left peg has (top->bottom) B, E, F, G, H, I, J; middle peg is empty; right peg has (top->bottom) A, C, D; obey Tower of Hanoi rules and agent movement restrictions."
+        },
+        "agent_2": {
+            "private_information": [
+                "You can move only these disks: F, G, H, I, J.",
+                "You are responsible for any movements involving large disks if needed.",
+                "You never move disks A, B, C, D, E."
+            ],
+            "goal": "Cooperatively reach the target state: left peg has (top->bottom) B, E, F, G, H, I, J; middle peg is empty; right peg has (top->bottom) A, C, D; obey Tower of Hanoi rules and agent movement restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "You are tasked with auditing temporal/causal consistency, ensuring every move is legal (only top disk moves, no larger disk atop a smaller one), and removing bookkeeping shortcuts (no quota tokens, no post-hoc penalties, no jumps).",
+                "You must validate that the composed plan achieves the exact target configuration."
+            ],
+            "goal": "Audit candidate move sequences for legality, precedence, and goal satisfaction; produce a single, linear, legal plan with no shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate the agents and compile their audited moves into a final plan and a PDDL model targeting the FastDownward solver.",
+                "Keep agent-specific move actions distinct in the domain to encode capability constraints."
+            ],
+            "goal": "Integrate the agents' contributions into a final legal plan and produce a PDDL domain and problem solvable by FastDownward that encode this instance and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disk_labels": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G",
+                "H",
+                "I",
+                "J"
+            ],
+            "visibility": "full"
+        },
+        "public_information": [
+            "This is a 3-peg Tower of Hanoi instance with 10 disks labeled A (smallest) through J (largest).",
+            "Agent movement restrictions: agent_1 may move only A, B, C, D, E; agent_2 may move only F, G, H, I, J.",
+            "Initial configuration: left peg has (top->bottom) A, B, C, D, E, F, G, H, I, J; middle peg is empty; right peg is empty.",
+            "Goal configuration: left peg has (top->bottom) B, E, F, G, H, I, J; middle peg is empty; right peg has (top->bottom) A, C, D.",
+            "Rules: Move exactly one disk at a time; only the top disk of any peg/stack can be moved; no larger disk may be placed atop a smaller disk."
+        ],
+        "reference_plan": [
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk B from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk C from left to middle",
+            "agent_1: move disk A from right to left",
+            "agent_1: move disk B from right to middle",
+            "agent_1: move disk A from left to middle",
+            "agent_1: move disk D from left to right",
+            "agent_1: move disk A from middle to right",
+            "agent_1: move disk B from middle to left",
+            "agent_1: move disk A from right to left",
+            "agent_1: move disk C from middle to right",
+            "agent_1: move disk A from left to right"
+        ]
+    },
+    "workflow": {
+        "agent_1": {
+            "plan_segment": {
+                "input": [],
+                "output": "segment_agent_1",
+                "system_prompt": "You are a cooperative Tower of Hanoi planner for small disks. You only move disks A, B, C, D, E. You must respect Tower of Hanoi legality (move one disk at a time; only the top disk can be moved; never place a larger disk atop a smaller one).",
+                "prompt": "Your name is agent_1. Public information: {environment->public_information}. Your private capabilities: move only A, B, C, D, E. Target: {agents->agent_1->goal}. Propose a minimal sequence of primitive moves you can perform to achieve the goal or to make decisive progress toward it. Use the exact format 'agent_1: move disk X from peg1 to peg2', with peg names from {left, middle, right}. Do not include PDDL or pseudo-operators. If you can finish the instance with only your disks, do so."
+            }
+        },
+        "agent_2": {
+            "plan_segment": {
+                "input": [],
+                "output": "segment_agent_2",
+                "system_prompt": "You are a cooperative Tower of Hanoi planner for large disks. You only move disks F, G, H, I, J. You must respect Tower of Hanoi legality and agent capability constraints.",
+                "prompt": "Your name is agent_2. Public information: {environment->public_information}. Your private capabilities: move only F, G, H, I, J. Target: {agents->agent_2->goal}. Determine whether any movement of large disks is required. If no movement is needed, explain briefly and output an empty or 'no moves needed' segment. If movement is needed, provide a legal sequence using the exact format 'agent_2: move disk X from peg1 to peg2'. Do not include PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "segment_agent_1",
+                    "segment_agent_2"
+                ],
+                "output": "audited_moves",
+                "system_prompt": "You audit multi-agent Tower of Hanoi plans. Enforce temporal/causal consistency and legality: only top disks move, single-disk moves, and no larger-on-smaller placements. Remove bookkeeping shortcuts; do not introduce quota tokens, post-hoc penalties, or state jumps. Validate that the final sequence achieves the exact target configuration.",
+                "prompt": "You will receive candidate segments from agent_1 and agent_2. 1) Merge them into a single linear sequence that is legal and satisfies the target configuration. 2) If agent_2 proposes unnecessary moves for large disks, remove them. 3) Output the final plan as an ordered list, each item on a separate line, using exactly the format 'agent_i: move disk X from peg1 to peg2'. 4) Ensure the sequence achieves: left peg (top->bottom) B, E, F, G, H, I, J; middle empty; right peg (top->bottom) A, C, D."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_moves"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in compiling cooperative Tower of Hanoi instances into PDDL for the FastDownward solver. Produce a complete PDDL domain and problem that encode: (a) 3 pegs {left, middle, right}; (b) 10 disks A..J with a total order of 'smaller'; (c) legality constraints; (d) agent capability constraints via distinct actions for agent_1 (A..E) and agent_2 (F..J). Use standard STRIPS/ADL compatible with FastDownward. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Also include the final move list inside <plan></plan> tags.",
+                "prompt": "Integrate the audited move sequence: {audited_moves}. 1) Provide a PDDL domain with types (support, peg - support, disk - support), predicates (on ?d - disk ?s - support), (clear ?s - support), (smaller ?x - disk ?y - disk), (belongs_agent1 ?d - disk), (belongs_agent2 ?d - disk). Include two move actions: move_agent_1(?d ?from ?to) requiring belongs_agent1(?d) and legality, and move_agent_2(?d ?from ?to) requiring belongs_agent2(?d) and legality. Enforce legality with preconditions: on(?d ?from) and clear(?d) and clear(?to) and (or is-peg(?to) smaller(?d ?to)); you may model is-peg via static predicate or type checks. 2) Provide a PDDL problem that defines objects (pegs left, middle, right; disks a..j), all static smaller facts for A<J, and belongs_agent1 for A..E, belongs_agent2 for F..J. Set the initial state to the full stack on left (A on B, B on C, ..., I on J, J on left), clear(A), clear(middle), clear(right). 3) Set the goal to exactly: right has A on C on D on right with clear(A); left has B on E on F on G on H on I on J on left with clear(B); middle is clear with no disks on it. 4) Print the final audited plan inside <plan></plan> tags as one move per line using the exact format 'agent_i: move disk X from peg1 to peg2'."
+            }
+        },
+        "constraints": [
+            "agent_1.plan_segment->auditor.audit",
+            "agent_2.plan_segment->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

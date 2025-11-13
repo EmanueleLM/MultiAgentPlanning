@@ -1,0 +1,163 @@
+{
+    "name": "MeetingPlanningExample24",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "city_mapper",
+            "calendar_coordinator",
+            "schedule_generator",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "city_mapper": {
+            "private_information": [
+                "Familiar with San Francisco neighborhoods and typical intra-city travel times",
+                "Will normalize place names and provide directed travel times without adding speculative routes"
+            ],
+            "goal": "Provide accurate directed travel times between relevant locations to enable feasible schedules."
+        },
+        "calendar_coordinator": {
+            "private_information": [
+                "Knows how to represent availability windows and minimum meeting durations",
+                "Will not invent availability beyond public information"
+            ],
+            "goal": "Aggregate friend availability windows and minimum meeting requirements into a structured calendar."
+        },
+        "schedule_generator": {
+            "private_information": [
+                "Experienced in enumerating feasible travel-and-meet schedules with waiting if beneficial",
+                "Optimizes for meeting count first, then feasibility and slack"
+            ],
+            "goal": "Produce several feasible, distinct schedules that respect travel times and availability constraints."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency across proposals",
+                "Rejects bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Verifies minimum meeting durations and resource feasibility"
+            ],
+            "goal": "Validate candidate schedules against constraints and produce an audit report with pass or fail justifications and recommended best candidate."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrates data from all agents and produces the final PDDL 2.1 domain and problem for the FastDownward solver",
+                "Prefers formulations with durative actions and timed initial literals for availability windows"
+            ],
+            "goal": "Select the best schedule and emit a final PDDL domain and problem targeting FastDownward to achieve the meeting objectives."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "time_zone": "America/Los_Angeles",
+            "start_time": "09:00",
+            "time_horizon_end": "18:00",
+            "locations": [
+                "NobHill",
+                "Presidio"
+            ],
+            "start_location": "NobHill",
+            "solver": "FastDownward"
+        },
+        "public_information": [
+            "Objective: Meet as many friends as possible during a one-day visit to San Francisco while respecting travel times and availability windows.",
+            "You arrive at Nob Hill at 9:00AM.",
+            "Travel time Nob Hill to Presidio is 17 minutes.",
+            "Travel time Presidio to Nob Hill is 18 minutes.",
+            "Friend Matthew is at Presidio from 11:00AM to 3:15PM.",
+            "You want to meet Matthew for a minimum of 30 minutes.",
+            "Waiting is allowed and counts as idle time, not meeting time.",
+            "Primary success condition: Meet Matthew for at least 30 minutes within his availability window.",
+            "Secondary objective: If there were multiple friends, maximize the total number of friends met; ties can be broken by shorter total time or less waiting."
+        ],
+        "friends": [
+            {
+                "name": "Matthew",
+                "location": "Presidio",
+                "available_from": "11:00",
+                "available_to": "15:15",
+                "min_meeting_minutes": 30
+            }
+        ],
+        "map": {
+            "directed_travel_times_minutes": [
+                {
+                    "from": "NobHill",
+                    "to": "Presidio",
+                    "minutes": 17
+                },
+                {
+                    "from": "Presidio",
+                    "to": "NobHill",
+                    "minutes": 18
+                }
+            ]
+        }
+    },
+    "workflow": {
+        "city_mapper": {
+            "routes": {
+                "input": [],
+                "output": "routes_data",
+                "system_prompt": "You are a local routing expert for San Francisco. You return concise JSON describing locations and directed travel times in minutes without inventing new places or routes beyond what is publicly provided.",
+                "prompt": "Use the public information to normalize location names and provide a directed travel-time map between NobHill and Presidio. Include both directions as separate entries. Output a compact JSON object with fields locations and edges, where edges are objects with from, to, and minutes."
+            }
+        },
+        "calendar_coordinator": {
+            "windows": {
+                "input": [],
+                "output": "windows_data",
+                "system_prompt": "You aggregate friend availability windows and minimum meeting durations into a clean, machine-readable calendar without making unsupported assumptions.",
+                "prompt": "From the public information, build a JSON calendar of friend availability windows. Include fields: start_time, start_location, time_zone, and friends where each friend has name, location, available_from, available_to, and min_meeting_minutes. Do not fabricate additional friends."
+            }
+        },
+        "schedule_generator": {
+            "generate": {
+                "input": [
+                    "routes_data",
+                    "windows_data"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You enumerate multiple feasible schedules consistent with travel times and availability. You optimize for meeting count first, then feasibility and slack. You do not emit PDDL.",
+                "prompt": "Enumerate at least three distinct feasible schedules that start at NobHill at 09:00, travel as needed using the provided directed travel times, and meet Matthew at Presidio for at least 30 minutes during 11:00 to 15:15. Include waiting when useful. Represent schedules as an array of objects with fields schedule_id, steps, start, end, meets, total_travel_minutes, total_wait_minutes, and feasibility_notes. Each steps array item is an object with type (travel, wait, meet), location, start, end, and minutes."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "routes_data",
+                    "windows_data",
+                    "candidate_schedules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties. You verify minimum meeting durations, directed travel times, and availability windows. You return a detailed but concise report with pass or fail per schedule and a recommended best option.",
+                "prompt": "Validate each candidate schedule against all constraints: start at NobHill at 09:00, travel durations equal the directed edge minutes, Matthew availability 11:00 to 15:15, and minimum 30 minutes meeting. Confirm there are no overlapping actions for a single resource and that waiting is only at a location. Produce a JSON report with fields per_schedule (array of objects containing schedule_id, status, issues, computed_meet_minutes), and recommended (object with schedule_id and justification)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "routes_data",
+                    "windows_data",
+                    "candidate_schedules",
+                    "audit_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with PDDL 2.1 and the FastDownward family of solvers. Produce a complete, self-consistent PDDL domain and problem targeting FastDownward or Temporal Fast Downward as appropriate. Use durative actions and timed initial literals to encode availability windows. Always enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the routing data, availability windows, candidate schedules, and the audit report. Select the recommended schedule as the reference and ensure the PDDL can produce a plan that meets Matthew for at least 30 minutes within 11:00 to 15:15, starting at NobHill at 09:00, using travel actions with durations matching the directed times. Provide a PDDL 2.1 domain with types (location person), predicates (at agent at_time_available available met connected), and durative actions move and meet_matthew where move durations match the input times and meet_matthew has a fixed duration of 30 minutes. In the problem, include objects for NobHill and Presidio and person Matthew, initial state with at agent NobHill, connected edges for both directions, and timed initial literals to set available Matthew at 11:00 and not available at 15:15. Set the goal to met Matthew and optionally being at any location. Include a metric to minimize total time. Enclose the domain within <domain></domain> and the problem within <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "city_mapper.routes->schedule_generator.generate",
+            "calendar_coordinator.windows->schedule_generator.generate",
+            "city_mapper.routes->temporal_auditor.audit",
+            "calendar_coordinator.windows->temporal_auditor.audit",
+            "schedule_generator.generate->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "schedule_generator.generate->orchestrator.pddl",
+            "city_mapper.routes->orchestrator.pddl",
+            "calendar_coordinator.windows->orchestrator.pddl"
+        ]
+    }
+}

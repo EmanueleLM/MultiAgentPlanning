@@ -1,0 +1,202 @@
+{
+    "name": "Blocksworld5",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "state_extractor",
+            "domain_modeler",
+            "plan_validator",
+            "causal_auditor",
+            "orchestrator"
+        ],
+        "state_extractor": {
+            "private_information": [
+                "I convert natural language task descriptions into structured symbols for Blocksworld without producing PDDL.",
+                "I identify objects, predicates, initial states, goals, and candidate plans when provided."
+            ],
+            "goal": "Extract consistent objects, initial states, and goals for all scenarios from the public description, and normalize names and predicates."
+        },
+        "domain_modeler": {
+            "private_information": [
+                "I define canonical Blocksworld operator schemas and predicates consistent with the rules.",
+                "I output a structured JSON domain model, not PDDL."
+            ],
+            "goal": "Provide a complete, minimal STRIPS domain model for Blocksworld with actions pickup, putdown, unstack, and stack using predicates on, ontable, clear, holding, handempty."
+        },
+        "plan_validator": {
+            "private_information": [
+                "I simulate plans against the extracted initial states using the domain model.",
+                "I produce stepwise precondition checks, effects, and resulting states; I do not change the domain or emit PDDL."
+            ],
+            "goal": "Validate the given plan for Scenario S1, explain any precondition violations, and summarize invariants and reachable states."
+        },
+        "causal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across scenarios and plans.",
+                "I remove bookkeeping shortcuts, quota tokens, and any post-hoc penalties, and recommend corrections when constraints are violated."
+            ],
+            "goal": "Ensure the extracted states, goals, and validated plan are causally consistent with the domain; propose corrections when necessary and provide a normalized fact set."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all intermediate results and produce a final PDDL domain and two PDDL problem files (S1 and S2) compatible with the Fast Downward planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "yellow",
+                "red",
+                "orange",
+                "blue"
+            ],
+            "predicates": [
+                "on(x,y)",
+                "ontable(x)",
+                "clear(x)",
+                "holding(x)",
+                "handempty"
+            ],
+            "actions_allowed": [
+                "pickup a block",
+                "unstack a block from on top of another block",
+                "putdown a block",
+                "stack a block on top of another block"
+            ],
+            "action_restrictions": [
+                "Only one block can be picked up or unstacked at a time.",
+                "You can only pick up or unstack a block if your hand is empty.",
+                "You can only pick up a block if it is on the table and clear.",
+                "You can only unstack a block from on top of another if it was actually on top of that block.",
+                "You can only unstack a block if it is clear.",
+                "Once you pick up or unstack a block, you are holding it.",
+                "You can only put down a block that you are holding.",
+                "You can only stack a block on another if you are holding the block being stacked.",
+                "You can only stack a block onto another block that is clear.",
+                "After putdown or stack, the hand becomes empty.",
+                "After stacking a block onto a second block, the second block is no longer clear."
+            ],
+            "scenarios": [
+                {
+                    "id": "S1",
+                    "initial_facts": [
+                        "clear(yellow)",
+                        "handempty",
+                        "on(red,orange)",
+                        "on(orange,blue)",
+                        "on(yellow,red)",
+                        "ontable(blue)"
+                    ],
+                    "goal_facts": [
+                        "on(red,blue)",
+                        "on(yellow,orange)"
+                    ],
+                    "provided_plan": [
+                        "unstack(yellow,red)",
+                        "putdown(yellow)",
+                        "unstack(red,orange)",
+                        "stack(red,yellow)",
+                        "unstack(orange,blue)",
+                        "putdown(orange)",
+                        "unstack(red,yellow)",
+                        "stack(red,blue)",
+                        "pickup(yellow)",
+                        "stack(yellow,orange)"
+                    ]
+                },
+                {
+                    "id": "S2",
+                    "initial_facts": [
+                        "clear(red)",
+                        "handempty",
+                        "on(red,yellow)",
+                        "on(blue,orange)",
+                        "on(yellow,blue)",
+                        "ontable(orange)"
+                    ],
+                    "goal_facts": [
+                        "on(red,orange)"
+                    ],
+                    "provided_plan": []
+                }
+            ]
+        },
+        "public_information": [
+            "This is a classical Blocksworld with blocks yellow, red, orange, and blue.",
+            "Allowed actions: pickup, unstack, putdown, stack.",
+            "Constraints: one block at a time, hand must be empty for pickup or unstack, pickup requires block on table and clear, unstack requires the top relationship to be real and the top block clear, holding becomes true after pickup or unstack, putdown and stack require holding, stacking requires the destination block to be clear, hand becomes empty after putdown or stack, stacking makes the destination not clear.",
+            "Scenario S1 initial: clear(yellow), handempty, on(red,orange), on(orange,blue), on(yellow,red), ontable(blue).",
+            "Scenario S1 goal: on(red,blue), on(yellow,orange).",
+            "Scenario S1 plan is provided in the init.scenarios list.",
+            "Scenario S2 initial: clear(red), handempty, on(red,yellow), on(blue,orange), on(yellow,blue), ontable(orange).",
+            "Scenario S2 goal: on(red,orange).",
+            "No plan is provided for Scenario S2."
+        ]
+    },
+    "workflow": {
+        "state_extractor": {
+            "extract": {
+                "input": [],
+                "output": "facts_state",
+                "system_prompt": "You transform natural language Blocksworld descriptions into structured facts without emitting PDDL. Return a compact JSON object with keys: objects (list), predicates (list), actions_mentioned (list), scenarios (list of {id, init (list of atomic facts), goal (list of atomic facts), provided_plan (list of operator strings)}). Preserve object names exactly as in the environment. Do not infer additional objects.",
+                "prompt": "You are state_extractor. Use {environment->public_information} and {environment->init} to extract the objects, predicates, and for each scenario the initial facts, goal facts, and any provided plan. Normalize predicate names to on, ontable, clear, holding, handempty and operator names to pickup, putdown, unstack, stack. Do not produce PDDL."
+            }
+        },
+        "domain_modeler": {
+            "model": {
+                "input": [],
+                "output": "domain_json",
+                "system_prompt": "You author a canonical Blocksworld STRIPS domain as structured JSON, not PDDL. Provide keys: types (list), predicates (list), actions (list of {name, parameters, preconditions, effects_add, effects_del}), and notes. Use a single type block for all blocks; represent the hand via predicates holding and handempty. Actions to include: pickup(x), putdown(x), unstack(x,y), stack(x,y). Ensure preconditions and effects match the public constraints.",
+                "prompt": "You are domain_modeler. Produce a minimal, correct Blocksworld domain in JSON using the predicates on, ontable, clear, holding, handempty and actions pickup, putdown, unstack, stack that satisfy {environment->init->action_restrictions}. Do not produce PDDL."
+            }
+        },
+        "plan_validator": {
+            "validate": {
+                "input": [
+                    "facts_state",
+                    "domain_json"
+                ],
+                "output": "validation_report",
+                "system_prompt": "You simulate the provided plan for Scenario S1 against the domain model. Check each step: required preconditions, whether they hold, then apply effects to update the state. Return JSON with keys: scenario_id, steps (list of {action, preconditions_required, preconditions_satisfied (bool), missing_preconditions (list), state_delta_add (list), state_delta_del (list)}), valid_prefix_length, final_state, and invariants (list). Do not change the domain. Do not emit PDDL.",
+                "prompt": "You are plan_validator. Use {facts_state} and {domain_json} to validate the provided plan for S1 step by step. If a step is invalid, continue analysis to report where it fails and why. Keep atom formatting consistent with the extracted facts. Do not produce PDDL."
+            }
+        },
+        "causal_auditor": {
+            "audit": {
+                "input": [
+                    "validation_report",
+                    "facts_state",
+                    "domain_json"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency for all scenarios and the S1 plan. Eliminate bookkeeping shortcuts such as quota tokens or post-hoc penalties; rely only on state predicates and operator transitions. Return JSON with keys: normalized_facts (per scenario), detected_issues (list), recommended_corrections (list), and notes. Do not emit PDDL.",
+                "prompt": "You are causal_auditor. Review {validation_report} in the context of {facts_state} and {domain_json}. Identify contradictions or missing preconditions and propose corrected initial facts or plan edits if needed. Produce only an audit JSON as specified. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_json",
+                    "audit_report",
+                    "facts_state",
+                    "validation_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-problem PDDL authoring targeting the Fast Downward solver. Produce exactly one PDDL domain and two PDDL problem files (S1 and S2). Enclose the domain in <domain></domain> and each problem in its own <problem></problem> tags. Keep action names and predicates exactly: on, ontable, clear, holding, handempty; actions: pickup, putdown, unstack, stack. Use only the blocks provided. Use the audited normalized facts when available.",
+                "prompt": "Integrate the structured domain from {domain_json}, the normalized facts from {audit_report}, and the extracted scenarios from {facts_state} to produce a final Blocksworld domain and two problems for S1 and S2. Ensure :requirements include :strips and :typing, define a single type block, and list all blocks as objects. For each problem, include objects, init, and goal consistent with the audited facts. If the audit proposes corrections, apply them. Output the final PDDL with one <domain> section followed by two <problem> sections."
+            }
+        },
+        "constraints": [
+            "state_extractor.extract->domain_modeler.model",
+            "state_extractor.extract->plan_validator.validate",
+            "domain_modeler.model->plan_validator.validate",
+            "state_extractor.extract->causal_auditor.audit",
+            "plan_validator.validate->causal_auditor.audit",
+            "domain_modeler.model->orchestrator.pddl",
+            "state_extractor.extract->orchestrator.pddl",
+            "plan_validator.validate->orchestrator.pddl",
+            "causal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

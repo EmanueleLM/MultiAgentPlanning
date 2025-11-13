@@ -1,0 +1,156 @@
+{
+    "name": "TripPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "flight_mapper",
+            "city_allocator",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "flight_mapper": {
+            "private_information": [
+                "I specialize in flight-network modeling and canonicalization of entities.",
+                "I only model direct-flight edges; no inferred or indirect connections."
+            ],
+            "goal": "Produce a clean, canonical direct-flight graph and related connectivity notes to be consumed by other agents."
+        },
+        "city_allocator": {
+            "private_information": [
+                "I propose day-by-day itineraries under connectivity and duration preferences.",
+                "I do not emit PDDL; I return compact JSON proposals and mark any conflicts."
+            ],
+            "goal": "Generate 11-day candidate allocations across Berlin, Frankfurt, and Bucharest that respect direct-flight transitions and maximize adherence to preferences."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal/causal consistency and detect contradictory constraints.",
+                "I remove bookkeeping shortcuts (quota tokens, post-hoc penalties, arbitrary hacks) and normalize them into transparent hard vs soft constraints.",
+                "I canonicalize identifiers for cities and days and produce a prioritized, solvable specification."
+            ],
+            "goal": "Validate feasibility, normalize constraints into hard vs soft sets with clear priorities, and output an audited specification that the orchestrator can compile into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate all upstream artifacts and produce the final PDDL for planning.",
+                "I target the FastDownwards solver and encode soft preferences via action costs to keep the problem solvable."
+            ],
+            "goal": "Produce a feasible 11-day trip plan using only direct flights and generate the final PDDL domain and problem (targeting FastDownwards) that capture hard constraints and soft preferences with costs."
+        }
+    },
+    "environment": {
+        "init": {
+            "trip_length_days": 11,
+            "cities": [
+                "berlin",
+                "frankfurt",
+                "bucharest"
+            ],
+            "days": [
+                "day1",
+                "day2",
+                "day3",
+                "day4",
+                "day5",
+                "day6",
+                "day7",
+                "day8",
+                "day9",
+                "day10",
+                "day11"
+            ],
+            "direct_flights": [
+                [
+                    "berlin",
+                    "frankfurt"
+                ],
+                [
+                    "frankfurt",
+                    "berlin"
+                ],
+                [
+                    "frankfurt",
+                    "bucharest"
+                ],
+                [
+                    "bucharest",
+                    "frankfurt"
+                ]
+            ],
+            "show_city": "berlin",
+            "show_days": [
+                "day1",
+                "day2",
+                "day3",
+                "day4",
+                "day5",
+                "day6",
+                "day7"
+            ],
+            "requested_city_days": {
+                "berlin": 7,
+                "frankfurt": 4,
+                "bucharest": 2
+            }
+        },
+        "public_information": [
+            "Trip length is exactly 11 consecutive days: day1 through day11.",
+            "Cities involved: Berlin, Frankfurt, Bucharest.",
+            "Available direct flights: Berlin <-> Frankfurt, Frankfurt <-> Bucharest. There is no direct flight between Berlin and Bucharest.",
+            "Only direct flights may be used when changing cities between consecutive days.",
+            "Desired stays: Berlin for 7 days, Frankfurt for 4 days, Bucharest for 2 days (note the total exceeds 11 and may be infeasible jointly).",
+            "From day1 to day7 inclusive there is an annual show in Berlin you want to attend (treated as a strong preference).",
+            "Each day must be assigned to exactly one city; transitions between cities are permitted only if a direct flight exists between the previous day's city and the next day's city.",
+            "You plan to visit all three cities within the 11 days (at least one day in each)."
+        ]
+    },
+    "workflow": {
+        "flight_mapper": {
+            "graph_builder": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an expert travel operations analyst and graph modeler. You produce clean, minimal JSON representing networks, constraints, and canonicalized identifiers. Do not emit PDDL. Prefer lower_snake_case identifiers.",
+                "prompt": "Your name is flight_mapper.\nPublic information:\n{environment->public_information}\nYour task: Construct a direct-flight graph over the canonical cities {\"berlin\",\"frankfurt\",\"bucharest\"}. Use the environment init where available. Provide a single JSON object with the following fields:\n- cities: array of city ids\n- edges: array of {from, to} directed edges (include both directions if flights are bidirectional)\n- undirected: boolean indicating whether edges effectively come in both directions\n- notes: short list of factual notes (no assumptions)\nIf information is missing, do not invent it; leave arrays empty or add a note. Return only the JSON object."
+            }
+        },
+        "city_allocator": {
+            "itinerary_proposals": {
+                "input": [],
+                "output": "allocations",
+                "system_prompt": "You are an expert itinerary allocator for multi-day trips under connectivity constraints. Do not emit PDDL. Output compact JSON proposals suitable for downstream compilation.",
+                "prompt": "Your name is city_allocator.\nPublic information:\n{environment->public_information}\nGoal: Propose up to 3 candidate 11-day itineraries obeying only-direct-flight transitions between consecutive days. Strongly prefer attendance in Berlin on day1\u2013day7, and try to meet requested city-day totals (Berlin 7, Frankfurt 4, Bucharest 2), while noting any conflicts (e.g., totals exceed 11).\nOutput a single JSON object with:\n- days: [\"day1\",...,\"day11\"]\n- candidates: array of at most 3 items, each with:\n  - name: short label (e.g., \"show_priority\")\n  - plan: 11-length array of city ids corresponding to the days\n  - explanation: brief rationale\n  - violations: list of detected violations (e.g., \"sum_of_requested_days_exceeds_total\", \"indirect_flight_needed\", \"city_quota_shortfall\")\nOnly propose plans that use direct flights for any city change between consecutive days. If no exact plan satisfies all preferences, provide the closest-feasible options and clearly list the violations.\nReturn only the JSON object."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "flight_graph",
+                    "allocations"
+                ],
+                "output": "audited_constraints",
+                "system_prompt": "You audit temporal/causal consistency and remove bookkeeping shortcuts. You normalize requirements into explicit hard vs soft constraints with clear priorities and without hidden tokens. Do not emit PDDL.",
+                "prompt": "You are temporal_auditor.\nYou will receive the direct-flight graph and candidate allocations:\n- Flight graph:\n{flight_graph}\n- Candidate allocations:\n{allocations}\nTasks:\n1) Validate feasibility: ensure only-direct-flight transitions between consecutive days, one city per day, and note that requested totals (7+4+2) exceed 11 days.\n2) Normalize constraints into:\n   - hard: constraints that must hold (11 days total, day ordering, only direct-flight transitions, exactly one city per day, visit all three cities at least once)\n   - soft: preferences with penalties (attend Berlin on day1\u2013day7; targeted city-day counts Berlin=7, Frankfurt=4, Bucharest=2)\n3) Provide a clear priority scheme and penalty magnitudes (e.g., miss_show_day: 100, unmet_city_day: 10), keeping the problem solvable.\n4) Canonicalize identifiers for cities and days, and provide a day successor relation.\nReturn a single JSON object with:\n{\n  \"hard\": {\n    \"days\": 11,\n    \"day_names\": [\"day1\",...,\"day11\"],\n    \"successor\": [[\"day1\",\"day2\"],..., [\"day10\",\"day11\"]],\n    \"cities\": [\"berlin\",\"frankfurt\",\"bucharest\"],\n    \"direct_flights\": [{\"from\":\"berlin\",\"to\":\"frankfurt\"}, {\"from\":\"frankfurt\",\"to\":\"berlin\"}, {\"from\":\"frankfurt\",\"to\":\"bucharest\"}, {\"from\":\"bucharest\",\"to\":\"frankfurt\"}],\n    \"one_city_per_day\": true,\n    \"only_direct_flights_for_city_changes\": true,\n    \"must_visit_all_cities\": true\n  },\n  \"soft\": {\n    \"berlin_show_days\": [\"day1\",\"day2\",\"day3\",\"day4\",\"day5\",\"day6\",\"day7\"],\n    \"requested_city_days\": {\"berlin\": 7, \"frankfurt\": 4, \"bucharest\": 2},\n    \"penalties\": {\"miss_show_day\": 100, \"unmet_city_day\": 10}\n  },\n  \"findings\": [\"requested_total_days_exceed_trip_length\"],\n  \"normalized\": {\n    \"city_ids\": {\"berlin\": \"berlin\", \"frankfurt\": \"frankfurt\", \"bucharest\": \"bucharest\"},\n    \"day_ids\": {\"day1\": \"day1\", \"day2\": \"day2\", \"day3\": \"day3\", \"day4\": \"day4\", \"day5\": \"day5\", \"day6\": \"day6\", \"day7\": \"day7\", \"day8\": \"day8\", \"day9\": \"day9\", \"day10\": \"day10\", \"day11\": \"day11\"}\n  }\n}\nReturn only the JSON object."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "flight_graph",
+                    "allocations",
+                    "audited_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) targeting the FastDownwards solver. You must produce a PDDL domain and a PDDL problem that are solvable by a classical planner. Use action costs via a numeric total-cost to encode soft preferences. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the model single-agent (the traveler) and integrate upstream JSON without redefining it. Ensure solvability even when soft goals conflict.",
+                "prompt": "Integrate the following to produce final PDDL for an 11-day trip plan that uses only direct flights between cities on consecutive days and visits all three cities at least once.\nFlight graph:\n{flight_graph}\nCandidate allocations:\n{allocations}\nAudited constraints and priorities:\n{audited_constraints}\nRequirements:\n- Hard constraints:\n  1) Exactly 11 sequential days (day1..day11). Use a current-day pointer and a successor relation to progress one day at a time.\n  2) Assign exactly one city per day.\n  3) A city change between successive days is allowed only if a direct flight exists between the previous day's city and the next day's city.\n  4) Must visit berlin, frankfurt, and bucharest at least once within the 11 days.\n- Soft preferences encoded with action costs and auxiliary claim/waive mechanics:\n  a) Berlin show attendance on day1..day7: for each show day d, ensure the goal requires either attended(d) (achieved by assigning Berlin on that day) or waived_show(d) via a specific waive action with cost = penalties.miss_show_day.\n  b) Requested city-day counts: create a finite number of claimable slots per city (e.g., ber_slot_1.._7, fra_slot_1.._4, buc_slot_1.._2). When a day is assigned to a city with remaining unclaimed slots, allow claiming one slot; alternatively, allow waiving a slot with cost = penalties.unmet_city_day. Include goals that require each slot to be either claimed or waived, so the problem remains solvable.\n- Objective: (minimize (total-cost)).\nDeliver:\n- <domain>...</domain> defining objects (days, cities, slot tokens), predicates (current-day, next, assigned, at, visited, flight, show-day, attended, claimed-slot, waived-slot), functions ((total-cost)), and actions:\n  - assign_day(city) that assigns the current day to city, checks the flight constraint if this is a city change, marks visited(city), and supports tagging attendance if the current day is a show-day and city=berlin.\n  - advance_day() to move the current-day pointer along the successor chain until day11.\n  - claim_city_slot(city, slot) and waive_city_slot(city, slot) with appropriate preconditions/effects and costs.\n  - waive_show_day(d) with cost when attendance was not achieved.\n- <problem>...</problem> instantiating berlin, frankfurt, bucharest; day1..day11; show-day constants day1..day7; the successor and flight relations from inputs; initial state with current-day=day1 and no days assigned; goals requiring that all 11 days are assigned, that each city was visited at least once, and that every show day and city slot is either satisfied (attended/claimed) or waived.\nUse the canonical identifiers from the inputs. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "flight_mapper.graph_builder->temporal_auditor.audit",
+            "city_allocator.itinerary_proposals->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "flight_mapper.graph_builder->orchestrator.pddl",
+            "city_allocator.itinerary_proposals->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,120 @@
+{
+    "name": "MeetingPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "route_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Preference: maximize the number of distinct friends met while ensuring quality time with each",
+                "Hard requirement: meet William for at least 75 minutes (1 hour 15 minutes)",
+                "Accept rounding travel to conservative discrete time steps to avoid underestimating duration",
+                "Comfortable starting at 9:00AM from Nob Hill and using 15-minute time slots"
+            ],
+            "goal": "Propose several feasible day schedules that prioritize meeting as many friends as possible while guaranteeing a meeting with William for at least 75 minutes within his availability window."
+        },
+        "route_planner": {
+            "private_information": [
+                "Use a discrete time model with 15-minute ticks",
+                "Round all travel durations up to the next 15-minute tick to avoid optimism",
+                "Known travel: Nob Hill -> The Castro: 17 minutes (round up to 2 ticks = 30 min). The Castro -> Nob Hill: 16 minutes (round up to 2 ticks = 30 min)."
+            ],
+            "goal": "Provide a conservative, discrete-time travel-time model and consistency rules that other agents can use to validate schedules and time-window feasibility."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across proposed schedules",
+                "Reject bookkeeping shortcuts (quota tokens, artificial penalties, post-hoc adjustments) and require explicit time advancement by 15-minute ticks",
+                "Check that all meetings occur within availability windows and that travel time is respected with conservative rounding",
+                "Ensure that schedules clearly indicate location at each tick and do not overlap activities beyond physical feasibility"
+            ],
+            "goal": "Produce a detailed audit of candidate schedules for feasibility, flag inconsistencies, and recommend the best schedule that satisfies all hard constraints and avoids shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrate candidate schedules, travel-time model, and audit findings",
+                "Select the best feasible schedule that meets William for at least 75 minutes and aligns with maximizing friend meetings where possible",
+                "Emit a final PDDL domain and problem that can be solved with Fast Downward using STRIPS and 15-minute discrete time ticks"
+            ],
+            "goal": "Coordinate inputs to produce validated PDDL domain and problem files targeting the Fast Downward solver that encode the chosen schedule structure, discrete time progression, location changes, and the goal to meet William for at least 75 minutes."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit_minutes": 15,
+            "start_time": "09:00",
+            "planning_horizon_end": "15:00",
+            "locations": [
+                "NobHill",
+                "TheCastro"
+            ],
+            "travel_minutes": {
+                "NobHill->TheCastro": 17,
+                "TheCastro->NobHill": 16
+            },
+            "discrete_travel_ticks_rounded_up": {
+                "NobHill->TheCastro": 2,
+                "TheCastro->NobHill": 2
+            }
+        },
+        "public_information": [
+            "Objective: Visiting San Francisco for the day to meet as many friends as possible.",
+            "Arrival: You arrive at Nob Hill at 9:00AM.",
+            "Friend availability: William will be at The Castro from 12:15PM to 10:00PM.",
+            "Hard meeting requirement: You would like to meet William for a minimum of 75 minutes.",
+            "Discrete time resolution: 15-minute ticks are used for planning and validation.",
+            "Travel durations in minutes: Nob Hill -> The Castro: 17; The Castro -> Nob Hill: 16 (rounded conservatively to 2 ticks each in the discrete model)."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary_ideas": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are an expert at crafting day itineraries with discrete 15-minute ticks. Do not produce PDDL. You propose multiple feasible schedules that respect availability windows and conservative travel times rounded up to 15-minute ticks. Each schedule must specify departure, arrival, waiting, and meeting blocks at 15-minute granularity and should aim to maximize the number of distinct friends met while guaranteeing at least 75 minutes with William within his availability window.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information}. Private preferences and constraints: {agents->traveler->private_information}. Generate at least three distinct candidate schedules from 09:00 to {environment->init->planning_horizon_end} that start at Nob Hill at 09:00 and use a 15-minute tick timeline. Use conservative travel ticks from the provided model and ensure the William meeting block totals at least 75 minutes. Provide a concise JSON array named schedules; each entry should include: name, timeline entries with fields {tick_start, tick_end, location, activity}, and a short rationale. Do not emit PDDL."
+            }
+        },
+        "route_planner": {
+            "travel_time_model": {
+                "input": [],
+                "output": "travel_time_model",
+                "system_prompt": "You compute conservative, discrete travel-time models and validation rules using 15-minute ticks. Do not produce PDDL. Round each directional travel time up to the nearest 15-minute increment. Provide simple applicability rules other agents can check when validating schedules.",
+                "prompt": "Your name is route_planner. Public information: {environment->public_information}. Initiative parameters: {environment->init}. Output a JSON object with fields: time_unit_minutes, locations, continuous_minutes, discrete_ticks_rounded_up, and validation_rules describing how to check that schedules respect travel durations and do not overlap activities."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "candidate_schedules",
+                    "travel_time_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency. You remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, retroactive fixes, or magic time compression. You check that every schedule advances time in 15-minute ticks, respects conservative travel tick counts per route, and only meets friends during their availability windows. You verify no overlapping activities and that location transitions are physically feasible given the travel model. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You will audit the candidate schedules for feasibility against the provided travel-time model and public constraints. Inputs: schedules: {candidate_schedules}; travel model: {travel_time_model}; public constraints: {environment->public_information}. Produce audit_report as JSON with entries for each schedule: {name, feasible: true|false, violations: [], fixes: [], william_meeting_minutes, meets_hard_requirement: true|false}. Recommend the best schedule that satisfies all hard constraints and explain why."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "travel_time_model",
+                    "audit_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert with PDDL for the Fast Downward solver. Produce a classical STRIPS-compatible PDDL domain and problem using discrete 15-minute ticks (no durative actions). Enclose the domain in <domain></domain> and the problem in <problem></problem> tags. Model: objects for locations and tick_i for a bounded horizon; a successor relation next(ti, tj); a unique current_time(ti) fluent advanced by an advance-time action; at(agent, location) to track position; begin-travel, travel-step, and arrive actions that consume time by chaining multiple steps equal to the discrete travel ticks per route; meeting actions that consume one tick per action; availability gating via can_meet_william(ti) predicates for the allowed ticks; initial state: current_time(t0) corresponding to 09:00 and at(agent, NobHill); goal: achieve met_william_5ticks (at least 5 meeting-tick actions = 75 minutes) by introducing a counter via staged predicates meet1..meet5 or an equivalent chaining approach. Keep the domain small but complete for Fast Downward. Do not include extraneous prose outside the tags.",
+                "prompt": "You are orchestrator. Goal: {agents->orchestrator->goal}. Inputs: candidate schedules: {candidate_schedules}; travel-time model: {travel_time_model}; audit: {audit_report}. 1) Select the auditor-recommended feasible schedule that satisfies the hard requirement to meet William for at least 75 minutes and aligns with maximizing friends met within the planning horizon. 2) Instantiate a PDDL domain and problem modeled with discrete 15-minute ticks and rounded-up travel durations as provided by the travel-time model. 3) Encode availability for William from 12:15PM onward using can_meet_william(ti) facts for those ticks. 4) Ensure the problem includes the bounded sequence of ticks from 09:00 to {environment->init->planning_horizon_end} with a next relation. 5) The goal must require at least five meeting ticks with William (e.g., via chained predicates meet1..meet5 leading to met_william_5ticks). 6) Enclose outputs within <domain></domain> and <problem></problem> and target Fast Downward's classical solver."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary_ideas->auditor.consistency_audit",
+            "route_planner.travel_time_model->auditor.consistency_audit",
+            "auditor.consistency_audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,121 @@
+{
+    "name": "CalendarSchedulingExample18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "availability_analyst",
+            "preferences_analyst",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "availability_analyst": {
+            "private_information": [
+                "Intersects individual calendars to compute common availability.",
+                "Treats time as half-open intervals [start, end).",
+                "Uses 30-minute discrete granularity and aligns slots to HH:MM boundaries.",
+                "Assumes times are within the same day and timezone."
+            ],
+            "goal": "Derive all feasible 30-minute candidate slots for the requested meeting within the specified work hours by intersecting participants' free time."
+        },
+        "preferences_analyst": {
+            "private_information": [
+                "Models soft preferences such as avoid-after times.",
+                "Ranks candidate slots lexicographically by earliest start when preferences are equal.",
+                "Does not introduce penalties or synthetic bookkeeping; only filters and ranks based on stated preferences."
+            ],
+            "goal": "Filter and rank the common availability candidates according to stated preferences while preserving feasibility."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency over proposed slots.",
+                "Verifies each candidate has exact required duration, lies fully within work hours, and conflicts with no busy interval.",
+                "Removes bookkeeping shortcuts such as token quotas, post-hoc penalties, or unexplained tie-breakers.",
+                "Explains every acceptance or removal with concrete temporal checks."
+            ],
+            "goal": "Validate that filtered meeting slots are consistent with all constraints and remove any candidates that rely on shortcuts or violate constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinates agents and produces the final planning artifacts.",
+                "Targets the FastDownward solver with classical PDDL domain and problem files.",
+                "Represents time slots discretely as typed objects and encodes feasibility as initial facts."
+            ],
+            "goal": "Select a valid 30-minute meeting time for Brian, Billy, and Patricia on Monday within 09:00-17:00 that respects all busy times and preferences, and produce a final PDDL domain and problem for the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "meeting_duration_minutes": 30,
+            "time_granularity_minutes": 30,
+            "time_format": "HH:MM",
+            "solver": "FastDownward"
+        },
+        "public_information": [
+            "Participants: Brian, Billy, Patricia.",
+            "Meeting request: 30-minute meeting on Monday within 09:00-17:00.",
+            "Existing schedules on Monday:",
+            "Brian: no meetings the whole day.",
+            "Billy busy: 10:00-10:30, 11:30-12:00, 14:00-14:30, 16:30-17:00.",
+            "Patricia busy: 09:00-12:30, 13:30-14:00, 14:30-16:00, 16:30-17:00.",
+            "Preference: Billy would like to avoid meetings after 15:30 on Monday.",
+            "There exists a feasible solution that satisfies all constraints."
+        ]
+    },
+    "workflow": {
+        "availability_analyst": {
+            "analyze": {
+                "input": [],
+                "output": "availability_summary",
+                "system_prompt": "You are a calendar availability analyst. Your task is to compute all 30-minute candidate slots aligned to the specified granularity that satisfy the meeting request. Work strictly within the provided work hours, treat time as half-open intervals [start, end), and intersect participants' free time computed from their busy intervals.",
+                "prompt": "Your name is availability_analyst. Use the following public information: {environment->public_information}. Compute the common availability for Brian, Billy, and Patricia on Monday between 09:00 and 17:00 for a 30-minute meeting with 30-minute granularity. List every candidate slot as HH:MM-HH:MM. Output a compact JSON object with keys: candidate_slots (array of strings), reasoning (string), and assumptions (array of strings). Do not produce PDDL."
+            }
+        },
+        "preferences_analyst": {
+            "summarize": {
+                "input": [
+                    "availability_summary"
+                ],
+                "output": "preference_summary",
+                "system_prompt": "You are a meeting preference modeler. Given feasible candidate slots and stated preferences, filter and rank candidates without inventing penalties or artificial tokens. Prefer earlier slots when a soft avoid-after constraint is present and multiple candidates satisfy it.",
+                "prompt": "Your name is preferences_analyst. Public context: {environment->public_information}. Here is the availability summary: {availability_summary}. Apply the preference that Billy would like to avoid meetings after 15:30 on Monday. Keep only candidates that satisfy all constraints, and rank them from earliest to latest, prioritizing slots at or before 15:30 when available. Output a JSON object with keys: accepted_candidates (ranked array), rejected_candidates (array with reasons), and rationale (string). Do not produce PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "availability_summary",
+                    "preference_summary"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Verify that each proposed slot is exactly the required duration, lies fully within work hours, and does not intersect any busy interval. Remove bookkeeping shortcuts such as quota tokens, invented penalties, or post-hoc scoring, and explain each decision.",
+                "prompt": "Your name is consistency_auditor. Public context: {environment->public_information}. Availability data: {availability_summary}. Preference filtering: {preference_summary}. Audit all accepted candidates and remove any that are inconsistent or rely on shortcuts. Output a JSON object with keys: valid_candidates (array), removed_candidates (array of {slot, reason}), and checks (array of explicit temporal validations). Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_summary",
+                    "preference_summary",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with classical PDDL for the FastDownward solver. Produce a PDDL domain and problem that encode choosing one valid 30-minute meeting slot for the participants from the audited candidate set. Use :requirements :strips :typing. Represent participants and timeslots as typed objects. Include predicates such as free(?p - person ?t - timeslot), candidate(?t - timeslot), scheduled(?t - timeslot). Provide an action schedule-meeting that schedules the meeting at a candidate timeslot when all participants are free. Set the goal so that exactly one meeting is scheduled. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags, ready for FastDownward.",
+                "prompt": "Task: {agents->orchestrator->goal}. Public context: {environment->public_information}. Inputs: availability summary {availability_summary}, preference summary {preference_summary}, audit report {audit_report}. Integrate these inputs by using only the valid_candidates from the audit report (if present; otherwise fall back to the intersection of availability and preferences). Generate a PDDL domain and problem as specified in the system prompt. Do not invent times that are not present in the inputs. Keep the domain generic and the problem instance-specific to the provided candidates. Output only the <domain> and <problem> blocks."
+            }
+        },
+        "constraints": [
+            "availability_analyst.analyze->preferences_analyst.summarize",
+            "availability_analyst.analyze->consistency_auditor.audit",
+            "preferences_analyst.summarize->consistency_auditor.audit",
+            "availability_analyst.analyze->orchestrator.pddl",
+            "preferences_analyst.summarize->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

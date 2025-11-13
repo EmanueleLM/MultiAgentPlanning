@@ -1,0 +1,120 @@
+{
+    "name": "MeetingPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler_planner",
+            "consistency_auditor",
+            "time_modeler",
+            "orchestrator"
+        ],
+        "traveler_planner": {
+            "private_information": [
+                "You arrive at Mission District at 9:00AM sharp.",
+                "Primary objective: meet as many friends as possible today.",
+                "Hard constraint: meet Margaret for at least 30 minutes.",
+                "Use the asymmetric travel times provided in the public information.",
+                "If some friends are unknown or unspecified, prioritize Margaret and propose reasonable schedule variations that still satisfy all constraints."
+            ],
+            "goal": "Enumerate multiple feasible day schedules starting at 9:00AM from Mission District that respect all constraints (including a >= 30-minute meeting with Margaret) and consider asymmetric travel times."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency; remove bookkeeping shortcuts (e.g., teleportation, quota tokens, post-hoc penalties, unearned rewards).",
+                "Enforce that time only advances via explicit wait/tick/move actions and that meetings consume real time.",
+                "Verify that meeting durations and availability windows are satisfied."
+            ],
+            "goal": "Given candidate schedules and the environment facts, verify feasibility against asymmetric travel times and availability windows; correct or discard infeasible plans and emit validated constraints to be encoded in planning."
+        },
+        "time_modeler": {
+            "private_information": [
+                "Role: propose a discretized time model suitable for classical PDDL (Fast Downward) without durative actions.",
+                "Use a 1-minute timestep to exactly capture the asymmetric 12/11-minute travel times.",
+                "Model movement durations via mode-switching (start-move, per-minute tick while moving, finish-move).",
+                "Model the >=30-minute meeting with Margaret via per-minute ticks gated by location and availability."
+            ],
+            "goal": "Produce an outline (objects, predicates, action sketches) for a 1-minute discrete-time planning model compatible with Fast Downward that enforces the constraints and supports optimal scheduling."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs and produce a final PDDL domain and problem for Fast Downward that encodes validated constraints and yields an optimal schedule satisfying a >=30-minute meeting with Margaret."
+        }
+    },
+    "environment": {
+        "init": {
+            "city": "San Francisco",
+            "time_unit": "minutes",
+            "time_step": 1,
+            "start_time": "09:00",
+            "end_time": "15:45",
+            "locations": [
+                "mission_district",
+                "haight_ashbury"
+            ],
+            "people": [
+                "margaret"
+            ],
+            "travel_times": {
+                "mission_district->haight_ashbury": 12,
+                "haight_ashbury->mission_district": 11
+            }
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day to meet as many friends as possible.",
+            "You arrive at Mission District at 9:00AM.",
+            "Travel times (one-way): Mission District -> Haight-Ashbury = 12 minutes; Haight-Ashbury -> Mission District = 11 minutes.",
+            "Margaret will be at Haight-Ashbury from 8:00AM to 3:45PM.",
+            "You want to meet Margaret for a minimum of 30 minutes.",
+            "Use a discrete time model with 1-minute granularity for planning compatibility with Fast Downward."
+        ]
+    },
+    "workflow": {
+        "traveler_planner": {
+            "schedule_enumerator": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are an expert travel itinerary designer. You propose alternative schedules that respect asymmetric travel times, availability windows, and minimum meeting durations. Do not emit PDDL. Provide compact, structured alternatives with timestamps and justifications.",
+                "prompt": "Your name is traveler_planner.\nYou are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->traveler_planner->private_information}\nTask: Enumerate at least three feasible schedules for today. Use 1-minute granularity for calculations but you may present times in HH:MM. Each schedule should:\n- Start at Mission District at 9:00AM.\n- Respect asymmetric travel times.\n- Include a meeting with Margaret at Haight-Ashbury lasting at least 30 minutes within her availability window.\n- Clearly list moves, waits, and meetings with start/end timestamps.\n- Indicate which schedule best optimizes meeting goals given the known constraints, and why.\nOutput format:\nCANDIDATE_SCHEDULES:\n- Schedule A: ...\n- Schedule B: ...\n- Schedule C: ...\nDo not emit PDDL."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You audit temporal/causal consistency. Remove shortcuts and ensure all steps obey travel times and availability windows. Do not emit PDDL. Produce a validated constraint list and the corrected feasible schedules.",
+                "prompt": "Your name is consistency_auditor.\nPublic information:\n{environment->public_information}\nCandidate schedules to audit:\n{candidate_schedules}\nInstructions:\n- Verify each schedule minute-by-minute for feasibility: no teleportation, no negative or skipped time, correct asymmetric travel durations, and meeting durations >= 30 minutes.\n- Ensure the Margaret meeting occurs only when she is at Haight-Ashbury (8:00AM\u20133:45PM).\n- If a schedule is infeasible, correct it minimally or discard it with a reason.\n- Emit a set of machine-readable constraints to be encoded in planning.\nOutput format:\nVALIDATED_CONSTRAINTS:\n- time_step = 1 minute\n- travel(mission_district, haight_ashbury) = 12 minutes\n- travel(haight_ashbury, mission_district) = 11 minutes\n- meeting(margaret) >= 30 minutes at haight_ashbury within [08:00, 15:45]\n- start_location = mission_district at 09:00\nFEASIBLE_SCHEDULES:\n- Schedule X (corrected if needed): ...\n- Schedule Y: ...\nDo not emit PDDL."
+            }
+        },
+        "time_modeler": {
+            "model_outline": {
+                "input": [
+                    "candidate_schedules",
+                    "audited_schedules"
+                ],
+                "output": "pddl_outline",
+                "system_prompt": "You design a classical PDDL discretized-time model (Fast Downward). Do not emit PDDL. Provide a clear outline of objects, predicates, and action sketches that encode minute-by-minute time, asymmetric travel via mode-switching (start-move, tick, finish), and meeting duration enforcement via per-minute ticks.",
+                "prompt": "Your name is time_modeler.\nPublic information:\n{environment->public_information}\nAudited schedules and constraints:\n{audited_schedules}\nInstructions:\n- Propose typed objects (locations, persons, timepoints t0..tN with N covering 09:00 to 15:45), and a static successor relation next(t_i, t_{i+1}).\n- Predicates: at(?l), time(?t) for current time, next(?t, ?t2), moving-mh, moving-hm, meeting-margaret, met-margaret-30, available-margaret(?t), at-location-haight-when-meeting, etc.\n- Actions (sketches, not PDDL):\n  - advance-time: consumes current time t and sets t2 with next(t, t2); cost 1 per minute.\n  - start-move-mh: pre at(mission_district) & time(t); eff moving-mh, not at(mission_district).\n  - tick-move-mh: pre moving-mh & time(t); eff progress counter for 12 ticks.\n  - finish-move-mh: pre moving-mh & 12 ticks done; eff not moving-mh, at(haight_ashbury).\n  - analogous start/tick/finish for hm with 11 ticks.\n  - start-meeting-margaret: pre at(haight_ashbury) & time(t) & available-margaret(t); eff meeting-margaret.\n  - tick-meeting-margaret: pre meeting-margaret & time(t) & available-margaret(t) & at(haight_ashbury); eff progress counter for 30 ticks.\n  - finish-meeting-margaret: pre meeting-margaret & 30 ticks done; eff not meeting-margaret, met-margaret-30.\n- Describe how counters can be encoded via chains of boolean milestones (e.g., m0..m30; move0..move12) to stay within STRIPS.\n- Cost model: each advance-time minute increases (total-cost) by 1; start/finish actions cost 0.\n- Goal: met-margaret-30 (other friends can be added similarly as additional meeting chains).\nOutput:\nPDDL_OUTLINE:\n- Objects: ...\n- Predicates: ...\n- Actions: ...\n- Goal and cost: ...\nDo not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "audited_schedules",
+                    "pddl_outline"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent inputs and classical PDDL (Fast Downward). Integrate the audited constraints and the modeling outline to produce a final, self-contained PDDL domain and problem that Fast Downward can solve. Use 1-minute discrete time, STRIPS with action costs, and enclose outputs in <domain></domain> and <problem></problem>. Ensure action schemas enforce asymmetric travel durations and a >=30-minute meeting with Margaret. Use (:functions (total-cost)) and (:metric minimize (total-cost)).",
+                "prompt": "Task: Produce the final PDDL domain and problem for the Fast Downward solver.\nContext:\nPublic information:\n{environment->public_information}\nValidated constraints and feasible schedules:\n{audited_schedules}\nModeling outline:\n{pddl_outline}\nRequirements:\n- PDDL Domain: classical STRIPS with action costs; include (:requirements :strips :typing :negative-preconditions :action-costs) or the standard (:functions (total-cost)) pattern usable by Fast Downward.\n- Discrete time: create timepoints t0..tN covering 09:00 to 15:45 (inclusive) with successor relation next(t_i, t_{i+1}). Represent the current time with a unique time(t_i) predicate.\n- Movement durations: encode Mission->Haight as a mode with 12 per-minute ticks (start, 12 ticks, finish); Haight->Mission similarly with 11 ticks. During movement the agent is not at any location.\n- Meeting enforcement: meeting with Margaret at Haight must last >= 30 minutes. Use a chain of boolean milestones (m0..m30) advanced by per-minute tick-meeting actions gated by availability and location. Only upon reaching m30 can finish-meeting-margaret set met-margaret-30.\n- Availability: precompute available-margaret(t) for t within 08:00\u201315:45. The start time is 09:00 at Mission District.\n- Costs: each per-minute advance (or each tick action) increases (total-cost) by 1. Start/finish actions cost 0.\n- Initial state: at(mission_district), time(t0) = 09:00, not moving, not meeting, availability facts as appropriate, successor facts for all t.\n- Goal: met-margaret-30.\n- Provide compact but complete objects, predicates, actions, and problem instance sufficient for a single-agent plan.\nOutput:\n- Enclose the domain within <domain></domain> and the problem within <problem></problem>.\n- Make sure the problem is solvable by Fast Downward and reflects the audited constraints."
+            }
+        },
+        "constraints": [
+            "traveler_planner.schedule_enumerator->consistency_auditor.audit",
+            "traveler_planner.schedule_enumerator->time_modeler.model_outline",
+            "consistency_auditor.audit->orchestrator.synthesize_pddl",
+            "time_modeler.model_outline->orchestrator.synthesize_pddl"
+        ]
+    }
+}

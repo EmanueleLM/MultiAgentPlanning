@@ -1,0 +1,113 @@
+{
+    "name": "Depots2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_modeler",
+            "instance_builder",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_modeler": {
+            "private_information": [
+                "I specialize in transforming natural language operator descriptions into precise STRIPS-style operator schemas with consistent symbols.",
+                "I normalize predicate and action names to lowercase, keep objects as object_0 style, and avoid introducing extra bookkeeping constructs."
+            ],
+            "goal": "Produce a clean, unambiguous operator specification from the public action descriptions, including predicates, preconditions, add effects, and delete effects, suitable for direct compilation to PDDL by the orchestrator."
+        },
+        "instance_builder": {
+            "private_information": [
+                "I extract objects, initial states, and goals from textual statements.",
+                "I maintain consistency of symbols across instances and prefer a closed-world assumption for initial facts."
+            ],
+            "goal": "Produce structured instances for the scenarios described (A and B), including objects, initial facts, and goals, and indicate the primary instance to solve."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across operators and instances.",
+                "I detect and remove bookkeeping shortcuts such as quotas, post-hoc penalties, artificial counters, or hidden resources not grounded in the described predicates.",
+                "I provide minimal corrective patches if symbol mismatches or unreachable preconditions are found."
+            ],
+            "goal": "Validate that the operator schemas can realize the described plans and goals without hidden shortcuts, propose corrections if needed, and return a concise report of issues and resolutions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate upstream analyses, finalize the PDDL domain and problem, and target the FastDownward solver.",
+                "I ensure symbol alignment, STRIPS-style modeling with typing, and generate a single problem for the primary instance."
+            ],
+            "goal": "Synthesize the final PDDL domain and problem for the primary instance using the audited operators and instances, suitable for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1,
+            "primary_instance": "B"
+        },
+        "public_information": [
+            "Use-case: I am playing with a set of objects. Allowed high-level actions: Paltry object_0 object_1 object_2. Sip object_0 object_1 object_2. Clip object_0 object_1 object_2. Wretched object_0 object_1 object_2 object_3. Memory object_0 object_1 object_2. Tightfisted object_0 object_1 object_2.",
+            "Operator paltry(x0,x1,x2) preconditions: hand x0, cats x1, texture x2, vase x0 x1, next x1 x2. Effects add: next x0 x2. Effects del: vase x0 x1.",
+            "Operator sip(x0,x1,x2) preconditions: hand x0, cats x1, texture x2, next x0 x2, next x1 x2. Effects add: vase x0 x1. Effects del: next x0 x2.",
+            "Operator clip(x0,x1,x2) preconditions: hand x0, sneeze x1, texture x2, next x1 x2, next x0 x2. Effects add: vase x0 x1. Effects del: next x0 x2.",
+            "Operator wretched(x0,x1,x2,x3) preconditions: sneeze x0, texture x1, texture x2, stupendous x3, next x0 x1, collect x1 x3, collect x2 x3. Effects add: next x0 x2. Effects del: next x0 x1.",
+            "Operator memory(x0,x1,x2) preconditions: cats x0, spring x1, spring x2, next x0 x1. Effects add: next x0 x2. Effects del: next x0 x1.",
+            "Operator tightfisted(x0,x1,x2) preconditions: hand x0, sneeze x1, texture x2, next x1 x2, vase x0 x1. Effects add: next x0 x2. Effects del: vase x0 x1.",
+            "Objects available: object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8.",
+            "Instance A initial facts: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_5, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6.",
+            "Instance A goal: next object_7 object_6 and next object_8 object_6.",
+            "Instance A provided plan: memory object_0 object_6 object_5; sip object_8 object_0 object_5; memory object_0 object_5 object_6; paltry object_8 object_0 object_6.",
+            "Instance B initial facts: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6.",
+            "Instance B goal: next object_7 object_5 and next object_8 object_5.",
+            "Assumptions: Closed-world for initial states (only listed facts are true). Predicates are untyped unless the orchestrator introduces a generic type obj for PDDL typing compatibility. Prefer lowercase symbols for actions and predicates."
+        ]
+    },
+    "workflow": {
+        "domain_modeler": {
+            "schema": {
+                "input": [],
+                "output": "operator_spec",
+                "system_prompt": "You are a planning analyst. From the public information, extract the canonical set of predicates and operator schemas in STRIPS style. Keep all names lowercase for actions and predicates, and keep objects as object_#. Do not emit PDDL. Return a compact JSON object with keys: predicates (list of predicate signatures like next ?x ?y), actions (list with name, parameters, preconditions, add_effects, del_effects). Do not introduce bookkeeping constructs.",
+                "prompt": "Your name is domain_modeler. Public information: {environment->public_information}. Your knowledge: {agents->domain_modeler->private_information}. Your goal: {agents->domain_modeler->goal}. Produce a normalized operator specification as JSON as requested in the system prompt."
+            }
+        },
+        "instance_builder": {
+            "instances": {
+                "input": [],
+                "output": "problem_instances",
+                "system_prompt": "You are an instance engineer. Extract the object universe, and build two instances named A and B from the public information. Ensure symbol consistency and closed-world initialization. Do not emit PDDL. Return JSON with keys: objects (list), instance_A {init: [facts], goal: [facts]}, instance_B {init: [facts], goal: [facts]}, primary_instance set to B.",
+                "prompt": "Your name is instance_builder. Public information: {environment->public_information}. Your knowledge: {agents->instance_builder->private_information}. Your goal: {agents->instance_builder->goal}. Return the instances JSON as requested in the system prompt."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator_spec",
+                    "problem_instances"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Check that the operator preconditions can be satisfied in the provided instances, that add and delete effects are coherent, and that the sample plan for instance A, if provided, is either valid or explain precisely why not. Remove or flag bookkeeping shortcuts (e.g., quotas, post-hoc penalties, artificial counters) if any were introduced. Return JSON with keys: issues (list), validations (list), corrections (list of patches to predicates or actions if needed), normalized_predicates (list), normalized_actions (list). Do not emit PDDL.",
+                "prompt": "Your name is auditor. Public information: {environment->public_information}. Your knowledge: {agents->auditor->private_information}. Inputs: {operator_spec} and {problem_instances}. Your goal: {agents->auditor->goal}. Produce the audit JSON as requested in the system prompt."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator_spec",
+                    "problem_instances",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the operator_spec, problem_instances, and consistency_report. Produce a PDDL domain and a PDDL problem targeting the FastDownward solver. Use STRIPS with typing (:strips :typing), define a single type obj, keep predicate and action names lowercase, and avoid negative preconditions by using delete lists. Choose the primary instance indicated (B) unless explicitly overridden. If the auditor proposes corrections, apply them. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Inputs to integrate: operator specification {operator_spec}, instances {problem_instances}, and audit {consistency_report}. Generate the final PDDL domain and the PDDL problem for the primary instance with consistent symbols and FastDownward compatibility, and enclose them in the required tags."
+            }
+        },
+        "constraints": [
+            "domain_modeler.schema->auditor.audit",
+            "instance_builder.instances->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "domain_modeler.schema->orchestrator.pddl",
+            "instance_builder.instances->orchestrator.pddl"
+        ]
+    }
+}

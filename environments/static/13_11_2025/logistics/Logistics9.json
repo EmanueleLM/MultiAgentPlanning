@@ -1,0 +1,105 @@
+{
+    "name": "Logistics9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "state_builder",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [],
+            "goal": "Normalize the human-described actions into a precise, machine-readable action model with predicates, parameters, preconditions, add and delete effects, and any invariants."
+        },
+        "state_builder": {
+            "private_information": [],
+            "goal": "Extract objects, initial facts, and goals for each scenario. Provide a canonical symbol table and two instance payloads (Scenario A with the given plan, Scenario B without a plan)."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Audit temporal and causal consistency of the action model and instances. Verify the provided plan for Scenario A step by step without shortcuts, remove any bookkeeping shortcuts such as quota tokens or post-hoc penalties, and produce a sanitized, solver-ready specification."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the sanitized action model and Scenario B instance to produce a final PDDL domain and problem compatible with the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "solver": "FastDownward",
+            "assumptions": [
+                "STRIPS-style positive preconditions, add and delete effects",
+                "All predicate and action names should be lowercase in PDDL",
+                "Objects are constants object_0 ... object_11"
+            ]
+        },
+        "public_information": [
+            "You are playing with a set of objects. Available actions are paltry ?a ?b ?c, sip ?a ?b ?c, clip ?a ?b ?c, wretched ?a ?b ?c ?d, memory ?a ?b ?c, and tightfisted ?a ?b ?c.",
+            "Predicates used: hand ?x; cats ?x; sneeze ?x; spring ?x; stupendous ?x; texture ?x; next ?x ?y; vase ?x ?y; collect ?x ?y.",
+            "Preconditions for paltry: hand ?a, cats ?b, texture ?c, vase ?a ?b, next ?b ?c.",
+            "Effects for paltry: add next ?a ?c; delete vase ?a ?b.",
+            "Preconditions for sip: hand ?a, cats ?b, texture ?c, next ?a ?c, next ?b ?c.",
+            "Effects for sip: add vase ?a ?b; delete next ?a ?c.",
+            "Preconditions for clip: hand ?a, sneeze ?b, texture ?c, next ?b ?c, next ?a ?c.",
+            "Effects for clip: add vase ?a ?b; delete next ?a ?c.",
+            "Preconditions for wretched: sneeze ?a, texture ?b, texture ?c, stupendous ?d, next ?a ?b, collect ?b ?d, collect ?c ?d.",
+            "Effects for wretched: add next ?a ?c; delete next ?a ?b.",
+            "Preconditions for memory: cats ?a, spring ?b, spring ?c, next ?a ?b.",
+            "Effects for memory: add next ?a ?c; delete next ?a ?b.",
+            "Preconditions for tightfisted: hand ?a, sneeze ?b, texture ?c, next ?b ?c, vase ?a ?b.",
+            "Effects for tightfisted: add next ?a ?c; delete vase ?a ?b.",
+            "Scenario A initial facts: cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_10, hand object_9, next object_0 object_5, next object_10 object_5, next object_3 object_5, next object_4 object_8, next object_9 object_5, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+            "Scenario A goal: next object_10 object_6 and next object_9 object_6.",
+            "Scenario A plan (provided): clip object_9 object_3 object_5; clip object_10 object_3 object_5; wretched object_3 object_5 object_6 object_1; tightfisted object_9 object_3 object_6; tightfisted object_10 object_3 object_6.",
+            "Scenario B initial facts: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, hand object_11, next object_0 object_8, next object_1 object_6, next object_10 object_6, next object_11 object_9, next object_4 object_6, next object_5 object_8, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Scenario B goal: next object_10 object_7 and next object_11 object_8.",
+            "Universe of objects referenced: object_0, object_1, object_2, object_3, object_4, object_5, object_6, object_7, object_8, object_9, object_10, object_11."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "extract_actions": {
+                "input": [],
+                "output": "domain_spec",
+                "system_prompt": "You are a planning researcher who converts informal operator descriptions into a precise, machine-readable action model. Produce a compact JSON with keys predicates and actions. Each action has name, parameters, preconditions, add_effects, del_effects. Use only symbols that appear in the public information. Do not output PDDL.",
+                "prompt": "Your task is to read the action descriptions and produce a normalized action model capturing parameters, preconditions, and add and delete effects. Use lowercase for all symbols and keep parameters as ?a, ?b, ?c, ?d. Source information: {environment->public_information}."
+            }
+        },
+        "state_builder": {
+            "encode_instances": {
+                "input": [],
+                "output": "instances_spec",
+                "system_prompt": "You extract solvable planning instances from text. Build a canonical symbol table, the object universe, and two instances labeled scenario_a and scenario_b. Include initial_facts and goals for each, and include the provided plan for scenario_a as plan if any. Do not output PDDL.",
+                "prompt": "From the public information, enumerate the objects object_0 to object_11, list all predicates, and construct two instances. For scenario_a include the given initial facts, goals, and the provided plan sequence as a list of grounded actions. For scenario_b include the initial facts and goals. Ensure facts are lowercase and duplicates removed. Source: {environment->public_information}."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "domain_spec",
+                    "instances_spec"
+                ],
+                "output": "audited_spec",
+                "system_prompt": "You audit temporal and causal consistency without shortcuts. Verify that the scenario_a plan is valid against the action model by simulating preconditions and effects step by step. Report any mismatches and propose minimal corrections if needed. Ensure no bookkeeping artifacts such as quota tokens, hidden costs, or post-hoc penalties are introduced. Sanitize the model and instances as needed and return a single JSON with domain, instances, and a validity report. Do not output PDDL.",
+                "prompt": "Audit the domain and instances. Normalize naming, ensure actions and predicates are consistently used, and check that the plan for scenario_a is correct via forward simulation. If discrepancies exist, suggest corrections in-place. Output a sanitized audited_spec JSON merging the inputs, suitable for direct compilation to PDDL."
+            }
+        },
+        "orchestrator": {
+            "finalize_pddl": {
+                "input": [
+                    "audited_spec"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in compiling audited action models and instances into PDDL for the FastDownward solver. You always produce exactly one PDDL domain and one PDDL problem. You always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The domain must be STRIPS-compatible with add and delete effects, use lowercase names, and include all predicates from the audited_spec. The problem must target Scenario B, declare all referenced objects, specify the initial facts and goals, and be ready for FastDownward.",
+                "prompt": "Integrate the audited_spec to emit the final PDDL. Use domain name logistics9 and a problem name scenario_b. Use untyped PDDL unless the audited_spec provides explicit types. Use action names paltry, sip, clip, wretched, memory, tightfisted as defined. Include all predicates: hand x, cats x, sneeze x, spring x, stupendous x, texture x, next x y, vase x y, collect x y. For the problem, include the Scenario B initial facts and goals exactly as in the audited_spec. Produce only the two tagged blocks."
+            }
+        },
+        "constraints": [
+            "modeler.extract_actions->auditor.consistency_audit",
+            "state_builder.encode_instances->auditor.consistency_audit",
+            "auditor.consistency_audit->orchestrator.finalize_pddl"
+        ]
+    }
+}

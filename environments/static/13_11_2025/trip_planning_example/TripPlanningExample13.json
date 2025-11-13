@@ -1,0 +1,132 @@
+{
+    "name": "TripPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "flight_mapper",
+            "route_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "flight_mapper": {
+            "private_information": [
+                "You specialize in extracting direct-flight connectivity and representing it clearly.",
+                "You do not modify user goals or preferences; you only map the transport graph."
+            ],
+            "goal": "Provide a precise representation of direct-flight connectivity among Manchester, Bucharest, and Lyon so other agents can plan valid routes without indirect hops."
+        },
+        "route_planner": {
+            "private_information": [
+                "You propose itineraries that satisfy hard constraints first, then optimize or satisfy soft preferences as much as possible.",
+                "Hard constraints: total trip length of 17 days, Lyon stay is exactly 5 days, and days 13-17 must be spent in Lyon to visit relatives, travel only via direct flights.",
+                "Soft preferences: 7 days in Bucharest, 7 days in Manchester."
+            ],
+            "goal": "Draft a candidate city order and day-by-day allocation that respects direct flights and the hard constraints, while satisfying soft preferences where feasible."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "You audit temporal and causal consistency, detect overcommitments, and propose minimal adjustments to satisfy all hard constraints without using bookkeeping shortcuts such as artificial tokens or post-hoc penalties.",
+                "You ensure that the sum of city stays equals 17 days, that Lyon occupies days 13-17 inclusive, and that all inter-city moves are along direct-flight edges.",
+                "When soft preferences conflict with hard constraints, you document the trade-off and propose the smallest change needed."
+            ],
+            "goal": "Validate or minimally adjust the candidate itinerary to ensure feasibility under the 17-day total, the Lyon 5-day window on days 13-17, and direct-flight-only travel."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate all inputs and produce the final PDDL suitable for the FastDownward solver."
+            ],
+            "goal": "Produce a final, solvable PDDL domain and problem that encode the 17-day trip with direct flights only, ensuring Lyon is days 13-17 for relatives and the total stay in Lyon is exactly 5 days, while accommodating soft preferences as possible."
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 17,
+            "cities": [
+                "Manchester",
+                "Bucharest",
+                "Lyon"
+            ],
+            "direct_flights": [
+                [
+                    "Manchester",
+                    "Bucharest"
+                ],
+                [
+                    "Bucharest",
+                    "Lyon"
+                ]
+            ],
+            "hard_constraints": [
+                "Total trip length is 17 days.",
+                "Stay in Lyon is exactly 5 days.",
+                "Days 13 through 17 inclusive must be spent in Lyon.",
+                "Travel only via direct flights."
+            ],
+            "soft_preferences": [
+                "Prefer 7 days in Bucharest.",
+                "Prefer 7 days in Manchester."
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 17 days in total.",
+            "Cities: Manchester, Bucharest, Lyon.",
+            "Only take direct flights to commute between cities.",
+            "Lyon stay must be 5 days total and specifically days 13-17 to visit relatives.",
+            "Desires: 7 days in Bucharest and 7 days in Manchester.",
+            "Direct flights exist between Manchester and Bucharest, and between Bucharest and Lyon (bidirectional).",
+            "There is no direct flight between Manchester and Lyon."
+        ]
+    },
+    "workflow": {
+        "flight_mapper": {
+            "map": {
+                "input": [],
+                "output": "connectivity_graph",
+                "system_prompt": "You are a flight connectivity analyst. Produce a clear, compact mapping of direct flights among the listed cities and indicate missing links. Do not output PDDL.",
+                "prompt": "Your name is flight_mapper. Use the public information to construct a bidirectional adjacency list of direct-flight connections among the cities, and briefly note that Manchester-Lyon has no direct link. Provide a concise JSON-like structure or bullet list under the key connectivity_graph."
+            }
+        },
+        "route_planner": {
+            "plan": {
+                "input": [
+                    "connectivity_graph"
+                ],
+                "output": "candidate_plan",
+                "system_prompt": "You are a trip planner. Propose a feasible itinerary that satisfies hard constraints first and honors soft preferences where possible. Do not output PDDL.",
+                "prompt": "Your name is route_planner. Consider the public information and the connectivity_graph. Produce a candidate plan with an ordered list of cities and a day-by-day allocation for a 17-day trip. Enforce: Lyon occupies days 13-17 (exactly 5 days) and travel occurs only along direct flights. Because 7+7+5 exceeds 17, treat the 7-day requests as soft preferences and choose the smallest necessary adjustment while keeping Lyon fixed. Output a compact summary containing: city_order, stay_lengths_by_city, and a daily_timeline mapping days 1..17 to a city."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "candidate_plan",
+                    "connectivity_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Validate the plan, remove bookkeeping shortcuts, and if needed propose minimal changes to satisfy all hard constraints. Do not output PDDL.",
+                "prompt": "Your name is temporal_auditor. Review candidate_plan against connectivity_graph and the hard constraints: total 17 days; Lyon on days 13-17; exactly 5 days in Lyon; direct flights only. Verify the city transitions follow the direct-flight graph and that the day allocations sum to 17. If any issue exists, resolve it with the smallest change and explain the trade-off relative to soft preferences. Output: validity (true/false), corrected_plan if changes are needed with city_order, stay_lengths_by_city, daily_timeline, and a short rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "connectivity_graph",
+                    "candidate_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in planning who produces final PDDL artifacts for the FastDownward solver. Always provide a PDDL domain and a PDDL problem enclosed in <domain></domain> and <problem></problem> tags. Encode one agent (the traveler) moving between cities across discrete days 1..17, respecting direct-flight connectivity, a 5-day stay in Lyon on days 13-17, and the remaining days allocated per the audited plan. Keep actions distinct for travel and stay/day-advance. Ensure the problem instance reflects the audited itinerary and is solvable by FastDownward (STRIPS/ADL as appropriate).",
+                "prompt": "Integrate the connectivity_graph, the candidate_plan, and the audit_report. If audit_report.validity is false, use the corrected_plan. Produce a final PDDL domain and problem for the FastDownward solver that models days 1..17, the three cities, direct-flight edges (Manchester-Bucharest, Bucharest-Lyon), and constraints ensuring Lyon is occupied on days 13-17. The problem should specify the initial city and day, the allowed moves (only along direct flights), and goal conditions that the daily occupancy matches the audited plan. Enclose the domain in <domain></domain> and the problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "flight_mapper.map->route_planner.plan",
+            "flight_mapper.map->temporal_auditor.audit",
+            "route_planner.plan->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "route_planner.plan->orchestrator.pddl",
+            "flight_mapper.map->orchestrator.pddl"
+        ]
+    }
+}

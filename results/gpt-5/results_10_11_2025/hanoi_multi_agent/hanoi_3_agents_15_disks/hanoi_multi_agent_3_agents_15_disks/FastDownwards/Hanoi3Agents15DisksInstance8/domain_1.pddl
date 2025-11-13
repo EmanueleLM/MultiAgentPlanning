@@ -1,0 +1,125 @@
+(define (domain hanoi-multiagent-3agents-15disks)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent disk peg step)
+  (:predicates
+    ; stacking relations
+    (on ?d - disk ?below - disk)
+    (on-peg ?d - disk ?p - peg)
+    (clear ?d - disk)
+    (clear-peg ?p - peg)
+
+    ; membership of a disk in a peg's stack
+    (in-stack ?d - disk ?p - peg)
+
+    ; size ordering and permissions
+    (smaller ?d1 - disk ?d2 - disk)
+    (can-move ?a - agent ?d - disk)
+
+    ; sequence/order control
+    (atstep ?s - step)
+    (next ?s - step ?s2 - step)
+    (allowed-step ?s - step ?a - agent ?d - disk ?from - peg ?to - peg)
+  )
+
+  ; move a single-disk stack from an empty peg to an empty peg
+  (:action move_from_peg_to_peg
+    :parameters (?a - agent ?d - disk ?from - peg ?to - peg ?s - step ?sn - step)
+    :precondition (and
+      (atstep ?s) (next ?s ?sn)
+      (allowed-step ?s ?a ?d ?from ?to)
+      (can-move ?a ?d)
+      (clear ?d)
+      (on-peg ?d ?from)
+      (in-stack ?d ?from)
+      (clear-peg ?to)
+    )
+    :effect (and
+      (not (atstep ?s))
+      (atstep ?sn)
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+      (clear-peg ?from)
+      (not (clear-peg ?to))
+      (not (in-stack ?d ?from))
+      (in-stack ?d ?to)
+    )
+  )
+
+  ; move a top disk from a stack to an empty peg
+  (:action move_from_disk_to_peg
+    :parameters (?a - agent ?d - disk ?from - peg ?to - peg ?under - disk ?s - step ?sn - step)
+    :precondition (and
+      (atstep ?s) (next ?s ?sn)
+      (allowed-step ?s ?a ?d ?from ?to)
+      (can-move ?a ?d)
+      (clear ?d)
+      (on ?d ?under)
+      (in-stack ?d ?from)
+      (in-stack ?under ?from)
+      (clear-peg ?to)
+    )
+    :effect (and
+      (not (atstep ?s))
+      (atstep ?sn)
+      (not (on ?d ?under))
+      (clear ?under)
+      (on-peg ?d ?to)
+      (not (clear-peg ?to))
+      (not (in-stack ?d ?from))
+      (in-stack ?d ?to)
+    )
+  )
+
+  ; move a single-disk stack from an empty peg onto the top disk of another peg
+  (:action move_from_peg_to_disk
+    :parameters (?a - agent ?d - disk ?from - peg ?to - peg ?top - disk ?s - step ?sn - step)
+    :precondition (and
+      (atstep ?s) (next ?s ?sn)
+      (allowed-step ?s ?a ?d ?from ?to)
+      (can-move ?a ?d)
+      (clear ?d)
+      (on-peg ?d ?from)
+      (in-stack ?d ?from)
+      (clear ?top)
+      (in-stack ?top ?to)
+      (smaller ?d ?top)
+    )
+    :effect (and
+      (not (atstep ?s))
+      (atstep ?sn)
+      (not (on-peg ?d ?from))
+      (on ?d ?top)
+      (clear-peg ?from)
+      (not (clear ?top))
+      (not (in-stack ?d ?from))
+      (in-stack ?d ?to)
+    )
+  )
+
+  ; move a top disk from a stack onto the top disk of another peg
+  (:action move_from_disk_to_disk
+    :parameters (?a - agent ?d - disk ?from - peg ?to - peg ?under - disk ?top - disk ?s - step ?sn - step)
+    :precondition (and
+      (atstep ?s) (next ?s ?sn)
+      (allowed-step ?s ?a ?d ?from ?to)
+      (can-move ?a ?d)
+      (clear ?d)
+      (on ?d ?under)
+      (in-stack ?d ?from)
+      (in-stack ?under ?from)
+      (clear ?top)
+      (in-stack ?top ?to)
+      (smaller ?d ?top)
+    )
+    :effect (and
+      (not (atstep ?s))
+      (atstep ?sn)
+      (not (on ?d ?under))
+      (clear ?under)
+      (on ?d ?top)
+      (not (clear ?top))
+      (not (in-stack ?d ?from))
+      (in-stack ?d ?to)
+    )
+  )
+)

@@ -1,0 +1,122 @@
+{
+    "name": "CalendarSchedulingExample11",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "alexander",
+            "elizabeth",
+            "walter",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "alexander": {
+            "private_information": [
+                "Identity: Alexander",
+                "Role: Participant"
+            ],
+            "goal": "Agree on a 30-minute meeting time within Monday 09:00-17:00 that fits everyone's schedules."
+        },
+        "elizabeth": {
+            "private_information": [
+                "Identity: Elizabeth",
+                "Role: Participant"
+            ],
+            "goal": "Agree on a 30-minute meeting time within Monday 09:00-17:00 that fits everyone's schedules."
+        },
+        "walter": {
+            "private_information": [
+                "Identity: Walter",
+                "Role: Participant"
+            ],
+            "goal": "Agree on a 30-minute meeting time within Monday 09:00-17:00 that fits everyone's schedules."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Identity: Temporal Consistency Auditor",
+                "Role: Audit temporal/causal consistency, eliminate bookkeeping shortcuts, and verify intersection of free slots."
+            ],
+            "goal": "Ensure the proposed availability windows are consistent, intersect them correctly, and identify feasible meeting slots that comply with constraints and preferences."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Identity: Orchestrator",
+                "Role: Integrate audited availability and produce a final PDDL domain and problem targeting the Fast Downward solver."
+            ],
+            "goal": "Produce a final plan and corresponding PDDL domain and problem that schedule the meeting at a feasible time that satisfies all constraints and preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30,
+            "time_slot_alignment_minutes": 30,
+            "timezone": "local",
+            "solver": "fast_downward",
+            "visibility": 1
+        },
+        "public_information": [
+            "Task: Schedule a 30-minute meeting for Alexander, Elizabeth, and Walter on Monday between 09:00 and 17:00.",
+            "Alexander busy: 09:30-10:00, 10:30-11:00, 12:30-13:00, 14:30-15:00, 16:00-17:00.",
+            "Elizabeth busy: 09:00-09:30, 11:30-12:30, 13:00-14:30.",
+            "Walter busy: 09:00-14:30, 15:30-17:00.",
+            "Preference: If multiple valid slots exist, choose the earliest feasible slot."
+        ]
+    },
+    "workflow": {
+        "alexander": {
+            "availability": {
+                "input": [],
+                "output": "availability_alexander",
+                "system_prompt": "You analyze calendar constraints and compute your free 30-minute windows within the specified working hours. Do not produce PDDL. Return a concise list of candidate time intervals in ascending order using the format HH:MM-HH:MM.",
+                "prompt": "Your name is Alexander. Public information: {environment->public_information}. Private information: {agents->alexander->private_information}. Goal: {agents->alexander->goal}. Produce your available 30-minute slots for Monday between 09:00 and 17:00 that do not overlap your busy times. Output only the list of slots."
+            }
+        },
+        "elizabeth": {
+            "availability": {
+                "input": [],
+                "output": "availability_elizabeth",
+                "system_prompt": "You analyze calendar constraints and compute your free 30-minute windows within the specified working hours. Do not produce PDDL. Return a concise list of candidate time intervals in ascending order using the format HH:MM-HH:MM.",
+                "prompt": "Your name is Elizabeth. Public information: {environment->public_information}. Private information: {agents->elizabeth->private_information}. Goal: {agents->elizabeth->goal}. Produce your available 30-minute slots for Monday between 09:00 and 17:00 that do not overlap your busy times. Output only the list of slots."
+            }
+        },
+        "walter": {
+            "availability": {
+                "input": [],
+                "output": "availability_walter",
+                "system_prompt": "You analyze calendar constraints and compute your free 30-minute windows within the specified working hours. Do not produce PDDL. Return a concise list of candidate time intervals in ascending order using the format HH:MM-HH:MM.",
+                "prompt": "Your name is Walter. Public information: {environment->public_information}. Private information: {agents->walter->private_information}. Goal: {agents->walter->goal}. Produce your available 30-minute slots for Monday between 09:00 and 17:00 that do not overlap your busy times. Output only the list of slots."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "availability_alexander",
+                    "availability_elizabeth",
+                    "availability_walter"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You audit temporal and causal consistency across multiple participants' availability windows. Verify formatting, normalize to aligned 30-minute slots within work hours, intersect the sets, and remove any bookkeeping shortcuts such as assumed slack tokens or post-hoc penalties. Do not produce PDDL. Output only the mutually free slots and indicate the earliest feasible slot if a preference for earliest exists.",
+                "prompt": "Inputs from participants: {availability_alexander} {availability_elizabeth} {availability_walter}. Public information: {environment->public_information}. Return the intersection of free 30-minute slots that are within Monday 09:00-17:00 and satisfy the meeting duration. Present a short list of mutually available slots and clearly mark the earliest feasible slot."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL for the Fast Downward planner. Produce a PDDL domain and a PDDL problem that encode selecting one 30-minute time slot for the meeting using discretized 30-minute slots. Use STRIPS-compatible predicates supported by Fast Downward. Enclose the domain between <domain></domain> and the problem between <problem></problem> tags.",
+                "prompt": "Use the audited availability and environment context to generate a final PDDL domain and problem that select one allowed slot for the meeting. The domain should be generic for scheduling a single meeting among participants over discrete time slots. The problem should instantiate the concrete time slots for this task and set a goal that the meeting is scheduled at a permissible slot, preferring the earliest feasible slot when available. Inputs: {audited_availability}. Public information: {environment->public_information}. Ensure the final output contains exactly one <domain>...</domain> block and one <problem>...</problem> block suitable for Fast Downward."
+            }
+        },
+        "constraints": [
+            "alexander.availability->consistency_auditor.audit",
+            "elizabeth.availability->consistency_auditor.audit",
+            "walter.availability->consistency_auditor.audit",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

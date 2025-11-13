@@ -1,0 +1,113 @@
+{
+    "name": "Blocksworld25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "scenario_a_analyst",
+            "scenario_b_analyst",
+            "auditor",
+            "orchestrator"
+        ],
+        "scenario_a_analyst": {
+            "private_information": [
+                "Scenario A initial conditions: red is clear; blue is clear; orange is clear; hand is empty; orange is on yellow; red is on table; blue is on table; yellow is on table.",
+                "Scenario A goal: red on blue; orange on red.",
+                "Scenario A proposed plan: 1) pick up red; 2) stack red on blue; 3) unstack orange from yellow; 4) stack orange on red."
+            ],
+            "goal": "Provide a clean, structured set of objects, predicates, initial state, goal state, and the proposed plan for Scenario A."
+        },
+        "scenario_b_analyst": {
+            "private_information": [
+                "Scenario B initial conditions: blue is clear; orange is clear; hand is empty; blue is on yellow; orange is on red; red is on table; yellow is on table.",
+                "Scenario B goal: red on orange; yellow on red.",
+                "Scenario B has no plan proposed yet."
+            ],
+            "goal": "Provide a clean, structured set of objects, predicates, initial state, and goal state for Scenario B; do not emit PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency for Blocksworld.",
+                "Remove bookkeeping shortcuts such as quota tokens or post-hoc penalties; rely only on allowed actions and preconditions/effects.",
+                "Ensure invariants: at most one block held; hand is either empty or holding exactly one block; a block is clear iff nothing is on it and it is not held; on(x,y) implies x!=y and clear(y) becomes false; on-table(x) implies x has no support below other than table; no cycles in on-relations."
+            ],
+            "goal": "Normalize and validate the scenarios, align predicate names, and output audited, contradiction-free facts that the orchestrator can compile into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownward.",
+                "Compile audited Blocksworld facts into a single domain with actions: pickup, putdown, unstack, stack.",
+                "Produce one domain and two problem instances (scenario_a and scenario_b) enclosed in <domain></domain> and <problem></problem> tags."
+            ],
+            "goal": "Synthesize a correct PDDL domain and problems that satisfy the audited scenarios and are solvable by FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 0,
+            "objects": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "You can: pick up a block; unstack a block from on top of another block; put down a block; stack a block on top of another block.",
+            "Only one block can be picked up or unstacked at a time and only if the hand is empty.",
+            "Pick up is allowed only for blocks that are on the table and clear.",
+            "Unstack is allowed only if the top block is actually on the lower block and the top block is clear.",
+            "After pick up or unstack, you are holding the block.",
+            "Put down is allowed only if you are holding a block.",
+            "Stack is allowed only if you are holding the block being stacked and the destination block is clear.",
+            "After a put down or stack, the hand becomes empty.",
+            "When a block is stacked onto another, the lower block is no longer clear."
+        ]
+    },
+    "workflow": {
+        "scenario_a_analyst": {
+            "extract_facts": {
+                "input": [],
+                "output": "facts_a",
+                "system_prompt": "You are a domain analyst for Blocksworld. Your task is to transform the provided scenario into a structured, machine-readable facts package without emitting PDDL.",
+                "prompt": "Your name is scenario_a_analyst. Public rules: {environment->public_information}. Your knowledge: {agents->scenario_a_analyst->private_information}. Goal: {agents->scenario_a_analyst->goal}. Produce a JSON object with keys: objects, predicates, init, goal, plan, and notes. Use object names red, blue, orange, yellow. Use predicates: on(x,y), on-table(x), clear(x), holding(x), handempty. The plan should be a list of grounded actions using verbs pickup, putdown, unstack, stack with arguments if any. Do not output PDDL."
+            }
+        },
+        "scenario_b_analyst": {
+            "extract_facts": {
+                "input": [],
+                "output": "facts_b",
+                "system_prompt": "You are a domain analyst for Blocksworld. Your task is to structure the provided scenario facts without emitting PDDL.",
+                "prompt": "Your name is scenario_b_analyst. Public rules: {environment->public_information}. Your knowledge: {agents->scenario_b_analyst->private_information}. Goal: {agents->scenario_b_analyst->goal}. Produce a JSON object with keys: objects, predicates, init, goal, plan, and notes. If you propose a plan, keep it consistent with the rules and use verbs pickup, putdown, unstack, stack. If unsure, leave plan empty. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "facts_a",
+                    "facts_b"
+                ],
+                "output": "audited_facts",
+                "system_prompt": "You audit temporal/causal consistency for Blocksworld and remove bookkeeping shortcuts. You normalize predicate names, enforce invariants, and ensure that every action in a plan satisfies its preconditions and effects step-by-step.",
+                "prompt": "You will receive two scenario fact packages: {facts_a} and {facts_b}. Task: 1) Normalize to predicates on, on-table, clear, holding, handempty; 2) Validate Scenario A plan against initial conditions and rules, flagging and fixing only notation-level issues (not altering intended steps); 3) For Scenario B, validate the initial and goal states and optionally propose a minimal, valid plan if it can be derived without violating rules; 4) Ensure no cycles in the on-graph, no multiple supports, at most one held block, and correct clear/handempty bookkeeping after each step; 5) Output a single JSON object with keys: domain_predicates, action_schemas (names and preconditions/effects in predicate form, not PDDL), scenario_a (objects, init, goal, plan), scenario_b (objects, init, goal, plan). Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "audited_facts"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL compiler targeting FastDownward. You must produce a Blocksworld PDDL domain and two problems (scenario_a and scenario_b). Enclose the domain in <domain></domain> and each problem in its own <problem></problem> tags. Use standard FastDownward-compatible features (:strips and :typing).",
+                "prompt": "You will receive audited Blocksworld facts and action schemas: {audited_facts}. Requirements: 1) Provide a single domain named blocksworld with types block and hand or use untyped blocks if you prefer; include actions: pickup, putdown, unstack, stack with correct preconditions/effects reflecting the public rules; 2) Provide two PDDL problems: problem-a and problem-b, each naming the domain blocksworld and declaring the objects red blue orange yellow; 3) For problem-a, encode the audited initial state and goal corresponding to Scenario A; for problem-b, encode the audited initial state and goal for Scenario B; 4) Ensure the syntax is accepted by FastDownward (lowercase names, balanced parentheses, include :goal and :init, and use clear, on, on-table, holding, handempty consistently); 5) Output exactly: <domain>...</domain><problem>...</problem><problem>...</problem>."
+            }
+        },
+        "constraints": [
+            "scenario_a_analyst.extract_facts->auditor.audit",
+            "scenario_b_analyst.extract_facts->auditor.audit",
+            "auditor.audit->orchestrator.synthesize_pddl"
+        ]
+    }
+}

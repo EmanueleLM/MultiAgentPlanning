@@ -1,0 +1,117 @@
+{
+    "name": "MeetingPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "route_planner",
+            "scheduler",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "route_planner": {
+            "private_information": [
+                "You specialize in urban routes and can reason about directed travel times and transfers.",
+                "Prefer conservative rounding of durations when mapping minutes to discrete time slots.",
+                "You can generate multiple route families that trade off arrival earliness, waiting, and return timing."
+            ],
+            "goal": "Propose multiple feasible route options from 09:00 at Nob Hill that reach Sunset District in time to meet Carol for at least 75 minutes, using the given directed travel times and without assuming availability for any other friends."
+        },
+        "scheduler": {
+            "private_information": [
+                "You specialize in temporal scheduling and discretization.",
+                "You can choose a time slot size and a rounding policy and justify them.",
+                "You enumerate diverse schedules that reflect different strategies such as earliest-arrival, just-in-time arrival, and extended-visit patterns."
+            ],
+            "goal": "Enumerate diverse, feasible day schedules between 09:00 and 20:30 that respect directed travel times and Carol's availability window, and that aim to maximize meetings without inventing unknown availabilities; include waiting choices and identify at least one option that guarantees a contiguous 75-minute meeting with Carol."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "You verify temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "You normalize discretization and ensure that real durations are rounded up to the nearest slot to avoid optimistic bias.",
+                "You enforce that the Carol meeting is contiguous for at least the required duration and that travel uses the provided directed times.",
+                "You prefer explicit, verifiable preconditions and state-machine progressions over abstract budget counters."
+            ],
+            "goal": "Audit the candidate routes and schedules, then emit a normalized, conservative model and constraints set that guarantees temporal and causal correctness, directed travel costs, and a contiguous meeting with Carol of at least 75 minutes, with no bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited model and the viable routes and schedules into a final PDDL domain and problem targeting the FastDownward solver; encode locations, discrete time slots and their successor relation, directed travel with action costs equal to minutes, a wait action to advance time, and meeting actions that enforce at least 3 contiguous 30-minute slots within Carol's window; set metric to minimize total-cost and ensure names match the normalized model."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_start": "09:00",
+            "time_end": "20:30",
+            "slot_minutes": 30,
+            "locations": [
+                "Nob_Hill",
+                "Sunset_District"
+            ],
+            "persons": [
+                "Carol"
+            ],
+            "travel_times_minutes": {
+                "Nob_Hill->Sunset_District": 25,
+                "Sunset_District->Nob_Hill": 27
+            }
+        },
+        "public_information": [
+            "You arrive at Nob Hill at 09:00.",
+            "Carol will be at Sunset District from 14:00 to 20:30.",
+            "You would like to meet Carol for a minimum of 75 minutes; treat this as a contiguous meeting if possible.",
+            "Directed travel times in minutes: Nob Hill to Sunset District is 25; Sunset District to Nob Hill is 27.",
+            "Objective: Visit San Francisco for the day and meet as many friends as possible; at present only Carol's availability is known, so do not assume additional friend availability.",
+            "When discretizing time, use a slot size of 30 minutes and round real durations up to the next slot to avoid optimistic bias.",
+            "The planning horizon is 09:00 to 20:30 local time."
+        ]
+    },
+    "workflow": {
+        "route_planner": {
+            "propose_routes": {
+                "input": [],
+                "output": "route_candidates",
+                "system_prompt": "You are an expert urban route planner who proposes multiple feasible route families that respect directed travel times, arrival constraints, and meeting windows; you output clear JSON structures and do not produce PDDL.",
+                "prompt": "Your name is route_planner. Use the public information {environment->public_information} and your knowledge {agents->route_planner->private_information} to propose several candidate route sets starting at Nob Hill at 09:00 that can reach Sunset District in time to meet Carol for at least 75 minutes. Include options such as earliest-arrival, just-in-time, and long-visit strategies. Use the directed times and do not assume availability for any other friends. Return a compact JSON array with labeled routes, key timepoints, and travel legs, rounding durations up to the chosen slot size."
+            }
+        },
+        "scheduler": {
+            "enumerate_schedules": {
+                "input": [],
+                "output": "schedule_options",
+                "system_prompt": "You are an expert temporal scheduler who proposes diverse, feasible day schedules with justified discretization and rounding; you output structured schedule options and do not produce PDDL.",
+                "prompt": "Your name is scheduler. Using the public information {environment->public_information} and your knowledge {agents->scheduler->private_information}, enumerate multiple feasible day schedules between 09:00 and 20:30 that respect the directed travel times and ensure at least one plan meets Carol for 75 contiguous minutes. Propose and justify a discretization scheme and rounding policy, prefer 30-minute slots with rounding up. Return a concise JSON object with a small set of labeled schedules, their slot timelines, locations per slot, and whether they satisfy the meeting constraint."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "route_candidates",
+                    "schedule_options"
+                ],
+                "output": "audited_model",
+                "system_prompt": "You are a temporal and causal consistency auditor. You normalize time and action models, remove bookkeeping shortcuts like quota tokens and post-hoc penalties, and enforce explicit preconditions and contiguous meeting semantics. You do not produce PDDL; you return a clean, conservative model with constraints.",
+                "prompt": "Your name is consistency_auditor. Audit the candidate routes {route_candidates} and schedules {schedule_options} against the public information {environment->public_information} and your knowledge {agents->consistency_auditor->private_information}. Ensure directed travel times are respected, time discretization uses 30-minute slots with durations rounded up, and the meeting with Carol is contiguous for at least 75 minutes within 14:00 to 20:30. Unify naming for locations, slots, and persons. Return a JSON with fields: normalized_objects, slot_successor_relation, actions_spec (travel, wait, meeting progression as a state machine), constraints (initial state, availability, contiguity), and metrics (use action cost equal to minutes) without any quota-token shortcuts."
+            }
+        },
+        "orchestrator": {
+            "synthesize_pddl": {
+                "input": [
+                    "route_candidates",
+                    "schedule_options",
+                    "audited_model"
+                ],
+                "output": "pddl_fastdownward",
+                "system_prompt": "You are an expert multi-agent planner and PDDL engineer. Integrate upstream inputs to produce a final PDDL 2.1-compatible domain and problem for the FastDownward solver. Use typed objects for locations, persons, and discrete time slots; include a successor relation over slots; model directed travel with action costs equal to the provided minutes; include a wait action to advance time by one slot; encode meeting with Carol as a contiguous state-machine progression over time slots inside her availability window; set (:metric minimize (total-cost)). Always enclose the domain in <domain></domain> and the problem in <problem></problem>.",
+                "prompt": "You are the orchestrator. Integrate the audited model {audited_model} along with the route candidates {route_candidates} and schedule options {schedule_options}. Produce a final PDDL domain and problem targeting FastDownward that uses 30-minute time slots from 09:00 to 20:30, a static next relation over slots, locations Nob_Hill and Sunset_District, person Carol, directed travel actions with costs of 25 and 27 minutes respectively, a wait action that advances one slot, and meeting actions that enforce at least 3 contiguous slots entirely within Carol's availability window. Ensure initial state places the traveler at Nob_Hill at 09:00 and includes the next relation and availability facts for slots 14:00 through 20:30. The goal must require completion of the contiguous meeting requirement. Include (:functions (total-cost)) and effects that increase total-cost by the real travel minutes; do not use quota tokens or post-hoc penalties. Enclose the PDDL domain between <domain></domain> and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "route_planner.propose_routes->consistency_auditor.audit",
+            "scheduler.enumerate_schedules->consistency_auditor.audit",
+            "consistency_auditor.audit->orchestrator.synthesize_pddl",
+            "route_planner.propose_routes->orchestrator.synthesize_pddl",
+            "scheduler.enumerate_schedules->orchestrator.synthesize_pddl"
+        ]
+    }
+}

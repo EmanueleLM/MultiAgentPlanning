@@ -1,0 +1,30 @@
+(define (domain meeting_scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types timeslot participant)
+
+  (:predicates
+    (within_work_hours ?t - timeslot)
+    (busy ?p - participant ?t - timeslot)
+    (next ?t1 - timeslot ?t2 - timeslot)
+    (meeting_scheduled)
+    (scheduled_at ?t - timeslot)
+  )
+
+  ; Action: schedule a single 30-minute meeting at a specific timeslot.
+  ; Preconditions enforce the chosen slot is within work hours and free for each required participant.
+  ; Negative preconditions prevent scheduling if the slot is busy for any participant or a meeting is already scheduled.
+  (:action schedule_meeting
+    :parameters (?t - timeslot)
+    :precondition (and
+      (within_work_hours ?t)
+      (not (meeting_scheduled))
+      (not (busy heather ?t))
+      (not (busy nicholas ?t))
+      (not (busy zachary ?t))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled_at ?t)
+    )
+  )
+)

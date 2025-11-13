@@ -1,0 +1,50 @@
+(define (domain citytrip-10days)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+  (:predicates
+    (current ?d - day)
+    (succ ?d - day ?n - day)
+    (at ?c - city)
+    (in ?d - day ?c - city)
+    (assigned ?d - day)
+    (direct ?from - city ?to - city)
+    (visited ?c - city)
+  )
+
+  (:action stay
+    :parameters (?d - day ?n - day ?c - city)
+    :precondition (and
+      (current ?d)
+      (succ ?d ?n)
+      (at ?c)
+      (not (assigned ?n))
+    )
+    :effect (and
+      (not (current ?d))
+      (current ?n)
+      (in ?n ?c)
+      (assigned ?n)
+      (visited ?c)
+    )
+  )
+
+  (:action fly
+    :parameters (?d - day ?n - day ?from - city ?to - city)
+    :precondition (and
+      (current ?d)
+      (succ ?d ?n)
+      (at ?from)
+      (direct ?from ?to)
+      (not (assigned ?n))
+    )
+    :effect (and
+      (not (current ?d))
+      (current ?n)
+      (not (at ?from))
+      (at ?to)
+      (in ?n ?to)
+      (assigned ?n)
+      (visited ?to)
+    )
+  )
+)

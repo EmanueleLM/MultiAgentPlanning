@@ -1,0 +1,104 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "Role: proposer of concrete action sequences and scenario interpreter",
+                "I have a vocabulary of actions: paltry, sip, clip, wretched, memory, tightfisted",
+                "I know action signatures and which object positions they reference",
+                "I possess two scenario statements with their initial facts, goals, and an intended plan for each"
+            ],
+            "goal": "Explain and justify the steps of the provided plans, mapping each plan step to required preconditions and expected effects"
+        },
+        "assistant": {
+            "private_information": [
+                "Role: symbolic extractor and normalizer",
+                "I should convert the prose descriptions of preconditions and effects into normalized logical facts and structured action templates",
+                "I should not produce a final PDDL domain or problem directly but must provide clean, unambiguous structured representations"
+            ],
+            "goal": "Produce canonical action templates and a clear list of grounded facts produced or required by each step in the provided plans"
+        },
+        "auditor": {
+            "private_information": [
+                "Role: temporal and causal consistency auditor",
+                "I must detect bookkeeping shortcuts such as quota tokens or post-hoc penalties and remove them from the logical model",
+                "I must validate causal chains, temporal ordering, and identify missing links that would prevent plan executability",
+                "I must output an audit report with explicit corrections or required supplementary facts"
+            ],
+            "goal": "Audit the extracted action templates and plans for causal and temporal consistency and propose minimal, justified corrections"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrator and PDDL author",
+                "I receive structured outputs from player, assistant, and auditor, integrate them, and produce a final PDDL domain and problem",
+                "The produced PDDL must be suitable for the FastDownwards planner, keep agent actions distinct where relevant, and include any corrections from the auditor"
+            ],
+            "goal": "Produce a validated PDDL domain and problem targeted to the FastDownwards solver that encodes the scenario and goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Action vocabulary: paltry, sip, clip, wretched, memory, tightfisted",
+            "Each action references multiple objects by position identifiers such as object_0, object_1, etc",
+            "Preconditions and effects involve predicates hand, cats, texture, vase, next, sneeze, stupendous, collect, spring",
+            "Two scenario statements are provided. Each statement supplies initial facts, a goal of the form next object_X object_Y, and a proposed sequence of actions",
+            "Auditor must remove bookkeeping shortcuts and ensure causal chains are explicit before PDDL generation",
+            "Final PDDL must be compatible with FastDownwards"
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_player",
+                "system_prompt": "You are the player who provided the plans and scenarios. Your task is to annotate each step of each plan with the specific preconditions referenced by the original use-case and the immediate intended effects as stated in the use-case. Do not emit PDDL. Provide structured, itemized annotations for each plan step and identify any references to objects not present in the initial facts.",
+                "prompt": "Given the two scenario statements with their initial facts, goals, and proposed plans, for each plan step produce a structured annotation listing the action name, the object arguments in order, the required preconditions referenced in the use-case, and the effects the step claims to produce. Flag any apparent missing preconditions for executability."
+            }
+        },
+        "assistant": {
+            "structure": {
+                "input": [],
+                "output": "structure_assistant",
+                "system_prompt": "You are a symbolic assistant. Convert the natural language descriptions of action preconditions and effects into canonical action templates and normalized predicate forms. Do not produce a PDDL domain or problem. Aim to disambiguate synonyms and normalize predicate argument ordering.",
+                "prompt": "From the use-case action descriptions, generate for each action a canonical template listing name, parameters, positive preconditions, add effects, and delete effects. Also provide a canonical list of initial facts for each scenario translated to the same predicate vocabulary. Note any ambiguous names or object aliasing."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Your job is to inspect the structured annotations and templates and remove any bookkeeping shortcuts such as quota tokens or post-hoc penalties. Identify cycles, missing causal links, or effects that cannot materialize given the captured initial facts. Provide minimal corrections or additional bridging facts required for executability. Do not emit PDDL.",
+                "prompt": "Given the structured annotations and normalized templates, perform an audit to ensure each step's preconditions can be established by prior facts or prior actions. Remove or flag any bookkeeping shortcuts and propose explicit corrective facts or ordering constraints to make the plan executable. Output an itemized audit report with exact predicates to add or constraints to impose."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_player",
+                    "structure_assistant",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates analysis, structure, and audit outputs to produce a final PDDL domain and problem file. The PDDL must be compatible with the FastDownwards solver. Keep agent roles and actions distinct if multiple agents' actions appear. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Include typing and requirements appropriate for FastDownwards. Apply auditor corrections and explicitly encode any additional bridging facts or ordering constraints.",
+                "prompt": "Integrate the annotations, normalized action templates, and the auditor report to produce a validated PDDL domain and a PDDL problem targeting the FastDownwards planner. Ensure predicates are consistent with the normalized vocabulary, types are declared where helpful, requirements such as :strips and :typing are included, and the problem encodes the initial facts and goal next predicates as provided. Preserve distinct action names if agents' actions must remain separate. Output only the domain and problem enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.pddl",
+            "assistant.structure->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,126 @@
+{
+    "name": "CalendarSchedulingExample26",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "katherine",
+            "nicole",
+            "kevin",
+            "auditor",
+            "orchestrator"
+        ],
+        "katherine": {
+            "private_information": [
+                "I am available the entire Monday during work hours.",
+                "No travel time or buffer is required before or after the meeting."
+            ],
+            "goal": "Report my available time intervals on Monday within the given work hours that can accommodate a 60-minute meeting."
+        },
+        "nicole": {
+            "private_information": [
+                "My calendar is open the entire Monday during work hours.",
+                "I can attend the meeting at any time within work hours."
+            ],
+            "goal": "Report my available time intervals on Monday within the given work hours that can accommodate a 60-minute meeting."
+        },
+        "kevin": {
+            "private_information": [
+                "I am busy on Monday from 09:00 to 10:00, 10:30 to 11:30, 12:00 to 15:30, and 16:30 to 17:00.",
+                "I can only meet outside my blocked times and within the work hours."
+            ],
+            "goal": "Report my available time intervals on Monday within the given work hours that can accommodate a 60-minute meeting."
+        },
+        "auditor": {
+            "private_information": [
+                "Audit temporal and causal consistency across reported availabilities.",
+                "Remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or unstated buffers.",
+                "Ensure the final slot is a contiguous 60-minute interval within work hours and consistent for all participants."
+            ],
+            "goal": "Validate and reconcile participants\u2019 availabilities, compute the intersection, and propose the earliest feasible 60-minute slot that satisfies all constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrate audited availability and produce a valid PDDL domain and problem for the FastDownwards solver.",
+                "Prefer the earliest feasible meeting time in case of multiple valid options."
+            ],
+            "goal": "Produce the final PDDL domain and problem for FastDownwards that encodes the meeting scheduling decision and reflects the selected time slot."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "slot_granularity_minutes": 30,
+            "timezone": "UTC",
+            "visibility": 1
+        },
+        "public_information": [
+            "Task: Schedule a one-hour meeting for Katherine, Nicole, and Kevin on Monday between 09:00 and 17:00.",
+            "Katherine is free the entire day within work hours.",
+            "Nicole's calendar is open the entire day within work hours.",
+            "Kevin is busy on Monday during 09:00-10:00, 10:30-11:30, 12:00-15:30, and 16:30-17:00.",
+            "There exists a solution that satisfies everyone's current schedules and the meeting duration.",
+            "Aim to select the earliest feasible 60-minute slot that satisfies all constraints."
+        ]
+    },
+    "workflow": {
+        "katherine": {
+            "availability": {
+                "input": [],
+                "output": "availability_katherine",
+                "system_prompt": "You analyze your own availability based on the public information and your private schedule. Provide a concise machine-readable list of your available 60-minute-capable intervals on Monday within the work hours using HH:MM-HH:MM 24h format enclosed in <availability>...</availability>. Do not propose a specific meeting time; only list your available intervals.",
+                "prompt": "Your name is katherine. Consider the environment public information {environment->public_information} and your knowledge {agents->katherine->private_information}. Report all intervals on Monday during 09:00-17:00 that can accommodate a continuous 60-minute meeting, formatted as a comma-separated list inside <availability>...</availability>."
+            }
+        },
+        "nicole": {
+            "availability": {
+                "input": [],
+                "output": "availability_nicole",
+                "system_prompt": "You analyze your own availability based on the public information and your private schedule. Provide a concise machine-readable list of your available 60-minute-capable intervals on Monday within the work hours using HH:MM-HH:MM 24h format enclosed in <availability>...</availability>. Do not propose a specific meeting time; only list your available intervals.",
+                "prompt": "Your name is nicole. Consider the environment public information {environment->public_information} and your knowledge {agents->nicole->private_information}. Report all intervals on Monday during 09:00-17:00 that can accommodate a continuous 60-minute meeting, formatted as a comma-separated list inside <availability>...</availability>."
+            }
+        },
+        "kevin": {
+            "availability": {
+                "input": [],
+                "output": "availability_kevin",
+                "system_prompt": "You analyze your own availability based on the public information and your private schedule. Provide a concise machine-readable list of your available 60-minute-capable intervals on Monday within the work hours using HH:MM-HH:MM 24h format enclosed in <availability>...</availability>. Do not propose a specific meeting time; only list your available intervals.",
+                "prompt": "Your name is kevin. Consider the environment public information {environment->public_information} and your knowledge {agents->kevin->private_information}. Report all intervals on Monday during 09:00-17:00 that can accommodate a continuous 60-minute meeting, formatted as a comma-separated list inside <availability>...</availability>."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_katherine",
+                    "availability_nicole",
+                    "availability_kevin"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You are a rigorous auditor focusing on temporal and causal consistency. Reconcile the provided availabilities, remove bookkeeping shortcuts (quota tokens, post-hoc penalties, or arbitrary buffers), and compute the intersection of intervals that yields contiguous 60-minute windows within the stated work hours. Prefer the earliest feasible slot. Output two parts: the full intersected set as a comma-separated list in <intersection>...</intersection> and the earliest valid 60-minute slot in <proposed_slot>...</proposed_slot>.",
+                "prompt": "Audit and reconcile the participants' availability reports. Verify alignment with the work hours, duration, and consistency constraints from {environment->public_information}. Return the intersection in <intersection>...</intersection> and the earliest valid 60-minute slot in <proposed_slot>...</proposed_slot>."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_availability",
+                    "availability_katherine",
+                    "availability_nicole",
+                    "availability_kevin"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in planning and PDDL. Produce a PDDL domain and problem that target the FastDownwards solver to schedule the meeting at the selected time. Always enclose the domain in <domain></domain> and the problem in <problem></problem>. Use a STRIPS-like formulation suitable for FastDownwards. Represent the discrete time slots needed to encode the meeting time, encode participants and availability constraints, and ensure the chosen slot is the earliest valid one from the audited intersection. Keep agent-specific actions distinct only if needed; otherwise provide a minimal domain that captures the scheduling decision. The problem should include objects for participants and time slots, initial facts reflecting availability, and a goal that asserts the meeting is scheduled at the proposed slot for all participants.",
+                "prompt": "You will receive reconciled availability and a proposed earliest valid slot from the auditor along with each participant's availability. Integrate this information to produce a self-contained PDDL domain and problem suitable for FastDownwards. Ensure the problem encodes Monday work hours, a 60-minute duration, and that the chosen slot matches <proposed_slot> from the audited availability. Enclose your outputs in <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "katherine.availability->auditor.audit",
+            "nicole.availability->auditor.audit",
+            "kevin.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

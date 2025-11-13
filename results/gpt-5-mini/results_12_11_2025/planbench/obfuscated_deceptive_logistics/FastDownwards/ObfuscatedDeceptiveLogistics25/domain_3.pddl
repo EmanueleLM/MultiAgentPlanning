@@ -1,0 +1,140 @@
+(define (domain ObfuscatedDeceptiveLogistics25)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types obj stage)
+
+  (:predicates
+    (hand ?o - obj)
+    (cats ?o - obj)
+    (sneeze ?o - obj)
+    (spring ?o - obj)
+    (stupendous ?o - obj)
+    (texture ?o - obj)
+    (collect ?a - obj ?b - obj)
+    (next ?a - obj ?b - obj)
+    (vase ?a - obj ?b - obj)
+
+    (curr ?t - stage)
+    (succ ?t - stage ?t2 - stage)
+  )
+
+  (:action paltry
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?object_0)
+      (cats ?object_1)
+      (texture ?object_2)
+      (vase ?object_0 ?object_1)
+      (next ?object_1 ?object_2)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (next ?object_0 ?object_2)
+      (not (vase ?object_0 ?object_1))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+
+  (:action sip
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?object_0)
+      (cats ?object_1)
+      (texture ?object_2)
+      (next ?object_0 ?object_2)
+      (next ?object_1 ?object_2)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (vase ?object_0 ?object_1)
+      (not (next ?object_0 ?object_2))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+
+  (:action clip
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?object_0)
+      (sneeze ?object_1)
+      (texture ?object_2)
+      (next ?object_1 ?object_2)
+      (next ?object_0 ?object_2)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (vase ?object_0 ?object_1)
+      (not (next ?object_0 ?object_2))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+
+  (:action wretched
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?object_3 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (sneeze ?object_0)
+      (texture ?object_1)
+      (texture ?object_2)
+      (stupendous ?object_3)
+      (next ?object_0 ?object_1)
+      (collect ?object_1 ?object_3)
+      (collect ?object_2 ?object_3)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (next ?object_0 ?object_2)
+      (not (next ?object_0 ?object_1))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+
+  (:action memory
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (cats ?object_0)
+      (spring ?object_1)
+      (spring ?object_2)
+      (next ?object_0 ?object_1)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (next ?object_0 ?object_2)
+      (not (next ?object_0 ?object_1))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+
+  (:action tightfisted
+    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?object_0)
+      (sneeze ?object_1)
+      (texture ?object_2)
+      (next ?object_1 ?object_2)
+      (vase ?object_0 ?object_1)
+      (curr ?t)
+      (succ ?t ?t2)
+      (not (curr ?t2))
+    )
+    :effect (and
+      (next ?object_0 ?object_2)
+      (not (vase ?object_0 ?object_1))
+      (not (curr ?t))
+      (curr ?t2)
+    )
+  )
+)

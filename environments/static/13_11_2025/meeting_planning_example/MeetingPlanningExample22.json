@@ -1,0 +1,121 @@
+{
+    "name": "MeetingPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "route_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Presidio at 09:00.",
+                "I want to meet as many friends as possible, subject to the given constraints.",
+                "I must meet Andrew for at least 105 minutes within his availability window.",
+                "I prefer to minimize waiting and unnecessary backtracking.",
+                "I do not require returning to Presidio at the end of the day unless it helps meet more people."
+            ],
+            "goal": "Provide clear objectives and preferences so the system can generate and choose the best feasible schedule."
+        },
+        "route_planner": {
+            "private_information": [
+                "I can enumerate concrete schedule options from travel-time data and time windows.",
+                "I will provide multiple departure times and meeting blocks while respecting feasibility when possible.",
+                "I will include rationale for each option to aid later auditing."
+            ],
+            "goal": "Propose multiple candidate schedules that could satisfy meeting Andrew for at least 105 minutes while minimizing waiting and travel burden."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency.",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit time jumps.",
+                "I convert all times to absolute minutes from midnight (00:00) and verify that waits and travels sum correctly."
+            ],
+            "goal": "Validate candidate schedules against time windows and travel-times, normalize units, and filter infeasible or inconsistent plans."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from all agents and produce the final PDDL domain and problem for Fast Downward.",
+                "I preserve constraints: start at Presidio at 09:00, travel times as given, Andrew available 11:15 to 17:15, minimum meeting with Andrew 105 minutes."
+            ],
+            "goal": "Integrate the audited schedules and traveler preferences into a final PDDL model and problem instance that satisfies constraints and optimizes the objective."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "locations": [
+                "Presidio",
+                "Union Square"
+            ],
+            "start_location": "Presidio",
+            "start_time_hhmm": "09:00",
+            "start_time_minutes_from_midnight": 540,
+            "andrew": {
+                "location": "Union Square",
+                "availability_start_hhmm": "11:15",
+                "availability_end_hhmm": "17:15",
+                "availability_start_minutes_from_midnight": 675,
+                "availability_end_minutes_from_midnight": 1035,
+                "minimum_meeting_minutes": 105
+            },
+            "travel_times_minutes": {
+                "Presidio->Union Square": 22,
+                "Union Square->Presidio": 24
+            }
+        },
+        "public_information": [
+            "Objective: You are visiting San Francisco for the day and want to meet as many friends as possible while respecting hard constraints.",
+            "Hard constraint: You arrive at Presidio at 09:00.",
+            "Travel times (minutes): Presidio to Union Square 22; Union Square to Presidio 24.",
+            "Andrew will be at Union Square from 11:15 to 17:15.",
+            "You want to meet Andrew for a minimum of 105 minutes within his availability window."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler. Summarize hard constraints, soft preferences, and the primary objective for the day in a compact JSON blob. Do not produce PDDL.",
+                "prompt": "Context: {environment->public_information}. Provide a concise JSON object with keys: hard_constraints (list of atomic constraints you cannot violate), soft_preferences (list of preferences such as minimizing waiting or avoiding unnecessary travel), and objective (short description)."
+            }
+        },
+        "route_planner": {
+            "schedules": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are an itinerary generator. Enumerate discrete schedule options using the travel-time data and time windows. Do not produce PDDL.",
+                "prompt": "Use public information: {environment->public_information}. Propose at least three candidate schedules that attempt to meet Andrew for at least 105 minutes at Union Square. For each option, specify depart_from, depart_time_hhmm, arrive_location, arrive_time_hhmm, planned_meeting_minutes, whether a return trip is planned, and a brief rationale. Ensure departure and arrival times reflect the given travel times. Keep the output as a JSON object with key options (array)."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are a strict temporal and causal auditor. You remove bookkeeping shortcuts (quota tokens, post-hoc penalties, implicit time jumps), and verify that time arithmetic is exact. Do not produce PDDL.",
+                "prompt": "Given the candidate schedules: {candidate_schedules} and the public constraints: {environment->public_information}, convert all times to minutes from midnight and check feasibility against Andrew's window and minimum meeting duration. Verify that waits and travels sum exactly to the current clock time. Output a JSON object with keys: normalized_time_bounds (with start_time=540, and Andrew window [675,1035], min_meet=105), feasible_options (array of options with numeric times and a proof of feasibility), and notes (issues found, if any)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_schedules",
+                    "traveler_preferences"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent coordination and PDDL modeling for the Fast Downward solver. You must produce a final PDDL domain and problem that encode the audited constraints so that meeting Andrew for at least 105 minutes is guaranteed. Use a classical (non-temporal) encoding with numeric fluents to track time and action costs. Use the standard total-cost function and include (:metric minimize (total-cost)) to prefer minimal waiting and unnecessary travel. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Keep actions distinct, simple, and solver-friendly.",
+                "prompt": "Integrate the audited schedule information: {audited_schedules} and the traveler preferences: {traveler_preferences}. Model two locations (presidio, union_square), a numeric fluent time capturing minutes from midnight (start at 540), and the total-cost function. Provide actions: wait_60, wait_30, wait_15, wait_8 (each increases time by the respective minutes and increases total-cost by the same amount), travel_presidio_union (precondition at presidio, effect at union_square, increase time by 22 and total-cost by 22), travel_union_presidio (precondition at union_square, effect at presidio, increase time by 24 and total-cost by 24), and meet_andrew_105 (precondition at union_square and 675 <= time <= 930 to ensure the 105-minute meeting finishes by 1035, effect sets met_andrew true and increases time by 105 with zero cost). Initial state: at presidio, time=540, met_andrew false, total-cost=0. Goal: met_andrew true. Do not require returning to Presidio. Output both PDDL files enclosed in the required tags."
+            }
+        },
+        "constraints": [
+            "route_planner.schedules->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "traveler.preferences->orchestrator.pddl"
+        ]
+    }
+}

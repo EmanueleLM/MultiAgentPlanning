@@ -1,0 +1,51 @@
+(define (problem calendar-scheduling-example23-problem)
+  (:domain calendar-scheduling-example23)
+  (:objects
+    billy maria william - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 - slot
+  )
+  (:init
+    (valid-start t0900)
+    (valid-start t0930)
+    (valid-start t1000)
+    (valid-start t1030)
+    (valid-start t1100)
+    (valid-start t1130)
+    (valid-start t1200)
+    (valid-start t1230)
+    (valid-start t1300)
+    (valid-start t1330)
+    (valid-start t1400)
+    (valid-start t1430)
+    (valid-start t1500)
+    (valid-start t1530)
+    (valid-start t1600)
+
+    (available-billy t0900)
+    (available-billy t0930)
+    (available-billy t1000)
+    (available-billy t1030)
+    (available-billy t1200)
+    (available-billy t1500)
+
+    (available-maria t1030)
+    (available-maria t1100)
+    (available-maria t1130)
+    (available-maria t1200)
+    (available-maria t1430)
+    (available-maria t1500)
+    (available-maria t1530)
+    (available-maria t1600)
+
+    (available-william t1000)
+    (available-william t1030)
+    (available-william t1100)
+    (available-william t1230)
+
+    (= (total-cost) 0)
+  )
+  (:goal (and
+    (scheduled)
+  ))
+  (:metric minimize (total-cost))
+)

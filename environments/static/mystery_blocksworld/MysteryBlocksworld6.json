@@ -1,0 +1,111 @@
+{
+    "name": "MysteryBlocksworld6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I know the informal action schemas available: paltry, sip, clip, wretched, memory, tightfisted.",
+                "Each action is parameterized over object tokens such as object_0 ... object_10 and has specific preconditions and effects described over predicates like hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+                "Example mapping: paltry requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2; it makes next o0 o2 true and vase o0 o1 false."
+            ],
+            "goal": "Interpret the informal action descriptions and produce a clear, structured representation of each action as a list of typed preconditions and add/delete effects, without emitting final PDDL."
+        },
+        "observer": {
+            "private_information": [
+                "I observed two statement blocks describing two separate initial worlds and associated goals and candidate plans.",
+                "Statement A initial facts: cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_9, next object_0 object_5, next object_3 object_5, next object_4 object_8, next object_9 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+                "Statement A goal: next object_9 object_7.",
+                "Statement A candidate plan: wretched object_3 object_5 object_6 object_1; clip object_9 object_3 object_6; wretched object_3 object_6 object_5 object_1; tightfisted object_9 object_3 object_5; sip object_9 object_0 object_5; memory object_0 object_5 object_7; paltry object_9 object_0 object_7.",
+                "Statement B initial facts: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, next object_0 object_8, next object_1 object_6, next object_10 object_9, next object_4 object_6, next object_5 object_9, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+                "Statement B goal: next object_10 object_6.",
+                "Statement B candidate plan: (none provided in the second block)"
+            ],
+            "goal": "Extract and canonicalize the observed initial facts, goals, and candidate plan steps into a machine-friendly fact list and ordered action-step list for the orchestrator."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency, and in removing bookkeeping shortcuts such as quota tokens, post-hoc penalties, or ephemeral assumptions that are not grounded in primitive predicates.",
+                "I will check that preconditions and effects across planned steps chain correctly, that deleted facts are not assumed later without being re-established, and that the candidate plans do not rely on implicit bookkeeping."
+            ],
+            "goal": "Produce an audit report listing causal dependencies, potential temporal conflicts, implicit assumptions, and proposed removals or corrections to bookkeeping shortcuts so the orchestrator can generate correct PDDL for a classical planner."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Consume the players' structured action representations, the observer's canonicalized initial states and goals, and the auditor's report, and produce final PDDL domain and PDDL problem files targeted for the FastDownwards solver that capture the intended dynamics and goals for each observed statement block."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates appearing in descriptions: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), sneeze(X), stupendous(X), collect(X,Y), spring(X).",
+            "Action summaries: paltry requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2; paltry adds next o0 o2 and removes vase o0 o1.",
+            "sip requires hand o0, cats o1, texture o2, next o0 o2, next o1 o2; sip adds vase o0 o1 and removes next o0 o2.",
+            "clip requires hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2; clip adds vase o0 o1 and removes next o0 o2.",
+            "wretched requires sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3; wretched adds next o0 o2 and removes next o0 o1.",
+            "memory requires cats o0, spring o1, spring o2, next o0 o1; memory adds next o0 o2 and removes next o0 o1.",
+            "tightfisted requires hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1; tightfisted adds next o0 o2 and removes vase o0 o1."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "player_analysis",
+                "system_prompt": "You are a domain expert who translates informal action descriptions into structured action records. Produce for each action a list of typed parameters, preconditions, add-effects, and del-effects. Do not emit PDDL, only a precise structured representation.",
+                "prompt": "Interpret the public action summaries and your private action knowledge and produce a canonical structured representation of paltry, sip, clip, wretched, memory, and tightfisted as parameterized templates with preconditions and effects."
+            }
+        },
+        "observer": {
+            "extract": {
+                "input": [],
+                "output": "observer_extracted",
+                "system_prompt": "You are an observer that converts narrated initial statements, goals, and candidate plan steps into canonical lists of ground facts, object lists, and ordered action-invocation sequences. Do not produce PDDL.",
+                "prompt": "From your private observed statements, extract two separate problem instances: for each instance produce an objects list, an initial fact list, a goal formula, and any provided candidate plan steps as an ordered list of action invocations."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "player_analysis",
+                    "observer_extracted"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Given structured action templates and concrete problem instances, identify causal gaps, deleted facts used later without reestablishment, implicit bookkeeping assumptions, and recommend precise corrections or eliminations of bookkeeping shortcuts. Output a concise structured report with flagged issues and proposed fixes. Do not emit PDDL.",
+                "prompt": "Consume the player's action templates and the observer's extracted instances. For each candidate plan and for each action template, verify that preconditions are satisfied when the action is scheduled, that effects produce the necessary facts for later steps, and that no step depends on an ephemeral bookkeeping shortcut. Produce a structured audit report describing conflicts and suggested minimal corrections."
+            }
+        },
+        "orchestrator": {
+            "compile_pddl": {
+                "input": [
+                    "player_analysis",
+                    "observer_extracted",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are responsible for producing final PDDL domain and problem files that FastDownwards can consume. Use the player's structured action representations, the observer's extracted instances, and the auditor's report to construct a single PDDL domain and two PDDL problem files (one for each observed statement block). Enforce types, explicit predicates, and deterministic STRIPS-style preconditions and add/delete effects. Keep agent-distinct actions as separate action schemas where needed. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem instance=\"A\"></problem> and <problem instance=\"B\"></problem> tags. Target FastDownwards compatibility: do not use constructs outside classical STRIPS and typing conventions that FastDownwards supports.",
+                "prompt": "Integrate the structured action templates, the canonical initial states and goals for both instances, and the auditor's corrections. Resolve naming ambiguities, eliminate bookkeeping shortcuts by turning them into explicit predicates if needed, and produce: 1) a PDDL domain that encodes paltry, sip, clip, wretched, memory, tightfisted with clear parameter types and preconditions/effects; 2) two PDDL problem files for instance A and instance B respectively. Ensure the produced PDDL is syntactically compatible with FastDownwards and that the goal formulas match the observed goals next object_9 object_7 (instance A) and next object_10 object_6 (instance B). Enclose outputs with the required tags."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.compile_pddl",
+            "observer.extract->orchestrator.compile_pddl",
+            "auditor.audit->orchestrator.compile_pddl"
+        ]
+    },
+    "constraints": [
+        "player.analyze->orchestrator.compile_pddl",
+        "observer.extract->orchestrator.compile_pddl",
+        "auditor.audit->orchestrator.compile_pddl"
+    ]
+}

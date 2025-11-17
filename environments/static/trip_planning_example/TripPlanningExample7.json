@@ -1,0 +1,106 @@
+{
+    "name": "TripPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_network",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit Venice for 6 days",
+                "I would like to visit Dubrovnik for 4 days",
+                "I would like to visit Istanbul for 3 days",
+                "I will only take direct flights when commuting",
+                "My total trip length must be 11 days"
+            ],
+            "goal": "Produce a candidate visit plan that allocates days to Venice, Dubrovnik, and Istanbul and respects the 11 day total while preferring the specified stays."
+        },
+        "flight_network": {
+            "private_information": [
+                "Direct flights available from Dubrovnik to Istanbul",
+                "Direct flights available from Dubrovnik to Venice",
+                "No other direct flight connections between these three cities are specified"
+            ],
+            "goal": "Provide the directed graph of available direct flights and list which city-to-city legs are directly possible for commuting."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across proposed itineraries",
+                "Role: remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and require explicit, explainable adjustments"
+            ],
+            "goal": "Check that the proposed durations sum to the 11-day total, reconcile any inconsistencies in duration requests, and produce a corrected allocation with justification."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the traveler proposal, flight connectivity, and auditor report and produce a final PDDL domain and problem targeting the FastDownward solver to compute a valid trip plan using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Venice",
+                "Dubrovnik",
+                "Istanbul"
+            ]
+        },
+        "public_information": [
+            "You plan to visit three European cities: Venice, Dubrovnik, and Istanbul",
+            "The total trip length is 11 days",
+            "Only direct flights are allowed for commuting between cities",
+            "Direct flight connectivity provided: Dubrovnik->Istanbul and Dubrovnik->Venice"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_traveler",
+                "system_prompt": "You are an expert travel planner. Provide candidate itineraries as a sequence of city visits with proposed days per city, explain assumptions, and do not emit PDDL.",
+                "prompt": "Agent: traveler. Use public information: {environment->public_information}. Use your private preferences: {agents->traveler->private_information}. Produce one or more feasible candidate allocations of days across the three cities that reflect the preferences while noting any conflicts with the total trip length of 11 days. Describe the proposed visit order and day allocation and any assumptions about flight legs needed to realize the sequence."
+            }
+        },
+        "flight_network": {
+            "check": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an expert on flight connectivity graphs. Provide the directed edges available for direct flights and indicate which city-to-city legs are possible without making unprovided assumptions.",
+                "prompt": "Agent: flight_network. Use public information: {environment->public_information}. Use your private knowledge: {agents->flight_network->private_information}. Produce a concise representation of the directed flight graph between the cities and list reachable legs that a planner may use for commuting. If some legs are missing, explicitly state that they are unavailable."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_traveler",
+                    "flight_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for plans. Detect inconsistencies, require explicit adjustments rather than bookkeeping shortcuts, and produce a corrected, justified allocation.",
+                "prompt": "Agent: auditor. You receive a candidate itinerary {itinerary_traveler} and the flight connectivity {flight_graph}. Verify that the proposed durations sum to the environment total_days {environment->init->total_days} and that each travel leg in the itinerary is supported by direct flights. If there is a mismatch in total days or missing direct legs, propose minimal, justified adjustments to durations or visit order. Produce a short audit report that lists identified issues, proposed corrections, and the corrected allocation of days per city."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_traveler",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Integrate the artifacts from the other agents, preserve distinct action labels for stay and flight actions, and produce a PDDL domain and PDDL problem file intended for the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent: orchestrator. Integrate the traveler's proposal {itinerary_traveler}, the flight network {flight_graph}, and the auditor's corrections {audit_report}. Keep actions distinct for staying in a city (stay-city) and flying between cities (fly-from-to). Build a PDDL domain that represents stays and direct flights as actions and encodes temporal/causal constraints necessary to ensure total trip duration equals {environment->init->total_days} and that only direct flights are used. Then build a PDDL problem compatible with the FastDownward solver that encodes the corrected day allocations and the goal of visiting all three cities. Enclose the domain within <domain></domain> tags and the problem within <problem></problem> tags. Do not assume any unspecified direct flight legs."
+            }
+        },
+        "constraints": [
+            "traveler.plan->auditor.audit",
+            "flight_network.check->auditor.audit",
+            "traveler.plan->orchestrator.pddl",
+            "flight_network.check->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

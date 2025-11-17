@@ -1,0 +1,100 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "proposer",
+            "executor",
+            "auditor",
+            "orchestrator"
+        ],
+        "proposer": {
+            "private_information": [
+                "I know the available parametric actions: paltry, sip, clip, wretched, memory, tightfisted",
+                "I know each action's preconditions and effects as described by the agent-level specification"
+            ],
+            "goal": "Produce a clean, machine-readable action schema set that encodes preconditions and effects for the available actions"
+        },
+        "executor": {
+            "private_information": [
+                "I know the initial facts and the two variants of the provided initial statement blocks",
+                "I can map named objects to identifiers and trace which objects are currently in hand, collected, or next-linked"
+            ],
+            "goal": "Produce a structured representation of initial facts and the target goal facts, and highlight ambiguous or conflicting facts"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in identifying bookkeeping shortcuts such as quota tokens and ad-hoc post-hoc penalties",
+                "I will remove or flag any plan shortcuts and require explicit causal justification for state transitions"
+            ],
+            "goal": "Audit the proposed action schemas and the initial/goal fact sets to remove bookkeeping shortcuts and ensure temporal and causal consistency"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate proposals, execution facts, and audit reports to produce a final PDDL domain and problem compatible with the FastDownwards solver",
+                "I must keep agent actions distinct and preserve provenance of action labels"
+            ],
+            "goal": "Assemble the validated action schemas and fact base into a final PDDL domain and problem file targeting FastDownwards"
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_estimate": 14,
+            "encoding_hint": "typed predicates will be useful but not required"
+        },
+        "public_information": [
+            "There are six action types: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Relevant predicates include hand, cats, texture, vase, next, sneeze, spring, stupendous, collect.",
+            "Each action has explicit preconditions and effects that reference three or four object parameters.",
+            "Two initial statements variants are provided and a multi-step plan is proposed; the orchestrator must reconcile them.",
+            "The final planning artifacts should be valid for the FastDownwards solver and keep agent actions distinct."
+        ]
+    },
+    "workflow": {
+        "proposer": {
+            "proposal": {
+                "input": [],
+                "output": "proposal_spec",
+                "system_prompt": "You are a domain modeler. Produce a clear structured specification of each action type listing parameter names, preconditions, add effects, and delete effects. Do not emit PDDL; emit a JSON-like structured schema that is sufficient for later conversion.",
+                "prompt": "Your name is proposer. Use the public information and your private information to formalize the six action schemas paltry, sip, clip, wretched, memory, and tightfisted. For each action, enumerate parameters and list preconditions, add effects, and delete effects. If information is missing, mark the missing pieces explicitly instead of assuming them."
+            }
+        },
+        "executor": {
+            "analysis": {
+                "input": [],
+                "output": "executor_analysis",
+                "system_prompt": "You are an executor analyst. Convert the provided initial fact blocks and goal statements into a normalized fact list and an explicit goal list. Identify object identifiers, multiplicities, and any immediate contradictions between the two initial-statement variants.",
+                "prompt": "Your name is executor. Extract the initial facts from the provided statement blocks and produce a normalized listing of facts and a normalized target goal listing. Call out ambiguous or conflicting facts and propose canonical object name mappings where appropriate. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "proposal_spec",
+                    "executor_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your role is to detect and remove bookkeeping shortcuts and to require explicit causal justification for any effect that was previously treated as a shortcut. Produce an audit report describing any shortcuts detected, suggested eliminations or formalizations, and critical ordering constraints required to make plans executable.",
+                "prompt": "Your name is auditor. Receive the action schemas and normalized facts. Verify that every add and delete effect has a causal justification given the available preconditions and initial facts. Detect bookkeeping shortcuts such as implicit quota tokens or implicit post-hoc repairs. For each shortcut, propose an explicit mechanism or flag it as unresolved. Provide ordering and causal constraints that must hold for the plan to be valid. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "proposal_spec",
+                    "executor_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that produces final PDDL domain and problem files compatible with the FastDownwards planner. Integrate the validated schemas, the normalized facts, and the audit fixes. Keep agent action labels distinct by prefixing action names with their originating agent when necessary. Enclose the PDDL domain content between <domain></domain> tags and the PDDL problem content between <problem></problem> tags. Target FastDownwards compatibility: use STRIPS or ADL features that FastDownwards supports and avoid constructs not supported by the solver.",
+                "prompt": "Your name is orchestrator. Integrate the proposer specification, executor analysis, and auditor report to produce a final PDDL domain and a final PDDL problem suitable for FastDownwards. Preserve provenance of actions and include any extra predicates or fluents the auditor demanded to eliminate bookkeeping shortcuts. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "proposer.proposal->orchestrator.pddl",
+            "executor.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

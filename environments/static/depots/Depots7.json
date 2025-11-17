@@ -1,0 +1,113 @@
+{
+    "name": "Depots7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyzer",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyzer": {
+            "private_information": [
+                "Expert at natural language extraction and predicate identification from informal action descriptions.",
+                "Will produce structured analyses: lists of predicates, objects, action schemas with parameter roles, preconditions and effects, and concrete ground facts from plans and statements."
+            ],
+            "goal": "Parse the human descriptions into a clean structured representation of objects, predicates, actions, preconditions, effects, initial facts and candidate plans."
+        },
+        "planner": {
+            "private_information": [
+                "Expert at planning reasoning and causal link analysis.",
+                "Will propose a causal ordering, variable bindings for action instances, and a plan skeleton consistent with parsed constraints."
+            ],
+            "goal": "Produce a coherent plan skeleton and causal ordering based on the analyzer's structured output, making binding choices explicit without emitting PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across plans and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit side-effects that are not grounded in action effects.",
+                "Expert at identifying cycles, hidden dependencies, and repairing underspecified preconditions/effects to ensure a valid plan."
+            ],
+            "goal": "Audit and correct the plan skeleton to ensure causal and temporal consistency and produce a sanitized, explicit set of preconditions and effects suitable for encoding into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinator that integrates parsed analyses, plan skeletons and auditor corrections and emits the final PDDL domain and problem.",
+                "Target solver: FastDownwards. Keep multi-agent actions distinct where appropriate."
+            ],
+            "goal": "Integrate the outputs of other agents and produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner that achieves the stated goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 11,
+            "visibility": 2
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Action paltry(params: object_0 object_1 object_2) Preconditions: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2. Effects add: next object_0 object_2. Effects remove: vase object_0 object_1.",
+            "Action sip(params: object_0 object_1 object_2) Preconditions: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2. Effects add: vase object_0 object_1. Effects remove: next object_0 object_2.",
+            "Action clip(params: object_0 object_1 object_2) Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2. Effects add: vase object_0 object_1. Effects remove: next object_0 object_2.",
+            "Action wretched(params: object_0 object_1 object_2 object_3) Preconditions: sneeze object_0, texture object_1, texture object_2, stupendous object_3, next object_0 object_1, collect object_1 object_3, collect object_2 object_3. Effects add: next object_0 object_2. Effects remove: next object_0 object_1.",
+            "Action memory(params: object_0 object_1 object_2) Preconditions: cats object_0, spring object_1, spring object_2, next object_0 object_1. Effects add: next object_0 object_2. Effects remove: next object_0 object_1.",
+            "Action tightfisted(params: object_0 object_1 object_2) Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1. Effects add: next object_0 object_2. Effects remove: vase object_0 object_1.",
+            "Initial statement A: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, next object_0 object_8, next object_1 object_6, next object_10 object_9, next object_4 object_6, next object_5 object_9, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Goal A: next object_10 object_6.",
+            "Candidate Plan A given: clip object_10 object_5 object_9; wretched object_5 object_9 object_8 object_3; tightfisted object_10 object_5 object_8; sip object_10 object_0 object_8; memory object_0 object_8 object_6; paltry object_10 object_0 object_6.",
+            "Initial statement B: cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_10, hand object_9, next object_0 object_7, next object_10 object_5, next object_3 object_5, next object_4 object_8, next object_9 object_8, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+            "Goal B: next object_10 object_5 and next object_9 object_7.",
+            "Candidate Plan B: not provided in the use-case and expected to be constructed or validated by agents."
+        ]
+    },
+    "workflow": {
+        "analyzer": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_report",
+                "system_prompt": "You are an expert at extracting formal structures from informal action and plan descriptions. You should not emit PDDL. Instead produce a structured report listing all objects, predicates, parameter roles for each action schema, explicit preconditions and effects separated into add and delete lists, and a normalized representation of the initial facts and candidate plans.",
+                "prompt": "Your name is analyzer. You are given the environment public information as context: {environment->public_information} You also have these private capabilities: {agents->analyzer->private_information} Your goal: {agents->analyzer->goal} Produce a structured analysis that identifies: 1) the set of objects mentioned, 2) all predicate names and arities, 3) for each action schema its parameter list and the precise preconditions and add/delete effects, 4) the ground initial facts for the two statement blocks labeled A and B, and 5) the candidate plan A steps with their concrete argument bindings. Do not invent new predicates beyond what is implied by the text. Do not emit PDDL. Output should be a concise structured report suitable for input to a planner construction agent."
+            }
+        },
+        "planner": {
+            "plan_skeleton": {
+                "input": [
+                    "analysis_report"
+                ],
+                "output": "plan_skeleton",
+                "system_prompt": "You are an expert in planning and causal link analysis. Do not emit PDDL. Use the analyzer's structured report to produce a candidate plan skeleton with explicit causal links, ordering constraints, and variable binding choices. Highlight possible open preconditions and ambiguities to be resolved by the auditor.",
+                "prompt": "Your name is planner. You are given the analyzer's report: {analysis_report} You also have these private capabilities: {agents->planner->private_information} Your goal: {agents->planner->goal} Produce a plan skeleton for Goal A and indicate if the candidate Plan A achieves the goal under the given initial facts. Provide causal links showing which action effects satisfy which preconditions, list any unsatisfied preconditions, and present a recommended ordering of actions. Do not emit PDDL. Keep actions and agent distinctions explicit."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_report",
+                    "plan_skeleton"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal auditor. Your job is to remove bookkeeping shortcuts, remove or flag implicit tokens, quotas, or post-hoc penalties, enforce explicit preconditions and effects, and repair temporal inconsistencies. Produce corrections that make the plan and action schemas explicit and suitable for encoding into PDDL. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You are given the analyzer's report and the planner's skeleton: {analysis_report} {plan_skeleton} You also have these private capabilities: {agents->auditor->private_information} Your goal: {agents->auditor->goal} Inspect causal chains and temporal orderings. Identify and remove any bookkeeping shortcuts such as implicit 'quota tokens' or post-hoc assumptions. Where an effect or precondition is underspecified, propose explicit predicates or constraints to make dependencies explicit. If you must strengthen a precondition or split an action to preserve causality, describe the change. Produce an audit report that enumerates required corrections and a sanitized set of action schemas and final validated plan skeleton. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_report",
+                    "plan_skeleton",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and with the FastDownwards planning system. You must produce a PDDL domain and a PDDL problem file that encode the sanitized action schemas, initial state and goals. Target FastDownwards compatibility: use STRIPS-like constructs and avoid solver-specific extensions. Keep actions distinct if they correspond to different agent roles. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You receive the following inputs: analyzer output {analysis_report}, planner skeleton {plan_skeleton}, and auditor corrections {audit_report}. Your goal is: {agents->orchestrator->goal} Integrate the inputs, resolve any remaining name mismatches or ambiguous object mappings, and emit a PDDL domain and a PDDL problem suitable for FastDownwards that achieves the stated goals. Keep all agent-origin actions distinct in name if needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If you rely on any assumption, document it briefly at the top of the domain or problem as a comment."
+            }
+        },
+        "constraints": [
+            "analyzer.analyze->planner.plan_skeleton",
+            "analyzer.analyze->auditor.audit",
+            "planner.plan_skeleton->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner.plan_skeleton->orchestrator.pddl",
+            "analyzer.analyze->orchestrator.pddl"
+        ]
+    }
+}

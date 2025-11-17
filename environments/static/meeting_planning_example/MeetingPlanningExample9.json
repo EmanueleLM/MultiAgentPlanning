@@ -1,0 +1,112 @@
+{
+    "name": "MeetingPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "mary",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Union Square at 09:00.",
+                "My objective is to meet as many friends as possible during the day and maximize useful meeting time.",
+                "I can move between Union Square and Nob Hill with the given travel times."
+            ],
+            "goal": "Plan a schedule of meetings to maximize the number of friends met while respecting known availabilities and travel times. Ensure meeting with Mary for at least 75 minutes within her availability window."
+        },
+        "mary": {
+            "private_information": [
+                "I will be at Nob Hill from 12:00 to 16:15.",
+                "I require at least 75 minutes for a meeting with the traveler.",
+                "I will only meet at Nob Hill."
+            ],
+            "goal": "Meet the traveler at Nob Hill for at least 75 minutes sometime between 12:00 and 16:15."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit proposed schedules for temporal and causal consistency.",
+                "I will remove or flag any bookkeeping shortcuts (quota tokens, post-hoc penalties, unrealistic simultaneous meetings, zero-duration transitions) and insist on realistic temporal constraints."
+            ],
+            "goal": "Audit the combined schedule proposals from other agents for temporal/causal consistency and produce an audit report that enforces realistic timing and explicit resource/transition constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from the traveler, Mary, and the auditor, resolve inconsistencies, and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes the meeting scheduling task."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Union Square",
+            "start_time": "09:00",
+            "locations": [
+                "Union Square",
+                "Nob Hill"
+            ],
+            "travel_times_minutes": {
+                "Union Square->Nob Hill": 9,
+                "Nob Hill->Union Square": 7
+            }
+        },
+        "public_information": [
+            "You arrive at Union Square at 09:00.",
+            "Travel time from Union Square to Nob Hill is 9 minutes.",
+            "Travel time from Nob Hill to Union Square is 7 minutes.",
+            "Mary will be at Nob Hill from 12:00 to 16:15.",
+            "You must meet Mary for a minimum of 75 minutes during her availability window."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "context": {
+                "input": [],
+                "output": "traveler_context",
+                "system_prompt": "You are the traveler providing scheduling preferences and constraints in plain structured form. Provide your earliest and latest possible meeting windows for the day, any hard constraints, and ranking preferences (maximize number of friends then total meeting time). Do not emit PDDL."
+            }
+        },
+        "mary": {
+            "context": {
+                "input": [],
+                "output": "mary_context",
+                "system_prompt": "You are Mary providing your availability and meeting preferences in plain structured form. State your exact availability window, location constraints, and minimum meeting duration. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_context",
+                    "mary_context"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor checking temporal and causal consistency of proposed scheduling inputs. Consume the traveler_context and mary_context and produce a report that flags any impossible or shortcut assumptions (e.g., overlapping meetings without travel time, zero-duration transitions, implicit quotas). Provide corrected explicit temporal constraints and a verified timeline summary that an orchestrator can consume. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_context",
+                    "mary_context",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the traveler's context, Mary's context, and the auditor's report. Resolve naming and temporal ambiguities and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards solver. Keep actions for distinct agents explicitly separate and include temporal encodings or discretized time steps as needed to model meeting durations and travel times. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The domain and problem must reflect realistic travel durations, Mary's availability window, and the requirement to meet Mary for at least 75 minutes between 12:00 and 16:15. Target the FastDownwards solver conventions."
+            }
+        },
+        "constraints": [
+            "traveler.context->auditor.audit",
+            "mary.context->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.context->orchestrator.pddl",
+            "mary.context->orchestrator.pddl"
+        ]
+    },
+    "constraints": [
+        "traveler.context->auditor.audit",
+        "mary.context->auditor.audit",
+        "auditor.audit->orchestrator.pddl",
+        "traveler.context->orchestrator.pddl",
+        "mary.context->orchestrator.pddl"
+    ]
+}

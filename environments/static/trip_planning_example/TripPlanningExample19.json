@@ -1,0 +1,113 @@
+{
+    "name": "TripPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_manager",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit 3 European cities for 9 days in total",
+                "Preferred stays: Brussels 2 days, Valencia 3 days, Nice 6 days",
+                "I want to meet my friends in Nice between day 1 and day 6"
+            ],
+            "goal": "Produce a preferred itinerary that visits Brussels, Valencia, and Nice within a 9-day trip using only direct flights and satisfying the meeting constraint."
+        },
+        "flight_manager": {
+            "private_information": [
+                "Available direct flights: Brussels <-> Valencia, Nice <-> Brussels",
+                "Only direct flights may be used to commute between cities"
+            ],
+            "goal": "Provide feasible sequences of direct-flight legs that connect the three cities and can support a 9-day itinerary."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts",
+                "I will detect inconsistencies in durations and propose concrete adjustments"
+            ],
+            "goal": "Audit proposed itineraries for consistency with the 9-day total and the meeting window and propose corrected duration allocations or ordering to make the plan feasible."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate traveler preferences, flight connectivity, and auditor corrections and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that models the trip planning problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9,
+            "cities": [
+                "Brussels",
+                "Valencia",
+                "Nice"
+            ],
+            "direct_flights": [
+                [
+                    "Brussels",
+                    "Valencia"
+                ],
+                [
+                    "Nice",
+                    "Brussels"
+                ]
+            ]
+        },
+        "public_information": [
+            "There are three cities of interest: Brussels, Valencia, Nice.",
+            "Total trip length must be 9 days.",
+            "Direct flights exist only between Brussels and Valencia and between Nice and Brussels.",
+            "You must use only direct flights to commute between cities.",
+            "Meeting with friends must occur in Nice between day 1 and day 6 inclusive."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary": {
+                "input": [],
+                "output": "traveler_itinerary",
+                "system_prompt": "You are a travel preference agent. Provide a clear specification of desired city visits, per-city desired durations, and the meeting window. Do not emit PDDL. Provide the itinerary preferences as a concise structured response that other agents can consume.",
+                "prompt": "You are traveler. Here is the public information: {environment->public_information} Here is your private information: {agents->traveler->private_information} Your goal: {agents->traveler->goal} Provide a structured specification of your desired stays and the meeting requirement. Do not assume changes; state the preferences plainly so other agents can evaluate feasibility."
+            }
+        },
+        "flight_manager": {
+            "flights": {
+                "input": [],
+                "output": "flight_schedules",
+                "system_prompt": "You are a flight connectivity agent. Enumerate available direct-flight legs and plausible sequences of legs that could connect the cities under the direct-flight constraint. Do not emit PDDL. Provide routes as ordered lists of city hops and note connectivity limitations.",
+                "prompt": "You are flight_manager. Here is the public information: {environment->public_information} Here is your private information: {agents->flight_manager->private_information} Your goal: {agents->flight_manager->goal} List all feasible direct-leg sequences that visit the three cities and could be used to build a 9-day itinerary. Indicate when a sequence is impossible due to connectivity."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "traveler_itinerary",
+                    "flight_schedules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Verify that durations sum to the total days, that meeting windows are satisfied, and that flight transitions are consistent with schedule ordering. Identify inconsistencies and propose minimal adjustments to durations or ordering to make the plan valid. Do not emit PDDL.",
+                "prompt": "You are temporal_auditor. Inputs: traveler preferences {traveler_itinerary} and flight connectivity {flight_schedules}. Your goal: {agents->temporal_auditor->goal} Check that the requested per-city stays fit within the total of {environment->init->total_days} days and that the meeting window in Nice is achievable given connectivity. Produce an audit report that lists problems and suggested concrete corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_itinerary",
+                    "flight_schedules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate agent outputs and produce a final PDDL domain and PDDL problem suitable for solving with the FastDownwards planner. Keep agent actions distinct in the model where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility in typing, predicates, and problem structure.",
+                "prompt": "You are orchestrator. Integrate the traveler preferences {traveler_itinerary}, the direct-flight sequences {flight_schedules}, and the auditor corrections {audit_report}. Your goal: {agents->orchestrator->goal} Produce a PDDL domain and PDDL problem that models locations, travel actions constrained to direct flights, day-indexed stay durations summing to total days, and the requirement that a meeting occurs in Nice between day 1 and day 6. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the formulation is compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary->orchestrator.pddl",
+            "flight_manager.flights->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    },
+    "constraints": []
+}

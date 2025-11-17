@@ -1,0 +1,116 @@
+{
+    "name": "CalendarSchedulingExample26",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "katherine",
+            "nicole",
+            "kevin",
+            "scheduler_auditor",
+            "orchestrator"
+        ],
+        "katherine": {
+            "private_information": [
+                "I am available the entire workday on Monday."
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00."
+        },
+        "nicole": {
+            "private_information": [
+                "My calendar is wide open the entire workday on Monday."
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00."
+        },
+        "kevin": {
+            "private_information": [
+                "I have the following busy blocks on Monday: 09:00-10:00, 10:30-11:30, 12:00-15:30, 16:30-17:00."
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00."
+        },
+        "scheduler_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency. I remove bookkeeping shortcuts and flag ambiguous availability statements."
+            ],
+            "goal": "Validate and clean participant availability reports to ensure temporal consistency and remove shortcuts or post-hoc fixes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate availability reports and produce a final PDDL domain and problem targeted to FastDownwards that finds a feasible one-hour meeting time for all participants."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60
+        },
+        "public_information": [
+            "Schedule a one-hour meeting for Katherine, Nicole and Kevin on Monday between 09:00 and 17:00.",
+            "Meeting duration is 60 minutes.",
+            "Work hours are 09:00 to 17:00 on Monday.",
+            "There exists at least one solution that fits everyone's existing schedule."
+        ]
+    },
+    "workflow": {
+        "katherine": {
+            "analyze": {
+                "input": [],
+                "output": "avail_katherine",
+                "system_prompt": "You are an expert calendar assistant. Extract and publish your available time windows for the target day in a concise machine-readable format. Do not emit PDDL.",
+                "prompt": "Your name is katherine. Public information: {environment->public_information}. Private information: {agents->katherine->private_information}. Global goal: {agents->katherine->goal}. Produce your availability intervals for the day as a list of strings like [\"09:00-17:00\"]."
+            }
+        },
+        "nicole": {
+            "analyze": {
+                "input": [],
+                "output": "avail_nicole",
+                "system_prompt": "You are an expert calendar assistant. Extract and publish your available time windows for the target day in a concise machine-readable format. Do not emit PDDL.",
+                "prompt": "Your name is nicole. Public information: {environment->public_information}. Private information: {agents->nicole->private_information}. Global goal: {agents->nicole->goal}. Produce your availability intervals for the day as a list of strings like [\"09:00-17:00\"]."
+            }
+        },
+        "kevin": {
+            "analyze": {
+                "input": [],
+                "output": "avail_kevin",
+                "system_prompt": "You are an expert calendar assistant. Parse your busy blocks and output your free availability windows for the target day in a concise machine-readable format. Do not emit PDDL.",
+                "prompt": "Your name is kevin. Public information: {environment->public_information}. Private information: {agents->kevin->private_information}. Global goal: {agents->kevin->goal}. Produce your availability intervals for the day as a list of strings like [\"10:00-10:30\",\"11:30-12:00\",\"15:30-16:30\"]."
+            }
+        },
+        "scheduler_auditor": {
+            "audit": {
+                "input": [
+                    "avail_katherine",
+                    "avail_nicole",
+                    "avail_kevin"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency of schedule reports. Your job is to remove bookkeeping shortcuts, detect and resolve ambiguities and overlaps, and provide a cleaned consolidated availability report. Do not emit PDDL.",
+                "prompt": "Your name is scheduler_auditor. You receive availability reports: {avail_katherine}, {avail_nicole}, {avail_kevin}. Ensure intervals are consistent with participant private schedules, remove any shortcuts or post-hoc edits, reconcile overlaps and edge cases, and output a cleaned combined availability representation and a short rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_katherine",
+                    "avail_nicole",
+                    "avail_kevin",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at generating PDDL domains and problems for the FastDownwards solver. Produce a PDDL domain and a PDDL problem that encode finding a feasible start time for a one-hour meeting given the cleaned availability. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Target FastDownwards, include temporal constraints, represent meeting duration explicitly, and prefer earlier start times.",
+                "prompt": "You are the orchestrator. Inputs: {avail_katherine}, {avail_nicole}, {avail_kevin}, {audit_report}. The meeting duration is 60 minutes between 09:00 and 17:00 on Monday. Integrate the cleaned availabilities and produce a PDDL domain and problem that FastDownwards can solve to find a feasible meeting start time. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Keep actions associated with participants distinct where relevant."
+            }
+        },
+        "constraints": [
+            "katherine.analyze->scheduler_auditor.audit",
+            "nicole.analyze->scheduler_auditor.audit",
+            "kevin.analyze->scheduler_auditor.audit",
+            "katherine.analyze->orchestrator.pddl",
+            "nicole.analyze->orchestrator.pddl",
+            "kevin.analyze->orchestrator.pddl",
+            "scheduler_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

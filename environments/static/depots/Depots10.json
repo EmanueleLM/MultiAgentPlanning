@@ -1,0 +1,90 @@
+{
+    "name": "Depots10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "actor",
+            "auditor",
+            "orchestrator"
+        ],
+        "actor": {
+            "private_information": [
+                "You are responsible for parsing the action vocabulary and the human-provided plans.",
+                "Available atomic action schemata are paltry, sip, clip, wretched, memory, tightfisted.",
+                "For each action you should extract parameters, preconditions, positive effects and negative effects as stated in the use-case."
+            ],
+            "goal": "Translate the natural-language action descriptions, initial condition statements and candidate plans into structured action models and a structured plan representation."
+        },
+        "auditor": {
+            "private_information": [
+                "You are responsible for auditing temporal and causal consistency and removing bookkeeping shortcuts such as ad-hoc quota tokens and post-hoc penalties.",
+                "Flag any uses of opaque bookkeeping predicates, propose explicit resources or causal links that replace shortcuts, and identify plan steps that violate causal dependencies."
+            ],
+            "goal": "Produce a consistency report that annotates action models and candidate plans with necessary corrections to ensure causal and temporal soundness."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You integrate structured action models and the auditor report to produce a single PDDL domain and a PDDL problem suitable for the FastDownwards solver."
+            ],
+            "goal": "Emit a complete PDDL domain and PDDL problem targeted at FastDownwards that implements the corrected models and attains the stated goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 12,
+            "visibility": 1
+        },
+        "public_information": [
+            "Objects available: object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11.",
+            "Predicates that appear in the domain: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Action paltry requires: hand X, cats Y, texture Z, vase X Y, next Y Z. Paltry adds next X Z and removes vase X Y.",
+            "Action sip requires: hand X, cats Y, texture Z, next X Z, next Y Z. Sip adds vase X Y and removes next X Z.",
+            "Action clip requires: hand X, sneeze Y, texture Z, next Y Z, next X Z. Clip adds vase X Y and removes next X Z.",
+            "Action wretched requires: sneeze A, texture B, texture C, stupendous D, next A B, collect B D, collect C D. Wretched adds next A C and removes next A B.",
+            "Action memory requires: cats A, spring B, spring C, next A B. Memory adds next A C and removes next A B.",
+            "Action tightfisted requires: hand X, sneeze Y, texture Z, next Y Z, vase X Y. Tightfisted adds next X Z and removes vase X Y.",
+            "Initial statements set in the first scenario include cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, hand object_11, next object_0 object_8, next object_1 object_6, next object_10 object_6, next object_11 object_9, next object_4 object_6, next object_5 object_8, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Goal for the first scenario: next object_10 object_7 and next object_11 object_8.",
+            "A human-provided plan for the first scenario (for reference): clip object_10 object_4 object_6; wretched object_4 object_6 object_7 object_2; tightfisted object_10 object_4 object_7; wretched object_5 object_8 object_9 object_3; clip object_11 object_5 object_9; wretched object_5 object_9 object_8 object_3; tightfisted object_11 object_5 object_8.",
+            "Initial statements set in the second scenario include cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_10, hand object_11, hand object_9, next object_0 object_5, next object_10 object_8, next object_11 object_6, next object_3 object_5, next object_4 object_7, next object_9 object_5, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+            "Goal for the second scenario: next object_10 object_7, next object_11 object_7 and next object_9 object_7.",
+            "The domain contains potential bookkeeping predicates like vase and collect and next which should be explicitly modeled by agents and audited for causal soundness."
+        ]
+    },
+    "workflow": {
+        "actor": {
+            "model_extraction": {
+                "input": [],
+                "output": "action_models",
+                "system_prompt": "You are an expert at extracting formal action schemas and structured plans from natural language descriptions. Do not output PDDL. Produce structured action models and a structured plan representation in JSON-like form containing action name, parameters, preconditions, add_effects, del_effects and any typing information.",
+                "prompt": "Your name is actor. You have the following public information: {environment->public_information}. You have the following private information: {agents->actor->private_information}. Task: parse each action description (paltry, sip, clip, wretched, memory, tightfisted) and produce a structured action model. For each provided human plan, produce a stepwise structured plan listing the action name and concrete arguments. Also enumerate the initial facts and the stated goals for each scenario. Do not emit PDDL; emit compact structured models and plans suitable for feeding an auditor and an orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "action_models"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Your job is to detect and remove bookkeeping shortcuts, to suggest explicit resource or causal links that replace such shortcuts, and to annotate any temporal ordering problems or missing causal links in provided plans. Produce a structured report describing proposed changes, invariants, and corrected pre/postconditions where needed.",
+                "prompt": "Your name is auditor. You will receive the structured action models and structured plans produced by the actor (action_models). Using {environment->public_information} and your private instructions {agents->auditor->private_information}, check each action schema for internal consistency, flag predicates that serve as bookkeeping shortcuts (for example transient tokens used only to permit a later effect), propose explicit resource or causal predicates that should be added or retyped, and generate corrected action schemas or additional bridging actions where required. Mark any steps in the human plan that appear to lack causal support and propose minimal fixes. Output a structured consistency report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "action_models",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at creating PDDL domains and problems for multi-agent style domains and for classic planners. Produce a PDDL domain and a PDDL problem targeted specifically for the FastDownwards solver. Keep agent-level actions distinct by prefixing or otherwise namespacing actions where necessary. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure type declarations, predicates, objects and requirements are compatible with FastDownwards.",
+                "prompt": "Your name is orchestrator. You will receive structured action models from the actor and a consistency report from the auditor. Integrate their outputs, apply auditor corrections, and produce a complete PDDL domain and a PDDL problem that encode the corrected models and the stated goals for each scenario. Use explicit types if helpful, include all objects declared in the environment, and ensure the domain uses only PDDL features supported by FastDownwards (STRIPS, typing, and quantifier-free preconditions). Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "actor.model_extraction->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

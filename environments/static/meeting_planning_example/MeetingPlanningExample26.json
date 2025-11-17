@@ -1,0 +1,153 @@
+{
+    "name": "MeetingPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 6,
+        "names": [
+            "traveler",
+            "friend_sarah",
+            "friend_alex",
+            "friend_jordan",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Richmond District at 09:00",
+                "I can travel between Richmond District and Presidio in 7 minutes each way",
+                "My overall objective is to meet as many friends as possible today, subject to friend availability and travel times"
+            ],
+            "goal": "Generate a set of candidate daily schedules (time windows and travel legs) starting from arrival that try to meet friends and maximize meetings while respecting travel times and minimum meeting durations"
+        },
+        "friend_sarah": {
+            "private_information": [
+                "Sarah will be at Presidio from 13:15 to 15:15",
+                "Desired minimum meeting duration with Sarah is 105 minutes",
+                "Sarah's location for the meeting is Presidio"
+            ],
+            "goal": "Make available exact availability window and minimum meeting length constraints for use by the planner"
+        },
+        "friend_alex": {
+            "private_information": [
+                "Alex is in Richmond District and is available 10:00 to 11:00 for up to 60 minutes"
+            ],
+            "goal": "Provide availability for a short meeting in Richmond District that the traveler may include in candidate schedules"
+        },
+        "friend_jordan": {
+            "private_information": [
+                "Jordan is in Richmond District and is available 11:30 to 12:30 for up to 45 minutes"
+            ],
+            "goal": "Provide availability for a mid-day meeting in Richmond District to be considered in candidate schedules"
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit candidate schedules for temporal and causal consistency",
+                "I will detect and remove bookkeeping shortcuts such as overlapping meetings, fractional quotas, and post-hoc penalties",
+                "I will ensure travel legs respect travel durations and that meeting durations respect minimums and availability windows"
+            ],
+            "goal": "Evaluate candidate schedules, flag or correct temporal conflicts, ensure meetings satisfy minimum durations, and produce a cleaned, timestamped schedule report"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate proposals and audit reports and produce a final formal planning problem",
+                "The final planning outputs must be compatible with the FastDownwards planner and explicitly separate agent actions where relevant"
+            ],
+            "goal": "Compose the validated schedule information into a PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the timeline, travel actions, meeting actions, temporal constraints, and objective to maximize number of friends met while ensuring Sarah is met for at least 105 minutes"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Richmond District",
+            "arrival_time": "09:00",
+            "travel_times_minutes": {
+                "RichmondDistrict->Presidio": 7,
+                "Presidio->RichmondDistrict": 7
+            }
+        },
+        "public_information": [
+            "You arrive at Richmond District at 09:00.",
+            "Travel time between Richmond District and Presidio is 7 minutes each way.",
+            "Sarah is at Presidio from 13:15 to 15:15 and requires a minimum meeting of 105 minutes.",
+            "There are other friends available in Richmond District at various times that can be optionally scheduled."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "generate_schedules": {
+                "input": [],
+                "output": "schedules_proposals",
+                "system_prompt": "You are an algorithmic scheduler. Produce multiple candidate day schedules starting from the initial arrival in Richmond District at 09:00. Each candidate should list ordered legs: stays at locations with start and end times, travel legs with durations, and meeting assignments with friend identifiers. Do not emit PDDL. Focus on enumerating feasible alternatives that respect travel times and friends' reported availability windows where known.",
+                "prompt": "As traveler, use your private information and the environment public information to produce a diverse set of candidate schedules that attempt to maximize number of friends met. Include explicit timestamps and durations for each meeting and travel leg. If information is missing about a friend, include the friend only if explicit availability is provided by that friend agent."
+            }
+        },
+        "friend_sarah": {
+            "provide_availability": {
+                "input": [],
+                "output": "sarah_availability",
+                "system_prompt": "You are a friend agent reporting your precise availability window and minimum meeting duration. Provide a clean availability object containing location, start time, end time, and minimum meeting duration in minutes.",
+                "prompt": "As friend_sarah, state Sarah's exact availability window and minimum meeting duration for scheduling purposes. Do not create schedules yourself."
+            }
+        },
+        "friend_alex": {
+            "provide_availability": {
+                "input": [],
+                "output": "alex_availability",
+                "system_prompt": "You are a friend agent reporting availability. Provide location, start time and end time, and maximum practical meeting length.",
+                "prompt": "As friend_alex, provide Alex's availability window and location to be considered by the scheduler."
+            }
+        },
+        "friend_jordan": {
+            "provide_availability": {
+                "input": [],
+                "output": "jordan_availability",
+                "system_prompt": "You are a friend agent reporting availability. Provide location, start time and end time, and maximum practical meeting length.",
+                "prompt": "As friend_jordan, provide Jordan's availability window and location to be considered by the scheduler."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedules_proposals",
+                    "sarah_availability",
+                    "alex_availability",
+                    "jordan_availability",
+                    "environment->init"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are a temporal and causal auditor. Inspect candidate schedules and availability reports for conflicts. Remove or flag any schedule that violates travel times, allows overlapping meetings, or skirts minimum meeting durations through bookkeeping shortcuts. Produce corrected schedules and an audit report listing fixes and remaining assumptions. Do not emit PDDL.",
+                "prompt": "Receive candidate schedules and availability data. Check and correct temporal conflicts, ensure travel legs equal travel_times_minutes, ensure Sarah is scheduled only within her availability and for at least 105 minutes when scheduled. Provide cleaned schedules ready for formal encoding and a short audit justification for each correction."
+            }
+        },
+        "orchestrator": {
+            "create_pddl_for_fast_downwards": {
+                "input": [
+                    "audited_schedules",
+                    "sarah_availability",
+                    "alex_availability",
+                    "jordan_availability",
+                    "environment->public_information",
+                    "environment->init"
+                ],
+                "output": "final_pddl_fast_downwards",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards planner. Produce a PDDL domain and a PDDL problem that encode time in discrete minutes, actions for travel and meetings, resource constraints for locations, and an objective that maximizes number of distinct friends met while enforcing a hard constraint that Sarah, if met, must be met for at least 105 minutes within her availability window. Keep agent actions distinct if useful. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should be compatible with FastDownwards and include any necessary numeric fluents or time encodings FastDownwards supports.",
+                "prompt": "Integrate the audited schedule information and public environment facts to produce a complete PDDL domain and problem suitable for FastDownwards. The domain should clearly model travel durations and meeting durations in minutes and model start times relative to the initial arrival. The problem should encode the temporal windows (for example Sarah 13:15-15:15) and the objective to maximize number of friends visited while guaranteeing Sarah's minimum meeting length of 105 minutes if she is visited. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Provide no additional text outside those tags in this output."
+            }
+        },
+        "constraints": [
+            "traveler.generate_schedules->auditor.audit",
+            "friend_sarah.provide_availability->auditor.audit",
+            "friend_alex.provide_availability->auditor.audit",
+            "friend_jordan.provide_availability->auditor.audit",
+            "auditor.audit->orchestrator.create_pddl_for_fast_downwards",
+            "auditor.audit->traveler.generate_schedules"
+        ]
+    },
+    "constraints": [
+        "traveler.generate_schedules->auditor.audit",
+        "friend_sarah.provide_availability->auditor.audit",
+        "friend_alex.provide_availability->auditor.audit",
+        "friend_jordan.provide_availability->auditor.audit",
+        "auditor.audit->orchestrator.create_pddl_for_fast_downwards",
+        "auditor.audit->traveler.generate_schedules"
+    ]
+}

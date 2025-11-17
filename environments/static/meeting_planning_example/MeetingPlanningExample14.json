@@ -1,0 +1,104 @@
+{
+    "name": "MeetingPlanningExample14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "mary",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00",
+                "My day starts in Nob Hill and I can travel between neighborhoods according to known travel durations"
+            ],
+            "goal": "Meet as many friends as possible while ensuring that I meet Mary for at least 120 minutes if feasible."
+        },
+        "mary": {
+            "private_information": [
+                "I am available at Marina District from 20:00 to 22:00",
+                "I prefer to meet for at least 120 minutes if the traveler can arrive within my window"
+            ],
+            "goal": "Meet the traveler at Marina District for a minimum of 120 minutes between 20:00 and 22:00 if possible."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties"
+            ],
+            "goal": "Ensure candidate schedules are temporally consistent, causally valid, and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate candidate schedules, availability data, and audit reports into a final planning problem"
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the meeting planning problem and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "start_time": "09:00",
+            "locations": [
+                "Nob Hill",
+                "Marina District"
+            ]
+        },
+        "public_information": [
+            "Travel times in minutes: Nob Hill to Marina District is 11",
+            "Travel times in minutes: Marina District to Nob Hill is 12",
+            "You arrive at Nob Hill at 09:00",
+            "Mary is available at Marina District from 20:00 to 22:00",
+            "Meeting with Mary should be at least 120 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedule": {
+                "input": [],
+                "output": "schedule_traveler",
+                "system_prompt": "You are the traveler agent. Propose candidate day schedules that list visits, start and end times, and travel legs with durations. Do not emit PDDL. Provide multiple plausible schedules and justify timing choices.",
+                "prompt": "Use the public information and your private information to produce several candidate schedules. Each schedule should list visits in order, departure and arrival times for each leg, and expected meeting durations. Highlight whether each schedule allows a 120 minute meeting with Mary between 20:00 and 22:00."
+            }
+        },
+        "mary": {
+            "availability_profile": {
+                "input": [],
+                "output": "availability_mary",
+                "system_prompt": "You represent Mary's availability and preferences. Provide a precise availability window and any constraints or preferences that affect meeting timing. Do not emit PDDL.",
+                "prompt": "State exact available time windows, preferred meeting durations, location constraints, and any flexibility. Provide any alternative options Mary would accept if exact window cannot be met."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_traveler",
+                    "availability_mary"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency and to remove bookkeeping shortcuts. Inspect candidate schedules and availability, identify conflicts, unrealistic shortcuts, or implicit assumptions, and provide corrected, consistent schedules and explicit constraints. Do not emit PDDL.",
+                "prompt": "Given the travel times and constraints, verify that times are consistent, that travel legs allow the reported arrivals and departures, and that no post-hoc penalties or shortcut tokens are required. Produce an audit report that flags issues and suggests concrete corrections or confirmations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_traveler",
+                    "availability_mary",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at composing multi-agent planning problems. Integrate candidate schedules, availability, and audit corrections into a single PDDL domain and PDDL problem targeting the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and encode temporal constraints and travel durations explicitly for FastDownwards.",
+                "prompt": "As the orchestrator, integrate the schedule proposals, Mary's availability, and the auditor report to produce a complete PDDL domain and problem suitable for FastDownwards. Ensure the problem encodes the arrival at Nob Hill at 09:00, the asymmetric travel durations between Nob Hill and Marina District, and the requirement to meet Mary for at least 120 minutes between 20:00 and 22:00. Resolve naming ambiguities and ensure all temporal and causal constraints are explicit."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedule->auditor.audit",
+            "mary.availability_profile->auditor.audit",
+            "traveler.propose_schedule->orchestrator.pddl",
+            "mary.availability_profile->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

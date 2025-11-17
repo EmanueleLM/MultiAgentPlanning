@@ -1,0 +1,102 @@
+{
+    "name": "MeetingPlanningExample20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "joseph",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Chinatown at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I can wait or shift visiting order within reasonable travel times"
+            ],
+            "goal": "Produce alternative feasible schedules to maximize the number of friends met while respecting travel times and friends' availability."
+        },
+        "joseph": {
+            "private_information": [
+                "I will be at Nob Hill from 11:30 to 15:15",
+                "I can meet for at least 75 minutes if the schedule allows"
+            ],
+            "goal": "Provide a clear availability report and any flexibility in start or end times for a meeting at Nob Hill."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed schedules",
+                "I remove bookkeeping shortcuts such as token-based shortcuts, post-hoc penalties, or implicit assumptions"
+            ],
+            "goal": "Check all candidate schedules for temporal feasibility, detect overlaps and hidden shortcuts, and produce a corrected, conflict-free temporal report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate schedule options, availability, and audit results to produce a final formal planning problem",
+                "The final PDDL should be suitable for the FastDownwards planner"
+            ],
+            "goal": "Produce a PDDL domain and problem that encode the best schedule subject to travel times, arrival time, Joseph's availability, and minimum meeting duration. Target the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "starting_location": "Chinatown",
+            "arrival_time": "09:00",
+            "locations": [
+                "Chinatown",
+                "Nob Hill"
+            ]
+        },
+        "public_information": [
+            "Travel time from Chinatown to Nob Hill is 8 minutes",
+            "Travel time from Nob Hill to Chinatown is 6 minutes",
+            "You arrive at Chinatown at 09:00",
+            "Joseph will be at Nob Hill from 11:30 to 15:15",
+            "You would like to meet Joseph for a minimum of 75 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "schedule_options": {
+                "input": [],
+                "output": "traveler_schedule",
+                "system_prompt": "You are the traveler planning the day. Using the public information and your private constraints, enumerate several alternative schedules that sequence visits to friends and locations. For each schedule option, include explicit time windows for travel and meetings, the arrival and departure times at each location, and any assumptions. Do not produce PDDL. Focus on producing candidate schedules and tradeoffs."
+            }
+        },
+        "joseph": {
+            "availability_report": {
+                "input": [],
+                "output": "joseph_availability",
+                "system_prompt": "You are Joseph representing a friend's availability. Provide a definitive availability report that includes earliest possible meeting start, latest possible meeting end, any flexibility, and the required minimum meeting duration of 75 minutes. State any constraints on location or required contiguous meeting time. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "traveler_schedule",
+                    "joseph_availability"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose role is to verify temporal and causal consistency. Receive candidate schedules and availability reports and detect overlaps, hidden assumptions, or bookkeeping shortcuts such as token systems or post-hoc adjustments. Produce a corrected timeline for each candidate schedule, flag infeasible options, and propose minimal fixes that preserve realism. Output a clear audit report summarizing which schedule options remain feasible and why. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_schedule",
+                    "joseph_availability",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent temporal planning and PDDL modeling targeting the FastDownwards solver. Your task is to integrate candidate schedules, availability data, and the auditor's corrections to produce a single coherent PDDL domain and a PDDL problem file that encode the selected best schedule optimization goals. Keep actions for distinct actors separated and explicit. The PDDL must encode temporal constraints, travel durations, arrival time at Chinatown, Joseph's availability window, and the minimum meeting duration of 75 minutes. Indicate in the system prompt that the produced PDDL is intended for FastDownwards and include any necessary metric optimization statements. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the schedule candidates, the availability report, and the auditor's audit to produce a final PDDL domain and problem suitable for FastDownwards. Make explicit the chosen schedule or encode choices so the planner can maximize meetings while satisfying temporal constraints, travel durations, and contiguous meeting durations. Keep traveler and Joseph actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.schedule_options->orchestrator.pddl",
+            "joseph.availability_report->orchestrator.pddl",
+            "auditor.consistency_audit->orchestrator.pddl"
+        ]
+    }
+}

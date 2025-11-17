@@ -1,0 +1,111 @@
+{
+    "name": "Depots22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "mapper",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "Familiar with the available primitive actions: paltry, sip, clip, wretched, memory, tightfisted",
+                "Knows typical precondition and effect patterns from the use-case description",
+                "Holds the proposed step-by-step plan that manipulates next, vase, and other predicates"
+            ],
+            "goal": "Produce a precise, structured analysis of every action instance in the plan: formal preconditions, positive effects, and negative effects in a machine-readable representation"
+        },
+        "mapper": {
+            "private_information": [
+                "Knows the object universe referenced as object_0 ... object_12 and other collect/hand/sneeze/spring/stupendous/texture facts from the statement",
+                "Can produce a typed inventory of objects and predicates, and canonicalize duplicate or ambiguous names"
+            ],
+            "goal": "Produce an object and predicate inventory and canonical typing that the orchestrator can use to construct a coherent PDDL problem"
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency across plans",
+                "Tasked to detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit state hacks"
+            ],
+            "goal": "Audit the provided plan and model fragments to identify causal cycles, temporal violations, and bookkeeping shortcuts; produce a corrected causal model and recommended plan edits"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating analysis, inventory, and audit outputs into a single PDDL domain and PDDL problem targeted to FastDownward",
+                "Will keep agent actions distinct when encoding multi-agent steps"
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem for FastDownward that achieves the stated goal next object_11 object_7 and next object_12 object_5 (or the alternate goal specified), using the inputs from other agents"
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 13,
+            "max_time": 200
+        },
+        "public_information": [
+            "Primitives available: paltry(object0,object1,object2), sip(object0,object1,object2), clip(object0,object1,object2), wretched(object0,object1,object2,object3), memory(object0,object1,object2), tightfisted(object0,object1,object2)",
+            "Predicates appearing in the domain: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), sneeze(X), spring(X), collect(X,Y), stupendous(X)",
+            "Each action has explicit preconditions and deterministic add/delete effects as described in the use-case statement",
+            "Two variant problem statements were provided with different initial next relations and different goals"
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analyze": {
+                "input": [
+                    "environment->public_information"
+                ],
+                "output": "operator_analysis",
+                "system_prompt": "You are an analyst that translates informal action descriptions into a structured JSON representation listing, for each action schema instance, the required preconditions and the add/delete effects. Do not emit PDDL. Focus on fidelity to the provided action rules and the concrete plan instances.",
+                "prompt": "Your name is operator. Use the environment public information and your private knowledge to produce for each planned action instance a structured entry: action name, parameters, required predicates (positive), required predicates (negative if any), add effects, delete effects. If information is missing, mark fields as unknown instead of assuming. Use consistent predicate names as in the public information."
+            }
+        },
+        "mapper": {
+            "model": {
+                "input": [
+                    "environment->public_information",
+                    "operator.operator_analysis"
+                ],
+                "output": "model_map",
+                "system_prompt": "You are a world modeler. Build a canonical inventory of objects, types, and predicate signatures. Detect name collisions or ambiguous references and propose canonical renamings. Do not generate PDDL directly; provide a clean structured mapping the orchestrator can consume.",
+                "prompt": "Your name is mapper. Produce a typed object list (object id -> type), a list of predicate signatures with arities and intended types for each argument, and a mapping from any ambiguous identifiers to canonical names. Reference the initial statements' facts when deriving object properties."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator.operator_analysis",
+                    "mapper.model_map",
+                    "environment->public_information"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to find causal cycles, temporal ordering issues, and bookkeeping shortcuts such as quota tokens or post-hoc penalties. Provide a corrected causal model and explicit edits to the plan that remove bookkeeping shortcuts and ensure causal soundness.",
+                "prompt": "Your name is auditor. Inspect the action-instance analysis and the object model. Identify any steps that rely on ephemeral bookkeeping artifacts or create causal cycles. For each issue provide: issue type, affected actions, recommended fix, and a revised local ordering or revised pre/postconditions where necessary. Output a concise corrected plan fragment or annotations the orchestrator can apply."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator.operator_analysis",
+                    "mapper.model_map",
+                    "auditor.audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling for the FastDownward planner. Integrate the structured analyses from other agents to emit a complete PDDL domain and a PDDL problem file suitable for FastDownward. Keep agent-specific actions distinct in the domain where relevant. The domain and problem must be self-contained and consistent with the auditor's corrections and the mapper's canonicalization. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Use only PDDL constructs supported by FastDownward (STRIPS, typing, and basic ADL features if necessary).",
+                "prompt": "Your name is orchestrator. Use the operator analysis, the mapper model, and the auditor report to assemble a final PDDL domain and problem that achieve the stated goals. Target the FastDownward solver. Preserve the intent of the original plan but apply auditor fixes. Output the domain and problem wrapped exactly as requested."
+            }
+        },
+        "constraints": [
+            "operator.analyze->orchestrator.pddl",
+            "mapper.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    },
+    "constraints": [
+        "operator.analyze->orchestrator.pddl",
+        "mapper.model->orchestrator.pddl",
+        "auditor.audit->orchestrator.pddl"
+    ]
+}

@@ -1,0 +1,100 @@
+{
+    "name": "MeetingPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "availability_collector",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I start the day at the Presidio at 09:00",
+                "I can propose multiple candidate schedules visiting various friends and locations",
+                "Travel time Presidio to North Beach is 18 minutes and North Beach to Presidio is 17 minutes"
+            ],
+            "goal": "Generate candidate daily itineraries that maximize the number of friends met while respecting travel durations and known availabilities."
+        },
+        "availability_collector": {
+            "private_information": [
+                "Betty will be at North Beach from 18:45 to 22:00",
+                "Minimum desired meeting duration with Betty is 75 minutes"
+            ],
+            "goal": "Collect and validate time windows for friends and produce a consolidated availability report."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties and enforce strict temporal feasibility"
+            ],
+            "goal": "Check proposed schedules for temporal feasibility, detect implicit shortcuts, and generate an audit report that corrects timing/causal inconsistencies."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and reports into a single PDDL domain and problem targeting the FastDownwards solver that optimizes meeting as many friends as possible while satisfying temporal constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Presidio",
+            "start_time": "09:00",
+            "day_bounds": "09:00-23:59"
+        },
+        "public_information": [
+            "There are two relevant locations: Presidio and North Beach",
+            "Travel time from Presidio to North Beach is 18 minutes",
+            "Travel time from North Beach to Presidio is 17 minutes",
+            "You arrive at Presidio at 09:00",
+            "Betty will be at North Beach from 18:45 to 22:00",
+            "You would like to meet Betty for at least 75 minutes"
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "propose_schedule": {
+                "input": [],
+                "output": "schedule_proposal",
+                "system_prompt": "You are an expert travel itinerary planner. Provide several candidate itineraries for a single-day visit starting at Presidio at 09:00. Each candidate should list sequence of visits, estimated arrival and departure times at each location, travel legs with durations, and a short rationale about trade-offs between meeting more friends and long travel times. Use the environment public information and your private information.",
+                "prompt": "Your name is itinerary_planner. Use the following public information: {environment->public_information}. Use your private information: {agents->itinerary_planner->private_information}. Produce multiple candidate itineraries and explain trade-offs. Do not output PDDL."
+            }
+        },
+        "availability_collector": {
+            "collect_availability": {
+                "input": [],
+                "output": "availability_report",
+                "system_prompt": "You are responsible for collecting and validating availability windows for friends. Confirm windows, normalize times, and highlight any tight constraints or non-overlapping availability that may affect meeting feasibility.",
+                "prompt": "Your name is availability_collector. Use the following public information: {environment->public_information}. Use your private information: {agents->availability_collector->private_information}. Produce a clear availability report indicating validated windows and any required minimum meeting durations. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_proposal",
+                    "availability_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Inspect proposed schedules and availability reports for implicit shortcuts such as soft quotas, acceptance of infeasible overlaps, or post-hoc penalties. Produce a corrected, strictly feasible timeline and note any assumptions removed.",
+                "prompt": "Your name is auditor. You will receive schedule proposals and an availability report. Use your private information: {agents->auditor->private_information}. Produce an audit report that corrects timing errors, enforces minimum meeting durations, removes bookkeeping shortcuts, and lists residual uncertainties. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_proposal",
+                    "availability_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeted to the FastDownwards solver. Integrate schedule proposals, availability information, and the auditor's corrections. Produce a complete PDDL domain and a PDDL problem that encode agents, actions (including travel and meeting actions), temporal windows, and the objective to maximize the number of friends met while satisfying all temporal constraints. Keep actions for different agents distinct and preserve causal dependencies. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL is compatible with FastDownwards.",
+                "prompt": "You are the orchestrator. Your goal is: {agents->orchestrator->goal}. Here are the inputs you will receive: schedule proposals: {schedule_proposal}; availability report: {availability_report}; audit report: {audit_report}. Integrate these inputs, resolve naming mismatches, and produce a PDDL domain and problem suitable for FastDownwards. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.propose_schedule->orchestrator.pddl",
+            "availability_collector.collect_availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,106 @@
+{
+    "name": "Depots28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_alpha",
+            "planner_beta",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_alpha": {
+            "private_information": [
+                "I observe many objects named object_0 through object_14.",
+                "I know the informal textual action descriptions for paltry, sip, clip, wretched, memory, and tightfisted from unfolding examples.",
+                "I have access to one subset of initial facts and one planning trace to analyze."
+            ],
+            "goal": "Produce a consistent structured action model representation for my observed actions, listing for each action its parameters, preconditions, add effects, and delete effects, without emitting PDDL. Keep names consistent with the public vocabulary."
+        },
+        "planner_beta": {
+            "private_information": [
+                "I observe a second subset of initial facts and a second planning trace from the same domain.",
+                "I have the same action repertoire but possibly different role assignments for parameters in examples."
+            ],
+            "goal": "Produce a structured action model representation for my observed actions, listing for each action its parameters, preconditions, add effects, and delete effects, without emitting PDDL. Highlight any naming ambiguities or mismatches with planner_alpha."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency auditing.",
+                "I will detect bookkeeping shortcuts such as quota tokens, placeholders, post-hoc penalties, or any shorthand that prevents explicit causal links."
+            ],
+            "goal": "Audit the structured action models submitted by planners, reconcile temporal and causal inconsistencies, and produce a cleaned, unambiguous action model specification with bookkeeping shortcuts removed or explicitly explained. Produce an audit_report describing fixes and remaining uncertainties."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I receive reconciled action models and audit reports from other agents.",
+                "My role is to integrate models into a single multi-agent PDDL domain and a PDDL problem targeting the FastDownwards solver."
+            ],
+            "goal": "Integrate the cleaned action models and initial/goal facts into a final PDDL domain and PDDL problem file suitable for FastDownwards. Keep actions distinct per agent when necessary and annotate any unresolved ambiguity in comments."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_objects": 15,
+            "visibility": 1
+        },
+        "public_information": [
+            "Objects are named object_0 through object_14.",
+            "Binary and ternary predicates in the domain include: hand, cats, texture, vase, next, collect, sneeze, spring, stupendous.",
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted.",
+            "High-level informal action schemas: paltry requires hand, cats, texture, vase and next relations and toggles next and vase; sip requires hand, cats, texture and next relations and toggles vase and next; clip requires hand, sneeze, texture and next relations and toggles vase and next; wretched requires sneeze, texture, stupendous, next and collect relations and toggles next relations; memory requires cats, spring and next relations and toggles next relations; tightfisted requires hand, sneeze, texture, next and vase and toggles next and vase.",
+            "Two scenario statements are provided with differing initial facts and goals. The central planning goal pattern is to achieve certain next relations between specific objects.",
+            "Keep predicate and object naming consistent across agent models. Avoid shorthand bookkeeping tokens in final models."
+        ]
+    },
+    "workflow": {
+        "planner_alpha": {
+            "analysis": {
+                "input": [],
+                "output": "action_model_alpha",
+                "system_prompt": "You are an expert model extractor. Your task is to inspect example traces and initial facts and build a structured action model for each domain action. Do not emit PDDL. Produce for each action: a unique name, a parameter list with types or roles, an explicit list of preconditions, an explicit list of add effects, an explicit list of delete effects, and annotate any assumptions or ambiguous object-role mappings.",
+                "prompt": "You are planner_alpha. Use the public vocabulary and your private observations to produce a compact structured action model for each of the actions paltry, sip, clip, wretched, memory, and tightfisted. Do not produce PDDL. Focus on clarity, explicit causal links, and avoid introducing bookkeeping shortcuts. Output is intended for an auditor and an orchestrator."
+            }
+        },
+        "planner_beta": {
+            "analysis": {
+                "input": [],
+                "output": "action_model_beta",
+                "system_prompt": "You are an expert model extractor. Your task is to inspect the second set of example traces and initial facts and build a structured action model for each domain action. Do not emit PDDL. Produce for each action: a unique name, parameter list, preconditions, add and delete effects, and call out any naming mismatches with planner_alpha.",
+                "prompt": "You are planner_beta. Use the public vocabulary and your private observations to produce a structured action model for paltry, sip, clip, wretched, memory, and tightfisted. Highlight any differences with planner_alpha's models and any unresolved ambiguities."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "action_model_alpha",
+                    "action_model_beta",
+                    "environment->public_information"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency in action models. Your job is to merge or reconcile multiple structured models, remove bookkeeping shortcuts, and ensure that every effect has an explicit causal precursor when possible. Do not output PDDL. Produce a cleaned unified model, a changelog of reconciliations, and a list of remaining uncertainties that the orchestrator must handle.",
+                "prompt": "You are auditor. Receive the two structured action models and the public vocabulary. Check for temporal inconsistencies, cycles caused by bookkeeping shortcuts, hidden quota tokens, and post-hoc penalties. Produce a cleaned action model that removes or replaces shortcuts with explicit predicates and constraints, and produce a clear audit_report describing the transformations and any assumptions you made."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "action_model_alpha",
+                    "action_model_beta",
+                    "audit_report",
+                    "environment->public_information"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and FastDownwards usage. Integrate the reconciled action models and audit report into a single PDDL domain and PDDL problem file targeted at FastDownwards. Keep multi-agent actions distinct where roles differ. Produce a domain and problem that FastDownwards can parse. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Include a short comment block at the top indicating which assumptions were necessary for solver compatibility.",
+                "prompt": "You are orchestrator. Use the cleaned unified action model and audit report to generate a final PDDL domain and a final PDDL problem suitable for FastDownwards. Make types explicit where useful and ensure all predicates and objects referenced in the problem appear in the domain. Keep actions and parameters consistent with planner outputs and auditor corrections. Enclose domain and problem in the specified tags."
+            }
+        },
+        "constraints": [
+            "planner_alpha.analysis->auditor.audit",
+            "planner_beta.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner_alpha.analysis->orchestrator.pddl",
+            "planner_beta.analysis->orchestrator.pddl"
+        ]
+    }
+}

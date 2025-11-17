@@ -1,0 +1,117 @@
+{
+    "name": "Depots11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Available actions and their schemas: paltry(hand,objA,catsObj,textureObj,vaseA,B,nextA,B) preconditions: hand objA, cats objB, texture objC, vase objA objB, next objB objC; effects: add next objA objC, del vase objA objB",
+                "sip(hand,objA,catsObj,textureObj,nextA,C,nextB,C) preconditions: hand objA, cats objB, texture objC, next objA objC, next objB objC; effects: add vase objA objB, del next objA objC",
+                "clip(hand,objA,sneezeObj,textureObj,nextB,C,nextA,C) preconditions: hand objA, sneeze objB, texture objC, next objB objC, next objA objC; effects: add vase objA objB, del next objA objC",
+                "wretched(sneezeA,textureB,textureC,stupendousD,nextA,B,collectB,D,collectC,D) preconditions: sneeze objA, texture objB, texture objC, stupendous objD, next objA objB, collect objB objD, collect objC objD; effects: add next objA objC, del next objA objB",
+                "memory(catsA,springB,springC,nextA,B) preconditions: cats objA, spring objB, spring objC, next objA objB; effects: add next objA objC, del next objA objB",
+                "tightfisted(handA,sneezeB,textureC,nextB,C,vaseA,B) preconditions: hand objA, sneeze objB, texture objC, next objB objC, vase objA objB; effects: add next objA objC, del vase objA objB"
+            ],
+            "goal": "Construct a stepwise, grounded partial plan consistent with known action schemas that attempts to reach the declared goal states. Provide the plan as a sequence of grounded action applications with their parameter bindings."
+        },
+        "simulator": {
+            "private_information": [
+                "I know how to apply the action schemas deterministically to an explicit initial state and compute resulting facts. I track addition and deletion of predicates and can detect missing preconditions.",
+                "Two declared initial-state variants exist in the problem statement. I can run a candidate plan on either initial state and produce a simulation trace of facts after each step."
+            ],
+            "goal": "Validate a proposed partial plan by simulating it on the given initial facts and produce a step-by-step trace of facts and any precondition violations or unsupported assumptions."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency. I look for implicit bookkeeping shortcuts such as quota tokens, post-hoc penalties, or hidden counters. I will flag and remove such shortcuts and rewrite steps to be causally explicit.",
+                "I check for name mismatches, repeated use of transient facts without justification, and I normalize object references and ensure each effect that is used later is actually produced by a prior action."
+            ],
+            "goal": "Produce an audit report that verifies causal links between actions, removes bookkeeping shortcuts, and suggests explicit corrective steps where needed so that the plan is executable from the initial state."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must take the planner's partial plan, the simulator's simulation trace, and the auditor's audit report and integrate them into a single coherent PDDL domain and PDDL problem suitable for FastDownwards.",
+                "FastDownwards compatibility requirements: use STRIPS-like action definitions where possible, keep all actions typed as 'action-name' with clear precondition and effect lists, avoid extensions not supported by FastDownwards, enumerate all objects, initial facts, and the goal conjunctive literals."
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem that encode the environment, initial state, and the planning goal in a format compatible with the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 12,
+            "objects": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8",
+                "object_9",
+                "object_10",
+                "object_11"
+            ]
+        },
+        "public_information": [
+            "Predicates used: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), sneeze(X), spring(X), stupendous(X), collect(X,Y).",
+            "Available grounded actions: paltry, sip, clip, wretched, memory, tightfisted with preconditions and effects as described in agent planner private information.",
+            "Two scenario variants of initial facts and two corresponding goals are present in the statement. The environment presents these as distinct initial-state instances to be considered by planning and validation."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "partial_plan": {
+                "input": [],
+                "output": "partial_plan",
+                "system_prompt": "You are a planning analyst. Using the public predicates and your private action schemas, produce a grounded sequence of actions as a partial plan. Provide each step as action_name followed by ordered object arguments. If information is missing, produce the sequence consistent with known facts and mark assumptions explicitly.",
+                "prompt": "Agent planner. Public information: {environment->public_information}. Your knowledge: {agents->planner->private_information}. Global objective: produce a grounded step sequence that attempts to achieve the stated goal. Return the plan as a list of grounded actions and any explicit assumptions."
+            }
+        },
+        "simulator": {
+            "simulation_trace": {
+                "input": [
+                    "partial_plan"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic simulator. Apply each grounded action from the input plan to the declared initial facts for the chosen scenario variant. For each action, list whether preconditions were satisfied, the facts added, and the facts deleted. If a precondition is missing, mark the step as failing and note the missing facts.",
+                "prompt": "Agent simulator. Public information: {environment->public_information}. Your knowledge: {agents->simulator->private_information}. Given a partial plan, simulate it on the provided initial facts and produce a step-by-step trace of resulting facts and any violations or unmet preconditions."
+            }
+        },
+        "auditor": {
+            "audit_report": {
+                "input": [
+                    "partial_plan",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of causal and temporal correctness. Inspect the plan and simulation trace, detect hidden bookkeeping shortcuts or post-hoc fixes and propose explicit corrective actions or rewrites to guarantee causal soundness. Produce a normalized, causally explicit report listing flagged issues and recommended changes.",
+                "prompt": "Agent auditor. Public information: {environment->public_information}. Your knowledge: {agents->auditor->private_information}. Given the partial plan and the simulation trace, produce an audit report that ensures causal links are explicit and removes bookkeeping shortcuts. Recommend concrete changes if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "partial_plan",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate planner, simulator, and auditor outputs and produce a final PDDL domain and PDDL problem suitable for the FastDownwards solver. Ensure action names remain distinct and grounded actions are represented as STRIPS-style operators. Enumerate all objects and include the chosen initial-state variant and the corresponding conjunctive goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility and avoid language constructs not supported by FastDownwards.",
+                "prompt": "Agent orchestrator. Inputs: planner partial plan {partial_plan}, simulator trace {simulation_trace}, auditor report {audit_report}. Task: integrate inputs, resolve naming mismatches, ensure causal consistency, and emit a PDDL domain and a PDDL problem file compatible with FastDownwards. Keep agent actions distinct and include comments or annotations only if they do not break PDDL syntax."
+            }
+        },
+        "constraints": [
+            "planner.partial_plan->orchestrator.pddl",
+            "simulator.simulation_trace->orchestrator.pddl",
+            "auditor.audit_report->orchestrator.pddl"
+        ]
+    }
+}

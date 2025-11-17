@@ -1,0 +1,107 @@
+{
+    "name": "MysteryBlocksworld0",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_agent",
+            "verifier_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "I am responsible for interpreting the human plan and producing a stepwise grounded action trace.",
+                "I understand the available action schemas and can map plan lines to specific grounded action applications."
+            ],
+            "goal": "Translate the provided human plan into a stepwise grounded action trace and extract a compact set of preconditions and effects observed."
+        },
+        "verifier_agent": {
+            "private_information": [
+                "I can simulate state transitions deterministically given predicates, preconditions, and effects.",
+                "I focus on applicability of actions in sequence and report missing antecedent facts."
+            ],
+            "goal": "Verify whether the grounded action trace is applicable from the given initial state variants and report any violated preconditions or unmet facts."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as token shortcuts, post-hoc penalties, or implicit quotas.",
+                "I detect and propose fixes for shortcuts that make plans appear valid but violate strict causal grounding."
+            ],
+            "goal": "Ensure causal and temporal consistency of the plan, remove or flag bookkeeping shortcuts, and produce an adjusted, conservative description of required predicates and causal links."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I collect structured analyses from the other agents and produce a final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep agent actions distinct and integrate their findings into a coherent PDDL representation."
+            ],
+            "goal": "Produce a PDDL domain and PDDL problem file suitable for FastDownwards that encodes the environment, initial state, and goal next object_8 object_6."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_objects": 9,
+            "objects": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8"
+            ]
+        },
+        "public_information": [
+            "Available actions: paltry (args: object_0 object_1 object_2), sip (args: object_0 object_1 object_2), clip (args: object_0 object_1 object_2), wretched (args: object_0 object_1 object_2 object_3), memory (args: object_0 object_1 object_2), tightfisted (args: object_0 object_1 object_2).",
+            "Predicates used: hand, cats, texture, vase, next, sneeze, spring, stupendous, collect.",
+            "Action semantics summary: paltry requires hand X cats Y texture Z vase X Y next Y Z and makes next X Z true and vase X Y false; sip requires hand X cats Y texture Z next X Z next Y Z and makes vase X Y true and next X Z false; clip requires hand X sneeze Y texture Z next Y Z next X Z and makes vase X Y true and next X Z false; wretched requires sneeze X texture Y texture Z stupendous W next X Y collect Y W collect Z W and makes next X Z true and next X Y false; memory requires cats X spring Y spring Z next X Y and makes next X Z true and next X Y false; tightfisted requires hand X sneeze Y texture Z next Y Z vase X Y and makes next X Z true and vase X Y false.",
+            "There are two provided initial-state variants in the human description that differ in some next relations; the goal in both cases is next object_8 object_6.",
+            "Initial facts mentioned in statements include cats object_0 cats object_1 collect object_6 object_2 collect object_7 object_3 hand object_8 sneeze object_4 sneeze object_5 spring object_6 spring object_7 stupendous object_2 stupendous object_3 texture object_6 texture object_7 and various next facts that differ between the two variants."
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "analyze": {
+                "input": [],
+                "output": "facts_planner",
+                "system_prompt": "You are the planner_agent. Your role is to read the human plan and the public environment specification and produce a grounded action trace and a compact structured listing of preconditions and effects observed from the plan. Do not output PDDL. Focus on precise grounding of action arguments, the order of steps, and any explicit or implicit assumptions required by each step.",
+                "prompt": "Your name is planner_agent. Use the following public information: {environment->public_information}. Use your private knowledge: {agents->planner_agent->private_information}. The human plan to interpret is: memory object_1 object_6 object_7; sip object_8 object_1 object_7; memory object_1 object_7 object_6; paltry object_8 object_1 object_6. Translate each plan line into a grounded step with explicit preconditions and effects based only on information you can infer from the public information and the plan. If the plan relies on facts not present in the public information, list them as assumptions. Output a structured JSON-like summary (but as plain text) that the orchestrator can consume under the token name facts_planner."
+            }
+        },
+        "verifier_agent": {
+            "verify": {
+                "input": [],
+                "output": "facts_verifier",
+                "system_prompt": "You are the verifier_agent. Your role is to simulate the grounded action trace against the initial-state variants provided in the public information and report which steps are applicable, which preconditions fail, and which intermediate facts change. Do not produce PDDL.",
+                "prompt": "Your name is verifier_agent. Use public information: {environment->public_information}. Use your private knowledge: {agents->verifier_agent->private_information}. Given a grounded step sequence (as expected from planner_agent), check applicability of each step against the two initial-state variants and report for each step whether it is applicable, the resulting state changes, and any missing facts required. Output your findings under the token name facts_verifier for the orchestrator to consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "facts_auditor",
+                "system_prompt": "You are the auditor. Your role is to detect temporal and causal shortcuts, bookkeeping shortcuts, and post-hoc patching that would invalidate strict causal grounding. You must remove or flag any such shortcuts and propose conservative replacements. Do not output PDDL.",
+                "prompt": "Your name is auditor. Use public information: {environment->public_information}. Use private knowledge: {agents->auditor->private_information}. Inspect the planner_agent grounded trace and the verifier_agent simulation results. Remove or flag any bookkeeping shortcuts such as assumptions that skip intermediate causal steps or that use implicit quotas. Produce a cleaned causal summary and recommended minimal set of predicates and temporal ordering constraints required to make the plan strictly valid. Output this under the token name facts_auditor for the orchestrator to consume."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_planner",
+                    "facts_verifier",
+                    "facts_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your job is to integrate the structured analyses from planner_agent, verifier_agent, and auditor and produce a final PDDL domain and PDDL problem file targeted to the FastDownwards solver. Keep actions of different agents conceptually distinct if they represent different agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and predicates are consistent and the problem encodes the goal next object_8 object_6.",
+                "prompt": "You are orchestrator. Integrate these inputs: {facts_planner}, {facts_verifier}, {facts_auditor}. Use public information: {environment->public_information}. Produce a coherent PDDL domain and a PDDL problem suitable for FastDownwards that encodes objects object_0 through object_8, the predicates hand cats texture vase next sneeze spring stupendous collect, and the action schemas paltry sip clip wretched memory tightfisted with preconditions and effects consistent with the audited causal summary. Enclose the domain in <domain></domain> and the problem in <problem></problem>. If any ambiguity remains, choose conservative semantics that do not rely on bookkeeping shortcuts."
+            }
+        },
+        "constraints": [
+            "planner_agent.analyze->orchestrator.pddl",
+            "verifier_agent.verify->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

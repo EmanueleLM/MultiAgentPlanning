@@ -1,0 +1,86 @@
+{
+    "name": "MeetingPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_generator",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_generator": {
+            "private_information": [
+                "I can generate multiple candidate schedules for the day including visit order, start and end times for meetings, and travel legs with durations",
+                "I know your objective is to meet as many friends as possible while respecting temporal constraints and travel times"
+            ],
+            "goal": "Produce a set of feasible schedule options that maximize meetings subject to travel times and availability windows"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I validate that meeting durations, travel times, and availability windows are respected and that no implicit assumptions are used"
+            ],
+            "goal": "Verify and sanitize candidate schedules to ensure they are temporally consistent, causally coherent, and free of bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate candidate schedules and audit reports to produce a final planning problem",
+                "I must produce a PDDL domain and a PDDL problem file targeting the FastDownwards solver"
+            ],
+            "goal": "Integrate schedules and audit results and produce a complete PDDL domain and problem suitable for FastDownwards that encode the optimal meeting plan"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Golden Gate Park",
+            "arrival_time": "09:00",
+            "travel_times_minutes": {
+                "Golden Gate Park->Pacific Heights": 16,
+                "Pacific Heights->Golden Gate Park": 15
+            }
+        },
+        "public_information": [
+            "You arrive at Golden Gate Park at 09:00",
+            "Travel times in minutes are Golden Gate Park to Pacific Heights: 16 and Pacific Heights to Golden Gate Park: 15",
+            "John will be at Pacific Heights from 19:45 to 20:45",
+            "You would like to meet John for a minimum of 45 minutes",
+            "Objective: meet as many friends as possible while respecting travel times and availability windows"
+        ]
+    },
+    "workflow": {
+        "itinerary_generator": {
+            "generate_schedules": {
+                "input": [],
+                "output": "schedules",
+                "system_prompt": "You are an expert itinerary generator. Produce multiple alternative schedules for the day. Each schedule must list ordered visits, start and end times for each meeting, travel legs with travel durations drawn from the provided travel_times_minutes, and total meeting counts and total travel time. Do not emit PDDL. Provide explicit time windows and assumptions for any ambiguous items.",
+                "prompt": "Your name is itinerary_generator. Use the environment public information and your private information to produce a diverse set of feasible schedules. Consider different trade-offs between meeting length and number of meetings. Ensure that any meeting with John can satisfy a minimum of 45 minutes within his availability window. Output a structured list of candidate schedules including times for departures and arrivals, meeting durations, travel legs and the meeting count for each schedule."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "schedules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your role is to verify that candidate schedules are temporally consistent, that travel durations are correctly applied, that meeting durations and availability windows are respected, and that no bookkeeping shortcuts like quota tokens or post-hoc penalties are used. Provide corrections and a confidence rating for each schedule and strip any assumptions that are not justified by the public or private information.",
+                "prompt": "Your name is auditor. You will receive candidate schedules. Check for temporal overlaps, insufficient travel time between consecutive visits, insufficient meeting time with John, and any hidden assumptions. For each schedule provide either a clean pass with minor suggested adjustments or a corrected schedule and a short explanation of the fix. Output a consolidated audit_report listing validated schedules and issues."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing PDDL domains and problems targeting the FastDownwards solver. Integrate validated schedules and audit corrections into a coherent temporal PDDL model. Produce a PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and agents distinct and represent temporal constraints and travel durations accurately.",
+                "prompt": "Your name is orchestrator. You will receive candidate schedules and an audit report. Use them to create a single PDDL domain and a single PDDL problem that encode the scheduling task to maximize the number of meetings while ensuring that any meeting with John is at least 45 minutes and fits within John's availability window. Include travel actions with the given travel times and encode temporal constraints precisely for FastDownwards. Deliver a domain and problem that can be solved by FastDownwards. If schedules conflict, prefer audited validated schedules. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "itinerary_generator.generate_schedules->auditor.audit_consistency",
+            "auditor.audit_consistency->orchestrator.pddl",
+            "itinerary_generator.generate_schedules->orchestrator.pddl"
+        ]
+    }
+}

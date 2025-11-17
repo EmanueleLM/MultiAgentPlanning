@@ -1,0 +1,120 @@
+{
+    "name": "CalendarSchedulingExample28",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "brittany",
+            "emily",
+            "doris",
+            "auditor",
+            "orchestrator"
+        ],
+        "brittany": {
+            "private_information": [
+                "Busy Monday 13:00-13:30",
+                "Busy Monday 16:00-16:30"
+            ],
+            "goal": "Find the earliest 30-minute slot within 09:00-17:00 on Monday when all participants are free."
+        },
+        "emily": {
+            "private_information": [
+                "Free all day Monday"
+            ],
+            "goal": "Find the earliest 30-minute slot within 09:00-17:00 on Monday when all participants are free."
+        },
+        "doris": {
+            "private_information": [
+                "Busy Monday 09:00-11:00",
+                "Busy Monday 11:30-14:30",
+                "Busy Monday 15:00-17:00"
+            ],
+            "goal": "Find the earliest 30-minute slot within 09:00-17:00 on Monday when all participants are free."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of availability reports",
+                "Do not rely on bookkeeping shortcuts such as quota tokens or post-hoc penalties"
+            ],
+            "goal": "Verify and enforce temporal and causal consistency of the participants' availability reports and produce a corrective audit report if needed."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate availability reports and the auditor's corrections, then produce a final PDDL domain and problem targeting the Fast Downward solver that finds the earliest feasible 30-minute meeting on Monday between 09:00 and 17:00."
+        }
+    },
+    "environment": {
+        "init": {
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30,
+            "day": "Monday"
+        },
+        "public_information": [
+            "Meeting duration is 30 minutes.",
+            "Work hours are 09:00 to 17:00 on Monday.",
+            "The scheduled meeting must not overlap participants' existing busy slots.",
+            "Choose the earliest time that satisfies all constraints."
+        ]
+    },
+    "workflow": {
+        "brittany": {
+            "analyze_availability": {
+                "input": [],
+                "output": "availability_brittany",
+                "system_prompt": "You are an expert meeting-scheduling agent responsible for reporting your personal availability. Analyze your private calendar entries and the public work hours, and produce a concise list of available 30-minute windows on Monday. Do not produce PDDL. Output a clear, machine-readable availability summary such as a list of free intervals.",
+                "prompt": "Agent name: brittany. Public constraints: {environment->public_information}. Your private calendar: {agents->brittany->private_information}. Global goal: {agents->brittany->goal}. Provide your available intervals within the work hours on Monday, formatted as a compact availability report."
+            }
+        },
+        "emily": {
+            "analyze_availability": {
+                "input": [],
+                "output": "availability_emily",
+                "system_prompt": "You are an expert meeting-scheduling agent responsible for reporting your personal availability. Analyze your private calendar entries and the public work hours, and produce a concise list of available 30-minute windows on Monday. Do not produce PDDL. Output a clear, machine-readable availability summary such as a list of free intervals.",
+                "prompt": "Agent name: emily. Public constraints: {environment->public_information}. Your private calendar: {agents->emily->private_information}. Global goal: {agents->emily->goal}. Provide your available intervals within the work hours on Monday, formatted as a compact availability report."
+            }
+        },
+        "doris": {
+            "analyze_availability": {
+                "input": [],
+                "output": "availability_doris",
+                "system_prompt": "You are an expert meeting-scheduling agent responsible for reporting your personal availability. Analyze your private calendar entries and the public work hours, and produce a concise list of available 30-minute windows on Monday. Do not produce PDDL. Output a clear, machine-readable availability summary such as a list of free intervals.",
+                "prompt": "Agent name: doris. Public constraints: {environment->public_information}. Your private calendar: {agents->doris->private_information}. Global goal: {agents->doris->goal}. Provide your available intervals within the work hours on Monday, formatted as a compact availability report."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "availability_brittany",
+                    "availability_emily",
+                    "availability_doris"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency in scheduling data. Receive participants' availability reports and verify that intervals are valid, non-overlapping within each report, and aligned to real clock times. Detect and remove bookkeeping shortcuts such as artificially inflated availability windows, quota tokens, or post-hoc penalties. Produce a corrective audit report listing confirmations or precise corrections to availability intervals.",
+                "prompt": "You will receive availability reports from the participants: {availability_brittany}, {availability_emily}, {availability_doris}. Public constraints: {environment->public_information}. Global goal: Ensure the availability representations are temporally consistent and remove any bookkeeping shortcuts. Produce an audit report that either confirms inputs or provides corrected availability intervals, with clear justification for any corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_brittany",
+                    "availability_emily",
+                    "availability_doris",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent scheduling and PDDL modeling targeting the Fast Downward (FastDownwards) planner. Integrate availability reports and the auditor's corrections to produce a PDDL domain and PDDL problem that represent discretized time windows and a 30-minute meeting duration. The PDDL must be compatible with classical Fast Downward usage. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent contributions distinct where relevant and ensure the model searches for the earliest feasible meeting start.",
+                "prompt": "You are the orchestrator. Inputs: participants' availability reports and the auditor's audit: {availability_brittany}, {availability_emily}, {availability_doris}, {audit_report}. Public constraints: {environment->public_information}. Global goal: {agents->orchestrator->goal}. Step by step, integrate the availabilities, resolve any auditor corrections, and output a PDDL domain and a PDDL problem that the Fast Downward solver can use to find the earliest 30-minute meeting on Monday. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "brittany.analyze_availability->auditor.audit_consistency",
+            "emily.analyze_availability->auditor.audit_consistency",
+            "doris.analyze_availability->auditor.audit_consistency",
+            "brittany.analyze_availability->orchestrator.pddl",
+            "emily.analyze_availability->orchestrator.pddl",
+            "doris.analyze_availability->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,109 @@
+{
+    "name": "Logistics5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_agent",
+            "observer_agent",
+            "auditor_agent",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "Knows the list of available actions and their preconditions and effects as described in the environment public information.",
+                "Can ground actions with concrete object identifiers and propose ordered plan fragments based on available initial facts.",
+                "Does not produce final PDDL, only structured plan fragments and rationale."
+            ],
+            "goal": "Generate grounded plan fragments that can achieve the declared goal next object_9 object_8 or next object_9 object_7 depending on the scenario. Provide explanations for each chosen action instance."
+        },
+        "observer_agent": {
+            "private_information": [
+                "Has access to two alternative initial condition statements provided in the use-case and the explicit object facts listed there.",
+                "Focuses on validating which facts are present in each scenario and reporting percepts, object attributes, and reachable relations.",
+                "Does not produce final PDDL, only perceptual reports and mappings from object ids to facts."
+            ],
+            "goal": "Produce a clean, enumerated percept list for the active scenario showing which atomic facts hold initially and identify missing facts required by planner fragments."
+        },
+        "auditor_agent": {
+            "private_information": [
+                "Specialized role to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "Checks that plan fragments respect causal links, that effects of actions do not rely on implicit bookkeeping, and that deletes/adds are consistent across actions.",
+                "Produces an audit report advising corrections or noting unresolved dependencies."
+            ],
+            "goal": "Audit plan fragments for causal and temporal soundness and return a corrected fragment list or explicit adjustments required to make fragments implementable without bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Receives plan fragments, percept reports, and audit reports from other agents and must synthesize a final PDDL domain and problem suitable for the FastDownwards planner.",
+                "Must keep actions of different agents distinct in the integrated PDDL and resolve naming mismatches or object aliases detected in inputs."
+            ],
+            "goal": "Integrate inputs and produce a final PDDL domain and a final PDDL problem file tailored for FastDownwards. Keep agents' actions distinct and ensure the PDDL captures causal constraints and initial facts for the chosen scenario."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 5
+        },
+        "public_information": [
+            "There are objects named object_0 through object_9 in the environment.",
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted. Each action accepts specific object arguments and has explicit preconditions and add/delete effects.",
+            "Action paltry requires preconditions: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2. Effects: add next o0 o2, delete vase o0 o1.",
+            "Action sip requires preconditions: hand o0, cats o1, texture o2, next o0 o2, next o1 o2. Effects: add vase o0 o1, delete next o0 o2.",
+            "Action clip requires preconditions: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2. Effects: add vase o0 o1, delete next o0 o2.",
+            "Action wretched requires preconditions: sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3. Effects: add next o0 o2, delete next o0 o1.",
+            "Action memory requires preconditions: cats o0, spring o1, spring o2, next o0 o1. Effects: add next o0 o2, delete next o0 o1.",
+            "Action tightfisted requires preconditions: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1. Effects: add next o0 o2, delete vase o0 o1.",
+            "Two scenario initial statements are provided in the use-case. Scenario A initial facts include cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_9, next object_0 object_7, next object_3 object_5, next object_4 object_7, next object_9 object_7, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8 and goal next object_9 object_8.",
+            "Scenario B initial facts include cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_9, next object_0 object_5, next object_3 object_5, next object_4 object_8, next object_9 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8 and goal next object_9 object_7.",
+            "The use-case includes two example plans. The orchestrator should select one scenario and build correct PDDL for that scenario targeting FastDownwards."
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "analyze": {
+                "input": [],
+                "output": "plan_fragments",
+                "system_prompt": "You are a plan fragment generator. Using public information and scenario percepts you should produce grounded action instances with their bound arguments, ordering relations, and a brief rationale for each step. Do not emit final PDDL. Provide structured fragments that an orchestrator can convert to PDDL.",
+                "prompt": "Your name is planner_agent. You have the environment public information and you must propose grounded action fragments that could achieve the declared goal in one of the scenarios. Provide each fragment as action name and argument list and indicate the intended preconditions and expected effects based on your knowledge. If you lack necessary facts, list which percepts are missing."
+            }
+        },
+        "observer_agent": {
+            "perception": {
+                "input": [],
+                "output": "percepts",
+                "system_prompt": "You are an observer that reads the scenario statements and produces a canonical list of initial atomic facts and object attribute mappings. Do not output PDDL. Produce a concise percept list mapping object ids to facts.",
+                "prompt": "Your name is observer_agent. From the provided scenario statements produce a precise enumeration of initial facts for the active scenario. Indicate which scenario the percepts belong to. Highlight any potential aliasing or ambiguous references among object ids."
+            }
+        },
+        "auditor_agent": {
+            "audit": {
+                "input": [
+                    "plan_fragments",
+                    "percepts"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Your job is to remove bookkeeping shortcuts and report required fixes so that plan fragments become implementable with explicit preconditions and effects. Identify missing causal links, implicit tokens, or post-hoc assumptions and propose corrections.",
+                "prompt": "Your name is auditor_agent. Receive plan fragments and percepts and analyze temporal ordering, deletes and adds, and any implicit bookkeeping. Produce a corrective audit report listing concrete changes to plan fragments or to required initial facts so that a planner can execute the plan without shortcuts. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_fragments",
+                    "percepts",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring for the FastDownwards solver. Integrate the provided plan fragments, percepts, and audit corrections. Produce a PDDL domain and a PDDL problem file that are compatible with FastDownwards. Keep actions from different agents distinct and resolve object name mismatches. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You will receive plan fragments, percepts, and an audit report. Synthesize a complete PDDL domain and a PDDL problem targeted for FastDownwards. Ensure types, predicates, action schemas, initial state, and goal are explicit. Do not rely on bookkeeping tokens or implicit effects; encode all causal relations explicitly. Provide the domain then the problem enclosed in the required tags."
+            }
+        },
+        "constraints": [
+            "planner_agent.analyze->orchestrator.pddl",
+            "observer_agent.perception->orchestrator.pddl",
+            "auditor_agent.audit->orchestrator.pddl"
+        ]
+    }
+}

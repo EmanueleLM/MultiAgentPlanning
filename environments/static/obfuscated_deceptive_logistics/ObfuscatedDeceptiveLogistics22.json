@@ -1,0 +1,108 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I normalize and canonicalize raw statements about objects and predicates.",
+                "I map object identifiers, detect duplicates, and produce a compact facts set."
+            ],
+            "goal": "Provide a normalized set of initial facts and a canonical object index to be consumed by planners and auditors."
+        },
+        "manipulator": {
+            "private_information": [
+                "I am able to propose ordered action sequences using the available high-level actions and their parameter patterns.",
+                "I will annotate each proposed step with the minimal preconditions and postconditions that the manipulator assumes."
+            ],
+            "goal": "Propose concrete candidate plans that aim to achieve target next relationships using the available actions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I detect and flag steps that rely on implicit assumptions and provide corrected alternatives."
+            ],
+            "goal": "Verify and correct candidate plans for causal validity and remove bookkeeping shortcuts, producing a vetted annotated plan."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate normalized facts, candidate plans, and audits into a coherent formal planning problem.",
+                "I produce a final PDDL domain and problem targeted for the FastDownwards solver."
+            ],
+            "goal": "Assemble inputs and emit a complete PDDL domain and problem compatible with FastDownwards that encodes the objective on next predicates."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 13
+        },
+        "public_information": [
+            "Available actions and their signature patterns: paltry(objectA,objectB,objectC), sip(objectA,objectB,objectC), clip(objectA,objectB,objectC), wretched(objectA,objectB,objectC,objectD), memory(objectA,objectB,objectC), tightfisted(objectA,objectB,objectC).",
+            "Predicates that appear in the domain: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Action preconditions and effects summaries: paltry requires hand A, cats B, texture C, vase A B, next B C; effects add next A C and delete vase A B.",
+            "sip requires hand A, cats B, texture C, next A C, next B C; effects add vase A B and delete next A C.",
+            "clip requires hand A, sneeze B, texture C, next B C, next A C; effects add vase A B and delete next A C.",
+            "wretched requires sneeze A, texture B, texture C, stupendous D, next A B, collect B D, collect C D; effects add next A C and delete next A B.",
+            "memory requires cats A, spring B, spring C, next A B; effects add next A C and delete next A B.",
+            "tightfisted requires hand A, sneeze B, texture C, next B C, vase A B; effects add next A C and delete vase A B.",
+            "Initial facts will be provided externally as a list of ground predicates using the above predicate names."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "describe": {
+                "input": [],
+                "output": "facts_normalized",
+                "system_prompt": "You are an agent that normalizes raw domain statements and produces a compact list of ground predicates and a canonical object index. Do not emit PDDL. Produce a JSON-serializable artifact listing objects, predicates, and any ambiguous references resolved.",
+                "prompt": "Receive the raw initial statement about objects and predicates. Normalize object names to a consistent canonical form, deduplicate equivalent facts, and return the normalized facts and an object index mapping original tokens to canonical object identifiers."
+            }
+        },
+        "manipulator": {
+            "plan": {
+                "input": [
+                    "facts_normalized"
+                ],
+                "output": "plan_proposal",
+                "system_prompt": "You are an agent that crafts candidate action sequences using the available high-level actions. Do not output PDDL. For each step provide the action name, parameters, the minimal preconditions you assume, and the minimal postconditions you expect. Identify any unresolved assumptions.",
+                "prompt": "Using the normalized facts artifact, propose one or more candidate ordered plans to reach the goal on next predicates. Annotate each step with assumed preconditions and effects and flag any dependencies on facts not present in the normalized facts."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "facts_normalized",
+                    "plan_proposal"
+                ],
+                "output": "plan_audited",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency and to remove bookkeeping shortcuts. Do not output PDDL. Analyze the candidate plans, detect and explain any causal breaks, implicit tokens, post-hoc bookkeeping, or shortcuts, and provide a corrected annotated plan that enforces causal chain continuity.",
+                "prompt": "Consume the normalized facts and the candidate plans. Verify that each action's annotated preconditions are satisfied at the point where the action is used. If an action relies on implicit bookkeeping or unreachable assumptions, provide corrected steps or justify why the plan cannot succeed. Output a vetted annotated plan suitable for conversion to PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_normalized",
+                    "plan_proposal",
+                    "plan_audited"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domain and problem files targeted to the FastDownwards planner. Integrate the normalized facts and the audited plan. Keep agent-level intentions distinct only as internal comments; emit a single consistent PDDL domain and a single PDDL problem file that encode the predicates and actions described in the public information. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Ensure the PDDL is compatible with FastDownwards conventions and requires no external tool-specific extensions.",
+                "prompt": "Integrate the inputs into a final PDDL domain and problem that aims to achieve the target next predicates specified by the scenario. Preserve action signatures, preconditions, and effects as summarized in the public information. Resolve any remaining ambiguities using only facts present in facts_normalized or decisions justified by plan_audited. Output the domain and problem enclosed in <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "observer.describe->manipulator.plan",
+            "observer.describe->auditor.audit",
+            "manipulator.plan->auditor.audit",
+            "observer.describe->orchestrator.pddl",
+            "manipulator.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

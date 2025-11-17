@@ -1,0 +1,100 @@
+{
+    "name": "Logistics27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_a",
+            "planner_b",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_a": {
+            "private_information": [
+                "I have the first variant of the domain description and the first plan fragment for manipulating objects, including actions such as paltry, sip, clip, wretched, memory, and tightfisted and an associated initial statement and a plan sequence that targets a set of next relations.",
+                "I know a set of initial facts in one statement variant including cats, collect, hand, next, sneeze, spring, stupendous, and texture facts for specific object identifiers and a goal that requires specific next relations."
+            ],
+            "goal": "Analyze the action schemas provided by the environment and produce a structured, machine-friendly action model listing each action name, its parameters, preconditions, add effects, and delete effects, and note any open assumptions or missing references."
+        },
+        "planner_b": {
+            "private_information": [
+                "I have the second variant of the domain description and the second plan fragment for manipulating objects, including the same action names but with different ground arguments and a different initial statement and goal variant.",
+                "I know an alternative set of initial facts and a target goal that differs in which next relations must hold at the end."
+            ],
+            "goal": "Analyze the second variant of the action usage and produce a structured, machine-friendly action model listing each action name, its parameters, preconditions, add effects, and delete effects, and highlight inconsistencies or name mismatches with planner_a."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency and for removing bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "I check for implicit temporal assumptions, unintended bookkeeping dependencies, and artifact facts that hide causal requirements and I produce recommendations to ensure models are causally explicit."
+            ],
+            "goal": "Audit the two structured partial models received from the planners, detect and remove bookkeeping shortcuts, enforce explicit causal links, and produce a cleaned model with temporal and causal annotations suitable for planning integration."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the integration of partial domain models and the auditor's corrections and must produce the final PDDL domain and problem formatted and tuned for the FastDownwards solver.",
+                "I resolve naming mismatches, merge action definitions while keeping agent actions distinct, and ensure the final problem encodes the provided initial facts and goals."
+            ],
+            "goal": "Integrate planner and auditor outputs and emit a final PDDL domain and PDDL problem targeting the FastDownwards solver that solves the stated goals while preserving distinct agent actions as separate action schemas."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "There is a closed set of action templates available: paltry, sip, clip, wretched, memory, and tightfisted.",
+            "Each action is associated with parameter positions object_0, object_1, object_2 and some wretched uses object_3 and collects reference object_3 in some variants.",
+            "Preconditions and effects include predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring and combinations of those facts.",
+            "Some actions toggle next relations and some toggle vase relations. Some actions require collect or stupendous facts to enable next updates.",
+            "Two alternative initial statements and two alternative goals exist in the specification; planners may have seen different variants and must communicate differences to integrate a single domain and problem."
+        ]
+    },
+    "workflow": {
+        "planner_a": {
+            "model": {
+                "input": [],
+                "output": "planner_a.model",
+                "system_prompt": "You are an expert domain modeller. Your task is to examine the action usage examples and initial facts that you privately hold and produce a structured machine-friendly action model. Provide for each action the signature, parameter roles, a list of positive preconditions, negative preconditions if any, add effects, delete effects, and explicit annotations about assumptions or missing references. Do not produce PDDL in this step.",
+                "prompt": "Agent planner_a context: environment public information is {environment->public_information} and your private information is {agents->planner_a->private_information}. Your goal is {agents->planner_a->goal}. Return a JSON-compatible structured representation of actions, parameters, preconditions, add effects, delete effects, and a short list of assumptions you made to fill gaps. Focus on clarity and explicit causal links. Do not emit final PDDL."
+            }
+        },
+        "planner_b": {
+            "model": {
+                "input": [],
+                "output": "planner_b.model",
+                "system_prompt": "You are an expert domain modeller. Your task is to examine the alternative action usage examples and initial facts that you privately hold and produce a structured machine-friendly action model. For each action list the signature, parameter roles, preconditions, add effects, delete effects, and highlight where names or facts differ from planner_a. Do not produce PDDL in this step.",
+                "prompt": "Agent planner_b context: environment public information is {environment->public_information} and your private information is {agents->planner_b->private_information}. Your goal is {agents->planner_b->goal}. Return a JSON-compatible structured representation of actions, parameters, preconditions, add effects, delete effects, and explicit notes on inconsistencies with other variants. Do not emit final PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_a.model",
+                    "planner_b.model"
+                ],
+                "output": "auditor.audit",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Your task is to take the structured models from multiple planners, detect bookkeeping shortcuts, implicit tokens, and post-hoc penalties, and produce a cleaned combined model with explicit causal links and temporal annotations suitable for planning. Mark any removed bookkeeping shortcuts and provide rationale. Do not generate PDDL here.",
+                "prompt": "Agent auditor context: you receive planner outputs {planner_a.model} and {planner_b.model}. Your private information is {agents->auditor->private_information}. Your goal is {agents->auditor->goal}. Produce a reconciled action model with bookkeeping shortcuts removed, explicit causal links annotated, and a short report of the changes you applied."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_a.model",
+                    "planner_b.model",
+                    "auditor.audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL domain construction and in preparing problems for the FastDownwards solver. Your job is to integrate the structured models and the auditor's cleaned model, resolve naming conflicts, keep agent-specific actions distinct by naming or action namespaces, and produce a final PDDL domain and a final PDDL problem file that encode the chosen initial facts and goal. The final PDDL must be compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent orchestrator context: you receive planner and auditor outputs {planner_a.model}, {planner_b.model}, {auditor.audit}. Your private information is {agents->orchestrator->private_information}. Your goal is {agents->orchestrator->goal}. Integrate the inputs, resolve inconsistencies, keep agent actions distinct, and output a PDDL domain and problem targeting FastDownwards enclosed with <domain> and <problem> tags. If some information is missing, document the assumptions you used to complete the domain and problem."
+            }
+        },
+        "constraints": [
+            "planner_a.model->orchestrator.pddl",
+            "planner_b.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

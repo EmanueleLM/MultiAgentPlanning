@@ -1,0 +1,124 @@
+{
+    "name": "CalendarSchedulingExample13",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "gerald",
+            "roy",
+            "barbara",
+            "auditor",
+            "orchestrator"
+        ],
+        "gerald": {
+            "private_information": [
+                "Busy Monday 09:00-09:30",
+                "Busy Monday 13:00-14:00",
+                "Busy Monday 15:00-15:30",
+                "Busy Monday 16:00-17:00",
+                "Preference: avoid meetings on Monday before 13:00 if possible"
+            ],
+            "goal": "Find a 30-minute slot on Monday between 09:00 and 17:00 that fits all participants' schedules and respects my preference to avoid meetings before 13:00 when possible."
+        },
+        "roy": {
+            "private_information": [
+                "Free entire Monday between 09:00 and 17:00"
+            ],
+            "goal": "Find a 30-minute slot on Monday between 09:00 and 17:00 that fits all participants."
+        },
+        "barbara": {
+            "private_information": [
+                "Busy Monday 09:30-10:00",
+                "Busy Monday 11:30-14:00",
+                "Busy Monday 14:30-15:00",
+                "Busy Monday 15:30-17:00"
+            ],
+            "goal": "Find a 30-minute slot on Monday between 09:00 and 17:00 that fits all participants."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of schedules",
+                "Responsibilities: detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or synthetic free/busy markers; normalize intervals; verify there are no off-by-30-minute or timezone errors"
+            ],
+            "goal": "Validate and sanitize the availability inputs from all participants, ensuring temporal consistency and clear, canonical busy/free intervals for scheduling."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate participants' schedules and the auditor's report to produce a PDDL domain and problem (targeting the FastDownwards solver) that finds a feasible 30-minute meeting slot on Monday between 09:00 and 17:00 satisfying all constraints and preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30-minute meeting on Monday between 09:00 and 17:00.",
+            "All participants: Gerald, Roy, Barbara.",
+            "A solution exists that fits everyone's existing schedule.",
+            "Meeting duration is 30 minutes and must start on a standard half-hour boundary (e.g., 09:00, 09:30, 10:00, ...)."
+        ]
+    },
+    "workflow": {
+        "gerald": {
+            "availability": {
+                "input": [],
+                "output": "schedule_gerald",
+                "system_prompt": "You are Gerald. Provide your calendar busy intervals for Monday and state any soft preferences. Do not emit PDDL. Provide intervals in a clear canonical format such as '09:00-09:30'. Indicate which constraints are hard (busy) and which are preferences.",
+                "prompt": "You are representing Gerald's knowledge. Use the following public information: {environment->public_information} Your private information: {agents->gerald->private_information} Your goal: {agents->gerald->goal} Provide a structured availability report for Monday listing hard busy intervals and any soft preferences. Output should be machine-readable and avoid assumptions about others' calendars."
+            }
+        },
+        "roy": {
+            "availability": {
+                "input": [],
+                "output": "schedule_roy",
+                "system_prompt": "You are Roy. Provide your calendar busy intervals for Monday. Do not emit PDDL. Use a canonical interval format like 'HH:MM-HH:MM'.",
+                "prompt": "You are representing Roy's knowledge. Use the following public information: {environment->public_information} Your private information: {agents->roy->private_information} Your goal: {agents->roy->goal} Provide a structured availability report for Monday listing hard busy intervals. Keep the response concise and unambiguous."
+            }
+        },
+        "barbara": {
+            "availability": {
+                "input": [],
+                "output": "schedule_barbara",
+                "system_prompt": "You are Barbara. Provide your calendar busy intervals for Monday. Do not emit PDDL. Use a canonical interval format like 'HH:MM-HH:MM'.",
+                "prompt": "You are representing Barbara's knowledge. Use the following public information: {environment->public_information} Your private information: {agents->barbara->private_information} Your goal: {agents->barbara->goal} Provide a structured availability report for Monday listing hard busy intervals. Keep the response concise and unambiguous."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_gerald",
+                    "schedule_roy",
+                    "schedule_barbara"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Examine the provided schedules, normalize interval formats, detect and remove bookkeeping shortcuts (e.g., quota tokens, synthetic free/busy markers, post-hoc penalties), check for overlaps and off-by-one/half-hour errors, and produce a cleaned canonical set of busy intervals for each participant. Do not emit PDDL.",
+                "prompt": "You receive the raw schedules from participants: {schedule_gerald}, {schedule_roy}, {schedule_barbara}. Using your private responsibilities: {agents->auditor->private_information}, validate and sanitize all intervals. Produce a report that contains for each participant a canonical list of hard busy intervals, any flagged inconsistencies, and a short explanation of fixes applied. Output should be machine-readable and unambiguous."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_gerald",
+                    "schedule_roy",
+                    "schedule_barbara",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at multi-agent scheduling and PDDL modeling targeting the FastDownwards solver. Integrate the cleaned schedules and auditor report to produce a PDDL domain and a PDDL problem that finds a feasible 30-minute meeting start time on Monday between 09:00 and 17:00. Keep actions and facts for different participants distinct. Do not invent additional hidden constraints. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards (use supported constructs and a STRIPS-like encoding or an explicit time-as-discrete-integer encoding suitable for FastDownwards).",
+                "prompt": "You are the orchestrator. Integrate the participants' availability and the auditor's cleaned canonical intervals: {schedule_gerald}, {schedule_roy}, {schedule_barbara}, {audit_report}. Your global goal: {agents->orchestrator->goal} Think step by step, reconcile naming or interval conventions if needed, and produce a complete PDDL domain and PDDL problem ready to be solved by FastDownwards. Keep agents' actions distinct if modeling agent actions. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "gerald.availability->auditor.audit",
+            "roy.availability->auditor.audit",
+            "barbara.availability->auditor.audit",
+            "gerald.availability->orchestrator.pddl",
+            "roy.availability->orchestrator.pddl",
+            "barbara.availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

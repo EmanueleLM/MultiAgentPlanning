@@ -1,0 +1,107 @@
+{
+    "name": "MeetingPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "carol",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00",
+                "My objective is to meet as many friends as possible during the day",
+                "I can travel between locations and need travel time allowances"
+            ],
+            "goal": "Meet as many friends as possible and ensure a meeting with Carol for at least 75 minutes."
+        },
+        "carol": {
+            "private_information": [
+                "I will be at Sunset District from 14:00 to 20:30",
+                "I prefer meetings of at least 75 minutes when possible"
+            ],
+            "goal": "Meet the traveler sometime between 14:00 and 20:30 for at least 75 minutes if feasible."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I enforce that travel times and windows are observed and that meeting durations are respected"
+            ],
+            "goal": "Validate candidate schedules for temporal feasibility, causal consistency, and remove any scheduling shortcuts or unjustified relaxations."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and audits and produce a final PDDL domain and problem targeting the FastDownward planner that maximizes meetings while respecting all temporal constraints including the Carol meeting requirement."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "09:00",
+            "locations": [
+                "NobHill",
+                "SunsetDistrict"
+            ],
+            "travel_times_minutes": {
+                "NobHill->SunsetDistrict": 25,
+                "SunsetDistrict->NobHill": 27
+            },
+            "visibility": 0
+        },
+        "public_information": [
+            "You arrive at Nob Hill at 09:00.",
+            "Carol will be at Sunset District from 14:00 to 20:30.",
+            "You would like to meet Carol for a minimum of 75 minutes.",
+            "Travel times in minutes are NobHill to SunsetDistrict 25 and SunsetDistrict to NobHill 27."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "proposal": {
+                "input": [],
+                "output": "proposal_traveler",
+                "system_prompt": "You are the traveler planning candidate schedules for the day. Do not produce PDDL. Provide several concrete schedule proposals that list sequence of visits with start and end times, travel legs and durations, and meeting durations with friends. Explicitly list assumptions and any optional flexibility windows.",
+                "prompt": "You are the traveler. Use the public information and your private information to propose multiple candidate schedules for meeting friends. Each candidate must include precise times at each location, travel legs using given travel times, and indicate whether the candidate meets the requirement to meet Carol for at least 75 minutes between 14:00 and 20:30. If information is missing for other friends, note it as an assumption. Output structured natural language proposals."
+            }
+        },
+        "carol": {
+            "availability": {
+                "input": [],
+                "output": "availability_carol",
+                "system_prompt": "You are Carol providing your availability and any preferences. Do not generate PDDL. Provide acceptable meeting windows, flexibility, and whether partial overlaps or split meetings are acceptable.",
+                "prompt": "You are Carol. Confirm your fixed presence at Sunset District from 14:00 to 20:30, state whether you can shift start or end by small margins, and declare minimum acceptable continuous meeting duration. Provide any constraints such as earliest start time and latest end time for meetings."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "proposal_traveler",
+                    "availability_carol"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency. Do not produce PDDL. Your output must flag infeasible segments, correct inconsistent times, and remove any bookkeeping shortcuts such as quotas or post-hoc penalties. Provide a clear validated schedule or explicit required fixes.",
+                "prompt": "You are the auditor. Receive the traveler proposals and Carol availability. Verify that travel legs respect travel times, that arrival and departure times permit required meeting durations, and that Carol's 14:00-20:30 window and minimum 75 minute meeting requirement are enforceable. For each proposal, mark it feasible or infeasible and if infeasible propose minimal concrete adjustments to make it feasible or explain why it cannot be fixed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "proposal_traveler",
+                    "availability_carol",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the proposals and the auditor report and produce a final PDDL domain and PDDL problem tailored for the FastDownward planner. Your PDDL must encode temporal constraints, travel durations in minutes, meeting durations, the start time of 09:00 at Nob Hill, and an optimization objective to maximize the number of friends met while guaranteeing Carol is met for at least 75 continuous minutes within her availability window. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Use the traveler proposals, Carol availability, and the auditor report to create a single consistent PDDL domain and problem that represents the scheduling problem. Ensure actions for travel and meeting are distinct and encode durations explicitly. Target the FastDownward planner and include comments that explain how times map to discrete time steps if needed. Output only the PDDL domain and problem enclosed in <domain> and <problem> tags respectively."
+            }
+        },
+        "constraints": [
+            "traveler.proposal->auditor.audit",
+            "carol.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.proposal->orchestrator.pddl",
+            "carol.availability->orchestrator.pddl"
+        ]
+    }
+}

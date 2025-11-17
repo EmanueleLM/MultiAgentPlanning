@@ -1,0 +1,126 @@
+{
+    "name": "MeetingPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "friend_jessica",
+            "itinerary_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Haight-Ashbury at 09:00.",
+                "I want to meet as many friends as possible during the day.",
+                "I prefer schedules that minimize wasted travel time and idle gaps."
+            ],
+            "goal": "Maximize the number of friends I meet today while ensuring a meeting with Jessica of at least 90 minutes."
+        },
+        "friend_jessica": {
+            "private_information": [
+                "Location: Sunset District.",
+                "Availability window: 15:15 to 20:15 (3:15PM to 8:15PM).",
+                "Preferred minimum meeting duration with traveler: 90 minutes."
+            ],
+            "goal": "Meet the traveler for at least 90 minutes sometime within my availability window."
+        },
+        "itinerary_planner": {
+            "private_information": [
+                "Role: generate multiple candidate daily schedules exploring different meeting start times, durations, and travel legs.",
+                "Will use public travel times and agent-provided availabilities to build alternatives."
+            ],
+            "goal": "Produce diverse feasible schedule options (start times, meeting durations, travel sequences) that respect known constraints and maximize meeting opportunities."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of candidate schedules.",
+                "Remove bookkeeping shortcuts such as unrealistically overlapping meetings, quota tokens, or post-hoc penalties."
+            ],
+            "goal": "Verify feasibility of candidate schedules with respect to travel times, arrival/departure constraints, and minimum meeting durations, and return corrected schedules or precise conflict explanations."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from the other agents and produce a final PDDL domain and PDDL problem targeted to the FastDownwards solver that encodes the scheduling optimization and Jessica meeting constraint."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Haight-Ashbury",
+            "arrival_time": "09:00",
+            "locations": [
+                "Haight-Ashbury",
+                "Sunset District"
+            ],
+            "travel_times_minutes": {
+                "Haight-Ashbury->Sunset District": 15,
+                "Sunset District->Haight-Ashbury": 15
+            }
+        },
+        "public_information": [
+            "Travel time from Haight-Ashbury to Sunset District is 15 minutes.",
+            "Travel time from Sunset District to Haight-Ashbury is 15 minutes.",
+            "You arrive at Haight-Ashbury at 09:00.",
+            "Jessica will be at Sunset District from 15:15 to 20:15.",
+            "You would like to meet Jessica for a minimum of 90 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "survey": {
+                "input": [],
+                "output": "traveler_survey",
+                "system_prompt": "You are the traveler describing personal constraints and preferences for the day; do not emit PDDL. Provide concise structured information about start time, location, mobility tolerances, and prioritized objectives.",
+                "prompt": "Name: traveler. Public information: refer to environment public_information. Private information: refer to agents->traveler->private_information. Produce a structured survey output that lists start location, start time, mobility tolerance, hard constraints, soft preferences, and priority ranking of objectives (for example: maximize meetings, minimize travel, prefer contiguous meeting blocks). Output should be labeled as traveler_survey."
+            }
+        },
+        "friend_jessica": {
+            "availability_report": {
+                "input": [],
+                "output": "jessica_availability",
+                "system_prompt": "You are the representative for Jessica and provide her availability and location details, not PDDL. Provide exact time windows, location, and any scheduling preferences or hard constraints.",
+                "prompt": "Name: friend_jessica. Public information: refer to environment public_information. Private information: refer to agents->friend_jessica->private_information. Produce a structured availability report labeled jessica_availability that specifies exact available interval(s), location, minimum meeting duration requirement, and whether the window is flexible."
+            }
+        },
+        "itinerary_planner": {
+            "plan_options": {
+                "input": [
+                    "traveler_survey",
+                    "jessica_availability"
+                ],
+                "output": "plan_options",
+                "system_prompt": "You generate multiple candidate schedules (a variety of start times and meeting allocations) given traveler preferences and friend availabilities. Do not emit PDDL. Produce several alternative, clearly timestamped schedules with travel legs and meeting durations.",
+                "prompt": "Name: itinerary_planner. Inputs: traveler_survey and jessica_availability. Public information: refer to environment public_information. Private information: refer to agents->itinerary_planner->private_information. Generate at least three distinct candidate schedules labeled plan_options. Each schedule should list chronological events with start and end times, locations, travel actions with durations, meeting blocks indicating which friend is met and for how long. Highlight which schedules meet Jessica's minimum 90-minute requirement and which do not."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "plan_options"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You audit temporal and causal consistency of candidate schedules and remove bookkeeping shortcuts. Do not emit PDDL. Check for overlapping meetings, insufficient travel buffers, violations of availability windows, and any temporal feasibility issues. Return corrected schedules or precise conflict annotations.",
+                "prompt": "Name: temporal_auditor. Input: plan_options. Private information: refer to agents->temporal_auditor->private_information. Public information: refer to environment public_information. For each candidate schedule in plan_options, verify all time windows, travel times, and minimum meeting durations. If issues are found, provide corrected schedule variants or explicit conflict descriptions and a confidence rating. Output should be labeled audit_report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_options",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in encoding scheduling optimization problems in PDDL targeted to the FastDownwards solver. Produce a complete PDDL domain and a PDDL problem that encodes the schedules, travel times, availability windows, and an objective to maximize the number of meetings while enforcing Jessica's minimum 90-minute meeting constraint. Keep agent actions distinct where appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Do not include extraneous bookkeeping tokens.",
+                "prompt": "Name: orchestrator. Inputs: plan_options and audit_report. Public information: refer to environment public_information. Agents' private information and generated artifacts: refer to the respective outputs. Integrate the candidate schedules and the auditor's corrections into a single, well-formed PDDL domain and problem targeted to FastDownwards. The PDDL should model time discretely in minutes or use costs so FastDownwards can optimize. Encode constraints so any valid plan must schedule at least 90 contiguous minutes with Jessica within her availability window. Also encode an objective to maximize the count of distinct meetings (or equivalently minimize negative penalties for not meeting someone). Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Label the final output pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "traveler.survey->itinerary_planner.plan_options",
+            "friend_jessica.availability_report->itinerary_planner.plan_options",
+            "itinerary_planner.plan_options->temporal_auditor.audit",
+            "itinerary_planner.plan_options->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -364,7 +364,7 @@ def append_accuracy_result(
             "evaluated_examples": evaluated,
             "missing_examples": missing,
             "accuracy_plan_paths_existing": accuracy_existing,
-            "accuracy_plan_paths_including_missing": accuracy_including_missing,
+            "accuracy": accuracy_including_missing,
             "plan_path_count": total_plan_paths,
             "coverage_plan_paths_vs_dataset": coverage_plan_paths,
             "coverage_outputs_vs_dataset": coverage_outputs,

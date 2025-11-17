@@ -1,0 +1,132 @@
+{
+    "name": "CalendarSchedulingExample17",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "margaret",
+            "donna",
+            "helen",
+            "auditor",
+            "orchestrator"
+        ],
+        "margaret": {
+            "private_information": [
+                "Busy on Monday 09:00-10:00",
+                "Busy on Monday 10:30-11:00",
+                "Busy on Monday 11:30-12:00",
+                "Busy on Monday 13:00-13:30",
+                "Busy on Monday 15:00-15:30"
+            ],
+            "goal": "Find a 30 minute meeting slot on Monday between 09:00 and 17:00 that fits my calendar."
+        },
+        "donna": {
+            "private_information": [
+                "Busy on Monday 14:30-15:00",
+                "Busy on Monday 16:00-16:30"
+            ],
+            "goal": "Find a 30 minute meeting slot on Monday between 09:00 and 17:00 that fits my calendar."
+        },
+        "helen": {
+            "private_information": [
+                "Busy on Monday 09:00-09:30",
+                "Busy on Monday 10:00-11:30",
+                "Busy on Monday 13:00-14:00",
+                "Busy on Monday 14:30-15:00",
+                "Busy on Monday 15:30-17:00",
+                "Preference: Do not meet on Monday after 13:30"
+            ],
+            "goal": "Find a 30 minute meeting slot on Monday between 09:00 and 17:00 that fits my calendar and respects my preference."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of reported availabilities",
+                "Remove bookkeeping shortcuts such as overlapping soft tokens or post-hoc adjustments",
+                "Ensure reported availabilities are aligned to the time slot granularity and within work hours"
+            ],
+            "goal": "Verify and sanitize availability reports from participants and produce a temporally consistent availability set."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate availabilities and produce a PDDL planning task targeting the FastDownward planner"
+            ],
+            "goal": "Combine audited availabilities and generate a PDDL domain and problem such that FastDownward can find a 30 minute meeting time for all participants on Monday."
+        }
+    },
+    "environment": {
+        "init": {
+            "work_hours": {
+                "start": "09:00",
+                "end": "17:00"
+            },
+            "day": "Monday",
+            "meeting_duration_minutes": 30,
+            "time_slot_granularity_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting on Monday between 09:00 and 17:00",
+            "Time slots are discrete with 30 minute granularity",
+            "A solution exists that fits every participant's schedule and constraints"
+        ]
+    },
+    "workflow": {
+        "margaret": {
+            "analyze_calendar": {
+                "input": [],
+                "output": "availability_margaret",
+                "system_prompt": "You are an expert calendar analyzer. Given the environment work hours and your private busy intervals, compute all available start times for a 30 minute meeting on Monday aligned to the 30 minute granularity. Report availability as a list of start times in HH:MM format within work hours and do not assume any information not provided.",
+                "prompt": "Agent: margaret. Public information: environment public_information. Private information: agents->margaret->private_information. Goal: agents->margaret->goal. Produce availability_margaret as a JSON-friendly list of available start times."
+            }
+        },
+        "donna": {
+            "analyze_calendar": {
+                "input": [],
+                "output": "availability_donna",
+                "system_prompt": "You are an expert calendar analyzer. Given the environment work hours and your private busy intervals, compute all available start times for a 30 minute meeting on Monday aligned to the 30 minute granularity. Report availability as a list of start times in HH:MM format within work hours and do not assume any information not provided.",
+                "prompt": "Agent: donna. Public information: environment public_information. Private information: agents->donna->private_information. Goal: agents->donna->goal. Produce availability_donna as a JSON-friendly list of available start times."
+            }
+        },
+        "helen": {
+            "analyze_calendar": {
+                "input": [],
+                "output": "availability_helen",
+                "system_prompt": "You are an expert calendar analyzer. Given the environment work hours, your private busy intervals, and your explicit preference not to meet after 13:30, compute all available start times for a 30 minute meeting on Monday aligned to the 30 minute granularity. Exclude any slot that would start after 13:30. Report availability as a list of start times in HH:MM format and do not assume additional permissions.",
+                "prompt": "Agent: helen. Public information: environment public_information. Private information: agents->helen->private_information. Goal: agents->helen->goal. Produce availability_helen as a JSON-friendly list of available start times respecting the preference."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_margaret",
+                    "availability_donna",
+                    "availability_helen"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Receive reported availability lists from participants. Remove overlapping bookkeeping shortcuts, ensure all times align with the declared granularity, clip any times outside work hours or violating explicit preferences such as Helen's do not meet after 13:30. Produce a sanitized combined availability representation indicating for each discrete slot whether every participant is available.",
+                "prompt": "Agent: auditor. Private information: agents->auditor->private_information. Input availabilities: the three availability_* artifacts. Goal: agents->auditor->goal. Produce audited_availability as a JSON-friendly mapping from slot start time to list of available participants or to a boolean that indicates full group availability."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_margaret",
+                    "availability_donna",
+                    "availability_helen",
+                    "audited_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL for scheduling and planning. Use the audited availability to construct a PDDL domain and a PDDL problem suitable for the FastDownward planner. Represent discrete half hour slots as timepoint objects and encode a single action ScheduleMeeting that assigns a slot to all participants. Ensure the domain and problem use predicates and typing compatible with classical FastDownward usage. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Do not assume any slots not present in the audited_availability. Target FastDownward compatibility in action preconditions and goal encoding.",
+                "prompt": "Agent: orchestrator. Purpose: combine sanitized availabilities to produce final PDDL domain and problem that FastDownward can solve to find a 30 minute meeting time on Monday. Inputs: audited_availability and the individual availability lists. Output: pddl_orchestrator which contains a domain and a problem enclosed in <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "margaret.analyze_calendar->orchestrator.pddl",
+            "donna.analyze_calendar->orchestrator.pddl",
+            "helen.analyze_calendar->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "margaret.analyze_calendar->auditor.audit",
+            "donna.analyze_calendar->auditor.audit",
+            "helen.analyze_calendar->auditor.audit"
+        ]
+    }
+}

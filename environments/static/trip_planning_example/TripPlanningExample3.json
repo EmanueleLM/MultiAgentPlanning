@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_network",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit 3 European cities in one trip",
+                "I prefer Berlin for 3 days and Warsaw for 3 days but total trip length is 6 days",
+                "I must stay in Bucharest for 2 days",
+                "I want to meet a friend in Bucharest between day 5 and day 6"
+            ],
+            "goal": "Produce an itinerary proposal of city visits and day allocations that aims to satisfy the trip constraints and personal preferences."
+        },
+        "flight_network": {
+            "private_information": [
+                "Direct flights exist between Berlin and Warsaw",
+                "Direct flights exist between Warsaw and Bucharest",
+                "No direct flights exist between Berlin and Bucharest"
+            ],
+            "goal": "Provide the feasible direct-flight connections and possible sequences of hops that respect only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of itinerary proposals",
+                "I remove bookkeeping shortcuts such as fractional days, implicit tokens, or post-hoc penalties",
+                "I ensure total days sum equals the available days and meeting-day constraints are enforceable"
+            ],
+            "goal": "Audit itinerary proposals and connectivity information for temporal and causal consistency and produce an audit report with corrections or required clarifications."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals, connectivity, and audit results and produce a final PDDL domain and problem file targeting the FastDownwards solver that encodes the travel planning problem and a valid itinerary plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 6,
+            "cities": [
+                "Berlin",
+                "Warsaw",
+                "Bucharest"
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 6 days in total",
+            "You only take direct flights to commute between cities",
+            "You plan to stay in Bucharest for 2 days",
+            "You want to meet a friend in Bucharest between day 5 and day 6",
+            "Direct flight connections: Berlin-Warsaw, Warsaw-Bucharest"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary_proposal": {
+                "input": [],
+                "output": "proposal_traveler",
+                "system_prompt": "You are the traveler agent. Provide a clear itinerary proposal that assigns whole days to cities, lists the sequence of city visits by day indices, and highlights any conflicts with public constraints or personal preferences. Do not output PDDL. Explain assumptions and identify unknowns that would prevent building a full formal plan.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and your private information {agents->traveler->private_information} to propose an itinerary. The proposal should specify which city is visited on each day from day 1 to day 6, and the intended travel legs between cities. If preferences cannot be fully satisfied, state tradeoffs and priorities."
+            }
+        },
+        "flight_network": {
+            "connectivity": {
+                "input": [],
+                "output": "connectivity_info",
+                "system_prompt": "You are the flight network agent. Provide the directed or undirected adjacency list of direct-flight connections among the cities and enumerate feasible flight sequences (hops) that respect only direct flights. Do not output PDDL.",
+                "prompt": "Your name is flight_network. Use the public information {environment->public_information} and your private information {agents->flight_network->private_information} to list valid direct-flight hops, and give all feasible sequences of hops that could connect the cities given only direct flights."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "proposal_traveler",
+                    "connectivity_info"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your role is to check temporal and causal consistency and to remove bookkeeping shortcuts. Check that day allocations sum to total days, that travel transitions are feasible given direct flights, that meeting constraints are achievable, and that there are no fractional days or implicit tokens. Do not output PDDL. Produce explicit corrections or required clarifications.",
+                "prompt": "Your name is auditor. Receive the itinerary proposal {proposal_traveler} and the connectivity information {connectivity_info}. Verify that the itinerary respects total days from {environment->init->total_days}, the Bucharest stay requirement, and the meeting constraint between day 5 and day 6. If inconsistencies exist, provide a corrected itinerary or list of precise changes required to make the itinerary feasible, with rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "proposal_traveler",
+                    "connectivity_info",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the traveler proposal, the flight connectivity, and the auditor report. Produce a complete PDDL domain and a PDDL problem that formalizes the trip planning problem for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-specific actions distinct by prefixing action names with agent identifiers where appropriate.",
+                "prompt": "You are orchestrator. Use the following inputs: traveler proposal {proposal_traveler}, flight connectivity {connectivity_info}, and auditor report {audit_report}. Build a PDDL domain and a PDDL problem that encode days as discrete time steps 1..6, city locations, direct-flight move actions, stay actions, and the meeting constraint in Bucharest between day 5 and day 6. Target the FastDownwards solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary_proposal->auditor.audit",
+            "flight_network.connectivity->auditor.audit",
+            "traveler.itinerary_proposal->orchestrator.pddl",
+            "flight_network.connectivity->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,100 @@
+{
+    "name": "TripPlanningExample23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler_preferences",
+            "flight_graph",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler_preferences": {
+            "private_information": [
+                "I plan to visit three European cities over 8 days total",
+                "I prefer to stay in London about 3 days",
+                "I prefer to stay in Bucharest about 3 days",
+                "I want to spend 4 days in Riga",
+                "I must attend a workshop in Riga between day 5 and day 8"
+            ],
+            "goal": "Provide a clear statement of desired stays and hard constraints to be used by a planner, highlighting any conflicts with the total days available"
+        },
+        "flight_graph": {
+            "private_information": [
+                "Direct flights exist between London and Bucharest",
+                "Direct flights exist between Bucharest and Riga",
+                "There is no direct flight between London and Riga"
+            ],
+            "goal": "Provide the flight connectivity graph and any practical constraints for commuting between the cities using only direct flights"
+        },
+        "auditor": {
+            "private_information": [
+                "I will not propose scheduling shortcuts such as quota tokens or post-hoc penalties"
+            ],
+            "goal": "Audit temporal and causal consistency of proposed stays and travel legs, flag contradictions, and produce an audit report that removes bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent inputs and produce a final PDDL domain and problem targeted to the FastDownwards solver that encodes a feasible 8-day trip satisfying direct-flight constraints and the Riga workshop window"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8,
+            "cities": [
+                "London",
+                "Bucharest",
+                "Riga"
+            ]
+        },
+        "public_information": [
+            "You will visit three cities in Europe within a period of 8 consecutive days",
+            "Only direct flights are allowed for commuting between cities",
+            "Available direct flight connections are London-Bucharest and Bucharest-Riga",
+            "There is a workshop in Riga that must be attended between day 5 and day 8 inclusive"
+        ]
+    },
+    "workflow": {
+        "traveler_preferences": {
+            "spec": {
+                "input": [],
+                "output": "prefs_traveler",
+                "system_prompt": "You are an expert in expressing user travel preferences and constraints for downstream planners. You should summarize desired stays, must-have constraints, preferred flexibility, and indicate any conflicts between preferences and hard limits.",
+                "prompt": "Your name is traveler_preferences. Use the public information about the trip and your private preferences to produce a concise specification of stays per city, absolute constraints such as the workshop window, and highlight any conflicts with the total days available. Output a structured preferences artifact for the orchestrator."
+            }
+        },
+        "flight_graph": {
+            "graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an expert in transportation connectivity modeling. You provide a clear flight connectivity graph, travel time assumptions for direct flights, and any connectivity constraints relevant to planning.",
+                "prompt": "Your name is flight_graph. Use the public information to produce a representation of direct flight connections, note unreachable direct routes, and suggest minimal travel day costs for direct flights. Output a structured flight graph artifact for the orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor specialized in temporal and causal consistency for multi-agent scheduling. You detect contradictions, enforce that no bookkeeping shortcuts are used, and produce a canonical audit report describing necessary adjustments and rationales.",
+                "prompt": "Your name is auditor. Given the public information and no additional assumptions, analyze temporal consistency between desired stays and total days, check causality of travel legs under direct-flight constraints, and produce an audit report that resolves or highlights conflicts and forbids solutions that rely on bookkeeping shortcuts. Output a structured audit report for the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "prefs_traveler",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You integrate inputs from multiple agents into a single coherent PDDL domain and a PDDL problem file targeted to the FastDownwards solver. Keep agent actions distinct and preserve provenance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure temporal and causal constraints from the auditor are enforced. Avoid making unsupported assumptions.",
+                "prompt": "You are the orchestrator. You receive three artifacts: traveler preferences, flight connectivity, and an auditor report. Integrate these inputs to produce a PDDL domain and a PDDL problem that model an 8-day trip visiting London, Bucharest, and Riga using only direct flights and satisfying the workshop window in Riga between day 5 and day 8. Resolve any conflicts using the auditor's recommended adjustments and keep actions for each conceptual agent distinct. Target the FastDownwards planner and ensure the output is a complete PDDL domain and problem ready for that solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler_preferences.spec->orchestrator.pddl",
+            "flight_graph.graph->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

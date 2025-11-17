@@ -1,0 +1,125 @@
+{
+    "name": "MeetingPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "friend_margaret",
+            "friend_sam",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I will arrive at Mission District at 09:00",
+                "I have the full day until 18:00 to meet friends",
+                "I start at Mission District"
+            ],
+            "goal": "Meet as many friends as possible while respecting their availability and minimum meeting constraints"
+        },
+        "friend_margaret": {
+            "private_information": [
+                "Location: Haight-Ashbury",
+                "Availability window: 08:00 to 15:45",
+                "Minimum meeting duration requested: 30 minutes"
+            ],
+            "goal": "Meet the traveler for at least 30 minutes sometime during my availability window"
+        },
+        "friend_sam": {
+            "private_information": [
+                "Location: Mission District",
+                "Availability window: 09:00 to 10:00"
+            ],
+            "goal": "Meet the traveler if schedules align"
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency",
+                "Responsibilities: detect infeasible schedules, remove bookkeeping shortcuts, and ensure no implicit or post-hoc penalties are used to justify infeasible plans"
+            ],
+            "goal": "Provide an audit report that verifies schedules are temporally consistent and free of accounting shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate partial schedules, availability statements, and the auditor report into a final planning problem",
+                "Target solver: FastDownward"
+            ],
+            "goal": "Produce a final PDDL domain and problem suitable for the FastDownward planner that maximizes the number of friends met and enforces the minimum meeting constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "09:00",
+            "start_location": "Mission District",
+            "time_horizon_end": "18:00"
+        },
+        "public_information": [
+            "Travel time from Mission District to Haight-Ashbury is 12 minutes",
+            "Travel time from Haight-Ashbury to Mission District is 11 minutes",
+            "You arrive at Mission District at 09:00",
+            "Margaret will be at Haight-Ashbury from 08:00 to 15:45 and requires at least 30 minutes for a meeting",
+            "Sam is available at Mission District from 09:00 to 10:00"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan": {
+                "input": [],
+                "output": "traveler.plan",
+                "system_prompt": "You are the traveler planning your day. Propose several alternative schedules that try to maximize the number of friends met. Consider travel times, arrival time, and friends' availability. Provide explicit appointment windows and travel legs for each schedule option. Do not emit PDDL; produce human-readable schedule variants with timestamps and assumptions.",
+                "prompt": "Your name is traveler. Use the public information: {environment->public_information}. Use your private information: {agents->traveler->private_information}. Your objective: {agents->traveler->goal}. Produce multiple candidate schedules, each listing meeting start and end times, travel segments and locations, and any assumptions you make."
+            }
+        },
+        "friend_margaret": {
+            "availability": {
+                "input": [],
+                "output": "friend_margaret.availability",
+                "system_prompt": "You represent Margaret's availability and constraints. Confirm exact available windows and the minimum meeting duration she requires. Do not emit PDDL.",
+                "prompt": "Your name is friend_margaret. Use your private information: {agents->friend_margaret->private_information}. State the confirmed availability window, the required minimum meeting duration, and any preferences that affect scheduling."
+            }
+        },
+        "friend_sam": {
+            "availability": {
+                "input": [],
+                "output": "friend_sam.availability",
+                "system_prompt": "You represent Sam's availability. Confirm exact available windows and any flexibility. Do not emit PDDL.",
+                "prompt": "Your name is friend_sam. Use your private information: {agents->friend_sam->private_information}. State the confirmed availability window and any preferences."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler.plan",
+                    "friend_margaret.availability",
+                    "friend_sam.availability"
+                ],
+                "output": "audit.report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. You must analyze proposed schedules and availability statements to find infeasible overlaps, missing travel time allocations, implicit shortcuts such as quotas or post-hoc penalties, and any causal inconsistencies. Provide a clear report identifying issues and suggested corrections. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You receive proposed schedules and availability confirmations. Use these inputs: {traveler.plan}, {friend_margaret.availability}, {friend_sam.availability}. Produce an audit report that marks schedules as feasible or infeasible, lists required adjustments, and eliminates any bookkeeping shortcuts. Provide corrected appointment windows if necessary."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler.plan",
+                    "friend_margaret.availability",
+                    "friend_sam.availability",
+                    "audit.report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent temporal planning and PDDL modeling for the FastDownward planner. Integrate the candidate schedules, availability statements, and the auditor report. Produce a PDDL domain and a PDDL problem that encode time, travel durations, meeting durations, and objectives to maximize the number of friends met while enforcing Margaret's minimum 30-minute meeting constraint. Keep agent actions distinct and ensure temporal consistency. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Indicate in comments that the generated PDDL targets FastDownward and uses any required temporal encoding supported by the solver.",
+                "prompt": "You are orchestrator. Your job is to merge these inputs: {traveler.plan}, {friend_margaret.availability}, {friend_sam.availability}, {audit.report}. Resolve any remaining ambiguities, respect the auditor corrections, and output a final PDDL domain and PDDL problem aimed at FastDownward. The domain should include actions for traveling and meeting with explicit durations. The problem should encode the start state, time windows for availability, the travel durations from public information, the requirement that Margaret must be met for at least 30 minutes if chosen, and an objective to maximize the number of friends met. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.plan->orchestrator.pddl",
+            "friend_margaret.availability->orchestrator.pddl",
+            "friend_sam.availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.plan->auditor.audit",
+            "friend_margaret.availability->auditor.audit",
+            "friend_sam.availability->auditor.audit"
+        ]
+    }
+}

@@ -1,0 +1,108 @@
+{
+    "name": "MysteryBlocksworld22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "Role: Inspect the world and produce a structured report of objects, predicates, and initial facts.",
+                "Do not invent facts. Report only what is observed or explicitly given."
+            ],
+            "goal": "Extract a concise structured inventory of objects, predicates and initial facts from the provided statements."
+        },
+        "planner": {
+            "private_information": [
+                "Role: Propose a high level plan of actions to reach the goal using available action schemata and observed facts.",
+                "Produce action sequences with preconditions and effects annotated. Avoid emitting PDDL directly."
+            ],
+            "goal": "Produce a candidate plan that reaches the stated goal while exposing required preconditions and effects for each step."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: Audit temporal and causal consistency of proposed plans and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "Identify and correct plans that rely on bookkeeping shortcuts or inconsistent causal chains."
+            ],
+            "goal": "Validate and sanitize proposed plans to ensure causal coherence and that no bookkeeping shortcuts are used."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: Integrate observer report, planner proposal and auditor corrections to produce a final PDDL domain and problem.",
+                "Target output is a FastDownwards compatible domain and problem pair."
+            ],
+            "goal": "Produce the final PDDL domain and problem targeting the FastDownwards solver that implements the sanitized plan and environment."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 13,
+            "visibility": 2
+        },
+        "public_information": [
+            "Objects are named object_0 through object_12 and beyond as needed.",
+            "Predicates include hand, cats, sneeze, texture, vase, next, collect, spring, stupendous.",
+            "Available actions and their informal schemata are Paltry, Sip, Clip, Wretched, Memory, Tightfisted.",
+            "Paltry requires hand X cats Y texture Z vase X Y and next Y Z and yields next X Z and removes vase X Y.",
+            "Sip requires hand X cats Y texture Z next X Z and next Y Z and yields vase X Y and removes next X Z.",
+            "Clip requires hand X sneeze Y texture Z next Y Z and next X Z and yields vase X Y and removes next X Z.",
+            "Wretched requires sneeze X texture Y texture Z stupendous W next X Y collect Y W and collect Z W and yields next X Z and removes next X Y.",
+            "Memory requires cats X spring Y spring Z and next X Y and yields next X Z and removes next X Y.",
+            "Tightfisted requires hand X sneeze Y texture Z next Y Z and vase X Y and yields next X Z and removes vase X Y.",
+            "Initial condition variants may include lists of predicate ground atoms and different next relations.",
+            "Goals are expressed as ground next relations such as next object_11 object_7 and next object_12 object_5."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "analyze": {
+                "input": [],
+                "output": "obs_report",
+                "system_prompt": "You are the observer agent. Inspect the provided statements and extract a structured inventory. Produce an object list, a predicate list with ground atoms that are true initially, and any explicit variant initializations. Do not invent facts and do not emit PDDL. Output a clear machine readable summary labeled obs_report.",
+                "prompt": "Your name is observer. You receive raw statements describing initial facts and goals. Provide a structured obs_report listing objects, ground predicates present in the statement, and the explicit goal atoms."
+            }
+        },
+        "planner": {
+            "propose_plan": {
+                "input": [
+                    "obs_report"
+                ],
+                "output": "plan_proposal",
+                "system_prompt": "You are a planning specialist. Using the observer report, propose a candidate sequence of high level actions that leads to the goals. For each action include required ground preconditions and resulting ground effects. Do not emit PDDL. Highlight any unknown or assumed preconditions explicitly so auditor can verify them.",
+                "prompt": "Your name is planner. Use obs_report to generate a plan_proposal that lists ordered actions with explicit preconditions and effects. Annotate which facts are consumed and which are produced by each step."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_proposal",
+                    "obs_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focusing on temporal and causal consistency. Evaluate plan_proposal against obs_report. Remove or flag bookkeeping shortcuts such as quota tokens and post-hoc penalties. Ensure each action's preconditions are satisfied at the point of use and that no effect is assumed without causal support. Provide corrected ordering or required intermediate actions where needed.",
+                "prompt": "Your name is auditor. Given plan_proposal and obs_report produce an audit_report that verifies causal chains, removes bookkeeping shortcuts, and recommends concrete fixes to make the plan causally valid."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_report",
+                    "plan_proposal",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the observer report, planner proposal and auditor corrections and produce a final PDDL domain and PDDL problem that implement the sanitized model and plan. The target solver is FastDownwards. Keep action schemas precise and include types, predicates, objects and an initial state and goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure compatibility with FastDownwards and avoid relying on bookkeeping shortcuts.",
+                "prompt": "Your name is orchestrator. Using obs_report, plan_proposal and audit_report produce a final PDDL domain and a PDDL problem that FastDownwards can consume. Keep actions and predicates consistent with the public information and the auditor corrections. Enclose domain in <domain></domain> and problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "observer.analyze->planner.propose_plan",
+            "planner.propose_plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

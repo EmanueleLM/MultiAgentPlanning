@@ -1,0 +1,114 @@
+{
+    "name": "Logistics16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyst",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyst": {
+            "private_information": [
+                "I extract symbolic action schemas from informal descriptions and produce a neutral structured model of actions, their parameters, preconditions and effects.",
+                "I keep object lists and predicate vocabulary organized but I do not produce final planner artifacts."
+            ],
+            "goal": "Produce a clear, unambiguous neutral model of actions, objects and predicates present in the environment for downstream validation and translation."
+        },
+        "simulator": {
+            "private_information": [
+                "I can apply action schemas to initial states to generate state traces and check reachability of facts under given sequences of actions.",
+                "I report counterexamples and temporal/causal chains showing how facts become true or false across steps."
+            ],
+            "goal": "Validate candidate plans against the neutral model and produce deterministic state traces and failure modes if any."
+        },
+        "auditor": {
+            "private_information": [
+                "I focus on temporal and causal consistency and on removing bookkeeping shortcuts such as quota tokens, post-hoc penalties, and implicit bookkeeping facts that mask real causal dependencies.",
+                "I reconcile naming inconsistencies, collapse equivalent facts, and provide conservative corrections to the model so that planning is causal and temporally grounded."
+            ],
+            "goal": "Audit the neutral model and simulation traces to eliminate bookkeeping shortcuts and produce a corrected, causally sound model and a set of constraints for the planner."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the outputs of analysts, simulators and auditors to produce the final planning encoding.",
+                "I target FastDownwards as the intended solver and must produce a PDDL domain and a PDDL problem description that are consistent with the corrected model."
+            ],
+            "goal": "Emit a final PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the corrected model and the specified goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "object_count": 14,
+            "time_horizon": 50,
+            "granularity": "discrete"
+        },
+        "public_information": [
+            "Objects in the universe are named object_0 through object_13.",
+            "Predicates include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Action paltry parameters: object_0 object_1 object_2. Preconditions: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2. Effects add: next object_0 object_2. Effects del: vase object_0 object_1.",
+            "Action sip parameters: object_0 object_1 object_2. Preconditions: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2. Effects add: vase object_0 object_1. Effects del: next object_0 object_2.",
+            "Action clip parameters: object_0 object_1 object_2. Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2. Effects add: vase object_0 object_1. Effects del: next object_0 object_2.",
+            "Action wretched parameters: object_0 object_1 object_2 object_3. Preconditions: sneeze object_0, texture object_1, texture object_2, stupendous object_3, next object_0 object_1, collect object_1 object_3, collect object_2 object_3. Effects add: next object_0 object_2. Effects del: next object_0 object_1.",
+            "Action memory parameters: object_0 object_1 object_2. Preconditions: cats object_0, spring object_1, spring object_2, next object_0 object_1. Effects add: next object_0 object_2. Effects del: next object_0 object_1.",
+            "Action tightfisted parameters: object_0 object_1 object_2. Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1. Effects add: next object_0 object_2. Effects del: vase object_0 object_1.",
+            "Example initial statement A: cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_10, hand object_11, hand object_12, hand object_9, next object_0 object_5, next object_10 object_7, next object_11 object_8, next object_12 object_5, next object_3 object_6, next object_4 object_8, next object_9 object_8, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+            "Example goal A: next object_10 object_8, next object_11 object_6, next object_12 object_8, next object_9 object_5.",
+            "Example plan A is provided as a candidate sequence of actions for validation and audit.",
+            "Example initial statement B: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, hand object_11, hand object_12, hand object_13, next object_0 object_6, next object_1 object_6, next object_10 object_9, next object_11 object_8, next object_12 object_9, next object_13 object_6, next object_4 object_7, next object_5 object_9, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+            "Example goal B: next object_10 object_6, next object_11 object_9, next object_12 object_7, next object_13 object_9."
+        ]
+    },
+    "workflow": {
+        "analyst": {
+            "model": {
+                "input": [],
+                "output": "model_analyst",
+                "system_prompt": "You are a domain analyst. Extract a neutral structured model of the domain. Provide objects, predicate vocabulary, and action schemas with parameter lists, preconditions and effects. Do not produce PDDL. Your output will be consumed by simulation and auditing components.",
+                "prompt": "Your name is analyst. Use the following public information: {environment->public_information}. Use your private information: {agents->analyst->private_information}. Your goal: {agents->analyst->goal}. Produce a JSON-style neutral model describing objects, predicates, and action schemas with clear parameter names, preconditions and effects. Be explicit about which facts are added and which are deleted by each action. Do not invent implicit bookkeeping predicates."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "model_analyst"
+                ],
+                "output": "trace_simulator",
+                "system_prompt": "You are a deterministic simulator. Given a neutral model and a set of initial facts or candidate plans, produce stepwise state traces and indicate whether each precondition is satisfied when actions are applied. Report reachable goals and counterexamples. Do not output PDDL.",
+                "prompt": "Your name is simulator. You receive the neutral model: {model_analyst} and the public initial statements and example plans contained in {environment->public_information}. Use your private information: {agents->simulator->private_information}. Your goal: {agents->simulator->goal}. Produce deterministic traces for candidate plans, flag failed preconditions and produce causal chains that show how each goal fact could or could not be achieved."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_analyst",
+                    "trace_simulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your task is to detect bookkeeping shortcuts, naming mismatches, and any temporal or causal artifacts that would invalidate realistic planning. Produce a corrected neutral model and a list of conservative constraints. Do not emit PDDL. Emphasize removal of quota tokens and other implicit bookkeeping facts.",
+                "prompt": "Your name is auditor. Use the analyst model {model_analyst} and the simulation traces {trace_simulator}. Use your private information: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Produce a report that lists inconsistencies, corrected action schemas or predicate renamings if needed, and a conservative set of ordering or mutual exclusion constraints to ensure causal soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_analyst",
+                    "trace_simulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates the cleaned model and produces the final PDDL encoding for the FastDownwards planner. Produce a PDDL domain and a PDDL problem that reflect the audited, causally sound model. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be compatible with FastDownwards conventions.",
+                "prompt": "Your name is orchestrator. Integrate the analyst model {model_analyst}, the simulation traces {trace_simulator}, and the auditor report {audit_report}. Use your private information: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Emit a final PDDL domain and PDDL problem suitable for FastDownwards. Keep agent actions distinct and reflect the corrected causal constraints from the audit. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "analyst.model->auditor.audit",
+            "simulator.simulate->auditor.audit",
+            "analyst.model->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

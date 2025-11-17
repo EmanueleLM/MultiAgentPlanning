@@ -1,0 +1,103 @@
+{
+    "name": "MeetingPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "local_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Fisherman's Wharf at 09:00 AM.",
+                "I want to meet as many friends as possible during the day.",
+                "I especially want to meet Kenneth for at least 90 minutes."
+            ],
+            "goal": "Maximize number of friends met during the day and ensure a meeting with Kenneth of at least 90 minutes within his availability window."
+        },
+        "local_planner": {
+            "private_information": [
+                "Travel time Fisherman's Wharf to Nob Hill is 11 minutes.",
+                "Travel time Nob Hill to Fisherman's Wharf is 11 minutes.",
+                "Typical visit durations can be varied to create schedules."
+            ],
+            "goal": "Generate multiple feasible candidate schedules that respect travel times and known availability windows."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of proposed schedules.",
+                "Remove bookkeeping shortcuts and unrealistic assumptions such as fractional meeting enforcement or post-hoc penalties."
+            ],
+            "goal": "Validate candidate schedules for temporal feasibility, ensure meeting durations and travel times are consistent, and flag or correct any shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate preferences, candidate schedules, and audits into a single formal planning problem.",
+                "Target solver: FastDownwards (classical/temporal PDDL as required)."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem suitable for FastDownwards that encodes the best schedule decision to meet the overall objectives."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 2,
+            "visibility": 2
+        },
+        "public_information": [
+            "Locations: Fisherman's Wharf and Nob Hill.",
+            "Travel distances (in minutes): Fisherman's Wharf to Nob Hill 11, Nob Hill to Fisherman's Wharf 11.",
+            "You arrive at Fisherman's Wharf at 09:00 AM.",
+            "Kenneth is available at Nob Hill from 14:15 to 19:45.",
+            "You want to meet Kenneth for a minimum of 90 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler giving your preferences and hard constraints for the day. Do not emit PDDL. Provide a structured description of preferences including earliest start time, latest end time, relative priorities for meeting different friends, any maximum acceptable travel leg count, and a minimum required meeting duration with Kenneth. Use precise time windows and numeric durations."
+            }
+        },
+        "local_planner": {
+            "generate_schedules": {
+                "input": [
+                    "traveler_preferences"
+                ],
+                "output": "schedules_local_planner",
+                "system_prompt": "You are the local planner who generates multiple candidate schedules given public information and traveler preferences. Do not emit PDDL. Produce several complete schedule alternatives that specify ordered visits, start and end times for each visit, travel legs with associated travel minutes, and indicate where Kenneth meetings occur. Annotate each schedule with total number of friends met and whether the Kenneth meeting meets the minimum 90 minutes requirement."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedules_local_planner",
+                    "traveler_preferences"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency. Do not emit PDDL. For each candidate schedule, verify that travel times between consecutive visits are correctly applied, that meeting windows fall within the other party's availability, and that minimum durations are enforced. Remove or flag any bookkeeping shortcuts such as fractional meeting durations, overlapping meetings that violate travel constraints, or unrealistic post-hoc adjustments. Provide corrected schedules or a detailed list of required fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "schedules_local_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates preferences, candidate schedules, and audit findings into a single PDDL domain and PDDL problem intended for the FastDownwards solver. Produce a complete PDDL domain and a PDDL problem. The domain must encode actions for traveling and meeting with temporal constraints or encoded time as discrete steps as appropriate for FastDownwards. The problem must encode initial location and time (arrival at Fisherman's Wharf at 09:00), Kenneth's availability window (14:15-19:45), travel durations of 11 minutes each way, and the requirement to meet Kenneth at least 90 minutes. Keep agent actions distinct and do not conflate planning agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.preferences->local_planner.generate_schedules",
+            "local_planner.generate_schedules->auditor.audit",
+            "traveler.preferences->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "local_planner.generate_schedules->orchestrator.pddl",
+            "traveler.preferences->orchestrator.pddl"
+        ]
+    }
+}

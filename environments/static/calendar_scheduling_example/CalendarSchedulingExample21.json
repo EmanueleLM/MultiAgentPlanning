@@ -1,0 +1,123 @@
+{
+    "name": "CalendarSchedulingExample21",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "bobby",
+            "scott",
+            "kimberly",
+            "auditor",
+            "orchestrator"
+        ],
+        "bobby": {
+            "private_information": [
+                "I have no scheduled events on Monday."
+            ],
+            "goal": "Provide an accurate availability report for Monday during work hours so a meeting can be scheduled."
+        },
+        "scott": {
+            "private_information": [
+                "Busy on Monday from 11:30 to 12:00",
+                "Busy on Monday from 15:30 to 16:00"
+            ],
+            "goal": "Provide an accurate availability report for Monday during work hours so a meeting can be scheduled."
+        },
+        "kimberly": {
+            "private_information": [
+                "Busy on Monday from 11:00 to 12:00",
+                "Busy on Monday from 12:30 to 13:00",
+                "Busy on Monday from 13:30 to 14:00",
+                "Busy on Monday from 14:30 to 15:00",
+                "Busy on Monday from 15:30 to 17:00"
+            ],
+            "goal": "Provide an accurate availability report for Monday during work hours so a meeting can be scheduled."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "I normalize time representations and flag ambiguous intervals."
+            ],
+            "goal": "Validate and normalize participants' availability reports, remove bookkeeping shortcuts, and produce a clean availability merge and a short audit log."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate validated availabilities and produce a final PDDL domain and problem targeting FastDownwards to find a one-hour meeting slot that fits all participants."
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "time_slot_resolution_minutes": 15
+        },
+        "public_information": [
+            "Schedule a one hour meeting on Monday between 09:00 and 17:00.",
+            "Participants: Bobby, Scott, Kimberly.",
+            "There exists at least one feasible meeting time that fits everyone's schedule.",
+            "Time format is 24-hour HH:MM and intervals are inclusive of start and exclusive of end."
+        ]
+    },
+    "workflow": {
+        "bobby": {
+            "availability": {
+                "input": [],
+                "output": "availability_bobby",
+                "system_prompt": "You are a calendar participant agent. Provide your free time intervals for the given meeting day within the declared work hours. Use a normalized JSON list of intervals where each interval is a two-element array [start,end] in HH:MM, start < end, and times are within work hours.",
+                "prompt": "You are Bobby. Use the public information and your private calendar to produce a JSON array of free intervals for Monday between 09:00 and 17:00 that excludes your busy times. Do not produce PDDL. Output only the JSON list of intervals."
+            }
+        },
+        "scott": {
+            "availability": {
+                "input": [],
+                "output": "availability_scott",
+                "system_prompt": "You are a calendar participant agent. Provide your free time intervals for the given meeting day within the declared work hours. Use a normalized JSON list of intervals where each interval is a two-element array [start,end] in HH:MM, start < end, and times are within work hours.",
+                "prompt": "You are Scott. Use the public information and your private calendar to produce a JSON array of free intervals for Monday between 09:00 and 17:00 that excludes your busy times 11:30-12:00 and 15:30-16:00. Do not produce PDDL. Output only the JSON list of intervals."
+            }
+        },
+        "kimberly": {
+            "availability": {
+                "input": [],
+                "output": "availability_kimberly",
+                "system_prompt": "You are a calendar participant agent. Provide your free time intervals for the given meeting day within the declared work hours. Use a normalized JSON list of intervals where each interval is a two-element array [start,end] in HH:MM, start < end, and times are within work hours.",
+                "prompt": "You are Kimberly. Use the public information and your private calendar to produce a JSON array of free intervals for Monday between 09:00 and 17:00 that excludes your busy times 11:00-12:00, 12:30-13:00, 13:30-14:00, 14:30-15:00, and 15:30-17:00. Do not produce PDDL. Output only the JSON list of intervals."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_bobby",
+                    "availability_scott",
+                    "availability_kimberly"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent that validates temporal and causal consistency of availability reports. Your job is to normalize time formats, merge overlapping intervals, detect and remove bookkeeping shortcuts or ambiguous representations, and produce a concise JSON audit report that contains the cleaned availability per participant and any corrections or warnings.",
+                "prompt": "Receive the availability reports from Bobby, Scott, and Kimberly. Validate and normalize each report to HH:MM intervals, merge adjacent or overlapping free intervals, flag or correct any intervals outside work hours, and remove any shorthand or quota-style artifacts. Output a JSON object with keys 'bobby', 'scott', 'kimberly' each mapping to a list of cleaned intervals, and an 'audit_log' array describing changes or issues. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_bobby",
+                    "availability_scott",
+                    "availability_kimberly",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL authoring for the FastDownwards solver. Use the validated availability inputs to generate a PDDL domain and a PDDL problem that encode the scheduling task: find a one-hour meeting slot within Monday 09:00-17:00 that is free for all participants. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions remain distinct if modeling separate agent behaviors and favor constructs compatible with FastDownwards.",
+                "prompt": "Integrate the cleaned availability for each participant and the audit report to produce a PDDL domain and problem that encode a temporal or simple time-slot planning problem to schedule a one-hour meeting that fits all participants. Use the public environment information as constraints. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The output should be ready for FastDownwards."
+            }
+        },
+        "constraints": [
+            "bobby.availability->auditor.audit",
+            "scott.availability->auditor.audit",
+            "kimberly.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "bobby.availability->orchestrator.pddl",
+            "scott.availability->orchestrator.pddl",
+            "kimberly.availability->orchestrator.pddl"
+        ]
+    }
+}

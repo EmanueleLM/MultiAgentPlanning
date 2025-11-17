@@ -1,0 +1,157 @@
+{
+    "name": "TripPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler_florence",
+            "traveler_barcelona",
+            "traveler_helsinki",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler_florence": {
+            "private_information": [
+                "I would like to visit Florence for 6 days.",
+                "I want to meet a friend in Florence between day 9 and day 14 (inclusive).",
+                "I will only travel using direct flights between the cities listed in the public information."
+            ],
+            "goal": "Provide a clear statement of my Florence stay preference, flexibility (if any), and any hard constraints (meeting window)."
+        },
+        "traveler_barcelona": {
+            "private_information": [
+                "I would like to visit Barcelona for 5 days.",
+                "I will only travel using direct flights between the cities listed in the public information."
+            ],
+            "goal": "Provide a clear statement of my Barcelona stay preference and flexibility."
+        },
+        "traveler_helsinki": {
+            "private_information": [
+                "I would like to visit Helsinki for 5 days.",
+                "I will only travel using direct flights between the cities listed in the public information."
+            ],
+            "goal": "Provide a clear statement of my Helsinki stay preference and flexibility."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency of proposed plans.",
+                "I will detect and remove bookkeeping shortcuts such as token quotas or post-hoc penalties; I will require explicit justification when agents rely on such shortcuts."
+            ],
+            "goal": "Check summed durations, detect temporal conflicts, check connectivity by direct flights, and provide a cleaned, consistent set of constraints and suggested adjustments to fit the total trip length."
+        },
+        "orchestrator": {
+            "private_information": [
+                "My role is to integrate submitted preferences and the auditor's report into a final plan.",
+                "I must produce a PDDL domain and a PDDL problem targeting the FastDownwards solver."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem that encodes a valid 14-day trip using only direct flights, respecting meeting constraints and auditor corrections. Keep agent actions distinct where appropriate."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "days": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14
+            ],
+            "cities": [
+                "Florence",
+                "Barcelona",
+                "Helsinki"
+            ],
+            "direct_flights": [
+                [
+                    "Barcelona",
+                    "Florence"
+                ],
+                [
+                    "Helsinki",
+                    "Barcelona"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan a trip lasting exactly 14 days.",
+            "You will visit the three cities: Florence, Barcelona, Helsinki.",
+            "Only direct flights listed below are allowed for commuting between cities: Barcelona <-> Florence, Helsinki <-> Barcelona.",
+            "Flights are instantaneous for scheduling purposes (travel consumes a day boundary but does not require fractional day accounting).",
+            "Florence visit must include meeting a friend sometime between day 9 and day 14 inclusive."
+        ]
+    },
+    "workflow": {
+        "traveler_florence": {
+            "collect_info": {
+                "input": [],
+                "output": "info_florence",
+                "system_prompt": "You represent the Florence preference. Based on the public information, produce a concise structured summary including: requested number of days in Florence, how strict each requested day count is (hard or flexible), the meeting constraint with friend (days window), any earliest/latest arrival preferences, and acceptable alternative adjustments if the full request cannot be met. Do not produce PDDL. Focus on facts and flexibility."
+            }
+        },
+        "traveler_barcelona": {
+            "collect_info": {
+                "input": [],
+                "output": "info_barcelona",
+                "system_prompt": "You represent the Barcelona preference. Based on the public information, produce a concise structured summary including: requested number of days in Barcelona, how strict this request is (hard or flexible), any arrival/departure preferences, and acceptable alternatives if the full request cannot be met. Do not produce PDDL. Focus on facts and flexibility."
+            }
+        },
+        "traveler_helsinki": {
+            "collect_info": {
+                "input": [],
+                "output": "info_helsinki",
+                "system_prompt": "You represent the Helsinki preference. Based on the public information, produce a concise structured summary including: requested number of days in Helsinki, how strict this request is (hard or flexible), any arrival/departure preferences, and acceptable alternatives if the full request cannot be met. Do not produce PDDL. Focus on facts and flexibility."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "info_florence",
+                    "info_barcelona",
+                    "info_helsinki"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose job is to check temporal and causal consistency. Receive the three travelers' summaries and the public environment facts. Perform the following checks and produce a clear report: (1) verify whether the sum of requested days exceeds the total days and quantify the overbooking; (2) detect temporal conflicts and overlapping hard constraints (for example the meeting window); (3) verify that city-to-city transitions are possible using only the listed direct flights and list allowed travel sequences; (4) remove or flag any bookkeeping shortcuts (e.g., informal tokens, post-hoc penalties) and require explicit, implementable constraints; (5) suggest concrete adjustments (which days could be reduced, which city stays could be shortened or made flexible) so the trip can fit exactly 14 days while still honoring hard constraints like the meeting window. Do not produce PDDL. Provide machine-readable suggestions and explicit constraints for the orchestrator to use."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "info_florence",
+                    "info_barcelona",
+                    "info_helsinki",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your job is to integrate the travelers' summaries and the auditor report into a single PDDL domain and problem that can be solved by the FastDownwards planner. Produce a domain and a problem that: (1) model days 1..14, (2) model being in a city on a given day and taking a direct flight to change city between days respecting only the listed direct flights, (3) enforce that the total number of days spent across cities equals 14, (4) enforce the Florence meeting constraint (some day between 9 and 14 must be assigned to Florence), (5) reflect adjustments or constraints the auditor requested, and (6) keep actions for different agents or city stays distinct where applicable (use predicate names that make agents or city responsibilities clear). Enclose the PDDL domain between <domain> and </domain> tags, and the PDDL problem between <problem> and </problem> tags. The PDDL produced must be suitable for FastDownwards (classical STRIPS-style PDDL)."
+            }
+        },
+        "constraints": [
+            "traveler_florence.collect_info->auditor.audit",
+            "traveler_barcelona.collect_info->auditor.audit",
+            "traveler_helsinki.collect_info->auditor.audit",
+            "traveler_florence.collect_info->orchestrator.pddl",
+            "traveler_barcelona.collect_info->orchestrator.pddl",
+            "traveler_helsinki.collect_info->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    },
+    "constraints": [
+        "traveler_florence.collect_info->auditor.audit",
+        "traveler_barcelona.collect_info->auditor.audit",
+        "traveler_helsinki.collect_info->auditor.audit",
+        "auditor.audit->orchestrator.pddl",
+        "traveler_florence.collect_info->orchestrator.pddl",
+        "traveler_barcelona.collect_info->orchestrator.pddl",
+        "traveler_helsinki.collect_info->orchestrator.pddl"
+    ]
+}

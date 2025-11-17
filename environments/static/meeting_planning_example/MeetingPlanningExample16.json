@@ -1,0 +1,107 @@
+{
+    "name": "MeetingPlanningExample16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "ronald",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Chinatown at 09:00AM.",
+                "I can travel between Chinatown and Russian Hill. Travel time Chinatown to Russian Hill is 7 minutes. Travel time Russian Hill to Chinatown is 9 minutes.",
+                "I want to meet as many friends as possible during the day and especially aim to meet Ronald for at least 105 minutes."
+            ],
+            "goal": "Plan feasible schedules that allow meeting Ronald for at least 105 minutes while maximizing the opportunity to meet other friends if present."
+        },
+        "ronald": {
+            "private_information": [
+                "I will be at Russian Hill from 3:15PM to 9:30PM.",
+                "I can be flexible about exact meeting start time but my presence window is fixed."
+            ],
+            "goal": "Provide clear availability windows and any meeting preferences so the traveler can schedule a meeting of minimum 105 minutes."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency of proposed schedules.",
+                "I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and insist on explicit travel legs, arrival and departure times, and contiguous meeting durations."
+            ],
+            "goal": "Audit proposed schedules for temporal feasibility and causal consistency and produce a corrected, fully explicit schedule report."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and audit reports, and produce a final PDDL domain and problem pair suitable for the FastDownwards solver that encodes the scheduling problem and objective."
+        }
+    },
+    "environment": {
+        "init": {
+            "locations": [
+                "Chinatown",
+                "Russian_Hill"
+            ],
+            "arrival_time": "09:00AM",
+            "travel_times": {
+                "Chinatown_to_Russian_Hill": 7,
+                "Russian_Hill_to_Chinatown": 9
+            },
+            "visibility": 1
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day and will start in Chinatown at 09:00AM.",
+            "Travel times between key locations are known: Chinatown to Russian Hill takes 7 minutes and Russian Hill to Chinatown takes 9 minutes.",
+            "Ronald will be at Russian Hill from 3:15PM to 9:30PM and must be met for a minimum of 105 minutes.",
+            "The objective is to evaluate multiple feasible schedules and select the one that satisfies constraints and optimizes meeting goals."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedules": {
+                "input": [],
+                "output": "schedules_traveler",
+                "system_prompt": "You are the traveler agent tasked with proposing concrete schedule alternatives. Do not emit PDDL. Produce multiple candidate schedules with explicit timeline entries for travel legs, arrival times, meeting start and end times, and assumptions. For each candidate include total meeting duration with Ronald and any times when you would be elsewhere. Respect the public information and your private information.",
+                "prompt": "You are the traveler. Use the public information about locations and travel times and your private information about arrival time and objectives. Propose a set of distinct schedule alternatives that explicitly state when you depart, travel durations used, arrival and departure times at locations, and planned meeting durations with Ronald. Highlight any assumptions and edge cases that might affect feasibility."
+            }
+        },
+        "ronald": {
+            "availability": {
+                "input": [],
+                "output": "ronald_availability",
+                "system_prompt": "You are Ronald's availability agent. Provide precise availability windows, any soft preferences about meeting times, and constraints on meeting continuity. Do not emit PDDL. Clarify earliest and latest possible meeting start times within your presence window and any constraints on interruptions.",
+                "prompt": "You represent Ronald. State the exact availability window when you will be at Russian Hill, any preferences for contiguous meeting duration, and whether partial meetings separated by gaps are acceptable. Provide information in absolute clock times."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedules_traveler",
+                    "ronald_availability"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your role is to inspect proposed schedules and availability statements and produce a corrected, explicit schedule or a list of required adjustments. Remove any bookkeeping shortcuts such as token quotas or post-hoc penalties. Ensure every travel leg, arrival time, and contiguous meeting duration is explicit and causally consistent. Do not emit PDDL.",
+                "prompt": "You are the auditor. Receive the traveler's proposed schedules and Ronald's availability and check for temporal feasibility. For each schedule, verify travel durations, verify meeting windows overlap Ronald's availability, ensure contiguous meeting durations meet the 105 minute minimum, and produce either a fully explicit corrected schedule or a clear rejection with reasons and minimal fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedules_traveler",
+                    "ronald_availability",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates proposals and audits and produces the final formal planning instance. Produce a PDDL domain and a PDDL problem that models locations, travel durations as deterministic timed actions or discretized time steps, availability windows for Ronald, and the objective to ensure a contiguous meeting with Ronald of at least 105 minutes while maximizing other meeting opportunities if present. Target the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Use the traveler's schedules, Ronald's availability, and the auditor's audit report to construct a single coherent PDDL domain and problem pair suitable for FastDownwards. The PDDL should represent explicit travel actions with durations, location fluents, and time bookkeeping sufficient to enforce Ronald's availability window and the minimum continuous meeting duration of 105 minutes. Do not assume hidden information. Keep agent actions distinct if needed. Enclose the domain between <domain></domain> and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedules->auditor.audit",
+            "ronald.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.propose_schedules->orchestrator.pddl",
+            "ronald.availability->orchestrator.pddl"
+        ]
+    }
+}

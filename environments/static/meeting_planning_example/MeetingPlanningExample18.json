@@ -1,0 +1,108 @@
+{
+    "name": "MeetingPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "betty",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Marina District at 09:00 AM",
+                "I can travel between Marina and Richmond District with known travel times",
+                "I want to maximize the number of friends I meet during the day and ensure the meeting with Betty satisfies her minimum required duration"
+            ],
+            "goal": "Meet as many friends as possible and ensure the meeting with Betty lasts at least 75 minutes during her availability window"
+        },
+        "betty": {
+            "private_information": [
+                "I will be at Richmond District from 08:30 PM to 10:00 PM",
+                "I require a minimum meeting duration of 75 minutes with the traveler",
+                "I am located in Richmond District in the evening"
+            ],
+            "goal": "Meet the traveler at Richmond District for at least 75 minutes within my availability window"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of schedules",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I enforce realistic travel transit times and ensure meeting intervals are contiguous and feasible"
+            ],
+            "goal": "Audit proposed schedules for temporal and causal consistency and produce a corrected timeline if necessary"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate schedule proposals and audit output and produce the final PDDL domain and problem targeting the FastDownwards solver"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 2,
+            "visibility": 10,
+            "locations": [
+                "Marina_District",
+                "Richmond_District"
+            ],
+            "travel_times_minutes": {
+                "Marina_to_Richmond": 11,
+                "Richmond_to_Marina": 9
+            }
+        },
+        "public_information": [
+            "Travel time from Marina District to Richmond District is 11 minutes",
+            "Travel time from Richmond District to Marina District is 9 minutes",
+            "You arrive at Marina District at 09:00 AM",
+            "Betty is available at Richmond District from 08:30 PM to 10:00 PM",
+            "Meeting with Betty must last at least 75 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedules": {
+                "input": [],
+                "output": "schedule_traveler",
+                "system_prompt": "You are a schedule generation agent that proposes several candidate daily itineraries for the traveler. Provide multiple feasible schedules as JSON objects listing visits, start times, end times, locations, and travel legs. Do not produce PDDL. Keep options explicit and concrete.",
+                "prompt": "Agent traveler context: use the environment public information and your private information to produce alternative feasible schedules that maximize the number of friends met while leaving the traveler able to meet Betty for at least 75 minutes during her availability window. Include explicit travel segments using the provided travel times and ensure each schedule specifies exact start and end times for each visit."
+            }
+        },
+        "betty": {
+            "propose_availability": {
+                "input": [],
+                "output": "schedule_betty",
+                "system_prompt": "You are an availability clarifier. Provide a precise availability interval and any flexibility you have. Represent availability as explicit start and end timestamps and indicate if partial overlaps or shifted meeting times are acceptable. Do not produce PDDL.",
+                "prompt": "Agent betty context: use your private information and the public constraints to state your exact availability interval and any constraints on meeting start times or continuous duration requirements. Output a JSON fragment representing your availability window and any acceptable variations."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_traveler",
+                    "schedule_betty"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Check candidate schedules for feasibility, enforce realistic travel times, ensure meetings are contiguous, remove bookkeeping shortcuts, detect and fix temporal conflicts, and produce a corrected timeline or a report of infeasibilities. Do not produce PDDL.",
+                "prompt": "Agent auditor context: receive the proposed schedules from the traveler and the availability fragment from Betty. Validate each candidate schedule for time feasibility given the travel times and Betty's availability. If a schedule relies on shortcuts or impossible overlaps, correct it and produce a validated schedule or a short error report in JSON."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_traveler",
+                    "schedule_betty",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning and in preparing problems for the FastDownwards planner. Integrate candidate schedules and the auditor report to produce a single coherent PDDL domain and a PDDL problem file that enforces temporal constraints, travel times, and required meeting durations. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for different agents distinct and ensure the PDDL is suitable for FastDownwards.",
+                "prompt": "Agent orchestrator context: combine the validated schedules and auditor corrections to create a PDDL domain and problem that encode locations, travel durations, time windows, and required meeting durations, ensuring the traveler meets Betty for at least 75 continuous minutes within her availability window and respecting arrival times. Produce a PDDL domain and a PDDL problem optimized for solving with FastDownwards and include comments in the PDDL problem that reference the chosen schedule."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedules->auditor.audit",
+            "betty.propose_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

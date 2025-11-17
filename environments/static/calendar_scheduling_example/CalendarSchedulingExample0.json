@@ -1,0 +1,124 @@
+{
+    "name": "CalendarSchedulingExample0",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "michelle",
+            "steven",
+            "jerry",
+            "auditor",
+            "orchestrator"
+        ],
+        "michelle": {
+            "private_information": [
+                "Busy on Monday 11:00-12:00"
+            ],
+            "goal": "Provide Michelle's accurate free time windows within the work hours so a one-hour meeting with Steven and Jerry can be scheduled."
+        },
+        "steven": {
+            "private_information": [
+                "Busy on Monday 09:00-09:30",
+                "Busy on Monday 11:30-12:00",
+                "Busy on Monday 13:30-14:00",
+                "Busy on Monday 15:30-16:00"
+            ],
+            "goal": "Provide Steven's accurate free time windows within the work hours so a one-hour meeting with Michelle and Jerry can be scheduled."
+        },
+        "jerry": {
+            "private_information": [
+                "Busy on Monday 09:00-09:30",
+                "Busy on Monday 10:00-11:00",
+                "Busy on Monday 11:30-12:30",
+                "Busy on Monday 13:00-14:30",
+                "Busy on Monday 15:30-16:00",
+                "Busy on Monday 16:30-17:00"
+            ],
+            "goal": "Provide Jerry's accurate free time windows within the work hours so a one-hour meeting with Michelle and Steven can be scheduled."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, remove bookkeeping shortcuts such as quota tokens or post-hoc penalties, and ensure all intervals are represented explicitly.",
+                "I produce cleaned, normalized availabilities and highlight any implicit assumptions in inputs."
+            ],
+            "goal": "Audit the provided availabilities for temporal consistency and return a cleaned, explicit availability set for each participant along with notes about corrections or assumptions."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Consume participants' availabilities and the auditor report and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that schedules a contiguous one-hour meeting within the work hours satisfying all calendars."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "meeting_duration": "01:00",
+            "time_granularity_minutes": 30
+        },
+        "public_information": [
+            "A one-hour meeting must be scheduled on Monday between 09:00 and 17:00.",
+            "Meeting participants: Michelle, Steven, Jerry.",
+            "Time granularity for proposed slots is 30 minutes and meetings must be contiguous.",
+            "There exists at least one feasible one-hour slot that works with all participants' existing schedules."
+        ]
+    },
+    "workflow": {
+        "michelle": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_michelle",
+                "system_prompt": "You are Michelle's calendar agent. Using your private busy times and the environment work hours, produce Michelle's free time intervals on Monday within 09:00-17:00. Provide a concise machine-readable list of intervals in 24-hour HH:MM format as an array of pairs, for example: [[09:00,11:00],[12:00,17:00]]. Do not produce PDDL."
+            }
+        },
+        "steven": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_steven",
+                "system_prompt": "You are Steven's calendar agent. Using your private busy times and the environment work hours, produce Steven's free time intervals on Monday within 09:00-17:00. Provide a concise machine-readable list of intervals in 24-hour HH:MM format as an array of pairs. Do not produce PDDL."
+            }
+        },
+        "jerry": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You are Jerry's calendar agent. Using your private busy times and the environment work hours, produce Jerry's free time intervals on Monday within 09:00-17:00. Provide a concise machine-readable list of intervals in 24-hour HH:MM format as an array of pairs. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_michelle",
+                    "availability_steven",
+                    "availability_jerry"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal constraints. Receive the three participants' availability lists. Normalize times to the environment granularity, remove any implicit bookkeeping shortcuts (for example, blackboxed quota tokens or implicit overlapping allowances), ensure no busy interval overlaps contradict the stated busy times, and produce a cleaned availability structure for each participant. Output a JSON-like object with keys 'cleaned_availabilities' mapping participant name to list of intervals and 'notes' listing any corrections or assumptions made. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_michelle",
+                    "availability_steven",
+                    "availability_jerry",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at multi-agent PDDL and the FastDownwards solver. Your task is to produce a PDDL domain and a PDDL problem that, when solved with FastDownwards, finds a contiguous one-hour meeting time on Monday between 09:00 and 17:00 that is within all participants' cleaned availabilities. Use temporal PDDL features or explicit time-slot encoding as appropriate for FastDownwards. Keep participant actions distinct and model the meeting as a single scheduling action with duration 1 hour. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The domain and problem must be complete and self-contained for FastDownwards. If any input availability is partial or ambiguous, use only the audited cleaned availabilities and do not assume additional free time."
+            },
+            "prompt": "You are the orchestrator. Use the following public environment information: {environment->public_information} Use participants' availabilities: {availability_michelle}, {availability_steven}, {availability_jerry} and the auditor's cleaned output: {audit_report}. Produce a PDDL domain and a PDDL problem suitable for FastDownwards that schedules the one-hour meeting for Michelle, Steven and Jerry. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+        },
+        "constraints": [
+            "michelle.provide_availability->auditor.audit",
+            "steven.provide_availability->auditor.audit",
+            "jerry.provide_availability->auditor.audit",
+            "michelle.provide_availability->orchestrator.pddl",
+            "steven.provide_availability->orchestrator.pddl",
+            "jerry.provide_availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

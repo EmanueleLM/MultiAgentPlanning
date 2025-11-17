@@ -1,0 +1,103 @@
+{
+    "name": "Depots12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I have two scenario plan transcripts with sequences of actions and references to many objects (object_0 through object_12).",
+                "I know the informal action schema names: paltry, sip, clip, wretched, memory, tightfisted and that each has preconditions and effects relating to predicates: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+                "I possess the concrete step-by-step plan fragments labeled PLAN for two different initial factsets which try to achieve specific next relations."
+            ],
+            "goal": "Interpret the provided human plans, extract grounded facts and action instances in a concise machine-readable form to feed the orchestrator."
+        },
+        "assistant": {
+            "private_information": [
+                "I can simulate short causal traces from action instances given the informal preconditions and effects and the initial facts for each scenario.",
+                "I will not produce final PDDL but will produce per-step state deltas, highlighting which preconditions are satisfied and which effects toggle predicates."
+            ],
+            "goal": "Produce simulated traces and expose any ambiguous object references, name clashes or unmet preconditions to the orchestrator."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties assumed in the plan fragments.",
+                "I will detect where plan steps rely on ephemeral bookkeeping that would hide unmet preconditions and will produce a corrected, minimal assumptions audit."
+            ],
+            "goal": "Audit the extracted facts and simulated traces for causal cycles, hidden bookkeeping, or temporal inconsistencies, and produce an audit report that eliminates such shortcuts for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from player, assistant and auditor and generate a final PDDL domain and problem suitable for FastDownwards.",
+                "When integrating inputs I must keep agent actions distinct when relevant and resolve name clashes and object aliases reported by the assistant and auditor."
+            ],
+            "goal": "Integrate the facts, simulations and audit corrections to produce a coherent PDDL domain and a PDDL problem file targeted at the FastDownwards solver that encodes the goal predicates."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 13,
+            "visibility": 1
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates used in the domain include: hand(?x), cats(?x), texture(?x), vase(?x ?y), next(?x ?y), sneeze(?x), stupendous(?x), collect(?x ?y), spring(?x).",
+            "Action semantics (informal summaries): paltry requires hand, cats, texture, vase and next relations and sets next while deleting vase; sip requires hand, cats, texture and next relations and toggles vase and next; clip requires hand, sneeze, texture and next relations and toggles vase and next; wretched requires sneeze, textures, stupendous and collect facts and toggles next relations; memory requires cats, springs and next and toggles next; tightfisted requires hand, sneeze, texture, next and vase and toggles next and vase.",
+            "Two scenario initial statements are provided by the human with explicit initial facts and their intended goals: scenario A aims for next object_10 object_8, next object_11 object_7, next object_9 object_6; scenario B aims for next object_10 object_7, next object_11 object_9, next object_12 object_8.",
+            "The human also supplied two candidate plans (PLAN) that should be analyzed for feasibility and converted into formal action sequences."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "extract_facts": {
+                "input": [],
+                "output": "facts_player",
+                "system_prompt": "You are an agent that reads human plan transcripts and initial statements and extracts grounded facts, object lists and concrete action instances as structured JSON. Do not emit PDDL or final planning artifacts. Emit a compact fact list, a mapping of object aliases if any, and a sequence of action tuples for each scenario.",
+                "prompt": "You are the player agent. Receive the raw human plan transcripts and initial statements and output three things in JSON: objects list, initial facts, and enumerated action instances per scenario. If a reference is ambiguous, mark it in the mapping. Do not synthesize missing predicates; only extract what is explicitly present."
+            }
+        },
+        "assistant": {
+            "simulate_traces": {
+                "input": [
+                    "facts_player"
+                ],
+                "output": "simulated_traces",
+                "system_prompt": "You are an agent that simulates causal traces from extracted action instances given informal preconditions and effects. You do not produce PDDL. You must report for each action whether preconditions are satisfied in the simulated state, the state delta (facts added and removed), and any unmet assumptions.",
+                "prompt": "You are the assistant agent. Use the facts and action sequences produced by the player and simulate each step for both scenarios. Produce an ordered trace for each scenario listing per-step preconditions checked, effects applied, and resulting state snapshots. Flag actions that depend on bookkeeping shortcuts or assumptions."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "facts_player",
+                    "simulated_traces"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Your job is to remove or call out bookkeeping shortcuts, implicit tokens, or post-hoc penalties in the traces. Produce a minimal set of corrected assumptions and explicit constraints required to make traces causally valid without bookkeeping hacks.",
+                "prompt": "You are the auditor agent. Inspect the extracted facts and simulated traces and produce a report that 1) highlights causal cycles or hidden assumptions, 2) removes bookkeeping shortcuts by proposing explicit predicates or ordering constraints, and 3) provides corrected precondition lists if an action relied on an implicit token. Output a clear list of required corrections and conservative recommendations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_player",
+                    "simulated_traces",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating agent outputs and producing a complete PDDL domain and problem file suitable for the FastDownwards planner. Keep agent actions distinct where relevant, resolve aliasing and naming conflicts, and ensure the produced PDDL encodes the corrected assumptions from the auditor. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver conventions and ensure types, predicates and objects are consistent.",
+                "prompt": "You are the orchestrator agent. Integrate the facts, simulated traces and the audit report to produce a single coherent PDDL domain and a PDDL problem that encodes the appropriate initial states and goals for the scenarios. Resolve ambiguities and enforce the auditor's corrections. Keep actions distinct if they came from different plan fragments. Output only the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags and name the domain and problem clearly for use with FastDownwards."
+            }
+        },
+        "constraints": [
+            "player.extract_facts->orchestrator.pddl",
+            "assistant.simulate_traces->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

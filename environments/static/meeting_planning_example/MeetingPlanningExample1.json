@@ -1,0 +1,131 @@
+{
+    "name": "MeetingPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "betty",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Richmond District at 09:00.",
+                "I want to maximize the number of friends I meet and the quality of meeting durations."
+            ],
+            "goal": "Provide accurate initial state information (location, arrival time, preferences) to allow schedule generation."
+        },
+        "betty": {
+            "private_information": [
+                "I will be at Financial District from 17:15 to 21:45.",
+                "I am available for a meeting of at least 60 minutes within that window."
+            ],
+            "goal": "Provide exact availability and location so the planner can include Betty as a meeting candidate."
+        },
+        "scheduler": {
+            "private_information": [
+                "I know travel time estimates between key districts.",
+                "I can enumerate candidate meeting schedules that respect provided availabilities."
+            ],
+            "goal": "Generate multiple candidate schedules that attempt to meet the travel and availability constraints and optimize the traveler's objectives."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking.",
+                "I will remove bookkeeping shortcuts, quotas, and post-hoc penalties; I will not accept schedules that rely on undocumented shortcuts."
+            ],
+            "goal": "Audit candidate schedules for temporal feasibility and causal consistency, and produce validated schedules with explicit travel and meeting intervals."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from other agents and produce the final planning artifacts.",
+                "The final PDDL must be targeted for the FastDownwards solver."
+            ],
+            "goal": "Integrate schedules and validations and output a PDDL domain and problem suitable for FastDownwards that encodes the chosen meeting plan optimization."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_resolution_minutes": 1,
+            "start_time": "09:00",
+            "locations": [
+                "Richmond District",
+                "Financial District"
+            ]
+        },
+        "public_information": [
+            "Travel durations (minutes): Richmond District -> Financial District: 22.",
+            "Travel durations (minutes): Financial District -> Richmond District: 21.",
+            "You arrive at Richmond District at 09:00.",
+            "Betty will be at Financial District from 17:15 to 21:45.",
+            "Desired minimum meeting duration with Betty: 60 minutes.",
+            "Objective: Visit as many friends as possible and select the best schedule considering travel times and availabilities."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "provide_initial_state": {
+                "input": [],
+                "output": "state_traveler",
+                "system_prompt": "You are the traveler agent. Provide an explicit initial state describing your location at arrival time, time-related preferences, and any hard constraints about meeting durations or sequencing.",
+                "prompt": "Return a structured description of your initial state including current location, arrival time, and meeting preferences. Do not produce PDDL. Provide times in HH:MM 24-hour format and locations using the environment location names."
+            }
+        },
+        "betty": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_betty",
+                "system_prompt": "You represent Betty's availability and constraints. Provide an explicit availability interval and any constraints (minimum meeting duration, latest start, hard unavailability).",
+                "prompt": "Return Betty's availability as a structured interval and the minimum acceptable meeting duration. Do not produce PDDL."
+            }
+        },
+        "scheduler": {
+            "generate_schedules": {
+                "input": [
+                    "state_traveler",
+                    "availability_betty",
+                    "environment->public_information"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a schedule generator. Produce multiple candidate schedules that list meeting segments and travel segments with explicit start and end times. Consider travel times in public information and agent availabilities.",
+                "prompt": "Generate a set of candidate schedules exploring different meeting start times, durations, and sequencing choices. Include at least three qualitatively different options for meeting Betty (for example, early evening, late evening, or not meeting) and compute arrival/departure times including travel. Provide each candidate with a numeric score estimating how well it satisfies objectives. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "review_schedules": {
+                "input": [
+                    "candidate_schedules",
+                    "environment->public_information"
+                ],
+                "output": "validated_schedules",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to detect and remove schedules that rely on bookkeeping shortcuts, implicit assumptions, or post-hoc adjustments. You must ensure every travel and meeting interval is explicitly feasible given travel times and availability windows.",
+                "prompt": "For each candidate schedule, verify temporal feasibility (no overlapping intervals, sufficient travel time between locations, meeting windows within availability). Remove or flag any schedule that uses shortcuts (tokens, quotas, or implicit penalties). Produce a validated list and annotate any fixes applied or reasons for rejection. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "create_pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "validated_schedules",
+                    "availability_betty",
+                    "state_traveler",
+                    "environment->public_information"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate inputs from the scheduler and auditor and produce a final PDDL domain and a PDDL problem targeted to the FastDownwards planner. Use clear, distinct actions where appropriate. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Use constructs accepted by FastDownwards (classic STRIPS or PDDL 2.1 durative actions as appropriate).",
+                "prompt": "Integrate validated schedules and environment facts to create a PDDL domain and problem encoding the meeting planning instance. Ensure travel durations and time windows are modeled explicitly and the minimum meeting duration constraint for Betty is enforced. Prefer temporal PDDL where needed and make clear which actions correspond to travel and meeting. Output the PDDL domain and the PDDL problem only, enclosed in <domain></domain> and <problem></problem> respectively."
+            }
+        },
+        "constraints": [
+            "traveler.provide_initial_state->scheduler.generate_schedules",
+            "betty.provide_availability->scheduler.generate_schedules",
+            "scheduler.generate_schedules->auditor.review_schedules",
+            "scheduler.generate_schedules->orchestrator.create_pddl",
+            "auditor.review_schedules->orchestrator.create_pddl",
+            "betty.provide_availability->orchestrator.create_pddl",
+            "traveler.provide_initial_state->orchestrator.create_pddl"
+        ]
+    }
+}

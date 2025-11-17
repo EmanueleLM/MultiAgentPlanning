@@ -1,0 +1,124 @@
+{
+    "name": "TripPlanningExample9",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "planner_frankfurt",
+            "planner_bucharest",
+            "planner_stuttgart",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_frankfurt": {
+            "private_information": [
+                "City: Frankfurt",
+                "Preferred stay: 3 days",
+                "Frankfurt has direct flights to Bucharest and Stuttgart"
+            ],
+            "goal": "Provide temporal preference and local constraints for visiting Frankfurt within a 10-day trip using only direct flights."
+        },
+        "planner_bucharest": {
+            "private_information": [
+                "City: Bucharest",
+                "Preferred stay: 3 days",
+                "Bucharest has a direct flight to Frankfurt only"
+            ],
+            "goal": "Provide temporal preference and local constraints for visiting Bucharest within a 10-day trip using only direct flights."
+        },
+        "planner_stuttgart": {
+            "private_information": [
+                "City: Stuttgart",
+                "Preferred stay: 6 days",
+                "Mandatory workshop attendance in Stuttgart between day 5 and day 10",
+                "Stuttgart has a direct flight to Frankfurt only"
+            ],
+            "goal": "Provide temporal preference and local constraints for visiting Stuttgart and ensure the workshop window is satisfied within the 10-day trip using only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across planners",
+                "Do not use bookkeeping shortcuts such as tokens or post-hoc penalties",
+                "Flag inconsistencies when sum of preferred days exceeds total available days or when connectivity constraints make a plan infeasible"
+            ],
+            "goal": "Examine the planners' outputs, remove or report invalid shortcuts, ensure causal and temporal feasibility, and provide reconciled constraints and recommendations for a feasible 10-day itinerary."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate planners' and auditor's outputs and produce a final PDDL domain and problem for a planner"
+            ],
+            "goal": "Produce a PDDL domain and problem (targeting the FastDownward solver) that encodes the 10-day trip planning task, the direct-flight connectivity constraints, stays per city, and the Stuttgart workshop window. Keep each agent's actions distinct in the PDDL encoding."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 10 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Direct flights exist between Bucharest and Frankfurt, and between Frankfurt and Stuttgart.",
+            "You must attend a workshop in Stuttgart between day 5 and day 10."
+        ]
+    },
+    "workflow": {
+        "planner_frankfurt": {
+            "analysis": {
+                "input": [],
+                "output": "info_frankfurt",
+                "system_prompt": "You are a local trip planner for Frankfurt. Describe local temporal preferences and any hard constraints related to Frankfurt. Do not emit PDDL. Provide explicit fields: city name, preferred_days, connectivity notes, and any hard time windows.",
+                "prompt": "Your name is planner_frankfurt. Use the public information {environment->public_information} and your private information {agents->planner_frankfurt->private_information}. State your local temporal preference and any hard constraints as a structured information artifact named info_frankfurt."
+            }
+        },
+        "planner_bucharest": {
+            "analysis": {
+                "input": [],
+                "output": "info_bucharest",
+                "system_prompt": "You are a local trip planner for Bucharest. Describe local temporal preferences and any hard constraints related to Bucharest. Do not emit PDDL. Provide explicit fields: city name, preferred_days, connectivity notes, and any hard time windows.",
+                "prompt": "Your name is planner_bucharest. Use the public information {environment->public_information} and your private information {agents->planner_bucharest->private_information}. State your local temporal preference and any hard constraints as a structured information artifact named info_bucharest."
+            }
+        },
+        "planner_stuttgart": {
+            "analysis": {
+                "input": [],
+                "output": "info_stuttgart",
+                "system_prompt": "You are a local trip planner for Stuttgart. Describe local temporal preferences and hard constraints including the mandatory workshop window. Do not emit PDDL. Provide explicit fields: city name, preferred_days, required_windows, connectivity notes.",
+                "prompt": "Your name is planner_stuttgart. Use the public information {environment->public_information} and your private information {agents->planner_stuttgart->private_information}. State your local temporal preference and any hard constraints as a structured information artifact named info_stuttgart."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "info_frankfurt",
+                    "info_bucharest",
+                    "info_stuttgart"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to examine the structured outputs from local planners, remove or report any bookkeeping shortcuts, detect and explain infeasibilities, and produce reconciled constraints and recommendations. Do not produce PDDL. Make explicit adjustments needed to make the problem feasible within total_days.",
+                "prompt": "Your name is auditor. Receive the planners' artifacts {info_frankfurt}, {info_bucharest}, {info_stuttgart} and the public information {environment->public_information}. Check for inconsistencies such as preferred days summing to more than total available days or unreachable transitions given direct-flight constraints. Produce an audit_report that lists detected issues and recommended reconciliations or alternate allocations of days that respect hard constraints (workshop window and connectivity)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "info_frankfurt",
+                    "info_bucharest",
+                    "info_stuttgart",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in producing final planning problems for the FastDownward solver. Integrate the planners' artifacts and the auditor report into a single consistent PDDL domain and PDDL problem. Keep agent actions distinct if modeling agent-specific actions. Encode the 10-day horizon, direct-flight connectivity constraints, required stays, and the Stuttgart workshop window. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownward planner by using STRIPS/AIPS-compatible constructs and a bounded makespan encoding if useful.",
+                "prompt": "Your name is orchestrator. Use the public information {environment->public_information}, the planners' artifacts {info_frankfurt}, {info_bucharest}, {info_stuttgart}, and the auditor's audit_report. Produce a PDDL domain and a PDDL problem that, when solved by FastDownward, yields a valid 10-day itinerary that uses only direct flights, satisfies the Stuttgart workshop window between day 5 and day 10, and respects reconciled stay durations. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_frankfurt.analysis->auditor.audit",
+            "planner_bucharest.analysis->auditor.audit",
+            "planner_stuttgart.analysis->auditor.audit",
+            "planner_frankfurt.analysis->orchestrator.pddl",
+            "planner_bucharest.analysis->orchestrator.pddl",
+            "planner_stuttgart.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,101 @@
+{
+    "name": "MysteryBlocksworld14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_a",
+            "planner_b",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_a": {
+            "private_information": [
+                "Focus on actions that reference hand, cats, texture, vase and next relations for objects with indices up to 12.",
+                "I have partial view of the first PLAN and the first STATEMENT from the use-case."
+            ],
+            "goal": "Analyze and formalize a consistent symbolic specification of the action preconditions and effects relevant to my assigned plan segment without emitting final PDDL."
+        },
+        "planner_b": {
+            "private_information": [
+                "Focus on actions that reference sneeze, stupendous, collect, spring and next relations for objects with indices beyond 4.",
+                "I have partial view of the second PLAN and the second STATEMENT from the use-case."
+            ],
+            "goal": "Analyze and formalize a consistent symbolic specification of the action preconditions and effects relevant to my assigned plan segment without emitting final PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to check temporal and causal consistency across the planner outputs and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I must detect cycles, impossible preconditions, and inconsistent use of the same relation with different intended semantics."
+            ],
+            "goal": "Produce an audit report that identifies temporal and causal inconsistencies and recommends concrete fixes to produce a clean causal model that can be translated into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will receive analyzed symbolic specifications from planners and the auditor report and must produce the final PDDL domain and problem targeted to the FastDownward solver.",
+                "Keep agent actions distinct and preserve causality and temporal ordering from the validated model."
+            ],
+            "goal": "Integrate planner analyses and the auditor report to produce a complete PDDL domain and PDDL problem compatible with the FastDownward solver that encodes the stated goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 13,
+            "visibility": 2
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted each acting on object arguments.",
+            "Action preconditions and effects are specified in the use-case: paltry requires hand, cats, texture, vase and next relations and makes next and deletes vase; sip requires hand, cats, texture and next patterns and makes vase while deleting a next; clip requires hand, sneeze, texture and next patterns and makes vase while deleting a next; wretched requires sneeze, texture, stupendous, next and collect relations and flips next relations; memory requires cats and spring relations and flips next relations; tightfisted requires hand, sneeze, texture and vase and flips next while deleting vase.",
+            "Two different STATEMENT blocks provide different initial conditions and goals and two corresponding PLAN sequences are proposed in the use-case.",
+            "The final goal variants include next relations such as next object_10 object_7, next object_11 object_7, next object_12 object_7 and alternative goals like next object_10 object_6, next object_11 object_7, next object_12 object_7, next object_9 object_6."
+        ]
+    },
+    "workflow": {
+        "planner_a": {
+            "analyze_segment": {
+                "input": [],
+                "output": "segment_report_a",
+                "system_prompt": "You are Planner A. You must analyze a provided subset of the use-case focused on actions involving hand cats texture vase and next relations and produce a precise symbolic specification of action names, parameter roles, preconditions and effects and enumerate any ambiguities you detect. Do not emit PDDL. Provide structured symbolic output suitable for later translation.",
+                "prompt": "Planner A receives public information and its private information and must inspect the first STATEMENT and the first PLAN segment. Provide a structured symbolic report listing action schemas, their typed parameters, required preconditions, add effects, delete effects, and note any missing or ambiguous references or assumed name equivalences."
+            }
+        },
+        "planner_b": {
+            "analyze_segment": {
+                "input": [],
+                "output": "segment_report_b",
+                "system_prompt": "You are Planner B. You must analyze a provided subset of the use-case focused on actions involving sneeze stupendous collect spring and next relations and produce a precise symbolic specification of action names, parameter roles, preconditions and effects and enumerate any ambiguities you detect. Do not emit PDDL. Provide structured symbolic output suitable for later translation.",
+                "prompt": "Planner B receives public information and its private information and must inspect the second STATEMENT and the second PLAN segment. Provide a structured symbolic report listing action schemas, their typed parameters, required preconditions, add effects, delete effects, and note any missing or ambiguous references or assumed name equivalences."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "segment_report_a",
+                    "segment_report_b"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-agent planning models. Your task is to detect cycles, impossible preconditions, inconsistent use of predicates, bookkeeping shortcuts, and post-hoc fixes in the combined planner outputs and to produce a clean, corrected causal model and a list of concrete fixes for translation. Do not emit PDDL. Focus on causal ordering and temporal feasibility and remove bookkeeping artifacts.",
+                "prompt": "You receive segment_report_a and segment_report_b. Cross-check them to find causal inconsistencies, duplicated or conflicting predicate meanings, implicit tokens or quotas, and any temporal cycles. Produce an audit_report that lists inconsistencies, recommended renamings or merges, suggested precondition/effect corrections, and a final validated causal ordering of actions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "segment_report_a",
+                    "segment_report_b",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the Orchestrator. Integrate planner reports and the auditor report and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownward solver. Keep agent actions distinct by prefixing action names with agent identifiers when needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, objects, initial state and goals are consistent and compatible with FastDownward.",
+                "prompt": "Using the validated causal model and the combined information from planners and auditor, generate a PDDL domain and a PDDL problem that encode the environment described in public_information and the initial STATEMENTs and goals provided. Target FastDownward compatibility. Preserve distinct agent action identities and ensure no bookkeeping shortcuts remain. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner_a.analyze_segment->auditor.audit",
+            "planner_b.analyze_segment->auditor.audit",
+            "planner_a.analyze_segment->orchestrator.pddl",
+            "planner_b.analyze_segment->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

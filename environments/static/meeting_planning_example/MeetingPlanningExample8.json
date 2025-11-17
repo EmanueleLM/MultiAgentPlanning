@@ -1,0 +1,104 @@
+{
+    "name": "MeetingPlanningExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "stephanie",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Chinatown at 09:00",
+                "I want to meet as many friends as possible during the day",
+                "I can travel between locations and must account for travel time"
+            ],
+            "goal": "Maximize the number of friends met and ensure meeting Stephanie for at least 105 minutes."
+        },
+        "stephanie": {
+            "private_information": [
+                "I will be at Marina District from 08:00 to 15:00",
+                "I am available to meet any time within that interval"
+            ],
+            "goal": "Meet with the traveler for at least 105 minutes while at Marina District between 08:00 and 15:00."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of proposed schedules",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, and unrealistically compressed transitions"
+            ],
+            "goal": "Validate and correct schedules to be temporally consistent, causally feasible, and realistic."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent inputs and produce a final PDDL domain and problem file suitable for the FastDownwards solver that encodes the scheduling problem and optimization objective."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Chinatown",
+            "arrival_time": "09:00",
+            "locations": [
+                "Chinatown",
+                "MarinaDistrict"
+            ]
+        },
+        "public_information": [
+            "Travel time Chinatown to Marina District is 12 minutes",
+            "Travel time Marina District to Chinatown is 16 minutes",
+            "You arrive at Chinatown at 09:00",
+            "Stephanie will be at Marina District from 08:00 to 15:00",
+            "You would like to meet Stephanie for a minimum of 105 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan": {
+                "input": [],
+                "output": "traveler_plan",
+                "system_prompt": "You are the traveler planning candidate meeting schedules for the day considering public information and your private constraints. Provide multiple alternative schedules that specify locations, meeting start and end times, durations, and travel legs with travel durations accounted for. Do not emit PDDL.",
+                "prompt": "Your role is traveler. Use the public information and your private information to produce several feasible schedule options. Each option should list chronological steps: location visits, meeting partners and their planned meeting durations, departure and arrival times between locations, and total time spent meeting. Highlight any assumptions made explicitly."
+            }
+        },
+        "stephanie": {
+            "availability": {
+                "input": [],
+                "output": "stephanie_availability",
+                "system_prompt": "You represent Stephanie's availability and preferences. Provide a clear availability profile and any preferences or constraints for meeting times while at Marina District. Do not emit PDDL.",
+                "prompt": "Your role is stephanie. State exact availability intervals, any preferred meeting windows within 08:00-15:00, and any constraints on minimum continuous meeting length. Provide concise, machine-friendly availability output."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_plan",
+                    "stephanie_availability"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency. Inspect proposed schedules and availability for violations, unrealistic shortcuts, or implicit bookkeeping hacks. Provide corrected schedules or annotations removing shortcuts and ensuring feasibility. Do not emit PDDL.",
+                "prompt": "Your role is auditor. Given the traveler's schedule options and Stephanie's availability, identify temporal conflicts, unrealistic transitions, or implicit assumptions like unlimited teleportation or ignored travel durations. Provide corrected schedule options or clear corrections and a short rationale for each correction."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_plan",
+                    "stephanie_availability",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates other agents' outputs and produces a final PDDL domain and PDDL problem targeted to the FastDownwards solver. You must encode temporal constraints (meeting durations, travel durations, arrival windows) and an objective to maximize meetings while enforcing Stephanie's minimum meeting length of 105 minutes. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for distinct agents separate and clearly named. The PDDL should be compatible with FastDownwards and include any necessary durative-action encodings and metric specifications.",
+                "prompt": "Your role is orchestrator. Integrate the traveler's schedule options, Stephanie's availability, and the auditor's corrections. Resolve naming mismatches and produce a complete PDDL domain and PDDL problem encoding the scheduling optimization. The domain should include location movement actions with travel durations, meeting actions with required durations, time windows for Stephanie, and an objective to maximize number of meetings subject to meeting Stephanie at least 105 minutes. Output only the PDDL domain and problem enclosed in <domain> and <problem> tags respectively."
+            }
+        },
+        "constraints": [
+            "traveler.plan->auditor.audit",
+            "stephanie.availability->auditor.audit",
+            "traveler.plan->orchestrator.pddl",
+            "stephanie.availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

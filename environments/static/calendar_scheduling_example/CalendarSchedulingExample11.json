@@ -1,0 +1,129 @@
+{
+    "name": "CalendarSchedulingExample11",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "alexander",
+            "elizabeth",
+            "walter",
+            "auditor",
+            "orchestrator"
+        ],
+        "alexander": {
+            "private_information": [
+                "I am Alexander",
+                "I am busy on Monday 09:30-10:00",
+                "I am busy on Monday 10:30-11:00",
+                "I am busy on Monday 12:30-13:00",
+                "I am busy on Monday 14:30-15:00",
+                "I am busy on Monday 16:00-17:00"
+            ],
+            "goal": "Provide my precise availability intervals on Monday during work hours for scheduling a 30 minute meeting."
+        },
+        "elizabeth": {
+            "private_information": [
+                "I am Elizabeth",
+                "I am busy on Monday 09:00-09:30",
+                "I am busy on Monday 11:30-12:30",
+                "I am busy on Monday 13:00-14:30"
+            ],
+            "goal": "Provide my precise availability intervals on Monday during work hours for scheduling a 30 minute meeting."
+        },
+        "walter": {
+            "private_information": [
+                "I am Walter",
+                "I am busy on Monday 09:00-14:30",
+                "I am busy on Monday 15:30-17:00"
+            ],
+            "goal": "Provide my precise availability intervals on Monday during work hours for scheduling a 30 minute meeting."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of schedules",
+                "I detect and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and I normalize availability intervals"
+            ],
+            "goal": "Take participants availability reports, verify temporal consistency, resolve overlaps or formatting shortcuts, and produce a cleaned availability report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate agents and produce the final planning specification",
+                "The final output must be a PDDL domain and problem targeting the FastDownward solver"
+            ],
+            "goal": "Integrate cleaned availability information and produce a PDDL domain and problem that encodes the scheduling task for FastDownward to find a 30 minute meeting slot on Monday between 09:00 and 17:00 that fits all participants."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting on Monday between 09:00 and 17:00",
+            "All participants are Alexander, Elizabeth, and Walter",
+            "There exists at least one solution that fits the existing schedules",
+            "Time is represented in 30 minute granularity for this scheduling task"
+        ]
+    },
+    "workflow": {
+        "alexander": {
+            "collect_availability": {
+                "input": [],
+                "output": "availability_alexander",
+                "system_prompt": "You are a participant and scheduling expert for yourself. Provide an exact list of busy intervals and deduced free intervals within the public work hours for Monday. Do not emit PDDL. Use ISO style times and 24h clock and express intervals as strings like '09:00-09:30'.",
+                "prompt": "Your name is Alexander. Public information: {environment->public_information}. Your private information: {agents->alexander->private_information}. Your goal: {agents->alexander->goal}. Provide your availability and any constraints or preferences relevant for scheduling a 30 minute meeting. Output a structured availability summary under the key availability_alexander."
+            }
+        },
+        "elizabeth": {
+            "collect_availability": {
+                "input": [],
+                "output": "availability_elizabeth",
+                "system_prompt": "You are a participant and scheduling expert for yourself. Provide an exact list of busy intervals and deduced free intervals within the public work hours for Monday. Do not emit PDDL. Use ISO style times and 24h clock and express intervals as strings like '09:00-09:30'.",
+                "prompt": "Your name is Elizabeth. Public information: {environment->public_information}. Your private information: {agents->elizabeth->private_information}. Your goal: {agents->elizabeth->goal}. Provide your availability and any constraints or preferences relevant for scheduling a 30 minute meeting. Output a structured availability summary under the key availability_elizabeth."
+            }
+        },
+        "walter": {
+            "collect_availability": {
+                "input": [],
+                "output": "availability_walter",
+                "system_prompt": "You are a participant and scheduling expert for yourself. Provide an exact list of busy intervals and deduced free intervals within the public work hours for Monday. Do not emit PDDL. Use ISO style times and 24h clock and express intervals as strings like '09:00-09:30'.",
+                "prompt": "Your name is Walter. Public information: {environment->public_information}. Your private information: {agents->walter->private_information}. Your goal: {agents->walter->goal}. Provide your availability and any constraints or preferences relevant for scheduling a 30 minute meeting. Output a structured availability summary under the key availability_walter."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_alexander",
+                    "availability_elizabeth",
+                    "availability_walter"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency for schedules. Your task is to analyze participant availability reports, normalize interval formatting, detect and correct any overlapping or contradictory claims, remove bookkeeping shortcuts, and produce a cleaned, canonical availability report for each participant. Do not emit PDDL.",
+                "prompt": "You are the auditor. Public information: {environment->public_information}. Inputs: {availability_alexander}, {availability_elizabeth}, {availability_walter}. Your goal: {agents->auditor->goal}. Produce a cleaned availability summary for each participant and an assessment of any assumptions you had to make."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_alexander",
+                    "availability_elizabeth",
+                    "availability_walter",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL targeting the FastDownward solver. Your output must be a PDDL domain and a PDDL problem that encodes the scheduling task and is suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agents actions distinct if modeling multi-agent actions. Ensure time representation and meeting duration are encoded to allow FastDownward to find a 30 minute slot on Monday between 09:00 and 17:00 that fits all participants.",
+                "prompt": "You are the orchestrator. Public information: {environment->public_information}. Inputs are the participants availability and the auditor report: {availability_alexander}, {availability_elizabeth}, {availability_walter}, {audit_report}. Your goal: {agents->orchestrator->goal}. Integrate the cleaned availabilities and produce a PDDL domain and a PDDL problem targeted at the FastDownward solver that captures the scheduling constraints. Enclose the domain within <domain></domain> and the problem within <problem></problem>."
+            }
+        },
+        "constraints": [
+            "alexander.collect_availability->auditor.audit",
+            "elizabeth.collect_availability->auditor.audit",
+            "walter.collect_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

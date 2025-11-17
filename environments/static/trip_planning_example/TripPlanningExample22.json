@@ -1,0 +1,114 @@
+{
+    "name": "TripPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I would like to visit Frankfurt for 4 days.",
+                "I want to spend 2 days in Bucharest.",
+                "I would like to visit Berlin for 7 days.",
+                "I only take direct flights between cities."
+            ],
+            "goal": "Visit the three cities in some order and allocate days to each city consistent with the 11 day total trip."
+        },
+        "scheduler": {
+            "private_information": [
+                "Direct flights exist between Berlin and Frankfurt, and between Frankfurt and Bucharest.",
+                "No direct flight exists between Berlin and Bucharest in the given network.",
+                "Flights are used to commute between cities only when direct flights exist."
+            ],
+            "goal": "Provide feasible sequencing and flight connectivity constraints so the trip uses only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency.",
+                "I will remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and flag contradictory duration sums."
+            ],
+            "goal": "Audit proposed itineraries and scheduling constraints, detect and resolve inconsistencies so the plan is temporally and causally coherent and sums to 11 days."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce a final PDDL domain and problem suitable for the FastDownwards solver to find an 11 day trip plan using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Berlin",
+                "Frankfurt",
+                "Bucharest"
+            ],
+            "direct_flights": [
+                [
+                    "Berlin",
+                    "Frankfurt"
+                ],
+                [
+                    "Frankfurt",
+                    "Bucharest"
+                ]
+            ],
+            "annual_show": {
+                "city": "Berlin",
+                "show_days": [
+                    1,
+                    7
+                ]
+            }
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 11 days in total.",
+            "You only take direct flights to commute between cities.",
+            "You would like to visit Frankfurt for 4 days, Bucharest for 2 days, and Berlin for 7 days. These preferences may conflict with the total of 11 days and must be reconciled.",
+            "From day 1 to day 7 there is an annual show in Berlin that is of interest.",
+            "Direct flights exist between Berlin and Frankfurt, and between Frankfurt and Bucharest. No direct flight is listed between Berlin and Bucharest."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "itinerary": {
+                "input": [],
+                "output": "itinerary_traveler",
+                "system_prompt": "You are the traveler agent. Provide a proposed day by day allocation and a high level itinerary that reflects your preferences and the public information. If the sum of requested days conflicts with the total trip length, clearly indicate the conflict and propose alternative allocations that respect the total of 11 days while preserving attendance at the Berlin show between day 1 and day 7."
+            }
+        },
+        "scheduler": {
+            "schedule": {
+                "input": [],
+                "output": "schedule_constraints",
+                "system_prompt": "You are the scheduler agent. Given the network of direct flights, produce sequencing constraints and feasible commuting transitions. State which city-to-city transitions are possible in one direct flight leg. Indicate travel day costs if any and any constraints about ordering required to use only direct flights. Do not produce PDDL, produce structured constraints and a timeline suggestion."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent. Check temporal and causal consistency of proposed itineraries and schedule constraints. Detect contradictions such as durations that sum to more than the total trip length. Remove or call out bookkeeping shortcuts and post hoc fixes. Provide a corrected consistent allocation that sums to 11 days or clearly explain why no consistent allocation exists and propose minimal adjustments."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_traveler",
+                    "schedule_constraints",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi agent planning and PDDL. Integrate the outputs from the traveler, the scheduler, and the auditor. Produce a PDDL domain and a PDDL problem suitable for the FastDownwards solver. Keep agent actions distinct where relevant and represent cities, days, and direct flight connectivity explicitly. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should model days 1 through 11, attendance of the Berlin show between days 1 and 7 if the plan includes being in Berlin during those days, and require that all travel legs use only direct flights."
+            }
+        },
+        "constraints": [
+            "traveler.itinerary->orchestrator.pddl",
+            "scheduler.schedule->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

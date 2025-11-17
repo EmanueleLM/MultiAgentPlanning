@@ -1,0 +1,120 @@
+{
+    "name": "Depots13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I can perform the actions: paltry, sip, clip, wretched, memory, tightfisted with the prescribed arities.",
+                "I know the informal preconditions and effects of each action as provided by the use case.",
+                "Initial facts available to me include cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, hand object_11, hand object_12, next object_0 object_6, next object_1 object_8, next object_10 object_9, next object_11 object_6, next object_12 object_6, next object_4 object_7, next object_5 object_8, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+                "A candidate plan was proposed in the use case. Use that as a starting point but check preconditions and effects before accepting steps."
+            ],
+            "goal": "Reach the goal state where next object_10 object_7, next object_11 object_9 and next object_12 object_8 or the alternate goal variant described in the input."
+        },
+        "observer": {
+            "private_information": [
+                "I monitor state transitions and trace the state after each action in a proposed plan.",
+                "I have access to the same public action descriptions and the player's plan when provided."
+            ],
+            "goal": "Produce a step by step state trajectory for a given plan, and flag where preconditions are unsatisfied or effects conflict."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in removing bookkeeping shortcuts such as ephemeral quota tokens or post-hoc penalties.",
+                "I will identify places where the plan relies on bookkeeping shortcuts or hidden assumptions and will propose concrete corrections."
+            ],
+            "goal": "Audit a candidate plan and the observed state trace, identify causal gaps, suggest concrete fixes and produce a concise report that eliminates bookkeeping shortcuts and ensures causal and temporal consistency."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the players, observer and auditor outputs and synthesize a final formal specification suitable for an automated planner.",
+                "The resulting PDDL must be compatible with FastDownwards and must keep agents actions distinct if needed for multi-agent reasoning."
+            ],
+            "goal": "Produce a final PDDL domain and problem that captures the actions, predicates, initial state and goals, ready to be solved by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_objects": 13,
+            "objects": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8",
+                "object_9",
+                "object_10",
+                "object_11",
+                "object_12"
+            ]
+        },
+        "public_information": [
+            "Available actions: paltry(subject, cats_obj, texture_obj), sip(subject, cats_obj, texture_obj), clip(subject, sneeze_obj, texture_obj), wretched(sneeze_obj1, texture_obj1, texture_obj2, stupendous_obj), memory(cats_obj, spring_obj1, spring_obj2), tightfisted(subject, sneeze_obj, texture_obj) using the arities implied in the use case.",
+            "Key predicates include hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), collect(X,Y), sneeze(X), spring(X), stupendous(X).",
+            "For each action the use case lists required true predicates as preconditions and lists effects that become true or false after execution. For example paltry requires hand, cats, texture, vase and next facts and makes next true while removing vase.",
+            "Two distinct initial scenario variants were provided in the use case. Plans should reference a single consistent initial statement set; discrepancies must be flagged by the auditor."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analysis": {
+                "input": [],
+                "output": "player_plan",
+                "system_prompt": "You are a planning specialist that produces human readable stepwise plans and explicit step-level precondition and effect checks. Do not emit PDDL directly. Focus on producing a clear ordered plan, list preconditions that must hold before each step, list effects after each step, and highlight any missing or ambiguous facts that would be needed to make the step executable.",
+                "prompt": "Your name is player. You have the following public information: {environment->public_information} You have the following private information: {agents->player->private_information} This is the planning goal: {agents->player->goal} Produce a step by step plan to reach the goal. For each step, include the action, the exact arguments as object identifiers, the preconditions you require to hold at that step, and the expected effects. If you rely on facts not present in the private information, mark them explicitly as assumptions."
+            }
+        },
+        "observer": {
+            "note": {
+                "input": [
+                    "player_plan"
+                ],
+                "output": "observer_trace",
+                "system_prompt": "You are an observer that converts a proposed plan into a concrete state trajectory. Do not emit PDDL. Produce an initial state snapshot, then for each step apply the stated effects and produce the next snapshot. Identify and flag any step where stated preconditions are not satisfied by the prior snapshot.",
+                "prompt": "Your name is observer. You have the following public information: {environment->public_information} You have the following private information: {agents->observer->private_information} Given the player's plan {player_plan}, produce a step by step state trace beginning from the declared initial facts. For each step include the state before the step, verify preconditions, apply effects, and show the state after the step. Mark conflicts or ambiguities."
+            }
+        },
+        "auditor": {
+            "report": {
+                "input": [
+                    "player_plan",
+                    "observer_trace"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor specialized in causal and temporal consistency and in eliminating bookkeeping shortcuts. Produce a concise report that identifies causal gaps, temporal issues such as unmet preconditions, and any reliance on bookkeeping shortcuts. Provide resolved alternatives that remove shortcuts and make the plan causally sound. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You have the following public information: {environment->public_information} You have the following private information: {agents->auditor->private_information} Your inputs are the player's plan {player_plan} and the observer's state trace {observer_trace}. Produce a report enumerating every causal or temporal inconsistency, explain why it is a problem, and propose specific fixes or additional steps and state changes that eliminate bookkeeping shortcuts and restore causal soundness. Present the corrected minimal changes required for a sound plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_plan",
+                    "observer_trace",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You must synthesize a complete PDDL domain and PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use the player action names as action schemas but keep actions distinct when necessary to preserve actor intent. Integrate the auditor's corrections to remove bookkeeping shortcuts and ensure temporal and causal consistency. The PDDL should be expressible in classical STRIPS as expected by FastDownwards unless a clear necessity for additional features is identified and justified.",
+                "prompt": "There are multiple artifacts to integrate: the player's proposed plan {player_plan}, the observer's state trace {observer_trace}, and the auditor's report {auditor_report}. Your task is to produce a PDDL domain and a PDDL problem that (1) correctly models the predicates hand, cats, texture, vase, next, collect, sneeze, spring, stupendous and any other predicates required by the auditor, (2) encodes the action preconditions and effects consistent with the auditor-corrected plan, (3) encodes the corrected initial state and the stated goal, and (4) is targeted for the FastDownwards solver. Keep agent actions distinct when needed and document any modeling decisions as short comments in the PDDL problem file."
+            }
+        },
+        "constraints": [
+            "player.analysis->observer.note",
+            "observer.note->auditor.report",
+            "player.analysis->auditor.report",
+            "player.analysis->orchestrator.pddl",
+            "observer.note->orchestrator.pddl",
+            "auditor.report->orchestrator.pddl"
+        ]
+    }
+}

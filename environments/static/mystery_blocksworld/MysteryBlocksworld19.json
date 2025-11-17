@@ -1,0 +1,108 @@
+{
+    "name": "MysteryBlocksworld19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "recorder",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I can perform actions: paltry, sip, clip, wretched, memory, tightfisted with parameters referring to objects.",
+                "I have the human natural language plans as sequences of grounded action invocations in two scenarios.",
+                "I know that plans may include object indices up to object_11."
+            ],
+            "goal": "Propose and justify a concrete symbolic plan to reach the stated goal using the available actions and the provided statements."
+        },
+        "recorder": {
+            "private_information": [
+                "My job is to convert human description into formal atomic facts, object lists, initial states and goal statements.",
+                "I have two separate human statement blocks each containing initial facts, a goal, and a proposed plan."
+            ],
+            "goal": "Extract and normalize objects, predicates, initial facts and the human plan steps into a consistent symbolic representation."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and in removing bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I must detect hidden assumptions, incompatible preconditions and effects, and any steps that rely on ephemeral bookkeeping artifacts."
+            ],
+            "goal": "Audit plans and extracted facts for causal and temporal consistency, remove bookkeeping shortcuts, and produce a vetted step sequence with explicit preconditions and effects."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the outputs of other agents and produce the final PDDL domain and problem tailored to the FastDownwards solver.",
+                "I must keep agent actions distinct and annotate which agent originated each action."
+            ],
+            "goal": "Integrate the normalized facts and the vetted plan into a coherent PDDL domain and problem. Target the FastDownwards planner and ensure typing, requirements and solvability."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count_estimate": 12,
+            "naming_convention": "object_0, object_1, ..., object_11"
+        },
+        "public_information": [
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted with arities between 3 and 4.",
+            "paltry preconditions: hand X, cats Y, texture Z, vase X Y, next Y Z. paltry effects: add next X Z. paltry deletes: vase X Y.",
+            "sip preconditions: hand X, cats Y, texture Z, next X Z, next Y Z. sip effects: add vase X Y. sip deletes: next X Z.",
+            "clip preconditions: hand X, sneeze Y, texture Z, next Y Z, next X Z. clip effects: add vase X Y. clip deletes: next X Z.",
+            "wretched preconditions: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W. wretched effects: add next X Z. wretched deletes: next X Y.",
+            "memory preconditions: cats X, spring Y, spring Z, next X Y. memory effects: add next X Z. memory deletes: next X Y.",
+            "tightfisted preconditions: hand X, sneeze Y, texture Z, next Y Z, vase X Y. tightfisted effects: add next X Z. tightfisted deletes: vase X Y.",
+            "There are two human-provided statement blocks. Each block contains an initial fact set, a goal of the form next A B, and a human plan of grounded actions.",
+            "Plans provided by humans may include repeated object names and different initial fact variants. Plans may rely on ephemeral bookkeeping facts which must be audited."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "propose_plan": {
+                "input": [],
+                "output": "player_plan",
+                "system_prompt": "You are the planning player agent. Convert the human plan sketches and the action vocabulary into a concrete ordered symbolic plan. Do not emit PDDL. Represent each step as a JSON-like object identifying the action name, argument list, and which human plan or statement block it came from. Annotate any missing preconditions you assume.",
+                "prompt": "Your name is player. Use the public information and your private knowledge to formalize the human plans into an ordered list of grounded actions with arguments and assumed preconditions. If information is missing, mark the assumption explicitly rather than inventing facts."
+            }
+        },
+        "recorder": {
+            "extract_facts": {
+                "input": [],
+                "output": "extracted_facts",
+                "system_prompt": "You are the recording agent. Extract constants, predicate signatures, initial facts, and explicit goal formulas from the natural language statement blocks. Normalize object names and produce a canonical fact list. Do not emit PDDL.",
+                "prompt": "Your name is recorder. From the human statements extract the set of objects, the initial predicates and the goal predicate for each statement block. Produce a canonical list of predicate tuples such as ['cats','object_0'] and list the goal as ['next','object_11','object_10'] or similar. Note any contradictions between statement blocks."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "player_plan",
+                    "extracted_facts"
+                ],
+                "output": "vetted_plan",
+                "system_prompt": "You are the auditor. Your role is to check temporal and causal consistency and to remove bookkeeping shortcuts and post-hoc artifacts. Identify steps that rely on implicit tokens or quota bookkeeping and replace them with explicit causal steps or flag them for revision. Provide a corrected step sequence and a brief justification for each modification. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Given the grounded plan and the extracted facts, verify that each action step has its preconditions satisfied by prior steps or initial facts. Remove or rewrite any steps that depend on bookkeeping shortcuts. Return the vetted plan and a list of corrections with explanations."
+            }
+        },
+        "orchestrator": {
+            "generate_pddl": {
+                "input": [
+                    "player_plan",
+                    "extracted_facts",
+                    "vetted_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a final PDDL domain and a PDDL problem tailored to the FastDownwards solver. Integrate the normalized predicates, object declarations, and the vetted action sequences. Keep actions distinct by annotating which agent proposed them in comments. Use PDDL constructs supported by FastDownwards and include appropriate :requirements and :types if needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make no use of planner-specific bookkeeping shortcuts in the semantics. Ensure the resulting domain and problem are internally consistent and solvable where possible.",
+                "prompt": "Your name is orchestrator. Use the extracted facts, the player's plan, and the auditor's vetted plan to build a coherent PDDL domain and problem for the FastDownwards planner. Keep action names unique and annotate provenance. Emit the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "player.propose_plan->auditor.audit",
+            "recorder.extract_facts->auditor.audit",
+            "player.propose_plan->orchestrator.generate_pddl",
+            "recorder.extract_facts->orchestrator.generate_pddl",
+            "auditor.audit->orchestrator.generate_pddl"
+        ]
+    },
+    "constraints": []
+}

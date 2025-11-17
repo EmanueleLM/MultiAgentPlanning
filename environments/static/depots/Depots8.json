@@ -1,0 +1,99 @@
+{
+    "name": "Depots8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "auditor",
+            "scribe",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I can perform the following actions with object arguments: paltry, sip, clip, wretched, memory, tightfisted following the use case mapping of preconditions and effects.",
+                "Action schemas reference predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring."
+            ],
+            "goal": "Propose a concrete sequence of actions that can achieve specified next relations from given initial facts and support extraction of an action model."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency and for removing bookkeeping shortcuts like quota tokens and post hoc penalties used as informal crutches.",
+                "I pay attention to implicit assumptions about uniqueness of objects, aliasing, and action atomicity."
+            ],
+            "goal": "Analyze candidate plans and action specifications for causal soundness and temporal feasibility and produce corrections or warnings."
+        },
+        "scribe": {
+            "private_information": [
+                "I am responsible for transcribing the natural language descriptions, statements, and plans into a structured formal specification but I do not output PDDL directly.",
+                "I collect predicates, constants, and a canonical naming mapping from the use case and both statement blocks."
+            ],
+            "goal": "Produce a consolidated structured specification of predicates, constants, initial facts, goals, and draft action schemas suitable for a planner author to convert to PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from other agents and produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep actions distinct per original actor roles and ensure the resulting PDDL is consistent with auditor corrections."
+            ],
+            "goal": "Integrate the extracted specifications and audit reports and output a PDDL domain and problem ready to be solved by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count_estimate": 11,
+            "modeling_notes": "Predicates include hand, cats, texture, vase, next, sneeze, stupendous, collect, spring. Actions available are paltry, sip, clip, wretched, memory, tightfisted."
+        },
+        "public_information": [
+            "There is a finite set of objects labeled object_0 through object_10.",
+            "Available actions are paltry, sip, clip, wretched, memory, tightfisted. Each action has preconditions and effects described in the use case.",
+            "Initial statements and two problem instances were provided. Goals involve establishing specific next relations between objects.",
+            "Plans were proposed in the use case. The auditor agent will check for hidden bookkeeping shortcuts and temporal or causal inconsistencies."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "spec_player",
+                "system_prompt": "You are a domain expert who knows the informal action descriptions from the play session. Your job is to interpret the natural language action descriptions into a structured list of action schemas with explicit parameter lists, required preconditions, positive effects, and negative effects. Do not emit PDDL. Provide consistent naming suggestions for predicates and arguments and flag any ambiguities that require disambiguation.",
+                "prompt": "Agent player receives the public information and its private information and goal. Use the use case action descriptions and the provided plan fragments to produce a structured specification of each action's parameters, preconditions, add effects, and delete effects. If you encounter missing information or ambiguous object references, document the ambiguity instead of making silent assumptions."
+            }
+        },
+        "scribe": {
+            "extract": {
+                "input": [],
+                "output": "spec_scribe",
+                "system_prompt": "You are an expert technical scribe. Your job is to transcribe the raw statements and plan fragments into a canonical formal representation consisting of a list of typed constants, a list of predicate signatures, the explicit set of initial ground facts per problem instance, and the stated goals. Do not emit PDDL. Provide an explicit mapping from natural labels to canonical constant names.",
+                "prompt": "Agent scribe consolidates the two STATEMENT blocks and the PLAN blocks into structured data. Produce two separate initial states and goal sets corresponding to the two statement blocks and the plan fragments. Report any inconsistencies between the statements and the provided plans."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "spec_player",
+                    "spec_scribe"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal audit expert. Your job is to review the structured specifications and initial states for implicit bookkeeping shortcuts and temporal or causal inconsistencies. Suggest concrete revisions to action schemas and initial facts to remove informal crutches, ensure action atomicity, and preserve causal links. Output a corrective report that the orchestrator can apply. Do not output PDDL.",
+                "prompt": "Agent auditor receives the player specification and the scribe extraction. Check for dependencies that rely on informal tokens or post hoc fixes. Recommend explicit predicates or constraints to replace shortcuts and produce a cleaned specification and a list of required disambiguations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_player",
+                    "spec_scribe",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing domains and problems for the FastDownwards planner. Integrate the structured specifications and the auditor corrections. Produce a complete PDDL domain and a PDDL problem tailored to FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and ensure predicates and constants are consistently named. Prefer STRIPS-compatible constructs and avoid planner-specific extensions that FastDownwards might not support.",
+                "prompt": "Agent orchestrator must integrate the scribe extraction, player action schemas, and auditor corrections to create a final PDDL domain and problem for each of the two provided problem instances. Ensure the domain captures the action preconditions and effects exactly as corrected by the auditor and that the problems encode the respective initial facts and goals. Output the domain and problem pair and label them for FastDownwards."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.pddl",
+            "scribe.extract->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

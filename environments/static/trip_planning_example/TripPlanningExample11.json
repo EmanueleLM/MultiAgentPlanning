@@ -1,0 +1,97 @@
+{
+    "name": "TripPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "flight_finder",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "Preferred stays: Vienna 5 days, Vilnius 5 days, Valencia 7 days",
+                "Prefer direct flights only",
+                "Goal is to attend conferences in Valencia on days 9 and 15"
+            ],
+            "goal": "Propose a day-by-day itinerary covering up to 15 days total that visits Vienna, Vilnius, and Valencia, respecting direct-flight constraints and conference days."
+        },
+        "flight_finder": {
+            "private_information": [
+                "Available direct flights: Vienna <-> Valencia, Vilnius <-> Vienna",
+                "No direct flights between Vilnius and Valencia"
+            ],
+            "goal": "Provide feasible direct-flight commutes (dates and legs) that enable the itinerary, given the available direct connections."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency, detect & remove bookkeeping shortcuts (e.g., post-hoc penalties, quota tokens, implicit day-skipping).",
+                "Focus on ensuring that total days, stay durations, flight times (commutation days), and conference attendance constraints are consistent and realizable with direct flights."
+            ],
+            "goal": "Audit proposed itineraries and flight schedules for temporal/causal consistency, flag contradictions (e.g., stay durations that exceed total trip length), and propose corrected allocations without using bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and produce a final PDDL domain and problem targeted to the FastDownwards solver that models the 15-day trip, direct-flight commuting constraints, stays per city, and required conference attendance."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 15
+        },
+        "public_information": [
+            "Trip length is 15 days total.",
+            "Cities to visit: Vienna, Vilnius, Valencia.",
+            "Direct flights exist between Vienna and Valencia, and between Vilnius and Vienna.",
+            "There are conference events in Valencia on days 9 and 15.",
+            "You may only commute between cities using direct flights."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "analysis": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are an itinerary planner. Use the public information and your private stay preferences to produce a concrete day-by-day itinerary proposal (which city for each day index 1..15) and note where flights must occur. Do not output PDDL; produce a structured itinerary that includes proposed stay durations per city, the specific days when flights occur, and explicit coverage of conference days.",
+                "prompt": "Agent: itinerary_planner. Public information: {environment->public_information} Your private information: {agents->itinerary_planner->private_information} Your task: {agents->itinerary_planner->goal} Provide a clear day-by-day itinerary proposal for days 1..15, list planned flights (day, origin, destination), and indicate any assumptions you make. Do not assume extra days beyond 15. If any internal inconsistency exists in your private information (e.g., stay totals exceed trip length), flag it in your proposal."
+            }
+        },
+        "flight_finder": {
+            "analysis": {
+                "input": [],
+                "output": "flight_options",
+                "system_prompt": "You are a flight-finding agent. Given the public direct-flight graph, provide feasible flight legs and scheduling constraints that enable the itinerary planner's proposed commutes. Provide flight durations as single-day commutes (flights occupy the transition between consecutive days). Do not emit PDDL.",
+                "prompt": "Agent: flight_finder. Public information: {environment->public_information} Your private information: {agents->flight_finder->private_information} Your task: {agents->flight_finder->goal} Given a proposed itinerary (or if none is provided yet, produce generic feasible flight-leg options), list valid flight legs, which days they can be scheduled on, and any temporal constraints (e.g., cannot be in two cities on the same day). Provide explicit constraints that the orchestrator can use."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_options"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal auditor focused on causal and temporal soundness. Examine itinerary proposals and flight schedules and remove or flag any bookkeeping shortcuts (such as implicit multi-day teleportation, post-hoc penalties, or tokens that hide day consumption). Produce a corrected itinerary or a list of required adjustments that respect total days, direct-flight constraints, and conference attendance. Do not output PDDL.",
+                "prompt": "Agent: temporal_auditor. Public information: {environment->public_information} Your private information: {agents->temporal_auditor->private_information} Inputs: {itinerary_proposal}, {flight_options} Your task: {agents->temporal_auditor->goal} Check for contradictions (e.g., proposed stays sum to more than 15 days, flights scheduled on non-existent direct legs, conferences missed). Provide a corrected day-by-day schedule or explicit correction suggestions with rationale and minimal necessary changes. Do not use bookkeeping shortcuts; make explicit day allocations and flight days."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_options",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating agent outputs and producing the final PDDL domain and PDDL problem files targeted to the FastDownwards solver. The PDDL must model days (1..15), cities, direct-flight actions (one-day transitions), stay semantics (being located in a city for specific days), and mandatory conference attendance constraints in Valencia on days 9 and 15. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure predicates and actions are compatible with FastDownwards (use STRIPS/ADL constructs supported by FastDownwards), and keep agents' conceptual actions distinct if you model agent-specific capabilities.",
+                "prompt": "Agent: orchestrator. Public information: {environment->public_information} Inputs: {itinerary_proposal}, {flight_options}, {audit_report} Your task: {agents->orchestrator->goal} Integrate the inputs, resolve any remaining inconsistencies, and produce a final PDDL domain and problem that encodes a feasible 15-day trip using only direct flights, ensures presence in Valencia on days 9 and 15, and represents flight/day transitions explicitly. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.analysis->orchestrator.pddl",
+            "flight_finder.analysis->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,122 @@
+{
+    "name": "TripPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "Total available days: 11",
+                "Personal preferences: Berlin for 6 days, Porto for 2 days, Krakow for 5 days",
+                "Important event: wedding in Porto between day 10 and day 11"
+            ],
+            "goal": "Visit Berlin, Porto, and Krakow within 11 days using only direct flights while attending the wedding in Porto on the planned date."
+        },
+        "scheduler": {
+            "private_information": [
+                "Direct flights are available between Berlin and Porto and between Krakow and Berlin",
+                "Each intercity flight is assumed to consume one travel day",
+                "Stays must occupy whole days and cannot overlap travel days"
+            ],
+            "goal": "Propose feasible sequences of city visits and day allocations that respect direct flight connectivity and the 11 day limit."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: evaluate temporal and causal consistency of proposed itineraries",
+                "Role: remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and require explicit feasible allocations"
+            ],
+            "goal": "Detect and report inconsistencies between requested durations and total available days, propose corrected allocations or identify irreconcilable conflicts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate traveler preferences, scheduler proposals, and auditor findings into a single executable planning problem",
+                "Target solver: FastDownwards"
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem that encode a feasible 11 day trip using only direct flights and that respects the wedding constraint in Porto."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Berlin",
+                "Porto",
+                "Krakow"
+            ],
+            "direct_flights": [
+                [
+                    "Berlin",
+                    "Porto"
+                ],
+                [
+                    "Krakow",
+                    "Berlin"
+                ]
+            ],
+            "travel_day_cost": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "You plan to visit three European cities for a total of 11 days",
+            "Direct flights exist between Berlin and Porto and between Krakow and Berlin",
+            "There is a wedding in Porto that must be attended between day 10 and day 11",
+            "Stays occupy full calendar days and flights consume one full travel day"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "spec": {
+                "input": [],
+                "output": "traveler_spec",
+                "system_prompt": "You are the traveler providing personal constraints and preferences. Describe explicit desired day allocations, the nonnegotiable wedding attendance constraint, any soft preferences, and any flexibility you have. Do not emit PDDL.",
+                "prompt": "You are the traveler. Use the public information and your private information to produce a concise structured specification of your preferences and hard constraints. Provide requested durations and mark which items are hard constraints and which are preferences. Output must be plain structured text suitable for downstream planning modules."
+            }
+        },
+        "scheduler": {
+            "schedule_proposal": {
+                "input": [
+                    "traveler_spec"
+                ],
+                "output": "schedule_fragment",
+                "system_prompt": "You are the itinerary scheduler. Take the traveler's specification and the public information about flights. Propose one or more concrete candidate itineraries as sequences of city stays and travel days. Ensure every candidate respects direct flight connectivity. Do not emit PDDL.",
+                "prompt": "You are the scheduler. Given the traveler specification and the public flight connectivity, produce feasible itinerary fragments. Each fragment must list the visit order, which days are spent in each city, and which days are travel days. If a candidate violates the travel graph or total days, mark it invalid rather than assuming extra resources."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_spec",
+                    "schedule_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal auditor. Your job is to detect inconsistencies and remove bookkeeping shortcuts. Check that durations sum to the total available days, verify that the wedding constraint is satisfied, and ensure travel days are placed only where direct flights exist. Produce an explicit correction proposal if the original desires are infeasible. Do not emit PDDL.",
+                "prompt": "You are the auditor. Analyze the traveler's requested allocations and the scheduler's proposals. Report any conflicts, explain why they occur, and propose minimal, justified changes to arrive at a consistent allocation that can be encoded into a planner. Do not use tokens or post-hoc penalties as fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_spec",
+                    "schedule_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL encoding for FastDownwards. Integrate the traveler's specification, the scheduler proposals, and the auditor's corrections. Produce a complete PDDL domain and a PDDL problem that encode the itinerary planning task for the single agent traveler subject to the 11 day horizon, with flight actions constrained to the declared direct flights and with the Porto wedding attendance constraint enforced. Keep actions and predicates clearly namespaced to avoid ambiguity. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Target the FastDownwards planner.",
+                "prompt": "You are the orchestrator. Use the traveler specification, scheduler fragments, and the auditor report to build a final PDDL domain and problem suitable for FastDownwards. The final PDDL must represent days 1 through 11, city occupancy facts, flight actions that are only allowed for declared direct flight pairs, and a goal that the traveler's city occupancy schedule satisfies the wedding attendance and overall feasibility. Keep all agent-originated constraints distinct and respected. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.spec->scheduler.schedule_proposal",
+            "traveler.spec->auditor.audit",
+            "scheduler.schedule_proposal->auditor.audit",
+            "traveler.spec->orchestrator.pddl",
+            "scheduler.schedule_proposal->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

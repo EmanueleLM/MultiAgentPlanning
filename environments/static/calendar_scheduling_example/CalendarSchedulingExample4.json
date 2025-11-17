@@ -1,0 +1,120 @@
+{
+    "name": "CalendarSchedulingExample4",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "donna",
+            "john",
+            "billy",
+            "auditor",
+            "orchestrator"
+        ],
+        "donna": {
+            "private_information": [
+                "Busy on Monday 14:00-14:30",
+                "Busy on Monday 15:30-16:00"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants"
+        },
+        "john": {
+            "private_information": [
+                "Busy on Monday 11:00-11:30",
+                "Busy on Monday 16:30-17:00"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants"
+        },
+        "billy": {
+            "private_information": [
+                "Busy on Monday 09:00-10:00",
+                "Busy on Monday 10:30-14:00",
+                "Busy on Monday 14:30-17:00"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants"
+        },
+        "auditor": {
+            "private_information": [
+                "Role is to validate temporal and causal consistency and to remove bookkeeping shortcuts"
+            ],
+            "goal": "Validate and normalize availability reports and remove any ambiguous or shorthand representations before planning"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinator that will produce final planning artifacts for the solver"
+            ],
+            "goal": "Produce a PDDL domain and problem suitable for FastDownwards that schedules a 30 minute meeting on Monday between 09:00 and 17:00 respecting all validated busy intervals"
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_day": "Monday",
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "meeting_duration_minutes": 30,
+            "time_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting for Donna John and Billy on Monday between 09:00 and 17:00",
+            "All times are given in local work hours and are closed intervals start inclusive end exclusive for conflicts",
+            "A solution exists that fits every participant's existing schedule",
+            "Preferred meeting duration is 30 minutes"
+        ]
+    },
+    "workflow": {
+        "donna": {
+            "report_schedule": {
+                "input": [],
+                "output": "availability_donna",
+                "system_prompt": "You are Donna's calendar agent. Provide Donna's busy intervals for Monday as a JSON array of objects each with keys start and end using HH:MM 24-hour format. Include any soft preferences if present. Do not emit PDDL.",
+                "prompt": "Agent donna. Use public information {environment->public_information} and your private information {agents->donna->private_information} and produce Donna availability for Monday as a JSON object named availability_donna containing busy intervals and a summary of free windows. Output only structured data."
+            }
+        },
+        "john": {
+            "report_schedule": {
+                "input": [],
+                "output": "availability_john",
+                "system_prompt": "You are John's calendar agent. Provide John's busy intervals for Monday as a JSON array of objects each with keys start and end using HH:MM 24-hour format. Include any soft preferences if present. Do not emit PDDL.",
+                "prompt": "Agent john. Use public information {environment->public_information} and your private information {agents->john->private_information} and produce John availability for Monday as a JSON object named availability_john containing busy intervals and a summary of free windows. Output only structured data."
+            }
+        },
+        "billy": {
+            "report_schedule": {
+                "input": [],
+                "output": "availability_billy",
+                "system_prompt": "You are Billy's calendar agent. Provide Billy's busy intervals for Monday as a JSON array of objects each with keys start and end using HH:MM 24-hour format. Include any soft preferences if present. Do not emit PDDL.",
+                "prompt": "Agent billy. Use public information {environment->public_information} and your private information {agents->billy->private_information} and produce Billy availability for Monday as a JSON object named availability_billy containing busy intervals and a summary of free windows. Output only structured data."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_donna",
+                    "availability_john",
+                    "availability_billy"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Validate and normalize incoming availability reports. Detect and resolve shorthand and bookkeeping shortcuts. Expand ranges, check for overlapping or malformed intervals, convert intervals to the environment time resolution, and return both normalized availability and a list of detected issues. Do not emit PDDL.",
+                "prompt": "Agent auditor. Receive the following availabilities {availability_donna} {availability_john} {availability_billy}. Validate all intervals against the environment init parameters {environment->init}. Normalize times to the resolution meeting_duration_minutes and time_resolution_minutes. Remove any implicit assumptions and produce audit_report as a JSON object with keys normalized_availabilities and issues. normalized_availabilities should map agent names to arrays of busy intervals. issues should be empty if none found."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_donna",
+                    "availability_john",
+                    "availability_billy",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Produce a PDDL domain and a PDDL problem suitable for the FastDownwards planner. Use a discretized time slot model consistent with time_resolution_minutes and meeting_duration_minutes from the environment init. Encode participant-specific blocking of slots based on the validated audit_report. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Ensure the produced PDDL is complete and targets FastDownwards.",
+                "prompt": "Agent orchestrator. Use public information {environment->public_information}, environment init {environment->init}, agent private information {agents->donna->private_information} {agents->john->private_information} {agents->billy->private_information}, and the validated normalized availabilities from {audit_report}. Produce a PDDL domain and a PDDL problem that encodes time slots from work_start to work_end at time_resolution_minutes and enforces that the meeting occupies consecutive slots equal to meeting_duration_minutes. The goal is to schedule one meeting slot assignment that is free for Donna John and Billy on meeting_day. Keep agent actions and constraints distinct if modeling individual agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Output only the PDDL artifacts and minimal comments, no additional narrative."
+            }
+        },
+        "constraints": [
+            "donna.report_schedule->auditor.audit",
+            "john.report_schedule->auditor.audit",
+            "billy.report_schedule->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

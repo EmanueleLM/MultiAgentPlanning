@@ -1,0 +1,102 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player_primary",
+            "player_secondary",
+            "auditor",
+            "orchestrator"
+        ],
+        "player_primary": {
+            "private_information": [
+                "I have a local view of a playground of many objects labeled object_0 through object_12 in various relations.",
+                "I know a set of available action schemas: paltry, sip, clip, wretched, memory, tightfisted with the rough parameter ordering described in the scenario.",
+                "I know one initial scenario instance containing facts such as cats object_0, collect object_5 object_1, collect object_6 object_1, collect object_7 object_2, collect object_8 object_2, hand object_10, hand object_11, hand object_9, next object_0 object_5, next object_10 object_5, next object_11 object_5, next object_3 object_6, next object_4 object_7, next object_9 object_8, sneeze object_3, sneeze object_4, spring object_5, spring object_7, stupendous object_1, stupendous object_2, texture object_5, texture object_6, texture object_7, texture object_8.",
+                "I know the first scenario goal: next object_10 object_8, next object_11 object_7, next object_9 object_6.",
+                "I possess a candidate step sequence labeled PLAN for the first scenario."
+            ],
+            "goal": "Interpret the first scenario instance and produce a structured analysis of action usages, parameter bindings, preconditions, and effects that would justify or refute the candidate plan steps."
+        },
+        "player_secondary": {
+            "private_information": [
+                "I know a second scenario instance with its own initial facts: cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10, hand object_11, hand object_12, next object_0 object_6, next object_1 object_8, next object_10 object_9, next object_11 object_6, next object_12 object_6, next object_4 object_7, next object_5 object_8, sneeze object_4, sneeze object_5, spring object_6, spring object_8, stupendous object_2, stupendous object_3, texture object_6, texture object_7, texture object_8, texture object_9.",
+                "I know the second scenario goal: next object_10 object_7, next object_11 object_9, next object_12 object_8.",
+                "I possess a placeholder for a planned step sequence for the second scenario."
+            ],
+            "goal": "Interpret the second scenario instance and produce a structured analysis of action usages, parameter bindings, preconditions, and effects that would enable reaching the stated goal or explain why it cannot be reached."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency across proposed action sequences and to identify and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I know common modeling shortcuts that can hide inconsistencies like implicit persistence assumptions on predicates next, vase, or collect."
+            ],
+            "goal": "Provide a clean audit report that normalizes preconditions and effects, identifies causal dependencies, resolves naming mismatches, and removes bookkeeping shortcuts so downstream planners receive a temporally and causally explicit specification."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I receive structured analyses and audit reports from the other agents.",
+                "I must synthesize a final PDDL domain and PDDL problem suitable for the FastDownwards solver that encodes the scenario, constraints, and the goal facts."
+            ],
+            "goal": "Integrate inputs and produce a final PDDL domain and PDDL problem that target the FastDownwards solver and are consistent across agents' views."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 12,
+            "visibility": 2
+        },
+        "public_information": [
+            "There is a finite set of labeled objects object_0 through object_12 that participate in binary and unary relations such as hand, cats, sneeze, spring, stupendous, texture, collect, vase, and next.",
+            "Available high-level action schemas are paltry, sip, clip, wretched, memory, tightfisted. Each schema takes multiple object parameters and has specified preconditions and effects in the human description.",
+            "Example precondition patterns include requirements on hand, cats, sneeze, texture, next, collect, spring, stupendous, and vase predicates.",
+            "Example effect patterns include toggling next relations and toggling vase relations according to the action schema described in the scenario.",
+            "There are two scenario instances in the specification. Each instance contains a list of initial ground facts and a goal expressed as a conjunction of next relations.",
+            "Agents must avoid making unstated assumptions when producing formal models and must preserve distinct action identities and parameter roles."
+        ]
+    },
+    "workflow": {
+        "player_primary": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_player_primary",
+                "system_prompt": "You are an analyst agent. Your job is to read a scenario instance and the described action schemas and produce a structured analysis. Provide for each action step a mapping of parameter roles, the minimal explicit preconditions required from the scenario text, the explicit add and delete effects, and any implicit persistence assumptions you detect. Do not emit final PDDL. Keep output structured and unambiguous so an orchestrator can consume it."
+            }
+        },
+        "player_secondary": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_player_secondary",
+                "system_prompt": "You are a secondary analyst agent. Your job is to read the alternative scenario instance and the described action schemas and produce a structured analysis comparable to the primary analyst. Highlight any naming mismatches or object aliasing concerns and enumerate the candidate parameter bindings for the provided plan. Do not emit final PDDL. Keep output structured and unambiguous so an orchestrator can consume it."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_player_primary",
+                    "analysis_player_secondary"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Receive structured analyses from analysts. Your job is to remove bookkeeping shortcuts such as implicit quotas, tokens, or post-hoc penalties, to expand implicit persistence into explicit frame axioms where necessary, to flag and correct temporal ordering errors, and to produce a cleaned, causally explicit model description. Produce an audit report that lists normalization actions, explicit causal chains for each produced effect, and any unresolved ambiguities. Do not emit final PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_player_primary",
+                    "analysis_player_secondary",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent compilation to PDDL and your target planner is FastDownwards. Receive the analysts' structured analyses and the auditor's cleaned audit report. Your job is to integrate them, resolve remaining naming mismatches, and produce a single coherent PDDL domain and a PDDL problem that encode one scenario instance chosen by the orchestrator's integration strategy. Keep agent actions distinct by prefixing action names with the originating agent label when necessary. Ensure all preconditions and effects are explicit and remove any bookkeeping shortcuts. Produce a PDDL domain and a PDDL problem file suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You will receive structured analyses and an audit report. Integrate them into a final PDDL domain and problem that are FastDownwards-ready. Keep action identities distinct and make no implicit persistence assumptions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "player_primary.analyze->orchestrator.pddl",
+            "player_secondary.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

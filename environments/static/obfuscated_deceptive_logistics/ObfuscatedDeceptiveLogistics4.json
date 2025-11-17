@@ -1,0 +1,112 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "scenario_parser",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "scenario_parser": {
+            "private_information": [
+                "Role: parse human textual statements and plans into structured facts, fluents, and action sequences.",
+                "Input fragments include action names paltry, sip, clip, wretched, memory, tightfisted and object tokens object_0..object_9.",
+                "Two example problem blocks are given as natural language STATEMENT and PLAN sections and must be extracted without making extra assumptions."
+            ],
+            "goal": "Produce a structured representation of initial facts, goals, and candidate plan steps for each provided scenario."
+        },
+        "simulator": {
+            "private_information": [
+                "Role: apply action schemas to structured scenario inputs to check applicability and to produce forward simulation traces.",
+                "Action preconditions and effects are encoded in the environment public information and must be respected during simulation.",
+                "Simulator should report which actions in a plan are applicable, which change state, and any intermediate state reached."
+            ],
+            "goal": "Validate reachability of stated goals under the given action preconditions and effects and produce a deterministic execution trace when possible."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across parsed scenarios and simulation traces.",
+                "Responsible to detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, ephemeral markers, or other tactics that artificially satisfy preconditions without legitimate causal support.",
+                "Provide canonicalized facts and a corrective report describing removals or required clarifications."
+            ],
+            "goal": "Produce a corrected, causally coherent version of the scenario inputs and simulation trace with bookkeeping shortcuts removed and a justification for each change."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate parsed scenarios, simulation traces, and audit reports and produce a final PDDL domain and PDDL problem files suitable for the FastDownwards planner.",
+                "Keep actions of multiple agents distinct when encoding multi-agent behaviors and preserve causal constraints identified by the auditor."
+            ],
+            "goal": "Emit a complete PDDL domain and PDDL problem that models the scenarios and aims to reach the stated goals using FastDownwards appropriate constructs."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 10,
+            "time_horizon": 50
+        },
+        "public_information": [
+            "Actions available: paltry object_0 object_1 object_2; sip object_0 object_1 object_2; clip object_0 object_1 object_2; wretched object_0 object_1 object_2 object_3; memory object_0 object_1 object_2; tightfisted object_0 object_1 object_2.",
+            "paltry preconditions: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2. paltry add effects: next object_0 object_2. paltry del effects: vase object_0 object_1.",
+            "sip preconditions: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2. sip add effects: vase object_0 object_1. sip del effects: next object_0 object_2.",
+            "clip preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2. clip add effects: vase object_0 object_1. clip del effects: next object_0 object_2.",
+            "wretched preconditions: sneeze object_0, texture object_1, texture object_2, stupendous object_3, next object_0 object_1, collect object_1 object_3, collect object_2 object_3. wretched add effects: next object_0 object_2. wretched del effects: next object_0 object_1.",
+            "memory preconditions: cats object_0, spring object_1, spring object_2, next object_0 object_1. memory add effects: next object_0 object_2. memory del effects: next object_0 object_1.",
+            "tightfisted preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1. tightfisted add effects: next object_0 object_2. tightfisted del effects: vase object_0 object_1.",
+            "Example STATEMENT blocks include initial facts such as cats object_X, collect object_X object_Y, hand object_X, next object_A object_B, sneeze object_X, spring object_X, stupendous object_X, texture object_X, and goals expressed as next predicates.",
+            "Example PLAN blocks are sequences of grounded action instantiations referencing available objects and must be parsed and validated."
+        ]
+    },
+    "workflow": {
+        "scenario_parser": {
+            "parse": {
+                "input": [],
+                "output": "parsed_scenarios",
+                "system_prompt": "You are an expert scenario parser for textual planning problems. Extract initial facts, goals, object lists, and the candidate plan steps from each STATEMENT and PLAN block into a structured machine-readable representation. Do not invent facts not present in the text. Flag ambiguous references instead of resolving them autonomously.",
+                "prompt": "Your name is scenario_parser. You are given the environment public information and a human use-case containing STATEMENT and PLAN blocks. Produce for each block a JSON-like structure listing objects, initial facts, goals, and an ordered list of planned actions with their grounded arguments. If a plan step mentions objects not in the initial facts, record that as a missing object note."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "parsed_scenarios"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic state simulator for the extracted scenarios. Given structured facts and grounded actions plus the action preconditions and effects from the public information, step the world forward and produce a step-by-step trace marking which actions were applicable and the resulting state. Do not perform any corrective deletions; only simulate what follows from the inputs and effect rules.",
+                "prompt": "Your name is simulator. Use {parsed_scenarios} and the environment public information to simulate plan execution. For each action report applicability, applied add effects, removed facts, and resulting state snapshot. If an action is inapplicable, report the specific unsatisfied preconditions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "parsed_scenarios",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor whose job is to detect and remove bookkeeping shortcuts and post-hoc fixes that undermine causal legitimacy. Identify tokens or constructs that act as quota shortcuts, ephemeral markers, or post-hoc penalties that make preconditions true without legitimate causal chains. Produce a corrected set of facts and an audit log describing each removal or required clarification.",
+                "prompt": "Your name is auditor. Given {parsed_scenarios} and {simulation_trace}, analyze temporal and causal consistency and remove bookkeeping shortcuts. For each change, provide the justification and the minimal corrective adjustment to the scenario so it remains solvable without introducing ad hoc markers. Output a canonicalized fact set and a human-readable audit log."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "parsed_scenarios",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL orchestrator targeting the FastDownwards planner. Integrate parsed scenarios, simulation traces, and the auditor's corrections to produce a single coherent PDDL domain and one or more PDDL problem files suitable for FastDownwards. Keep agent-specific actions distinct by using action name prefixes or typed parameters when needed. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem></problem> tags. Ensure types, predicates, initial states, objects, and goal statements are explicit and consistent with the auditor's canonicalized facts.",
+                "prompt": "Your name is orchestrator. Use {parsed_scenarios}, {simulation_trace}, and {audit_report} to synthesize a final PDDL domain and PDDL problem targeting the FastDownwards solver. Keep multi-agent actions distinct and avoid relying on bookkeeping shortcuts. Provide the PDDL domain enclosed in <domain></domain> and the PDDL problem enclosed in <problem></problem>. If multiple problem instances are present, produce one problem per instance."
+            }
+        },
+        "constraints": [
+            "scenario_parser.parse->simulator.simulate",
+            "scenario_parser.parse->auditor.audit",
+            "simulator.simulate->auditor.audit",
+            "scenario_parser.parse->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

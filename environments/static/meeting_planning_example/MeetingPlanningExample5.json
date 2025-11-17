@@ -1,0 +1,129 @@
+{
+    "name": "MeetingPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler",
+            "william",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00",
+                "I want to meet as many friends as possible today",
+                "I can travel between Nob Hill and The Castro"
+            ],
+            "goal": "Maximize the number of friends met while respecting arrival times, travel times, and friends availability."
+        },
+        "william": {
+            "private_information": [
+                "I will be at The Castro from 12:15 to 22:00",
+                "I require at least 75 minutes for a meeting"
+            ],
+            "goal": "Meet the traveler for at least 75 minutes sometime between 12:15 and 22:00 at The Castro."
+        },
+        "scheduler": {
+            "private_information": [
+                "I know travel durations between key locations",
+                "I can generate candidate schedules and tradeoffs"
+            ],
+            "goal": "Produce candidate schedules that respect travel times, arrival constraints, and meeting duration requirements."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties"
+            ],
+            "goal": "Audit schedules for temporal feasibility and causal correctness and produce cleaned, implementation-ready schedules."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I combine analyses into a single planning problem",
+                "I must produce a PDDL domain and problem suitable for FastDownwards"
+            ],
+            "goal": "Integrate schedules and audits and emit a final PDDL domain and problem that FastDownwards can solve to pick the best meeting schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Nob Hill",
+            "arrival_time": "09:00",
+            "locations": [
+                "Nob Hill",
+                "The Castro"
+            ]
+        },
+        "public_information": [
+            "Travel time from Nob Hill to The Castro is 17 minutes",
+            "Travel time from The Castro to Nob Hill is 16 minutes",
+            "You arrive at Nob Hill at 09:00",
+            "William will be at The Castro from 12:15 to 22:00",
+            "You would like to meet William for a minimum of 75 minutes",
+            "Objective is to meet as many friends as possible given constraints"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "analyze_preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent. Your role is to state personal constraints preferences and soft objectives for the day. Do not emit PDDL. Provide structured preferences including earliest start times maximum continuous travel tolerance and preferred meeting durations.",
+                "prompt": "Your name is traveler. Use the public information and your private information to produce a concise list of constraints priorities and soft preferences that the scheduler can use to build candidate itineraries."
+            }
+        },
+        "william": {
+            "availability_statement": {
+                "input": [],
+                "output": "william_availability",
+                "system_prompt": "You are William as an information agent. Your role is to restate your availability windows and meeting requirements. Do not emit PDDL. Provide exact time windows and minimal meeting duration requirements.",
+                "prompt": "Your name is william. Provide a clear, machine friendly statement of your availability and minimum meeting duration based on your private information."
+            }
+        },
+        "scheduler": {
+            "generate_schedules": {
+                "input": [
+                    "traveler_preferences",
+                    "william_availability"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are the scheduler agent. Your role is to generate multiple candidate schedules that trade off number of meetings, travel times, and meeting duration requirements. Do not emit PDDL. Produce schedules with explicit timed events locations travel legs and computed feasibility metrics such as total travel time and slack.",
+                "prompt": "Your name is scheduler. Using the public information and received preference and availability inputs, produce a diverse set of candidate schedules. Each candidate must include start and end times for meetings explicit travel segments and a feasibility score."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are the auditor agent. Your role is to verify temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties. Do not emit PDDL. Return cleaned schedules with explicit justifications for any adjustments and a flag for schedules that violate hard constraints.",
+                "prompt": "Your name is auditor. Inspect each candidate schedule for temporal conflicts insufficient travel time overlapping meetings or other causal issues. Correct schedules where possible and annotate any that must be discarded."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "audited_schedules",
+                    "traveler_preferences",
+                    "william_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your role is to integrate candidate schedules audited corrections and agent preferences into a single PDDL domain and a single PDDL problem file suitable for input to the FastDownwards planner. Emit a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep agent actions distinct if modeling multiple actors. Target constructs compatible with FastDownwards and avoid solver-specific shortcuts. If information is missing represent it explicitly as a parameter or a comment in PDDL.",
+                "prompt": "Your name is orchestrator. Use the candidate schedules the audited schedules and the stated preferences and availability to produce a final PDDL domain and a PDDL problem that encode the scheduling task. The planner goal should prefer schedules that meet William for at least 75 minutes and maximize meetings overall. Ensure the PDDL is compatible with FastDownwards and keep agent actions and resources explicitly separated."
+            }
+        },
+        "constraints": [
+            "traveler.analyze_preferences->scheduler.generate_schedules",
+            "william.availability_statement->scheduler.generate_schedules",
+            "scheduler.generate_schedules->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "scheduler.generate_schedules->orchestrator.pddl",
+            "traveler.analyze_preferences->orchestrator.pddl",
+            "william.availability_statement->orchestrator.pddl"
+        ]
+    }
+}

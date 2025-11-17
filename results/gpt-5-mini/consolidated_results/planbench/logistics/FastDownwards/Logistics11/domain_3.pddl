@@ -1,0 +1,137 @@
+(define (domain logistics11)
+  (:requirements :strips :negative-preconditions)
+  (:predicates
+    (texture ?o)
+    (spring ?o)
+    (vase ?o ?p)
+    (next ?o ?p)
+    (collect ?o ?p)
+    (hand ?o)
+    (cats ?o)
+    (sneeze ?o)
+    (stupendous ?o)
+    (stage ?t)
+    (succ ?t ?t2)
+    (current ?t)
+  )
+
+  ;; Every action advances the global discrete stage from ?t to its successor ?t2.
+  ;; This enforces a strict, contiguous, monotonic progression of time steps.
+  ;; Actions include the original preconditions/effects augmented with the
+  ;; current-stage requirement and the stage transition effects.
+
+  (:action paltry
+    :parameters (?o0 ?o1 ?o2 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (vase ?o0 ?o1)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+
+  (:action sip
+    :parameters (?o0 ?o1 ?o2 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (next ?o0 ?o2)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+
+  (:action clip
+    :parameters (?o0 ?o1 ?o2 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (next ?o0 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+
+  (:action wretched
+    :parameters (?o0 ?o1 ?o2 ?o3 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (sneeze ?o0)
+      (texture ?o1)
+      (texture ?o2)
+      (stupendous ?o3)
+      (next ?o0 ?o1)
+      (collect ?o1 ?o3)
+      (collect ?o2 ?o3)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+
+  (:action memory
+    :parameters (?o0 ?o1 ?o2 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (cats ?o0)
+      (spring ?o1)
+      (spring ?o2)
+      (next ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+
+  (:action tightfisted
+    :parameters (?o0 ?o1 ?o2 ?t ?t2)
+    :precondition (and
+      (current ?t)
+      (succ ?t ?t2)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (vase ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+      (not (current ?t))
+      (current ?t2)
+    )
+  )
+)

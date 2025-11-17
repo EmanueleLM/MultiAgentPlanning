@@ -1,0 +1,132 @@
+(define (domain logistics22)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types object stage)
+  (:predicates
+    (hand ?o - object)
+    (cats ?o - object)
+    (texture ?o - object)
+    (vase ?o1 - object ?o2 - object)
+    (next ?o1 - object ?o2 - object)
+    (sneeze ?o - object)
+    (stupendous ?o - object)
+    (collect ?o1 - object ?o2 - object)
+    (spring ?o - object)
+    (succ ?s1 - stage ?s2 - stage)
+    (cur ?s - stage)
+  )
+
+  (:action paltry
+    :parameters (?h - object ?c - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (hand ?h)
+      (cats ?c)
+      (texture ?t)
+      (vase ?h ?c)
+      (next ?c ?t)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (next ?h ?t)
+      (not (vase ?h ?c))
+    )
+  )
+
+  (:action sip
+    :parameters (?h - object ?c - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (hand ?h)
+      (cats ?c)
+      (texture ?t)
+      (next ?h ?t)
+      (next ?c ?t)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (vase ?h ?c)
+      (not (next ?h ?t))
+    )
+  )
+
+  (:action clip
+    :parameters (?h - object ?s - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (hand ?h)
+      (sneeze ?s)
+      (texture ?t)
+      (next ?s ?t)
+      (next ?h ?t)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (vase ?h ?s)
+      (not (next ?h ?t))
+    )
+  )
+
+  (:action wretched
+    :parameters (?s - object ?t1 - object ?t2 - object ?sp - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (sneeze ?s)
+      (texture ?t1)
+      (texture ?t2)
+      (stupendous ?sp)
+      (next ?s ?t1)
+      (collect ?t1 ?sp)
+      (collect ?t2 ?sp)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (next ?s ?t2)
+      (not (next ?s ?t1))
+    )
+  )
+
+  (:action memory
+    :parameters (?c - object ?s1 - object ?s2 - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (cats ?c)
+      (spring ?s1)
+      (spring ?s2)
+      (next ?c ?s1)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (next ?c ?s2)
+      (not (next ?c ?s1))
+    )
+  )
+
+  (:action tightfisted
+    :parameters (?h - object ?s - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cur ?st)
+      (succ ?st ?st2)
+      (hand ?h)
+      (sneeze ?s)
+      (texture ?t)
+      (next ?s ?t)
+      (vase ?h ?s)
+    )
+    :effect (and
+      (not (cur ?st))
+      (cur ?st2)
+      (next ?h ?t)
+      (not (vase ?h ?s))
+    )
+  )
+)

@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "route_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a multi-city trip to Venice, Florence and Zurich.",
+                "I would like to visit Venice for 6 days.",
+                "I would like to visit Florence for 6 days.",
+                "I plan to stay in Zurich for 2 days.",
+                "I intend the whole trip to last 12 days total."
+            ],
+            "goal": "Express precise stay-duration preferences and any ordering flexibility for the 12-day trip."
+        },
+        "route_planner": {
+            "private_information": [
+                "Cities: Venice, Florence, Zurich.",
+                "Direct flights exist between Venice and Zurich (bidirectional).",
+                "Direct flights exist from Zurich to Florence (direct).",
+                "No direct flight between Venice and Florence is available."
+            ],
+            "goal": "Provide a structured model of the transport network and feasible commutes using only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts."
+            ],
+            "goal": "Identify and reconcile inconsistencies in durations & constraints (for example, sum of desired days exceeding total) and flag required adjustments or assumptions."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from the other agents and produce a final PDDL domain and problem suitable for the FastDownwards solver that encodes the 12-day trip plan using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 12,
+            "cities": [
+                "Venice",
+                "Florence",
+                "Zurich"
+            ]
+        },
+        "public_information": [
+            "You plan a trip over multiple European cities for a fixed total of 12 days.",
+            "Only direct flights may be used to commute between cities.",
+            "Direct flights exist between Venice and Zurich (bidirectional) and from Zurich to Florence (direct).",
+            "There is no direct flight between Venice and Florence; travel between them requires transiting through Zurich.",
+            "The planner should allocate days to cities respecting the travel network and auditor adjustments."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "collect": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler. Provide a concise, structured specification of your stay-duration preferences, hard requirements, and any acceptable flexibility or ordering constraints. Do not emit PDDL.",
+                "prompt": "Your private information: {agents->traveler->private_information} Public info: {environment->public_information} Produce a structured preferences object describing desired days per city, whether those durations are hard requirements or soft preferences, and any ordering or visit-sequence constraints."
+            }
+        },
+        "route_planner": {
+            "model": {
+                "input": [],
+                "output": "network_model",
+                "system_prompt": "You are the route planner. Encode the transport network (cities and direct flights), directionality, and any travel-time simplifications relevant to planning. Do not emit PDDL.",
+                "prompt": "Your private information: {agents->route_planner->private_information} Public info: {environment->public_information} Produce a structured network model listing nodes (cities), directed edges (direct flights), and constraints on transitions (e.g., which flights are bidirectional)."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_preferences",
+                    "network_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Your job is to detect contradictions (for example, the sum of desired days exceeding total available days), remove bookkeeping shortcuts, and recommend reconciliations or explicit assumptions. Produce a clear audit report; do not emit PDDL.",
+                "prompt": "You will receive the traveler's preferences and the route planner's network model. Check for temporal inconsistencies, impossible itineraries given the direct-flight constraints, and any implicit bookkeeping shortcuts. Produce an audit report that either reconciles inconsistencies by proposing minimal adjustments (and explain them) or lists unresolved conflicts that the orchestrator must handle."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "network_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning targeting the FastDownwards solver. Integrate the travelers' preferences, the transport network model, and the auditor's report. Resolve remaining ambiguities conservatively, keep agent-level concerns distinct when relevant, and produce a final, self-contained PDDL domain and problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the traveler preferences, the route planner's network_model, and the auditor_report to produce a PDDL domain and problem that encodes: allocating exactly 12 days of visiting Venice, Florence, and Zurich using only direct flights specified; representing 'move' actions for direct flights and 'stay' actions for allocating days in cities; and enforcing reconciliations from the auditor. State any assumptions inside comments in the PDDL. The output must be ready for FastDownwards."
+            }
+        },
+        "constraints": [
+            "traveler.collect->auditor.audit",
+            "route_planner.model->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.collect->orchestrator.pddl",
+            "route_planner.model->orchestrator.pddl"
+        ]
+    }
+}

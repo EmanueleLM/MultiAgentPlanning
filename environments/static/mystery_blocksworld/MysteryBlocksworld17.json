@@ -1,0 +1,106 @@
+{
+    "name": "MysteryBlocksworld17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_agent",
+            "simulator_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "I know the set of high level actions available: paltry, sip, clip, wretched, memory, tightfisted",
+                "I know the informal precondition and effect descriptions for each action as provided in the use case",
+                "I know there are objects named object_0 through object_13 referenced in the scenario"
+            ],
+            "goal": "Analyze the action descriptions and the provided plans to extract canonical, variable-agnostic preconditions and effects and to normalize predicate names and object argument positions"
+        },
+        "simulator_agent": {
+            "private_information": [
+                "I can take a canonical action model and a concrete plan and compute a deterministic state trace of facts being added and removed",
+                "I have the initial facts from the statements and I can simulate the plan sequences"
+            ],
+            "goal": "Simulate the concrete plan steps using the canonical action models and produce a step by step state trace showing which predicates become true or false at each step"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and removing bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I will identify cycles, hidden dependencies, and any uses of ephemeral bookkeeping facts and propose canonical replacements"
+            ],
+            "goal": "Audit the canonical model and the simulated trace to detect temporal or causal inconsistencies, remove bookkeeping shortcuts, and propose corrected preconditions and effects suitable for a sound PDDL model"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate reports from the other agents and produce the final formal domain and problem files targeting the FastDownwards planner",
+                "I must keep actions distinct per agent where relevant and resolve naming ambiguities"
+            ],
+            "goal": "Merge the analyzer, simulator, and auditor outputs and produce a final PDDL domain and PDDL problem file formatted for the FastDownwards solver"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Objects in the world are named object_0 through object_13",
+            "Predicates in the informal model include hand, cats, texture, vase, next, collect, sneeze, spring, stupendous",
+            "Available actions with their informal constraints are paltry, sip, clip, wretched, memory, tightfisted",
+            "Initial condition fragments and two alternative initial statements and two goals were provided in the use case text",
+            "The planning target is to achieve certain next predicates between specified objects"
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "analyze": {
+                "input": [],
+                "output": "planner_report",
+                "system_prompt": "You are an expert analyst of action schemas. Extract canonical action signatures, normalize predicate names and argument orders, and produce for each action a concise list of preconditions and effects in variable form. Do not emit PDDL. Focus on clarity, disambiguation of objects, and list any assumptions and ambiguities found.",
+                "prompt": "Your name is planner_agent. Use the public information about objects and predicates and the private information you have. Produce a canonicalized action model for paltry, sip, clip, wretched, memory, and tightfisted. List any ambiguous references and unresolved object index overlaps and annotate which parts of the provided plan rely on each action."
+            }
+        },
+        "simulator_agent": {
+            "simulate": {
+                "input": [
+                    "planner_report"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are an expert deterministic state simulator. Take a canonical action model and a concrete plan and generate a step by step state trace showing facts added and removed at each plan step. Flag steps that cannot be applied due to unmet preconditions. Do not emit PDDL.",
+                "prompt": "Your name is simulator_agent. Use the canonical action models from planner_report and the provided concrete plan sequences from the use case. Start from the provided initial facts and simulate each listed plan action in order. Produce a detailed trace listing the step index, action applied, arguments, preconditions checked, facts deleted, facts added, and the resulting state snapshot summary."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_report",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor for temporal and causal consistency. Identify cycles, hidden dependencies, and uses of bookkeeping shortcuts such as quota tokens and post hoc penalties. Propose canonical fixes that remove bookkeeping shortcuts and ensure causal soundness. Produce a corrected canonical action model and a list of recommended changes. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Use the canonical models from planner_report and the simulation_trace to find temporal inconsistencies and bookkeeping shortcuts. For each detected issue provide a clear remediation, adjusted preconditions or effects, and note any effects that should be split or relabeled to be planner-friendly. Produce an audited action model and a short rationale for each change."
+            }
+        },
+        "orchestrator": {
+            "orchestrate": {
+                "input": [
+                    "planner_report",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domains and problems targeting the FastDownwards solver. Integrate the canonical action schemas, the simulation trace findings, and the auditor corrections. Resolve naming ambiguities consistently and keep agent actions distinct where multiple agent perspectives contributed different schemas. Provide a complete PDDL domain and a PDDL problem file suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make any modelling decisions explicit in a short preamble above the domain tag.",
+                "prompt": "Your name is orchestrator. Use planner_report, simulation_trace, and audit_report as inputs. Produce a final audited PDDL domain and a PDDL problem file that encodes the initial facts and the stated goal most consistent with the audited model. Target the FastDownwards solver and ensure types, predicates, and action names are consistent. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner_agent.analyze->simulator_agent.simulate",
+            "planner_agent.analyze->auditor.audit",
+            "simulator_agent.simulate->auditor.audit",
+            "planner_agent.analyze->orchestrator.orchestrate",
+            "simulator_agent.simulate->orchestrator.orchestrate",
+            "auditor.audit->orchestrator.orchestrate"
+        ]
+    }
+}

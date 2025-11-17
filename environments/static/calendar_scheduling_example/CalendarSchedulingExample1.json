@@ -1,0 +1,126 @@
+{
+    "name": "CalendarSchedulingExample1",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "raymond",
+            "billy",
+            "donald",
+            "auditor",
+            "orchestrator"
+        ],
+        "raymond": {
+            "private_information": [
+                "Busy on Monday 09:00-09:30",
+                "Busy on Monday 11:30-12:00",
+                "Busy on Monday 13:00-13:30",
+                "Busy on Monday 15:00-15:30"
+            ],
+            "goal": "Provide accurate availability for a 30 minute meeting on Monday between 09:00 and 17:00."
+        },
+        "billy": {
+            "private_information": [
+                "Busy on Monday 10:00-10:30",
+                "Busy on Monday 12:00-13:00",
+                "Busy on Monday 16:30-17:00",
+                "Preference: avoid meetings after 15:00 if possible"
+            ],
+            "goal": "Provide accurate availability and communicate time preferences for the meeting."
+        },
+        "donald": {
+            "private_information": [
+                "Busy on Monday 09:00-09:30",
+                "Busy on Monday 10:00-11:00",
+                "Busy on Monday 12:00-13:00",
+                "Busy on Monday 14:00-14:30",
+                "Busy on Monday 16:00-17:00"
+            ],
+            "goal": "Provide accurate availability for the meeting time search."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of calendars",
+                "Remove bookkeeping shortcuts and surface implicit constraints such as travel or prep times if present"
+            ],
+            "goal": "Validate and normalize participants' schedules and confirm that a feasible 30 minute slot exists without relying on post-hoc penalties."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate normalized availabilities and audit findings and produce a PDDL domain and problem targeting the FastDownwards solver to schedule the 30 minute meeting on Monday between 09:00 and 17:00."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting on Monday between 09:00 and 17:00.",
+            "All participants have provided calendar blocks for Monday.",
+            "There exists at least one feasible solution that respects all current calendar blocks and stated preferences."
+        ]
+    },
+    "workflow": {
+        "raymond": {
+            "extract_availability": {
+                "input": [],
+                "output": "schedule_raymond",
+                "system_prompt": "You are a calendar participant agent representing Raymond. Provide a structured list of busy time intervals for Monday and any explicit preferences. Do not emit PDDL. Return a normalized, machine readable availability representation that the auditor and the orchestrator can consume.",
+                "prompt": "Agent raymond. Use the public information and your private calendar blocks to produce a structured availability summary for Monday suitable for downstream temporal auditing and planning."
+            }
+        },
+        "billy": {
+            "extract_availability": {
+                "input": [],
+                "output": "schedule_billy",
+                "system_prompt": "You are a calendar participant agent representing Billy. Provide a structured list of busy time intervals for Monday and state your soft preference to avoid meetings after 15:00. Do not emit PDDL. Return a normalized, machine readable availability representation that the auditor and the orchestrator can consume.",
+                "prompt": "Agent billy. Use the public information and your private calendar blocks and preferences to produce a structured availability summary for Monday suitable for downstream temporal auditing and planning."
+            }
+        },
+        "donald": {
+            "extract_availability": {
+                "input": [],
+                "output": "schedule_donald",
+                "system_prompt": "You are a calendar participant agent representing Donald. Provide a structured list of busy time intervals for Monday. Do not emit PDDL. Return a normalized, machine readable availability representation that the auditor and the orchestrator can consume.",
+                "prompt": "Agent donald. Use the public information and your private calendar blocks to produce a structured availability summary for Monday suitable for downstream temporal auditing and planning."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_raymond",
+                    "schedule_billy",
+                    "schedule_donald"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert temporal auditor. Your job is to validate and normalize the provided availability data. Detect overlaps, inconsistent representations, hidden assumptions, and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties. If implicit setup or travel times are needed, surface them as explicit constraints rather than applying penalties. Produce a human and machine readable audit_report describing normalized free intervals for each participant and any added constraints. Do not emit PDDL.",
+                "prompt": "Agent auditor. Use the schedules provided by participants and the public meeting requirements to produce an audit_report that contains normalized availability windows, a confirmation that a feasible 30 minute slot exists, and any additional temporal constraints that must be considered."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_raymond",
+                    "schedule_billy",
+                    "schedule_donald",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL modeling and planning for the FastDownwards planner. Using the normalized availabilities and the audit report, produce a complete PDDL domain and PDDL problem suitable for FastDownwards that encodes the meeting scheduling problem with time windows and a 30 minute meeting duration. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Do not modify participant identities. Keep any per-agent actions or predicates distinct if modeling agents explicitly. Your output must be the domain and the problem targeted at FastDownwards.",
+                "prompt": "Agent orchestrator. Integrate the participants' availabilities and the auditor's findings and produce a PDDL domain and problem that will allow FastDownwards to find a valid start time for a 30 minute meeting on Monday between 09:00 and 17:00 that respects all busy intervals and Billy's preference to avoid meetings after 15:00 unless no earlier solution exists. Enclose the domain and problem in the required tags."
+            }
+        },
+        "constraints": [
+            "raymond.extract_availability->auditor.audit",
+            "billy.extract_availability->auditor.audit",
+            "donald.extract_availability->auditor.audit",
+            "raymond.extract_availability->orchestrator.pddl",
+            "billy.extract_availability->orchestrator.pddl",
+            "donald.extract_availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

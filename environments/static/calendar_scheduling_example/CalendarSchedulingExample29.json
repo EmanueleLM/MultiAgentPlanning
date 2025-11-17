@@ -1,0 +1,123 @@
+{
+    "name": "CalendarSchedulingExample29",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "madison",
+            "diana",
+            "shirley",
+            "auditor",
+            "orchestrator"
+        ],
+        "madison": {
+            "private_information": [
+                "I am Madison, a meeting participant.",
+                "I am busy on Monday 09:30-10:00",
+                "I am busy on Monday 11:30-12:00"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 that fits everyone's schedules."
+        },
+        "diana": {
+            "private_information": [
+                "I am Diana, a meeting participant.",
+                "I am busy on Monday 11:00-11:30",
+                "I am busy on Monday 13:00-13:30"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 that fits everyone's schedules."
+        },
+        "shirley": {
+            "private_information": [
+                "I am Shirley, a meeting participant.",
+                "I am busy on Monday 09:00-12:00",
+                "I am busy on Monday 13:30-15:00",
+                "I am busy on Monday 15:30-17:00"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 that fits everyone's schedules."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across reported availabilities.",
+                "I remove bookkeeping shortcuts (e.g., artificial tokens, post-hoc penalties) and normalize time formats to canonical intervals."
+            ],
+            "goal": "Ensure the combined availability data is temporally consistent, unambiguous, and free of bookkeeping shortcuts so a planner can reliably schedule the meeting."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from participants and the auditor and produce a final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Produce a PDDL domain and problem (suitable for FastDownwards) that encodes the scheduling problem and a valid one-hour meeting time satisfying everyone's constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "work_hours": "09:00-17:00",
+            "day": "Monday",
+            "meeting_duration_minutes": 60,
+            "time_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a one-hour meeting on Monday between 09:00 and 17:00.",
+            "Participants: Madison, Diana, Shirley.",
+            "There exists at least one time that works for everyone's existing schedule.",
+            "Times should be expressed in canonical half-hour slots given the 30-minute resolution."
+        ]
+    },
+    "workflow": {
+        "madison": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_madison",
+                "system_prompt": "You are Madison's calendar agent. Provide Madison's free time intervals during the work hours on the specified day, based only on the private_information provided. Represent times as canonical half-hour slots (e.g., 09:00-09:30, 09:30-10:00). Do not emit PDDL. Output a compact list of available slots.",
+                "prompt": "Using your private information ({agents->madison->private_information}) and the public constraints ({environment->init}), list Madison's available half-hour slots on Monday between 09:00 and 17:00."
+            }
+        },
+        "diana": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_diana",
+                "system_prompt": "You are Diana's calendar agent. Provide Diana's free time intervals during the work hours on the specified day, based only on the private_information provided. Represent times as canonical half-hour slots. Do not emit PDDL. Output a compact list of available slots.",
+                "prompt": "Using your private information ({agents->diana->private_information}) and the public constraints ({environment->init}), list Diana's available half-hour slots on Monday between 09:00 and 17:00."
+            }
+        },
+        "shirley": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_shirley",
+                "system_prompt": "You are Shirley's calendar agent. Provide Shirley's free time intervals during the work hours on the specified day, based only on the private_information provided. Represent times as canonical half-hour slots. Do not emit PDDL. Output a compact list of available slots.",
+                "prompt": "Using your private information ({agents->shirley->private_information}) and the public constraints ({environment->init}), list Shirley's available half-hour slots on Monday between 09:00 and 17:00."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_madison",
+                    "availability_diana",
+                    "availability_shirley"
+                ],
+                "output": "audited_availabilities",
+                "system_prompt": "You are an auditing agent for temporal and causal consistency. Receive the availability outputs from participant agents. Normalize time representations, check for overlapping/contradictory slots, eliminate bookkeeping shortcuts (for example, tokens that imply availability outside declared slots), and produce a single, canonical availability mapping per participant. Do not produce PDDL. Focus on correctness and unambiguous time intervals.",
+                "prompt": "Given the participants' availability lists ({availability_madison}, {availability_diana}, {availability_shirley}), perform temporal normalization and consistency checks. Return a canonical, audited availability for each participant on Monday in half-hour slots, and flag any ambiguities or conflicts you resolved."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_madison",
+                    "availability_diana",
+                    "availability_shirley",
+                    "audited_availabilities"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate participants' reported availabilities and the auditor's canonical output to produce a PDDL domain and a PDDL problem suitable for the FastDownwards planner. The domain should model time slots, participant availability, and a one-hour meeting requirement (expressed as two contiguous half-hour slots given the 30-minute resolution). Keep each participant's actions and facts distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Explicitly target FastDownwards in your modeling choices (e.g., use STRIPS-compatible constructs and avoid solver-specific extensions).",
+                "prompt": "You will receive audited availability for Madison, Diana and Shirley. Use the environment constraints ({environment->init}) and the audited availability ({audited_availabilities}) to build a PDDL domain and problem that encodes selecting two contiguous half-hour slots (a one-hour meeting) within work hours, such that all three participants are available for both slots. Keep participant predicates distinct (e.g., available-madison, available-diana, available-shirley). Think step by step and provide a PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "madison.provide_availability->auditor.audit",
+            "diana.provide_availability->auditor.audit",
+            "shirley.provide_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

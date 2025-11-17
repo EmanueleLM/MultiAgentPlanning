@@ -1,0 +1,101 @@
+{
+    "name": "TripPlanningExample4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to visit Tallinn for 2 days.",
+                "I want to visit Seville for 7 days.",
+                "I plan to stay in Munich for 5 days.",
+                "I want to meet a friend in Tallinn between day 11 and day 12.",
+                "I will only take direct flights to commute between cities."
+            ],
+            "goal": "Find a feasible trip plan visiting Tallinn, Seville, and Munich with a total of 12 days using only direct flights."
+        },
+        "scheduler": {
+            "private_information": [
+                "Direct flights exist between Seville and Munich.",
+                "Direct flights exist between Munich and Tallinn.",
+                "Flights are assumed to be bidirectional unless specified otherwise."
+            ],
+            "goal": "Provide connectivity information and feasible flight legs that respect the direct flight constraint."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency.",
+                "Remove bookkeeping shortcuts and post-hoc adjustments. Do not accept plans that simply reassign tokens or fudge durations without justification.",
+                "Check that the sum of days allocated and meeting windows are consistent with the total trip length and travel feasibility."
+            ],
+            "goal": "Produce a clear audit report about temporal and causal consistency of proposed itineraries and propose minimal adjustments if there are contradictions."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from other agents and produce a final PDDL domain and problem targeting the FastDownwards solver that encodes a feasible 12-day itinerary using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 12
+        },
+        "public_information": [
+            "Total trip length is 12 days.",
+            "Cities to consider: Tallinn, Seville, Munich.",
+            "Direct flight connections are Seville <-> Munich and Munich <-> Tallinn.",
+            "Flights used for commuting must be direct only.",
+            "There is a meeting with a friend in Tallinn between day 11 and day 12."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan_fragment": {
+                "input": [],
+                "output": "itinerary_fragment",
+                "system_prompt": "You are the traveler's representative. Describe the traveler's preferred allocation of days per city and any absolute time constraints. Provide a concise structured itinerary fragment that lists each city and the desired number of days, and specify the meeting window for Tallinn. Do not produce PDDL. If there are internal contradictions relative to the total days, state them clearly.",
+                "prompt": "Your name is traveler. You are given the following public information: {environment->public_information} You have the following private information: {agents->traveler->private_information} Your goal is: {agents->traveler->goal} Provide a structured itinerary fragment listing cities and requested durations and any temporal constraints or hard requirements. If some requested durations exceed the total days, flag the inconsistency. Do not emit PDDL."
+            }
+        },
+        "scheduler": {
+            "connectivity": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are the scheduling and connectivity expert. Provide the direct flight connections as explicit pairs and indicate whether travel legs are feasible given those connections. Provide any minimal assumptions needed to translate connections into travel legs. Do not produce PDDL.",
+                "prompt": "Your name is scheduler. You are given the following public information: {environment->public_information} You have the following private information: {agents->scheduler->private_information} Your goal is: {agents->scheduler->goal} Provide a concise representation of the flight graph as a list of direct flight edges and note any assumptions about bidirectionality or travel time granularity. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_fragment",
+                    "flight_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal auditor. Your job is to detect inconsistencies between requested durations, the total trip length, and the feasibility of meeting windows given the flight graph. You must remove bookkeeping shortcuts and disallow post-hoc penalties or token adjustments. Produce a clear audit report and, if needed, minimal corrective suggestions to make the plan feasible. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You are given the following public information: {environment->public_information} You will receive the itinerary fragment and the flight graph from other agents. You have the following private information: {agents->auditor->private_information} Your goal is: {agents->auditor->goal} Analyze temporal sums, the meeting window for Tallinn, and travel feasibility between consecutive visits. Flag contradictions and provide minimal, explicit corrective suggestions that keep to direct flights. Output a structured audit report. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_fragment",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the itinerary fragment, flight graph, and auditor report into a single coherent PDDL domain and PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions representing movement and staying in cities distinct for each conceptual agent where relevant. If assumptions are required due to partial information, state them explicitly in comments in the PDDL problem section.",
+                "prompt": "There are multiple agents contributing planning information. You will receive their structured outputs. You have to produce a final PDDL encoding that solves the following task: {agents->orchestrator->goal} Here are the inputs from the agents: itinerary fragment: {itinerary_fragment} flight graph: {flight_graph} audit report: {audit_report} Integrate these inputs, resolve any remaining minor ambiguities with explicit, minimal assumptions, and produce a PDDL domain and PDDL problem targeting the FastDownwards solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.plan_fragment->orchestrator.pddl",
+            "scheduler.connectivity->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

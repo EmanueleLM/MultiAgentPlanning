@@ -1,0 +1,130 @@
+{
+    "name": "TripPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_agent",
+            "flights_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_agent": {
+            "private_information": [
+                "You are responsible for assigning each of the 16 calendar days to one of the three cities while respecting requested stays and conference days.",
+                "You must use only direct flights between consecutive city visits."
+            ],
+            "goal": "Produce a day-by-day itinerary for 16 days that assigns each day to Oslo, Porto, or Dubrovnik, respects the requested stay lengths, and ensures conference days 12 and 16 are in Dubrovnik."
+        },
+        "flights_agent": {
+            "private_information": [
+                "You are responsible for producing a sequence of direct flight legs that realizes the itinerary transitions.",
+                "Available direct flight connections are: Oslo<->Dubrovnik and Porto<->Oslo."
+            ],
+            "goal": "Provide a feasible sequence of direct flights to implement the itinerary, indicating on which day each flight happens and ensuring only direct flights are used."
+        },
+        "auditor": {
+            "private_information": [
+                "You are responsible for checking temporal and causal consistency across the itinerary and flight plan.",
+                "You must detect and remove bookkeeping shortcuts such as post-hoc adjustments, quota tokens, or invented penalties. You must not introduce new punitive constructs."
+            ],
+            "goal": "Audit the itinerary and flight plans for temporal consistency, causal feasibility, and compliance with the conference days, and produce an audit report that flags issues and suggests corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate the inputs from other agents and produce the final planning artifact for the FastDownward planner.",
+                "You must integrate the itinerary, flight sequence, and auditor feedback into a single PDDL domain and problem."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem suitable for the FastDownward solver that encodes the 16-day trip, respects direct-flight-only constraints, ensures required stays per city, and enforces attendance at the conferences in Dubrovnik on days 12 and 16."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Oslo",
+                "Porto",
+                "Dubrovnik"
+            ],
+            "direct_flights": [
+                [
+                    "Oslo",
+                    "Dubrovnik"
+                ],
+                [
+                    "Porto",
+                    "Oslo"
+                ]
+            ],
+            "required_stays": {
+                "Oslo": 6,
+                "Porto": 7,
+                "Dubrovnik": 5
+            },
+            "conference_days": [
+                12,
+                16
+            ],
+            "flight_rule": "Only direct flights between cities listed in direct_flights are allowed to commute between cities"
+        },
+        "public_information": [
+            "Trip length is 16 days.",
+            "Cities to visit are Oslo, Porto, and Dubrovnik.",
+            "Requested stays are Oslo 6 days, Porto 7 days, Dubrovnik 5 days.",
+            "Conferences occur in Dubrovnik on days 12 and 16.",
+            "Only direct flights are allowed to commute between cities.",
+            "Direct flight links: Oslo <-> Dubrovnik and Porto <-> Oslo."
+        ]
+    },
+    "workflow": {
+        "itinerary_agent": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_plan",
+                "system_prompt": "You are an expert travel itinerary planner. Your role is to assign each calendar day from day 1 to day 16 to one of the three cities and to respect all hard constraints provided in the environment. Do not emit PDDL. Produce a clear day-by-day assignment, list the contiguous stays per city with start and end days, and mark which days require presence in Dubrovnik for conferences.",
+                "prompt": "Agent: itinerary_agent. Use the public information and your private information to produce a day-by-day itinerary for 16 days. The itinerary must respect required stays for each city and ensure that days 12 and 16 are assigned to Dubrovnik. Only direct flights are permitted between consecutive city visits. Output a structured plan that lists each day and its assigned city, plus a short summary of transitions between cities and the days on which flights would be needed."
+            }
+        },
+        "flights_agent": {
+            "plan": {
+                "input": [
+                    "itinerary_plan"
+                ],
+                "output": "flight_plan",
+                "system_prompt": "You are an expert in flight feasibility and scheduling. Your role is to convert an itinerary into a sequence of feasible direct flight legs. Do not emit PDDL. Use only the direct connections provided in the environment. For each flight, specify from-city, to-city, and the day the flight must occur.",
+                "prompt": "Agent: flights_agent. Given the itinerary_plan, produce a flight_plan that shows all required flight legs and on which day each flight takes place. Ensure every inter-city transition in the itinerary is realized by a single direct flight leg that exists in the environment. If a transition in the itinerary is impossible under the direct-flight constraint, flag it and suggest minimal itinerary adjustments."
+            }
+        },
+        "auditor": {
+            "check": {
+                "input": [
+                    "itinerary_plan",
+                    "flight_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning artifacts. Your job is to examine the itinerary and flight plans and detect inconsistencies, unrealistic assumptions, or bookkeeping shortcuts. Remove suggestions that rely on invented penalties, quotas, or post-hoc fixes. Produce an audit_report describing any issues and actionable corrections.",
+                "prompt": "Agent: auditor. Receive itinerary_plan and flight_plan. Check that the total assigned days equal 16, that the city stay lengths match required_stays, that flights occur only on days when a city change is scheduled, and that days 12 and 16 are in Dubrovnik. Verify causal feasibility: you cannot be in two cities on the same day and flights must connect cities with a direct flight. If you find issues, propose exact fixes to the itinerary or flight plan. Output a clear audit_report listing verified constraints and any corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_plan",
+                    "flight_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modelling and FastDownward-compatible planning. Your role is to integrate the itinerary, flight sequence, and auditor feedback into a single PDDL domain and a PDDL problem. You must target the FastDownward solver. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep agent-specific actions distinct in the domain if modeling multiple agents, and represent days explicitly as time steps or indices compatible with standard STRIPS or temporal encodings acceptable to FastDownward. The final output must be a domain and problem that FastDownward can process.",
+                "prompt": "Agent: orchestrator. Integrate the received itinerary_plan, flight_plan, and audit_report into a coherent PDDL domain and problem for the FastDownward solver. Encode days 1..16, city locations, direct-flight connectivity constraints, actions representing taking a direct flight (consuming one day), staying in a city for a day, and goals that enforce the requested stays and presence in Dubrovnik on days 12 and 16. Keep actions corresponding to different agents conceptually distinct and ensure no assumptions remain unresolved. Output the PDDL domain and PDDL problem enclosed in <domain></domain> and <problem></problem> respectively."
+            }
+        },
+        "constraints": [
+            "itinerary_agent.plan->flights_agent.plan",
+            "itinerary_agent.plan->auditor.check",
+            "flights_agent.plan->auditor.check",
+            "itinerary_agent.plan->orchestrator.pddl",
+            "flights_agent.plan->orchestrator.pddl",
+            "auditor.check->orchestrator.pddl"
+        ]
+    }
+}

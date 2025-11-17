@@ -1,0 +1,98 @@
+{
+    "name": "TripPlanningExample20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler_preferences",
+            "flight_network",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler_preferences": {
+            "private_information": [
+                "I want to visit Istanbul for 5 days",
+                "I want to visit Budapest for 6 days",
+                "I want to visit Dubrovnik for 3 days",
+                "My total available trip length is 12 days"
+            ],
+            "goal": "Provide the declared desired visit durations per city and the reported total trip length. Highlight any arithmetic inconsistencies."
+        },
+        "flight_network": {
+            "private_information": [
+                "Direct flights exist between Istanbul and Budapest",
+                "A direct flight exists from Dubrovnik to Istanbul"
+            ],
+            "goal": "Provide the directed list of available direct-flight connections between cities and indicate whether flights are bidirectional."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts"
+            ],
+            "goal": "Audit the requested durations and the flight connectivity for temporal and causal consistency. Propose adjusted visit durations that exactly meet the total trip length and justify modifications."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the travelers preferences, the flight network, and the auditor's adjustments to produce a final PDDL domain and problem targeting the FastDownward planner that encodes visits, durations, and direct-flight commuting constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 12
+        },
+        "public_information": [
+            "There are three cities to visit: Istanbul, Budapest, Dubrovnik.",
+            "You must take only direct flights to commute between cities.",
+            "Declared desired stays: Istanbul 5 days, Budapest 6 days, Dubrovnik 3 days.",
+            "Available direct flights: Istanbul <-> Budapest, Dubrovnik -> Istanbul."
+        ]
+    },
+    "workflow": {
+        "traveler_preferences": {
+            "report_preferences": {
+                "input": [],
+                "output": "preferences_report",
+                "system_prompt": "You are an expert at extracting structured travel preferences and constraints. Produce a concise structured summary of the desired visit durations per city and the declared total trip length. Do not emit PDDL.",
+                "prompt": "You are traveler_preferences. Report the declared desired durations for Istanbul, Budapest, and Dubrovnik, and report the declared total trip days. Flag any arithmetic inconsistencies between the sum of desired stays and the declared total days. Provide the summary as a clear machine-friendly list."
+            }
+        },
+        "flight_network": {
+            "report_flights": {
+                "input": [],
+                "output": "flight_report",
+                "system_prompt": "You are an expert in transportation connectivity. Provide the direct-flight graph as a list of directed edges and indicate whether each connection is bidirectional.",
+                "prompt": "You are flight_network. List available direct flights among Istanbul, Budapest, and Dubrovnik. Be explicit about directionality (for example, Istanbul-Budapest as bidirectional and Dubrovnik->Istanbul as one-way). Do not emit PDDL."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "preferences_report",
+                    "flight_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for itinerary planning. Your role is to detect and remove bookkeeping shortcuts, resolve inconsistent duration quotas, and produce adjusted visit durations that exactly meet the allowed trip length. Provide justification for any modifications.",
+                "prompt": "You are temporal_auditor. Using the preferences report and the flight report, detect any inconsistency between the sum of requested stays and the allowed total days. Propose adjusted integer durations per city that sum to the allowed total and justify the choice. Remove any shortcuts such as quotas or post-hoc penalties from the reasoning. Output a concise audit report with adjusted durations and brief rationale. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_report",
+                    "flight_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in constructing PDDL domains and problems specifically tailored for the FastDownward planner. Produce a PDDL domain and a PDDL problem that encode: cities as locations, visit durations per city (as integer stay lengths), daily accounting up to the allowed total days, and movement actions restricted to direct flights. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the model is explicit about movement preconditions, time accounting, and that it is suitable for FastDownward.",
+                "prompt": "You are orchestrator. Integrate the traveler's declared preferences, the flight connectivity, and the auditor's adjusted durations to generate a final PDDL domain and a PDDL problem for FastDownward that plans an itinerary visiting the three cities using only direct flights and respecting the adjusted durations. Keep actions and predicates clear and unambiguous. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler_preferences.report_preferences->temporal_auditor.audit",
+            "flight_network.report_flights->temporal_auditor.audit",
+            "traveler_preferences.report_preferences->orchestrator.pddl",
+            "flight_network.report_flights->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

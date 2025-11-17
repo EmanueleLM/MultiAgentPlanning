@@ -1,0 +1,100 @@
+{
+    "name": "MeetingPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "john_availability",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Richmond District at 09:00",
+                "I want to meet as many friends as possible and maximize total meeting minutes",
+                "I can travel between locations using the provided travel durations"
+            ],
+            "goal": "Generate candidate day schedules to maximize number of friends met and total meeting time while respecting travel and availability constraints."
+        },
+        "john_availability": {
+            "private_information": [
+                "John will be at North Beach from 15:15 to 17:15",
+                "John requires a minimum meeting duration of 75 minutes"
+            ],
+            "goal": "Provide John's precise availability window and minimum meeting duration requirement."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed schedules",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties and highlight infeasible entries"
+            ],
+            "goal": "Validate and clean candidate schedules so they are temporally and causally consistent and free of artificial shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce a final PDDL domain and problem targeting the FastDownwards solver to find an optimal schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "day_start": "09:00",
+            "day_end": "18:00",
+            "time_unit": "minutes"
+        },
+        "public_information": [
+            "Travel durations in minutes: Richmond District to North Beach 17 and North Beach to Richmond District 18",
+            "You arrive at Richmond District at 09:00",
+            "John is at North Beach from 15:15 to 17:15 and requires at least 75 minutes meeting time",
+            "The objective is to consider multiple schedules and pick one that best meets the goals given the constraints"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedules": {
+                "input": [],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a scheduling agent that generates candidate visit sequences and meeting allocations given public information and personal constraints.",
+                "prompt": "Your name is traveler. Using the environment public information and your private information, produce a diverse set of candidate schedules. Each schedule should list ordered visits, start times, durations, and travel legs with explicit travel durations. Focus on maximizing friends met and total meeting minutes. Do not emit PDDL."
+            }
+        },
+        "john_availability": {
+            "provide_availability": {
+                "input": [],
+                "output": "john_window",
+                "system_prompt": "You are an availability reporting agent that provides precise time windows and meeting minimums for named contacts.",
+                "prompt": "Your name is john_availability. Provide John's availability window with earliest start, latest end, and required minimum meeting duration in a structured form. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "candidate_schedules",
+                    "john_window"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that enforces temporal and causal consistency, removing bookkeeping shortcuts and flagging infeasible schedule items.",
+                "prompt": "Your name is auditor. Given candidate schedules and John's availability, validate temporal feasibility including travel times and overlap constraints, enforce the minimum meeting duration requirement, remove any scheduling shortcuts such as quota tokens or retrospective penalties, and return a cleaned set of schedules with explicit consistency notes. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "candidate_schedules",
+                    "john_window",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent temporal planning and PDDL targeted for the FastDownwards solver. Integrate inputs from other agents and produce a complete PDDL domain and problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Integrate candidate schedules, John's availability, and the auditor report to generate a coherent planning model. Produce a PDDL domain and PDDL problem that encode locations, travel durations as action durations, time windows, meeting duration requirements, and objectives to maximize friends met and meeting time. Ensure actions are distinct per agent role and target the FastDownwards solver. Enclose the domain and problem between <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedules->auditor.audit",
+            "john_availability.provide_availability->auditor.audit",
+            "traveler.propose_schedules->orchestrator.pddl",
+            "john_availability.provide_availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

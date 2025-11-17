@@ -1,0 +1,123 @@
+{
+    "name": "CalendarSchedulingExample23",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "billy",
+            "maria",
+            "william",
+            "auditor",
+            "orchestrator"
+        ],
+        "billy": {
+            "private_information": [
+                "Busy on Monday 11:30-12:00",
+                "Busy on Monday 13:00-15:00",
+                "Busy on Monday 16:00-16:30"
+            ],
+            "goal": "Provide your available time windows on Monday within work hours for a 60 minute meeting and any soft preferences."
+        },
+        "maria": {
+            "private_information": [
+                "Busy on Monday 9:00-9:30",
+                "Busy on Monday 10:00-10:30",
+                "Busy on Monday 13:00-13:30",
+                "Busy on Monday 14:00-14:30"
+            ],
+            "goal": "Provide your available time windows on Monday within work hours for a 60 minute meeting and any soft preferences."
+        },
+        "william": {
+            "private_information": [
+                "Busy on Monday 9:30-10:00",
+                "Busy on Monday 12:00-12:30",
+                "Busy on Monday 13:30-15:00",
+                "Busy on Monday 15:30-17:00"
+            ],
+            "goal": "Provide your available time windows on Monday within work hours for a 60 minute meeting and any soft preferences."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency, remove bookkeeping shortcuts such as quota tokens or post-hoc penalties, normalize interval formats"
+            ],
+            "goal": "Consume participants' availability reports, validate and normalize them, remove artificial tokens or shortcuts, and produce an audited unified availability representation."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Using participants' audited availability, produce a final PDDL domain and problem targeting the FastDownwards solver that schedules the required meeting for all participants."
+        }
+    },
+    "environment": {
+        "init": {
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "day": "Monday"
+        },
+        "public_information": [
+            "Schedule a one hour meeting between 09:00 and 17:00 on Monday.",
+            "All participants must be available for the full meeting duration.",
+            "There exists at least one time slot that satisfies every participant's existing schedule."
+        ]
+    },
+    "workflow": {
+        "billy": {
+            "availability": {
+                "input": [],
+                "output": "avail_billy",
+                "system_prompt": "You are Billy's calendar agent. Based on the public information and your private schedule produce a structured list of free time intervals on Monday within the work hours that can accommodate a meeting of the requested duration. Do not emit PDDL. Output a JSON-compatible list of intervals in the form [{\"start\":\"HH:MM\",\"end\":\"HH:MM\"},...]. Include any soft preferences if present.",
+                "prompt": "Your name is billy. Use public info {environment->public_information} and your private information {agents->billy->private_information} to compute free intervals for meeting_duration_minutes defined in environment init. Output a JSON-compatible list of available intervals and any soft preferences. Do not assume unknown constraints."
+            }
+        },
+        "maria": {
+            "availability": {
+                "input": [],
+                "output": "avail_maria",
+                "system_prompt": "You are Maria's calendar agent. Based on the public information and your private schedule produce a structured list of free time intervals on Monday within the work hours that can accommodate a meeting of the requested duration. Do not emit PDDL. Output a JSON-compatible list of intervals in the form [{\"start\":\"HH:MM\",\"end\":\"HH:MM\"},...]. Include any soft preferences if present.",
+                "prompt": "Your name is maria. Use public info {environment->public_information} and your private information {agents->maria->private_information} to compute free intervals for meeting_duration_minutes defined in environment init. Output a JSON-compatible list of available intervals and any soft preferences. Do not assume unknown constraints."
+            }
+        },
+        "william": {
+            "availability": {
+                "input": [],
+                "output": "avail_william",
+                "system_prompt": "You are William's calendar agent. Based on the public information and your private schedule produce a structured list of free time intervals on Monday within the work hours that can accommodate a meeting of the requested duration. Do not emit PDDL. Output a JSON-compatible list of intervals in the form [{\"start\":\"HH:MM\",\"end\":\"HH:MM\"},...]. Include any soft preferences if present.",
+                "prompt": "Your name is william. Use public info {environment->public_information} and your private information {agents->william->private_information} to compute free intervals for meeting_duration_minutes defined in environment init. Output a JSON-compatible list of available intervals and any soft preferences. Do not assume unknown constraints."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "avail_billy",
+                    "avail_maria",
+                    "avail_william"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You are an auditor for temporal consistency. Consume the availability reports from participants, validate interval formats, merge adjacent intervals where appropriate, remove any bookkeeping artifacts (tokens, penalties, shorthand placeholders), and ensure all intervals are within the declared work hours and respect meeting duration constraints. Produce a single normalized JSON-compatible structure listing each participant's sanitized free intervals and any detected conflicts or assumptions. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Validate and normalize inputs {avail_billy}, {avail_maria}, {avail_william} against public info {environment->public_information} and environment init. Produce audited_availability as a JSON-compatible dictionary mapping participant names to lists of intervals and a brief audit log of fixes. Remove bookkeeping shortcuts and ambiguous notations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_billy",
+                    "avail_maria",
+                    "avail_william",
+                    "audited_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at multi-agent scheduling and PDDL for planning. Using the audited availability data produce a PDDL domain and a PDDL problem file that encodes the meeting scheduling problem so it can be solved by the FastDownwards solver. Keep agent actions distinct if modeling multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards in any planner-specific requirements or comments. Ensure time is modeled with temporal constraints sufficient for a deterministic planner. Output only the domain and problem enclosed in the tags.",
+                "prompt": "Your name is orchestrator. Use the public information {environment->public_information}, environment init, and the audited availability {audited_availability} and the raw availabilities {avail_billy}, {avail_maria}, {avail_william} to build a PDDL domain and problem that schedule a single meeting of the requested duration for all participants. Model time sufficiently for FastDownwards, keep participant actions distinct if represented, and do not depend on external bookkeeping shortcuts. Enclose domain in <domain></domain> and problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "billy.availability->auditor.audit",
+            "maria.availability->auditor.audit",
+            "william.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "billy.availability->orchestrator.pddl",
+            "maria.availability->orchestrator.pddl",
+            "william.availability->orchestrator.pddl"
+        ]
+    }
+}

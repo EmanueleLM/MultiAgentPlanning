@@ -1,0 +1,134 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics14",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "planner",
+            "executor",
+            "auditor",
+            "observer",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know the set of available action schemas: paltry, sip, clip, wretched, memory, tightfisted.",
+                "I have an abstract description of each action's required predicates and their positive and negative effects in human-readable form.",
+                "I do not by myself emit PDDL; I produce a consistent, agent-rooted action model and suggestions for variable bindings."
+            ],
+            "goal": "Produce a compact, consistent action model describing preconditions and effects for each action to support planning and later PDDL synthesis."
+        },
+        "executor": {
+            "private_information": [
+                "I have two candidate plan traces given by the human containing sequences of bound actions with object arguments.",
+                "I can validate whether a given sequence respects preconditions when evaluated against a provided state and action model.",
+                "I can propose minor repairs to a plan to make it executable if missing only local facts."
+            ],
+            "goal": "Validate and, where possible, refine the candidate plan traces with respect to the action model and the observed initial state."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "I detect and flag mechanisms that artificially satisfy goals by bookkeeping artifices rather than legitimate causal chains.",
+                "I will produce an audit report describing detected shortcuts, required causal repairs, and a canonicalized plan/state trace."
+            ],
+            "goal": "Audit plans and models for causal soundness, remove bookkeeping shortcuts, and produce a cleaned representation suitable for solver input."
+        },
+        "observer": {
+            "private_information": [
+                "I hold the explicit initial statements supplied by the human for different problem variants, including facts about cats, collect, hand, next, sneeze, spring, stupendous, and texture predicates across objects.",
+                "I will normalize and present the initial state in a consistent fact list and highlight any contradictions or missing fluents."
+            ],
+            "goal": "Provide a normalized, contradiction-checked initial state for the planning task and produce any missing explicit facts needed by the action model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate contributions from planner, executor, auditor, and observer and synthesize a final PDDL domain and problem targeting the FastDownward solver.",
+                "I must keep agent actions distinct where necessary and integrate model, plan, audit, and state into a single PDDL domain and problem."
+            ],
+            "goal": "Integrate inputs and produce a final PDDL domain and problem ready for FastDownward, enclosed between <domain></domain> and <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Available action schemas: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Each action has specific required predicates as preconditions and deterministic add and delete effects expressed over predicates like hand, cats, texture, vase, next, sneeze, stupendous, spring, collect.",
+            "The domain is object-centric: predicates take object arguments and many effects flip binary relations of next and vase.",
+            "Two separate human-provided problem variants exist with different initial statements and goals. The orchestrator must pick and integrate the correct initial state when producing PDDL."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "model": {
+                "input": [],
+                "output": "planner_model",
+                "system_prompt": "You are an expert knowledge engineer for action models. Produce a compact, human-readable action model mapping action names to required predicates and to positive and negative effects. Do not emit PDDL. Provide variable-parameter templates and indicate any ambiguities you detect in the schema.",
+                "prompt": "Your role is planner. Use the public information about actions and the private summaries you hold to produce a consistent action model for paltry, sip, clip, wretched, memory, and tightfisted. Describe for each action the parameter list, the required precondition predicates, the add effects, and the delete effects. If information is missing, indicate the missing pieces rather than inventing them."
+            }
+        },
+        "observer": {
+            "state": {
+                "input": [],
+                "output": "observer_state",
+                "system_prompt": "You are an observer that normalizes and checks initial state statements. Do not emit PDDL. Produce a canonical fact list and note contradictions or implicit assumptions.",
+                "prompt": "Your role is observer. Normalize the two provided human statement blocks into explicit lists of ground predicates. Flag any contradictions and annotate which statement-block each fact came from. If facts are missing that are required by the planner's model, mark them as missing."
+            }
+        },
+        "executor": {
+            "plan": {
+                "input": [
+                    "planner_model",
+                    "observer_state"
+                ],
+                "output": "executor_plan",
+                "system_prompt": "You are an executor that validates and repairs plan traces. Do not emit PDDL. Use the provided action model and the normalized initial state to check preconditions for each step. Produce an annotated plan trace with per-step precondition checks and minimal repairs if feasible.",
+                "prompt": "Your role is executor. Take the human-provided candidate plan traces and validate them against the action model and initial state. For each action instance, list whether preconditions are satisfied, list which facts if any are missing, and propose minimal local fixes to make the step executable. Keep actions and arguments as provided; do not rename objects."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_model",
+                    "executor_plan",
+                    "observer_state"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor specialized in causal and temporal consistency. Produce an audit report that removes bookkeeping shortcuts and enforces genuine causal chains. Do not emit PDDL. Provide a cleaned plan and indicate removed artifices and the rationale.",
+                "prompt": "Your role is auditor. Inspect the action model, the validated/annotated plan, and the initial state. Detect patterns that represent bookkeeping shortcuts, quota tokens, or post-hoc penalties and remove them. Produce a canonicalized plan and state trace that preserves legitimate causal links and state transitions, and list any non-local repairs required to obtain causal soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_model",
+                    "executor_plan",
+                    "auditor_report",
+                    "observer_state"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL synthesis for the FastDownward planner. Integrate model, plan, audit, and state inputs to produce a single PDDL domain and a single PDDL problem targeted for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct when their provenance matters.",
+                "prompt": "Your role is orchestrator. Combine the action model, the cleaned plan and the normalized initial state to produce a PDDL domain and a PDDL problem suitable for FastDownward. Resolve ambiguities conservatively; prefer explicit preconditions rather than implicit assumptions. If you adapt action names or object identifiers, keep a mapping table in a short header comment. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.model->executor.plan",
+            "observer.state->executor.plan",
+            "planner.model->auditor.audit",
+            "executor.plan->auditor.audit",
+            "planner.model->orchestrator.pddl",
+            "executor.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "observer.state->orchestrator.pddl"
+        ]
+    },
+    "constraints": [
+        "planner.model->orchestrator.pddl",
+        "executor.plan->orchestrator.pddl",
+        "auditor.audit->orchestrator.pddl",
+        "observer.state->orchestrator.pddl"
+    ]
+}

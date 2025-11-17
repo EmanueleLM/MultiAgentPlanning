@@ -1,0 +1,129 @@
+{
+    "name": "CalendarSchedulingExample25",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "anthony",
+            "pamela",
+            "zachary",
+            "auditor",
+            "orchestrator"
+        ],
+        "anthony": {
+            "private_information": [
+                "Busy on Monday 09:30-10:00",
+                "Busy on Monday 12:00-13:00",
+                "Busy on Monday 16:00-16:30"
+            ],
+            "goal": "Provide a structured availability report so a one-hour meeting can be scheduled within work hours (09:00-17:00) on Monday."
+        },
+        "pamela": {
+            "private_information": [
+                "Busy on Monday 09:30-10:00",
+                "Busy on Monday 16:30-17:00",
+                "Preference: do not want to meet on Monday after 14:30"
+            ],
+            "goal": "Provide a structured availability report respecting personal preferences so a one-hour meeting can be scheduled within work hours (09:00-17:00) on Monday."
+        },
+        "zachary": {
+            "private_information": [
+                "Busy on Monday 09:00-11:30",
+                "Busy on Monday 12:00-12:30",
+                "Busy on Monday 13:00-13:30",
+                "Busy on Monday 14:30-15:00",
+                "Busy on Monday 16:00-17:00"
+            ],
+            "goal": "Provide a structured availability report so a one-hour meeting can be scheduled within work hours (09:00-17:00) on Monday."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Expertise: detect overlapping claims, normalize time granularity, and produce corrected availability windows"
+            ],
+            "goal": "Verify and, if necessary, correct the availability reports from participants to ensure temporal and causal consistency and remove bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate availability and audit outputs and produce a PDDL domain and problem targeting the FastDownwards solver",
+                "Requirement: keep agent actions distinct in the combined PDDL"
+            ],
+            "goal": "Produce a PDDL domain and PDDL problem suitable for the FastDownwards planner that encodes scheduling a one-hour meeting for Anthony, Pamela, and Zachary on Monday within 09:00-17:00 respecting all constraints and preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "time_granularity_minutes": 30
+        },
+        "public_information": [
+            "Schedule a one-hour meeting for Anthony, Pamela, and Zachary on Monday between work hours 09:00 and 17:00",
+            "There exists at least one feasible solution given the participants' existing schedules",
+            "Time granularity to consider is 30 minutes",
+            "Pamela prefers not to meet after 14:30"
+        ]
+    },
+    "workflow": {
+        "anthony": {
+            "availability": {
+                "input": [],
+                "output": "avail_anthony",
+                "system_prompt": "You are Anthony's calendar agent and an expert at reporting availabilities. Produce a machine-readable availability report listing free time windows within the public work hours and noting any uncertainties or assumptions.",
+                "prompt": "Agent anthony: Given the public information and your private calendar entries provide a structured availability report for Monday within 09:00-17:00 with 30-minute granularity so a 60-minute meeting can be scheduled; include explicit free windows and highlight any ambiguous slots. Public info: {environment->public_information}. Private info: {agents->anthony->private_information}. Goal: {agents->anthony->goal}."
+            }
+        },
+        "pamela": {
+            "availability": {
+                "input": [],
+                "output": "avail_pamela",
+                "system_prompt": "You are Pamela's calendar agent and an expert at reporting availabilities and preferences. Produce a machine-readable availability report listing free time windows within the public work hours, honoring stated preferences and noting any trade-offs.",
+                "prompt": "Agent pamela: Given the public information and your private calendar entries and preferences provide a structured availability report for Monday within 09:00-17:00 with 30-minute granularity so a 60-minute meeting can be scheduled; ensure preference 'do not want to meet after 14:30' is reflected and mention if it reduces feasible windows. Public info: {environment->public_information}. Private info: {agents->pamela->private_information}. Goal: {agents->pamela->goal}."
+            }
+        },
+        "zachary": {
+            "availability": {
+                "input": [],
+                "output": "avail_zachary",
+                "system_prompt": "You are Zachary's calendar agent and an expert at reporting availabilities. Produce a machine-readable availability report listing free time windows within the public work hours and indicate any constraints that block consecutive slots required for a one-hour meeting.",
+                "prompt": "Agent zachary: Given the public information and your private calendar entries provide a structured availability report for Monday within 09:00-17:00 with 30-minute granularity so a 60-minute meeting can be scheduled; indicate whether contiguous 60-minute windows exist. Public info: {environment->public_information}. Private info: {agents->zachary->private_information}. Goal: {agents->zachary->goal}."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "avail_anthony",
+                    "avail_pamela",
+                    "avail_zachary"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose job is to detect and correct temporal inconsistencies and remove bookkeeping shortcuts. Produce a single consolidated corrected availability set and a short rationale. Highlight any overlaps, ambiguous boundaries, or assumptions that must be resolved for correct planning.",
+                "prompt": "Auditor: Receive the availability reports from the three participants and check temporal and causal consistency, normalize time windows to the declared granularity, remove any bookkeeping shortcuts, and produce a corrected availability report and rationale. Inputs: {workflow->anthony->availability->output}, {workflow->pamela->availability->output}, {workflow->zachary->availability->output}. Goal: {agents->auditor->goal}."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_anthony",
+                    "avail_pamela",
+                    "avail_zachary",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and a specialist in producing problems for the FastDownwards planner. Produce a PDDL domain and a PDDL problem that encode scheduling a one-hour meeting for the named participants on the specified day, target the FastDownwards solver, and keep each agent's actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Orchestrator: Integrate the participant availability reports and the auditor's corrected availability to produce a PDDL domain and PDDL problem suitable for the FastDownwards planner that encodes a 60-minute meeting for Anthony, Pamela, and Zachary on Monday between 09:00 and 17:00 respecting Pamela's preference to not meet after 14:30 and all busy windows. Use the corrected availability from the auditor when present. Ensure agent actions remain distinct where relevant and include explicit time-slot modeling with the declared granularity. Inputs: avail_anthony={workflow->anthony->availability->output}, avail_pamela={workflow->pamela->availability->output}, avail_zachary={workflow->zachary->availability->output}, audit_report={workflow->auditor->audit->output}. Environment public info: {environment->public_information}. Orchestrator goal: {agents->orchestrator->goal}."
+            }
+        },
+        "constraints": [
+            "anthony.availability->auditor.audit",
+            "pamela.availability->auditor.audit",
+            "zachary.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "anthony.availability->orchestrator.pddl",
+            "pamela.availability->orchestrator.pddl",
+            "zachary.availability->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,119 @@
+{
+    "name": "CalendarSchedulingExample12",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "david",
+            "debra",
+            "kevin",
+            "auditor",
+            "orchestrator"
+        ],
+        "david": {
+            "private_information": [
+                "No meetings on Monday (entire workday free).",
+                "Work hours: 09:00-17:00."
+            ],
+            "goal": "Schedule a 60-minute meeting on Monday between 09:00 and 17:00 that fits everyone's calendar."
+        },
+        "debra": {
+            "private_information": [
+                "Busy on Monday: 09:30-10:00, 11:00-11:30, 12:00-13:00, 14:00-14:30, 16:00-16:30.",
+                "Work hours: 09:00-17:00."
+            ],
+            "goal": "Schedule a 60-minute meeting on Monday between 09:00 and 17:00 that fits everyone's calendar."
+        },
+        "kevin": {
+            "private_information": [
+                "Busy on Monday: 09:00-12:00, 14:00-17:00 (blocked).",
+                "Work hours: 09:00-17:00."
+            ],
+            "goal": "Schedule a 60-minute meeting on Monday between 09:00 and 17:00 that fits everyone's calendar."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of schedules and remove bookkeeping shortcuts (e.g., quota tokens, placeholder blocks)."
+            ],
+            "goal": "Audit the provided schedules for temporal/causal consistency, normalize them and produce a canonical availability representation for each participant."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate participants' availability and auditor report to produce a final PDDL domain and problem targeted to the FastDownwards solver."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem (FastDownwards-compatible) that encodes scheduling constraints and yields a valid 60-minute meeting time for David, Debra and Kevin on Monday between 09:00 and 17:00."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "time_slot_granularity_minutes": 30
+        },
+        "public_information": [
+            "We need to schedule a single 60-minute meeting on Monday between 09:00 and 17:00.",
+            "All participants work between 09:00 and 17:00 on Monday.",
+            "A valid solution exists that fits everyone's existing schedules.",
+            "Time granularity for proposals is 30 minutes (start times aligned to :00 or :30)."
+        ]
+    },
+    "workflow": {
+        "david": {
+            "analyze": {
+                "input": [],
+                "output": "availability_david",
+                "system_prompt": "You are an expert calendar assistant. Provide a structured availability summary for David on Monday given the public information and your private information. Do not emit PDDL. Return busy intervals and inferred available intervals within the work hours in an explicit, machine-friendly list format.",
+                "prompt": "Your name is david. You are given the public information:\n{environment->public_information}\nYou have the following private schedule information:\n{agents->david->private_information}\nYour task: enumerate David's busy intervals and available intervals on Monday between the work hours, using the given time-slot granularity. Provide the output as a clear list of busy ranges and available ranges."
+            }
+        },
+        "debra": {
+            "analyze": {
+                "input": [],
+                "output": "availability_debra",
+                "system_prompt": "You are an expert calendar assistant. Provide a structured availability summary for Debra on Monday given the public information and your private information. Do not emit PDDL. Return busy intervals and inferred available intervals within the work hours in an explicit, machine-friendly list format.",
+                "prompt": "Your name is debra. You are given the public information:\n{environment->public_information}\nYou have the following private schedule information:\n{agents->debra->private_information}\nYour task: enumerate Debra's busy intervals and available intervals on Monday between the work hours, using the given time-slot granularity. Provide the output as a clear list of busy ranges and available ranges."
+            }
+        },
+        "kevin": {
+            "analyze": {
+                "input": [],
+                "output": "availability_kevin",
+                "system_prompt": "You are an expert calendar assistant. Provide a structured availability summary for Kevin on Monday given the public information and your private information. Do not emit PDDL. Return busy intervals and inferred available intervals within the work hours in an explicit, machine-friendly list format.",
+                "prompt": "Your name is kevin. You are given the public information:\n{environment->public_information}\nYou have the following private schedule information:\n{agents->kevin->private_information}\nYour task: enumerate Kevin's busy intervals and available intervals on Monday between the work hours, using the given time-slot granularity. Provide the output as a clear list of busy ranges and available ranges."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_david",
+                    "availability_debra",
+                    "availability_kevin"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert in temporal and causal consistency for schedules. Your role is to detect booking shortcuts (placeholders, quota tokens, manual blocks) and remove or normalize them; detect overlaps or inconsistencies and produce a canonical availability representation for each participant. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You receive the availability summaries from the participants:\n{availability_david}\n{availability_debra}\n{availability_kevin}\nCheck for temporal overlaps, inconsistent representations, or bookkeeping shortcuts. Produce a normalized, canonical schedule for each participant (busy ranges and available ranges) that the orchestrator can reliably consume. If you need to assume anything, state the assumption explicitly in your report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_david",
+                    "availability_debra",
+                    "availability_kevin",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing FastDownwards-compatible PDDL. Integrate structured availability and the auditor's canonical schedule to produce a PDDL domain and a PDDL problem that encode a 60-minute meeting scheduling task for David, Debra and Kevin on Monday between 09:00 and 17:00. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards planner in your encoding (types, predicates, and actions should be compatible).",
+                "prompt": "Your name is orchestrator. You receive these inputs from the participants and the auditor:\n{availability_david}\n{availability_debra}\n{availability_kevin}\n{audit_report}\nUsing those canonical availabilities, produce a PDDL domain and a PDDL problem that, when solved by FastDownwards, yields a valid start time for a single 60-minute meeting that fits all participants' schedules and the public constraints. Keep each agent's role/actions conceptually distinct if you represent them in the PDDL. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "david.analyze->orchestrator.pddl",
+            "debra.analyze->orchestrator.pddl",
+            "kevin.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

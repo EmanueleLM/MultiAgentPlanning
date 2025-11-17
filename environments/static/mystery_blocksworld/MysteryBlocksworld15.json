@@ -1,0 +1,104 @@
+{
+    "name": "MysteryBlocksworld15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "role_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I have the two alternative initial STATEMENT blocks and the two goal descriptions provided in the use case.",
+                "I observe many objects named object_0 through object_12 and a set of ground facts about cats collect hand next sneeze spring stupendous and texture predicates.",
+                "I see a candidate plan consisting of a sequence of high level actions with arguments using those object names."
+            ],
+            "goal": "Read the textual statements and the candidate plan and emit a structured, deduplicated list of entities and ground facts and a mapping of plan steps to referenced facts."
+        },
+        "role_planner": {
+            "private_information": [
+                "I have the textual descriptions of six action schemas named paltry sip clip wretched memory tightfisted and their preconditions and postconditions as described in the use case.",
+                "The action schemas include positive requirements and effects and facts that become true or false after actions."
+            ],
+            "goal": "Translate the natural language action schema descriptions into a clean, structured schema representation listing preconditions add effects and delete effects for each action and identify required predicates and arities."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to detect temporal and causal inconsistencies in action schemas and in the candidate plan.",
+                "I must remove or flag bookkeeping shortcuts such as implicit quota tokens post-hoc penalties or other non-physical bookkeeping devices so the causal model is explicit and solver-ready."
+            ],
+            "goal": "Produce an audit report that lists inconsistencies cycles missing preconditions ambiguous object roles and propose corrective normalizations to ensure a temporally and causally consistent model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will receive structured facts from observer interpretations of action schemas from role_planner and an audit report from auditor.",
+                "I am responsible for integrating these inputs into a final PDDL domain and PDDL problem targeted to the FastDownwards planner."
+            ],
+            "goal": "Integrate inputs from the other agents to produce a coherent PDDL domain and problem suitable for FastDownwards. The output must keep agent actions conceptually distinct and must be enclosed between domain and problem tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 13,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are named objects object_0 through object_12 present in the problem domain.",
+            "There are six action types paltry sip clip wretched memory and tightfisted each with specified preconditions add effects and delete effects.",
+            "Predicates used include cats collect hand next sneeze spring stupendous texture and vase.",
+            "Some actions toggle next and vase relations and some require collect or stupendous or spring facts.",
+            "Two alternative initial condition sets and two alternative goal sets are provided in the use case and must be handled as separate problem instances or choices."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "extract_facts": {
+                "input": [],
+                "output": "facts_observer",
+                "system_prompt": "You are an observer agent that reads the raw use case text and outputs a structured representation of entities objects and all ground atomic facts found in the STATEMENT blocks along with the two goal targets. Do not output PDDL. Provide consistent object lists deduplicated predicate lists and a mapping from plan step text to referenced object names.",
+                "prompt": "Your name is observer. Use the public environmental information and your private observations to produce a JSON friendly facts bundle that lists objects predicates and initial ground atoms and the two goal conjuncts and a mapping of each planned action in the provided plan to the facts or predicates it references. If there are ambiguous references flag them explicitly."
+            }
+        },
+        "role_planner": {
+            "interpret_actions": {
+                "input": [],
+                "output": "interpretation_role_planner",
+                "system_prompt": "You are a role planner that converts the natural language action descriptions into a formal structured schema. Do not output PDDL. Produce for each action a name a typed parameter list and explicit preconditions add effects and delete effects in a machine readable structured form.",
+                "prompt": "Your name is role_planner. Use the public environmental information and your private knowledge to produce for each action type paltry sip clip wretched memory and tightfisted a structured definition listing parameter names with arities and three lists named preconditions add_effects and delete_effects. Identify any implicit assumptions and mark them as open questions rather than assuming their values."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "facts_observer",
+                    "interpretation_role_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent tasked with checking temporal and causal consistency. You remove bookkeeping shortcuts and flag cycles or missing preconditions and provide recommended normalizations. Do not output PDDL. Produce a concise corrections list and an explicit causal ordering that resolves bookkeeping abbreviations.",
+                "prompt": "Your name is auditor. Receive the facts bundle and the interpreted action schemas. Check for causal loops dead preconditions missing effects ambiguous predicate arities and any bookkeeping constructs and produce an audit report that lists problems and proposes concrete changes to predicates or schemas so the model becomes solver friendly. Output the cleaned schema change suggestions and a small justification for each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_observer",
+                    "interpretation_role_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate structured facts action schemas and the auditor corrections into a final PDDL domain and a final PDDL problem file targeted for the FastDownwards planner. Emit a PDDL domain enclosed between <domain></domain> tags and a PDDL problem enclosed between <problem></problem> tags. Keep agent actions distinct when mapping to action schemas and ensure types predicates and object lists match the cleaned model.",
+                "prompt": "Your name is orchestrator. Use the facts bundle interpretation and audit corrections to assemble a complete PDDL domain and a complete PDDL problem suitable for FastDownwards. Keep action names and parameter orders consistent. If the input leaves unresolved questions choose the conservative correction recommended by the auditor. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "observer.extract_facts->role_planner.interpret_actions",
+            "observer.extract_facts->auditor.audit",
+            "role_planner.interpret_actions->auditor.audit",
+            "observer.extract_facts->orchestrator.pddl",
+            "role_planner.interpret_actions->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

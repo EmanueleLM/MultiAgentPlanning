@@ -1,0 +1,108 @@
+{
+    "name": "Depots26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_A",
+            "planner_B",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_A": {
+            "private_information": [
+                "I have a partial view of the domain focused on the first STATEMENT and its associated PLAN. I see predicates and actions instantiated around objects object_0..object_13 in that fragment.",
+                "I know the action schemata: paltry, sip, clip, wretched, memory, tightfisted and their local preconditions and effects as given in the use-case, but only insofar as they appear in the first statement and plan.",
+                "I will analyze how the first plan's steps map to preconditions and effects and identify resource flows and object bindings in that scenario."
+            ],
+            "goal": "Analyze the first scenario: validate precondition satisfaction, compute derived next facts after each step, and produce a structured analysis report of causal links and unresolved references."
+        },
+        "planner_B": {
+            "private_information": [
+                "I have a partial view of the domain focused on the second STATEMENT and its associated plan fragment (the second scenario). I see predicates and actions instantiated around objects object_0..object_14 in that fragment.",
+                "I know the same action schemata as planner_A but my observations concern the second scenario and I will analyze those steps and effects in that context.",
+                "I will map the second scenario plan's steps to preconditions and effects, producing a structured mapping of how the goals could be reached in this scenario."
+            ],
+            "goal": "Analyze the second scenario: validate precondition satisfaction, compute derived next facts after each step, and produce a structured analysis report of causal links and unresolved references."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for temporal and causal consistency checks across planner outputs. I detect implicit bookkeeping shortcuts such as quota tokens, post-hoc penalties, or omitted intermediate facts and propose concrete corrections that make the plan executable by a classical planner.",
+                "I do not author PDDL, but I will emit an audit_report describing edits: removed shortcuts, added missing intermediate facts, synchronized naming mismatches, and explicit ordering constraints required for sound execution."
+            ],
+            "goal": "Audit planner analyses to eliminate bookkeeping shortcuts, ensure causal and temporal consistency across both scenario analyses, and produce a consolidated audit_report suitable for informing final PDDL encoding."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I receive structured analyses from planner_A and planner_B and an audit_report from auditor. I integrate these into a single, consistent PDDL domain and problem pair formatted for the FastDownward solver.",
+                "I must keep agent actions distinct in the integrated domain when appropriate and ensure the final PDDL encodes the corrected intermediate facts and ordering constraints from the audit."
+            ],
+            "goal": "Produce a final PDDL domain and a PDDL problem file that reflect the integrated and audited knowledge, targeted at the FastDownward solver, and clearly separate multi-agent actions when needed."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 15,
+            "visibility": 2
+        },
+        "public_information": [
+            "There is a finite set of objects named object_0 through object_14.",
+            "Available action schemata in the domain: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Common predicates used: hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Actions have preconditions and effects that establish or delete next relations and vase facts, among others.",
+            "Two scenario fragments are provided as initial statements with distinct initial conditions and goals; planners will analyze them separately and the auditor will reconcile bookkeeping shortcuts and naming mismatches."
+        ]
+    },
+    "workflow": {
+        "planner_A": {
+            "analysis": {
+                "input": [
+                    "environment->public_information"
+                ],
+                "output": "analysis_planner_A",
+                "system_prompt": "You are a domain analyst. Produce a structured scenario analysis without emitting PDDL. Identify for each plan step the instantiated preconditions and effects drawn from the first STATEMENT and PLAN fragment. Highlight any missing intermediate facts, object bindings, and potential name mismatches. Report results as JSON-compatible structured data.",
+                "prompt": "You are planner_A. Use your private information about the first statement and plan to validate each action's applicability step by step, list which facts enable each action, list the facts that become true or false after each action, and note any assumptions or missing facts required to make the plan executable. Output a clear structured analysis labeled analysis_planner_A."
+            }
+        },
+        "planner_B": {
+            "analysis": {
+                "input": [
+                    "environment->public_information"
+                ],
+                "output": "analysis_planner_B",
+                "system_prompt": "You are a domain analyst. Produce a structured scenario analysis without emitting PDDL. Identify for each plan step the instantiated preconditions and effects drawn from the second STATEMENT and PLAN fragment. Highlight any missing intermediate facts, object bindings, and potential name mismatches. Report results as JSON-compatible structured data.",
+                "prompt": "You are planner_B. Use your private information about the second statement and plan to validate each action's applicability step by step, list which facts enable each action, list the facts that become true or false after each action, and note any assumptions or missing facts required to make the plan executable. Output a clear structured analysis labeled analysis_planner_B."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_planner_A",
+                    "analysis_planner_B"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. You do not produce PDDL. Instead, inspect the planners' structured analyses and produce a consolidated audit_report that removes bookkeeping shortcuts, adds required intermediate facts, disambiguates naming, and prescribes explicit ordering constraints and minimal additional facts so that a classical planner can find a valid plan. Report fixes as structured items: add_facts, remove_shortcuts, rename_map, ordering_constraints.",
+                "prompt": "You are auditor. Consume analysis_planner_A and analysis_planner_B and produce audit_report that enumerates concrete edits and additions needed to make the combined scenarios executable in a single consistent model. Identify places where planners relied on implicit quotas or post-hoc penalties and remove those shortcuts by specifying explicit facts or ordering constraints. Output the audit_report as structured JSON."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_planner_A",
+                    "analysis_planner_B",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL engineering and FastDownward encoding. Using the planners' analyses and the auditor's audit_report, generate a finalized PDDL domain and a PDDL problem file targeted for the FastDownward solver. Keep multi-agent actions distinct where the analyses require separation. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain encodes the audit_report fixes and explicit ordering constraints.",
+                "prompt": "You are orchestrator. Integrate analysis_planner_A, analysis_planner_B, and audit_report into a single consistent PDDL domain and problem pair suitable for FastDownward. Preserve distinct agent action identities if required, encode added intermediate facts and ordering constraints from the audit, and ensure no bookkeeping shortcuts remain. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Output the combined PDDL as pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "planner_A.analysis->auditor.audit",
+            "planner_B.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner_A.analysis->orchestrator.pddl",
+            "planner_B.analysis->orchestrator.pddl"
+        ]
+    }
+}

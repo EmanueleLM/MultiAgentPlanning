@@ -1,0 +1,128 @@
+{
+    "name": "TripPlanningExample25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit 3 European cities in one trip: Valencia, Split, Lyon.",
+                "Total trip length is 16 days.",
+                "I want to spend 5 days in Valencia.",
+                "I want to spend 7 days in Split, and attend an annual show in Split from day 10 to day 16.",
+                "I would like to spend 6 days in Lyon.",
+                "I will only use direct flights to commute between cities."
+            ],
+            "goal": "Provide clear preferences, hard constraints, and acceptable flexibilities so the scheduler can propose feasible itineraries."
+        },
+        "scheduler": {
+            "private_information": [
+                "Direct flights exist only between Lyon and Split, and between Valencia and Lyon.",
+                "Travel moves must occur using direct flights only.",
+                "Days are integer indexed from 1 to 16."
+            ],
+            "goal": "Using the traveler's preferences and the direct flights graph, produce candidate itineraries that allocate days to each city and specify flight legs and transition days."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checks.",
+                "I will detect impossible allocations, hidden bookkeeping shortcuts, or post-hoc fixes and remove them.",
+                "I will flag conflicts like total allocated days exceeding available days."
+            ],
+            "goal": "Audit candidate itineraries for temporal and causal consistency, remove bookkeeping shortcuts, and produce a corrected, consistent itinerary summary."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the analyses and the audited itinerary and produce a final PDDL domain and PDDL problem pair targeted to the FastDownward solver that encodes the 16-day trip planning instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Valencia",
+                "Split",
+                "Lyon"
+            ],
+            "direct_flights": [
+                [
+                    "Lyon",
+                    "Split"
+                ],
+                [
+                    "Valencia",
+                    "Lyon"
+                ]
+            ],
+            "show_in_split": {
+                "start_day": 10,
+                "end_day": 16
+            },
+            "flight_policy": "only_direct"
+        },
+        "public_information": [
+            "Total trip length is 16 days.",
+            "There are three cities of interest: Valencia, Split, Lyon.",
+            "Direct flights exist between Lyon and Split, and between Valencia and Lyon.",
+            "There is an annual show in Split from day 10 to day 16 that must be attended during those days.",
+            "Traveler prefers 5 days in Valencia, 7 days in Split, 6 days in Lyon but the sum may exceed total days and needs reconciliation.",
+            "All commutes between cities must use direct flights only."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "analysis": {
+                "input": [],
+                "output": "traveler_analysis",
+                "system_prompt": "You are an expert travel user describing preferences and constraints. Provide structured preferences, required hard constraints, acceptable flexibilities, and highlight any immediate conflicts between requested durations and total available days. Do not emit PDDL.",
+                "prompt": "Your name is traveler. Based on the public information {environment->public_information} and your private information {agents->traveler->private_information}, produce a concise, structured summary that lists: hard constraints, soft preferences, and any conflicts that must be resolved. Focus on clarity so the scheduler can produce candidate itineraries. Do not produce PDDL."
+            }
+        },
+        "scheduler": {
+            "plan": {
+                "input": [
+                    "traveler_analysis"
+                ],
+                "output": "scheduler_plan",
+                "system_prompt": "You are an expert itinerary scheduler who only uses the provided direct flight graph. Produce candidate itineraries allocating days to cities, list flight legs between cities, and indicate which days are spent in which city. Do not emit PDDL. If the traveler's requested durations exceed available days, propose alternative allocations and rank them by how closely they match preferences.",
+                "prompt": "Your name is scheduler. Using the public information {environment->public_information}, the traveler's summary {traveler_analysis}, and your private information {agents->scheduler->private_information}, generate a small set of feasible candidate itineraries that respect direct-flight-only travel and the need to attend the Split show on days 10 to 16. For each itinerary list the day-by-day city assignment and the flight legs. Indicate any trade-offs made."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_analysis",
+                    "scheduler_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Remove bookkeeping shortcuts and any post-hoc penalties. Check that day allocations sum to total days, that flights are feasible given direct flights, and that mandatory events such as the Split show are covered. Produce an explicit corrected itinerary or a list of required adjustments. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Receive the traveler's summary {traveler_analysis} and the scheduler's candidate itineraries {scheduler_plan}. Validate temporal consistency, catch impossible transitions, remove any shortcuts where day accounting is fudged, and produce a corrected and annotated itinerary ready for final encoding. Flag unresolved conflicts if they remain."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_analysis",
+                    "scheduler_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert that integrates agent analyses and emits a final PDDL domain and a PDDL problem file targeted to the FastDownward solver. The PDDL should encode agents as a single planning agent with actions representing flights and staying in a city, include temporal constraints as discrete day steps, and ensure attendance at the Split show between day 10 and day 16. Provide the domain and problem artifacts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Explicitly mention any remaining assumptions in plain text after the PDDL pair.",
+                "prompt": "Your name is orchestrator. Integrate the traveler's summary {traveler_analysis}, the scheduler's candidate itineraries {scheduler_plan}, and the auditor's corrections {audit_report}. Resolve remaining ambiguities conservatively and produce a final PDDL domain and PDDL problem suitable for FastDownward. Keep actions distinct for movement and staying. Enclose the domain between <domain></domain> and the problem between <problem></problem>. After the PDDL include a short note stating any assumptions you had to make."
+            }
+        },
+        "constraints": [
+            "traveler.analysis->scheduler.plan",
+            "traveler.analysis->auditor.audit",
+            "scheduler.plan->auditor.audit",
+            "traveler.analysis->orchestrator.pddl",
+            "scheduler.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

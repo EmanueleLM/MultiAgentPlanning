@@ -1,0 +1,106 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "actor_a",
+            "actor_b",
+            "auditor",
+            "orchestrator"
+        ],
+        "actor_a": {
+            "private_information": [
+                "I focus on mapping actions to parameter roles and identifying candidate preconditions and positive effects from the provided action descriptions.",
+                "I will not emit a final PDDL domain or problem; I provide a structured, machine-readable specification fragment that the orchestrator can consume."
+            ],
+            "goal": "Analyze a subset of actions and produce a structured specification of signatures, likely preconditions, and likely effects."
+        },
+        "actor_b": {
+            "private_information": [
+                "I focus on grounding predicates with concrete example parameters from the STATEMENT sections and on flagging name collisions or ambiguous object roles.",
+                "I will provide normalized predicate instances, suggested typing, and highlight contradictions across the provided statements."
+            ],
+            "goal": "Produce normalized predicate instances, suggested type declarations, and point out ambiguous or overloaded names."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in auditing temporal and causal consistency and in removing bookkeeping shortcuts such as quota tokens, post-hoc penalties, or ephemeral bookkeeping predicates.",
+                "I will suggest eliminations or transformations to ensure causal continuity, and produce an audit report describing necessary normalizations."
+            ],
+            "goal": "Audit the partial specifications, detect causal cycles or bookkeeping shortcuts, and propose canonical, temporally-consistent transformations."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate the structured specifications and the audit report, resolve naming/typing conflicts, and produce a final PDDL domain and PDDL problem targeted for the FastDownwards planner.",
+                "I will keep actions distinct per original actor intent and annotate where choices were made to disambiguate objects or predicates."
+            ],
+            "goal": "Assemble the inputs into a coherent PDDL domain and problem pair suitable for FastDownwards, keeping agent actions distinct and documenting resolution decisions."
+        }
+    },
+    "environment": {
+        "init": {
+            "version": 1,
+            "notes": "This environment encodes an obfuscated multi-statement logistics-like use case with many objects referred by obfuscated names (object_0..object_13)."
+        },
+        "public_information": [
+            "There are a set of actions the actors can perform: paltry, sip, clip, wretched, memory, tightfisted. Each action takes 3 or 4 object parameters as described in the problem statement.",
+            "Predicates observed: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), sneeze(X), collect(X,Y), spring(X), stupendous(X). Predicates are binary except those explicitly unary.",
+            "Action summaries (informal): paltry(o0,o1,o2) requires hand(o0), cats(o1), texture(o2), vase(o0,o1), next(o1,o2). Effect: sets next(o0,o2) true and vase(o0,o1) false.",
+            "sip(o0,o1,o2) requires hand(o0), cats(o1), texture(o2), next(o0,o2), next(o1,o2). Effect: sets vase(o0,o1) true and next(o0,o2) false.",
+            "clip(o0,o1,o2) requires hand(o0), sneeze(o1), texture(o2), next(o1,o2), next(o0,o2). Effect: sets vase(o0,o1) true and next(o0,o2) false.",
+            "wretched(o0,o1,o2,o3) requires sneeze(o0), texture(o1), texture(o2), stupendous(o3), next(o0,o1), collect(o1,o3), collect(o2,o3). Effect: sets next(o0,o2) true and next(o0,o1) false.",
+            "memory(o0,o1,o2) requires cats(o0), spring(o1), spring(o2), next(o0,o1). Effect: sets next(o0,o2) true and next(o0,o1) false.",
+            "tightfisted(o0,o1,o2) requires hand(o0), sneeze(o1), texture(o2), next(o1,o2), vase(o0,o1). Effect: sets next(o0,o2) true and vase(o0,o1) false.",
+            "Initial condition set A (first STATEMENT) contains many ground facts across cats, collect, hand, next, sneeze, spring, stupendous, texture. Goal A: next object_12 object_10 and next object_13 object_9.",
+            "Initial condition set B (second STATEMENT) is a different collection of ground facts. Goal B: next object_11 object_8, next object_12 object_8 and next object_13 object_10.",
+            "Plans were proposed in the use-case text. These are to be treated as candidate sequences for validation; some steps use many distinct object indices and may require normalization."
+        ]
+    },
+    "workflow": {
+        "actor_a": {
+            "analyze": {
+                "input": [],
+                "output": "spec_actor_a",
+                "system_prompt": "You are an analysis agent. Extract action signatures (names and arities), propose candidate preconditions and positive/negative effects for each action based strictly on the provided public information. Do not generate a full PDDL domain or problem. Produce a structured specification fragment that lists for each action: parameters with placeholder types, a list of candidate preconditions, a list of candidate add effects, and a list of candidate delete effects. Mark any assumptions explicitly.",
+                "prompt": "Your name is actor_a. You see the following public information: {environment->public_information}. You also have these private notes: {agents->actor_a->private_information}. Your task: produce a structured fragment (JSON-like text or clear key-value lists) that enumerates for each action (paltry, sip, clip, wretched, memory, tightfisted) the parameter placeholders and conservative sets of preconditions/effects. Flag ambiguous parameter roles and indicate missing typing assumptions. Do not emit final PDDL domain/problem."
+            }
+        },
+        "actor_b": {
+            "analyze": {
+                "input": [],
+                "output": "spec_actor_b",
+                "system_prompt": "You are a grounding and normalization agent. From the public information and the STATEMENT sections, produce normalized predicate instances, suggest type groupings for objects (e.g., HANDHELD, STATIONARY, COLLECTIBLE), and identify name collisions or multiple meanings for the same predicate name. Do not emit PDDL; produce a consumable specification fragment.",
+                "prompt": "Your name is actor_b. Use the public information: {environment->public_information}. Use your private notes: {agents->actor_b->private_information}. Extract grounded examples from the initial statements, suggest a minimal set of types that can cover the observed predicate usages, and highlight any predicates that appear to be bookkeeping shortcuts (ephemeral flags, counters, quota tokens). Provide sample normalized facts and type proposals."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "spec_actor_a",
+                    "spec_actor_b"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal/causal auditor. Your job is to inspect the specification fragments produced by other agents, detect causal cycles, non-physical bookkeeping shortcuts, or time-travel style effects, and propose transformations that remove these shortcuts while preserving achievable goal reachability when possible. Output a clear audit report describing required normalizations, removal or consolidation of bookkeeping predicates, and any required ordering constraints. Do not produce PDDL domain/problem; produce a prescriptive audit artifact.",
+                "prompt": "Your name is auditor. You received these specification fragments: {spec_actor_a} and {spec_actor_b}. Use your private notes: {agents->auditor->private_information}. Identify temporal inconsistencies (e.g., actions that both require and delete the same effects in ways that create cycles), detect bookkeeping shortcuts (tokens, ephemeral predicates used only for counting), and recommend canonical transformations (e.g., replace token predicates with explicit sink/source actions, add causal intermediates). Output a structured audit report that the orchestrator can apply."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_actor_a",
+                    "spec_actor_b",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the analysis fragments and the audit report, resolve naming and typing conflicts, and produce a final PDDL domain and PDDL problem pair targeted for the FastDownwards planner (use PDDL level and constructs compatible with FastDownwards). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct to reflect the original actor intent and annotate within comments or domain comments any disambiguation choices. Ensure declared types, predicates, actions, initial state, and goal are consistent and that bookkeeping shortcuts recommended for removal by the auditor have been normalized into explicit actions or eliminated.",
+                "prompt": "You are orchestrator. Inputs available: {spec_actor_a}, {spec_actor_b}, {audit_report}. The public information is: {environment->public_information}. Your private notes: {agents->orchestrator->private_information}. Produce a PDDL domain and problem pair suitable for FastDownwards. Enclose domain between <domain></domain> and problem between <problem></problem>. If you must choose a naming convention for objects or types, document your choices inside comments in the PDDL. Resolve conflicts conservatively and make no assumptions beyond what can be justified from the fragments and audit report."
+            }
+        },
+        "constraints": [
+            "actor_a.analyze->orchestrator.pddl",
+            "actor_b.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,101 @@
+{
+    "name": "Logistics13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I represent the primary actor who executes and traces a proposed plan of actions on objects.",
+                "I know the set of available actions: paltry, sip, clip, wretched, memory, tightfisted and the object vocabulary object_0 through object_12 and object_2 through object_12 as referenced in the use case.",
+                "I know the detailed preconditions and postconditions of each action from the game description but I should not emit PDDL directly."
+            ],
+            "goal": "Analyze each step of the supplied plan for local causal correctness and produce a compact action-by-action verification report."
+        },
+        "assistant": {
+            "private_information": [
+                "I propose localized subplans and mappings between named entities when the plan uses different synonyms or bookkeeping shortcuts.",
+                "I can suggest concrete preconditions and effects in a human-readable structured form but I must not output full PDDL domain/problem files."
+            ],
+            "goal": "Produce a local, structured plan representation and identify any missing preconditions or ambiguous object references in the provided plan."
+        },
+        "auditor": {
+            "private_information": [
+                "I focus on temporal and causal consistency, detect cycles and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I produce a remediation report listing recommended state normalizations and corrected causal links to make the plan amenable to formal compilation."
+            ],
+            "goal": "Audit the global plan and the assistant/player outputs for temporal and causal consistency and provide a cleaned, canonical representation suitable for formal synthesis."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the analysis, the local plans and the audit corrections and produce the final PDDL domain and problem files targeted to the FastDownwards solver.",
+                "When synthesizing PDDL I must keep agent actions and labels distinct and resolve ambiguous object names based on upstream reports."
+            ],
+            "goal": "Synthesize a complete, consistent PDDL domain and problem for FastDownwards that encodes the described actions, initial state and goal conditions."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates referenced include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Action preconditions and effects (human-readable summary): paltry requires hand X cats Y texture Z vase X Y next Y Z and makes next X Z true and vase X Y false; sip requires hand X cats Y texture Z next X Z next Y Z and makes vase X Y true and next X Z false; clip requires hand X sneeze Y texture Z next Y Z next X Z and makes vase X Y true and next X Z false; wretched requires sneeze X texture Y texture Z stupendous W next X Y collect Y W collect Z W and makes next X Z true and next X Y false; memory requires cats X spring Y spring Z next X Y and makes next X Z true and next X Y false; tightfisted requires hand X sneeze Y texture Z next Y Z vase X Y and makes next X Z true and vase X Y false.",
+            "Initial condition variants and two scenario statements are provided in the use-case; the orchestrator should use the correct initial statement as specified when synthesizing the final PDDL problem.",
+            "Goals in the two scenarios target 'next' relations such as next object_10 object_7, next object_11 object_9 and next object_12 object_8 in the first variant and next object_10 object_7, next object_11 object_7 and next object_12 object_7 in the second variant."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_player",
+                "system_prompt": "You are the primary plan tracer. Inspect the provided plan steps and initial/state statements. For each action in the plan, produce a single-line verification entry indicating whether the required preconditions (using the predicates from public information) appear satisfied at that step given the current tracked state. Do not emit PDDL. Keep entries compact and refer to objects by their original names.",
+                "prompt": "You are player. Use the environment public information and your private information to verify each plan step from the use-case. Produce a step-by-step verification report of preconditions and claimed effects. If information is missing, flag it explicitly."
+            }
+        },
+        "assistant": {
+            "propose_local_plan": {
+                "input": [],
+                "output": "local_plan_assistant",
+                "system_prompt": "You are a helper that produces localized structured plans and resolves naming ambiguities. Produce a compact structured representation of actions with explicit preconditions and effects in JSON-like or key-value bullet form suitable for later compilation, but do not produce final PDDL domain/problem files.",
+                "prompt": "You are assistant. From the public information and private knowledge generate a structured mapping of each action name to its preconditions and effects, note ambiguous object references and propose consistent renamings if needed."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_player",
+                    "local_plan_assistant"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency and on removing bookkeeping shortcuts. Inspect the player's verification report and the assistant's structured plans. Detect cycles, temporal contradictions, and artificial bookkeeping shortcuts such as token counters and post-hoc penalties. Produce a remediation list that normalizes state, removes shortcuts, and explicitly identifies any ordering constraints that must be enforced. Do not emit PDDL; output a clear canonicalization and corrections report.",
+                "prompt": "You are auditor. Use analysis_player and local_plan_assistant to produce an audit_report that cleans the plan and specifies required ordering and state normalizations for a formal compiler to accept."
+            }
+        },
+        "orchestrator": {
+            "synthesize": {
+                "input": [
+                    "analysis_player",
+                    "local_plan_assistant",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL synthesis and you target the FastDownwards solver. Integrate received analyses, local plans and audit corrections. Produce a complete PDDL domain and a PDDL problem file suitable for FastDownwards. Keep agent actions distinct when encoding them, ensure all predicates and objects are declared, and resolve naming ambiguities based on upstream reports. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags. Do not include any extraneous debugging commentary inside the tags.",
+                "prompt": "You are orchestrator. Using the analysis_player, local_plan_assistant and audit_report inputs, synthesize a final consistent PDDL domain and PDDL problem for FastDownwards that encodes the described actions, initial state and the requested goal. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.synthesize",
+            "assistant.propose_local_plan->orchestrator.synthesize",
+            "auditor.audit->orchestrator.synthesize"
+        ]
+    }
+}

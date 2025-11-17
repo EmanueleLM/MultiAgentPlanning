@@ -1,0 +1,127 @@
+{
+    "name": "CalendarSchedulingExample2",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "roy",
+            "kathryn",
+            "amy",
+            "auditor",
+            "orchestrator"
+        ],
+        "roy": {
+            "private_information": [
+                "Monday busy 09:00-09:30",
+                "Monday busy 10:00-10:30",
+                "Monday busy 11:00-11:30",
+                "Monday busy 12:30-13:00"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants."
+        },
+        "kathryn": {
+            "private_information": [
+                "Monday busy 09:30-10:00",
+                "Monday busy 16:30-17:00"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants."
+        },
+        "amy": {
+            "private_information": [
+                "Monday busy 09:00-14:30",
+                "Monday busy 15:00-16:00",
+                "Monday busy 16:30-17:00",
+                "Preference: I would rather not meet after 15:30 on Monday"
+            ],
+            "goal": "Find a 30 minute meeting time on Monday between 09:00 and 17:00 that fits all participants while respecting preferences."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: check temporal and causal consistency of reported availabilities",
+                "Role: remove bookkeeping shortcuts such as implicit overlapping tokens or post-hoc penalties"
+            ],
+            "goal": "Ensure the reported availabilities are temporally consistent, canonicalize slot representations, and flag conflicts or implicit assumptions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate availability reports and audit results to produce a planning problem targeting FastDownwards"
+            ],
+            "goal": "Produce a PDDL domain and problem that encodes participants, their available 30-minute slots on Monday between 09:00 and 17:00, and the requirement to schedule one meeting respecting all constraints and preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_duration_minutes": 30,
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "day": "Monday",
+            "time_slot_minutes": 30
+        },
+        "public_information": [
+            "Schedule a single 30 minute meeting on Monday between 09:00 and 17:00",
+            "Time granularity is 30 minutes",
+            "All participants must be available for the entire meeting",
+            "There exists at least one feasible meeting time given current schedules"
+        ]
+    },
+    "workflow": {
+        "roy": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_roy",
+                "system_prompt": "You are an agent representing Roy's calendar. Provide Roy's free 30-minute slots on Monday between 09:00 and 17:00 as a parsable list of time ranges in HH:MM-HH:MM format. Do not produce PDDL. Only report availability derived from Roy's private information.",
+                "prompt": "Given the public scheduling constraints and your private blocked times, return Roy's available 30-minute slots for Monday between the work hours. Use a concise structured list format."
+            }
+        },
+        "kathryn": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_kathryn",
+                "system_prompt": "You are an agent representing Kathryn's calendar. Provide Kathryn's free 30-minute slots on Monday between 09:00 and 17:00 as a parsable list of time ranges in HH:MM-HH:MM format. Do not produce PDDL. Only report availability derived from Kathryn's private information.",
+                "prompt": "Given the public scheduling constraints and your private blocked times, return Kathryn's available 30-minute slots for Monday between the work hours. Use a concise structured list format."
+            }
+        },
+        "amy": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_amy",
+                "system_prompt": "You are an agent representing Amy's calendar and preferences. Provide Amy's free 30-minute slots on Monday between 09:00 and 17:00 as a parsable list of time ranges in HH:MM-HH:MM format. Indicate preferred and non-preferred slots according to Amy's preference that she would rather not meet after 15:30. Do not produce PDDL. Only report availability derived from Amy's private information and preferences.",
+                "prompt": "Given the public scheduling constraints and your private blocked times and preferences, return Amy's available 30-minute slots for Monday between the work hours. Mark slots after 15:30 as discouraged if they are available."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_roy",
+                    "availability_kathryn",
+                    "availability_amy"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your job is to validate and canonicalize the reported availabilities, ensure there are no overlapping or misaligned slot representations, remove bookkeeping shortcuts, and produce a clean, conflict-free availability representation for each participant. Do not emit PDDL. Produce a structured audit_report listing canonical slots for each participant and any flagged issues.",
+                "prompt": "Receive the availability lists from participants. Normalize time formats, ensure slots align with the declared time granularity, detect and explain any inconsistencies or implicit assumptions, and output a canonical availability mapping for each participant."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_roy",
+                    "availability_kathryn",
+                    "availability_amy",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent PDDL encodings for scheduling tasks targeting the FastDownwards solver. Integrate the canonical availability reports and the auditor's findings. Produce a PDDL domain and a PDDL problem that encode participants, discrete 30-minute time slots on Monday between 09:00 and 17:00, slot availability for each participant, the meeting duration constraint, and Amy's preference as a soft suggestion if needed. Ensure actions for selecting a slot are distinct from participant reporting actions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The output must be ready to be fed to FastDownwards.",
+                "prompt": "Integrate the participants' canonical availabilities and the audit report to generate a PDDL domain and problem that finds one valid 30-minute meeting slot on Monday satisfying all hard constraints. Mark Amy's preference as a preference or soft constraint in comments if the PDDL dialect supports it. Output only the domain and problem enclosed in the required tags."
+            }
+        },
+        "constraints": [
+            "roy.report_availability->auditor.audit",
+            "kathryn.report_availability->auditor.audit",
+            "amy.report_availability->auditor.audit",
+            "roy.report_availability->orchestrator.pddl",
+            "kathryn.report_availability->orchestrator.pddl",
+            "amy.report_availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

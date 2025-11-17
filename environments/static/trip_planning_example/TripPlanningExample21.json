@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I prefer to visit Venice for 6 days.",
+                "I want to spend 2 days in Mykonos.",
+                "I plan to stay in Vienna for 4 days.",
+                "I must attend a workshop in Venice between day 5 and day 10."
+            ],
+            "goal": "Visit the three cities within a 10 day trip and attend the workshop in Venice during the required window."
+        },
+        "scheduler": {
+            "private_information": [
+                "I know the direct flight connectivity between cities.",
+                "Direct flights exist between Mykonos and Vienna and between Vienna and Venice.",
+                "There are no direct flights between Mykonos and Venice."
+            ],
+            "goal": "Provide feasible commuting options using only direct flights and propose temporal placement of flights within the 10 day horizon."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of proposed itineraries.",
+                "I remove bookkeeping shortcuts and unrealistic assumptions such as exceeding the total available days.",
+                "I enforce that travel transitions respect the direct flight connectivity and that required events such as the workshop are covered."
+            ],
+            "goal": "Audit proposals for consistency, resolve conflicts in day allocations, and return an adjusted validated itinerary without using heuristics that hide infeasibilities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals, constraints, and audit results and produce a final PDDL domain and problem that can be solved by the FastDownward planner to produce a validated day-by-day trip plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "days": 10,
+            "cities_count": 3
+        },
+        "public_information": [
+            "You plan a 10 day trip visiting three European cities: Mykonos, Vienna, and Venice.",
+            "You only take direct flights to commute between cities.",
+            "Direct flights exist between Mykonos and Vienna.",
+            "Direct flights exist between Vienna and Venice.",
+            "There is no direct flight between Mykonos and Venice.",
+            "There is a workshop in Venice that must be attended between day 5 and day 10 inclusive."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "proposal": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are the traveler agent. Provide a proposed allocation of days across the three cities and a rough day-by-day sketch of presence in each city. Do not output PDDL. Be explicit about any assumptions and highlight conflicts with the total available days if present.",
+                "prompt": "Your name is traveler. Use the public information in the environment and your private preferences to produce a proposed itinerary for 10 days. State the intended city for each day and note any constraints you consider relevant such as the workshop window in Venice. Do not generate solver files. Provide clear structured information that other agents can consume."
+            }
+        },
+        "scheduler": {
+            "constraints": {
+                "input": [],
+                "output": "schedule_constraints",
+                "system_prompt": "You are the scheduler agent. Provide feasible commuting constraints and a set of temporal rules describing how travel consumes days and when flights can occur. Do not output PDDL.",
+                "prompt": "Your name is scheduler. Based on the public flight connectivity and the 10 day horizon, produce a set of feasible travel moves, travel duration assumptions, and permissible day indices for flights. Represent connectivity explicitly and identify when a city change requires an intermediate stop. Do not emit planning domain files."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_proposal",
+                    "schedule_constraints"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency and to remove bookkeeping shortcuts and hidden infeasible assumptions. Produce a concise report that corrects day allocations and explains required adjustments. Do not output PDDL.",
+                "prompt": "Your name is auditor. Receive the traveler's proposal and the scheduler constraints. Detect conflicts such as total days exceeded, unreachable transitions given direct flights, or missing coverage of the Venice workshop window. Produce an adjusted validated itinerary or a list of required changes with reasons. Do not produce solver files."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "schedule_constraints",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your task is to integrate agent outputs and produce a final PDDL domain and PDDL problem targeting the FastDownward solver. Keep agent actions distinct if modeling multiple actors. Provide a domain and a problem and enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags. Ensure the PDDL encodes the 10 day horizon, direct flight connectivity, travel actions, city occupancy per day, and the constraint that the workshop in Venice must occur between day 5 and day 10 inclusive.",
+                "prompt": "You are the orchestrator. Use the traveler's proposal, the scheduler constraints, and the auditor report to create a coherent PDDL domain and problem that a FastDownward run can solve to yield a day-by-day trip plan. Do not assume unspecified shortcuts. If necessary, resolve ambiguous names and keep all agents' intended actions distinct in the encoding. Enclose the domain between <domain> and </domain> and the problem between <problem> and </problem>."
+            }
+        },
+        "constraints": [
+            "traveler.proposal->orchestrator.pddl",
+            "scheduler.constraints->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

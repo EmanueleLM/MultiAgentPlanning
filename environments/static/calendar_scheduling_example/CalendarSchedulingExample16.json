@@ -1,0 +1,125 @@
+{
+    "name": "CalendarSchedulingExample16",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "scott",
+            "gabriel",
+            "christine",
+            "auditor",
+            "orchestrator"
+        ],
+        "scott": {
+            "private_information": [
+                "Busy on Monday from 09:30 to 10:30",
+                "Busy on Monday from 13:30 to 14:00",
+                "Busy on Monday from 14:30 to 15:00",
+                "Busy on Monday from 15:30 to 16:00",
+                "Busy on Monday from 16:30 to 17:00",
+                "Work hours on Monday are 09:00 to 17:00"
+            ],
+            "goal": "Provide Scott's availability windows on Monday for a 30-minute meeting within work hours."
+        },
+        "gabriel": {
+            "private_information": [
+                "No meetings on Monday",
+                "Work hours on Monday are 09:00 to 17:00"
+            ],
+            "goal": "Provide Gabriel's availability windows on Monday for a 30-minute meeting within work hours."
+        },
+        "christine": {
+            "private_information": [
+                "Busy on Monday from 09:00 to 10:00",
+                "Busy on Monday from 10:30 to 12:30",
+                "Busy on Monday from 13:00 to 17:00",
+                "Work hours on Monday are 09:00 to 17:00"
+            ],
+            "goal": "Provide Christine's availability windows on Monday for a 30-minute meeting within work hours."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency for schedules"
+            ],
+            "goal": "Audit the collected availability reports for temporal overlaps, ambiguous intervals, off-by-one minute edge cases, and any bookkeeping shortcuts, and produce a cleaned, canonical set of availability intervals for each participant."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Combine participants' availability and the auditor's cleaned report to produce a final planning problem and domain in PDDL suitable for the FastDownwards solver that finds a 30-minute meeting time on Monday between 09:00 and 17:00 for Scott, Gabriel and Christine."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Participants: Scott, Gabriel, Christine",
+            "Meeting duration: 30 minutes",
+            "Allowed scheduling window: Monday between 09:00 and 17:00",
+            "A valid solution exists that fits everyone's existing schedule"
+        ]
+    },
+    "workflow": {
+        "scott": {
+            "share_availability": {
+                "input": [],
+                "output": "availability_scott",
+                "system_prompt": "You are Scott's calendar assistant. Using Scott's private information, list Scott's busy intervals on Monday and compute Scott's free availability windows within work hours as an ordered list of non-overlapping ISO time ranges. Present the output as a JSON array of objects with fields start and end, for example: [{\"start\":\"09:00\",\"end\":\"09:30\"}]. Do not emit PDDL.",
+                "prompt": "Provide Scott's free availability windows on Monday for 30-minute meeting slots based only on your private information and the shared public information."
+            }
+        },
+        "gabriel": {
+            "share_availability": {
+                "input": [],
+                "output": "availability_gabriel",
+                "system_prompt": "You are Gabriel's calendar assistant. Using Gabriel's private information, list Gabriel's busy intervals on Monday and compute Gabriel's free availability windows within work hours as an ordered list of non-overlapping ISO time ranges. Present the output as a JSON array of objects with fields start and end. Do not emit PDDL.",
+                "prompt": "Provide Gabriel's free availability windows on Monday for 30-minute meeting slots based only on your private information and the shared public information."
+            }
+        },
+        "christine": {
+            "share_availability": {
+                "input": [],
+                "output": "availability_christine",
+                "system_prompt": "You are Christine's calendar assistant. Using Christine's private information, list Christine's busy intervals on Monday and compute Christine's free availability windows within work hours as an ordered list of non-overlapping ISO time ranges. Present the output as a JSON array of objects with fields start and end. Do not emit PDDL.",
+                "prompt": "Provide Christine's free availability windows on Monday for 30-minute meeting slots based only on your private information and the shared public information."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_scott",
+                    "availability_gabriel",
+                    "availability_christine"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that enforces temporal and causal consistency. Inspect the availability reports for off-by-one-minute issues, adjacent intervals that should merge, overlaps, inconsistent time formats, and any bookkeeping shortcuts. Remove artificial tokens or shortcuts and produce a cleaned canonical availability set for each participant as a JSON object mapping participant names to arrays of start/end ranges. Explain any corrections in plain text and output the canonical availability JSON. Do not emit PDDL.",
+                "prompt": "Receive the availability outputs from the participants, audit them for temporal correctness and canonicalization, and provide a cleaned availability report for the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_scott",
+                    "availability_gabriel",
+                    "availability_christine",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent scheduling and PDDL modeling. Using the cleaned availability from the auditor and the participants, produce a PDDL domain and a PDDL problem that encodes finding a 30-minute meeting slot on Monday between 09:00 and 17:00 that is free for Scott, Gabriel and Christine. Target the FastDownwards planner and ensure temporal constraints are encoded so the solver can find a valid start time in minutes or canonical times. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep each agent's identity and any agent-specific actions distinct.",
+                "prompt": "Integrate the cleaned availability reports and produce the final PDDL domain and PDDL problem files for FastDownwards that will allow finding a feasible 30-minute meeting time. Enclose the domain in <domain> tags and the problem in <problem> tags."
+            }
+        },
+        "constraints": [
+            "scott.share_availability->orchestrator.pddl",
+            "gabriel.share_availability->orchestrator.pddl",
+            "christine.share_availability->orchestrator.pddl",
+            "scott.share_availability->auditor.audit",
+            "gabriel.share_availability->auditor.audit",
+            "christine.share_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,107 @@
+{
+    "name": "Depots25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "manipulator",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "manipulator": {
+            "private_information": [
+                "I simulate concrete object interactions and check which hands and object tuples make action preconditions true in the current initial facts.",
+                "I can validate that a specific action instance is executable given current facts and I can report the required facts consumed or produced."
+            ],
+            "goal": "Produce a concise capability report that lists which concrete action instances are applicable in the given initial state and which objects each instance will affect."
+        },
+        "planner": {
+            "private_information": [
+                "I transform action descriptions into symbolic action schemas and identify name mappings and parameter types.",
+                "I focus on preconditions and effects expressed as predicate templates, and I identify ambiguities in object naming and predicate arities."
+            ],
+            "goal": "Produce a symbolic model of actions that abstracts concrete instances into action schemas and documents any naming ambiguities or required type declarations."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as implicit tokens, quotas, and post-hoc penalties.",
+                "I verify that sequential plans are causally sound, that effects do not rely on hidden bookkeeping, and that state changes are properly represented."
+            ],
+            "goal": "Produce an audit report that flags causal or temporal inconsistencies, suggests fixes that remove bookkeeping shortcuts, and provides recommendations to ensure a sound PDDL encoding."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses from other agents and produce the final PDDL domain and problem files targeted to the FastDownwards planner.",
+                "I ensure multi-agent actions are kept distinct and that the produced PDDL is syntactically suitable for FastDownwards."
+            ],
+            "goal": "Integrate the manipulator capability report, the planner symbolic model, and the auditor recommendations to produce a final PDDL domain and problem that FastDownwards can solve to achieve the stated goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 25,
+            "visibility": 2
+        },
+        "public_information": [
+            "Objects are named object_0 through object_13 and additional numbered objects referenced in initial statements.",
+            "Available actions are paltry, sip, clip, wretched, memory, and tightfisted with the following informal semantics and relational predicates.",
+            "Paltry requires hand, cats, texture, vase, and next relations on its parameters. Paltry makes a next relation true and removes a vase relation.",
+            "Sip requires hand, cats, texture, and two next relations. Sip makes a vase relation true and removes one next relation.",
+            "Clip requires hand, sneeze, texture, and two next relations. Clip makes a vase relation true and removes one next relation.",
+            "Wretched requires sneeze on one object, two texture predicates, a stupendous predicate on a fourth object, one next relation and two collect relations. Wretched makes one next relation true and removes another next relation.",
+            "Memory requires cats and two spring predicates and one next relation. Memory makes a different next relation true and removes the original next relation.",
+            "Tightfisted requires hand, sneeze, texture, a next relation and a vase relation. Tightfisted makes a next relation true and removes a vase relation.",
+            "Initial facts in the scenario include cats object_0, many collect relations such as collect object_10 object_2, collect object_5 object_1, hand objects 11 12 13, various next relations such as next object_0 object_8 and next object_11 object_10 and next object_12 object_6, sneeze facts on object_3 and object_4, spring facts and stupendous facts, and textures on several objects.",
+            "The goal examples ask for particular next predicates to hold for specific object pairs such as next object_11 object_8, next object_12 object_8 and next object_13 object_10 in one scenario and next object_11 object_5, next object_12 object_9 and next object_13 object_10 in another scenario."
+        ]
+    },
+    "workflow": {
+        "manipulator": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_manipulator",
+                "system_prompt": "You are a manipulation expert that inspects concrete action instances and initial facts to report which instances are applicable and what concrete facts they will change. Do not emit PDDL.",
+                "prompt": "Your name is manipulator. You receive the environment public information and the private information that describes your role. Analyze the provided initial facts and list which concrete action invocations from the plan candidates are immediately applicable, which preconditions are missing for others, and what concrete predicates each applicable action will add and delete. Provide the response as a structured capability report. Do not emit PDDL."
+            }
+        },
+        "planner": {
+            "model": {
+                "input": [
+                    "analysis_manipulator"
+                ],
+                "output": "model_planner",
+                "system_prompt": "You are an action modeling expert who converts informal action descriptions into precise symbolic action schemas with parameter types, preconditions, and effects. Do not emit final PDDL in this step.",
+                "prompt": "Your name is planner. Using the environment public information and the manipulator capability report, produce a symbolic model composed of typed predicates, action schemas for paltry sip clip wretched memory and tightfisted, and a mapping between concrete object names and types. Highlight any ambiguities or naming conflicts and suggest canonical predicate names and type declarations. Do not output final PDDL domain or problem files."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your job is to detect hidden bookkeeping, temporal shortcuts, and causal fallacies and to propose corrections that produce a clean, causally sound model.",
+                "prompt": "Your name is auditor. Receive the planner model and the public information. Check temporal and causal consistency of the action schemas and of example concrete plans. Identify any bookkeeping shortcuts such as implicit tokens, post-hoc penalties, or assumptions that violate causal closure. Recommend explicit predicates or modifications to preconditions and effects to remove such shortcuts. Produce an audit report listing detected issues and suggested fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_manipulator",
+                    "model_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and you target the FastDownwards planner. Integrate other agents outputs, keep agent actions distinct, and produce a PDDL domain and problem compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. Integrate the manipulator capability report, the planner symbolic model, and the auditor recommendations to build a complete PDDL domain and a PDDL problem file. Ensure types, predicates, action schemas, initial state, and goal statements reflect the public information and the initial facts. Resolve naming conflicts and apply auditor suggested fixes to remove bookkeeping shortcuts. Keep actions that would be performed by different agents distinct by prefixing action names or commenting agent ownership. Produce the PDDL domain and problem files and enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. The produced PDDL should be compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "manipulator.analysis->planner.model",
+            "planner.model->auditor.audit",
+            "planner.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

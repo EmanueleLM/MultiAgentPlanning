@@ -1,0 +1,118 @@
+{
+    "name": "TripPlanningExample16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "flight_checker",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I prefer direct flights only",
+                "Desired stays: Prague 3 days, Vienna 3 days, Porto 5 days"
+            ],
+            "goal": "Produce a tentative day-by-day allocation per city that attempts to satisfy the desired stays within the 9-day total, or state the minimal changes required if impossible."
+        },
+        "flight_checker": {
+            "private_information": [
+                "Direct flights exist between Vienna and Porto",
+                "Direct flights exist between Prague and Vienna",
+                "No direct flight exists between Prague and Porto"
+            ],
+            "goal": "Verify which travel legs are feasible using only direct flights and produce possible sequences of city-to-city commutes that respect direct-flight-only constraint."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency",
+                "I flag and resolve duration sum inconsistencies and remove bookkeeping shortcuts"
+            ],
+            "goal": "Audit proposed itineraries for temporal and causal consistency, remove any bookkeeping shortcuts (e.g., quota tokens or post-hoc penalties), and propose minimal feasible adjustments if the specification is inconsistent."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce a final PDDL domain and problem targeting the FastDownwards solver that yields a valid 9-day itinerary using only direct flights and satisfying the Prague workshop timing constraint."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9,
+            "cities": [
+                "Prague",
+                "Vienna",
+                "Porto"
+            ],
+            "direct_flights": [
+                [
+                    "Vienna",
+                    "Porto"
+                ],
+                [
+                    "Prague",
+                    "Vienna"
+                ]
+            ],
+            "workshop_window": [
+                1,
+                3
+            ],
+            "notes": "You will only take direct flights to commute between cities. The workshop must be attended in Prague between day 1 and day 3 inclusive."
+        },
+        "public_information": [
+            "Total trip duration is 9 days",
+            "Cities to visit: Prague, Vienna, Porto",
+            "Direct flights exist between Vienna and Porto, and between Prague and Vienna",
+            "There is no direct flight between Prague and Porto",
+            "A workshop occurs in Prague and must be attended between day 1 and day 3 inclusive",
+            "All commutes between cities must be by direct flights only"
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_spec",
+                "system_prompt": "You are an itinerary planning agent. Produce a structured tentative itinerary specifying sequences of city stays and day allocations per city that attempt to respect the user's requested stays and the total horizon. If the requested stays are inconsistent with the total horizon, do not assume hidden resources; explicitly state the inconsistency and propose minimal adjustments (for example, which city's stay to shorten) along with a rationale. Do not emit PDDL; output a clear structured specification that can be consumed by other agents.",
+                "prompt": "Your name is itinerary_planner. Use the public information {environment->public_information} and your private information {agents->itinerary_planner->private_information} to produce a proposed day-by-day allocation across the cities and a travel sequence that uses only direct flights. If you detect conflicts with the total number of days, propose minimal adjustments and rank them by preference."
+            }
+        },
+        "flight_checker": {
+            "check": {
+                "input": [],
+                "output": "flight_checks",
+                "system_prompt": "You are a flight connectivity checker. Using the environment's public information about direct flights, verify the feasibility of each proposed travel leg in the itinerary specification. Produce a structured list of feasible legs, indicate legs that require indirect connections (and thus are forbidden), and suggest alternative direct-leg sequences when available. Do not emit PDDL; output diagnostics and corrected leg sequences.",
+                "prompt": "Your name is flight_checker. Use public information {environment->public_information} and any itinerary proposal {itinerary_spec} to validate travel legs. Provide feasible direct-flight itineraries and highlight any legs that violate the direct-flight-only constraint."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_spec",
+                    "flight_checks"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Examine the proposed itinerary and flight feasibility reports for consistency in durations, day assignments, causal ordering (e.g., cannot be in two cities same day), and the workshop timing constraint. Remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or any lax assumptions. If the specification is infeasible, propose minimal concrete fixes and produce a validated timeline. Do not emit PDDL; output an audit report with explicit day assignments that are temporally consistent.",
+                "prompt": "Your name is temporal_auditor. Given the itinerary_spec and flight_checks, produce an audit_report that confirms temporal and causal consistency or provides required adjustments, ensuring the workshop in Prague falls between days {environment->init->workshop_window[0]} and {environment->init->workshop_window[1]} and that all commutes use only direct flights."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_spec",
+                    "flight_checks",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling targeted to the FastDownwards planner. Integrate the itinerary specification, flight feasibility checks, and the temporal audit report to produce a single PDDL domain and a PDDL problem encoding the travel planning instance. Model cities, days (explicit discrete time from day 1 to day 9), stays per city, travel actions constrained to direct flights only, and an action or constraint enforcing attendance at the Prague workshop between day 1 and day 3 inclusive. Ensure the encoding avoids bookkeeping shortcuts and models temporal/causal constraints explicitly. Keep any agent-specific actions distinct if representing multiple actors. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. The produced PDDL must be compatible with the FastDownwards solver.",
+                "prompt": "You are the orchestrator. Integrate the outputs: {itinerary_spec}, {flight_checks}, and {audit_report} and produce a PDDL domain and PDDL problem pair that FastDownwards can solve to yield a valid 9-day itinerary using only direct flights and satisfying the Prague workshop constraint. If the inputs contain inconsistencies, document the resolution choices you apply before encoding them in PDDL."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.plan->orchestrator.pddl",
+            "flight_checker.check->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

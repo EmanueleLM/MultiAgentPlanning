@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "travel_planner",
+            "city_stay_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "travel_planner": {
+            "private_information": [
+                "Preferred stays: Reykjavik 2 days, Vienna 7 days, Venice 4 days",
+                "I only consider itineraries that use direct flights between cities",
+                "Direct flight connections available: Reykjavik <-> Vienna, Vienna <-> Venice"
+            ],
+            "goal": "Propose a feasible ordered itinerary of city visits and flight segments that attempts to respect the preferred stays and uses only direct flights."
+        },
+        "city_stay_manager": {
+            "private_information": [
+                "Wedding in Venice must be attended between day 8 and day 11 inclusive",
+                "Total available trip length is 11 days",
+                "I will propose explicit day ranges for each city visit"
+            ],
+            "goal": "Assign day ranges for stays in each city that try to respect preferences and the wedding constraint."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts",
+                "Detect and resolve conflicts such as total days mismatch, overlaps, or impossible flight sequences",
+                "Do not rely on post-hoc penalties or quota tokens; produce concrete, minimal adjustments"
+            ],
+            "goal": "Audit the itinerary and stay schedule for temporal and causal consistency, and produce a concrete consistency report with recommended adjustments if necessary."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the planners' outputs, incorporate the auditor's report, and produce a final PDDL domain and problem targeting the FastDownwards solver that models the trip planning task and is ready to be solved."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11
+        },
+        "public_information": [
+            "Total trip length is 11 days.",
+            "Cities to visit: Reykjavik, Vienna, Venice.",
+            "Preferred stays reported by the user: Reykjavik 2 days, Vienna 7 days, Venice 4 days.",
+            "Wedding in Venice occurs between day 8 and day 11 inclusive and attendance in Venice during that interval is required.",
+            "Direct flights exist between Reykjavik and Vienna, and between Vienna and Venice.",
+            "Only direct flights may be used to commute between cities."
+        ]
+    },
+    "workflow": {
+        "travel_planner": {
+            "create_itinerary": {
+                "input": [],
+                "output": "itinerary_travel_planner",
+                "system_prompt": "You are a travel planner agent that proposes ordered itineraries using only the provided direct flight connections. Produce an itinerary that lists the sequence of cities and the flight legs between them and an initial allocation of days per city based on preferences. Do not emit PDDL.",
+                "prompt": "Given the public information and your private preferences, propose an ordered itinerary that uses only direct flights and attempt to respect the preferred stays. Report the sequence of visits and an initial day allocation per city, and explain any assumptions or unresolved conflicts."
+            }
+        },
+        "city_stay_manager": {
+            "assign_stays": {
+                "input": [],
+                "output": "stay_schedule",
+                "system_prompt": "You are a city stay manager responsible for assigning explicit day ranges to each city visit, respecting mandatory constraints such as the wedding window. Provide a concrete schedule of which days are spent in which city. Do not emit PDDL.",
+                "prompt": "Using the public information and your private constraints, assign exact day ranges for Reykjavik, Vienna, and Venice for the 11-day trip so that the wedding attendance constraint is met. If preferences conflict with total days, state the conflict and any preferred resolution."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "itinerary_travel_planner",
+                    "stay_schedule"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are an auditing agent that checks temporal and causal consistency and removes bookkeeping shortcuts. Identify inconsistencies such as total days exceeding the trip length, overlapping stays, or impossible transitions given direct-flight constraints. Provide minimal concrete adjustments and rationale. Do not emit PDDL.",
+                "prompt": "Receive the proposed itinerary and the stay schedule. Verify that the sum of allocated days equals the total trip length, that stays do not overlap, and that city transitions are feasible via direct flights. If conflicts exist, propose the smallest necessary adjustments to make the plan feasible and explicit."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_travel_planner",
+                    "stay_schedule",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the itinerary, the stay schedule, and the auditor's consistency report and produce a final PDDL domain and a PDDL problem suitable for the FastDownwards solver that represents the finalized trip plan task. Keep agent actions distinct in the model where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the inputs from the travel planner, the city stay manager, and the auditor. Resolve any remaining ambiguities guided by the auditor's recommendations. Output a PDDL domain and a PDDL problem modeling cities, stays, and direct-flight transitions over discrete days for the 11-day trip, ensuring the plan guarantees presence in Venice during the wedding window. Target the FastDownwards solver and enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "travel_planner.create_itinerary->auditor.audit_consistency",
+            "city_stay_manager.assign_stays->auditor.audit_consistency",
+            "travel_planner.create_itinerary->orchestrator.pddl",
+            "city_stay_manager.assign_stays->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

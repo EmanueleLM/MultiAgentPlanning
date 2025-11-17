@@ -1,0 +1,107 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "executor",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know the available action schemas and their informal preconditions and effects as described in the public information.",
+                "I can produce a step by step symbolic plan that lists actions with concrete object arguments and the expected state predicates that change."
+            ],
+            "goal": "Reach the declared next relationship goals starting from a given initial condition by producing a causal symbolic plan."
+        },
+        "executor": {
+            "private_information": [
+                "I can simulate forward the symbolic plan on the provided initial conditions and report resulting predicates and any mismatches.",
+                "I track concrete object identities and ensure that preconditions are satisfied before each simulated action."
+            ],
+            "goal": "Validate the planner's symbolic plan by simulating state transitions and produce an execution trace with intermediate states."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties from proposed plans.",
+                "I detect implicit assumptions, temporal shortcuts, or causal leaps and produce recommendations to make plans explicit and causally grounded."
+            ],
+            "goal": "Produce an audit report that enforces causal completeness, eliminates bookkeeping shortcuts, and yields a corrected, explicit plan if necessary."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I collect artifacts from other agents and assemble a final formal representation suitable for an automated planner.",
+                "I target the FastDownwards solver and must output a PDDL domain and a PDDL problem that keep agent actions distinct when necessary."
+            ],
+            "goal": "Integrate analysis, simulation, and audit reports to produce a complete PDDL domain and problem ready for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 11,
+            "visibility": 2
+        },
+        "public_information": [
+            "There is a set of named objects referred to as object_0 through object_10.",
+            "Available high-level actions and their informal requirements and effects are as follows: paltry requires hand object_0 cats object_1 texture object_2 vase object_0 object_1 and next object_1 object_2. paltry makes next object_0 object_2 true and makes vase object_0 object_1 false.",
+            "sip requires hand object_0 cats object_1 texture object_2 next object_0 object_2 and next object_1 object_2. sip makes vase object_0 object_1 true and makes next object_0 object_2 false.",
+            "clip requires hand object_0 sneeze object_1 texture object_2 next object_1 object_2 and next object_0 object_2. clip makes vase object_0 object_1 true and makes next object_0 object_2 false.",
+            "wretched requires sneeze object_0 texture object_1 texture object_2 stupendous object_3 next object_0 object_1 collect object_1 object_3 and collect object_2 object_3. wretched makes next object_0 object_2 true and makes next object_0 object_1 false.",
+            "memory requires cats object_0 spring object_1 spring object_2 and next object_0 object_1. memory makes next object_0 object_2 true and makes next object_0 object_1 false.",
+            "tightfisted requires hand object_0 sneeze object_1 texture object_2 next object_1 object_2 and vase object_0 object_1. tightfisted makes next object_0 object_2 true and makes vase object_0 object_1 false.",
+            "Initial condition scenarios will provide concrete atoms such as cats, collect, hand, next, sneeze, spring, stupendous and texture for particular objects.",
+            "Goals are specified as target next relations between particular objects for each scenario."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_planner",
+                "system_prompt": "You are a domain planning analyst. Produce a detailed symbolic plan under the constraints available and enumerate which action schema instance is used at each step and which predicates are expected to change. Do not produce PDDL in this stage.",
+                "prompt": "Your name is planner. You are given the public information: {environment->public_information} You have the following knowledge: {agents->planner->private_information} The local goal to achieve is: {agents->planner->goal} Given a provided initial statement and a candidate plan, produce a step by step symbolic plan with explicit precondition checks and the expected resulting predicates after each step. If information is missing, highlight what is missing instead of making unstated assumptions."
+            }
+        },
+        "executor": {
+            "simulation": {
+                "input": [
+                    "analysis_planner"
+                ],
+                "output": "simulation_executor",
+                "system_prompt": "You are an execution simulator. You will take a symbolic plan and initial facts and perform a forward simulation, reporting intermediate states, unmet preconditions, and any contradictions. Do not generate PDDL.",
+                "prompt": "Your name is executor. You receive the planner's symbolic plan: {analysis_planner} You are given the public information: {environment->public_information} You have the following knowledge: {agents->executor->private_information} Simulate the plan step by step on the declared initial facts, produce the execution trace with the state after each action, and report any failures. If there are ambiguities about object identities or predicate semantics, list them."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_planner",
+                    "simulation_executor"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of causal and temporal soundness. You will inspect symbolic plans and execution traces and remove bookkeeping shortcuts and post-hoc repairs, ensuring a causally explicit plan. Produce a corrected explicit plan if needed and an audit summary.",
+                "prompt": "Your name is auditor. You receive the planner's plan and the executor's trace: {analysis_planner} {simulation_executor} You are given the public information: {environment->public_information} You have the following knowledge: {agents->auditor->private_information} Produce an audit report that identifies temporal or causal shortcuts and removes them. If the original plan used bookkeeping shortcuts, produce a more explicit plan that restores causal grounding. Output the corrected explicit plan and a short explanation for each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_planner",
+                    "simulation_executor",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates analyses, simulations and audits to produce a final PDDL domain and problem tailored for the FastDownwards solver. Keep multi-agent actions distinct when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You receive artifacts from the other agents: {analysis_planner} {simulation_executor} {audit_report} You are given the public information: {environment->public_information} You have the following knowledge: {agents->orchestrator->private_information} Produce a complete PDDL domain and a PDDL problem that represent the audited explicit plan and the scenario initial conditions and goal, suitable for FastDownwards. Keep agent actions and responsibilities explicit and distinct if the integration requires it. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.analysis->executor.simulation",
+            "executor.simulation->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner.analysis->auditor.audit"
+        ]
+    }
+}

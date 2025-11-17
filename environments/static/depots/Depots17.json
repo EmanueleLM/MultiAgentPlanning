@@ -1,0 +1,100 @@
+{
+    "name": "Depots17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know the available action schemas: paltry, sip, clip, wretched, memory, tightfisted and their informal preconditions and effects as described by the user.",
+                "I can parse the human plan and the two statement blocks into structured action instances, predicates, and object lists."
+            ],
+            "goal": "Parse the use-case into a structured representation: explicit predicates, object set, action schemas with typed parameters, and a step-ordered plan. Produce a clear mapping from plan steps to the action schemas without emitting PDDL."
+        },
+        "simulator": {
+            "private_information": [
+                "I can apply action schemas (preconditions and effects) to an initial logical state and produce forward state traces for a given plan.",
+                "I model boolean predicates only, track truth/falsity, and detect violated preconditions during simulation."
+            ],
+            "goal": "Simulate the given human plan using the planner's parsed schemas and the initial statements. Report the state trace, indicate steps that fail preconditions (if any), and produce causal links and achieved/negated facts for each step. Do not emit PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency, and to remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit shortcuts introduced by partial descriptions.",
+                "I will suggest conservative corrections to preconditions/effects and identify places where the plan relies on bookkeeping shortcuts."
+            ],
+            "goal": "Produce an audit report that (1) flags temporal/causal inconsistencies, (2) removes or replaces bookkeeping shortcuts with explicit predicates or constraints, and (3) outputs corrected/normalized action schemas and ordering constraints. Provide concrete adjustments for the orchestrator to integrate. Do not emit PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate structured analyses from planner, simulator, and auditor and produce a final PDDL domain and problem tailored to the FastDownwards solver.",
+                "I must keep actions distinct per agent when applicable and maintain clear typing, predicates, and goals required by FastDownwards (STRIPS-compatible, explicit preconditions and effects)."
+            ],
+            "goal": "Integrate the parsed schemas, simulation traces, and audit fixes to produce a coherent PDDL domain and PDDL problem suitable for FastDownwards that encodes the user's goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 14,
+            "visibility": 2,
+            "objects_estimated": 14
+        },
+        "public_information": [
+            "Available actions: paltry (params: object_0 object_1 object_2), sip (object_0 object_1 object_2), clip (object_0 object_1 object_2), wretched (object_0 object_1 object_2 object_3), memory (object_0 object_1 object_2), tightfisted (object_0 object_1 object_2).",
+            "Informal preconditions and effects are provided by the user. Predicates referenced include hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Two initial statement variants and a sequence of plan steps were provided by the user. The final goal is expressed in terms of next predicates between specific object pairs.",
+            "FastDownwards requirements: use STRIPS-style predicates, explicit initial state and goal, and avoid solver-specific extensions in the domain except typing and predicates supported by FastDownwards."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analyze": {
+                "input": [],
+                "output": "plan_analysis",
+                "system_prompt": "You are the planner agent. Parse the human description of actions, preconditions, effects, the two initial statement blocks and the explicit plan into a structured JSON representation. Provide: (1) canonical list of objects referenced, (2) normalized predicate names and arities, (3) formalized action schemas with parameter lists, preconditions and add/delete effects, and (4) the ordered concrete plan steps mapped to schemas. If information is missing or ambiguous, mark it as unspecified rather than assuming. Do not emit PDDL; emit only a precise machine-readable analysis named plan_analysis."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "plan_analysis"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are the simulator agent. Using plan_analysis, simulate the provided plan step by step from each initial statement block the user provided. For each step produce the preconditions checked, which preconditions hold or fail, the state before and after the step, and any causal links (which step established which fact). If a step fails its preconditions, annotate the failure and continue producing maximal trace information. Do not emit PDDL; emit only the simulation_trace artifact."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_analysis",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent charged with temporal and causal consistency and removal of bookkeeping shortcuts. Inspect plan_analysis and simulation_trace and produce: (1) an audit_report that identifies temporal ordering problems, causal gaps, or implicit bookkeeping shortcuts (for example tokens, quotas, post-hoc penalties), (2) normalized corrections replacing shortcuts with explicit predicates and constraints, and (3) suggested stricter preconditions/effects or additional ordering constraints to ensure soundness. Provide precise patches to the action schemas and a short justification for each modification. Do not emit PDDL; emit only the audit_report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_analysis",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate plan_analysis, simulation_trace, and audit_report to produce a final PDDL domain and a corresponding PDDL problem file targeting the FastDownwards solver. The PDDL must be STRIPS-compatible with explicit predicates, actions, initial state and goal. Keep agent-level actions distinct when applicable. Apply audit_report corrections; do not rely on bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Annotate any non-trivial encoding decisions in brief comments inside the PDDL files as semantically harmless comments. The final output is intended to be fed to FastDownwards."
+            }
+        },
+        "constraints": [
+            "planner.analyze->simulator.simulate",
+            "simulator.simulate->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner.analyze->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl"
+        ]
+    }
+}

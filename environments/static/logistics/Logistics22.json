@@ -1,0 +1,98 @@
+{
+    "name": "Logistics22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_a",
+            "planner_b",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_a": {
+            "private_information": [
+                "I know the first scenario initial facts: cats object_0, collect object_10 object_2, collect object_5 object_1, collect object_6 object_1, collect object_7 object_1, collect object_8 object_2, collect object_9 object_2, hand object_11, hand object_12, next object_0 object_5, next object_11 object_9, next object_12 object_10, next object_3 object_6, next object_4 object_8, sneeze object_3, sneeze object_4, spring object_5, spring object_8, stupendous object_1, stupendous object_2, texture object_10, texture object_5, texture object_6, texture object_7, texture object_8, texture object_9",
+                "I know the first scenario goal: next object_11 object_7 and next object_12 object_5",
+                "I know the first plan steps sequence that was proposed in the use-case"
+            ],
+            "goal": "Analyze the first scenario and produce a structured summary of grounded action instances, their required preconditions and deterministic effects, and check per-step applicability under the stated initial facts."
+        },
+        "planner_b": {
+            "private_information": [
+                "I know the second scenario initial facts: cats object_0, collect object_10 object_2, collect object_5 object_1, collect object_6 object_1, collect object_7 object_1, collect object_8 object_2, collect object_9 object_2, hand object_11, hand object_12, next object_0 object_8, next object_11 object_6, next object_12 object_10, next object_3 object_7, next object_4 object_10, sneeze object_3, sneeze object_4, spring object_5, spring object_8, stupendous object_1, stupendous object_2, texture object_10, texture object_5, texture object_6, texture object_7, texture object_8, texture object_9",
+                "I know the second scenario goal: next object_11 object_7 and next object_12 object_8",
+                "I know the second scenario plan that was proposed in the use-case"
+            ],
+            "goal": "Analyze the second scenario and produce a structured summary of grounded action instances, their required preconditions and deterministic effects, and check per-step applicability under the stated initial facts."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I focus on verifying that each action's claimed effects and negations do not rely on implicit bookkeeping, that mutual exclusions are explicit, and that all causal chains are supported by concrete preconditions and effects"
+            ],
+            "goal": "Audit the planners' summaries for causal completeness, temporal feasibility, and removal of bookkeeping shortcuts, and produce an auditor report that highlights inconsistencies and required corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and produce the final PDDL domain and PDDL problem targeting the FastDownward solver",
+                "I must keep agent actions distinct in the integrated domain and ensure grounding matches the provided objects and initial facts"
+            ],
+            "goal": "Integrate planner analyses and auditor reports and emit a final PDDL domain and a PDDL problem file compatible with FastDownward that achieves the specified goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "object_count": 13,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are six action schemas available: paltry, sip, clip, wretched, memory, tightfisted. Each action takes three or four object parameters as specified in the use-case.",
+            "Action preconditions and effects are relational predicates over objects: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring and others.",
+            "Certain actions set the next relation between objects and flip vase and next facts as described in the use-case. Effects are deterministic.",
+            "Two separate scenarios are provided with different initial next relations and different intended goals. Agents may reason about either scenario."
+        ]
+    },
+    "workflow": {
+        "planner_a": {
+            "analysis": {
+                "input": [],
+                "output": "planner_a_summary",
+                "system_prompt": "You are an analyst agent. Your task is to read the provided scenario fragment and produce a structured, ground-level summary of the actions and plan steps. Do not emit PDDL. Instead, enumerate each grounded action instance, list the exact preconditions that must hold for that instance, list the exact positive and negative effects produced by that instance, and state whether the instance is applicable given the initial facts. Produce concise, machine-friendly summaries.",
+                "prompt": "Your name is planner_a. Use the environment public information and your private information to analyze the scenario. Produce a structured summary of grounded actions, their preconditions, and effects, and validate each plan step against the initial facts and previously derived effects. If information is missing, mark the missing facts instead of making assumptions. Output a compact summary suitable for downstream integration."
+            }
+        },
+        "planner_b": {
+            "analysis": {
+                "input": [],
+                "output": "planner_b_summary",
+                "system_prompt": "You are an analyst agent. Your task is to read the provided scenario fragment and produce a structured, ground-level summary of the actions and plan steps. Do not emit PDDL. Instead, enumerate each grounded action instance, list the exact preconditions that must hold for that instance, list the exact positive and negative effects produced by that instance, and state whether the instance is applicable given the initial facts. Produce concise, machine-friendly summaries.",
+                "prompt": "Your name is planner_b. Use the environment public information and your private information to analyze the scenario. Produce a structured summary of grounded actions, their preconditions, and effects, and validate each plan step against the initial facts and previously derived effects. If information is missing, mark the missing facts instead of making assumptions. Output a compact summary suitable for downstream integration."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor agent. Your remit is to verify temporal and causal consistency, detect implicit bookkeeping shortcuts such as tokens or post-hoc adjustments, and recommend concrete corrections. Provide a machine-readable report listing: detected causal gaps, recommended explicit preconditions or intermediate actions, and any steps that must be reordered or removed to restore causality.",
+                "prompt": "Your name is auditor. Use your private information and the planners' intended summaries when available. Check for missing causal links, steps that rely on bookkeeping shortcuts, and temporal inconsistencies. Produce a report with explicit remediation steps that make the plan causally grounded without relying on shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_a_summary",
+                    "planner_b_summary",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating analysis outputs and producing the final PDDL domain and PDDL problem files. Target the FastDownward solver. Keep actions of different agents distinct by prefixing action names or grouping by agent where necessary. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, objects, initial state and goal are fully grounded and consistent with the auditor report.",
+                "prompt": "Your name is orchestrator. Integrate the planners' summaries and the auditor report to produce a complete PDDL domain and a PDDL problem file that FastDownward can solve. Preserve distinct agent action identities and resolve naming inconsistencies. Ensure all preconditions and effects are explicit and that no bookkeeping shortcuts remain. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner_a.analysis->orchestrator.pddl",
+            "planner_b.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

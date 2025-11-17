@@ -1,0 +1,106 @@
+{
+    "name": "TripPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_data",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit Dubrovnik for 3 days",
+                "I plan to visit Berlin for 4 days",
+                "I plan to visit Munich for 3 days",
+                "I must attend a conference in Berlin on day 1 and day 4"
+            ],
+            "goal": "Visit the listed cities using only direct flights and satisfy conference attendance while fitting the overall trip duration."
+        },
+        "flight_data": {
+            "private_information": [
+                "There are direct flights between Munich and Dubrovnik",
+                "There are direct flights between Berlin and Munich",
+                "There are no direct flights between Berlin and Dubrovnik"
+            ],
+            "goal": "Provide the available direct flight connections and feasible commutes constrained to direct flights only."
+        },
+        "auditor": {
+            "private_information": [
+                "Audit temporal and causal consistency of travel plans",
+                "Remove bookkeeping shortcuts and post-hoc penalties",
+                "Flag mismatches between requested stay lengths and total available days"
+            ],
+            "goal": "Audit preferences and flight connectivity to produce a consistent set of temporal constraints and suggested corrections."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs and produce a PDDL domain and problem targeted for the FastDownward solver that yields a valid trip schedule respecting direct flights and conference constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "trip_duration_days": 8,
+            "cities": [
+                "Dubrovnik",
+                "Berlin",
+                "Munich"
+            ]
+        },
+        "public_information": [
+            "Total available trip length is 8 days",
+            "Direct flights exist between Munich and Dubrovnik",
+            "Direct flights exist between Berlin and Munich",
+            "No direct flight exists between Berlin and Dubrovnik",
+            "Conference must be attended in Berlin on day 1 and day 4",
+            "Only direct flights are allowed for commuting between cities"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "specify_preferences": {
+                "input": [],
+                "output": "preferences_report",
+                "system_prompt": "You are the traveler who specifies trip preferences and hard constraints. Produce a concise structured preferences report listing desired visit durations per city and immovable constraints such as conference attendance days.",
+                "prompt": "Your name is traveler. You know the following private information: {agents->traveler->private_information}. Summarize these as a structured preferences report that states desired days per city and hard attendance constraints and mark any items that are flexible versus hard."
+            }
+        },
+        "flight_data": {
+            "provide_flights": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are a flight data provider. Provide available direct flight connections between cities, indicate bidirectionality and minimal travel time if relevant. Present the data as a compact graph or adjacency list.",
+                "prompt": "Your name is flight_data. You have the following private information: {agents->flight_data->private_information}. Produce a structured flight graph indicating which city pairs have direct flights and whether flights are bidirectional."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "preferences_report",
+                    "flight_graph"
+                ],
+                "output": "temporal_audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Detect inconsistencies such as requested stay durations that exceed the total trip length and remove bookkeeping shortcuts or informal fixes. Provide concrete corrections and a normalized set of constraints.",
+                "prompt": "Your name is auditor. Receive the preferences report and the flight graph. Check for temporal contradictions and causal issues like unreachable transitions given direct flights only. Produce an audit report that flags problems, proposes minimal adjustments compatible with hard constraints, and outputs a cleaned set of temporal constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "preferences_report",
+                    "flight_graph",
+                    "temporal_audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modelling and planning. Your job is to integrate structured inputs and produce a PDDL domain and a PDDL problem file that can be solved by the FastDownward planner. Keep actions and roles distinct for different agents. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Target FastDownward conventions and avoid shortcuts that hide temporal or causal constraints.",
+                "prompt": "Your name is orchestrator. Integrate the traveler preferences, the flight graph, and the auditor report to produce a complete PDDL domain and a PDDL problem that schedule the 8-day trip using only direct flights, ensure conference attendance in Berlin on days 1 and 4, and respect auditor adjustments. Keep agent actions distinct and make the problem compatible with the FastDownward solver. Enclose the domain between <domain> and </domain> and the problem between <problem> and </problem>."
+            }
+        },
+        "constraints": [
+            "traveler.specify_preferences->orchestrator.pddl",
+            "flight_data.provide_flights->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

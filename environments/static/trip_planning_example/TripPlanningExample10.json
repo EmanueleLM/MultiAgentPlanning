@@ -1,0 +1,122 @@
+{
+    "name": "TripPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "planner_oslo",
+            "planner_valencia",
+            "planner_dublin",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_oslo": {
+            "private_information": [
+                "I want to spend exactly 3 days in Oslo",
+                "I will only take direct flights between cities"
+            ],
+            "goal": "Provide an itinerary segment for Oslo that fits into the 9 day trip and uses only direct flights."
+        },
+        "planner_valencia": {
+            "private_information": [
+                "I want to spend exactly 5 days in Valencia",
+                "I plan to visit relatives in Valencia between day 5 and day 9",
+                "I will only take direct flights between cities"
+            ],
+            "goal": "Provide an itinerary segment for Valencia that fits into the 9 day trip and satisfies the relatives visit window and direct flight constraint."
+        },
+        "planner_dublin": {
+            "private_information": [
+                "I want to spend exactly 3 days in Dublin",
+                "I will only take direct flights between cities"
+            ],
+            "goal": "Provide an itinerary segment for Dublin that fits into the 9 day trip and uses only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency",
+                "I must remove bookkeeping shortcuts and highlight implicit assumptions"
+            ],
+            "goal": "Audit the proposals for temporal and causal consistency and produce a report that lists conflicts, required adjustments, and removed shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the proposals and the audit to produce a final PDDL domain and PDDL problem suitable for the FastDownwards solver that encodes the full trip planning problem with direct flight constraints and temporal allocations."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9,
+            "days_index_start": 1
+        },
+        "public_information": [
+            "The trip lasts 9 days in total",
+            "Cities of interest are Oslo, Dublin, and Valencia",
+            "Direct flights exist between Oslo and Dublin",
+            "Direct flights exist between Dublin and Valencia",
+            "There is no direct flight between Oslo and Valencia",
+            "You must use only direct flights to commute between cities",
+            "Days are integer numbered starting at day 1"
+        ]
+    },
+    "workflow": {
+        "planner_oslo": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "proposal_planner_oslo",
+                "system_prompt": "You are an expert regional travel planner focused on Oslo. Produce a compact itinerary segment that specifies arrival day, departure day, the number of days spent equal to 3, and the required flight legs connecting to other cities using only direct flights as listed in the environment public information. Do not emit PDDL. Be explicit about temporal bounds and any assumptions.",
+                "prompt": "Your name is planner_oslo. You have the following public context: {environment->public_information}. You have the following private information: {agents->planner_oslo->private_information}. Your objective is: {agents->planner_oslo->goal}. Provide a clear itinerary segment with exact days and the outbound or inbound direct flight legs needed from or to Oslo. If information is missing, list the missing items rather than making assumptions."
+            }
+        },
+        "planner_valencia": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "proposal_planner_valencia",
+                "system_prompt": "You are an expert regional travel planner focused on Valencia. Produce a compact itinerary segment that specifies arrival day, departure day, the number of days spent equal to 5, and ensure the relatives visit falls between day 5 and day 9. Use only direct flights as listed in the environment public information. Do not emit PDDL. Be explicit about temporal bounds and any assumptions.",
+                "prompt": "Your name is planner_valencia. You have the following public context: {environment->public_information}. You have the following private information: {agents->planner_valencia->private_information}. Your objective is: {agents->planner_valencia->goal}. Provide a clear itinerary segment with exact days and the inbound or outbound direct flight legs needed for Valencia. If information is missing, list the missing items rather than making assumptions."
+            }
+        },
+        "planner_dublin": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "proposal_planner_dublin",
+                "system_prompt": "You are an expert regional travel planner focused on Dublin. Produce a compact itinerary segment that specifies arrival day, departure day, and the number of days spent equal to 3, and the required direct flight legs connecting to other cities as listed in the environment public information. Do not emit PDDL. Be explicit about temporal bounds and any assumptions.",
+                "prompt": "Your name is planner_dublin. You have the following public context: {environment->public_information}. You have the following private information: {agents->planner_dublin->private_information}. Your objective is: {agents->planner_dublin->goal}. Provide a clear itinerary segment with exact days and the inbound or outbound direct flight legs needed for Dublin. If information is missing, list the missing items rather than making assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "proposal_planner_oslo",
+                    "proposal_planner_valencia",
+                    "proposal_planner_dublin"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal plans. Your task is to detect and resolve temporal inconsistencies, causal impossibilities, implicit bookkeeping shortcuts, and post-hoc adjustments in itinerary proposals. Remove or call out any shortcuts such as token quotas or implicit transfers that are not grounded in the public flight network. Produce an audit report that enumerates conflicts, proposed corrections, and assumptions that must be made explicit.",
+                "prompt": "Your name is auditor. You have the following public context: {environment->public_information}. You receive the following proposals: {proposal_planner_oslo}, {proposal_planner_valencia}, {proposal_planner_dublin}. Your objective is: {agents->auditor->goal}. Provide a clear audit report that lists any temporal overlaps, impossible flights given the direct flight constraint, necessary reordering, and any removed bookkeeping shortcuts. If multiple consistent options exist, enumerate them concisely."
+            }
+        },
+        "orchestrator": {
+            "generate_pddl": {
+                "input": [
+                    "proposal_planner_oslo",
+                    "proposal_planner_valencia",
+                    "proposal_planner_dublin",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at encoding multi-city temporal planning problems into PDDL suitable for the FastDownwards planner. Produce a PDDL domain and a PDDL problem file that together encode the full trip planning task for 9 days with integer day time steps, the three city visit duration constraints, the relatives visit window, and the constraint that only direct flights listed in the environment public information may be used. Keep the actions for different origin cities distinct. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Target the FastDownwards solver conventions for numeric and temporal modeling where applicable.",
+                "prompt": "Your name is orchestrator. You have the following public context: {environment->public_information}. You have the proposals: {proposal_planner_oslo}, {proposal_planner_valencia}, {proposal_planner_dublin}. You have the audit report: {audit_report}. Your objective is: {agents->orchestrator->goal}. Integrate the proposals and the audit into a single coherent PDDL domain and problem. Ensure temporal and causal consistency, respect the direct flight network, and keep agent actions distinct in the encoding. Enclose the domain in <domain> tags and the problem in <problem> tags. Emit only the PDDL domain and problem surrounded by the tags."
+            }
+        },
+        "constraints": [
+            "planner_oslo.propose_itinerary->auditor.audit",
+            "planner_valencia.propose_itinerary->auditor.audit",
+            "planner_dublin.propose_itinerary->auditor.audit",
+            "planner_oslo.propose_itinerary->orchestrator.generate_pddl",
+            "planner_valencia.propose_itinerary->orchestrator.generate_pddl",
+            "planner_dublin.propose_itinerary->orchestrator.generate_pddl",
+            "auditor.audit->orchestrator.generate_pddl"
+        ]
+    }
+}

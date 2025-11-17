@@ -1,0 +1,85 @@
+{
+    "name": "Depots3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "player",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I represent a planner that proposes concrete action sequences (plans) using the available action schemata and the two provided scenario statements.",
+                "I have access to the two human-provided STATEMENT blocks and the PLAN fragments shown by the user and will analyze them for applicability and missing bindings."
+            ],
+            "goal": "Analyze the given plans against action preconditions and the initial conditions; produce a structured analysis of which preconditions are satisfied, which effects occur, and any missing facts or bindings required to make the plan executable."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for temporal and causal auditing of plans and for removing bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other shortcuts that hide causal requirements.",
+                "I check for causal consistency, detect implicit assumptions, and propose corrected, explicit facts or name alignments when plans rely on bookkeeping shortcuts."
+            ],
+            "goal": "Audit the player's analyses and the action schemata for temporal and causal consistency, eliminate bookkeeping shortcuts, and produce a corrected, minimal set of facts and constraints to make the plan implementable."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the outputs from the player and auditor and produce the final PDDL domain and problem ready for the FastDownwards planner.",
+                "I must keep agent action distinctions explicit when integrating multiple analyses and ensure the final PDDL is consistent with the auditor's corrections."
+            ],
+            "goal": "Integrate the analysis and audit reports and emit a complete PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the available actions, the corrected initial state, and the stated goals from the user's scenarios."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 10
+        },
+        "public_information": [
+            "Available actions and their informal schemata: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Action paltry requires: hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2. Effect: next ?o0 ?o2 becomes true; vase ?o0 ?o1 becomes false.",
+            "Action sip requires: hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2. Effect: vase ?o0 ?o1 becomes true; next ?o0 ?o2 becomes false.",
+            "Action clip requires: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2. Effect: vase ?o0 ?o1 becomes true; next ?o0 ?o2 becomes false.",
+            "Action wretched requires: sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3, next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3. Effect: next ?o0 ?o2 becomes true; next ?o0 ?o1 becomes false.",
+            "Action memory requires: cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1. Effect: next ?o0 ?o2 becomes true; next ?o0 ?o1 becomes false.",
+            "Action tightfisted requires: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1. Effect: next ?o0 ?o2 becomes true; vase ?o0 ?o1 becomes false.",
+            "Two example scenario statements and plans were provided by the user. Each scenario lists initial facts and a goal that requires establishing specific next relations. The user also supplied a candidate plan for the first scenario and left the second scenario with no plan provided.",
+            "The planner must respect explicit preconditions and effects. The auditor will flag any use of bookkeeping shortcuts such as implicit tokens, counters, or assumed meta-facts and require them to be replaced by explicit predicates."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analysis": {
+                "input": [],
+                "output": "player_analysis",
+                "system_prompt": "You are an expert planner analyst. You will read the environment public information and the two human STATEMENT blocks with their initial facts, goals, and any candidate plans. Your job is to check, for each planned action instance, which preconditions are satisfied by the given initial facts or by earlier actions in the plan, which effects will apply, what facts become true or false, and to list any missing bindings or missing facts required to make the plan executable. Provide your response as a structured analysis (lists of satisfied preconditions, unsatisfied preconditions, derived effects, and any assumptions). Do not emit PDDL domain or problem files here.",
+                "prompt": "Environment facts: {environment->public_information} Examine the two STATEMENT blocks provided by the human (the initial facts, goals, and the PLAN fragment for the first scenario). Analyze the candidate plan steps in the first scenario and the absence of a plan in the second. For each plan action, list which preconditions are satisfied initially or by earlier steps, which effects occur, and any missing facts or implied renamings. Output a clear structured analysis suitable for the auditor and orchestrator to consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "player_analysis"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your task is to inspect the player's structured analysis and the original action schemata and to detect and eliminate bookkeeping shortcuts. Bookkeeping shortcuts include implicit counters, quota tokens, post-hoc penalty facts, or any convenience predicates that hide causal dependencies. Replace such shortcuts with explicit predicates or additional preconditions/effects that preserve the intended semantics. Produce a corrected set of facts, explicit constraints, and recommended name alignments when objects are referred to inconsistently. Do not emit PDDL domain or problem files here.",
+                "prompt": "Use the environment's public information and the player analysis: {environment->public_information} {player_analysis} Identify any implicit assumptions, temporal ordering problems, or causal gaps in the player plan. Produce a corrected, explicit description of initial facts and necessary intermediate facts, and produce recommendations to make the plan causally sound for the orchestrator to compile into PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_analysis",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL author and integrator. Your job is to take the player's analysis and the auditor's corrections and produce a final PDDL domain and PDDL problem targeted to the FastDownwards planner. The domain and problem must encode the available action schemata (paltry, sip, clip, wretched, memory, tightfisted) with explicit preconditions and effects, the corrected initial state, and the user's goals from the two scenarios. Keep agent-level distinctions explicit if multiple agents or roles are required. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be syntactically compatible with FastDownwards.",
+                "prompt": "Integrate the following inputs: environment public information: {environment->public_information} player analysis: {player_analysis} auditor report: {auditor_report} Produce a complete PDDL domain and separate PDDL problem file for each of the two user scenarios if both are solvable, or for the first scenario if the second lacks a plan, ensuring compatibility with FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Clearly name the domain 'depots3-domain' and the problems 'depots3-problem-1' and 'depots3-problem-2' as appropriate. Ensure all implicit bookkeeping has been eliminated by using explicit predicates."
+            }
+        },
+        "constraints": [
+            "player.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "player.analysis->auditor.audit"
+        ]
+    }
+}

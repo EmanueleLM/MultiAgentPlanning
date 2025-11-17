@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "flight_checker",
+            "schedule_auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I plan to stay in Amsterdam for 5 days",
+                "I plan to stay in Vilnius for 2 days",
+                "I plan to stay in Bucharest for 6 days",
+                "I would like to meet friends in Bucharest between day 6 and day 11"
+            ],
+            "goal": "Propose a tentative itinerary of visiting Amsterdam, Vilnius, and Bucharest over 11 days using only direct flights"
+        },
+        "flight_checker": {
+            "private_information": [
+                "Direct flights exist between Amsterdam and Bucharest",
+                "Direct flights exist between Vilnius and Amsterdam",
+                "There is no direct flight between Vilnius and Bucharest"
+            ],
+            "goal": "Validate which legs between the cities are possible using only direct flights and propose legal flight sequences"
+        },
+        "schedule_auditor": {
+            "private_information": [
+                "Total trip length must be exactly 11 days",
+                "Temporal consistency must be enforced and any inconsistent summed stays must be reconciled",
+                "Do not use bookkeeping shortcuts such as fractional days, implicit truncation, quota tokens, or post-hoc penalties"
+            ],
+            "goal": "Audit the proposed itinerary for temporal and causal consistency, detect inconsistencies, and propose minimal, realistic adjustments to fit the 11-day constraint while preserving the meeting request in Bucharest between day 6 and day 11"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the proposals, validations, and audits into a single PDDL domain and problem targeting the FastDownwards solver to produce a final schedule that fits all constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 11,
+            "cities": [
+                "Amsterdam",
+                "Vilnius",
+                "Bucharest"
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 11 days in total",
+            "You only take direct flights to commute between cities",
+            "Direct flights exist between Amsterdam and Bucharest",
+            "Direct flights exist between Vilnius and Amsterdam",
+            "There is no direct flight between Vilnius and Bucharest"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "itinerary_proposal": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are an expert travel itinerary designer. Produce a clear tentative itinerary that lists visit order, stay duration per city, and flight legs using only direct flights. Do not emit PDDL. Explain assumptions explicitly if information is missing or inconsistent.",
+                "prompt": "Your name is planner. You have the following public information: {environment->public_information} You have the following private information: {agents->planner->private_information} This is your goal: {agents->planner->goal} Think step by step and provide a tentative itinerary that specifies the sequence of city visits, arrival and departure days for each city, and the direct flight legs used. If you detect impossible or inconsistent constraints, state them explicitly and propose possible minor adjustments."
+            }
+        },
+        "flight_checker": {
+            "flight_validation": {
+                "input": [],
+                "output": "flight_data",
+                "system_prompt": "You are an expert on flight connectivity and routing constraints. Validate which city-to-city legs are feasible given only direct flights. Do not emit PDDL. Provide clear reasons and, where multiple route permutations are possible, enumerate feasible transitions.",
+                "prompt": "Your name is flight_checker. You have the following public information: {environment->public_information} You have the following private information: {agents->flight_checker->private_information} This is your goal: {agents->flight_checker->goal} Think step by step and list all feasible direct flight legs, explain unreachable legs, and provide suggested legal flight sequences that could serve an itinerary between the three cities under the direct-flight-only constraint."
+            }
+        },
+        "schedule_auditor": {
+            "temporal_audit": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_data"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor on temporal and causal constraints for travel scheduling. Your role is to detect and resolve inconsistencies in durations and sequencing, ensure the plan fits exactly the total days, and forbid bookkeeping shortcuts like fractional day aggregation or post-hoc penalties. Produce an audit report with explicit adjustments and rationale. Do not emit PDDL.",
+                "prompt": "Your name is schedule_auditor. You will receive a tentative itinerary and validated flight data. You have the following private information: {agents->schedule_auditor->private_information} This is your goal: {agents->schedule_auditor->goal} Think step by step and check temporal sums, overlaps, transit day accounting, and the meeting window requirement in Bucharest between day 6 and day 11. If the proposed stays exceed or contradict the total 11 days, propose concrete integer-day adjustments and describe the minimal changes needed to produce a feasible plan while keeping the meeting constraint. List the adjusted arrival and departure days for each city and justify every adjustment."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_data",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL authoring and you produce final PDDL domain and problem files formatted for the FastDownwards solver. Integrate the itinerary proposal, validated flight connectivity, and the audit report to produce a single consistent PDDL domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL models time explicitly in integer days or uses a makespan metric compatible with FastDownwards and preserves the meeting window and direct-flight-only constraints. Keep actions representing flight legs and stays distinct and named clearly.",
+                "prompt": "Your name is orchestrator. You will receive three artifacts: the tentative itinerary from the planner, the flight connectivity facts from the flight_checker, and the audit report from the schedule_auditor. You have to integrate them and produce a PDDL domain and a PDDL problem targeting the FastDownwards solver. The PDDL must model days explicitly or use a makespan metric and must enforce that total trip length equals 11 days, that only direct flights are used, and that the meeting in Bucharest occurs between day 6 and day 11. Keep agent-level actions distinct where applicable. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.itinerary_proposal->orchestrator.pddl",
+            "flight_checker.flight_validation->orchestrator.pddl",
+            "schedule_auditor.temporal_audit->orchestrator.pddl",
+            "planner.itinerary_proposal->schedule_auditor.temporal_audit",
+            "flight_checker.flight_validation->schedule_auditor.temporal_audit"
+        ]
+    }
+}

@@ -1,0 +1,122 @@
+{
+    "name": "Depots14",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "proposer1",
+            "proposer2",
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "proposer1": {
+            "private_information": [
+                "I examine the first statement and plan set provided by the user. I extract grounded facts, action instances, preconditions and effects as structured fragments.",
+                "I do not produce full PDDL. I produce structured analysis fragments that can be consumed by an integrator."
+            ],
+            "goal": "Produce a clear, structured fragment describing the first STATEMENT, initial facts, goals and the proposed plan steps split into preconditions and effects."
+        },
+        "proposer2": {
+            "private_information": [
+                "I examine the second statement and plan set provided by the user. I extract grounded facts, action instances, preconditions and effects as structured fragments.",
+                "I do not produce full PDDL. I produce structured analysis fragments that can be consumed by an integrator."
+            ],
+            "goal": "Produce a clear, structured fragment describing the second STATEMENT, initial facts, goals and the proposed plan steps split into preconditions and effects."
+        },
+        "modeler": {
+            "private_information": [
+                "I map action schemas (paltry, sip, clip, wretched, memory, tightfisted) into a candidate symbolic representation (predicates, parameter types, and schematic preconditions/effects) suitable for a planning domain, but I do not emit the final PDDL domain or problem.",
+                "I reconcile naming conventions and suggest canonical predicate names and object typing."
+            ],
+            "goal": "Produce a canonical model fragment that gives predicate signatures, typed parameters for actions, and a clear mapping from grounded actions to schematic actions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed fragments and plans. I identify and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or ad-hoc temporal assumptions that mask causal gaps.",
+                "I produce an audit report listing ordering conflicts, missing causal links, and recommended fixes to ensure a sound temporal/causal plan representation."
+            ],
+            "goal": "Produce an audit report that enforces causal closure and removes bookkeeping shortcuts so the final domain/problem will be compatible with an optimal planner like FastDownwards."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analysis fragments, the canonical model, and the audit report to produce the final PDDL domain and PDDL problem targeting the FastDownwards solver.",
+                "I must keep agent contributions distinct and document any resolution choices when fragments conflict."
+            ],
+            "goal": "Produce a validated PDDL domain and a PDDL problem suitable for FastDownwards that captures the objects, predicates, actions (paltry, sip, clip, wretched, memory, tightfisted), the two initial STATEMENT sets, and the goals described by the user."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 13,
+            "domain": "object_manipulation",
+            "notes": "Environment contains many object tokens like object_0..object_12 and predicates such as hand, cats, texture, vase, next, collect, sneeze, spring, stupendous."
+        },
+        "public_information": [
+            "Available action schemas: paltry, sip, clip, wretched, memory, tightfisted. Each action has specific preconditions involving predicates: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Each action produces deterministic add and delete effects on predicates such as next and vase as described by the user.",
+            "Two separate STATEMENT blocks were provided by the user describing distinct initial conditions, goals, and candidate plans.",
+            "Final planning output must represent both initial condition sets and goal sets as explicit PDDL problems for analysis and solving by FastDownwards."
+        ]
+    },
+    "workflow": {
+        "proposer1": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_proposer1",
+                "system_prompt": "You are an analyst. Given the first STATEMENT and PLAN block, extract grounded facts, each plan step as (action, args), and for each step list the local preconditions and effects observed or implied. Return a structured fragment (JSON-like) that lists initial facts, goal facts, and a sequence of annotated plan steps. Do not emit full PDDL.",
+                "prompt": "Analyze the first STATEMENT and PLAN. Provide initial facts, goal facts, and the proposed plan broken into steps with inferred preconditions and effects, keeping naming consistent with the environment."
+            }
+        },
+        "proposer2": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_proposer2",
+                "system_prompt": "You are an analyst. Given the second STATEMENT and PLAN block, extract grounded facts, each plan step as (action, args), and for each step list the local preconditions and effects observed or implied. Return a structured fragment (JSON-like) that lists initial facts, goal facts, and a sequence of annotated plan steps. Do not emit full PDDL.",
+                "prompt": "Analyze the second STATEMENT and PLAN. Provide initial facts, goal facts, and the proposed plan broken into steps with inferred preconditions and effects, keeping naming consistent with the environment."
+            }
+        },
+        "modeler": {
+            "compose": {
+                "input": [
+                    "analysis_proposer1",
+                    "analysis_proposer2"
+                ],
+                "output": "model_fragment",
+                "system_prompt": "You are a modeler who synthesizes canonical predicate signatures and action schemas from multiple analysis fragments. Produce typed predicate declarations and schematic action definitions (parameters, preconditions, add-effects, del-effects) in a structured fragment suitable for translation into PDDL. Do not emit full PDDL; instead emit a canonical model fragment that the orchestrator can convert.",
+                "prompt": "Integrate the two analysis fragments and propose canonical predicate names, parameter types and action schemata for paltry, sip, clip, wretched, memory, and tightfisted. Resolve naming mismatches and document assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_proposer1",
+                    "analysis_proposer2",
+                    "model_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Inspect the analysis fragments and the model fragment to find ordering conflicts, unsatisfied preconditions, reliance on bookkeeping shortcuts (quota tokens, post-hoc penalties, implicit temporal leaps). Produce a corrective report listing conflicts and recommended canonical fixes so the orchestrator can produce a causally closed domain/problem for FastDownwards.",
+                "prompt": "Audit for causal closures and temporal consistency. Flag missing causal links, redundant bookkeeping, or assumptions that would prevent sound planning. Recommend concrete fixes or additional predicates/constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_proposer1",
+                    "analysis_proposer2",
+                    "model_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author. Using the provided analysis fragments, canonical model fragment, and audit report, produce a validated PDDL domain and one or more PDDL problem files that represent the two STATEMENT initial conditions and their goals. Target the FastDownwards planner. Keep agent contributions distinct in comments and document any design choices. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards (typing optional, STRIPS or ADL as needed).",
+                "prompt": "Integrate the inputs and emit a final PDDL domain and PDDL problem(s) suitable for FastDownwards. Include comments that indicate which fragments from proposers and the auditor influenced each part of the domain/problem. Enclose domain in <domain></domain> and problem(s) in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "proposer1.analyze->orchestrator.pddl",
+            "proposer2.analyze->orchestrator.pddl",
+            "modeler.compose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

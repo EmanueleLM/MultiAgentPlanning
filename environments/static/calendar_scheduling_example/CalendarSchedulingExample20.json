@@ -1,0 +1,120 @@
+{
+    "name": "CalendarSchedulingExample20",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "ralph",
+            "peter",
+            "daniel",
+            "auditor",
+            "orchestrator"
+        ],
+        "ralph": {
+            "private_information": [
+                "I am available on Monday between 9:00 and 17:00 except I have meetings from 13:30 to 14:00 and from 14:30 to 15:00.",
+                "I prefer meetings to start on half-hour boundaries when possible."
+            ],
+            "goal": "Find and propose time slots of 30 minutes on Monday that fit my calendar and the meeting constraints."
+        },
+        "peter": {
+            "private_information": [
+                "I am available on Monday between 9:00 and 17:00 except I am busy from 9:00 to 9:30, from 11:00 to 13:00, and from 16:00 to 16:30.",
+                "I have no strict preference beyond the existing busy times."
+            ],
+            "goal": "Find and propose time slots of 30 minutes on Monday that fit my calendar and the meeting constraints."
+        },
+        "daniel": {
+            "private_information": [
+                "I am available on Monday between 9:00 and 17:00 except I have blocks from 9:00 to 10:00, from 10:30 to 15:30, and from 16:00 to 17:00.",
+                "I would like to avoid having any additional meetings on Monday after 13:30 if possible."
+            ],
+            "goal": "Find and propose time slots of 30 minutes on Monday that fit my calendar and respect my preference to avoid meetings after 13:30."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to check temporal and causal consistency, validate availability representations, and remove bookkeeping shortcuts like quota tokens or post-hoc penalties.",
+                "I will ensure that availability windows do not overlap incorrectly and that preferences are enforceable."
+            ],
+            "goal": "Audit the availability inputs from participants for temporal consistency and produce an audit report identifying any ambiguous or inconsistent representations."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate participant inputs, resolve ambiguities discovered by the auditor, and produce a single PDDL domain and problem targeting the FastDownwards solver that encodes the scheduling task."
+            ],
+            "goal": "Produce a PDDL domain and problem (for FastDownwards) that finds a 30-minute meeting slot on Monday between 9:00 and 17:00 that fits all participants' calendars and respects stated preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "meeting_duration_minutes": 30,
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "time_slot_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30-minute meeting on Monday between 09:00 and 17:00.",
+            "Meeting duration is 30 minutes and time slots align to 30-minute boundaries.",
+            "All participants must be available for the full duration of the chosen slot.",
+            "There exists at least one solution that fits every participant's existing schedule and constraints."
+        ]
+    },
+    "workflow": {
+        "ralph": {
+            "availability": {
+                "input": [],
+                "output": "availability_ralph",
+                "system_prompt": "You are an expert calendar agent representing Ralph. Provide a clear structured availability profile derived from Ralph's private information. Do not emit PDDL. Represent free windows as explicit non-overlapping intervals and preserve the participant's stated preferences.",
+                "prompt": "Your name is ralph. Use your private information to produce a structured availability list for Monday describing free intervals between work hours, taking into account busy blocks 13:30-14:00 and 14:30-15:00 and the preference for half-hour boundaries. Output a concise machine-consumable representation of free intervals and any soft preferences."
+            }
+        },
+        "peter": {
+            "availability": {
+                "input": [],
+                "output": "availability_peter",
+                "system_prompt": "You are an expert calendar agent representing Peter. Provide a clear structured availability profile derived from Peter's private information. Do not emit PDDL. Represent free windows as explicit non-overlapping intervals.",
+                "prompt": "Your name is peter. Use your private information to produce a structured availability list for Monday describing free intervals between work hours, taking into account busy blocks 9:00-9:30, 11:00-13:00 and 16:00-16:30. Output a concise machine-consumable representation of free intervals."
+            }
+        },
+        "daniel": {
+            "availability": {
+                "input": [],
+                "output": "availability_daniel",
+                "system_prompt": "You are an expert calendar agent representing Daniel. Provide a clear structured availability profile derived from Daniel's private information. Do not emit PDDL. Represent free windows as explicit non-overlapping intervals and flag any soft preferences such as avoiding meetings after a given time.",
+                "prompt": "Your name is daniel. Use your private information to produce a structured availability list for Monday describing free intervals between work hours, taking into account busy blocks 9:00-10:00, 10:30-15:30 and 16:00-17:00 and the preference to avoid meetings after 13:30. Output a concise machine-consumable representation of free intervals and mark any intervals that violate the preference as discouraged."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_ralph",
+                    "availability_peter",
+                    "availability_daniel"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent responsible for temporal and causal consistency. Inspect the availability inputs and remove or flag bookkeeping shortcuts and ambiguous encodings. Ensure intervals are non-overlapping, respect the stated resolution, and that preferences are represented in a way that the orchestrator can enforce. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Receive the structured availability profiles from participants and validate them. Produce an audit report that lists any inconsistencies, normalizes interval representations to the declared time_slot_resolution_minutes, and recommends any clarifications or conversions required before orchestration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_ralph",
+                    "availability_peter",
+                    "availability_daniel",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator that must produce a PDDL domain and a PDDL problem file suitable for the FastDownwards planner. Use the validated availability and audit report to encode the scheduling problem. Keep participant actions and agents distinct if representing multi-agent actions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must explicitly encode time windows, the 30-minute meeting duration, and any soft preferences as constraints or soft goals where applicable. Target FastDownwards compatibility in syntax and types.",
+                "prompt": "You are orchestrator. Using the participants' structured availability and the auditor's audit report, produce a PDDL domain and PDDL problem that finds a 30-minute slot on Monday between 09:00 and 17:00 that is free for Ralph, Peter and Daniel and respects Daniel's preference to avoid meetings after 13:30 if possible. Do not assume additional hidden information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Indicate explicitly that the solver to be used is FastDownwards."
+            }
+        },
+        "constraints": [
+            "ralph.availability->orchestrator.pddl",
+            "peter.availability->orchestrator.pddl",
+            "daniel.availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

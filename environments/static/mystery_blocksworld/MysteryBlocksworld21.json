@@ -1,0 +1,101 @@
+{
+    "name": "MysteryBlocksworld21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "You are tasked with reading the human natural-language specification of actions, preconditions, effects, initial statements, and plans.",
+                "Your job is to extract concrete entities, objects, initial facts, and explicit goals without performing formal encoding to PDDL."
+            ],
+            "goal": "Extract objects, initial facts, available action descriptions, and stated goals from the human description into a structured facts report."
+        },
+        "modeler": {
+            "private_information": [
+                "You receive the extracted facts report from the observer and must formalize action schemas, listing preconditions and positive and negative effects for each action.",
+                "Produce a neutral formal model representation (JSON action schemas) rather than PDDL. Preserve the agent-distinctness of actions."
+            ],
+            "goal": "Build a formal model of actions and the world state sufficient for planning, without emitting PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "You specialize in temporal and causal consistency. You must detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or ad-hoc shortcuts in the model.",
+                "You will revise and clean the model so that causal links are explicit and any spurious bookkeeping predicates are replaced or justified."
+            ],
+            "goal": "Audit the model for temporal and causal consistency and return a corrected, justification-backed model with bookkeeping shortcuts removed or explained."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate the outputs of observer, modeler, and auditor and must produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "Ensure that actions remain distinct per original roles and that the final PDDL is consistent with the audited model."
+            ],
+            "goal": "Integrate the prior agents' outputs and generate a complete PDDL domain and problem suitable for FastDownwards that achieves the stated goal(s)."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_range": "object_0..object_12",
+            "objects_count_estimate": 13
+        },
+        "public_information": [
+            "Available actions and their arities: paltry(x,y,z), sip(x,y,z), clip(x,y,z), wretched(x,y,z,w), memory(x,y,z), tightfisted(x,y,z).",
+            "Action constraints summarized: each action has explicit preconditions and effects involving predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Examples of preconditions: paltry requires hand obj0 and cats obj1 and texture obj2 and vase obj0 obj1 and next obj1 obj2. sip requires hand obj0 cats obj1 texture obj2 next obj0 obj2 next obj1 obj2. clip requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 next obj0 obj2. wretched requires sneeze obj0 texture obj1 texture obj2 stupendous obj3 next obj0 obj1 collect obj1 obj3 collect obj2 obj3. memory requires cats obj0 spring obj1 spring obj2 next obj0 obj1. tightfisted requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 vase obj0 obj1.",
+            "Effects are also specified in the human description and include creation or deletion of next and vase predicates for different actions.",
+            "Initial facts provided by the human include two separate STATEMENT sets with multiple facts such as cats object_0 and cats object_1 and many collect, hand, next, sneeze, spring, stupendous, texture facts. Goals included are next object_12 object_11 and combinations like next object_11 object_7 and next object_12 object_5 in different scenarios.",
+            "The planner should treat object identifiers literally as object_0 ... object_12 and honor the stated preconditions and effects."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "extract_facts": {
+                "input": [],
+                "output": "facts_observer",
+                "system_prompt": "You are an extraction specialist. Read the full human specification and produce a structured JSON facts report listing all objects, the initial facts explicitly stated, the goal statements, and the natural-language descriptions of each action with their claimed preconditions and effects. Do not emit PDDL. Produce only a clear structured facts representation that downstream agents can consume."
+            }
+        },
+        "modeler": {
+            "build_action_schema": {
+                "input": [
+                    "facts_observer"
+                ],
+                "output": "model_modeler",
+                "system_prompt": "You are a modeler. Using the facts report from the observer, produce formal action schemas in JSON form. For each action, list parameters, required preconditions (positive literals), add effects, and delete effects. Keep the representation solver-neutral and do not output PDDL. Preserve action names and argument positions so that actions remain distinct."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "model_modeler",
+                    "facts_observer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Inspect the model and the facts report and detect causal gaps, temporal contradictions, and any bookkeeping shortcuts such as token counters, ad-hoc quota predicates, or post-hoc penalties. Remove or replace such shortcuts with explicit causal predicates or justification notes and produce a cleaned JSON model plus an audit log explaining each change. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_observer",
+                    "model_modeler",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must integrate the extracted facts, the formal model, and the auditor's corrections to produce a final PDDL domain and PDDL problem targeted at the FastDownwards planner. Ensure actions remain distinct and that the domain encodes the audited causal model. Include appropriate :requirements and a metric or settings compatible with FastDownwards if relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final output should be a complete PDDL domain and problem that achieves the stated goal(s) provided in the facts report."
+            }
+        },
+        "constraints": [
+            "observer.extract_facts->modeler.build_action_schema",
+            "modeler.build_action_schema->auditor.audit_consistency",
+            "auditor.audit_consistency->orchestrator.pddl",
+            "observer.extract_facts->orchestrator.pddl",
+            "modeler.build_action_schema->orchestrator.pddl"
+        ]
+    }
+}

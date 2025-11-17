@@ -1,0 +1,83 @@
+{
+    "name": "TripPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I only consider direct flights between cities when planning connections",
+                "I can propose candidate sequences of cities and assign arrival and departure days",
+                "I should aim to satisfy stated per-city stay requests while keeping the total trip length at 17 days when possible"
+            ],
+            "goal": "Propose one or more candidate itineraries that describe the sequence of cities, the flight legs (direct only), and precise arrival and departure days that attempt to meet the user's constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of proposed itineraries",
+                "I verify flight connectivity using only direct flights and verify day arithmetic and sums",
+                "I must remove bookkeeping shortcuts and identify precise violations without penalizing post-hoc"
+            ],
+            "goal": "Audit candidate itineraries for feasibility under the direct-flight constraint and the 17 day total, flag inconsistencies and propose minimal adjustments necessary to restore feasibility."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the itinerary proposals and audit findings and produce a final PDDL domain and problem, formatted for the FastDownwards solver, that captures the trip planning constraints and requests a schedule or reports infeasibility."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 17,
+            "direct_flights_only": true
+        },
+        "public_information": [
+            "You plan to visit three European cities: Lyon, Bucharest, and Manchester.",
+            "You want the trip to span exactly 17 days in total.",
+            "You plan to stay in Lyon for 5 days.",
+            "You plan to visit relatives in Lyon between day 13 and day 17 inclusive.",
+            "You would like to visit Bucharest for 7 days.",
+            "You want to spend 7 days in Manchester.",
+            "Direct flights exist between Manchester and Bucharest and between Bucharest and Lyon. There is no direct flight between Manchester and Lyon."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are an expert trip planner. Provide candidate itineraries as structured proposals, not as PDDL. Each proposal must list the ordered sequence of cities visited, the flight legs between them (only direct flights allowed), the arrival day and departure day for each city, and the total days used. If the user's per-city requests cannot all be met given the total days or connectivity, clearly explain the conflict and offer alternative trade-offs with minimal changes.",
+                "prompt": "Your name is itinerary_planner. You have the following public information: {environment->public_information}. You have these private notes: {agents->itinerary_planner->private_information}. Your objective: {agents->itinerary_planner->goal}. Propose one or more candidate itineraries as structured lists. For each itinerary include the sequence of flights and the start and end day for each stay. If exact satisfaction is impossible, explain the contradiction and propose concrete adjustments."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_proposal"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal constraints for travel plans. Do not generate PDDL. Validate that any proposed itinerary respects direct flight connectivity, that day assignments do not overlap, and that the sum of days equals the declared total. Identify any assumptions, remove bookkeeping shortcuts, and produce concrete minimal fixes or alternative constraints required to make plans feasible.",
+                "prompt": "Your name is auditor. You will receive an itinerary proposal: {itinerary_proposal}. Use the public information: {environment->public_information} and your private knowledge: {agents->auditor->private_information}. Your objective: {agents->auditor->goal}. Produce a clear audit report that lists each detected inconsistency if any, explains why it fails, and gives explicit minimal adjustments that would restore feasibility. If the proposal is feasible, state that and verify which constraints are satisfied."
+            }
+        },
+        "orchestrator": {
+            "generate_pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL modeling for the FastDownwards solver. Produce a PDDL domain and a PDDL problem that encodes the trip planning task, the direct flight connectivity graph, the per-city minimal or required stays, the special constraint that relatives in Lyon must be visited during days 13 through 17, and the total trip length of 17 days. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Mark the output as compatible with FastDownwards by using only STRIPS or ADL features supported by FastDownwards and by keeping grounded predicates suitable for that solver. Keep actions corresponding to travel and staying in distinct agent-labeled predicates if needed.",
+                "prompt": "Your name is orchestrator. You will receive an itinerary proposal {itinerary_proposal} and an audit report {audit_report}. Your objective: {agents->orchestrator->goal}. Integrate the proposal and the audit findings to produce a final PDDL domain and a final PDDL problem targeted at the FastDownwards solver. If the constraints are inconsistent and no valid schedule exists, still produce a PDDL encoding that faithfully represents the original constraints so that FastDownwards will report failure. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.propose_itinerary->auditor.audit",
+            "itinerary_planner.propose_itinerary->orchestrator.generate_pddl",
+            "auditor.audit->orchestrator.generate_pddl"
+        ]
+    }
+}

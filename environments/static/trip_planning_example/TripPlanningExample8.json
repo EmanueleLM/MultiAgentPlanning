@@ -1,0 +1,130 @@
+{
+    "name": "TripPlanningExample8",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "krakow_agent",
+            "athens_agent",
+            "zurich_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "krakow_agent": {
+            "private_information": [
+                "I want to spend 6 days in Krakow."
+            ],
+            "goal": "Provide an itinerary fragment specifying arrival day, departure day, required flights and any temporal constraints for Krakow."
+        },
+        "athens_agent": {
+            "private_information": [
+                "I want to spend 7 days in Athens.",
+                "I plan to visit relatives in Athens between day 1 and day 7 inclusive."
+            ],
+            "goal": "Provide an itinerary fragment specifying arrival day, departure day, required flights and any temporal constraints for Athens."
+        },
+        "zurich_agent": {
+            "private_information": [
+                "I want to spend 5 days in Zurich."
+            ],
+            "goal": "Provide an itinerary fragment specifying arrival day, departure day, required flights and any temporal constraints for Zurich."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties."
+            ],
+            "goal": "Examine itinerary fragments and produce an audit report that detects overlaps, impossible durations, missing connections given direct-flight constraints, and propose concrete adjustments to ensure feasibility."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate itinerary fragments and the audit report and produce a final PDDL domain and PDDL problem suitable for the FastDownward planner that solves the 16-day trip using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Krakow",
+                "Athens",
+                "Zurich"
+            ],
+            "direct_flights": [
+                [
+                    "Zurich",
+                    "Krakow"
+                ],
+                [
+                    "Athens",
+                    "Zurich"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan a trip of 16 days in total.",
+            "There are three cities to visit: Krakow, Athens, and Zurich.",
+            "You only use direct flights to commute between cities.",
+            "Direct flights exist between Zurich and Krakow and between Athens and Zurich.",
+            "The trip must allocate days across the three cities and respect direct connection constraints when commuting."
+        ]
+    },
+    "workflow": {
+        "krakow_agent": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_krakow",
+                "system_prompt": "You are an agent responsible for Krakow itinerary details. Do not produce PDDL. Provide an itinerary fragment describing: arrival day, departure day, number of days spent, the flights required to get to and from Krakow (city names), and any hard temporal constraints you require.",
+                "prompt": "Your name is krakow_agent. Use the public information: {environment->public_information}. Use your private information: {agents->krakow_agent->private_information}. Your task is: {agents->krakow_agent->goal}. Provide a clear itinerary fragment. If you lack information about arrival day, state the relative constraints you need rather than assuming specific days."
+            }
+        },
+        "athens_agent": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_athens",
+                "system_prompt": "You are an agent responsible for Athens itinerary details. Do not produce PDDL. Provide an itinerary fragment describing: arrival day, departure day, number of days spent, the flights required to get to and from Athens (city names), and any hard temporal constraints including visiting relatives between day 1 and day 7.",
+                "prompt": "Your name is athens_agent. Use the public information: {environment->public_information}. Use your private information: {agents->athens_agent->private_information}. Your task is: {agents->athens_agent->goal}. Provide a clear itinerary fragment. If arrival days are underspecified, state required windows and constraints without making unilateral assumptions."
+            }
+        },
+        "zurich_agent": {
+            "plan_fragment": {
+                "input": [],
+                "output": "fragment_zurich",
+                "system_prompt": "You are an agent responsible for Zurich itinerary details. Do not produce PDDL. Provide an itinerary fragment describing: arrival day, departure day, number of days spent, the flights required to get to and from Zurich (city names), and any temporal constraints.",
+                "prompt": "Your name is zurich_agent. Use the public information: {environment->public_information}. Use your private information: {agents->zurich_agent->private_information}. Your task is: {agents->zurich_agent->goal}. Provide a clear itinerary fragment and highlight any assumptions you would otherwise make."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "fragment_krakow",
+                    "fragment_athens",
+                    "fragment_zurich"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent whose job is to check temporal and causal consistency. Do not produce PDDL. Identify conflicts, impossible summed durations, overlapping day assignments, missing or impossible flights given the direct flight graph, and any shortcuts or bookkeeping devices present in fragments. Produce concrete, minimal adjustments that restore feasibility while preserving agent preferences when possible.",
+                "prompt": "Your name is auditor. You receive these itinerary fragments: {fragment_krakow}, {fragment_athens}, {fragment_zurich}. Your role is: {agents->auditor->goal}. Use the public information: {environment->public_information}. Produce an audit report that lists detected issues and specific proposed fixes. Prioritize exact corrections that the orchestrator can apply."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "fragment_krakow",
+                    "fragment_athens",
+                    "fragment_zurich",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate itinerary fragments and the audit report and produce a single cohesive planning model. Produce a PDDL domain and a PDDL problem designed for the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct if modeling different agents or move types. The PDDL must model days as discrete time steps and enforce total_days equal to 16 and flight connectivity constraints given the direct_flights graph. If fragments conflict, resolve them using the auditor's proposed fixes. Do not include extraneous bookkeeping shortcuts.",
+                "prompt": "Your name is orchestrator. The global goal to solve is: {agents->orchestrator->goal}. You will receive fragments: {fragment_krakow}, {fragment_athens}, {fragment_zurich} and the audit: {audit_report}. Integrate them into a final PDDL domain and problem that together represent the 16-day trip and only allow state transitions corresponding to direct flights provided in public information: {environment->init->direct_flights}. Produce the PDDL domain and problem suitable for FastDownward and ensure temporal consistency and feasibility."
+            }
+        },
+        "constraints": [
+            "krakow_agent.plan_fragment->auditor.audit",
+            "athens_agent.plan_fragment->auditor.audit",
+            "zurich_agent.plan_fragment->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "krakow_agent.plan_fragment->orchestrator.pddl",
+            "athens_agent.plan_fragment->orchestrator.pddl",
+            "zurich_agent.plan_fragment->orchestrator.pddl"
+        ]
+    }
+}

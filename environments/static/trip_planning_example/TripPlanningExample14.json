@@ -1,0 +1,119 @@
+{
+    "name": "TripPlanningExample14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "flight_connector",
+            "auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "I want to visit 3 European cities for 10 days total",
+                "I want to spend 7 days in Lyon",
+                "I want to stay in Krakow for 3 days",
+                "From day 8 to day 10 there is an annual show in Krakow",
+                "I only take direct flights to commute between cities"
+            ],
+            "goal": "Produce a candidate day-by-day itinerary for the 10 day trip that respects the stay durations and the show dates"
+        },
+        "flight_connector": {
+            "private_information": [
+                "Direct flights exist between Lyon and Frankfurt",
+                "Direct flights exist between Frankfurt and Krakow",
+                "There are no direct flights between Lyon and Krakow"
+            ],
+            "goal": "Provide the available direct flight legs and feasible commuting sequences between cities for the itinerary"
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to check temporal and causal consistency",
+                "I must remove or flag bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties"
+            ],
+            "goal": "Audit candidate itineraries and connection proposals to ensure temporal feasibility, no hidden shortcuts, and explicit causal steps"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate proposals and produce the final planning model",
+                "The final output must be a PDDL domain and a PDDL problem suitable for the FastDownwards solver"
+            ],
+            "goal": "Integrate agent outputs and produce a complete PDDL domain and problem that a FastDownwards run can solve to produce a valid 10 day trip plan"
+        }
+    },
+    "environment": {
+        "init": {
+            "days_total": 10,
+            "cities": [
+                "Lyon",
+                "Frankfurt",
+                "Krakow"
+            ],
+            "direct_flights": [
+                [
+                    "Lyon",
+                    "Frankfurt"
+                ],
+                [
+                    "Frankfurt",
+                    "Krakow"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan a 10 day trip visiting Lyon, Frankfurt and Krakow",
+            "You only use direct flights to commute between cities",
+            "There is an annual show in Krakow from day 8 to day 10",
+            "Desired stays: Lyon 7 days, Krakow 3 days, Frankfurt for up to 2 days if needed to connect"
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "proposal": {
+                "input": [],
+                "output": "plan_itinerary",
+                "system_prompt": "You are an expert travel itinerary planner. Produce a clear day-by-day candidate itinerary that respects the traveler's private requirements and the public information.",
+                "prompt": "Your name is itinerary_planner. Use the public information {environment->public_information} and your private information {agents->itinerary_planner->private_information} to propose a daily itinerary for the 10 day trip. Explain travel legs, days spent in each city and indicate which days you are in each city. Do not emit PDDL. Keep assumptions explicit and minimal."
+            }
+        },
+        "flight_connector": {
+            "connections": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are an expert on flight connectivity. Provide the directed undirected flight legs that are feasible given only direct flights and note any required transfer cities.",
+                "prompt": "Your name is flight_connector. Use public information {environment->public_information} and your private information {agents->flight_connector->private_information} to produce a concise description of available direct flight legs and valid commuting sequences between the three cities. Output explicit flight legs and transfer requirements. Do not emit PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_itinerary",
+                    "flight_graph"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Your job is to detect implicit bookkeeping shortcuts and require explicit causal steps and timing.",
+                "prompt": "Your name is auditor. Receive the candidate itinerary {plan_itinerary} and the flight connectivity {flight_graph}. Verify temporal consistency of stays, that travel happens only on feasible days with direct flights, and that the schedule satisfies the Krakow show days from day 8 to day 10. Remove or flag any bookkeeping shortcuts such as implicit quota tokens, post-hoc penalties, or unstated transfers. Produce an audit report listing any conflicts and recommended explicit fixes. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_itinerary",
+                    "flight_graph",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling. Integrate agent outputs to produce a PDDL domain and a PDDL problem file tailored for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions of different agents distinct when relevant.",
+                "prompt": "There are multiple agents that provided plans, flight connectivity, and an audit: {plan_itinerary}, {flight_graph}, and {audit_report}. Your goal is to integrate these inputs into a single consistent PDDL domain and PDDL problem that capture days as a temporal sequence of discrete timesteps, cities as locations, direct flight legs as allowed move actions, and stay constraints requiring 7 days in Lyon and 3 days in Krakow including attendance at the Krakow show on days 8 to 10. The PDDL must target FastDownwards conventions and be solvable by FastDownwards. Keep agent actions distinct where applicable. Output the PDDL domain and problem. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.proposal->auditor.audit",
+            "flight_connector.connections->auditor.audit",
+            "itinerary_planner.proposal->orchestrator.pddl",
+            "flight_connector.connections->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

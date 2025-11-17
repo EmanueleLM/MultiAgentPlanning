@@ -1,0 +1,129 @@
+{
+    "name": "CalendarSchedulingExample19",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "stephen",
+            "edward",
+            "angela",
+            "auditor",
+            "orchestrator"
+        ],
+        "stephen": {
+            "private_information": [
+                "Busy Monday 10:00-10:30",
+                "Busy Monday 13:00-13:30",
+                "Busy Monday 14:30-15:00",
+                "Busy Monday 16:00-16:30"
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00 that does not conflict with my existing schedule."
+        },
+        "edward": {
+            "private_information": [
+                "Busy Monday 09:00-09:30",
+                "Busy Monday 10:00-10:30",
+                "Busy Monday 13:30-14:30",
+                "Busy Monday 15:00-16:00"
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00 that does not conflict with my existing schedule."
+        },
+        "angela": {
+            "private_information": [
+                "Busy Monday 09:00-11:30",
+                "Busy Monday 12:30-13:00",
+                "Busy Monday 13:30-15:30",
+                "Busy Monday 16:00-17:00"
+            ],
+            "goal": "Participate in a one-hour meeting on Monday between 09:00 and 17:00 that does not conflict with my existing schedule."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of availability reports",
+                "Remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and normalize time resolutions"
+            ],
+            "goal": "Verify that reported availabilities are temporally consistent, normalized to the meeting time resolution, and free of bookkeeping shortcuts. Produce an audit report of corrections and assumptions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownward",
+                "Meeting duration must be modeled explicitly and respected"
+            ],
+            "goal": "Integrate availability reports and the auditor's corrections and produce a PDDL domain and problem suitable for FastDownward that finds a one-hour meeting slot satisfying all participants' constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "time_slot_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a one-hour meeting for Stephen, Edward, and Angela on Monday between 09:00 and 17:00.",
+            "All participants' calendars and busy slots are considered hard constraints; a solution exists that fits everyone's schedule.",
+            "Time resolution for modeling is 30 minutes; meeting duration is 60 minutes."
+        ]
+    },
+    "workflow": {
+        "stephen": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_stephen",
+                "system_prompt": "You are Stephen's calendar reporting agent. Using Stephen's private busy slots and the environment work hours, compute Stephen's free time intervals on Monday. Normalize times to the environment time_slot_resolution_minutes and present available intervals in HH:MM-HH:MM format.",
+                "prompt": "Agent stephen: Use the public information and Stephen's private schedule to produce a structured list of available time intervals for Monday that respect work hours and Stephen's busy slots. Do not produce PDDL. If information is missing, only report intervals you can infer without assumptions."
+            }
+        },
+        "edward": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_edward",
+                "system_prompt": "You are Edward's calendar reporting agent. Using Edward's private busy slots and the environment work hours, compute Edward's free time intervals on Monday. Normalize times to the environment time_slot_resolution_minutes and present available intervals in HH:MM-HH:MM format.",
+                "prompt": "Agent edward: Use the public information and Edward's private schedule to produce a structured list of available time intervals for Monday that respect work hours and Edward's busy slots. Do not produce PDDL. If information is missing, only report intervals you can infer without assumptions."
+            }
+        },
+        "angela": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_angela",
+                "system_prompt": "You are Angela's calendar reporting agent. Using Angela's private busy slots and the environment work hours, compute Angela's free time intervals on Monday. Normalize times to the environment time_slot_resolution_minutes and present available intervals in HH:MM-HH:MM format.",
+                "prompt": "Agent angela: Use the public information and Angela's private schedule to produce a structured list of available time intervals for Monday that respect work hours and Angela's busy slots. Do not produce PDDL. If information is missing, only report intervals you can infer without assumptions."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "availability_stephen",
+                    "availability_edward",
+                    "availability_angela"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditing agent that verifies temporal and causal consistency of availability reports. Normalize all intervals to the declared resolution, detect and correct inconsistent or overlapping entries, remove bookkeeping shortcuts (for example tokens that indicate provisional free time), and explicitly state any corrections or assumptions. Provide a concise audit report suitable as input for a planner.",
+                "prompt": "Agent auditor: Receive the three availability reports, validate and normalize them to the environment resolution, remove any bookkeeping shortcuts, and produce an audit report describing corrected availability intervals and any assumptions made. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_stephen",
+                    "availability_edward",
+                    "availability_angela",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final planning formalization for the FastDownward solver. Using the normalized availability intervals and the auditor's report, produce a PDDL domain and a PDDL problem that model participants, time slots, meeting duration, and hard constraints for availability. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the encoding is compatible with FastDownward and make no use of solver-specific escape sequences.",
+                "prompt": "Agent orchestrator: Integrate the availability reports and the auditor's corrections to build a PDDL domain and problem that find a one-hour meeting slot on Monday between 09:00 and 17:00 that fits all participants. Represent time as discrete slots consistent with the environment resolution. Keep participant roles distinct if modeled as separate actors. Output only the domain and problem enclosed in the specified tags."
+            }
+        },
+        "constraints": [
+            "stephen.report_availability->auditor.audit_consistency",
+            "edward.report_availability->auditor.audit_consistency",
+            "angela.report_availability->auditor.audit_consistency",
+            "stephen.report_availability->orchestrator.pddl",
+            "edward.report_availability->orchestrator.pddl",
+            "angela.report_availability->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

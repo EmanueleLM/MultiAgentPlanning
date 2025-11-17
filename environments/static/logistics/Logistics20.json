@@ -1,0 +1,125 @@
+{
+    "name": "Logistics20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner1",
+            "planner2",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner1": {
+            "private_information": [
+                "I observe the first STATEMENT and PLAN block from the user.",
+                "I know the available high level actions: paltry, sip, clip, wretched, memory, tightfisted.",
+                "I see initial facts such as cats object_0, hand object_11, various next relations and texture, sneeze, spring, stupendous facts.",
+                "I see a local goal: next object_11 object_9."
+            ],
+            "goal": "Translate observed actions and the provided plan fragment into structured action schemas and a partial causal fragment that other agents can integrate."
+        },
+        "planner2": {
+            "private_information": [
+                "I observe the second STATEMENT block and an incomplete PLAN marker.",
+                "I know the same high level action vocabulary as planner1 and similar predicate types.",
+                "I see initial facts such as cats object_0 and cats object_1, hand object_12, various next relations and texture, sneeze, spring, stupendous facts.",
+                "I see a local goal: next object_12 object_11."
+            ],
+            "goal": "Extract preconditions and effects from the action descriptions and produce a partial, consistent model fragment and recommended plan steps for my observed scenario."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for temporal and causal auditing across planner outputs.",
+                "I will detect bookkeeping shortcuts such as opaque 'next' rewrites, missing consumptions of resources, and post hoc penalties or artificial tokens.",
+                "I know that planners may have used assumptions and I must flag and resolve them where possible."
+            ],
+            "goal": "Audit the planner fragments, annotate causal ordering issues, remove bookkeeping shortcuts, and produce an audit report with corrections or required clarifications."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate planner1, planner2, and the auditor to produce a final PDDL domain and problem.",
+                "The final output must be targeted to the FastDownward planner and must keep agent actions distinct where relevant."
+            ],
+            "goal": "Integrate planner and auditor outputs into a single PDDL domain and PDDL problem suitable for FastDownward that achieves the declared goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 13,
+            "visibility": 1
+        },
+        "public_information": [
+            "There is a fixed vocabulary of six actions: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates include hand, cats, texture, vase, next, sneeze, spring, stupendous, collect and others referenced by the user.",
+            "Each action has specific preconditions and effects described by the user. Preconditions can require predicate tuples and effects can add or delete predicate tuples.",
+            "Two separate scenario statements were provided by the user with separate initial conditions and goals.",
+            "The user's goals reference next relations that must hold between object terms, for example next object_11 object_9 or next object_12 object_11.",
+            "Agents should avoid making unstated assumptions. If information is missing, planners should provide structured hypotheses and mark them explicitly for auditor review."
+        ],
+        "scenarios": [
+            {
+                "id": 1,
+                "initial_facts_summary": "cats object_0, collect object_10 object_2, collect object_5 object_1, collect object_6 object_1, collect object_7 object_1, collect object_8 object_2, collect object_9 object_2, hand object_11, next object_0 object_5, next object_11 object_8, next object_3 object_5, next object_4 object_10, sneeze object_3, sneeze object_4, spring object_5, spring object_8, stupendous object_1, stupendous object_2, texture object_10, texture object_5, texture object_6, texture object_7, texture object_8, texture object_9",
+                "goal_summary": "next object_11 object_9",
+                "provided_plan": [
+                    "wretched object_4 object_10 object_8 object_2",
+                    "clip object_11 object_4 object_8",
+                    "wretched object_4 object_8 object_9 object_2",
+                    "tightfisted object_11 object_4 object_9"
+                ]
+            },
+            {
+                "id": 2,
+                "initial_facts_summary": "cats object_0, cats object_1, collect object_10 object_3, collect object_11 object_3, collect object_6 object_2, collect object_7 object_2, collect object_8 object_2, collect object_9 object_3, hand object_12, next object_0 object_6, next object_1 object_9, next object_12 object_10, next object_4 object_7, next object_5 object_9, sneeze object_4, sneeze object_5, spring object_6, spring object_9, stupendous object_2, stupendous object_3, texture object_10, texture object_11, texture object_6, texture object_7, texture object_8, texture object_9",
+                "goal_summary": "next object_12 object_11",
+                "provided_plan": []
+            }
+        ]
+    },
+    "workflow": {
+        "planner1": {
+            "analyze": {
+                "input": [],
+                "output": "partial_model_planner1",
+                "system_prompt": "You are an expert model extractor. Your task is to read the provided scenario block and the user plan for scenario 1 and to produce structured action schemas. Do not emit full PDDL. Instead, produce for each action you can infer a schema object with keys name, parameters, preconditions, add_effects, del_effects, and any assumptions you make. Mark assumptions explicitly so the auditor can review them.",
+                "prompt": "You are planner1. Use the public information about actions and the first scenario. Translate the action descriptions into structured action schemas for the actions that appear in the scenario and plan. Extract concrete parameter bindings from the plan lines when possible and provide the partial causal chain implied by those plan steps. If information is missing, list minimal hypotheses rather than inventing extra predicates. Output is a machine readable structured fragment labeled partial_model_planner1."
+            }
+        },
+        "planner2": {
+            "analyze": {
+                "input": [],
+                "output": "partial_model_planner2",
+                "system_prompt": "You are an expert model extractor. Your task is to read the provided scenario block and to produce structured action schemas and a recommended plan fragment. Do not emit full PDDL. Produce structured schema objects with name, parameters, preconditions, add_effects, del_effects, and an explicit list of assumptions.",
+                "prompt": "You are planner2. Use the public information about actions and the second scenario. Extract the actionable preconditions and effects that you can deduce from the action definitions and the initial facts. Propose a short candidate plan that would achieve the declared local goal, but mark any steps that rely on assumptions. Output is a machine readable structured fragment labeled partial_model_planner2."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "partial_model_planner1",
+                    "partial_model_planner2"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your role is to inspect the partial model fragments from planners, detect and remove bookkeeping shortcuts, flag implicit assumptions, and propose concrete corrections or additional bridging facts required for soundness. Provide a compact report with a list of issues and suggested fixes.",
+                "prompt": "You are the auditor. Analyze the partial_model_planner1 and partial_model_planner2 inputs. Identify conflicts, cycles, inconsistent uses of the predicates such as next rewrites applied without proper deletions, and any reliance on post hoc tokens. For each issue, provide a recommended resolution or a minimal clarification request. Produce an audit_report describing verified fragments that are safe to incorporate and a list of corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "partial_model_planner1",
+                    "partial_model_planner2",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL engineer. Your task is to synthesize the partial structured schemas and the auditor report into a single coherent PDDL domain and one or more PDDL problems suitable for the FastDownward planner. The final PDDL must keep agent-origin of actions distinct when relevant, must encode the corrected causal constraints from the audit, and must be directly consumable by FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing, predicates, and action definitions are FastDownward compatible and avoid using advanced unsupported features.",
+                "prompt": "You are the orchestrator. Integrate the inputs into a final PDDL domain and a PDDL problem for each scenario that captures the initial facts and the declared goals. Keep agent actions distinct by prefixing action names with the originating agent identifier when necessary. Incorporate the auditor corrections and resolve any naming mismatches. Output the PDDL domain and the PDDL problem files, enclosed in <domain></domain> and <problem></problem> tags respectively, targeting FastDownward."
+            }
+        },
+        "constraints": [
+            "planner1.analyze->orchestrator.pddl",
+            "planner2.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

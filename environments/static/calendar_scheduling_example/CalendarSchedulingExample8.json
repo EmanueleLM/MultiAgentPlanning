@@ -1,0 +1,126 @@
+{
+    "name": "CalendarSchedulingExample8",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "adam",
+            "jerry",
+            "matthew",
+            "auditor",
+            "orchestrator"
+        ],
+        "adam": {
+            "private_information": [
+                "Day: Monday",
+                "Work hours: 09:00-17:00",
+                "Existing meetings: 10:00-10:30, 12:30-13:00, 13:30-14:30"
+            ],
+            "goal": "Participate in a 30 minute meeting on Monday between 09:00 and 17:00."
+        },
+        "jerry": {
+            "private_information": [
+                "Day: Monday",
+                "Work hours: 09:00-17:00",
+                "Existing meetings: 09:00-09:30, 12:00-12:30, 15:00-16:00"
+            ],
+            "goal": "Participate in a 30 minute meeting on Monday between 09:00 and 17:00."
+        },
+        "matthew": {
+            "private_information": [
+                "Day: Monday",
+                "Work hours: 09:00-17:00",
+                "Existing meetings: 09:30-11:00, 11:30-12:30, 13:00-14:00, 14:30-17:00"
+            ],
+            "goal": "Participate in a 30 minute meeting on Monday between 09:00 and 17:00."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency",
+                "Rules: Do not permit bookkeeping shortcuts such as quota tokens or post-hoc penalties. Enforce meeting granularity and normalized, non-overlapping intervals. Do not invent availability beyond what calendars show."
+            ],
+            "goal": "Validate and normalize the availability outputs from participants and produce a cleaned, canonical set of available intervals suitable for planning."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: coordinate participant availabilities and synthesize a final planning problem",
+                "Target solver: FastDownward"
+            ],
+            "goal": "Produce a PDDL domain and problem that models the scheduling task for a 30 minute meeting on Monday between 09:00 and 17:00 and is ready to be solved with the FastDownward planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": "09:00-17:00",
+            "meeting_duration_minutes": 30,
+            "time_granularity_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting for Adam, Jerry, and Matthew on Monday between 09:00 and 17:00.",
+            "All participants have calendars with blocked intervals as specified in their private information.",
+            "Time granularity for planning is 30 minutes.",
+            "There exists at least one feasible meeting slot compatible with all calendars."
+        ]
+    },
+    "workflow": {
+        "adam": {
+            "availability": {
+                "input": [],
+                "output": "availability_adam",
+                "system_prompt": "You are Adam's calendar agent. Using Adam's private schedule, list free time intervals on Monday within the work hours. Provide intervals in HH:MM-HH:MM format. Do not attempt to produce PDDL. Keep intervals aligned to the environment time granularity.",
+                "prompt": "Agent name: adam. Use the public information: {environment->public_information}. Use the private information: {agents->adam->private_information}. Produce a concise list of available intervals for Adam on Monday, aligned to the 30 minute granularity."
+            }
+        },
+        "jerry": {
+            "availability": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You are Jerry's calendar agent. Using Jerry's private schedule, list free time intervals on Monday within the work hours. Provide intervals in HH:MM-HH:MM format. Do not attempt to produce PDDL. Keep intervals aligned to the environment time granularity.",
+                "prompt": "Agent name: jerry. Use the public information: {environment->public_information}. Use the private information: {agents->jerry->private_information}. Produce a concise list of available intervals for Jerry on Monday, aligned to the 30 minute granularity."
+            }
+        },
+        "matthew": {
+            "availability": {
+                "input": [],
+                "output": "availability_matthew",
+                "system_prompt": "You are Matthew's calendar agent. Using Matthew's private schedule, list free time intervals on Monday within the work hours. Provide intervals in HH:MM-HH:MM format. Do not attempt to produce PDDL. Keep intervals aligned to the environment time granularity.",
+                "prompt": "Agent name: matthew. Use the public information: {environment->public_information}. Use the private information: {agents->matthew->private_information}. Produce a concise list of available intervals for Matthew on Monday, aligned to the 30 minute granularity."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_adam",
+                    "availability_jerry",
+                    "availability_matthew"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You are an auditor that enforces temporal and causal consistency. Receive availability lists from participants, normalize intervals to the declared granularity, merge contiguous free intervals where appropriate, remove overlaps or contradictions, and ensure no bookkeeping shortcuts or invented free time are present. Return a cleaned combined availability set that the orchestrator can trust.",
+                "prompt": "Agent name: auditor. Use the public information: {environment->public_information}. Use your private information: {agents->auditor->private_information}. Use the incoming availabilities: {availability_adam}, {availability_jerry}, {availability_matthew}. Produce a normalized audited availability representation named audited_availability. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_adam",
+                    "availability_jerry",
+                    "availability_matthew",
+                    "audited_availability"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent scheduling and PDDL problem formulation for the FastDownward solver. Your job is to produce a PDDL domain and a PDDL problem that model the scheduling of a single 30 minute meeting for Adam, Jerry, and Matthew on Monday within 09:00-17:00 using the audited availability. The PDDL must encode time slots consistent with the environment time granularity, model participant occupancy constraints, and target the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain and problem are complete and directly solvable by FastDownward.",
+                "prompt": "Agent name: orchestrator. Use the public information: {environment->public_information}. Use the participants private information as needed: {agents->adam->private_information}, {agents->jerry->private_information}, {agents->matthew->private_information}. Use the raw availabilities: {availability_adam}, {availability_jerry}, {availability_matthew}. Use the audited availability: {audited_availability}. Produce a PDDL domain and a PDDL problem that schedule a 30 minute meeting for Adam, Jerry, and Matthew on Monday consistent with the audited availability. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Target the FastDownward solver."
+            }
+        },
+        "constraints": [
+            "adam.availability->auditor.audit",
+            "jerry.availability->auditor.audit",
+            "matthew.availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "adam.availability->orchestrator.pddl",
+            "jerry.availability->orchestrator.pddl",
+            "matthew.availability->orchestrator.pddl"
+        ]
+    }
+}

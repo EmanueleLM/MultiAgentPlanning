@@ -1,0 +1,116 @@
+{
+    "name": "TripPlanningExample24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "itinerary_planner",
+            "flight_manager",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "itinerary_planner": {
+            "private_information": [
+                "Desired stays: Florence 4 days, Amsterdam 6 days, Riga 5 days",
+                "Workshop in Florence must occur between day 1 and day 4",
+                "Total trip length is 13 days",
+                "Only direct flights are allowed between cities"
+            ],
+            "goal": "Propose a concrete ordered itinerary with day allocations that sums to 13 days and respects the Florence workshop constraint."
+        },
+        "flight_manager": {
+            "private_information": [
+                "Direct flight connections exist between Florence and Amsterdam, and between Amsterdam and Riga",
+                "No other direct connections are available"
+            ],
+            "goal": "Provide feasible direct flight legs to realize the itinerary proposed by the itinerary planner and flag infeasible city transitions."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties"
+            ],
+            "goal": "Verify that the proposed itinerary and flight plan are temporally consistent, that the workshop constraint is satisfied within the specified window, and produce an audit report describing any violations or needed adjustments."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the itinerary, flight feasibility information, and audit findings and produce a final PDDL domain and PDDL problem suitable for the FastDownward solver that encodes the schedule and travel constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 13,
+            "cities": [
+                "Florence",
+                "Amsterdam",
+                "Riga"
+            ],
+            "direct_flights": [
+                [
+                    "Florence",
+                    "Amsterdam"
+                ],
+                [
+                    "Amsterdam",
+                    "Riga"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities for 13 days in total.",
+            "You only take direct flights to commute between cities.",
+            "Planned desired stays are Florence 4 days, Amsterdam 6 days, Riga 5 days.",
+            "You must attend a workshop in Florence between day 1 and day 4 inclusive.",
+            "Direct flight connections available are Florence and Amsterdam, and Amsterdam and Riga."
+        ]
+    },
+    "workflow": {
+        "itinerary_planner": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_plan",
+                "system_prompt": "You are an itinerary planner. Produce a concrete ordered itinerary that allocates contiguous day ranges to each city so that the total days equal the trip length and the workshop constraint is satisfied. Provide the result as a concise structured specification naming the city sequence and the day ranges for each city.",
+                "prompt": "Your name is itinerary_planner. You are given the public information {environment->public_information} and your private information {agents->itinerary_planner->private_information}. Propose an ordered city visit sequence and assign explicit day ranges for each city that sum to the total trip length. Ensure the Florence stay is four days and the workshop occurs between days 1 and 4. If you cannot produce a sequence due to flight connectivity constraints, state the conflict clearly."
+            }
+        },
+        "flight_manager": {
+            "spec": {
+                "input": [
+                    "itinerary_plan"
+                ],
+                "output": "flight_constraints",
+                "system_prompt": "You are a flight manager. Given a proposed itinerary, determine whether consecutive city transitions are feasible using only direct flights. For feasible transitions, list the flight legs. For infeasible transitions, identify which legs are not possible with the available direct connections.",
+                "prompt": "Your name is flight_manager. You are given the public information {environment->public_information}, your private information {agents->flight_manager->private_information}, and the proposed itinerary {itinerary_plan}. Verify every consecutive city transition in the itinerary against available direct flights and return a clear feasibility report and the concrete flight legs when feasible."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_plan",
+                    "flight_constraints"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Check that the itinerary and flight plan are temporally consistent with contiguous day allocations, that travel days are accounted for if necessary, and that no post-hoc adjustments or bookkeeping shortcuts are used. Produce an explicit audit report describing any inconsistencies and recommended corrections.",
+                "prompt": "Your name is temporal_auditor. You are given the public information {environment->public_information}, your private information {agents->temporal_auditor->private_information}, the proposed itinerary {itinerary_plan}, and the flight feasibility report {flight_constraints}. Check temporal consistency, ensure the Florence workshop falls within the required window, and produce an audit report that either validates the plan or lists precise changes required to make it consistent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_plan",
+                    "flight_constraints",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing planning problems for the FastDownward solver. Integrate the artifacts from the other agents and produce a PDDL domain and a PDDL problem that encode the travel and stay scheduling task. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep actions corresponding to different agents distinct where applicable and ensure the encoding is suitable for FastDownward.",
+                "prompt": "Your name is orchestrator. You have to integrate the proposed itinerary {itinerary_plan}, the flight feasibility report {flight_constraints}, and the audit report {audit_report}. Resolve any remaining ambiguities and produce a complete PDDL domain and PDDL problem targeting the FastDownward solver that captures visiting the three cities within 13 days using only allowed direct flights, enforces Florence stay of 4 days with the workshop between day 1 and day 4, and represents travel as actions with appropriate preconditions and effects. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags."
+            }
+        },
+        "constraints": [
+            "itinerary_planner.plan->flight_manager.spec",
+            "flight_manager.spec->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "itinerary_planner.plan->orchestrator.pddl",
+            "flight_manager.spec->orchestrator.pddl"
+        ]
+    }
+}

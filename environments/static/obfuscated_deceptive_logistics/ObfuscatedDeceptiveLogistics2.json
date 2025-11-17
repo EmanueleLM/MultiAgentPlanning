@@ -1,0 +1,107 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_assistant",
+            "executor_model",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "planner_assistant": {
+            "private_information": [
+                "I specialize in parsing human natural-language descriptions into structured symbolic facts and action schemas",
+                "I have access to the list of candidate actions and their informal preconditions and effects as provided by the user"
+            ],
+            "goal": "Analyze the provided action descriptions, extract formal preconditions and effects, identify unknown or ambiguous object references, and produce a compact structured analysis of what is required to justify plan steps"
+        },
+        "executor_model": {
+            "private_information": [
+                "I simulate execution traces given structured preconditions, effects, and an initial state",
+                "I can produce reachable state sequences and flag unmet preconditions during a candidate plan"
+            ],
+            "goal": "Given the structured action schemas and initial statements, simulate the provided plan steps and report which steps are applicable, what state changes occur, and where the plan may fail"
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I detect implicit bookkeeping assumptions and produce corrected, minimal bookkeeping-free descriptions and recommendations"
+            ],
+            "goal": "Audit the extracted schemas and simulation traces for temporal and causal consistency, propose removal or correction of bookkeeping shortcuts, and produce an audit report highlighting required additional facts or reforms"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and produce the final artifact for an automated planner",
+                "I target the FastDownwards solver and must present a PDDL domain and a PDDL problem that keep agent actions distinct"
+            ],
+            "goal": "Integrate the analyses from other agents and produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner that encodes the initial statements, the true goal, and the action schemas with corrected bookkeeping"
+        }
+    },
+    "environment": {
+        "init": {
+            "object_count_estimate": 9,
+            "representation": "symbolic"
+        },
+        "public_information": [
+            "Available actions: paltry(object_0,object_1,object_2), sip(object_0,object_1,object_2), clip(object_0,object_1,object_2), wretched(object_0,object_1,object_2,object_3), memory(object_0,object_1,object_2), tightfisted(object_0,object_1,object_2)",
+            "Action paltry preconditions: hand obj0, cats obj1, texture obj2, vase obj0 obj1, next obj1 obj2. Effects: add next obj0 obj2; del vase obj0 obj1",
+            "Action sip preconditions: hand obj0, cats obj1, texture obj2, next obj0 obj2, next obj1 obj2. Effects: add vase obj0 obj1; del next obj0 obj2",
+            "Action clip preconditions: hand obj0, sneeze obj1, texture obj2, next obj1 obj2, next obj0 obj2. Effects: add vase obj0 obj1; del next obj0 obj2",
+            "Action wretched preconditions: sneeze obj0, texture obj1, texture obj2, stupendous obj3, next obj0 obj1, collect obj1 obj3, collect obj2 obj3. Effects: add next obj0 obj2; del next obj0 obj1",
+            "Action memory preconditions: cats obj0, spring obj1, spring obj2, next obj0 obj1. Effects: add next obj0 obj2; del next obj0 obj1",
+            "Action tightfisted preconditions: hand obj0, sneeze obj1, texture obj2, next obj1 obj2, vase obj0 obj1. Effects: add next obj0 obj2; del vase obj0 obj1",
+            "Initial statements set A: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6",
+            "Goals in two scenarios: scenario 1 goal next object_7 object_6 and next object_8 object_6; scenario 2 goal next object_7 object_5 and next object_8 object_5",
+            "Two candidate plans were provided in the human text; they should be validated against the schemas and initial statements"
+        ]
+    },
+    "workflow": {
+        "planner_assistant": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_planner",
+                "system_prompt": "You are a specialist that converts informal action descriptions into structured symbolic schemas and enumerates required facts and object bindings. Do not emit PDDL. Emit a structured analysis that lists for each action its parameter roles, its minimal preconditions as grounded predicate templates, its add effects and delete effects, and a list of ambiguities or missing object bindings that must be resolved.",
+                "prompt": "Your name is planner_assistant. You receive the public information describing available actions, their informal preconditions and effects, and the initial statements and goals. Produce a structured analysis mapping each action name to parameter roles and formal preconditions and effects. Highlight ambiguous references, missing facts required by the plan, and any assumptions you would need to make to accept the plan. Output must be a compact machine-readable summary, not PDDL."
+            }
+        },
+        "executor_model": {
+            "analysis": {
+                "input": [
+                    "analysis_planner"
+                ],
+                "output": "analysis_executor",
+                "system_prompt": "You are a deterministic symbolic executor that simulates plans given a structured action schema and an initial state. Do not emit PDDL. Produce execution traces and applicability diagnostics.",
+                "prompt": "Your name is executor_model. Given the initial statements and the structured action schemas from planner_assistant, simulate the provided candidate plan steps in order for each scenario. For each step indicate whether it is applicable, the state changes caused, and precisely which preconditions were missing when a step is not applicable. Provide a final reachable state and whether the scenario goal is achieved."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "analysis_planner",
+                    "analysis_executor"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to remove bookkeeping shortcuts such as implicit quota tokens, post-hoc penalties, and other ad hoc bookkeeping that the initial descriptions may have used. Produce corrections and a minimal set of additional explicit facts or reformulations required to make the schemas causally consistent.",
+                "prompt": "Your name is consistency_auditor. Using the planner_assistant analysis and the executor_model traces, identify any temporal or causal shortcuts, implicit tokens, or post-hoc assumptions that make the plan appear to work only because of bookkeeping. For each detected shortcut propose a correction that removes the shortcut and replace it with explicit preconditions or effects. Output an audit report that lists corrections and a minimal consistent reformulation of the relevant action schemas."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_planner",
+                    "analysis_executor",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring for the FastDownwards planner. Your task is to integrate structured analyses, execution traces, and the auditor report and produce a final PDDL domain and a PDDL problem file that FastDownwards can accept. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Keep actions distinct and preserve agent-relevant action names. Ensure the encoding is causally correct and incorporates auditor corrections.",
+                "prompt": "Your name is orchestrator. You receive the planner_assistant analysis, the executor_model execution traces, and the consistency_auditor report. Integrate these inputs, resolve ambiguities conservatively by requesting no assumptions that are not supported by the reports, apply the auditor corrections to remove bookkeeping shortcuts, and produce a PDDL domain and a PDDL problem targeting the FastDownwards solver that encode the initial statements and the specified goals. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_assistant.analysis->orchestrator.pddl",
+            "executor_model.analysis->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

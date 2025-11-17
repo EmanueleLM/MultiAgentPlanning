@@ -1,0 +1,84 @@
+{
+    "name": "Logistics23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "manipulator": {
+            "private_information": [
+                "I understand the available actions: paltry, sip, clip, wretched, memory, tightfisted",
+                "I can parse action signatures and concrete plans into structured intermediate representations",
+                "I will normalize predicate names and preserve object identifiers like object_0 through object_13"
+            ],
+            "goal": "Produce a structured, normalized representation of the given action schemas and provided concrete plans without generating PDDL"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking",
+                "I detect cycles, bookkeeping shortcuts, post-hoc penalties, and inconsistent causal claims",
+                "I will propose concrete repairs and a causally verified ordering of steps"
+            ],
+            "goal": "Audit the structured representation for causal and temporal soundness and remove bookkeeping shortcuts or propose fixes"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and audits into a final planning specification",
+                "I produce final PDDL domain and problem files intended for the FastDownwards planner",
+                "I keep agent actions distinct and resolve naming ambiguities using the analysis and audit inputs"
+            ],
+            "goal": "Assemble a FastDownwards-compatible PDDL domain and problem that encodes the actions, initial facts, and goals and is consistent with the auditor's corrections"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Objects in the environment are named object_0 through object_13",
+            "Predicates used: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), collect(X,Y), sneeze(X), spring(X), stupendous(X)",
+            "Actions available with their intended effects and precondition schemas: paltry, sip, clip, wretched, memory, tightfisted",
+            "High level description of action constraints: each action has specified preconditions and effects that may set or unset next and vase predicates and may depend on hand, cats, sneeze, texture, spring, stupendous and collect facts",
+            "Two separate scenario fragments with concrete initial facts and goals were provided and concrete plans were proposed for each fragment. These fragments contain many object instances and are to be analyzed, audited, and integrated into a sound PDDL encoding."
+        ]
+    },
+    "workflow": {
+        "manipulator": {
+            "interpret": {
+                "input": [],
+                "output": "analysis_manipulator",
+                "system_prompt": "You are an agent that converts informal action schemas and concrete plan steps into a structured intermediate representation suitable for downstream planning. Do not produce PDDL. Produce a normalized list of objects, for each action produce its name, parameter list, preconditions and effects in a structured form, and produce a stepwise representation of the concrete plan fragments.",
+                "prompt": "Your name is manipulator. You have the public environment description and the raw action definitions and two plan fragments along with initial statements and goals. Parse and normalize the following elements: list of objects referenced, per-action schemas with explicit preconditions and add/delete effects normalized to predicate names and object ids, and a numbered sequence of the proposed plan steps for each plan fragment preserving original object identifiers. If facts are incomplete, mark missing elements explicitly instead of inventing them. Output a structured representation named analysis_manipulator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_manipulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent specialized in temporal and causal consistency for plans and domains. Your role is to detect causal gaps, cycles, and bookkeeping shortcuts such as artificial tokens or post-hoc penalties. Produce a clear audit report enumerating issues and propose concrete repairs or constraints to guarantee causal soundness. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You will receive the structured analysis produced by the manipulator. Check the action schemas and the concrete plan fragments for causal consistency and temporal correctness. Identify any precondition that is never established, any effect that conflicts with other effects, any cycles that prevent progress, and any use of bookkeeping shortcuts. For each issue propose an explicit correction or removal and provide a verified ordering of steps that satisfies all preconditions where possible. Output the audit_report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_manipulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in generating problem files targeted for the FastDownwards solver. Using the structured analysis and the auditor's audit report, produce a complete PDDL domain and a PDDL problem compatible with FastDownwards. Keep agent actions distinct and preserve normalized predicate names. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and object declarations are explicit and ensure the initial state and goal reflect the audited corrections. Target FastDownwards and note any assumptions in comments inside the PDDL where appropriate.",
+                "prompt": "Your name is orchestrator. Integrate analysis_manipulator and audit_report to construct a final PDDL domain and a PDDL problem that capture the available actions, the corrected initial facts and the goal conditions. Keep each action clearly named and, if actions originate from distinct conceptual agents, preserve that distinction in action naming or through comments. Output a final artifact named pddl_orchestrator. The produced PDDL must be intended for the FastDownwards planner and should be syntactically compatible with standard STRIPS-style PDDL extensions supported by FastDownwards."
+            }
+        },
+        "constraints": [
+            "manipulator.interpret->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

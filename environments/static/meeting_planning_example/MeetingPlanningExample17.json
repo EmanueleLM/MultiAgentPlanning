@@ -1,0 +1,100 @@
+{
+    "name": "MeetingPlanningExample17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "matthew",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I arrive at Alamo Square at 9:00AM",
+                "I plan to visit multiple friends across the city and want to maximize meetings",
+                "I know travel times between Alamo Square and Sunset District"
+            ],
+            "goal": "Meet as many friends as possible today while respecting travel times and availability windows"
+        },
+        "matthew": {
+            "private_information": [
+                "I will be at Sunset District from 1:30PM to 2:30PM",
+                "I prefer to meet for at least 15 minutes"
+            ],
+            "goal": "Meet the traveler for at least 15 minutes during my time at Sunset District"
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit schedules for temporal and causal consistency",
+                "I remove bookkeeping shortcuts such as artificial quota tokens and post-hoc penalties"
+            ],
+            "goal": "Verify candidate schedules are temporally consistent, causal, and physically feasible given travel times and availability windows"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate schedules and audit reports and produce a final PDDL domain and problem for the FastDownwards solver to compute an optimal meeting plan"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 2
+        },
+        "public_information": [
+            "Travel times in minutes: Alamo Square to Sunset District 16",
+            "Travel times in minutes: Sunset District to Alamo Square 17",
+            "You arrive at Alamo Square at 9:00AM",
+            "Matthew will be at Sunset District from 1:30PM to 2:30PM",
+            "Desired minimum meeting duration with Matthew is 15 minutes"
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_schedule": {
+                "input": [],
+                "output": "schedule_traveler",
+                "system_prompt": "You are a human-centered schedule proposer. Produce candidate meeting sequences and timing proposals that maximize the number of friends met given your arrival time, public travel times, and your private constraints. Do not output PDDL. Provide explicit time windows, travel legs, and assumptions that you are using.",
+                "prompt": "Your name is traveler. Use the public information {environment->public_information} and your private information {agents->traveler->private_information} to produce several plausible schedules for the day. Each schedule should list sequence of visits with start and end times and include travel legs with durations. Explain assumptions and indicate trade-offs between meeting more friends or longer meeting durations."
+            }
+        },
+        "matthew": {
+            "availability_report": {
+                "input": [],
+                "output": "availability_matthew",
+                "system_prompt": "You are an agent reporting your availability and meeting preferences. Provide precise availability windows, earliest and latest acceptable meeting start times, and the minimum acceptable meeting duration. Do not output PDDL.",
+                "prompt": "Your name is matthew. Use your private information {agents->matthew->private_information} and the public information {environment->public_information} to produce a clear availability report and any flexibility you may have around location or time, and any constraints on meeting length."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "schedule_traveler",
+                    "availability_matthew"
+                ],
+                "output": "temporal_audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal constraints. Given candidate schedules and availability reports, check for temporal feasibility, causal consistency, and remove or flag any bookkeeping shortcuts such as quota tokens or post-hoc penalties. Provide corrected schedules, identify infeasible legs, and supply adjustments required for feasibility. Do not emit PDDL.",
+                "prompt": "Your name is temporal_auditor. Use the inputs {schedule_traveler} and {availability_matthew} together with the public facts {environment->public_information} to verify that proposed schedules are physically possible, respect travel times, and satisfy meeting minimum durations. Produce reconciled schedules and a short explanation of changes made and remaining ambiguities, if any."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_traveler",
+                    "availability_matthew",
+                    "temporal_audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Integrate candidate schedules and audit reports to produce a final PDDL domain and PDDL problem targeting the FastDownwards solver. Keep different agent actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure temporal constraints and travel durations are represented so FastDownwards can reason about optimal meeting selection.",
+                "prompt": "You are the orchestrator. Integrate the schedule proposals {schedule_traveler}, the availability report {availability_matthew}, and the audit outcomes {temporal_audit_report} to create a complete PDDL domain and a PDDL problem. Model locations, travel durations, arrival times, availability windows, and minimum meeting durations. Target FastDownwards and document any modeling choices in comments inside the PDDL. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.propose_schedule->temporal_auditor.audit",
+            "matthew.availability_report->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "traveler.propose_schedule->orchestrator.pddl",
+            "matthew.availability_report->orchestrator.pddl"
+        ]
+    }
+}

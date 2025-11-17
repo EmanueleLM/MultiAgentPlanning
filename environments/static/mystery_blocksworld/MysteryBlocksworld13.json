@@ -1,0 +1,136 @@
+{
+    "name": "MysteryBlocksworld13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "plan_executor",
+            "model_builder",
+            "auditor",
+            "orchestrator"
+        ],
+        "plan_executor": {
+            "private_information": [
+                "I have two human statement blocks describing initial facts and two goal variants, and one long concrete plan composed of grounded actions.",
+                "The provided concrete plan contains grounded action instances that reference objects object_0 through object_12 and other indices."
+            ],
+            "goal": "Parse and normalize the human plan into a canonical sequential list of grounded action tuples with argument ordering preserved."
+        },
+        "model_builder": {
+            "private_information": [
+                "I have a description of six action schemas: paltry, sip, clip, wretched, memory, and tightfisted, each with named preconditions and add/delete effects that refer to binary predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+                "I should translate the human description of action preconditions and effects into an explicit neutral model representation that can be validated and later converted into PDDL by the orchestrator."
+            ],
+            "goal": "Produce a consistent and explicit action model representation, listing for each action its parameters, preconditions, add effects, and delete effects, without producing final PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency of the proposed plan and the partial model outputs, and to detect and remove bookkeeping shortcuts such as quota token tricks or post-hoc penalties.",
+                "I check for causal links, resource or mutex conflicts, and for steps that assume facts without legitimate derivations from preceding effects."
+            ],
+            "goal": "Produce an audit report enumerating causal threats, ordering violations, implied but missing facts, and suggested fixes or required reorders, but do not produce PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate the parsed plan, the explicit action model representation, and the audit report to produce a final PDDL domain and problem that is usable by the FastDownwards planner.",
+                "I must keep agent actions distinct and preserve naming and parameter conventions coming from the model_builder and plan_executor."
+            ],
+            "goal": "Emit a PDDL domain and a PDDL problem targeting the FastDownwards solver, integrating corrections from the auditor."
+        }
+    },
+    "environment": {
+        "init": {
+            "description": "Blocksworld like domain with binary predicates. The environment does not require a grid size or visibility but these fields are available.",
+            "initial_state": [
+                "cats object_0",
+                "cats object_1",
+                "collect object_6 object_2",
+                "collect object_7 object_2",
+                "collect object_8 object_3",
+                "collect object_9 object_3",
+                "hand object_10",
+                "hand object_11",
+                "hand object_12",
+                "next object_0 object_8",
+                "next object_1 object_6",
+                "next object_10 object_8",
+                "next object_11 object_9",
+                "next object_12 object_6",
+                "next object_4 object_6",
+                "next object_5 object_9",
+                "sneeze object_4",
+                "sneeze object_5",
+                "spring object_6",
+                "spring object_8",
+                "stupendous object_2",
+                "stupendous object_3",
+                "texture object_6",
+                "texture object_7",
+                "texture object_8",
+                "texture object_9"
+            ],
+            "goal_state": [
+                "next object_10 object_7",
+                "next object_11 object_7",
+                "next object_12 object_7"
+            ]
+        },
+        "public_information": [
+            "There are six actions: paltry, sip, clip, wretched, memory, tightfisted.",
+            "paltry has preconditions: hand X, cats Y, texture Z, vase X Y, next Y Z. paltry adds next X Z. paltry deletes vase X Y.",
+            "sip has preconditions: hand X, cats Y, texture Z, next X Z, next Y Z. sip adds vase X Y. sip deletes next X Z.",
+            "clip has preconditions: hand X, sneeze Y, texture Z, next Y Z, next X Z. clip adds vase X Y. clip deletes next X Z.",
+            "wretched has preconditions: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W. wretched adds next X Z. wretched deletes next X Y.",
+            "memory has preconditions: cats X, spring Y, spring Z, next X Y. memory adds next X Z. memory deletes next X Y.",
+            "tightfisted has preconditions: hand X, sneeze Y, texture Z, next Y Z, vase X Y. tightfisted adds next X Z. tightfisted deletes vase X Y.",
+            "Predicates used include binary relations: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "The human also provided a concrete plan as a sequence of grounded action calls which should be parsed and validated."
+        ]
+    },
+    "workflow": {
+        "plan_executor": {
+            "parse_plan": {
+                "input": [],
+                "output": "parsed_plan",
+                "system_prompt": "You are a parser and normalizer for human provided grounded plans. Your task is to convert a human plan into a canonical sequential list of grounded action records. Preserve argument order and object names exactly. Do not emit PDDL.",
+                "prompt": "Receive the human plan and produce a JSON array of objects each with keys action and args where args is an ordered list of referenced objects. If you detect malformed steps, mark them with an error field and continue."
+            }
+        },
+        "model_builder": {
+            "build_model": {
+                "input": [],
+                "output": "partial_model",
+                "system_prompt": "You are a model builder that converts the natural language action descriptions into an explicit action model representation. Produce for each action a structured entry with parameters, preconditions as a list of predicate templates, add effects list, and delete effects list. Do not produce final PDDL, only a neutral machine readable model.",
+                "prompt": "Use the environment public information about action preconditions and effects and emit a neutral model representation suitable for validation and later conversion. If there are naming ambiguities, preserve the original predicate names and indicate ambiguous references."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "parsed_plan",
+                    "partial_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your role is to detect causal threats, ordering violations, fake bookkeeping constructs, and post-hoc assumptions in the plan when interpreted with the partial model. Provide corrections, required reorders, and explicit missing facts statements. Do not produce PDDL.",
+                "prompt": "Analyze the parsed plan against the partial model and the initial state. List each detected issue, its location in the plan, its severity, and a recommended fix such as reordering or inserting steps or refining preconditions or effects. Remove or flag any bookkeeping shortcuts and explain how to implement their removal concretely."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "parsed_plan",
+                    "partial_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must integrate parsed plans, the explicit model, and the auditor corrections to produce a final PDDL domain and PDDL problem files tailored for the FastDownwards planner. Keep agent actions distinct and preserve parameter naming. The domain and problem must be syntactically correct for FastDownwards and must reflect any fixes recommended by the auditor.",
+                "prompt": "Integrate the parsed plan, the neutral model from the model builder, and the auditor's corrections. Produce a final PDDL domain and problem pair that models the six actions and the initial and goal states. Use types and predicates consistent with the inputs. Ensure the domain and problem are FastDownwards compatible. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "plan_executor.parse_plan->orchestrator.pddl",
+            "model_builder.build_model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

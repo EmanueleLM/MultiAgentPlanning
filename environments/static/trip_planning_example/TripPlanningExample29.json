@@ -1,0 +1,100 @@
+{
+    "name": "TripPlanningExample29",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit Krakow, Dubrovnik, and Frankfurt within a single trip.",
+                "Preferred stays: Krakow 2 days, Dubrovnik 7 days, Frankfurt 3 days.",
+                "Preferred stays sum to 12 days while the trip length is 10 days. I expect tradeoffs or prioritization."
+            ],
+            "goal": "Propose a personal preferred allocation of days and a high level visit order that tries to respect my preferences while fitting a 10 day total."
+        },
+        "flight_planner": {
+            "private_information": [
+                "Only direct flights are allowed between cities during this trip.",
+                "Direct flight connections available: Frankfurt and Krakow, Dubrovnik and Frankfurt.",
+                "I know typical single-day transit durations for direct flights between connected cities."
+            ],
+            "goal": "Provide a feasible sequence of direct flights connecting the city visits, with timing consistent with day boundaries and the 10 day total."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency. I detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit day merges.",
+                "I will flag any solution that relies on unstated assumptions or that double counts travel and stay days."
+            ],
+            "goal": "Verify that proposed itineraries and flight plans are temporally consistent, identify conflicts and required corrections, and produce an audit report that can be consumed by the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate partial plans and the audit report to produce a final PDDL domain and problem targeting the FastDownwards solver that encodes a feasible 10 day itinerary using only direct flights and satisfying required city-day constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10
+        },
+        "public_information": [
+            "Cities to visit: Krakow, Dubrovnik, Frankfurt.",
+            "Trip total duration is 10 days.",
+            "You must take only direct flights to commute between cities.",
+            "Direct flights exist between Frankfurt and Krakow, and between Dubrovnik and Frankfurt.",
+            "You must attend a wedding in Krakow that requires being in Krakow on day 9."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan": {
+                "input": [],
+                "output": "partial_itinerary_traveler",
+                "system_prompt": "You are the traveler agent. Use public information and your private preferences to produce a clear preferred allocation of days per city and a high level ordered list of city visits. Explicitly state any conflicts between preferences and the total available days. Do not emit PDDL.",
+                "prompt": "Your name is traveler. Public information: {environment->public_information} Your private knowledge: {agents->traveler->private_information} Your objective: {agents->traveler->goal} Provide a preferred day allocation per city and a proposed visit order. If there are conflicts with the total available days, explain them and provide alternative reduced allocations or priorities."
+            }
+        },
+        "flight_planner": {
+            "schedule": {
+                "input": [],
+                "output": "partial_flight_plan",
+                "system_prompt": "You are an expert flight planner. Given the required cities and the available direct connections, compute feasible sequences of direct flights and the day boundaries on which travel occurs. Do not emit PDDL.",
+                "prompt": "Your name is flight_planner. Public information: {environment->public_information} Your private knowledge: {agents->flight_planner->private_information} Your objective: {agents->flight_planner->goal} Provide one or more feasible flight sequences that connect the proposed stays using only direct flights. Indicate on which day each flight would occur and ensure travel days are accounted for in the 10 day budget."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "partial_itinerary_traveler",
+                    "partial_flight_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your role is to detect and remove bookkeeping shortcuts, to verify that stays and travel do not overlap improperly, and to produce a concise report of required fixes and verified constraints. Produce actionable corrections that the orchestrator can integrate. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Public information: {environment->public_information} Inputs you receive: {partial_itinerary_traveler} and {partial_flight_plan} Your private knowledge: {agents->auditor->private_information} Your objective: {agents->auditor->goal} Check for temporal inconsistencies, over-allocation of days, implicit assumptions about travel duration, and any causal errors. Produce a clear report of conflicts, required adjustments to day allocations, and confirmed invariants."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "partial_itinerary_traveler",
+                    "partial_flight_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You must integrate partial itineraries, flight plans, and audit corrections to produce a final PDDL domain and problem targeting the FastDownwards solver. Keep actions corresponding to different agents distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be solvable by FastDownwards.",
+                "prompt": "You are the orchestrator. Inputs: {partial_itinerary_traveler}, {partial_flight_plan}, {audit_report} Public information: {environment->public_information} Your objective: {agents->orchestrator->goal} Integrate the inputs, resolve temporal conflicts flagged by the auditor, and output a PDDL domain and a PDDL problem that encode the 10 day itinerary planning problem using only direct flights. Ensure that the PDDL models days explicitly, models travel between cities only along direct connections, enforces being in Krakow on day 9, and enforces that the sum of stay and travel days equals 10. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Target FastDownwards."
+            }
+        },
+        "constraints": [
+            "traveler.plan->auditor.audit",
+            "flight_planner.schedule->auditor.audit",
+            "traveler.plan->orchestrator.pddl",
+            "flight_planner.schedule->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

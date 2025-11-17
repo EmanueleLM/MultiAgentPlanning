@@ -1,0 +1,120 @@
+{
+    "name": "TripPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "traveler_split",
+            "traveler_manchester",
+            "traveler_riga",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler_split": {
+            "private_information": [
+                "I want to spend 6 days in Split",
+                "I prefer only direct flights between cities"
+            ],
+            "goal": "Propose an itinerary segment that visits Split consistent with public flight connections and overall constraints"
+        },
+        "traveler_manchester": {
+            "private_information": [
+                "I want to spend 4 days in Manchester",
+                "I know there are direct flights from Manchester to Split"
+            ],
+            "goal": "Propose an itinerary segment that visits Manchester consistent with public flight connections and overall constraints"
+        },
+        "traveler_riga": {
+            "private_information": [
+                "I want to spend 7 days in Riga",
+                "I know there are direct flights between Riga and Manchester"
+            ],
+            "goal": "Propose an itinerary segment that visits Riga consistent with public flight connections and overall constraints"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quotas or retrospective penalties",
+                "I will detect inconsistent day totals and infeasible commute links given only direct flights"
+            ],
+            "goal": "Analyze proposed itinerary segments for temporal and causal consistency, point out conflicts, and suggest minimal adjustments compatible with direct-flight constraints"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and audit findings and produce a final PDDL domain and problem compatible with FastDownward to compute a valid trip plan"
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 15,
+            "cities": [
+                "Split",
+                "Manchester",
+                "Riga"
+            ],
+            "flight_rules": "Only direct flights may be used to commute between cities"
+        },
+        "public_information": [
+            "You plan to visit three European cities for a total of 15 days",
+            "Direct flights exist between Riga and Manchester",
+            "A direct flight exists from Manchester to Split",
+            "Only direct flights may be used to travel between cities"
+        ]
+    },
+    "workflow": {
+        "traveler_split": {
+            "proposal": {
+                "input": [],
+                "output": "itinerary_split",
+                "system_prompt": "You are an assistant focused on proposing a travel segment for Split. Provide a concise itinerary segment describing arrival city, departure city if any, number of days requested in Split, and any assumptions about connections. Do not produce PDDL.",
+                "prompt": "You are traveler_split. Use public information about direct flights and the environment initialization. Use your private information that you want to spend 6 days in Split. Propose an itinerary segment that fits with direct-flight constraints and the overall 15-day total if possible. If you cannot be sure because of missing information, state clearly what is missing."
+            }
+        },
+        "traveler_manchester": {
+            "proposal": {
+                "input": [],
+                "output": "itinerary_manchester",
+                "system_prompt": "You are an assistant focused on proposing a travel segment for Manchester. Provide a concise itinerary segment describing arrival city, departure city if any, number of days requested in Manchester, and any assumptions about connections. Do not produce PDDL.",
+                "prompt": "You are traveler_manchester. Use public information about direct flights and the environment initialization. Use your private information that you want to spend 4 days in Manchester and that there is a direct flight from Manchester to Split. Propose an itinerary segment consistent with direct flights and the overall 15-day total if possible. If you cannot be sure because of missing information, state clearly what is missing."
+            }
+        },
+        "traveler_riga": {
+            "proposal": {
+                "input": [],
+                "output": "itinerary_riga",
+                "system_prompt": "You are an assistant focused on proposing a travel segment for Riga. Provide a concise itinerary segment describing arrival city, departure city if any, number of days requested in Riga, and any assumptions about connections. Do not produce PDDL.",
+                "prompt": "You are traveler_riga. Use public information about direct flights and the environment initialization. Use your private information that you want to spend 7 days in Riga and that there are direct flights between Riga and Manchester. Propose an itinerary segment consistent with direct flights and the overall 15-day total if possible. If you cannot be sure because of missing information, state clearly what is missing."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_split",
+                    "itinerary_manchester",
+                    "itinerary_riga"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-leg plans. Your role is to detect day-count inconsistencies, impossible commutes given only direct flights, and any modeling shortcuts. Provide explicit findings and minimal corrective suggestions. Do not produce PDDL.",
+                "prompt": "You are auditor. Receive the itinerary segments from the travelers and the public flight connectivity. Check whether the sum of requested days matches the total of 15 days. Check whether the proposed travel legs can be chained using only direct flights given the known direct connections (Riga-Manchester, Manchester->Split). Identify conflicts and propose minimal adjustments (for example, reduce days in a city) or indicate that an alternate ordering or extra indirect flights would be required. Output a clear audit report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_split",
+                    "itinerary_manchester",
+                    "itinerary_riga",
+                    "audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in multi-agent PDDL problems and target the FastDownward planner. Integrate the itinerary proposals and the auditor's findings to produce a complete PDDL domain and a PDDL problem file that model cities, days allocation, and direct-flight commute actions. Keep agent actions distinct if needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL encodes only direct flights as allowed transitions and that the total days constraint is enforced in the problem. The output is intended to be solved by FastDownward.",
+                "prompt": "You are orchestrator. Integrate the following inputs: itinerary_split, itinerary_manchester, itinerary_riga, and audit_report. Use the environment public information about direct flights and total days. Resolve inconsistencies highlighted by the auditor by applying the minimal adjustments the auditor suggested; if multiple adjustments are possible, choose one and document the choice in comments inside the PDDL problem file. Produce a PDDL domain and problem that captures cities, travel actions constrained to direct flights, allocation of days to each city summing to the total allowed days, and an initial and goal specification representing a valid 15-day trip. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler_split.proposal->orchestrator.pddl",
+            "traveler_manchester.proposal->orchestrator.pddl",
+            "traveler_riga.proposal->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

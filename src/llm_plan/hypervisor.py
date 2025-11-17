@@ -153,22 +153,8 @@ class Hypervisor:
         # Refresh local history in case the caller updated the list reference
         self.history = list(self.prompt_args.get("history", []))
 
-        first_agent = "AgentSolutionFirst"
-        has_solution = bool(str(self.prompt_args.get("proposed_solution", "")).strip())
-        if (
-            first_agent in self.agents
-            and not self.history
-            and not has_solution
-        ):
-            return f"<class>{first_agent}</class>"
-
         # Prepare the selection prompt
         agents_for_prompt = self.agents
-        if self.history and first_agent in self.history:
-            filtered = {name: cls for name, cls in self.agents.items() if name != first_agent}
-            if filtered:
-                agents_for_prompt = filtered
-
         prompt_kwargs = {
             "human_specification": self.prompt_args["human_specification"],
             "specification": self.prompt_args["specification"],
@@ -192,80 +178,4 @@ class Hypervisor:
         return model.generate_sync(
             system_prompt=self.system_prompt,
             prompt=prompt,
-        )
-
-
-class SolutionVerifierHypervisor(Hypervisor):
-    """
-    Hypervisor variant that validates a proposed solution by orchestrating agents
-    to build verification PDDL artefacts or repair the solution when needed.
-    """
-
-    def __init__(self, prompt_args: dict[str, str]):
-        super().__init__(prompt_args)
-        self.required_args = {
-            **self.required_args,
-            "proposed_solution": (
-                "(str) The proposed solution that should satisfy the task constraints."
-            ),
-        }
-
-        self.system_prompt = inspect.cleandoc(
-            """\
-            You are a validation hypervisor coordinating specialised agents.
-            Your purpose is to drive the agents until the generated PDDL domain/problem conclusively
-            verify (or refute) the proposed solution.
-            Work only with concrete, fully specified PDDL; never accept placeholders such as "..." or templates.
-            Reject outputs that rely on unsupported Fast Downward requirements (e.g., axioms, universals, conditional
-            effects, :fluents) or malformed action schemas (:parameters, :precondition, :effect orderings).
-            Discard abstract classes or those with abstract methods and report the selected class name between
-            <class></class> tags.
-            """
-        )
-
-        self.prompt = inspect.cleandoc(
-            """\
-            You are validating a proposed solution for the planning task.
-
-            Human specification of the task:
-            <human_specification>{human_specification}</human_specification>
-
-            JSON plan specification of the task:
-            <specification>{specification}</specification>
-
-            Proposed solution to validate:
-            <proposed_solution>{proposed_solution}</proposed_solution>
-
-            Current PDDL domain (should encode the validation criteria):
-            <domain>{pddl_domain}</domain>
-
-            Current PDDL problem (should instantiate the validation criteria):
-            <problem>{pddl_problem}</problem>
-
-            Plan produced for the {target_solver} solver (may be empty or the proposed plan):
-            <plan>{pddl_plan}</plan>
-
-            Logs from the solver execution:
-            <logs>{pddl_logs}</logs>
-
-            Validator feedback (may be empty):
-            <errors>{syntax_errors}</errors>
-
-            Available agents and their capabilities (exclude abstract classes):
-            <agents>{agents}</agents>
-
-            Agents previously selected (helps maintain diversity):
-            <history>{history}</history>
-
-            Primary objectives (all must hold before selecting NoOpAgent):
-            1. The PDDL domain/problem are syntactically valid (no placeholders, templates, or unsupported features).
-            2. The solver logs confirm the model either validates the proposed solution or provides a corrected plan.
-            3. All natural-language constraints are encoded so that violating them becomes impossible in any satisfying plan.
-
-            Use the syntax errors and solver logs as ground truth feedback: repair anything they flag.
-            Each agent you select must either confirm the proposed solution or revise it, and restate the endorsed
-            outcome inside <proposed_solution></proposed_solution> tags together with any updated PDDL.
-            Select the class best positioned to progress this validation. Only answer <class>NoOpAgent</class> when every
-            objective above is demonstrably satisfied.
-            """
         )

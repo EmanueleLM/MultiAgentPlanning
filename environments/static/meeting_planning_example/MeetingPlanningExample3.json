@@ -1,0 +1,102 @@
+{
+    "name": "MeetingPlanningExample3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "barbara",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I arrive in Bayview at 09:00.",
+                "My objective is to meet as many friends as possible today, optimizing arrival and meeting durations given travel times."
+            ],
+            "goal": "Propose multiple candidate schedules to meet friends, showing start and end times, travel legs, and total meeting time."
+        },
+        "barbara": {
+            "private_information": [
+                "I will be at Golden Gate Park from 08:00 to 11:30.",
+                "I prefer meetings of at least 90 minutes."
+            ],
+            "goal": "Be available to meet the visitor for at least 90 minutes at Golden Gate Park within my available window."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking for schedules."
+            ],
+            "goal": "Audit proposed schedules for feasibility, enforce travel-time accounting, ensure meeting windows and minimum meeting durations are respected, and remove bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating agent outputs and producing a final PDDL domain and problem compatible with the FastDownwards solver."
+            ],
+            "goal": "Integrate candidate schedules and audits, resolve ambiguities, and emit a complete PDDL domain and problem targeting FastDownwards to identify the optimal feasible schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Bayview",
+            "start_time": "09:00",
+            "travel_times_minutes": {
+                "Bayview->Golden Gate Park": 22,
+                "Golden Gate Park->Bayview": 23
+            }
+        },
+        "public_information": [
+            "You arrive at Bayview at 09:00.",
+            "Travel time from Bayview to Golden Gate Park is 22 minutes.",
+            "Travel time from Golden Gate Park to Bayview is 23 minutes.",
+            "Barbara will be at Golden Gate Park from 08:00 to 11:30.",
+            "You would like to meet Barbara for a minimum of 90 minutes."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "suggest_schedules": {
+                "input": [],
+                "output": "schedule_planner",
+                "system_prompt": "You are an expert scheduler. Produce multiple candidate visiting schedules that start from the known start location and time. For each candidate schedule, list the sequence of legs, departure and arrival times for travel, planned meeting start and end times, and total meeting duration. Consider travel-time accounting and location constraints provided in the environment. Do not emit PDDL; produce human-readable structured schedule options.",
+                "prompt": "Your name is planner. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->planner->private_information} This is your planning goal: {agents->planner->goal} Think step by step and provide several distinct feasible schedule options. For each option include explicit times for travel and meetings, and indicate any assumptions you make."
+            }
+        },
+        "barbara": {
+            "availability": {
+                "input": [],
+                "output": "availability_barbara",
+                "system_prompt": "You represent Barbara's availability. Provide a clear, structured representation of her temporal availability window and any constraints or preferences (minimum meeting duration). Do not produce PDDL. Confirm or expand on the availability data provided as private information.",
+                "prompt": "Your name is barbara. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->barbara->private_information} This is your goal: {agents->barbara->goal} Provide a concise availability statement that an orchestrator can use to validate schedules."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedule_planner",
+                    "availability_barbara"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Given a proposed schedule and availability windows, validate feasibility exactly accounting for travel times and minimal meeting durations, detect impossible or shortcut assumptions, and produce a corrected, annotated schedule or a list of violations. Remove bookkeeping shortcuts and flag any assumptions that would violate causal or temporal constraints.",
+                "prompt": "Your name is auditor. You will receive planner schedule suggestions and Barbara's availability: {schedule_planner} {availability_barbara} Your task: audit each schedule for feasibility given the environment travel times and constraints, ensure the meeting with Barbara can last at least 90 minutes within her window, and produce an audit_report that either approves schedules or lists exact temporal violations and suggested fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_planner",
+                    "availability_barbara",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL. Integrate the planner's schedule options, Barbara's availability, and the auditor's consistency report. Resolve any ambiguities and produce a complete PDDL domain and a PDDL problem file that encodes the chosen feasible schedule and constraints, suitable for the FastDownwards solver. Keep the actions of different agents conceptually distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL uses constructs compatible with FastDownwards (for example, avoid unsupported extensions).",
+                "prompt": "There are multiple agent outputs to integrate to solve the meeting planning task: {agents->orchestrator->goal} Here is the planner output: {schedule_planner} Here is Barbara's availability: {availability_barbara} Here is the auditor's report: {audit_report} Integrate them, pick or synthesize the best feasible schedule that meets the constraints (arrival, travel time, Barbara's window, and the 90-minute minimum). Provide a PDDL domain and a PDDL problem encoding the environment, temporal constraints, travel durations, and the chosen schedule so that FastDownwards can be used to evaluate or replan. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.suggest_schedules->orchestrator.pddl",
+            "barbara.availability->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,123 @@
+{
+    "name": "CalendarSchedulingExample14",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "brandon",
+            "jerry",
+            "bradley",
+            "auditor",
+            "orchestrator"
+        ],
+        "brandon": {
+            "private_information": [
+                "Busy 13:00-14:00 on Monday",
+                "Busy 15:30-16:00 on Monday",
+                "Busy 16:30-17:00 on Monday",
+                "Preference: avoid meetings on Monday before 14:30 if possible"
+            ],
+            "goal": "Find and report Brandon's available time slots on Monday that can host a 30 minute meeting within work hours 09:00-17:00."
+        },
+        "jerry": {
+            "private_information": [
+                "No meetings on Monday"
+            ],
+            "goal": "Find and report Jerry's available time slots on Monday that can host a 30 minute meeting within work hours 09:00-17:00."
+        },
+        "bradley": {
+            "private_information": [
+                "Busy 09:00-11:30 on Monday",
+                "Busy 12:00-15:00 on Monday",
+                "Busy 16:00-16:30 on Monday"
+            ],
+            "goal": "Find and report Bradley's available time slots on Monday that can host a 30 minute meeting within work hours 09:00-17:00."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of reported availabilities",
+                "Role: identify and remove bookkeeping shortcuts such as token quotas, post-hoc penalties, or inferred tentative overrides"
+            ],
+            "goal": "Audit the availability reports from participants to ensure there are no temporal overlaps, hidden assumptions, or bookkeeping shortcuts. Produce a cleaned availability report."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Using the audited availability information, produce a final PDDL domain and problem that encodes the scheduling instance for a 30 minute meeting between Brandon, Jerry, and Bradley on Monday, suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_slot_minutes": 30,
+            "work_start": "09:00",
+            "work_end": "17:00",
+            "day": "Monday",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30 minute meeting for Brandon, Jerry, and Bradley on Monday between 09:00 and 17:00",
+            "All participants are required for the meeting",
+            "There exists at least one solution that fits every participant's existing schedule",
+            "Time granularity is 30 minutes and meeting duration is 30 minutes"
+        ]
+    },
+    "workflow": {
+        "brandon": {
+            "analyze": {
+                "input": [],
+                "output": "availability_brandon",
+                "system_prompt": "You are an expert calendar assistant. Based on the public information and Brandon's private schedule and preferences produce a clear list of Brandon's free time intervals on Monday that are at least 30 minutes long and fall between 09:00 and 17:00. Do not produce PDDL. Do not make assumptions beyond the given information. Respect Brandon's preference to avoid meetings before 14:30 when possible and mark preferred vs acceptable slots.",
+                "prompt": "Agent name: brandon. Use the environment public information and Brandon's private information to compute free 30 minute slots. Output a concise availability report named availability_brandon. If multiple slots exist, list them in chronological order and indicate whether each is preferred or acceptable given the stated preference."
+            }
+        },
+        "jerry": {
+            "analyze": {
+                "input": [],
+                "output": "availability_jerry",
+                "system_prompt": "You are an expert calendar assistant. Based on the public information and Jerry's private schedule produce a clear list of Jerry's free time intervals on Monday that are at least 30 minutes long and fall between 09:00 and 17:00. Do not produce PDDL. Do not make assumptions beyond the given information.",
+                "prompt": "Agent name: jerry. Use the environment public information and Jerry's private information to compute free 30 minute slots. Output a concise availability report named availability_jerry. List slots in chronological order."
+            }
+        },
+        "bradley": {
+            "analyze": {
+                "input": [],
+                "output": "availability_bradley",
+                "system_prompt": "You are an expert calendar assistant. Based on the public information and Bradley's private schedule produce a clear list of Bradley's free time intervals on Monday that are at least 30 minutes long and fall between 09:00 and 17:00. Do not produce PDDL. Do not make assumptions beyond the given information.",
+                "prompt": "Agent name: bradley. Use the environment public information and Bradley's private information to compute free 30 minute slots. Output a concise availability report named availability_bradley. List slots in chronological order."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_brandon",
+                    "availability_jerry",
+                    "availability_bradley"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of schedules. Receive the availability reports from participants and verify temporal and causal consistency. Identify any overlaps, hidden assumptions, or bookkeeping shortcuts in the reports. Normalize representations, remove any implicit tokens or post-hoc adjustments, and produce a cleaned consolidated availability report. Do not produce PDDL. Provide explicit statements about any corrections made.",
+                "prompt": "Agent name: auditor. Receive availability_brandon, availability_jerry, and availability_bradley. Check for consistency, resolve naming or formatting differences, and remove any bookkeeping shortcuts. Output a cleaned consolidated availability report named audit_report and explain any corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_brandon",
+                    "availability_jerry",
+                    "availability_bradley",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in encoding scheduling problems into PDDL for the FastDownwards planner. Using the audited availability information, produce a complete PDDL domain and a PDDL problem that encode the scheduling instance for a single 30 minute meeting between Brandon, Jerry, and Bradley on Monday between 09:00 and 17:00. Keep the participants' actions distinct if actions are modeled per participant. The PDDL must be compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure time is encoded with discrete 30 minute steps or an encoding suitable for FastDownwards. Think step by step and do not assume extra availability beyond the audited report.",
+                "prompt": "Agent name: orchestrator. Use the environment public information, the three availability reports, and the audit_report to build a PDDL domain and PDDL problem ready for FastDownwards. Output the domain between <domain></domain> and the problem between <problem></problem>. Make sure the model enforces that all three participants attend the same 30 minute slot and respects the audited availability and Brandon's preference marking."
+            }
+        },
+        "constraints": [
+            "brandon.analyze->auditor.audit",
+            "jerry.analyze->auditor.audit",
+            "bradley.analyze->auditor.audit",
+            "brandon.analyze->orchestrator.pddl",
+            "jerry.analyze->orchestrator.pddl",
+            "bradley.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

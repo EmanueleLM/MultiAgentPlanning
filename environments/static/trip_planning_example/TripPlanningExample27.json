@@ -1,0 +1,122 @@
+{
+    "name": "TripPlanningExample27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan to visit three European cities over a total of 14 days.",
+                "I want to stay in Amsterdam for 7 days, Istanbul for 6 days, and Santorini for 3 days.",
+                "I need to visit relatives in Santorini between day 12 and day 14 inclusive."
+            ],
+            "goal": "Visit Amsterdam for 7 days, Istanbul for 6 days, and Santorini for 3 days in a 14 day itinerary using only direct flights."
+        },
+        "scheduler": {
+            "private_information": [
+                "I specialize in producing day-by-day itineraries and sequencing flights.",
+                "I will respect only direct flight connections provided as public information."
+            ],
+            "goal": "Produce a day-by-day assignment of cities and the sequence of direct flights that meets the traveler's duration requirements and the 14 day total."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of schedules.",
+                "I remove bookkeeping shortcuts such as post-hoc penalties or quota tokens and report any hidden assumptions."
+            ],
+            "goal": "Ensure the proposed schedule is temporally consistent, causally feasible given direct flights, and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I combine and reconcile input from other agents and produce a final formal planning specification for a planner."
+            ],
+            "goal": "Integrate the agents' analyses and produce a PDDL domain and PDDL problem file targeting the FastDownwards solver that encodes the 14 day trip plan using only direct flights."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "cities": [
+                "Amsterdam",
+                "Istanbul",
+                "Santorini"
+            ],
+            "durations": {
+                "Amsterdam": 7,
+                "Istanbul": 6,
+                "Santorini": 3
+            },
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Santorini"
+                ],
+                [
+                    "Istanbul",
+                    "Amsterdam"
+                ]
+            ]
+        },
+        "public_information": [
+            "You plan to visit 3 European cities over 14 days in total.",
+            "You only take direct flights to commute between cities.",
+            "You would like to visit Santorini for 3 days.",
+            "You plan to visit relatives in Santorini between day 12 and day 14 inclusive.",
+            "You plan to stay in Amsterdam for 7 days.",
+            "You would like to visit Istanbul for 6 days.",
+            "Direct flight connections exist between Amsterdam and Santorini, and between Istanbul and Amsterdam."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "analyze_preferences": {
+                "input": [],
+                "output": "traveler_preferences",
+                "system_prompt": "You are the traveler agent. You know your personal durations and the constraint about relatives in Santorini. Use the public information about cities, durations, and direct flights to produce a clear list of immutable preferences and hard constraints. Return the traveler preferences and any clarifying questions or missing items required for scheduling. Do not emit PDDL."
+            }
+        },
+        "scheduler": {
+            "build_schedule": {
+                "input": [
+                    "traveler_preferences"
+                ],
+                "output": "schedule_proposal",
+                "system_prompt": "You are the scheduler agent. Using the traveler preferences and the environment public information, produce a concrete day-by-day itinerary and the sequence of direct flights between cities. Ensure the itinerary assigns each of the 14 days to one of the three cities, meets the specified durations, and places the Santorini visit between day 12 and day 14 inclusive. Describe flight legs, transfer days, and any assumptions. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "traveler_preferences",
+                    "schedule_proposal"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent. Your role is to analyze the schedule proposal for temporal and causal consistency. Verify that day counts sum to the total days, that stay durations for each city match the traveler's requirements, that flights used are direct according to public information, and that special constraints such as the Santorini relatives window are honored. Identify and remove bookkeeping shortcuts and hidden assumptions. Produce an audit report listing any inconsistencies and suggested corrections. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "traveler_preferences",
+                    "schedule_proposal",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator agent. Receive the traveler preferences, the scheduler's proposal, and the auditor's report. Reconcile any differences, resolve naming ambiguities, and produce a final PDDL domain and a PDDL problem tailored for the FastDownwards solver. Keep actions corresponding to different agents distinct and preserve the temporal constraints such as day indices and direct flight availability. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must encode the 14 day horizon, city stay durations, direct flight transitions only, and the Santorini visit constraint between day 12 and day 14 inclusive."
+            }
+        },
+        "constraints": [
+            "traveler.analyze_preferences->scheduler.build_schedule",
+            "traveler.analyze_preferences->auditor.audit",
+            "scheduler.build_schedule->auditor.audit",
+            "traveler.analyze_preferences->orchestrator.pddl",
+            "scheduler.build_schedule->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

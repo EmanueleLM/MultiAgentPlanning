@@ -1,0 +1,100 @@
+{
+    "name": "Logistics3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "manipulator_A",
+            "manipulator_B",
+            "auditor",
+            "orchestrator"
+        ],
+        "manipulator_A": {
+            "private_information": [
+                "I work with a subset of objects and prefer concrete action sequences",
+                "I understand the action schemas and their parameter orders"
+            ],
+            "goal": "Propose an executable action sequence that progresses toward the supplied next relations goals while respecting action preconditions and effects"
+        },
+        "manipulator_B": {
+            "private_information": [
+                "I work with a different subset of objects and may propose alternative orders",
+                "I can exploit actions that set or reset vase and next predicates"
+            ],
+            "goal": "Propose an executable action sequence that progresses toward the supplied next relations goals while respecting action preconditions and effects"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I flag race conditions and ambiguous object aliases and propose deterministic fixes"
+            ],
+            "goal": "Produce an audit report that finds causal or temporal conflicts in proposed plans, eliminates bookkeeping shortcuts, and suggests corrected stepwise plans"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate plans and audits and must output a final PDDL domain and problem targeting the FastDownward solver"
+            ],
+            "goal": "Integrate agent analyses and the auditor report to produce a final PDDL domain and problem compatible with FastDownward that achieves the stated goals"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 2
+        },
+        "public_information": [
+            "Action schemas available: paltry, sip, clip, wretched, memory, tightfisted each with specific parameter lists and preconditions and effects",
+            "Predicates include hand, cats, texture, vase, next, sneeze, spring, collect, stupendous",
+            "Typical precondition patterns: paltry requires hand, cats, texture, vase, next; sip requires hand, cats, texture, next; clip requires hand, sneeze, texture, next; wretched requires sneeze, texture, stupendous, next, collect; memory requires cats, spring, next; tightfisted requires hand, sneeze, texture, next, vase",
+            "Typical effect patterns: many actions toggle next relations or vase relations as specified by their schema",
+            "Goals in instances are conjunctions of next relations between objects",
+            "Plans must maintain explicit naming of objects and avoid implicit bookkeeping tokens or hidden counters"
+        ]
+    },
+    "workflow": {
+        "manipulator_A": {
+            "analysis": {
+                "input": [],
+                "output": "plan_A",
+                "system_prompt": "You are a domain analyst. Your role is to read the public information and your private information and produce a clear step by step plan. Do not emit PDDL. When you list steps, include the action name, the object parameters, the required preconditions present at that step, and the expected effects after the step. If information is missing or ambiguous, state the missing facts explicitly and do not invent world facts.",
+                "prompt": "Your name is manipulator_A. You have these public facts: {environment->public_information} You have these private facts: {agents->manipulator_A->private_information} Your goal is: {agents->manipulator_A->goal} Provide a stepwise plan with justification for each step and explicit preconditions and effects."
+            }
+        },
+        "manipulator_B": {
+            "analysis": {
+                "input": [],
+                "output": "plan_B",
+                "system_prompt": "You are a domain analyst offering alternative action sequences. Do not emit PDDL. Provide a step by step plan with action names and parameters, explain why each precondition will hold when the action is applied, and show resulting predicate changes. Do not use bookkeeping shortcuts such as quota tokens.",
+                "prompt": "Your name is manipulator_B. You have these public facts: {environment->public_information} You have these private facts: {agents->manipulator_B->private_information} Your goal is: {agents->manipulator_B->goal} Provide a stepwise plan with justification for each step and explicit preconditions and effects."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_A",
+                    "plan_B"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor specialized in temporal and causal consistency. Your task is to inspect submitted plans and identify causal conflicts, temporal ordering issues, and any reliance on bookkeeping shortcuts or post-hoc penalties. Provide corrected sequences or ordering constraints that remove such shortcuts and ensure determinism. Do not emit PDDL. Provide concrete remediation steps and a final consistent plan fragment when possible.",
+                "prompt": "Your name is auditor. You receive the candidate plans {plan_A} and {plan_B}. Use public information {environment->public_information} and your private information {agents->auditor->private_information}. Your objective is {agents->auditor->goal} Produce an audit report listing detected issues, justification, and corrected stepwise plans or ordering constraints that fix the issues."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_A",
+                    "plan_B",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and you must produce a PDDL domain and a PDDL problem file compatible with the FastDownward planner. Produce a single domain and one or more problem files as needed for the final integrated instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Include explicit :requirements supported by FastDownward, define types and predicates, and declare actions with preconditions and effects. Keep actions originating from different agents distinct by prefixing action names with agent identifiers when appropriate. Resolve naming ambiguities by unifying identical world objects and state the unification choices in comments or as metadata inside the problem description. The final PDDL must be solvable by FastDownward given the integrated initial state and goal.",
+                "prompt": "You are the orchestrator. Public information: {environment->public_information}. Inputs to integrate: {plan_A} {plan_B} {audit_report}. Your private information: {agents->orchestrator->private_information}. Global objective: {agents->orchestrator->goal} Think step by step. Integrate the plans and audit corrections, resolve name mismatches and causal ordering, and output a PDDL domain and a PDDL problem file targeted for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "manipulator_A.analysis->orchestrator.pddl",
+            "manipulator_B.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

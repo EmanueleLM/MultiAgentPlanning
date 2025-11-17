@@ -1,0 +1,108 @@
+{
+    "name": "Depots20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player_analyst",
+            "plan_validator",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "player_analyst": {
+            "private_information": [
+                "Available actions with informal preconditions and effects: paltry requires hand X cats Y texture Z vase X Y next Y Z. Effect: adds next X Z and removes vase X Y.",
+                "sip requires hand X cats Y texture Z next X Z next Y Z. Effect: adds vase X Y and removes next X Z.",
+                "clip requires hand X sneeze Y texture Z next Y Z next X Z. Effect: adds vase X Y and removes next X Z.",
+                "wretched requires sneeze X texture Y texture Z stupendous W next X Y collect Y W collect Z W. Effect: adds next X Z and removes next X Y.",
+                "memory requires cats X spring Y spring Z next X Y. Effect: adds next X Z and removes next X Y.",
+                "tightfisted requires hand X sneeze Y texture Z next Y Z vase X Y. Effect: adds next X Z and removes vase X Y."
+            ],
+            "goal": "Analyze action schemas to extract predicates, typed object lists, and structured preconditions and effects for downstream validation."
+        },
+        "plan_validator": {
+            "private_information": [
+                "Scenario A initial facts: cats object_0, collect object_10 object_2, collect object_5 object_1, collect object_6 object_1, collect object_7 object_1, collect object_8 object_2, collect object_9 object_2, hand object_11, next object_0 object_5, next object_11 object_8, next object_3 object_5, next object_4 object_10, sneeze object_3, sneeze object_4, spring object_5, spring object_8, stupendous object_1, stupendous object_2, texture object_10, texture object_5, texture object_6, texture object_7, texture object_8, texture object_9.",
+                "Scenario A goal: next object_11 object_9.",
+                "Scenario A proposed plan sequence: wretched object_4 object_10 object_8 object_2; clip object_11 object_4 object_8; wretched object_4 object_8 object_9 object_2; tightfisted object_11 object_4 object_9.",
+                "Scenario B initial facts: cats object_0 cats object_1 collect object_10 object_3 collect object_11 object_3 collect object_6 object_2 collect object_7 object_2 collect object_8 object_2 collect object_9 object_3 hand object_12 next object_0 object_6 next object_1 object_9 next object_12 object_10 next object_4 object_7 next object_5 object_9 sneeze object_4 sneeze object_5 spring object_6 spring object_9 stupendous object_2 stupendous object_3 texture object_10 texture object_11 texture object_6 texture object_7 texture object_8 texture object_9.",
+                "Scenario B goal: next object_12 object_11.",
+                "Scenario B plan: (no plan provided in the second block)."
+            ],
+            "goal": "Check whether the provided plans are applicable given initial facts and the action schemas and produce stepwise state transitions or indicate failures."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts such as ad hoc quota tokens or post-hoc penalties from plans and representations.",
+                "Guideline: normalize actions so that each precondition is justified by a causal chain from initial facts or other actions in the plan, and flag or replace shortcuts with explicit resource predicates when needed."
+            ],
+            "goal": "Produce an audit report that identifies causal gaps, temporal ordering issues, and suggests minimal normalization to make the plan causally explicit."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownwards. Final deliverable: a PDDL domain and PDDL problem compatible with FastDownwards. Keep agent actions distinct and preserve object naming from inputs when possible."
+            ],
+            "goal": "Integrate analyses, validations, and audits to produce a final PDDL domain and problem file for FastDownwards solver that realizes the requested goals for the given scenarios."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 20,
+            "visibility": 2
+        },
+        "public_information": [
+            "Objects are named object_0 through object_12 and represent items in the play set.",
+            "Predicates used: hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted. Each action maps informal preconditions to effects as provided to player_analyst.",
+            "The overall tasks are to reason about causal transitions between 'next' relations over objects and to achieve specific 'next' goals in given scenarios."
+        ]
+    },
+    "workflow": {
+        "player_analyst": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_player",
+                "system_prompt": "You are an analyst that must read informal action descriptions and produce a clear structured representation of predicates, object types, and for each action a list of required preconditions and deterministic add and delete effects. Do not emit PDDL. Provide a concise JSON fragment that lists predicate signatures, the set of objects observed, and for each action a normalized schema with parameter names, preconditions, add effects, and delete effects.",
+                "prompt": "You are player_analyst. Use the public information and your private information to extract a structured action model: list all predicates with arity, enumerate objects that appear in the scenarios, and convert the informal action descriptions into normalized precondition and effect lists. Keep names consistent with the public object names. Do not generate a PDDL domain or problem; produce the structured analysis output only."
+            }
+        },
+        "plan_validator": {
+            "validation": {
+                "input": [
+                    "analysis_player"
+                ],
+                "output": "validation_plan",
+                "system_prompt": "You are a plan validator. You simulate plans step by step against initial states using the structured action model passed from the analyst. Do not emit PDDL. Provide a detailed trace that indicates which actions are applicable at each step, the resulting facts added and removed, and whether the goal is achieved. If a plan step is not applicable, indicate the earliest failure and why.",
+                "prompt": "You are plan_validator. Given the structured action model from analysis_player and the scenario statements in your private information, validate the provided plans. For each plan step indicate preconditions satisfied or missing, list state changes, and conclude if the scenario goal is achieved. For Scenario B where no plan is given, indicate missing plan and propose minimal next actions if a straightforward causal path exists."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "analysis_player",
+                    "validation_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your job is to remove bookkeeping shortcuts and ensure causal chains are explicit. Do not emit PDDL. Produce a report that identifies temporal ordering issues, missing causal links, and propose minimal normalization such as introducing explicit resource predicates or additional intermediate actions so that every precondition is causally supported.",
+                "prompt": "You are temporal_auditor. Using the structured action model and the validation traces, find any occurrences where the plan or the model depends on implicit shortcuts (for example, relying on an implicit token or post-hoc effect). For each identified issue provide a remediation: either reorder actions, add explicit supporting actions, or add explicit resource predicates. Provide the corrected sequence fragments or suggestions in a normalized representation that the orchestrator can consume."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_player",
+                    "validation_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a PDDL domain and one or more PDDL problem files suitable for the FastDownwards planner. Integrate the structured action model, the plan validation traces, and the audit corrections. Keep each agent's actions distinct by prefixing action names with the original action name when ambiguous. Ensure the PDDL includes :requirements suitable for FastDownwards, type declarations if used, clear predicate definitions, and initial states and goals matching the validated scenarios. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. The output should be directly consumable by FastDownwards.",
+                "prompt": "You are orchestrator. Receive analysis_player, validation_plan, and audit_report. Resolve any naming ambiguities and integrate the normalized action schemas and corrected plans to produce a final PDDL domain and at least one PDDL problem file per scenario. Ensure determinism in effects, explicit causal support for each precondition using the auditor suggestions, and include a short comment section in the domain listing which agent provided which schema fragment. Target FastDownwards syntax and semantics and wrap the domain and the problem in the tags <domain> and <problem> respectively."
+            }
+        },
+        "constraints": [
+            "player_analyst.analysis->orchestrator.pddl",
+            "plan_validator.validation->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

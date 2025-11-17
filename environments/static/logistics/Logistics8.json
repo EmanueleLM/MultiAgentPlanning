@@ -1,0 +1,102 @@
+{
+    "name": "Logistics8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "semantic_analyzer",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am responsible for interpreting actions and mapping them to parameterized templates with preconditions and effects.",
+                "I should produce a structured model of actions from the game-like vocabulary without producing final PDDL."
+            ],
+            "goal": "Produce a consistent symbolic model of the available actions, their parameters, preconditions, and effects based on the provided specification and initial statements."
+        },
+        "semantic_analyzer": {
+            "private_information": [
+                "I am responsible for normalizing object and predicate names, detecting synonyms and naming conflicts, and producing a canonical object and predicate list.",
+                "I should annotate ambiguous references and propose canonical names but should not output PDDL directly."
+            ],
+            "goal": "Produce a cleaned ontology: canonical object list, canonical predicate names, and mappings from original names to canonical names so that different agents can refer to the same items consistently."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across planned actions and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I should detect implicit bookkeeping shortcuts and propose removals or explicit encodings that preserve causal correctness."
+            ],
+            "goal": "Produce an audit report that enforces causal consistency, eliminates or replaces bookkeeping shortcuts, and suggests constraints needed for a true time- and causality-preserving planning model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I am responsible for integrating inputs from the other agents and producing the final PDDL domain and problem files targeted to the FastDownwards solver.",
+                "I must keep agent actions distinct and resolve remaining ambiguities, then output a final domain and problem suitable for FastDownwards."
+            ],
+            "goal": "Integrate the planner, semantic analyzer, and temporal auditor outputs to produce a final PDDL domain and problem for FastDownwards that achieves the stated goals."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 11,
+            "object_prefix": "object_"
+        },
+        "public_information": [
+            "There are parameterized actions available: paltry, sip, clip, wretched, memory, tightfisted.",
+            "Predicates used in action descriptions include hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Actions have preconditions and effects that manipulate next and vase and possibly other predicates.",
+            "Example action templates and constraints: To perform paltry the preconditions include hand, cats, texture, vase, and next. Paltry makes next on a different pair true and removes a vase fact.",
+            "Sip requires hand, cats, texture, and two next facts. Sip makes a vase fact true and removes one next fact.",
+            "Clip requires hand, sneeze, texture, and two next facts. Clip makes a vase fact true and removes one next fact.",
+            "Wretched requires sneeze, two texture facts, stupendous, next, and collect facts. Wretched produces a next fact and removes another next fact.",
+            "Memory requires cats, two spring facts and next. Memory produces and removes next facts appropriately.",
+            "Tightfisted requires hand, sneeze, texture, next, and vase and flips next and vase facts accordingly.",
+            "The initial statements in the scenarios mention a collection of ground atomic facts. Two goal variants are provided in separate statements."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "model": {
+                "input": [],
+                "output": "planner_model",
+                "system_prompt": "You are an expert modeler of symbolic actions. Produce for each action a structured template that lists parameter variables, required predicates (preconditions), add effects, and delete effects. Use the action names paltry, sip, clip, wretched, memory, tightfisted. Do not emit final PDDL. Produce a clear machine-parsable mapping for each action.",
+                "prompt": "You are the planner agent. Use the public information and the use-case specification to extract and formalize action templates. If some information is missing, state what is missing and give the most conservative template consistent with the facts."
+            }
+        },
+        "semantic_analyzer": {
+            "analyze": {
+                "input": [],
+                "output": "semantic_analysis",
+                "system_prompt": "You are an expert in ontology normalization and naming resolution. Produce a canonical list of objects, a canonical list of predicates, and a mapping table from raw mentions to canonical names. Identify potential synonymy and ambiguous references that must be resolved before generating PDDL. Do not generate PDDL.",
+                "prompt": "You are the semantic analyzer. Normalize object names like object_0 through object_10, normalize predicate names such as hand, cats, texture, vase, next, sneeze, collect, spring, stupendous. Provide mappings and any recommended renamings."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Examine the planner model and semantic analysis outputs and detect temporal or causal shortcuts. Propose explicit encodings that remove bookkeeping shortcuts, such as quota tokens or post-hoc penalties. Produce concrete recommendations or transformed constraints so the resulting model preserves causality.",
+                "prompt": "You are the temporal auditor. Focus on ensuring preconditions and effects across actions preserve causal dependencies. If an action implicitly assumes bookkeeping tokens, propose explicit predicate encodings or ordering constraints to eliminate such shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_model",
+                    "semantic_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author. Your job is to take structured action templates, canonical ontology, and the auditor's constraints and produce a final PDDL domain and problem targeted to the FastDownwards solver. Keep agent actions distinct by prefixing action names with their originating agent when helpful. Ensure the domain is syntactically valid for FastDownwards and ensure the problem encodes the provided initial facts and goals. Provide any required typing and object declarations.",
+                "prompt": "You are the orchestrator. Integrate the planner model, semantic analysis, and audit report to produce two text artifacts: a PDDL domain and a PDDL problem file suitable for FastDownwards. The domain must include all predicates, action definitions, and any necessary typing. The problem must enumerate objects, initial facts, and goals corresponding to the scenario statements. Resolve remaining ambiguities conservatively and document assumptions in comments at the top of the domain and problem."
+            }
+        },
+        "constraints": [
+            "planner.model->orchestrator.pddl",
+            "semantic_analyzer.analyze->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

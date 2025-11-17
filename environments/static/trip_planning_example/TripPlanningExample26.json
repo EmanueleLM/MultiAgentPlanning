@@ -1,0 +1,104 @@
+{
+    "name": "TripPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flight_db",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I plan a 16-day trip in Europe.",
+                "I want to stay 7 days in Porto, 6 days in Berlin, and 5 days in Reykjavik.",
+                "I want to meet a friend in Reykjavik sometime between day 12 and day 16 (inclusive).",
+                "I will only take direct flights to commute between cities."
+            ],
+            "goal": "Obtain a feasible day-by-day trip plan for 16 days that meets the stay-duration and meeting constraints using only direct flights."
+        },
+        "flight_db": {
+            "private_information": [
+                "Direct flights exist between: Berlin <-> Reykjavik, Porto <-> Berlin.",
+                "No direct flights are available between Porto and Reykjavik (unless via Berlin)."
+            ],
+            "goal": "Provide the direct-flight connectivity graph and constraints needed to commute only via direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency, and I remove bookkeeping shortcuts (e.g., tokens, post-hoc penalties) from proposals."
+            ],
+            "goal": "Audit proposed itineraries for feasibility (temporal overlap, flight feasibility, day counts) and return a cleaned, time-consistent report that explicitly notes any adjustments required."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the proposals, flight graph and audit results and produce a final PDDL domain and problem targeting the FastDownward solver to compute a valid day-by-day itinerary that uses only direct flights and satisfies the meeting constraint."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Porto",
+                "Berlin",
+                "Reykjavik"
+            ]
+        },
+        "public_information": [
+            "Total trip length is 16 days.",
+            "Desired stays: Porto 7 days, Berlin 6 days, Reykjavik 5 days.",
+            "You must use only direct flights to commute between cities.",
+            "Meeting in Reykjavik must occur between day 12 and day 16 (inclusive).",
+            "Direct flight connections available: Berlin <-> Reykjavik, Porto <-> Berlin."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "propose_itinerary": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are the traveler agent. Provide a high-level, day-indexed itinerary proposal for the 16-day trip that assigns each day to one of the three cities (Porto, Berlin, Reykjavik), indicates the days allocated per city, and lists intended flight legs (sequence of travel days) when moving between cities. Respect the private constraints you have (stay durations, meeting window) and the environment public information. Do not produce PDDL. If uncertain about feasibility due to flight connectivity, state the uncertainty explicitly rather than assuming missing flights.",
+                "prompt": "Using your private information and the environment's public information, propose a day-by-day itinerary in a structured form (for example, an ordered list of day->city entries and commute days). Mark proposed flight days and the expected origin/destination for each flight. Highlight where direct-flight feasibility must be checked."
+            }
+        },
+        "flight_db": {
+            "build_flight_graph": {
+                "input": [],
+                "output": "flight_graph",
+                "system_prompt": "You are the flight database agent. Produce a clear, structured representation of direct-flight connectivity between the listed cities (e.g., as edge list or adjacency map) and any operational assumptions (e.g., flights available every day, no overnight-only constraints). Do not produce PDDL.",
+                "prompt": "Provide the direct-flight graph and explicit statements about which city pairs are reachable directly. If a recommended itinerary proposes a non-direct commute, indicate that a direct flight is not available and whether an intermediate transfer would be required."
+            }
+        },
+        "auditor": {
+            "audit_temporal": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_graph"
+                ],
+                "output": "temporal_audit_report",
+                "system_prompt": "You are a temporal/causal auditor. Your role is to validate the itinerary proposal against the flight graph and the trip constraints. Remove any bookkeeping shortcuts (for example: 'assume a token that allows teleportation' or ad-hoc penalty fixes). Produce a cleaned, time-consistent report that either approves the itinerary or lists the precise adjustments needed (which days to shift, which additional flights are required) so the plan becomes feasible with only direct flights. Do not produce PDDL.",
+                "prompt": "Given the itinerary_proposal and flight_graph, check: total day counts per city, that every proposed commute uses a direct flight, that the meeting in Reykjavik falls between day 12 and 16, and that no two locations are assigned the same day. Return a structured report noting any inconsistencies and corrected day assignments or alternative feasible flight days."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_graph",
+                    "temporal_audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and an expert in multi-agent PDDL for use with the FastDownward solver. Integrate the itinerary_proposal, the flight_graph, and the auditor's temporal_audit_report to produce a final PDDL domain and PDDL problem file that models the 16-day trip planning problem. The PDDL should model days as a linear sequence of time steps, enforce the required number of days in each city, allow travel only on days with direct flights (based on the flight_graph), and enforce that a 'meet_friend' predicate occurs in Reykjavik on one day between day 12 and day 16 inclusive. Keep agent actions distinct if representing multiple actors. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Tailor the encoding for efficient solving with FastDownward (e.g., use STRIPS/ADL constructs supported by FastDownward and avoid non-supported planner-specific features).",
+                "prompt": "Produce a PDDL domain and a PDDL problem suitable for FastDownward that encodes: (1) 16 discrete day steps, (2) location of the traveler for each day, (3) actions for 'stay' and 'fly' that consume a single day for each flight leg, (4) constraints on total days per city (Porto 7, Berlin 6, Reykjavik 5), (5) restriction that 'fly' actions are allowed only between city pairs present in the flight_graph, and (6) a goal requiring that the traveler is in Reykjavik and 'meet_friend' occurs on some day in the interval day 12..16. Enclose domain and problem using <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.propose_itinerary->auditor.audit_temporal",
+            "flight_db.build_flight_graph->auditor.audit_temporal",
+            "traveler.propose_itinerary->orchestrator.pddl",
+            "flight_db.build_flight_graph->orchestrator.pddl",
+            "auditor.audit_temporal->orchestrator.pddl"
+        ]
+    }
+}

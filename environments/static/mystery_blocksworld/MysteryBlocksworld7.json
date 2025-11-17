@@ -1,0 +1,99 @@
+{
+    "name": "MysteryBlocksworld7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_A",
+            "planner_B",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_A": {
+            "private_information": [
+                "I have access to the first STATEMENT and PLAN described in the use-case",
+                "I can reason about action applicability given specific initial facts from the first statement"
+            ],
+            "goal": "Analyze the first statement and plan and produce a structured assessment of action preconditions, effects, and applicability toward achieving next object_10 object_6"
+        },
+        "planner_B": {
+            "private_information": [
+                "I have access to the second STATEMENT and the partial plan context provided in the use-case",
+                "I can reason about action applicability given specific initial facts from the second statement"
+            ],
+            "goal": "Analyze the second statement and plan fragment and produce a structured assessment of action preconditions, effects, and applicability toward achieving next object_10 object_5 and next object_9 object_7"
+        },
+        "auditor": {
+            "private_information": [
+                "I receive planner analyses and must check temporal and causal consistency",
+                "I must detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or retroactive justifications"
+            ],
+            "goal": "Audit the planners' analyses for temporal and causal consistency, canonicalize predicate/object names, and produce a corrected, bookkeeping-clean summary for orchestration"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the planners' analyses and the auditor's report to produce a final PDDL domain and PDDL problem suitable for FastDownwards that achieves the requested goals while keeping agent actions distinct"
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": 11,
+            "max_objects_indexed": 10
+        },
+        "public_information": [
+            "There are actions: paltry, sip, clip, wretched, memory, tightfisted each parameterized over objects",
+            "Each action has specific preconditions and effects over predicates: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring",
+            "Some actions make next relations true or false and some toggle vase or other predicates as effects",
+            "Plans must manipulate next relations to reach goals of the form next object_X object_Y",
+            "Two separate scenario statements are provided with distinct initial facts and goals"
+        ]
+    },
+    "workflow": {
+        "planner_A": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_planner_A",
+                "system_prompt": "You are an analytical planning agent. Your task is to inspect the provided public information about actions and the private statement you hold. Do not emit final PDDL. Produce a clear, structured analysis listing for each action referenced which preconditions and effects are relevant to the provided initial facts and goal. Point out which initial facts enable or block each action and identify any missing links that a final planner would need.",
+                "prompt": "Your name is planner_A. Use the environment public information: {environment->public_information}. Use your private information: {agents->planner_A->private_information}. The local goal you must help with: {agents->planner_A->goal}. Produce a structured analysis that lists action schemas, maps the action parameters used in the plan to the predicates that satisfy preconditions and effects, and highlight any assumptions required to accept the provided plan steps. Do not output PDDL, only analysis and structured summaries."
+            }
+        },
+        "planner_B": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_planner_B",
+                "system_prompt": "You are an analytical planning agent. Inspect the provided public action definitions and the private statement you hold. Do not emit final PDDL. Produce a clear, structured analysis listing for each action referenced which preconditions and effects are relevant to the provided initial facts and goal. Identify enabling facts and potential conflicts.",
+                "prompt": "Your name is planner_B. Use the environment public information: {environment->public_information}. Use your private information: {agents->planner_B->private_information}. The local goal you must help with: {agents->planner_B->goal}. Produce a structured analysis that lists action schemas, maps the action parameters used in the plan fragment to the predicates that satisfy preconditions and effects, and note any assumptions or missing facts. Do not output PDDL, only analysis and structured summaries."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_planner_A",
+                    "analysis_planner_B"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-step plans. Your job is to accept planners' structured analyses and detect temporal inconsistencies, causal breaks, naming mismatches, and any bookkeeping shortcuts (for example quota tokens, retroactive justifications, or post-hoc penalties). Produce a corrected, canonicalized summary that removes such shortcuts and makes explicit any minimal additional facts required for correctness.",
+                "prompt": "Your name is auditor. You will receive: {analysis_planner_A} and {analysis_planner_B}. Your goal: {agents->auditor->goal}. Compare and reconcile object and predicate naming, ensure causal chains for 'next' relations are consistent, flag steps that rely on bookkeeping shortcuts, and produce a cleaned, canonical summary of preconditions and effects that the orchestrator can integrate. Provide explicit recommendations for additional initial facts if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_planner_A",
+                    "analysis_planner_B",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and composition. Target the FastDownwards planner (Fast-Downward). Integrate other agents' analyses and the auditor's cleaned summary to produce a single coherent PDDL domain and PDDL problem designed for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions that originate from different agents distinct and preserve the canonicalized predicate and object names provided by the auditor. Ensure the domain uses only features supported by FastDownwards by default (avoid unsupported planner-specific extensions).",
+                "prompt": "Your name is orchestrator. Integrate the following inputs: first planner analysis {analysis_planner_A}, second planner analysis {analysis_planner_B}, and the auditor report {audit_report}. Your overall goal: {agents->orchestrator->goal}. Produce a final PDDL domain and a PDDL problem that achieves the requested goals from the statements. Keep agent actions distinct (for example, prefix or tag actions with their originating agent), resolve naming or typing differences, and ensure the produced PDDL is consistent and solvable by FastDownwards. Enclose the domain within <domain></domain> and the problem within <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner_A.analysis->auditor.audit",
+            "planner_B.analysis->auditor.audit",
+            "planner_A.analysis->orchestrator.pddl",
+            "planner_B.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

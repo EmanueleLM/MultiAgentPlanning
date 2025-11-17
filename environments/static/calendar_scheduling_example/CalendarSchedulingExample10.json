@@ -1,0 +1,118 @@
+{
+    "name": "CalendarSchedulingExample10",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "diana",
+            "ethan",
+            "janet",
+            "auditor",
+            "orchestrator"
+        ],
+        "diana": {
+            "private_information": [
+                "Busy on Monday from 11:30 to 12:00",
+                "Busy on Monday from 13:00 to 13:30"
+            ],
+            "goal": "Provide accurate availability on Monday for a 30 minute meeting within work hours and any personal constraints."
+        },
+        "ethan": {
+            "private_information": [
+                "No meetings on Monday, fully available"
+            ],
+            "goal": "Provide accurate availability on Monday for a 30 minute meeting within work hours."
+        },
+        "janet": {
+            "private_information": [
+                "Busy on Monday from 09:00 to 10:00",
+                "Busy on Monday from 12:30 to 13:00",
+                "Busy on Monday from 14:00 to 15:00",
+                "Busy on Monday from 15:30 to 17:00",
+                "Prefers not to meet on Monday after 12:00"
+            ],
+            "goal": "Provide accurate availability and enforce preference of not meeting after 12:00 while finding a 30 minute slot."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Audit the reported availabilities for temporal and causal consistency and remove bookkeeping shortcuts, and produce a clear validated availability report."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate validated availabilities and produce a PDDL domain and problem targeted for the FastDownwards solver to schedule the 30 minute meeting."
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_duration_minutes": 30,
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00"
+        },
+        "public_information": [
+            "Schedule a single 30 minute meeting on Monday between 09:00 and 17:00",
+            "There exists at least one time that works for every participant given their schedules and preferences",
+            "Meeting must respect all participants' busy times and stated preferences"
+        ]
+    },
+    "workflow": {
+        "diana": {
+            "report": {
+                "input": [],
+                "output": "availability_diana",
+                "system_prompt": "You are Diana's calendar agent. Provide a structured availability report for Monday that lists free time intervals within the work hours and reconciling them with your private busy intervals and preferences. Do not emit PDDL. Return only machine-readable availability information and any hard constraints or preferences you insist on.",
+                "prompt": "Agent name: diana. Public information: {environment->public_information}. Your private information: {agents->diana->private_information}. Your goal: {agents->diana->goal}. Produce a structured availability report for Monday expressed as a list of available intervals between the work hours that account for your busy times and preferences. If some information is missing, state it explicitly."
+            }
+        },
+        "ethan": {
+            "report": {
+                "input": [],
+                "output": "availability_ethan",
+                "system_prompt": "You are Ethan's calendar agent. Provide a structured availability report for Monday that lists free time intervals within the work hours and reconciling them with your private busy intervals and preferences. Do not emit PDDL. Return only machine-readable availability information and any hard constraints or preferences you insist on.",
+                "prompt": "Agent name: ethan. Public information: {environment->public_information}. Your private information: {agents->ethan->private_information}. Your goal: {agents->ethan->goal}. Produce a structured availability report for Monday expressed as a list of available intervals between the work hours that account for your busy times and preferences. If some information is missing, state it explicitly."
+            }
+        },
+        "janet": {
+            "report": {
+                "input": [],
+                "output": "availability_janet",
+                "system_prompt": "You are Janet's calendar agent. Provide a structured availability report for Monday that lists free time intervals within the work hours and reconciling them with your private busy intervals and preferences. Do not emit PDDL. Return only machine-readable availability information and any hard constraints or preferences you insist on.",
+                "prompt": "Agent name: janet. Public information: {environment->public_information}. Your private information: {agents->janet->private_information}. Your goal: {agents->janet->goal}. Produce a structured availability report for Monday expressed as a list of available intervals between the work hours that account for your busy times and the explicit preference to not meet after 12:00. If some information is missing, state it explicitly."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_diana",
+                    "availability_ethan",
+                    "availability_janet"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal auditor. Your job is to take the availability reports from participants, check for temporal overlaps, inconsistencies, ambiguous interval boundaries, and any bookkeeping shortcuts such as token heuristics or post-hoc penalties. Normalize times, resolve off-by-minute ambiguities, and produce a validated availability report suitable for planning. Do not emit PDDL.",
+                "prompt": "Agent name: auditor. Inputs: availability_diana, availability_ethan, availability_janet. Your goal: {agents->auditor->goal}. Validate and normalize the availability intervals for Monday, remove any shorthand or ambiguous notations, and produce a cleaned machine-readable availability report that states for each participant the exact free intervals and any non-negotiable constraints. Explicitly flag if any reported preference would eliminate all feasible slots."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_diana",
+                    "availability_ethan",
+                    "availability_janet",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates validated availabilities and produces a final PDDL domain and problem targeted specifically for the FastDownwards planner. Keep agent actions distinct, model time in 30 minute granularity or finer as needed, encode participant availability and hard preferences as constraints, and ensure the generated PDDL is compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent name: orchestrator. Inputs: availability_diana, availability_ethan, availability_janet, audit_report. Your goal: {agents->orchestrator->goal}. Integrate the validated availability reports and produce a PDDL domain and a PDDL problem that schedules a single 30 minute meeting on Monday between 09:00 and 17:00 respecting all busy intervals and preferences. Ensure the PDDL is executable by FastDownwards, labels agents distinctly, encodes temporal constraints as needed, and documents any assumptions. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "diana.report->auditor.audit",
+            "ethan.report->auditor.audit",
+            "janet.report->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "diana.report->orchestrator.pddl",
+            "ethan.report->orchestrator.pddl",
+            "janet.report->orchestrator.pddl"
+        ]
+    }
+}

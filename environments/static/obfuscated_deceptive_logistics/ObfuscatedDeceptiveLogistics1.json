@@ -1,0 +1,77 @@
+{
+    "name": "ObfuscatedDeceptiveLogistics1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I have two textual scenario statements describing initial facts over objects object_0 through object_8 and two candidate plans. The first statement supplies initial predicates including cats, collect, hand, next, sneeze, spring, stupendous, texture for a set of objects and a goal next object_8 object_6. The second statement supplies a different initial state and the goal next object_7 object_6 and next object_8 object_6.",
+                "There is a set of domain actions described in the use-case: paltry, sip, clip, wretched, memory, tightfisted. Each action has specified preconditions and effects expressed over predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring. Effects include both positive and negative literals."
+            ],
+            "goal": "Extract a clean, unambiguous symbolic fragment of the domain and plan-related model elements that capture preconditions and effects for the described actions and map the two statements and two candidate plans into structured plan fragments. Do not emit a full PDDL domain or problem."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in auditing temporal and causal consistency and removing bookkeeping shortcuts such as quota tokens or post-hoc penalties introduced in informal plans. I must detect implicit assumptions, inconsistent name usages, and artifacts that break causal/temporal validity.",
+                "I should produce an audit report describing necessary corrections, causal links required between actions, and any repairs to initial facts or action models so that plans can be executed in a standard planner without bookkeeping shortcuts."
+            ],
+            "goal": "Produce a temporal and causal consistency audit and a cleaned model report that removes bookkeeping shortcuts and documents required changes so an orchestrator can assemble a correct PDDL model compatible with FastDownwards."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You will receive structured model fragments from the planner and an audit report from the auditor. Your responsibility is to integrate these inputs and produce a complete PDDL domain and a set of PDDL problems suitable for the FastDownwards planner, keeping actions of distinct agents logically separated where appropriate."
+            ],
+            "goal": "Integrate the planner model fragments and the auditor report and output a PDDL domain and PDDL problem files that target the FastDownwards solver and achieve the stated goals from the provided statements."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 9,
+            "visibility": 3
+        },
+        "public_information": [
+            "Available actions: paltry, sip, clip, wretched, memory, tightfisted each parameterized over objects object_0 through object_8 as appropriate.",
+            "Predicates referenced in the action descriptions: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Action descriptions: paltry requires hand,cats,texture and vase and next relations and its effects include making next object_0 object_2 and removing vase object_0 object_1. sip requires hand,cats,texture and two next facts and makes vase true while deleting a next relation. clip requires hand,sneeze,texture and next relations and makes vase true while deleting a next relation. wretched requires sneeze,texture,stupendous and collect relations and two next/collect facts and makes next object_0 object_2 while deleting another next relation. memory requires cats and spring facts and a next and makes a next while deleting a different next. tightfisted requires hand,sneeze,texture,next and vase and makes a next while deleting vase.",
+            "Two distinct scenario statement sets were provided with initial facts and goals; candidate plans were provided for the first statement containing sip, memory, paltry. Plans are to be validated against the domain constraints and corrected if necessary."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "plan_fragment": {
+                "input": [],
+                "output": "planner_model_fragment",
+                "system_prompt": "You are an agent that extracts symbolic domain fragments and structured plan fragments from textual scenario descriptions. Your output should be a JSON-serializable model fragment listing actions, their parameter signatures, normalized predicate names, and for each action the explicit positive and negative effects and preconditions. Do not produce a full PDDL domain or PDDL problem. Focus on disambiguation of object roles and consistent naming.",
+                "prompt": "Your name is planner. You receive the environment public information: {environment->public_information} and your private information: {agents->planner->private_information}. Your goal: {agents->planner->goal}. Produce a structured model fragment describing each action's parameters, preconditions, and effects, and map the provided initial statements and candidate plans into plan-step sequences annotated with which preconditions are satisfied and which effects they rely on. If information is missing, mark it as unknown rather than invent new facts."
+            }
+        },
+        "auditor": {
+            "audit_report": {
+                "input": [],
+                "output": "auditor_consistency_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency specializing in removing bookkeeping shortcuts and post-hoc fixes. Produce a concise report enumerating causal link violations, implicit resource or token assumptions, inconsistent naming, required temporal constraints between actions, and recommended repairs to action preconditions and effects so the model can be executed by a classical planner without ad-hoc bookkeeping.",
+                "prompt": "Your name is auditor. You receive the environment public information: {environment->public_information} and your private information: {agents->auditor->private_information}. You also will be given the planner model fragment when available. Your goal: {agents->auditor->goal}. Produce an audit report listing detected inconsistencies and explicit edits to the model or initial facts to ensure causal and temporal validity. Provide edits in an actionable format the orchestrator can apply."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_model_fragment",
+                    "auditor_consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and FastDownwards usage. Your job is to integrate model fragments and audit corrections and produce a complete PDDL domain and PDDL problem files compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct and preserve the cleaned semantics provided by the auditor.",
+                "prompt": "Your name is orchestrator. You will receive the planner model fragment: {planner_model_fragment} and the auditor report: {auditor_consistency_report}. Your private information: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Integrate the inputs, apply the auditor's recommended edits, and emit a complete PDDL domain and one or more PDDL problems that achieve the specified goals from the provided statements and that are formatted for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.plan_fragment->orchestrator.pddl",
+            "auditor.audit_report->orchestrator.pddl"
+        ]
+    }
+}

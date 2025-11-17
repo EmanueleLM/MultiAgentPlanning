@@ -1,0 +1,101 @@
+{
+    "name": "MeetingPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "visitor",
+            "andrew",
+            "auditor",
+            "orchestrator"
+        ],
+        "visitor": {
+            "private_information": [
+                "I arrive at Presidio at 09:00",
+                "I can move between locations and wait between meetings",
+                "My objective is to meet as many friends as possible today with a priority to meet Andrew for at least 105 minutes"
+            ],
+            "goal": "Maximize meetings while ensuring a meeting with Andrew of at least 105 minutes at a time and place consistent with his availability and travel times"
+        },
+        "andrew": {
+            "private_information": [
+                "I will be at Union Square from 11:15 to 17:15",
+                "I am willing to meet within that window for at least 105 minutes"
+            ],
+            "goal": "Provide accurate availability constraints and preferences for meeting"
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit schedule proposals for temporal and causal consistency",
+                "I will detect shortcuts such as token quotas, post-hoc penalties, and other bookkeeping tricks and remove them"
+            ],
+            "goal": "Ensure proposed schedules are temporally consistent, respect travel times, and contain no bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate proposals and produce a final PDDL domain and problem targeting the FastDownwards solver",
+                "I must keep agent actions distinct and model temporal constraints explicitly"
+            ],
+            "goal": "Integrate proposals and audits to produce a final PDDL domain and problem for FastDownwards that achieves the visitor's meeting goals"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Presidio",
+            "arrival_time": "09:00",
+            "travel_times_minutes": {
+                "Presidio->UnionSquare": 22,
+                "UnionSquare->Presidio": 24
+            }
+        },
+        "public_information": [
+            "Travel time from Presidio to Union Square is 22 minutes",
+            "Travel time from Union Square to Presidio is 24 minutes",
+            "You arrive at Presidio at 09:00",
+            "Andrew will be at Union Square from 11:15 to 17:15",
+            "Desired minimum meeting duration with Andrew is 105 minutes"
+        ]
+    },
+    "workflow": {
+        "visitor": {
+            "propose_schedules": {
+                "input": [],
+                "output": "schedules_visitor",
+                "system_prompt": "You are an expert itinerary planner. Propose multiple candidate schedules for the visitor starting at Presidio at 09:00. Each candidate must list sequential location visits with start and end times, travel segments with durations, and proposed meeting start and end times with Andrew if applicable. Use the provided travel times and do not assume extra information. Provide feasibility notes and a simple score for each candidate indicating how well it meets the goal of meeting Andrew for at least 105 minutes and maximizing meetings."
+            }
+        },
+        "andrew": {
+            "provide_availability": {
+                "input": [],
+                "output": "availability_andrew",
+                "system_prompt": "You are Andrew. State your precise availability window and any constraints or preferences about where and when you can meet within Union Square from 11:15 to 17:15. Do not propose schedules; only provide availability and any hard constraints."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "schedules_visitor",
+                    "availability_andrew"
+                ],
+                "output": "audited_schedules",
+                "system_prompt": "You are an auditor of schedules. Check each proposed candidate schedule for temporal and causal consistency. Ensure travel times are respected when moving between locations, ensure meetings lie within availability windows, verify that meeting durations meet the minimum required 105 minutes for Andrew, and remove or flag any proposals that rely on bookkeeping shortcuts such as quota tokens or post-hoc penalties. Produce corrected schedules with explicit timing, a list of detected issues for each original candidate, and a final feasibility verdict."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedules_visitor",
+                    "audited_schedules",
+                    "availability_andrew"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent temporal planning and PDDL modeling for FastDownwards. Integrate the candidate schedules and audited corrections into a single coherent temporal planning model. Produce a PDDL domain and a PDDL problem compatible with FastDownwards that models locations, travel actions with explicit durations, waiting actions, and a meet action. The initial state must reflect arrival at Presidio at 09:00. Andrew must be at Union Square only during 11:15 to 17:15 and the plan must include a meeting at Union Square with duration at least 105 minutes. Keep actions of different agents distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards with temporal constructs where necessary and include comments explaining key modeling choices."
+            }
+        },
+        "constraints": [
+            "visitor.propose_schedules->auditor.audit",
+            "andrew.provide_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

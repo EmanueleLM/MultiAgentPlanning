@@ -1,0 +1,121 @@
+{
+    "name": "CalendarSchedulingExample15",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "joyce",
+            "christine",
+            "alexander",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "joyce": {
+            "private_information": [
+                "I have meetings on Monday from 11:00-11:30, 13:30-14:00, and 14:30-16:30."
+            ],
+            "goal": "Find a 30-minute meeting time within Monday work hours 09:00-17:00 that fits my schedule and the other participants."
+        },
+        "christine": {
+            "private_information": [
+                "I have no meetings on Monday.",
+                "I cannot meet on Monday before 12:00."
+            ],
+            "goal": "Find a 30-minute meeting time within Monday work hours 09:00-17:00 that fits my availability and the other participants."
+        },
+        "alexander": {
+            "private_information": [
+                "I have meetings on Monday from 09:00-11:00, 12:00-12:30, 13:30-15:00, 15:30-16:00, and 16:30-17:00."
+            ],
+            "goal": "Find a 30-minute meeting time within Monday work hours 09:00-17:00 that fits my schedule and the other participants."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency across reported schedules and to remove bookkeeping shortcuts such as quota tokens, placeholder reservations, or post-hoc penalties."
+            ],
+            "goal": "Validate and normalize participant availability reports so the orchestrator receives temporally consistent, conflict-free availability data."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the inputs from participants and the auditor to produce a final PDDL planning problem targeted to the FastDownward solver."
+            ],
+            "goal": "Produce a PDDL domain and PDDL problem that encode the meeting scheduling task for FastDownward, keeping agent actions distinct and reflecting audited availabilities."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "meeting_duration_minutes": 30,
+            "time_slot_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a 30-minute meeting on Monday between 09:00 and 17:00.",
+            "All participants are required to attend: Joyce, Christine, Alexander.",
+            "At least one feasible meeting time exists that satisfies all participants' constraints."
+        ]
+    },
+    "workflow": {
+        "joyce": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_joyce",
+                "system_prompt": "You are an expert calendar agent for Joyce. Using the public environment information and your private schedule, compute Joyce's free time intervals on Monday within the work hours. Produce a JSON array of free intervals in the format [\"HH:MM-HH:MM\"]. Only output the structured availability data.",
+                "prompt": "Agent name: joyce. Public information: {environment->public_information}. Your private information: {agents->joyce->private_information}. Goal: {agents->joyce->goal}. Provide Joyce's free intervals for Monday as a JSON array of strings like [\"HH:MM-HH:MM\"]."
+            }
+        },
+        "christine": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_christine",
+                "system_prompt": "You are an expert calendar agent for Christine. Using the public environment information and your private schedule and constraints, compute Christine's free time intervals on Monday within the work hours. Produce a JSON array of free intervals in the format [\"HH:MM-HH:MM\"]. Only output the structured availability data.",
+                "prompt": "Agent name: christine. Public information: {environment->public_information}. Your private information: {agents->christine->private_information}. Goal: {agents->christine->goal}. Provide Christine's free intervals for Monday as a JSON array of strings like [\"HH:MM-HH:MM\"]."
+            }
+        },
+        "alexander": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_alexander",
+                "system_prompt": "You are an expert calendar agent for Alexander. Using the public environment information and your private schedule, compute Alexander's free time intervals on Monday within the work hours. Produce a JSON array of free intervals in the format [\"HH:MM-HH:MM\"]. Only output the structured availability data.",
+                "prompt": "Agent name: alexander. Public information: {environment->public_information}. Your private information: {agents->alexander->private_information}. Goal: {agents->alexander->goal}. Provide Alexander's free intervals for Monday as a JSON array of strings like [\"HH:MM-HH:MM\"]."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "availability_joyce",
+                    "availability_christine",
+                    "availability_alexander"
+                ],
+                "output": "audited_availabilities",
+                "system_prompt": "You are an expert temporal auditor. Receive the availability reports from each participant, check for temporal and causal consistency, normalize time formats, remove bookkeeping shortcuts (for example placeholder tokens, quotas, or post-hoc penalties), and report any ambiguous or conflicting intervals. Output a JSON object mapping participant names to cleaned interval arrays and include an overall combined availability summary.",
+                "prompt": "Agent name: temporal_auditor. Inputs: {workflow->joyce->report_availability->output}, {workflow->christine->report_availability->output}, {workflow->alexander->report_availability->output}. Private information: {agents->temporal_auditor->private_information}. Goal: {agents->temporal_auditor->goal}. Produce audited availabilities as a JSON object like {\"joyce\": [\"HH:MM-HH:MM\"], \"christine\": [...], \"alexander\": [...], \"combined\": [\"HH:MM-HH:MM\"]} and a short list of any corrections or normalizations performed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "availability_joyce",
+                    "availability_christine",
+                    "availability_alexander",
+                    "audited_availabilities"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Using the participants' reported availabilities and the auditor's audited_availabilities, produce a PDDL domain and a PDDL problem that encode the meeting scheduling task. Target the FastDownward solver and include any necessary PDDL requirements and durative actions suitable for temporal scheduling. Keep agent actions distinct and include constraints so FastDownward can find a 30-minute slot that fits all participants. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent name: orchestrator. Public information: {environment->public_information}. Participants private information: {agents->joyce->private_information}, {agents->christine->private_information}, {agents->alexander->private_information}. Inputs: {availability_joyce}, {availability_christine}, {availability_alexander}, {audited_availabilities}. Goal: {agents->orchestrator->goal}. Think step by step and provide a PDDL domain and a PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "joyce.report_availability->temporal_auditor.audit",
+            "christine.report_availability->temporal_auditor.audit",
+            "alexander.report_availability->temporal_auditor.audit",
+            "temporal_auditor.audit->orchestrator.pddl",
+            "joyce.report_availability->orchestrator.pddl",
+            "christine.report_availability->orchestrator.pddl",
+            "alexander.report_availability->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,115 @@
+{
+    "name": "TripPlanningExample17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "flights_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I want to visit Copenhagen for 5 days. I must attend a conference in Copenhagen on day 1 and day 5.",
+                "I plan to stay in Vienna for 4 days.",
+                "I plan to stay in Lyon for 4 days.",
+                "The total trip length must be 11 days."
+            ],
+            "goal": "Propose an itinerary for visiting Copenhagen, Vienna, and Lyon in an 11-day trip using only direct flights. Explicitly state day-by-day city assignment and the required flights between cities."
+        },
+        "flights_manager": {
+            "private_information": [
+                "Direct flights exist between Copenhagen and Vienna.",
+                "Direct flights exist between Vienna and Lyon.",
+                "There are no direct flights between Copenhagen and Lyon."
+            ],
+            "goal": "Provide the available direct flight connections and indicate which city-to-city commutes are feasible using direct flights only. Provide any simple cost or duration comments if relevant."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of itineraries. I flag conflicts in total days, overlapping stays, unavailable flights, and any bookkeeping shortcuts.",
+                "I must propose minimal adjustments to restore feasibility while explaining tradeoffs."
+            ],
+            "goal": "Audit proposed itineraries for temporal and causal consistency, ensure conference attendance constraints are met, ensure direct-flight constraints hold, and produce a consistency report with suggested corrections if needed."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate proposals and produce the final PDDL domain and PDDL problem targeting the FastDownwards solver that encodes the itinerary planning task with days and direct-flight commuting constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_trip_days": 11,
+            "cities": [
+                "Copenhagen",
+                "Vienna",
+                "Lyon"
+            ],
+            "direct_flights_only": true,
+            "direct_connections": [
+                [
+                    "Copenhagen",
+                    "Vienna"
+                ],
+                [
+                    "Vienna",
+                    "Lyon"
+                ]
+            ]
+        },
+        "public_information": [
+            "The trip must last 11 days in total.",
+            "Only direct flights may be used to commute between cities.",
+            "Available direct connections are Copenhagen-Vienna and Vienna-Lyon."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "plan_proposal": {
+                "input": [],
+                "output": "itinerary_proposal",
+                "system_prompt": "You are the traveler role. Use your private preferences and the environment public information to propose a concrete day-by-day itinerary. Do not produce PDDL. Provide a clear sequence of which city you are in for each of the 11 days and indicate the flights between cities that would be needed given the direct-flight constraint.",
+                "prompt": "Your name is traveler. Use the following public information: {environment->public_information} and your private information: {agents->traveler->private_information}. Your objective is: {agents->traveler->goal}. If some of your private preferences conflict with the total trip length or with direct-flight constraints, be explicit about the conflict and propose a plausible itinerary that either respects all constraints or explains the tradeoffs and options."
+            }
+        },
+        "flights_manager": {
+            "flight_graph": {
+                "input": [],
+                "output": "flight_connections",
+                "system_prompt": "You are the flights manager. Provide a concise representation of direct flight connectivity between the cities. Do not produce PDDL. Indicate which direct city pairs are available and whether any intermediate hops are required for other city pairs.",
+                "prompt": "Your name is flights_manager. Use the environment initialization: {environment->init} and your private information: {agents->flights_manager->private_information}. Your objective is: {agents->flights_manager->goal}. Present the connectivity clearly so other agents can check itinerary feasibility under the direct-flight-only constraint."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_connections"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are the auditor. Your role is to check temporal and causal consistency and to remove or flag bookkeeping shortcuts. Produce a written report describing any inconsistencies and recommended minimal corrections. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You will receive a proposed itinerary and the flight connectivity: {itinerary_proposal} and {flight_connections}. Use your private information: {agents->auditor->private_information}. Your objective is: {agents->auditor->goal}. Check that the sum of days equals {environment->init->total_trip_days}, that conference days in Copenhagen are respected, that every required flight is available as a direct flight per {environment->init->direct_connections}, and that there are no implicit bookkeeping shortcuts. If you find inconsistencies, provide corrected day assignments and justify the change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_proposal",
+                    "flight_connections",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning. Integrate agent inputs and produce a PDDL domain and a PDDL problem suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions that correspond to different agents distinct in the combined model.",
+                "prompt": "You are orchestrator. Integrate the following inputs: traveler proposal {itinerary_proposal}, flight connectivity {flight_connections}, and audit findings {consistency_report}. The overall goal is: {agents->orchestrator->goal}. Resolve conflicting numeric preferences if present in the inputs by following the auditor's recommendations. Produce a PDDL domain and a PDDL problem that encode days as discrete time steps, represent staying in cities and taking direct flights as actions, enforce that only direct flights listed in {environment->init->direct_connections} can be used, ensure attendance at the conference in Copenhagen on the required days, and ensure the total plan length equals {environment->init->total_trip_days}. Target the FastDownwards solver. Enclose the domain with <domain></domain> and the problem with <problem></problem>."
+            }
+        },
+        "constraints": [
+            "traveler.plan_proposal->auditor.audit",
+            "flights_manager.flight_graph->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "traveler.plan_proposal->orchestrator.pddl",
+            "flights_manager.flight_graph->orchestrator.pddl"
+        ]
+    }
+}

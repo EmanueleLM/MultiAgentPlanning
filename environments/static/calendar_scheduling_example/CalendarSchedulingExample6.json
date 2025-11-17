@@ -1,0 +1,121 @@
+{
+    "name": "CalendarSchedulingExample6",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "thomas",
+            "dylan",
+            "jerry",
+            "auditor",
+            "orchestrator"
+        ],
+        "thomas": {
+            "private_information": [
+                "I am Thomas",
+                "I am available on Monday from 09:00 to 17:00 with no blocks"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 with Dylan and Jerry."
+        },
+        "dylan": {
+            "private_information": [
+                "I am Dylan",
+                "I am busy on Monday from 10:30 to 11:00 and from 13:30 to 14:00"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 with Thomas and Jerry."
+        },
+        "jerry": {
+            "private_information": [
+                "I am Jerry",
+                "I am busy on Monday from 09:00 to 11:00, from 11:30 to 14:30, and from 16:00 to 17:00"
+            ],
+            "goal": "Schedule a one hour meeting on Monday between 09:00 and 17:00 with Thomas and Dylan."
+        },
+        "auditor": {
+            "private_information": [
+                "I am a scheduling auditor responsible for temporal and causal consistency",
+                "I ensure no bookkeeping shortcuts like quota tokens or post-hoc penalties are used"
+            ],
+            "goal": "Audit proposed availabilities for temporal consistency and produce a cleaned availability set and a short report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs and produce the final planning problem targeting FastDownwards"
+            ],
+            "goal": "Integrate participants' availabilities and produce a PDDL domain and problem suitable for FastDownwards that schedules a one hour meeting on Monday between 09:00 and 17:00 where all participants are free."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours": "09:00-17:00",
+            "meeting_duration_minutes": 60
+        },
+        "public_information": [
+            "Work hours on Monday are 09:00 to 17:00",
+            "Requested meeting duration is 60 minutes",
+            "There exists at least one solution compatible with all participants' schedules",
+            "All times are in HH:MM 24-hour format"
+        ]
+    },
+    "workflow": {
+        "thomas": {
+            "propose": {
+                "input": [],
+                "output": "thomas_availability",
+                "system_prompt": "You are Thomas. Provide your availability for Monday between 09:00 and 17:00 as a JSON array of objects with start and end keys in HH:MM. Do not produce PDDL. Keep answers factual and consistent with your private information.",
+                "prompt": "Your identity and calendar constraints: {agents->thomas->private_information}. Public constraints: {environment->public_information}. Provide a structured availability array for Monday that the orchestrator can consume."
+            }
+        },
+        "dylan": {
+            "propose": {
+                "input": [],
+                "output": "dylan_availability",
+                "system_prompt": "You are Dylan. Provide your availability for Monday between 09:00 and 17:00 as a JSON array of objects with start and end keys in HH:MM. Do not produce PDDL. Keep answers factual and consistent with your private information.",
+                "prompt": "Your identity and calendar constraints: {agents->dylan->private_information}. Public constraints: {environment->public_information}. Provide a structured availability array for Monday that the orchestrator can consume."
+            }
+        },
+        "jerry": {
+            "propose": {
+                "input": [],
+                "output": "jerry_availability",
+                "system_prompt": "You are Jerry. Provide your availability for Monday between 09:00 and 17:00 as a JSON array of objects with start and end keys in HH:MM. Do not produce PDDL. Keep answers factual and consistent with your private information.",
+                "prompt": "Your identity and calendar constraints: {agents->jerry->private_information}. Public constraints: {environment->public_information}. Provide a structured availability array for Monday that the orchestrator can consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "thomas_availability",
+                    "dylan_availability",
+                    "jerry_availability"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are a scheduling auditor. Check temporal and causal consistency of the provided availabilities, detect overlaps, gaps, formatting errors, and any use of bookkeeping shortcuts. Produce a short machine readable report and a cleaned combined availability listing possible common free intervals. Do not emit PDDL.",
+                "prompt": "You will receive availabilities from participants: {thomas_availability}, {dylan_availability}, {jerry_availability}. Use public constraints: {environment->public_information}. Return a JSON object with fields report and cleaned_availability where cleaned_availability is a JSON array of free intervals that are consistent and respect meeting duration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "thomas_availability",
+                    "dylan_availability",
+                    "jerry_availability",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Using the cleaned availability and audits, produce a PDDL domain and a PDDL problem targeting the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The PDDL should model time and a durative action to schedule a one hour meeting on Monday between 09:00 and 17:00 where all participants are free. Include clear typing and :requirements suitable for FastDownwards. Keep participant actions distinct and do not modify availability inputs.",
+                "prompt": "Integrate inputs: {thomas_availability}, {dylan_availability}, {jerry_availability}, and {auditor_report}. The global goal is: {agents->orchestrator->goal}. Produce a PDDL domain and problem that encode the meeting scheduling problem and are solvable by FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "thomas.propose->auditor.audit",
+            "dylan.propose->auditor.audit",
+            "jerry.propose->auditor.audit",
+            "thomas.propose->orchestrator.pddl",
+            "dylan.propose->orchestrator.pddl",
+            "jerry.propose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

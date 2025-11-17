@@ -1,0 +1,124 @@
+{
+    "name": "CalendarSchedulingExample3",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "arthur",
+            "michael",
+            "samantha",
+            "auditor",
+            "orchestrator"
+        ],
+        "arthur": {
+            "private_information": [
+                "Busy Monday 09:00-09:30",
+                "Busy Monday 10:30-12:00",
+                "Busy Monday 16:00-17:00"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 with Michael and Samantha."
+        },
+        "michael": {
+            "private_information": [
+                "Busy Monday 13:00-13:30",
+                "Busy Monday 14:00-14:30"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 with Arthur and Samantha."
+        },
+        "samantha": {
+            "private_information": [
+                "Busy Monday 10:30-11:00",
+                "Busy Monday 12:00-15:00",
+                "Busy Monday 15:30-17:00"
+            ],
+            "goal": "Attend a one-hour meeting on Monday between 09:00 and 17:00 with Arthur and Michael."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across availability reports and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties"
+            ],
+            "goal": "Validate and normalize availability inputs so that they are temporally consistent and free of bookkeeping shortcuts, then produce an audit report for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate availability information and produce a final PDDL domain and problem targeting the FastDownwards solver"
+            ],
+            "goal": "Produce a validated PDDL domain and problem that finds a one-hour meeting time on Monday between 09:00 and 17:00 that fits everyone's schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "work_hours_start": "09:00",
+            "work_hours_end": "17:00",
+            "meeting_duration_minutes": 60,
+            "time_slot_resolution_minutes": 30
+        },
+        "public_information": [
+            "Schedule a one-hour meeting on Monday during work hours 09:00-17:00",
+            "Meeting duration is 60 minutes",
+            "Time can be scheduled at 30-minute resolution",
+            "All participants must be free for the entire meeting duration"
+        ]
+    },
+    "workflow": {
+        "arthur": {
+            "analyze_availability": {
+                "input": [],
+                "output": "avail_arthur",
+                "system_prompt": "You are a scheduling assistant for Arthur. Analyze Arthur's private calendar and the public constraints and return Arthur's available time windows on Monday in terms of start and end times aligned to the time slot resolution. Do not emit PDDL. Provide your output as a concise structured list of free intervals that are at least as long as the meeting duration.",
+                "prompt": "Agent: arthu r. Use public information {environment->public_information} and Arthur's private information {agents->arthur->private_information}. Deliver structured availability windows for Monday that respect work hours and meeting duration."
+            }
+        },
+        "michael": {
+            "analyze_availability": {
+                "input": [],
+                "output": "avail_michael",
+                "system_prompt": "You are a scheduling assistant for Michael. Analyze Michael's private calendar and the public constraints and return Michael's available time windows on Monday in terms of start and end times aligned to the time slot resolution. Do not emit PDDL. Provide your output as a concise structured list of free intervals that are at least as long as the meeting duration.",
+                "prompt": "Agent: michael. Use public information {environment->public_information} and Michael's private information {agents->michael->private_information}. Deliver structured availability windows for Monday that respect work hours and meeting duration."
+            }
+        },
+        "samantha": {
+            "analyze_availability": {
+                "input": [],
+                "output": "avail_samantha",
+                "system_prompt": "You are a scheduling assistant for Samantha. Analyze Samantha's private calendar and the public constraints and return Samantha's available time windows on Monday in terms of start and end times aligned to the time slot resolution. Do not emit PDDL. Provide your output as a concise structured list of free intervals that are at least as long as the meeting duration.",
+                "prompt": "Agent: samantha. Use public information {environment->public_information} and Samantha's private information {agents->samantha->private_information}. Deliver structured availability windows for Monday that respect work hours and meeting duration."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "avail_arthur",
+                    "avail_michael",
+                    "avail_samantha"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose job is to check temporal and causal consistency across availability reports from multiple participants. Identify and remove bookkeeping shortcuts, normalize interval representations to the declared time slot resolution, ensure intervals are non-overlapping and within work hours, and flag any ambiguous or non-actionable reports. Produce a concise audit report describing any corrections and the normalized availabilities. Do not emit PDDL.",
+                "prompt": "Agent: auditor. Receive the availability outputs {avail_arthur}, {avail_michael}, {avail_samantha}. Validate and normalize them according to {environment->init}. Output a small audit report plus normalized availability lists for each participant."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_arthur",
+                    "avail_michael",
+                    "avail_samantha",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning and in producing PDDL that is compatible with the FastDownwards solver. Your task is to integrate participants' normalized availability and the auditor's report to produce a complete PDDL domain and a PDDL problem that finds a one-hour meeting time on Monday between 09:00 and 17:00 that fits everyone's schedule. Keep each agent's actions distinct if actions are modeled. Use a time discretization consistent with the provided time slot resolution and meeting_duration_minutes. Include explicit requirements and a comment that this PDDL is intended for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent: orchestrator. Integrate these inputs: participant availabilities {avail_arthur}, {avail_michael}, {avail_samantha}, and the auditor's findings {audit_report}. Produce a PDDL domain and problem that model time slots and the meeting assignment, target the FastDownwards solver, and find a feasible one-hour start time. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "arthur.analyze_availability->auditor.audit_consistency",
+            "michael.analyze_availability->auditor.audit_consistency",
+            "samantha.analyze_availability->auditor.audit_consistency",
+            "arthur.analyze_availability->orchestrator.pddl",
+            "michael.analyze_availability->orchestrator.pddl",
+            "samantha.analyze_availability->orchestrator.pddl",
+            "auditor.audit_consistency->orchestrator.pddl"
+        ]
+    }
+}

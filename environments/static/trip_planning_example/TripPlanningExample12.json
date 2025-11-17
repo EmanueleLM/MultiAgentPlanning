@@ -1,0 +1,133 @@
+{
+    "name": "TripPlanningExample12",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "valencia_agent",
+            "amsterdam_agent",
+            "tallinn_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "valencia_agent": {
+            "private_information": [
+                "I represent the Valencia portion of the trip",
+                "Preferred stay in Valencia is 5 days"
+            ],
+            "goal": "Propose an itinerary fragment for Valencia specifying arrival day, departure day, and required flight connections consistent with only taking direct flights."
+        },
+        "amsterdam_agent": {
+            "private_information": [
+                "I represent the Amsterdam portion of the trip",
+                "Preferred stay in Amsterdam is 5 days"
+            ],
+            "goal": "Propose an itinerary fragment for Amsterdam specifying arrival day, departure day, and required flight connections consistent with only taking direct flights."
+        },
+        "tallinn_agent": {
+            "private_information": [
+                "I represent the Tallinn portion of the trip",
+                "Preferred stay in Tallinn is 7 days",
+                "You want to meet a friend in Tallinn between day 9 and day 15 inclusive"
+            ],
+            "goal": "Propose an itinerary fragment for Tallinn specifying arrival day, departure day, and include the meeting window for the friend. Ensure proposed local days cover the meeting window."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency",
+                "I remove bookkeeping shortcuts and detect hidden assumptions"
+            ],
+            "goal": "Review the itinerary fragments from the city agents and produce a coherence report. Ensure total days equal 15, flight legs are direct and possible, there are no overlapping stays, and meeting constraints are satisfied. Suggest minimal, justified adjustments if initial preferences exceed total available days."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from the city agents and the auditor and produce the final planning representation for an automated planner"
+            ],
+            "goal": "Integrate city itineraries and the auditor report and output a final PDDL domain and PDDL problem targeted to the FastDownward solver that models days, stays, and direct-flight commute constraints. Keep actions of different agents distinct where applicable."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 15,
+            "cities": [
+                "Valencia",
+                "Amsterdam",
+                "Tallinn"
+            ],
+            "direct_flights": [
+                [
+                    "Amsterdam",
+                    "Tallinn"
+                ],
+                [
+                    "Valencia",
+                    "Amsterdam"
+                ]
+            ]
+        },
+        "public_information": [
+            "Total trip length is 15 days",
+            "Only direct flights may be taken between cities",
+            "Direct flights exist between Amsterdam and Tallinn",
+            "Direct flights exist between Valencia and Amsterdam",
+            "There are no direct flights between Valencia and Tallinn"
+        ]
+    },
+    "workflow": {
+        "valencia_agent": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_valencia",
+                "system_prompt": "You are the Valencia agent. Using the public information about total days and direct flights, propose an itinerary fragment for Valencia. Provide arrival day, departure day, number of days spent, and the required direct flight legs to and from this city. Do not produce PDDL. If you cannot guarantee exact days because of missing global information, state flexible windows and assumptions explicitly.",
+                "prompt": "Your name is valencia_agent. Public information is available from the environment. Your private information and preference are available to you. Produce a concise itinerary fragment describing arrival day window, departure day window, planned length of stay if possible, and required direct flights to reach other cities. State any assumptions made."
+            }
+        },
+        "amsterdam_agent": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_amsterdam",
+                "system_prompt": "You are the Amsterdam agent. Using the public information about total days and direct flights, propose an itinerary fragment for Amsterdam. Provide arrival day, departure day, number of days spent, and the required direct flight legs to and from this city. Do not produce PDDL. If you cannot guarantee exact days because of missing global information, state flexible windows and assumptions explicitly.",
+                "prompt": "Your name is amsterdam_agent. Public information is available from the environment. Your private information and preference are available to you. Produce a concise itinerary fragment describing arrival day window, departure day window, planned length of stay if possible, and required direct flights to reach other cities. State any assumptions made."
+            }
+        },
+        "tallinn_agent": {
+            "plan": {
+                "input": [],
+                "output": "itinerary_tallinn",
+                "system_prompt": "You are the Tallinn agent. Using the public information about total days and direct flights, and your private constraint about meeting a friend between day 9 and day 15, propose an itinerary fragment for Tallinn. Provide arrival day, departure day, number of days spent, and ensure the meeting window is covered. Do not produce PDDL. If you cannot guarantee exact days because of missing global information, state flexible windows and assumptions explicitly.",
+                "prompt": "Your name is tallinn_agent. Public information is available from the environment. Your private information and preference are available to you including the meeting window. Produce a concise itinerary fragment describing arrival day window, departure day window, planned length of stay if possible, and required direct flights to reach other cities. State any assumptions made."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "itinerary_valencia",
+                    "itinerary_amsterdam",
+                    "itinerary_tallinn"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor. Your responsibility is to check temporal and causal consistency of the provided itinerary fragments and to remove bookkeeping shortcuts. Do not produce PDDL. Verify that stays do not overlap, that the sum of days equals 15 or propose minimal justified reductions, that every flight leg is a permitted direct flight, and that the meeting window in Tallinn is satisfied. Produce explicit corrective suggestions or a reconciled itinerary fragment if adjustments are necessary.",
+                "prompt": "You are the auditor. You will receive itinerary fragments from the city agents. Identify conflicts such as total days exceeding 15, overlapping stays, impossible flight legs, or unmet meeting constraints. Produce a clear audit report that lists issues and proposes minimal, justified fixes producing coherent arrival and departure day windows for each city."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "itinerary_valencia",
+                    "itinerary_amsterdam",
+                    "itinerary_tallinn",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the city itinerary fragments and the auditor report and produce a final PDDL domain and a final PDDL problem tailored for the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use clear typing for objects and model time as discrete days from 1 to 15. Keep actions that represent flights and stays distinct and indicate which agent's actions they correspond to when relevant. Resolve naming inconsistencies and document any remaining assumptions in comments in the PDDL problem.",
+                "prompt": "You are the orchestrator. You will receive the itinerary fragments from: itinerary_valencia, itinerary_amsterdam, itinerary_tallinn and an audit_report. Integrate these inputs into a single coherent planning model. Produce a PDDL domain and problem that models days, stays, direct flights only, and the constraint that the trip lasts exactly 15 days. Ensure the Tallinn meeting constraint between day 9 and day 15 is encoded. Target the FastDownward solver by using STRIPS with relevant numeric or temporal encodings supported by FastDownward. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "valencia_agent.plan->auditor.audit",
+            "amsterdam_agent.plan->auditor.audit",
+            "tallinn_agent.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

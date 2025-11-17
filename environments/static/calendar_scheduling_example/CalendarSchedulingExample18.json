@@ -1,0 +1,115 @@
+{
+    "name": "CalendarSchedulingExample18",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "brian",
+            "billy",
+            "patricia",
+            "auditor",
+            "orchestrator"
+        ],
+        "brian": {
+            "private_information": [
+                "I have no meetings on Monday and am free the whole work day."
+            ],
+            "goal": "Schedule a 30-minute meeting on Monday between 09:00 and 17:00 that fits all participants and respects their preferences."
+        },
+        "billy": {
+            "private_information": [
+                "I am busy on Monday during 10:00-10:30, 11:30-12:00, 14:00-14:30, 16:30-17:00.",
+                "Preference: avoid additional meetings on Monday after 15:30 if possible."
+            ],
+            "goal": "Schedule a 30-minute meeting on Monday between 09:00 and 17:00 that fits all participants and respects my preference to avoid meetings after 15:30."
+        },
+        "patricia": {
+            "private_information": [
+                "I am busy on Monday during 09:00-12:30, 13:30-14:00, 14:30-16:00, 16:30-17:00."
+            ],
+            "goal": "Schedule a 30-minute meeting on Monday between 09:00 and 17:00 that fits all participants."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of participant availability reports and remove bookkeeping shortcuts or ambiguous tokens."
+            ],
+            "goal": "Validate and normalize availability reports to ensure temporal consistency and no bookkeeping shortcuts before orchestrating the meeting scheduling."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate validated availability reports and produce a PDDL domain and problem targeting the FastDownwards solver to find a feasible 30-minute meeting time on Monday that satisfies all constraints and preferences."
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_date": "Monday",
+            "meeting_duration_minutes": 30,
+            "work_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "time_slot_increment_minutes": 30,
+            "time_zone": "local"
+        },
+        "public_information": [
+            "Participants: brian, billy, patricia.",
+            "Meeting duration is 30 minutes on Monday during work hours 09:00-17:00.",
+            "All participants must be available for the meeting.",
+            "A valid solution exists that fits every participant schedule and constraints."
+        ]
+    },
+    "workflow": {
+        "brian": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_brian",
+                "system_prompt": "You are Brian reporting availability. Given the public meeting parameters and your private schedule, produce a structured availability list for Monday in 30-minute blocks or free intervals and include any assumptions you make.",
+                "prompt": "Your name is brian. Given the public meeting parameters and your private schedule, state all free intervals on Monday between 09:00 and 17:00 in an unambiguous structured format suitable for downstream scheduling."
+            }
+        },
+        "billy": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_billy",
+                "system_prompt": "You are Billy reporting availability and preferences. Given the public meeting parameters and your private schedule and preference to avoid meetings after 15:30, produce a structured availability list for Monday and annotate preferred versus acceptable slots.",
+                "prompt": "Your name is billy. Given the public meeting parameters and your private schedule and preference to avoid meetings after 15:30, state free intervals on Monday between 09:00 and 17:00 and mark which slots you strongly prefer to avoid."
+            }
+        },
+        "patricia": {
+            "report_availability": {
+                "input": [],
+                "output": "availability_patricia",
+                "system_prompt": "You are Patricia reporting availability. Given the public meeting parameters and your private schedule, produce a structured availability list for Monday in 30-minute blocks or free intervals with no extra bookkeeping shortcuts.",
+                "prompt": "Your name is patricia. Given the public meeting parameters and your private schedule, state all free intervals on Monday between 09:00 and 17:00 in an unambiguous structured format suitable for downstream scheduling."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "availability_brian",
+                    "availability_billy",
+                    "availability_patricia"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose job is to validate and normalize temporal data. Check for overlapping or inconsistent intervals, normalize time formats, remove shorthand bookkeeping tokens, and flag or correct any ambiguous entries. Produce a single cleaned availability set per participant and a brief consistency report.",
+                "prompt": "Your name is auditor. Receive the availability reports from participants, validate temporal/causal consistency, normalize formats, remove bookkeeping shortcuts, and output cleaned availability for each participant together with any detected issues."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Using the audited and normalized availability inputs you must synthesize a multi-agent planning specification targeting the FastDownwards solver. Produce a PDDL domain and a PDDL problem that model participants as agents, time slots as temporal resources, the 30-minute meeting duration, and preferences as soft constraints if applicable. Keep agent actions distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards.",
+                "prompt": "You are orchestrator. Integrate the cleaned availability information and produce a PDDL domain and problem suitable for FastDownwards to find a 30-minute meeting slot on Monday that satisfies all participant constraints and respects Billy's preference where possible. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "brian.report_availability->auditor.audit",
+            "billy.report_availability->auditor.audit",
+            "patricia.report_availability->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

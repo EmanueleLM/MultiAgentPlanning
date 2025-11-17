@@ -279,7 +279,7 @@ def append_accuracy_result(
             "evaluated_examples": evaluated,
             "missing_examples": missing,
             "accuracy_evaluated_only": accuracy_existing,
-            "accuracy_including_missing": accuracy_including_missing,
+            "accuracy": accuracy_including_missing,
             "coverage_outputs_vs_dataset": coverage_outputs,
             "model": model,
             "prompt_key": prompt_key if prompt_key else "generic",

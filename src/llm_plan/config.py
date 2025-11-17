@@ -148,6 +148,24 @@ PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
     "obfuscated_deceptive_logistics": [
         "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the proposed plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
     ],
+    "hanoi_multi_agent_2_agents_10_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
+    "hanoi_multi_agent_2_agents_15_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
+    "hanoi_multi_agent_2_agents_20_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
+    "hanoi_multi_agent_3_agents_10_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
+    "hanoi_multi_agent_3_agents_15_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
+    "hanoi_multi_agent_3_agents_20_disks": [
+        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    ],
 }
 
 # Solvers configuration

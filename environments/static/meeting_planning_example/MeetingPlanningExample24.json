@@ -1,0 +1,81 @@
+{
+    "name": "MeetingPlanningExample24",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I arrive at Nob Hill at 09:00",
+                "Travel times: Nob Hill to Presidio 17 minutes, Presidio to Nob Hill 18 minutes",
+                "I want to meet as many friends as possible today",
+                "I must meet Matthew for at least 30 minutes during his availability"
+            ],
+            "goal": "Generate candidate meeting schedules that maximize number of friends met and satisfy Matthew meeting constraints"
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency of proposed schedules",
+                "I remove bookkeeping shortcuts and disallow post-hoc penalties or token tricks",
+                "I verify minimum meeting durations and travel feasibility between events"
+            ],
+            "goal": "Validate and correct candidate schedules for temporal feasibility and causal soundness"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate candidate schedules and audits and produce a final PDDL domain and problem file suitable for the FastDownwards solver to find an optimal schedule"
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Nob Hill",
+            "start_time": "09:00"
+        },
+        "public_information": [
+            "Travel time from Nob Hill to Presidio is 17 minutes",
+            "Travel time from Presidio to Nob Hill is 18 minutes",
+            "You arrive at Nob Hill at 09:00",
+            "Matthew is available at Presidio from 11:00 to 15:15",
+            "You must meet Matthew for at least 30 minutes during his availability"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are a scheduling analyst. Produce a set of candidate schedules and a clear description of timing for each candidate. List meeting start and end times, travel legs with durations, and which constraints are satisfied. Do not emit PDDL. Focus on generating feasible candidate schedules and explain any assumptions explicitly.",
+                "prompt": "Your name is planner. You have the following public information: {environment->public_information}. You have this private knowledge: {agents->planner->private_information}. Your goal is: {agents->planner->goal}. Provide multiple candidate schedules that attempt to maximize meetings while ensuring a minimum 30 minute meeting with Matthew during his availability. For each candidate, list events in chronological order, travel segments, and total time usage. Explicitly state any unresolved choices."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "temporal_audit",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your job is to inspect candidate schedules for temporal feasibility and remove any bookkeeping shortcuts. Provide corrected schedules or precise notes on necessary fixes. Do not emit PDDL.",
+                "prompt": "Your name is temporal_auditor. You receive candidate schedules derived from the planner. Your private information is: {agents->temporal_auditor->private_information}. Validate each candidate for travel feasibility, overlapping events, minimum meeting durations, and that constraints are not satisfied only via bookkeeping tricks. Provide repaired schedules or a list of violations and suggested corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "temporal_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that produces a final PDDL domain and a PDDL problem file targeting the FastDownwards planner. Integrate candidate schedules and audit results. Ensure actions for different agents remain distinct and name predicates and actions clearly. Provide a single PDDL domain and a single PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Indicate any remaining assumptions in plain text after the PDDL files.",
+                "prompt": "Your name is orchestrator. Integrate the planner candidate schedules and the temporal auditor corrections. The global goal is: {agents->orchestrator->goal}. Use the public information: {environment->public_information}. Use inputs: {planner_analysis} and {temporal_audit}. Produce a PDDL domain and a PDDL problem suited for FastDownwards. Keep agent actions distinct and model time discretely or with appropriate numeric fluents to capture travel minutes and meeting durations. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. After the PDDL, provide a short plain text note stating any residual assumptions."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,130 @@
+{
+    "name": "CalendarSchedulingExample5",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "Kathryn",
+            "Charlotte",
+            "Lauren",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "Kathryn": {
+            "private_information": [
+                "Busy on Monday: 09:00-09:30",
+                "Busy on Monday: 10:30-11:00",
+                "Busy on Monday: 11:30-12:00",
+                "Busy on Monday: 13:30-14:30",
+                "Busy on Monday: 16:30-17:00"
+            ],
+            "goal": "Find a 30-minute meeting slot on Monday between 09:00 and 17:00 that fits all participants' schedules."
+        },
+        "Charlotte": {
+            "private_information": [
+                "Busy on Monday: 12:00-12:30",
+                "Busy on Monday: 16:00-16:30",
+                "Preference: Do not meet on Monday after 13:30"
+            ],
+            "goal": "Find a 30-minute meeting slot on Monday between 09:00 and 17:00 that fits all participants' schedules while respecting my preference."
+        },
+        "Lauren": {
+            "private_information": [
+                "Busy on Monday: 09:00-10:00",
+                "Busy on Monday: 12:00-12:30",
+                "Busy on Monday: 13:30-14:30",
+                "Busy on Monday: 15:00-16:00",
+                "Busy on Monday: 16:30-17:00"
+            ],
+            "goal": "Find a 30-minute meeting slot on Monday between 09:00 and 17:00 that fits all participants' schedules."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Expertise: temporal constraint checking and removal of scheduling shortcuts or inconsistent assumptions"
+            ],
+            "goal": "Audit the collected availabilities and constraints for temporal and causal consistency and produce a cleaned, explicit set of time slots and constraints for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and problem targeting the FastDownwards solver that encodes the meeting scheduling problem and yields a valid 30-minute slot satisfying all participants and constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "date": "Monday",
+            "work_hours": [
+                "09:00",
+                "17:00"
+            ],
+            "meeting_duration_minutes": 30,
+            "slot_granularity_minutes": 30,
+            "time_zone": "local"
+        },
+        "public_information": [
+            "Goal: schedule a single 30-minute meeting on Monday between 09:00 and 17:00",
+            "All participants must attend the same contiguous 30-minute slot",
+            "Time granularity is 30 minutes",
+            "There exists at least one solution compatible with all calendars and constraints"
+        ]
+    },
+    "workflow": {
+        "Kathryn": {
+            "collect_availability": {
+                "input": [],
+                "output": "avail_kathryn",
+                "system_prompt": "You are an agent representing Kathryn. Provide Kathryn's busy time ranges for Monday using the environment's time format. Do not produce PDDL. Provide the busy intervals and any soft preferences as a concise machine-readable list of time ranges and labels.",
+                "prompt": "List Kathryn's busy intervals on Monday and any scheduling preferences. Output a concise list of intervals such as 09:00-09:30, 10:30-11:00."
+            }
+        },
+        "Charlotte": {
+            "collect_availability": {
+                "input": [],
+                "output": "avail_charlotte",
+                "system_prompt": "You are an agent representing Charlotte. Provide Charlotte's busy time ranges for Monday and explicit preferences. Do not produce PDDL. If you have a preference such as not meeting after a given time, state it clearly.",
+                "prompt": "List Charlotte's busy intervals on Monday and state the preference that meetings must not start after 13:30."
+            }
+        },
+        "Lauren": {
+            "collect_availability": {
+                "input": [],
+                "output": "avail_lauren",
+                "system_prompt": "You are an agent representing Lauren. Provide Lauren's busy time ranges for Monday. Do not produce PDDL. Return a concise list of blocked intervals for the day.",
+                "prompt": "List Lauren's busy intervals on Monday in a concise machine-readable format."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "avail_kathryn",
+                    "avail_charlotte",
+                    "avail_lauren"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert temporal auditor. Receive the raw availability lists from participants and check them for temporal consistency, overlaps, out-of-bound slots, implied shortcuts, and ambiguous assumptions. Do not emit PDDL. Produce a cleaned, explicit representation of available 30-minute slots within work hours, flag any contradictory or ambiguous entries, and remove bookkeeping shortcuts such as aggregated quotas or post-hoc penalties. Output a deterministic list of candidate slots and any hard constraints that must be enforced by the orchestrator.",
+                "prompt": "Given the participants' busy intervals, compute the explicit available 30-minute candidate slots between 09:00 and 17:00 on Monday that are free for all participants separately and identify constraints like 'Charlotte cannot start after 13:30'. Provide the cleaned availability and any detected issues."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "avail_kathryn",
+                    "avail_charlotte",
+                    "avail_lauren",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at synthesizing multi-agent scheduling problems into PDDL suitable for the FastDownwards planner. Use the cleaned availability and constraints from participants and the temporal auditor to produce a complete PDDL domain and PDDL problem that encodes time slots, participants, meeting duration of 30 minutes, work hours 09:00-17:00 on Monday, and Charlotte's preference not to start after 13:30 as a hard constraint. Keep agent-specific actions distinct if modeling multiple actors. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target PDDL constructs compatible with FastDownwards (STRIPS style, explicit objects for discrete time slots, and preconditions/effects suitable for planning).",
+                "prompt": "Integrate the availabilities and the audit report into a PDDL domain and problem that FastDownwards can solve to find a valid 30-minute meeting slot for all participants. Use explicit time-slot objects and constraints derived from the audit report. Enclose the domain and problem in the required tags."
+            }
+        },
+        "constraints": [
+            "Kathryn.collect_availability->temporal_auditor.audit",
+            "Charlotte.collect_availability->temporal_auditor.audit",
+            "Lauren.collect_availability->temporal_auditor.audit",
+            "Kathryn.collect_availability->orchestrator.pddl",
+            "Charlotte.collect_availability->orchestrator.pddl",
+            "Lauren.collect_availability->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

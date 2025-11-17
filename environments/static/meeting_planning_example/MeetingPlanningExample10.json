@@ -1,0 +1,99 @@
+{
+    "name": "MeetingPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "local_guide",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I (the user) arrive at Golden Gate Park at 09:00.",
+                "My high-level objective is to meet as many friends as possible today."
+            ],
+            "goal": "Propose candidate meeting schedules that maximize number of friends met while respecting availability windows and travel times."
+        },
+        "local_guide": {
+            "private_information": [
+                "I know realistic travel times and typical transfer overheads (walking, parking, transit wait)."
+            ],
+            "goal": "Provide feasible travel time estimates and transit choices between relevant locations, including direction-specific durations and realistic overhead."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and removal of bookkeeping shortcuts."
+            ],
+            "goal": "Audit candidate schedules and travel estimates to ensure temporal feasibility (no overlaps, sufficient transfer and meeting durations) and remove unrealistic shortcuts (instant transfers, post-hoc penalties)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate schedules, travel estimates, and audit corrections to produce a final PDDL domain and problem tailored for the FastDownwards solver that solves the meeting planning problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_location": "Golden Gate Park",
+            "start_time": "09:00",
+            "time_unit": "minutes",
+            "time_granularity": 1
+        },
+        "public_information": [
+            "Travel time Golden Gate Park to Marina District: 16 minutes.",
+            "Travel time Marina District to Golden Gate Park: 18 minutes.",
+            "You arrive at Golden Gate Park at 09:00.",
+            "James will be at Marina District from 10:15 to 13:30.",
+            "You would like to meet James for a minimum of 15 minutes."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "planner_candidate_schedules",
+                "system_prompt": "You are an expert itinerary and meeting scheduler. Produce multiple candidate schedules (structured lists of timed steps) that attempt to maximize the number of friends met given the public information and your private information. Do not output PDDL. Focus on plausible meeting start/end times, meeting durations, and rough travel slots between locations.",
+                "prompt": "Your name is planner. Use the following public information: {environment->public_information} Your private information: {agents->planner->private_information} Goal: {agents->planner->goal} Provide at least two distinct candidate schedules. Each schedule should list ordered events with start and end times and the implied travel segments between events. Explicitly indicate meeting durations with each friend and any assumptions you make about transit or waiting time."
+            }
+        },
+        "local_guide": {
+            "analyze_travel": {
+                "input": [],
+                "output": "local_guide_travel_options",
+                "system_prompt": "You are an expert local transport advisor. Provide realistic travel durations, direction-specific times, and reasonable transfer overheads (e.g., walking, parking, transit wait). Do not output PDDL. Provide alternative options if available (fastest, most reliable).",
+                "prompt": "Your name is local_guide. Use the public information: {environment->public_information} and your private information: {agents->local_guide->private_information} Goal: {agents->local_guide->goal} Return structured travel options between relevant locations (at minimum between Golden Gate Park and Marina District both directions). Include recommended buffers for departures and arrivals to guarantee meeting windows."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_candidate_schedules",
+                    "local_guide_travel_options"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Inspect candidate schedules and travel options for temporal consistency, overlapping commitments, insufficient transfer or meeting durations, and any bookkeeping shortcuts (for example, assuming zero transfer time or post-hoc penalties). Produce a cleaned set of schedules with explicit corrections and justifications. Do not output PDDL.",
+                "prompt": "Your name is auditor. Inputs: {planner_candidate_schedules} and {local_guide_travel_options}. Your private info: {agents->auditor->private_information} Goal: {agents->auditor->goal} Provide (1) a list of detected inconsistencies and unrealistic assumptions, (2) corrected schedules that resolve these issues, and (3) an explicit summary of temporal constraints (earliest/latest feasible meeting start times, minimum travel buffer) that must be respected by any final plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_candidate_schedules",
+                    "local_guide_travel_options",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent PDDL problems and domains targeted for the FastDownwards planner. Integrate inputs from schedule proposals, travel estimates, and the auditor's corrections. Keep actions for different agents distinct, model temporal constraints and durations as classical (use grounded time-expanded modeling or encoded durations compatible with FastDownwards), include availability windows, travel times, and minimum meeting duration constraints. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL should be ready for FastDownwards (classical STRIPS-style encoding or compatible encoding FastDownwards accepts).",
+                "prompt": "You are orchestrator. Inputs: {planner_candidate_schedules}, {local_guide_travel_options}, {audit_report}. Goal: {agents->orchestrator->goal} Integrate the inputs to create a single coherent PDDL domain and a PDDL problem that encodes the meeting planning task (model agents, locations, travel durations, time windows, and a requirement to meet James for at least 15 minutes within his availability). Keep agent actions distinct and make no use of bookkeeping shortcuts. Provide the final PDDL domain and problem suitable for FastDownwards and enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.analyze_schedule->auditor.audit",
+            "local_guide.analyze_travel->auditor.audit",
+            "planner.analyze_schedule->orchestrator.pddl",
+            "local_guide.analyze_travel->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

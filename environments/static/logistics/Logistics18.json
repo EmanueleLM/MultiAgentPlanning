@@ -1,0 +1,121 @@
+{
+    "name": "Logistics18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyzer",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyzer": {
+            "private_information": [
+                "You have the textual domain description of actions: paltry, sip, clip, wretched, memory, tightfisted and their preconditions and effects as stated in the use case.",
+                "You have two separate statement blocks that enumerate initial facts and goals for two planning subproblems.",
+                "Objects are named object_0 through object_13 and predicates include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous."
+            ],
+            "goal": "Produce a clean, structured intermediate representation listing objects, predicates, action schemas with typed parameters, preconditions and effects, and the two initial and goal fact-sets."
+        },
+        "simulator": {
+            "private_information": [
+                "You can apply action schemas to fact sets and generate stepwise state traces when given an ordered plan.",
+                "You can detect unsatisfied preconditions at each step and report which step fails and why."
+            ],
+            "goal": "Take the intermediate representation and the provided plan sequences and produce deterministic simulation traces for each plan, annotate which actions succeed or fail, and produce the final derived facts if simulation succeeds."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency across the descriptions and the provided plans.",
+                "You must identify and remove bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties, and flag any use of such shortcuts or assumptions.",
+                "You ensure that actions' preconditions and effects are explicit and that causal chains are well founded."
+            ],
+            "goal": "Produce an audit report that lists causal inconsistencies, implicit assumptions, normalization suggestions for predicates and action names, and produce a minimal set of corrections to make plans causally valid without using bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You will receive the analyzer intermediate representation, the simulator traces, and the auditor report.",
+                "Your responsibility is to integrate those inputs, resolve naming mismatches, incorporate auditor corrections, and output a final PDDL domain and problem suitable for the FastDownwards planner."
+            ],
+            "goal": "Synthesize a single coherent PDDL domain and one or more PDDL problem files capturing the corrected planning tasks and targeting FastDownwards. Keep agent-level actions distinct if representing multi-agent aspects and ensure the domain encodes deterministic STRIPS-like actions compatible with FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_count": 14,
+            "object_names": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8",
+                "object_9",
+                "object_10",
+                "object_11",
+                "object_12",
+                "object_13"
+            ]
+        },
+        "public_information": [
+            "Actions available: paltry, sip, clip, wretched, memory, tightfisted with parameterized object arguments.",
+            "Predicates used: hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
+            "Effects are deterministic and include positive and negative literal changes to predicates such as next and vase.",
+            "Plans consist of ordered action invocations over the object set."
+        ]
+    },
+    "workflow": {
+        "analyzer": {
+            "extract": {
+                "input": [],
+                "output": "facts_and_schemas",
+                "system_prompt": "You are an agent that must read the natural language domain and statement blocks and produce a normalized machine readable intermediate representation. Do not emit PDDL. Output objects list, predicates list, canonical action schemas with parameter names and explicit preconditions and effects, and both initial and goal fact sets.",
+                "prompt": "Use the provided public information and the use-case statements to extract a structured representation. List each action with parameter types and explicit positive and negative effects. Represent initial facts separately for each statement block and enumerate the intended goals. Do not assume facts beyond what is stated. If information is ambiguous, mark the ambiguity in the representation."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "facts_and_schemas"
+                ],
+                "output": "simulation_traces",
+                "system_prompt": "You are a deterministic simulator for the extracted intermediate representation. You do not produce PDDL. You apply ordered plans to the initial facts and produce stepwise state traces and precondition violation reports.",
+                "prompt": "Given the intermediate representation and an ordered plan, simulate the plan step by step. For each action report whether preconditions are met, list the state before and after the action, and if a precondition is unmet, identify the missing facts and halt the simulation for that plan. Produce the final derived facts when the plan completes successfully."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "facts_and_schemas",
+                    "simulation_traces"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. You do not produce PDDL. Your job is to remove bookkeeping shortcuts, expose implicit tokens or assumptions, ensure causality is explicit, and produce concrete correction suggestions for action preconditions and effects so that plans are causally valid without hidden bookkeeping.",
+                "prompt": "Analyze the intermediate representation and the simulation traces. Detect implicit assumptions and bookkeeping shortcuts such as implicit tokens, counting mechanisms, or post-hoc penalties. Produce a report that lists each detected issue, explains why it is problematic for deterministic planning, and propose explicit fixes to preconditions or effects that remove the shortcuts. Recommend normalization of predicate names or parameter orders if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_and_schemas",
+                    "simulation_traces",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL synthesizer targeting the FastDownwards planner. Use the analyzer representation and auditor corrections to create a single coherent PDDL domain and one or more PDDL problem files. The domain must be compatible with STRIPS/ADL features supported by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem></problem> tags. Preserve distinct agent action identities if representing multi-agent behavior.",
+                "prompt": "Integrate the analyzer extracted schemas, the simulator traces, and the auditor corrections. Resolve any naming inconsistencies and incorporate auditor-suggested fixes. Emit a PDDL domain and one or more PDDL problem files that represent the corrected planning tasks and that can be consumed by FastDownwards. Enclose the domain in <domain></domain> and the problem(s) in <problem></problem> tags. Do not include simulator traces or audit logs inside the PDDL artifacts."
+            }
+        },
+        "constraints": [
+            "analyzer.extract->simulator.simulate",
+            "analyzer.extract->auditor.audit",
+            "simulator.simulate->auditor.audit",
+            "analyzer.extract->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,111 @@
+{
+    "name": "Depots18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "You have a human description of actions and their preconditions and effects for six action schemas: paltry, sip, clip, wretched, memory, tightfisted.",
+                "Each action takes 3 or 4 object parameters as specified in the description. Predicates appearing in the description include: hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+                "Two separate statement blocks describe two different initial condition sets, goals, and candidate plans. The first statement block includes many atoms such as cats object_0, cats object_1, collect object_6 object_2, collect object_7 object_2, collect object_8 object_3, collect object_9 object_3, hand object_10 through hand object_13, many next relations, sneeze, spring, stupendous, and texture facts. The first goal targets next relations involving object_10, object_11, object_12 and object_13.",
+                "The second statement block provides a different initial state and a goal to have next object_11 object_10."
+            ],
+            "goal": "Extract and normalize structured facts, predicates, action schemas, parameter arities, preconditions, and effects from the human description without producing PDDL. Produce a concise, unambiguous intermediate representation."
+        },
+        "planner": {
+            "private_information": [
+                "You are skilled at formalizing planning domains and at mapping natural-language action descriptions to logical action templates and predicate types.",
+                "You should convert the observer's normalized facts into a fully specified formal specification that resembles PDDL components but is not the final domain/problem. This includes an enumerated predicate list, typed parameter lists, precondition and effect lists for each action, and a clear listing of initial atoms and goals derived from both statement blocks."
+            ],
+            "goal": "Produce a deterministic, unambiguous formal specification of predicates and action schemas suitable for translation into PDDL by the orchestrator. Do not emit final .pddl files here."
+        },
+        "auditor": {
+            "private_information": [
+                "You are an expert auditor for temporal and causal consistency in planning specifications.",
+                "Your role is to remove bookkeeping shortcuts such as implicit quota tokens, post-hoc penalties, or ad hoc meta-predicates that would mask causal dependencies. You check that preconditions and effects lead to the claimed state transitions, detect and resolve name clashes or object aliasing, and point out places where actions rely on facts not present in initial states or produced by other actions.",
+                "You must identify potential concurrency issues, ordering requirements, and any requirements to introduce helper predicates to preserve causal clarity."
+            ],
+            "goal": "Analyze the planner's formal specification, produce corrections and a cleansed audited specification, and provide a changelog describing each modification and the rationale."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You coordinate the outputs of the observer, planner, and auditor to produce the final PDDL domain and problem targeted at the FastDownwards solver.",
+                "You must keep agent actions distinct where appropriate, resolve naming differences, and output a domain and problem that FastDownwards can consume. When necessary, include type declarations and a clear objects list to reflect the multiple 'object_i' entities present in the description."
+            ],
+            "goal": "Ingest the audited formal specification and emit a final PDDL domain and a PDDL problem file suitable for the FastDownwards solver. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Make sure domain and problem are consistent and ready for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects_estimate": 14,
+            "notation": "objects are named object_0 through object_13",
+            "solver_target": "FastDownwards"
+        },
+        "public_information": [
+            "Available action schemas: paltry, sip, clip, wretched, memory, tightfisted. Each action has specific preconditions and effects involving predicates hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
+            "Paltry requires hand, cats, texture, vase between two objects, and a next relation between two objects. Its effect creates a next relation and removes a vase relation.",
+            "Sip requires hand, cats, texture, and two next relations. Its effect creates a vase relation and removes one next relation.",
+            "Clip requires hand, sneeze, texture, and two next relations. Its effect creates a vase relation and removes one next relation.",
+            "Wretched requires sneeze on one object, texture on two objects, stupendous on a fourth object, and next and collect relations. Its effect toggles a next relation between two objects and removes another next relation.",
+            "Memory requires cats on one object, spring on two objects, and a next relation. Its effect toggles a next relation between two objects and removes the prior next relation.",
+            "Tightfisted requires hand, sneeze, texture, a next relation and a vase relation. Its effect toggles a next relation and removes the vase relation.",
+            "Two sets of human-specified initial conditions and goals are provided. The first set contains many facts and aims to establish multiple next relations for objects 10 to 13. The second set is a smaller initial condition set with goal next object_11 object_10.",
+            "A human-proposed plan sequence is available for the first statement block. The auditor must verify causal validity before final PDDL generation."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "analyze": {
+                "input": [],
+                "output": "obs_facts",
+                "system_prompt": "You are an expert analyst who reads human task descriptions and produces a normalized intermediate representation. Your output should be a structured list of predicates, objects, parameter arities, enumerated initial atoms and goals, and a canonical description of each action's preconditions and effects. Do not emit final PDDL files. Focus on clarity, canonical predicate names, and consistent object naming.",
+                "prompt": "Given the human use-case, extract: 1) the complete list of objects mentioned and a recommended object set; 2) the predicate vocabulary (predicate names and arities); 3) action templates with parameter names and the enumerated preconditions and effects as they appear in the description; 4) the two initial-state blocks and their corresponding goals. Produce the data in a concise intermediate representation."
+            }
+        },
+        "planner": {
+            "formalize": {
+                "input": [
+                    "obs_facts"
+                ],
+                "output": "formal_spec",
+                "system_prompt": "You are an expert in formal specification of planning domains. Convert the observer's intermediate representation into a deterministic formal specification that is PDDL-friendly but not yet the final domain/problem. Provide typed predicate declarations, typed parameters for each action, explicit preconditions and add/delete effects, and an explicit listing of initial atoms and desired goals for each statement block. Do not emit the final PDDL domain or problem; instead produce a clear formal spec that the auditor and orchestrator can consume.",
+                "prompt": "Use the 'obs_facts' artifact to produce a formal specification that enumerates predicates with arity and intended types, action schemas with parameter types, and two separate initial/goal specifications corresponding to the two statement blocks. State any assumptions you must make and mark them explicitly so the auditor can review them."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "formal_spec"
+                ],
+                "output": "audited_spec",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your job is to remove bookkeeping shortcuts, detect implicit quotas or post-hoc penalties, detect missing causal producers for required facts, resolve name clashes, and ensure the formal specification supports feasible causal sequences. Produce an audited formal specification and a changelog of modifications and justifications. The auditor should not produce final PDDL but must make the specification safe for PDDL generation.",
+                "prompt": "Review the 'formal_spec' and produce: 1) a list of detected issues where preconditions lack producers in any initial state or where effects could conflict; 2) proposed corrective actions such as introducing helper predicates, splitting ambiguous predicates, or adding ordering constraints; 3) the corrected audited_spec reflecting these changes. Provide concise rationales for each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "formal_spec",
+                    "audited_spec",
+                    "obs_facts"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL engineer preparing domains and problems for the FastDownwards planner. Using the audited formal specification and the observer facts, produce a final PDDL domain and one or more PDDL problem files that correspond to the two statement blocks. Keep actions distinct and preserve agent-level distinctions where relevant. Enclose the PDDL domain between <domain> and </domain> tags and each PDDL problem between <problem> and </problem> tags. Ensure typing, objects lists, and initial states are explicit and that the PDDL syntax is compatible with FastDownwards.",
+                "prompt": "Integrate the 'formal_spec', 'audited_spec', and 'obs_facts' to generate: 1) a single PDDL domain file suitable for FastDownwards containing predicates, types, and all action schemas; 2) one PDDL problem file for each statement block with explicit objects, initial atoms, and goals. If you must choose design decisions, prefer explicit helper predicates over meta-bookkeeping tokens, and document any design choices as comments inside the PDDL domain or as an accompanying short note."
+            }
+        },
+        "constraints": [
+            "observer.analyze->planner.formalize",
+            "planner.formalize->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner.formalize->orchestrator.pddl",
+            "observer.analyze->orchestrator.pddl"
+        ]
+    }
+}

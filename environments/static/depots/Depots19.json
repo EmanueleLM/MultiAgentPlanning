@@ -1,0 +1,113 @@
+{
+    "name": "Depots19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_1",
+            "planner_2",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_1": {
+            "private_information": [
+                "I focus on analyzing action schemas and grounding preconditions on available objects",
+                "I prefer representing effects and preconditions in a normalized predicate list"
+            ],
+            "goal": "Analyze the provided action descriptions and produce a clear, machine readable partial action model capturing preconditions and effects for reusable actions"
+        },
+        "planner_2": {
+            "private_information": [
+                "I focus on mapping concrete plan steps to required predicates and spotting name mismatches",
+                "I extract how actions change 'next' relations and identify resource requirements like hand, vase, or collect"
+            ],
+            "goal": "Produce a complementary partial action model and list of potential ambiguities and missing grounding details that could affect planning"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I identify and resolve bookkeeping or shorthand constructs so the model is causal and temporally explicit"
+            ],
+            "goal": "Audit combined partial models for causal and temporal consistency, expand or remove bookkeeping shortcuts, and produce a consolidated, clean model report"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate partial models into a single PDDL domain and problem targeting FastDownward",
+                "I ensure multi-agent actions are kept distinct and produce the final domain and problem files"
+            ],
+            "goal": "Integrate analyses from the other agents and produce a final PDDL domain and problem suitable for FastDownward"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_objects": 12,
+            "objects": [
+                "object_0",
+                "object_1",
+                "object_2",
+                "object_3",
+                "object_4",
+                "object_5",
+                "object_6",
+                "object_7",
+                "object_8",
+                "object_9",
+                "object_10",
+                "object_11"
+            ],
+            "visibility": 2
+        },
+        "public_information": [
+            "Available predicates include hand, cats, texture, vase, next, collect, sneeze, spring, stupendous",
+            "Available actions described informally are paltry, sip, clip, wretched, memory, tightfisted",
+            "Actions change 'next' and 'vase' relations and depend on predicates like hand, cats, sneeze, texture, spring, stupendous, collect",
+            "Some informal plans refer to specific object instances and there are potential name or role mismatches across descriptions"
+        ]
+    },
+    "workflow": {
+        "planner_1": {
+            "model": {
+                "input": [],
+                "output": "model_planner_1",
+                "system_prompt": "You are an expert analyst of action descriptions and partial domain models. Produce a structured partial action model, not full PDDL. Focus on canonicalizing action names, listing required predicates as preconditions, and listing positive and negative effects. Use object variables where appropriate. Do not emit full PDDL domain or problem here.",
+                "prompt": "You are planner_1. You have access to the public information about predicates and actions. Your task is to read the informal action descriptions and produce a machine friendly partial model. For each action produce the action name, a parameter list, a list of required preconditions, a list of positive effects, and a list of negative effects. Identify any implicit assumptions and mark missing bindings or ambiguities. Output the model in a clear JSON-like structure or bullet list that can be consumed by an integrator."
+            }
+        },
+        "planner_2": {
+            "model": {
+                "input": [],
+                "output": "model_planner_2",
+                "system_prompt": "You are a complementary model extractor that maps concrete plan steps to predicate changes. Produce a structured mapping from example grounded steps to the predicates they require and modify. Highlight mismatches in object naming and potential conflicts between action variants. Do not emit full PDDL domain or problem here.",
+                "prompt": "You are planner_2. Analyze the example plans and grounded steps provided in the use case. For each grounded step, list the concrete objects used, the predicates that must hold before the step, and the predicates that become true or false after the step. Suggest canonical parameter names and point out where different steps refer to the same real-world relation with different names."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_planner_1",
+                    "model_planner_2"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your role is to remove bookkeeping shortcuts such as quota tokens, counters implemented as adhoc predicates, or post-hoc penalties, and to expand those constructs into explicit causal mechanisms or explicit resources. Produce a consolidated report that resolves contradictions and that is ready for formalization into PDDL.",
+                "prompt": "You are the auditor. Receive the partial models from the planners. Verify causal chains for each effect and check temporal dependencies on 'next' relations. Where planners used bookkeeping shorthands or implicit counters, replace them with explicit predicates or resource constraints and explain the transformation. Highlight any cycles or ordering issues and provide a corrected, temporally explicit model summary suitable for integration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_planner_1",
+                    "model_planner_2",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownward solver. Integrate the provided partial models and the auditor report, keep multi-agent or multi-actor actions distinct by prefixing or scoping their action names, resolve name mismatches, and produce a single PDDL domain and a single PDDL problem. Ensure compatibility with FastDownward's supported fragments. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final output must be a complete domain and problem ready for FastDownward.",
+                "prompt": "You are the orchestrator. Integrate the two planners' models and the auditor report to create a coherent PDDL domain and PDDL problem. Ensure that actions paltry, sip, clip, wretched, memory, and tightfisted are represented, that preconditions and effects reflect the audited causal model, and that actions that conceptually belong to different roles remain distinct. Produce the PDDL domain then the PDDL problem, each enclosed in the required tags. Target FastDownward compatibility and do not include shorthand bookkeeping constructs. If required information is missing, produce comments in PDDL as explanatory remarks and keep assumptions explicit."
+            }
+        },
+        "constraints": [
+            "planner_1.model->orchestrator.pddl",
+            "planner_2.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

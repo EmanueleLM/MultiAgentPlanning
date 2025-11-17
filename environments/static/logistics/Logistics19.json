@@ -1,0 +1,105 @@
+{
+    "name": "Logistics19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I have the canonical action descriptions as given by the user for paltry, sip, clip, wretched, memory, and tightfisted.",
+                "Each action is parameterized over object_i tokens and includes explicit preconditions and add/delete effects, but names for objects may be used inconsistently between plans and statements."
+            ],
+            "goal": "Help produce a correct encoding of action schemas and their preconditions/effects to reach the stated goals next object_11 object_10 and next object_11 object_9."
+        },
+        "simulator": {
+            "private_information": [
+                "I hold the two initial statements sets provided by the user and the explicit plan sequence for the first scenario.",
+                "I can step through a plan, check whether each action's preconditions are satisfied in the current state, and compute the resulting state after each action."
+            ],
+            "goal": "Validate the provided plan steps against the initial facts and report the final state and any failures relative to the stated goals."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to identify and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other ad-hoc artifacts that would defeat sound causal reasoning.",
+                "I detect cycles, unmet dependencies, and cases where post-hoc deletions or additions mask missing causal chains."
+            ],
+            "goal": "Produce a concise audit that identifies temporal/causal inconsistencies, proposes concrete fixes, and eliminates bookkeeping shortcuts so the PDDL encoding will be sound for planning."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate agents' analyses and produce a final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Produce a final PDDL domain and problem suitable for FastDownwards that encodes the actions, initial state(s), and goals, resolving naming ambiguities and applying auditor fixes."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 12,
+            "visibility": 2
+        },
+        "public_information": [
+            "Objects are named object_0 through object_11 and beyond in some facts.",
+            "Available actions and their informal signatures: paltry(X,Y,Z), sip(X,Y,Z), clip(X,Y,Z), wretched(X,Y,Z,W), memory(X,Y,Z), tightfisted(X,Y,Z).",
+            "Paltry preconditions: hand X, cats Y, texture Z, vase X Y, next Y Z. Paltry effects: add next X Z, del vase X Y.",
+            "Sip preconditions: hand X, cats Y, texture Z, next X Z, next Y Z. Sip effects: add vase X Y, del next X Z.",
+            "Clip preconditions: hand X, sneeze Y, texture Z, next Y Z, next X Z. Clip effects: add vase X Y, del next X Z.",
+            "Wretched preconditions: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W. Wretched effects: add next X Z, del next X Y.",
+            "Memory preconditions: cats X, spring Y, spring Z, next X Y. Memory effects: add next X Z, del next X Y.",
+            "Tightfisted preconditions: hand X, sneeze Y, texture Z, next Y Z, vase X Y. Tightfisted effects: add next X Z, del vase X Y.",
+            "Two distinct initial statement sets were provided by the user and one explicit plan for the first statement set was provided."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_player",
+                "system_prompt": "You are the domain expert for the action descriptions. Do not emit PDDL. Produce a structured, unambiguous listing of each action schema with parameter positions, explicit preconditions, add effects, and delete effects. Highlight naming ambiguities and suggest canonical object naming where needed.",
+                "prompt": "You are the agent named player. Use the public information and your private information to produce a clean, canonical action schema listing for paltry, sip, clip, wretched, memory, and tightfisted. Do not produce PDDL; produce a structured description and note ambiguities or naming mismatches."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [],
+                "output": "simulate_simulator",
+                "system_prompt": "You are the plan simulator. Do not emit PDDL. For each provided plan and initial statement set, step through each action, verify preconditions against the current state, apply effects, and report the state after each step and whether the goal is achieved.",
+                "prompt": "You are the agent named simulator. Validate the user's provided plan for the first statement set and also test reachability for the second statement set. Report missing preconditions, failed steps, and the final truth assignments of relevant predicates."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_player",
+                    "simulate_simulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal auditor. Do not emit PDDL. Analyze the analysis and simulation outputs, detect causal breaks, temporal inconsistencies, cycles, and usages of bookkeeping shortcuts. Provide concrete, minimal fixes that remove bookkeeping shortcuts and restore causal soundness.",
+                "prompt": "You are the agent named auditor. Using the action schemas and simulation traces, identify any cases where effects are used post-hoc to justify preconditions or where ad-hoc tokens are masquerading as causal links. Propose corrected preconditions/effects or auxiliary causal facts to make the domain sound."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_player",
+                    "simulate_simulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem targeted to the FastDownwards solver. Integrate the agents' analyses and auditor fixes. Emit a complete PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing, requirements, and no bookkeeping shortcuts remain.",
+                "prompt": "You are the agent named orchestrator. Integrate the canonical action schemas, corrected causal constraints, and validated initial states. Produce a FastDownwards-compatible PDDL domain and problem that encode the actions, objects, two scenario initial states (where appropriate, produce separate problem files if needed), and the goal of achieving next object_11 object_10 and next object_11 object_9. Keep actions distinct and use the auditor's fixes to avoid ad-hoc workarounds. Enclose domain and problem in the required tags."
+            }
+        },
+        "constraints": [
+            "player.analysis->auditor.audit",
+            "simulator.simulate->auditor.audit",
+            "player.analysis->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

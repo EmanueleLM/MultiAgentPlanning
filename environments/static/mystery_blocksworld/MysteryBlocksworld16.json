@@ -1,0 +1,102 @@
+{
+    "name": "MysteryBlocksworld16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "extractor",
+            "critic",
+            "auditor",
+            "orchestrator"
+        ],
+        "extractor": {
+            "private_information": [
+                "You receive a human description that contains domain level action names paltry, sip, clip, wretched, memory, tightfisted together with their parameter patterns and pre and post conditions.",
+                "The human description also contains two separate initial statement blocks each listing a set of ground facts and an associated goal specification, and a candidate plan sequence for the first statement block.",
+                "Objects are named object_0 through object_13 in the two statement blocks and plan steps reference these object tokens."
+            ],
+            "goal": "Parse the human description into a clean structured representation enumerating the objects, the initial ground facts for each scenario, the goal facts for each scenario, the candidate plan sequence for scenario one, and a canonical representation of each action signature and its preconditions and postconditions."
+        },
+        "critic": {
+            "private_information": [
+                "You have the canonical action schemas as extracted by the extractor. Each action is described by required true predicates and the predicates it adds and removes.",
+                "The plan steps are sequences of grounded action applications referencing the object tokens from the extractor output."
+            ],
+            "goal": "Validate every grounded plan step against the extracted action preconditions and track forward the effects to detect unsatisfied preconditions, contradictions, or missing assumptions. Produce a structured validation report that enumerates for each step whether it is applicable, which preconditions are missing if any, what effects are produced, and any detected conflicts with existing facts."
+        },
+        "auditor": {
+            "private_information": [
+                "You specialize in temporal and causal consistency auditing and in removing bookkeeping shortcuts such as quota tokens, post hoc penalties, or ephemeral bookkeeping predicates that are not part of the core domain semantics.",
+                "You receive the extractor structured facts and the critic validation report."
+            ],
+            "goal": "Produce an audit report that highlights temporal and causal anomalies, normalizes the plan by removing or replacing bookkeeping shortcuts, enforces causal contiguity across steps, and outputs a cleaned plan and recommendations that enable straightforward compilation into PDDL suitable for a classical planner."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You are responsible for assembling the final PDDL domain and PDDL problem that encode the audited scenario so it can be solved with the FastDownwards planner.",
+                "You will receive structured facts, the critic validation report, and the auditor audit report and must reconcile them into a single coherent PDDL domain and problem."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem targeting the FastDownwards solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. The PDDL should reflect the canonical predicates and actions, avoid bookkeeping shortcuts, and be consistent with the auditor recommendations."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 20,
+            "visibility": 2
+        },
+        "public_information": [
+            "Predicates present in the domain include unary predicates hand, cats, sneeze, spring, stupendous, texture and binary predicates collect, next, vase.",
+            "Actions available are paltry, sip, clip, wretched, memory, tightfisted each with fixed arity and specified preconditions and effects in the human description.",
+            "Example action semantics in human readable form include: paltry requires hand x, cats y, texture z, vase x y, next y z and yields next x z while deleting vase x y; sip requires hand x, cats y, texture z, next x z, next y z and yields vase x y while deleting next x z; clip requires hand x, sneeze y, texture z, next y z, next x z and yields vase x y while deleting next x z; wretched requires sneeze x, texture y, texture z, stupendous w, next x y, collect y w, collect z w and yields next x z while deleting next x y; memory requires cats x, spring y, spring z, next x y and yields next x z while deleting next x y; tightfisted requires hand x, sneeze y, texture z, next y z, vase x y and yields next x z while deleting vase x y.",
+            "Two separate problem instances are presented in the human description. Each instance includes a set of initial ground facts and a set of goal next relations. The first instance also includes a candidate plan sequence to be validated and audited."
+        ]
+    },
+    "workflow": {
+        "extractor": {
+            "extract": {
+                "input": [],
+                "output": "facts_json",
+                "system_prompt": "You are an expert extractor that converts messy human descriptions into structured data. Do not emit PDDL. Produce a JSON style structure listing objects, a list of ground initial facts per scenario, the goal facts per scenario, a canonical action schema table with action names parameters preconditions add effects and delete effects, and the original candidate plan steps for scenario one. Keep the representation explicit and unambiguous.",
+                "prompt": "Receive the human use-case and output a structured representation containing keys objects initial_facts_by_scenario goals_by_scenario action_schemas and candidate_plan. Extract both statement blocks and the plan. Do not assume unmentioned facts. Represent predicates as predicate(objectX,objectY) lists and list action schemas with parameter names and ordered preconditions and effects."
+            }
+        },
+        "critic": {
+            "validate": {
+                "input": [
+                    "facts_json"
+                ],
+                "output": "validation_report",
+                "system_prompt": "You are a plan validator. Use the structured facts and action schemas to simulate the candidate plan step by step in forward time. For each step state whether the preconditions are satisfied, list which preconditions are missing, apply the effects if applicable, and detect contradictions such as attempting to add a fact that should be false or relying on a deleted prerequisite. Do not generate PDDL. Emit a structured validation report.",
+                "prompt": "Validate the candidate plan for scenario one using the extractor output. For each step produce an entry with step_id grounded_action preconditions_met missing_preconditions effects_applied and resulting_state_deltas. Flag any steps that rely on unstated assumptions. If you cannot decide due to missing information, list the missing information rather than guessing."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "facts_json",
+                    "validation_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your role is to find temporal anomalies, unnecessary bookkeeping predicates and post-hoc penalty devices, and to produce a normalized causal plan and recommendations for removal of bookkeeping shortcuts. Do not emit PDDL. Output a remediation report and a cleaned plan representation that is easier to compile into PDDL.",
+                "prompt": "Using the extractor facts and critic validation report, perform an audit that identifies steps that violate causal contiguity or that depend on bookkeeping tokens. Replace bookkeeping shortcuts with explicit causal links or annotate them with required supporting facts. Produce a cleaned plan and a short audit summary describing each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "facts_json",
+                    "validation_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in compiling domain descriptions into PDDL that is compatible with the FastDownwards planner. The final output must include a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Avoid bookkeeping shortcuts, follow auditor recommendations, and ensure actions reflect canonical parameter ordering and typed predicates when useful. If multiple interpretations exist, document the assumptions in a short comment section before the PDDL. Keep actions distinct and their effects precise so FastDownwards can accept the problem without further modification.",
+                "prompt": "Integrate the structured facts, the validation report and the audit report to produce a coherent PDDL domain and a PDDL problem that captures the audited scenario to be solved by FastDownwards. Do not change predicate names arbitrarily. If you must resolve name conflicts, document the renaming choices in a small comment text preceding the PDDL. Enclose domain and problem with the required tags."
+            }
+        },
+        "constraints": [
+            "extractor.extract->orchestrator.pddl",
+            "critic.validate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

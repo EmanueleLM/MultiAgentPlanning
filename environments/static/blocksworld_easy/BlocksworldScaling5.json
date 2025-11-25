@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "manipulator",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "manipulator": {
+            "private_information": [
+                "I can perform the following primitive actions: pick up a block, unstack a block from on top of another block, put down a block, stack a block on top of another block",
+                "I can only pick up or unstack one block at a time",
+                "I can only pick up or unstack when my hand is empty",
+                "Picking up a block from the table requires the block to be clear and on the table",
+                "Unstacking a block from another requires the top block to be clear and actually be on the other block",
+                "After a pick up or unstack I am holding the block",
+                "After a put down or stack my hand becomes empty",
+                "Stacking a block on top of another makes the lower block no longer clear"
+            ],
+            "goal": "Arrange the blocks so that the blue block is on top of the orange block"
+        },
+        "observer": {
+            "private_information": [
+                "I observe and record initial state facts and environment-level constraints",
+                "I do not design action schemas but I can report ambiguities in the description of objects or relations"
+            ],
+            "goal": "Provide a precise formalization of the initial state and highlight any ambiguous or underspecified facts"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across action descriptions and state reports",
+                "I identify and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and convert them into explicit causal dependencies",
+                "I ensure that implicit assumptions are made explicit for downstream planners"
+            ],
+            "goal": "Produce a cleaned, temporally and causally consistent action model and recommendations to remove bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the models and reports from other agents and produce a final PDDL domain and problem targeted to the FastDownwards solver",
+                "I must keep agent actions distinct and preserve the cleaned semantics provided by the auditor"
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem suitable for FastDownwards that achieves the goal of having the blue block on top of the orange block"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are blocks that can be stacked on top of one another or placed on the table",
+            "Available primitive actions are pick up, unstack, put down, and stack",
+            "The agent can only hold one block at a time",
+            "A block is clear if there is no block on top of it and it is not currently held",
+            "Stacking makes the supporting block not clear",
+            "Initial conditions: blue is clear",
+            "Initial conditions: orange is clear",
+            "Initial conditions: the hand is empty",
+            "Initial conditions: blue is on top of yellow",
+            "Initial conditions: orange is on top of red",
+            "Initial conditions: red is on the table",
+            "Initial conditions: yellow is on the table",
+            "Goal: blue should be on top of orange"
+        ]
+    },
+    "workflow": {
+        "manipulator": {
+            "analysis": {
+                "input": [],
+                "output": "manipulator_model",
+                "system_prompt": "You are an expert in action semantics and robotic manipulation. Produce a concise unambiguous action model describing preconditions and effects for the available primitive actions in the block stacking domain. Do not output PDDL. Keep the actions distinct and explicitly state hand occupancy and clearance conditions.",
+                "prompt": "Your name is manipulator. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->manipulator->private_information} This is the specific goal to achieve: {agents->manipulator->goal} Think step by step and provide an action model specification listing for each primitive action its parameters preconditions and effects. Do not emit PDDL. If information is missing do not invent new objects but describe the assumptions you would need."
+            }
+        },
+        "observer": {
+            "state_report": {
+                "input": [],
+                "output": "observer_state",
+                "system_prompt": "You are an accurate environment observer. Produce a formal initial state report that enumerates all relevant facts, object types, and any naming or referent ambiguities. Do not emit PDDL.",
+                "prompt": "Your name is observer. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->observer->private_information} This is the required goal: {agents->observer->goal} Provide an explicit list of initial predicates and object declarations, and highlight any ambiguous references or missing distinctions that could affect planning."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "manipulator_model",
+                    "observer_state"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Inspect action schemas and the initial state report and remove bookkeeping shortcuts like quota tokens or post-hoc penalties. Convert any shorthand into explicit causal dependencies and identify temporal ordering constraints. Produce a cleaned action model and an itemized list of required explicit assumptions.",
+                "prompt": "Your name is auditor. You receive the following from other agents: {manipulator_model} and {observer_state} You have the following knowledge: {agents->auditor->private_information} Your goal is: {agents->auditor->goal} Think step by step and produce a cleaned consistent action model and explicit assumptions. Do not emit PDDL but provide the cleaned model in a format that the orchestrator can translate to PDDL for FastDownwards."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "manipulator_model",
+                    "observer_state",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownwards planner. Provide a PDDL domain and a PDDL problem that are compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and preserve the cleaned semantics and explicit assumptions provided by the auditor. Use STRIPS style constructs acceptable to FastDownwards and include types and appropriate predicates.",
+                "prompt": "There are multiple agents contributing models and reports. You will receive their cleaned models and the initial state. Integrate them and produce a complete PDDL domain and a PDDL problem that achieves the goal: {agents->orchestrator->goal} Here is the manipulator contribution: {manipulator_model} Here is the observed initial state: {observer_state} Here is the auditor's cleaned model and assumptions: {auditor_report} Think step by step and produce a final PDDL domain and problem suitable for the FastDownwards solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "manipulator.analysis->orchestrator.pddl",
+            "observer.state_report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

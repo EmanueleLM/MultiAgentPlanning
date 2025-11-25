@@ -1,0 +1,106 @@
+{
+    "name": "HanoiScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "strategist",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must obey the Hanoi rules: only one disk at a time, only move top disk, never place larger on smaller.",
+                "I represent the agent that generates a concrete sequence of legal moves given the current configuration."
+            ],
+            "goal": "Propose a concrete, ordered sequence of legal moves that achieves the global goal from the given initial configuration."
+        },
+        "strategist": {
+            "private_information": [
+                "I specialize in plan optimization and move minimization.",
+                "I can use the right peg as an intermediate parking spot but it must finish empty."
+            ],
+            "goal": "Refine and optimize the mover's move sequence to minimize steps while preserving legality and the final constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency across proposed move sequences.",
+                "I remove bookkeeping shortcuts, quotas, and any post-hoc adjustments that would mask illegal or inconsistent actions."
+            ],
+            "goal": "Audit proposed plans to ensure there are no temporal or causal violations, and provide a cleaned, canonical move trace and a report of any corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses from other agents and produce the final, solver-ready artifacts."
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem file targeted to the FastDownwards solver that models the Tower of Hanoi instance and achieves the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right.",
+            "Disks from smallest to largest are disk A, disk B, disk C, disk D, disk E.",
+            "Initial state: left peg holds from top to bottom A, B, C, D, E. Middle and right pegs are empty.",
+            "Goal state: middle peg should hold from top to bottom A, B, C, D, E, and left and right pegs must be empty.",
+            "Allowed action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time; move only a disk that is on the top of a peg; never place a larger disk on top of a smaller disk.",
+            "The right peg may be used as an intermediate parking spot but must end up empty."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analyze_moves": {
+                "input": [],
+                "output": "moves_plan",
+                "system_prompt": "You are the mover agent. Based on the public information about the Tower of Hanoi instance, generate a concrete ordered list of legal moves (source peg -> destination peg) that transforms the given initial configuration toward the goal. Represent moves as an ordered sequence and do not emit PDDL. If information is missing, produce the best legal move sequence you can using only the information you have.",
+                "prompt": "Agent mover: You have the public environment facts {environment->public_information} and your private knowledge {agents->mover->private_information}. Produce a concrete ordered sequence of legal moves from the initial state to the goal state. Output should be a clear move list labeled moves_plan."
+            }
+        },
+        "strategist": {
+            "optimize_plan": {
+                "input": [
+                    "moves_plan"
+                ],
+                "output": "optimized_moves",
+                "system_prompt": "You are the strategist agent. Your task is to refine and optimize move sequences produced by mover to reduce redundant actions while preserving legality and the final constraints. Do not emit PDDL. If the mover plan is already optimal, state so and return the same sequence.",
+                "prompt": "Agent strategist: You receive the mover's moves_plan {moves_plan} and the public facts {environment->public_information}. Provide an optimized, minimal or near-minimal move sequence labeled optimized_moves, and explain any transformations applied in short form."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "moves_plan",
+                    "optimized_moves"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent. Audit candidate plans for temporal and causal consistency. Detect and remove any bookkeeping shortcuts such as tokens, post-hoc penalties, or adjustments that allow illegal state transitions. Produce a cleaned canonical move trace and a short report of corrections. Do not emit PDDL.",
+                "prompt": "Agent auditor: Given the mover's moves_plan {moves_plan} and the strategist's optimized_moves {optimized_moves}, check each move for legality relative to the Hanoi rules in the public facts {environment->public_information}. Produce a cleaned move trace and an audit_report describing any fixes or confirmations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "moves_plan",
+                    "optimized_moves",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator agent responsible for producing a solver-ready PDDL domain and PDDL problem targeted to the FastDownwards planner. Integrate the move traces and audit corrections from the other agents to produce a correct, complete PDDL domain and problem that model the Tower of Hanoi instance with 5 disks and 3 pegs. Use constructs supported by FastDownwards (prefer STRIPS-style formulations). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct where relevant and ensure the final PDDL captures the initial and goal states exactly as specified in the public information.",
+                "prompt": "Agent orchestrator: You receive mover output {moves_plan}, strategist output {optimized_moves}, and auditor output {audit_report}. Integrate these inputs, resolve any naming ambiguities, maintain distinct actions as needed, and produce the final PDDL domain and problem suitable for FastDownwards. Enclose the domain with <domain></domain> and the problem with <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mover.analyze_moves->orchestrator.pddl",
+            "strategist.optimize_plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "mover.analyze_moves->strategist.optimize_plan",
+            "strategist.optimize_plan->auditor.audit"
+        ]
+    }
+}

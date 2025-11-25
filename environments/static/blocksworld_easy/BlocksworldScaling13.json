@@ -1,0 +1,82 @@
+{
+    "name": "BlocksworldScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I can pick up one block at a time",
+                "I can unstack a block from on top of another block one at a time",
+                "I can put down a block",
+                "I can stack a block on top of another block",
+                "I require the hand to be empty to pick up or unstack",
+                "A block is clear if it has no blocks on top and is not being held"
+            ],
+            "goal": "Have the blue block on top of the yellow block"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of action sequences",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I enforce that all preconditions and effects correspond to real world relations"
+            ],
+            "goal": "Ensure the plan and models are causally and temporally consistent while enabling the global goal"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate descriptions and audits and produce a final PDDL domain and problem file suitable for FastDownwards that achieves the goal: blue on top of yellow"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "Blocks present: orange, yellow, blue, red",
+            "Initial relations: orange is on the table and is clear, red is on the table, blue is on top of red, yellow is on top of blue and is clear",
+            "Hand is empty initially",
+            "Action primitives available: pick up, unstack, put down, stack",
+            "Constraints summary: only one block may be picked up or unstacked at a time, pick up or unstack requires empty hand, pick up requires block on table and clear, unstack requires the block to be on top of another block and clear, stacking requires holding the block and target block to be clear, putting down requires holding the block",
+            "Effect summary: when holding a block the hand is not empty, when a block is stacked on another the lower block becomes not clear, when a block is put down or stacked the hand becomes empty"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "spec": {
+                "input": [],
+                "output": "spec_stacker",
+                "system_prompt": "You are a modeling agent that produces a concise structured description of the domain objects, the initial state relations, and operator templates as JSON-friendly records. Do not emit PDDL. Provide lists for objects and relations and for each operator provide parameter list, preconditions expressed in terms of relations, and effects expressed as additions and deletions of relations. Do not invent bookkeeping shortcuts. Keep descriptions minimal and precise.",
+                "prompt": "Your name is stacker. Use the public information {environment->public_information} and your private information {agents->stacker->private_information} and the goal {agents->stacker->goal}. Produce a structured specification that lists objects, initial relations, and operator templates for pick up, unstack, put down, and stack. Do not output PDDL. Output a clear structured JSON-friendly description suitable for the orchestrator to consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent responsible for detecting and removing temporal and causal inconsistencies and for forbidding bookkeeping shortcuts such as quota tokens, artificial post-hoc penalties, or non-physical counters. Produce a report that flags potential implicit assumptions, suggests corrections, and returns a normalized set of operator preconditions and effects consistent with real-world causality.",
+                "prompt": "Your name is auditor. Use the public information {environment->public_information} and your private information {agents->auditor->private_information} and the global goal {agents->auditor->goal}. Inspect the specification that will be provided by modeling agents and produce a short structured audit report that lists detected inconsistencies, suggested fixes, and a canonicalized set of operator rules without bookkeeping shortcuts. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate structured specifications and audit reports from other agents and synthesize a final PDDL domain and PDDL problem file targeting the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct if multiple agents' operators are integrated. Ensure the PDDL is compatible with FastDownwards and avoid any bookkeeping shortcuts.",
+                "prompt": "Your name is orchestrator. You will receive the following inputs: the modeling specification from the stacker {spec_stacker} and the audit report from the auditor {audit_report}. Your global goal to achieve is {agents->orchestrator->goal}. Integrate the inputs, resolve naming ambiguities, enforce audited canonical operator preconditions and effects, and output a complete PDDL domain and problem pair suitable for FastDownwards. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Think step by step and do not assume unspecified facts."
+            }
+        },
+        "constraints": [
+            "stacker.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyzer",
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyzer": {
+            "private_information": [
+                "I can interpret the natural-language problem statement and extract objects, initial facts, and goals.",
+                "I know the domain actions at a conceptual level: pick-up, unstack, put-down, stack."
+            ],
+            "goal": "Help produce a correct and causally consistent plan to transform the initial block configuration into the goal configuration."
+        },
+        "modeler": {
+            "private_information": [
+                "I produce a formal but partial description of predicates and action schemas (preconditions and effects) in structured plain text, not full PDDL.",
+                "I will focus on encoding the correct preconditions/effects for pick, unstack, putdown, and stack actions given the blockworld constraints."
+            ],
+            "goal": "Provide a clear partial formal model that can be translated into a full PDDL domain by the orchestrator."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checks.",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other non-causal artifacts that could mask real constraints."
+            ],
+            "goal": "Audit the partial model and analysis for causal/temporal soundness and produce a corrected model and explicit justifications for any removals or changes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate agent outputs into a final executable PDDL domain and problem targeted to the FastDownward planner.",
+                "I ensure actions remain distinct, names consistent, and the produced PDDL is solvable by FastDownward."
+            ],
+            "goal": "Produce the final PDDL domain and problem files that encode the blocksworld instance for FastDownward, integrating analysis, model, and audit outputs."
+        }
+    },
+    "environment": {
+        "init": {
+            "block_count": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "Available actions: pick-up a block, unstack a block from on top of another, put-down a block, stack a block on top of another.",
+            "You can only pick up or unstack one block at a time and only when your hand is empty.",
+            "A block is clear if no other block is on top of it and it is not currently picked up.",
+            "You can pick up a block only if it is on the table and clear.",
+            "You can unstack a block only if it is on top of another block and it is clear.",
+            "Once you pick up or unstack a block, you are holding that block and your hand is not empty.",
+            "You can only put down a block if you are holding it; putting down or stacking makes your hand empty.",
+            "You can stack a held block onto another block only if the destination block is clear; stacking makes the destination no longer clear.",
+            "Initial facts: red is clear, hand is empty, red is on top of yellow, blue is on top of orange, yellow is on top of blue, orange is on the table.",
+            "Goal facts: red is on top of orange, orange is on top of blue, yellow is on top of red."
+        ]
+    },
+    "workflow": {
+        "analyzer": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_analyzer",
+                "system_prompt": "You are an expert blockworld analyst. Produce a precise object list, initial-state facts and goal facts, and a step-by-step conceptual decomposition of the problem into high-level moves and causal subgoals. Do not emit PDDL.",
+                "prompt": "Your name is analyzer. Using the public information and your private knowledge, extract all blocks and concrete initial relations (on, ontable, clear, holding, handempty), identify the goal relations, and propose high-level move fragments (pick, unstack, putdown, stack) with causal ordering constraints. Produce a clear, structured, plain-text analysis."
+            }
+        },
+        "modeler": {
+            "partial_model": {
+                "input": [
+                    "analysis_analyzer"
+                ],
+                "output": "partial_model_modeler",
+                "system_prompt": "You are an expert formal modeler for planning domains. Produce a structured partial model: list of predicates, and action schemas with explicit preconditions and effects in a clear human-readable formalism. Do not output full PDDL here.",
+                "prompt": "Your name is modeler. Using the analyzer's analysis, define predicates and for each action (pick-up, unstack, put-down, stack) specify parameters, preconditions and effects in structured plain text, paying attention to handempty, holding, clear, on, and ontable. Keep the model explicit and avoid bookkeeping shortcuts."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "partial_model_modeler",
+                    "analysis_analyzer"
+                ],
+                "output": "audit_auditor",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Inspect the partial model and analysis, remove or flag any bookkeeping shortcuts, and ensure the model encodes genuine causal relationships and resource constraints.",
+                "prompt": "Your name is auditor. Review the model and analysis and produce a corrected model and an audit report describing any inconsistencies or removed bookkeeping constructs (for example: tokens, extra counters, or post-hoc penalties). Provide explicit justifications for each change and confirm temporal/causal soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_analyzer",
+                    "partial_model_modeler",
+                    "audit_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL engineering and FastDownward usage. Integrate the analysis, the partial model, and the auditor's corrections to produce a complete PDDL domain and a PDDL problem file compatible with the FastDownward planner. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep all agent-contributed actions distinct and preserve causality and hand-resource constraints.",
+                "prompt": "You are orchestrator. Integrate the analyzer's analysis, the modeler's partial model, and the auditor's audit to generate a full PDDL domain and problem tailored for FastDownward. Ensure predicate and action names are consistent, include initial state and goal exactly as specified in the public information, and ensure the PDDL encodes the restrictions on picking, unstacking, holding, putting down and stacking. Output the final PDDL domain and problem only, using <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "analyzer.analysis->modeler.partial_model",
+            "modeler.partial_model->auditor.audit",
+            "analyzer.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "modeler.partial_model->orchestrator.pddl",
+            "analyzer.analysis->orchestrator.pddl"
+        ]
+    }
+}

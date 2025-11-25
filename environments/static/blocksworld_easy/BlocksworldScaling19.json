@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "stacker",
+            "picker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I reason about sequences of stack and unstack actions and their causal preconditions",
+                "I know about block clearance and table relationships at an abstract level"
+            ],
+            "goal": "Achieve a final arrangement where the blue block is on top of the orange block and the yellow block is on top of the blue block"
+        },
+        "picker": {
+            "private_information": [
+                "I model low level operations PickUp, Unstack, PutDown and Stack and enforce single-block hand constraints",
+                "I track whether the hand is empty or holding a specific block"
+            ],
+            "goal": "Provide valid low-level action sequences that respect single-item holding and clearance constraints to reach the target arrangement"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I validate that all preconditions and effects are explicit and that no implicit shortcuts are used"
+            ],
+            "goal": "Produce an audit report ensuring the plan is temporally and causally consistent and free of bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses from other agents and produce the final PDDL domain and problem targeted to the FastDownwards solver",
+                "I keep actions of different agents distinct and ensure the combined model is consistent"
+            ],
+            "goal": "Integrate inputs from stacker, picker, and auditor and output a complete PDDL domain and problem suitable for FastDownwards that achieves the target arrangement"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available primitive actions are PickUp, Unstack, PutDown, and Stack",
+            "Only one block can be picked up or unstacked at a time",
+            "PickUp and Unstack require the hand to be empty before performing them",
+            "A block is clear if no other block is on top of it and it is not currently held",
+            "PickUp can only be performed on a clear block that is on the table",
+            "Unstack can only be performed on a clear block that is on top of another block",
+            "After PickUp or Unstack the agent is holding the block",
+            "PutDown can only be performed on a block that the agent is holding and results in the block being on the table and the hand becoming empty",
+            "Stack can only be performed on a block that the agent is holding and onto a clear block and results in the hand becoming empty and the target block no longer being clear",
+            "Initial state facts: red is clear",
+            "Initial state facts: blue is clear",
+            "Initial state facts: the hand is empty",
+            "Initial state facts: red is on top of yellow",
+            "Initial state facts: blue is on top of orange",
+            "Initial state facts: orange is on the table",
+            "Initial state facts: yellow is on the table",
+            "Goal: blue is on top of orange and yellow is on top of blue"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_stacker",
+                "system_prompt": "You are a specialist in abstract block arrangement reasoning and causal step sequencing.",
+                "prompt": "Your name is stacker. Given the public environment information and your private knowledge, produce a compact high-level action sequence candidate with explicit preconditions and effects for each step. Do not emit PDDL. Highlight any ambiguities or missing details that would affect correctness."
+            }
+        },
+        "picker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_picker",
+                "system_prompt": "You are a low-level operator modeler for block manipulation ensuring single-hand and clearance constraints.",
+                "prompt": "Your name is picker. Given the public environment information and your private knowledge, produce valid low-level action fragments showing allowed primitives and the exact preconditions and effects required for PickUp, Unstack, PutDown and Stack in this scenario. Do not emit PDDL. Indicate which concrete block each fragment applies to from the initial state."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report_auditor",
+                "system_prompt": "You are an auditor of temporal and causal consistency tasked with removing bookkeeping shortcuts and ensuring full explicitness.",
+                "prompt": "Your name is auditor. Inspect candidate sequences and low-level fragments and produce an audit report that identifies causal cycles, implicit assumptions, or bookkeeping shortcuts and provide concrete fixes so that the model is temporally and causally explicit. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_stacker",
+                    "analysis_picker",
+                    "audit_report_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing PDDL for multi-agent composed models and you target the FastDownwards solver. You must produce a single coherent PDDL domain and a PDDL problem compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Keep actions distinct where they originate from different agent analyses.",
+                "prompt": "You are orchestrator. Integrate the following inputs from other agents: {analysis_stacker}, {analysis_picker}, {audit_report_auditor}. Resolve naming mismatches and fill missing explicit preconditions and effects based on the audit report. Produce a final PDDL domain and a PDDL problem suitable for FastDownwards that achieves the goal 'blue on orange and yellow on blue'. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "stacker.analysis->orchestrator.pddl",
+            "picker.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,97 @@
+(define (domain hanoi)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg stage)
+
+  (:predicates
+    (on-peg ?d - disk ?p - peg)
+    (on-disk ?d - disk ?under - disk)
+    (clear-disk ?d - disk)
+    (clear-peg ?p - peg)
+    (larger ?x - disk ?y - disk)
+    (current-stage ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
+  )
+
+  (:action move-peg-to-peg
+    :parameters (?d - disk ?from - peg ?to - peg ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-peg ?to)
+      (not (= ?from ?to))
+    )
+    :effect (and
+      (not (current-stage ?s))
+      (current-stage ?s2)
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+      (clear-peg ?from)
+      (not (clear-peg ?to))
+    )
+  )
+
+  (:action move-disk-to-peg
+    :parameters (?d - disk ?from - disk ?to - peg ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (on-disk ?d ?from)
+      (clear-disk ?d)
+      (clear-peg ?to)
+      (not (= ?from ?d))
+    )
+    :effect (and
+      (not (current-stage ?s))
+      (current-stage ?s2)
+      (not (on-disk ?d ?from))
+      (on-peg ?d ?to)
+      (clear-disk ?from)
+      (not (clear-peg ?to))
+    )
+  )
+
+  (:action move-peg-to-disk
+    :parameters (?d - disk ?from - peg ?to - disk ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (larger ?to ?d)
+      (not (= ?d ?to))
+    )
+    :effect (and
+      (not (current-stage ?s))
+      (current-stage ?s2)
+      (not (on-peg ?d ?from))
+      (on-disk ?d ?to)
+      (clear-peg ?from)
+      (not (clear-disk ?to))
+    )
+  )
+
+  (:action move-disk-to-disk
+    :parameters (?d - disk ?from - disk ?to - disk ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (on-disk ?d ?from)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (larger ?to ?d)
+      (not (= ?d ?to))
+      (not (= ?from ?to))
+    )
+    :effect (and
+      (not (current-stage ?s))
+      (current-stage ?s2)
+      (not (on-disk ?d ?from))
+      (on-disk ?d ?to)
+      (clear-disk ?from)
+      (not (clear-disk ?to))
+    )
+  )
+)

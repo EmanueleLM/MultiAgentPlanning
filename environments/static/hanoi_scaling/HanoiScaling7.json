@@ -1,0 +1,92 @@
+{
+    "name": "HanoiScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover_agent",
+            "rules_auditor",
+            "orchestrator"
+        ],
+        "mover_agent": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Provide a precise, canonical state-transition model of legal moves for the 5-disk Tower of Hanoi instance, enumerating action schemas with parameters, preconditions, and effects."
+        },
+        "rules_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency",
+                "I detect and remove bookkeeping shortcuts such as tokens, quotas, or post-hoc penalties",
+                "I ensure invariants are explicit and that no illegal shortcuts are used"
+            ],
+            "goal": "Audit the mover model for causal/temporal correctness and recommend corrections to ensure the planning model enforces the Tower of Hanoi rules without shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce the final PDDL domain and PDDL problem targeting the FastDownwards solver encoding the 5-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 5,
+            "disk_order": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are 5 disks named from smallest to largest: disk A, disk B, disk C, disk D, disk E.",
+            "Pegs are named left, middle, and right.",
+            "Initial state: middle peg holds from top to bottom A, B, C, D, E; left and right pegs are empty.",
+            "Goal state: right peg must hold from top to bottom A, B, C, D, E; left and middle pegs must be empty.",
+            "Allowed action: Move the top disk from one peg to another peg.",
+            "Rules: Only one disk may be moved at a time. Only the top disk of any peg may be moved. A larger disk may not be placed on top of a smaller disk. Disk relative size ordering is static."
+        ]
+    },
+    "workflow": {
+        "mover_agent": {
+            "describe": {
+                "input": [],
+                "output": "mover_model",
+                "system_prompt": "You are an expert on state-transition modeling for classical planners. Produce a precise, unambiguous description of primitive action schemas for moving a disk in the Tower of Hanoi instance. Do not emit PDDL. Provide parameterized action names, clear preconditions, and effects, along with a canonical state encoding (predicates and their intended meanings).",
+                "prompt": "You are mover_agent. Using the environment public information and your private knowledge, produce a canonical model of states and legal moves for the 5-disk Tower of Hanoi instance. Enumerate action names, parameters, preconditions, and effects in structured text suitable for a downstream PDDL generator. Do not output PDDL."
+            }
+        },
+        "rules_auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor for temporal and causal consistency in planning models. Identify implicit assumptions, remove bookkeeping shortcuts (tokens, quotas, post-hoc penalties), and ensure invariants are explicit and enforceable in a PDDL encoding.",
+                "prompt": "You are rules_auditor. Inspect the mover_agent model and the environment public information. Produce an audit report that: verifies causal and temporal consistency, lists invariants that must hold at all times, identifies any shortcuts or encodings that would permit illegal solutions, and suggests explicit corrections or restrictions. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL authoring targeted specifically at the FastDownwards planner. Integrate the provided model and audit corrections into a complete, solver-ready PDDL domain and PDDL problem for the 5-disk Tower of Hanoi instance. Maintain distinct agent-derived actions if relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure constructs are compatible with FastDownwards (STRIPS/ADL features as appropriate).",
+                "prompt": "You are orchestrator. Receive the mover_model and audit_report, resolve naming or representational mismatches, and produce a single PDDL domain and a PDDL problem that encode the initial and goal states for the 5-disk Hanoi puzzle while enforcing all rules and audit corrections. Target the FastDownwards solver; ensure types, predicates, and actions are consistent and complete. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover_agent.describe->orchestrator.pddl",
+            "rules_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

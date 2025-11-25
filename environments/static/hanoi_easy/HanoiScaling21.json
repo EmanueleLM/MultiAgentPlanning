@@ -1,0 +1,104 @@
+{
+    "name": "HanoiScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "validator",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I can propose a sequence of atomic moves where each atomic move moves the top disk of one peg to another peg",
+                "I know the disk ordering from smallest to largest is A, B, C, D"
+            ],
+            "goal": "Produce a candidate move sequence to transfer the full stack from the left peg to the middle peg using the right peg as temporary storage while respecting Hanoi rules"
+        },
+        "validator": {
+            "private_information": [
+                "I check each move for legality under the rules: only one disk moved at a time, only top disk may be moved, larger disks cannot be placed on smaller disks",
+                "I track the evolving peg contents to ensure each move is applicable"
+            ],
+            "goal": "Validate and annotate a proposed move sequence for correctness and point out illegal steps if any"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans and remove bookkeeping shortcuts or ad hoc penalties",
+                "I ensure no implicit shortcuts are used such as tokens, post-hoc repairs, or assumptions that skip intermediate states"
+            ],
+            "goal": "Produce an audit report that confirms the plan is temporally and causally consistent and that all state transitions are explicitly supported by allowed actions"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate proposals, validations, and audits and produce a final PDDL domain and problem targeted to the FastDownward planner",
+                "I must keep agent actions distinct when translating into a multi-agent compatible PDDL specification if needed"
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem file for FastDownward that encodes the Tower of Hanoi instance with four disks and three pegs, reflecting the validated and audited plan constraints"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with three pegs labeled left middle right",
+            "There are four disks ordered smallest to largest as A B C D",
+            "Initial state: left peg holds from top to bottom A B C D, middle and right pegs are empty",
+            "Goal state: middle peg holds from top to bottom A B C D and left and right pegs are empty",
+            "Allowed action: Move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time, may only move a disk that is on top of a peg, never place a larger disk on top of a smaller disk",
+            "Right peg may be used as an intermediate but must be empty in the final state"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "propose_plan": {
+                "input": [],
+                "output": "plan_moves",
+                "system_prompt": "You are an agent that devises concrete move sequences for the Tower of Hanoi given the public problem statement and your private information. You do not need to emit PDDL.",
+                "prompt": "Your name is planner. Use the environment public information and your private information to output a candidate sequence of atomic moves. Represent each move as a tuple from_peg to_peg using peg names left middle right and list moves in order. Ensure moves are stated explicitly and do not assume implicit intermediate states."
+            }
+        },
+        "validator": {
+            "validate": {
+                "input": [
+                    "plan_moves"
+                ],
+                "output": "validated_plan",
+                "system_prompt": "You are a legality validator that simulates peg state transitions and checks each proposed move against the Hanoi rules. You do not need to emit PDDL.",
+                "prompt": "Your name is validator. Receive a candidate move sequence and simulate it from the initial state. For each move, confirm it is applicable and that it preserves disk size ordering. If a move is illegal, annotate the move and provide the reason. If all moves are legal, return the sequence annotated with the resulting peg contents after each step."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "validated_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your job is to detect and remove bookkeeping shortcuts such as quota tokens, post-hoc fixes, or implicit state assumptions. You do not emit PDDL.",
+                "prompt": "Your name is auditor. Review the validated plan and ensure every state transition is justified by a single allowed atomic move and that the overall plan does not rely on hidden assumptions. Produce an audit report that either confirms full explicit consistency or lists minimal concrete corrections that restore explicitness without changing the intended final result."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_moves",
+                    "validated_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownward planner. Produce a PDDL domain and a PDDL problem file that encodes the Tower of Hanoi instance with four disks and three pegs. The PDDL must be compatible with FastDownward and must keep agent actions distinct if representing multiple agents. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The goal must reflect that the middle peg holds disks A B C D from top to bottom and both left and right pegs are empty.",
+                "prompt": "Your name is orchestrator. Integrate the planner proposal, the validator annotations, and the auditor report. Resolve any minor naming inconsistencies and produce a single coherent PDDL domain and PDDL problem targeted to FastDownward. Keep actions explicit, model move preconditions and effects so the rules are enforced within the domain, and ensure the problem encodes the initial and goal states. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.propose_plan->validator.validate",
+            "validator.validate->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

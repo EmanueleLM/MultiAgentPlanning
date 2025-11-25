@@ -1,0 +1,107 @@
+{
+    "name": "BlocksworldScaling8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "picker",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "picker": {
+            "private_information": [
+                "I can pick up a single block from the table if my hand is empty and the block is clear.",
+                "I can only pick up one block at a time and once I pick it up I will be holding it.",
+                "I reason about table to hand moves and simple eligibility checks for pick up."
+            ],
+            "goal": "Provide a viable sequence of pick up and put down steps that helps achieve the global stacking goal."
+        },
+        "stacker": {
+            "private_information": [
+                "I can unstack a clear block from on top of another block if my hand is empty.",
+                "I can stack a block I am holding on top of another block if that target block is clear.",
+                "I reason about moves that change above/below relations between blocks and clearing effects."
+            ],
+            "goal": "Provide a viable sequence of unstack and stack steps that helps achieve the global stacking goal."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I validate that plans respect single-handedness, that every pickup or unstack has an empty hand precondition, and that clear status and on-table predicates are used causally rather than as bookkeeping hacks."
+            ],
+            "goal": "Audit candidate plans for causal and temporal soundness and produce a corrected and annotated report to be used by the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate plans and audit reports and produce a single PDDL domain and problem compatible with the FastDownwards solver.",
+                "I must keep actions logically distinct if they originate from different agents and ensure the final PDDL captures the required constraints and initial state."
+            ],
+            "goal": "Produce a final PDDL domain and a PDDL problem file that achieves the goal under the given initial conditions and is suitable for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "yellow",
+                "blue",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "There are four blocks: red, yellow, blue, orange.",
+            "Available primitive actions are pick-up, unstack, put-down, and stack.",
+            "Action restrictions: only one block can be picked up or unstacked at a time. Pick up or unstack requires the hand to be empty. A block is clear if nothing is on top of it and it is not currently being held. Picking up or unstacking results in holding the block. Putting down or stacking results in the hand becoming empty. Stacking a block on another makes the target block no longer clear.",
+            "Initial conditions: red is clear, hand is empty, red is on top of yellow, blue is on top of orange, yellow is on top of blue, orange is on the table.",
+            "Goal: red is on top of blue and orange is on top of red."
+        ]
+    },
+    "workflow": {
+        "picker": {
+            "plan": {
+                "input": [],
+                "output": "plan_picker",
+                "system_prompt": "You are an agent specialized in producing concrete manipulation step sequences for pick up and put down operations in a blocks domain. Provide an explicit ordered list of primitive actions with their parameters and the local preconditions and effects you rely on. Do not emit PDDL. Do not introduce bookkeeping shortcuts such as tokens that circumvent hand-empty constraints.",
+                "prompt": "Your role is picker. You have access to the public information about the blocks and the initial state in the environment. Use your private knowledge about pick up constraints to produce a step by step plan fragment composed of pick-up and put-down actions that contributes to achieving the global stacking goal. Annotate each step with the precondition you assume and the effect it produces."
+            }
+        },
+        "stacker": {
+            "plan": {
+                "input": [],
+                "output": "plan_stacker",
+                "system_prompt": "You are an agent specialized in producing concrete manipulation step sequences for unstack and stack operations in a blocks domain. Provide an explicit ordered list of primitive actions with their parameters and the local preconditions and effects you rely on. Do not emit PDDL. Avoid bookkeeping shortcuts that bypass causal constraints.",
+                "prompt": "Your role is stacker. You have access to the public information about the blocks and the initial state in the environment. Use your private knowledge about stacking and unstacking to produce a step by step plan fragment composed of unstack and stack actions that contributes to achieving the global stacking goal. Annotate each step with the precondition you assume and the effect it produces."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_picker",
+                    "plan_stacker"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor who checks temporal and causal consistency in multi-step manipulation plans. Your job is to detect violations of hand-empty constraints, duplicated or implicit bookkeeping tokens, and any steps that rely on non-causal shortcuts. Produce an annotated report that identifies violations, suggests corrections, and outputs a corrected, causal plan fragment where necessary. Do not emit PDDL.",
+                "prompt": "Your role is auditor. You will receive the plan fragments from picker and stacker. Validate that each pick-up or unstack step has an empty-hand precondition and that effects propagate correctly to clear predicates and on-table relations. Remove bookkeeping shortcuts and produce a corrected sequence or notes that the orchestrator can use to build a correct PDDL model. Provide explicit reasons for any changes you propose."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_picker",
+                    "plan_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and you compile and reconcile agent-provided plan fragments and audit reports into a single PDDL domain and a single PDDL problem. Produce a STRIPS-compatible PDDL domain and problem that is compatible with the FastDownwards solver. Keep actions distinct when they come from different agent roles, and ensure all preconditions and effects reflect causal relations discovered by the auditor. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your role is orchestrator. You will receive plan fragments and an audit report. Integrate these inputs with the environment public information and produce a complete PDDL domain and PDDL problem that encode the blocks world primitives pick-up, unstack, put-down, and stack together with their correct preconditions and effects. Ensure the initial state matches the provided initial conditions and the goal matches the stated goal. Keep action names or predicates distinct if they represent different agent capabilities. Output the domain and problem for FastDownwards enclosed in the required tags."
+            }
+        },
+        "constraints": [
+            "picker.plan->orchestrator.pddl",
+            "stacker.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,78 @@
+{
+    "name": "HanoiScaling27",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can perform the primitive action MoveTop that moves the top disk from one peg to another peg.",
+                "I must obey the rules: move one disk at a time, only move top disk of a peg, never place a larger disk on a smaller disk, moved disks preserve relative ordering."
+            ],
+            "goal": "Provide a precise description of valid primitive moves and their preconditions and effects for the Tower of Hanoi instance."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency.",
+                "I will detect and remove modeling shortcuts and bookkeeping shortcuts such as quota tokens or post-hoc penalties and ensure plans respect true causal constraints."
+            ],
+            "goal": "Produce a consistency report that verifies the mover model and flags any temporal or causal shortcuts or ambiguities."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownward."
+            ],
+            "goal": "Integrate mover analysis and auditor report to produce a final PDDL domain and a PDDL problem suitable for the FastDownward planner that solves the Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 3
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with 4 disks labeled from smallest to largest as disk A, disk B, disk C, disk D.",
+            "There are three pegs named left, middle, right.",
+            "Initial state: right peg holds from top to bottom disk A, disk B, disk C, disk D. Middle peg is empty. Left peg is empty.",
+            "Goal state: left peg must hold from top to bottom disk A, disk B, disk C, disk D. Middle peg and right peg must be empty.",
+            "Rules: Only one disk may be moved at a time. Only the top disk of any peg may be moved. A larger disk may never be placed on top of a smaller disk. The middle peg may be used as intermediate but must end empty at the goal."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "moves_description",
+                "system_prompt": "You are the mover agent. Your role is to enumerate and precisely describe the valid primitive move actions for the Tower of Hanoi instance. Provide each action name, its parameters, explicit preconditions, and explicit effects in a clear STRIPS-like style. Do not emit full PDDL domain or problem files. Use the public information about disks and pegs. If information is missing, state what is missing rather than making unverifiable assumptions.",
+                "prompt": "You are named mover. Use the environment public information and your private information to describe valid primitive moves. Output a concise machine readable description of each action with parameter list, preconditions, and effects. Focus on correctness with respect to single disk moves, top-of-peg constraints, and size ordering constraints."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "consistency_report",
+                "system_prompt": "You are the auditor agent. Your role is to check temporal and causal consistency and to remove or flag any bookkeeping shortcuts. Look for implicit assumptions, concurrency errors, overlooked preconditions, or mechanisms like quota tokens or post-hoc corrections that would invalidate sound plans. Provide a clear report of issues found and recommendations for precise, implementable constraints. Do not produce PDDL files.",
+                "prompt": "You are named auditor. Inspect the mover output and the public information. Identify any causal or temporal holes and propose concrete adjustments or constraints so that any plan derived later is sound and implementable by a real planner without relying on bookkeeping hacks."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "moves_description",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your job is to integrate the mover description and the auditor report and produce a complete PDDL domain and a complete PDDL problem file targeting the FastDownward solver. Ensure predicates, types, and actions are compatible and that action names remain distinct and attributable to the mover where appropriate. Ensure the final model enforces the Tower of Hanoi rules and the specified initial and goal states. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are named orchestrator. You will receive the mover analysis and the auditor consistency report. Use them to generate a PDDL domain and a PDDL problem that solve the Tower of Hanoi instance described in the environment public information. Make the model compatible with FastDownward conventions. Keep mover actions identifiable and document any decisions made to resolve ambiguities from the inputs. Output the PDDL domain enclosed in <domain></domain> tags and the PDDL problem enclosed in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

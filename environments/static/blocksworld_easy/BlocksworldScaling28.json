@@ -1,0 +1,126 @@
+{
+    "name": "BlocksworldScaling28",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "picker",
+            "unstacker",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "picker": {
+            "private_information": [
+                "I am responsible for picking up single blocks that are on the table and clear.",
+                "I can only act when the hand is empty."
+            ],
+            "goal": "Contribute to arranging the blocks so that red is on blue and yellow is on red."
+        },
+        "unstacker": {
+            "private_information": [
+                "I am responsible for unstacking a clear block from on top of another block.",
+                "I can only unstack if the hand is empty and the block to unstack is clear and actually on another block."
+            ],
+            "goal": "Contribute to arranging the blocks so that red is on blue and yellow is on red."
+        },
+        "stacker": {
+            "private_information": [
+                "I am responsible for stacking a block from the hand onto another clear block.",
+                "I can only stack if I am holding the block and the destination block is clear."
+            ],
+            "goal": "Contribute to arranging the blocks so that red is on blue and yellow is on red."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove informal bookkeeping shortcuts.",
+                "I check that agents obey single-hand constraints, clearance conditions, and that state transitions are faithful."
+            ],
+            "goal": "Ensure the agents' action schemas, preconditions, and effects are temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and produce the final PDDL domain and problem for FastDownwards.",
+                "I must keep agent actions distinct and reconcile naming and assumptions."
+            ],
+            "goal": "Produce a complete PDDL domain and problem that achieves: red on blue and yellow on red using the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "There are four blocks: red, blue, orange, yellow.",
+            "All blocks are initially clear.",
+            "All blocks are initially on the table.",
+            "The hand is initially empty.",
+            "Allowed actions are: pick up a block from the table, unstack a block from on top of another block, put down a block on the table, stack a block onto another block.",
+            "Constraints: one block at a time, hand must be empty to pick up or unstack, a block is clear if nothing is on top of it and it is not being held, stacking makes the destination not clear and holding becomes empty after put down or stack."
+        ]
+    },
+    "workflow": {
+        "picker": {
+            "analysis": {
+                "input": [],
+                "output": "picker_analysis",
+                "system_prompt": "You are an agent that analyzes pick-up actions in block stacking tasks and specifies precise action schemas, preconditions, and effects without emitting PDDL. Provide formalized precondition and effect lists, mention which state fluents you use, and produce example short plans using only pick-up and put-down as relevant.",
+                "prompt": "Your name is picker. Use the public information {environment->public_information} and your private knowledge {agents->picker->private_information} to produce a clear description of the pick-up and put-down action models, list preconditions and effects as atomic fluents, and suggest where these actions fit in a plan to reach the goal {agents->picker->goal}. Do not output PDDL; output structured analysis, action schemas, and short exemplars."
+            }
+        },
+        "unstacker": {
+            "analysis": {
+                "input": [],
+                "output": "unstacker_analysis",
+                "system_prompt": "You are an agent that analyzes unstacking actions in block stacking tasks and specifies precise action schemas, preconditions, and effects without emitting PDDL. Provide formalized precondition and effect lists and examples of when unstacking is necessary.",
+                "prompt": "Your name is unstacker. Use the public information {environment->public_information} and your private knowledge {agents->unstacker->private_information} to produce a clear description of the unstack action and its relation to stack and put-down actions, list preconditions and effects as atomic fluents, and give short example sequences where unstacking is required for the goal {agents->unstacker->goal}. Do not output PDDL; output structured analysis, action schemas, and short exemplars."
+            }
+        },
+        "stacker": {
+            "analysis": {
+                "input": [],
+                "output": "stacker_analysis",
+                "system_prompt": "You are an agent that analyzes stacking actions and destination clearance constraints in block stacking tasks and specifies precise action schemas, preconditions, and effects without emitting PDDL. Provide formalized precondition and effect lists and example stacking sequences.",
+                "prompt": "Your name is stacker. Use the public information {environment->public_information} and your private knowledge {agents->stacker->private_information} to produce a clear description of the stack action and its interplay with pick-up and unstack actions, list preconditions and effects as atomic fluents, and give short example sequences that help achieve the goal {agents->stacker->goal}. Do not output PDDL; output structured analysis, action schemas, and short exemplars."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "picker_analysis",
+                    "unstacker_analysis",
+                    "stacker_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency for multi-agent action models. You do not generate PDDL. Your job is to detect and remove informal bookkeeping shortcuts, to ensure single-hand constraints and causal links are explicit, and to produce a corrected, consistent set of fluents and action semantics.",
+                "prompt": "Your name is auditor. Receive the agents' analyses {picker_analysis}, {unstacker_analysis}, {stacker_analysis}. Use your private knowledge {agents->auditor->private_information} and the public information {environment->public_information} to produce an audit report detailing inconsistencies, required additional fluents or constraints, clarified preconditions/effects, and a canonicalized set of action schemas suitable for conversion to PDDL. Explicitly remove bookkeeping shortcuts such as implicit counters or post-hoc penalties and replace them with explicit fluents and causal steps."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "picker_analysis",
+                    "unstacker_analysis",
+                    "stacker_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates agent analyses and audit corrections and produces a complete PDDL domain and problem targeted at the FastDownwards solver. You must keep agents' actions distinct, reconcile naming, ensure all preconditions and effects are fully specified, and produce valid PDDL domain and problem files. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. Integrate the analyses {picker_analysis}, {unstacker_analysis}, {stacker_analysis} and the auditor report {audit_report}. Use the public information {environment->public_information} and your private information {agents->orchestrator->private_information} to produce a complete, coherent PDDL domain and PDDL problem that achieves the global goal {agents->orchestrator->goal}. Target the FastDownwards solver: use STRIPS-style predicates and avoid constructs unsupported by FastDownwards. Keep each agent's action names distinct and indicate which agent performs each action in comments or naming. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "picker.analysis->auditor.audit",
+            "unstacker.analysis->auditor.audit",
+            "stacker.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,113 @@
+{
+    "name": "BlocksworldScaling22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "lifter",
+            "placer",
+            "auditor",
+            "orchestrator"
+        ],
+        "lifter": {
+            "private_information": [
+                "I am responsible for actions that remove a block from its support: Pick up a block from the table and Unstack a block from on top of another block.",
+                "I can only manipulate one block at a time and only when my hand is empty.",
+                "When I pick up or unstack a block I will be holding that block and the block becomes not on the table or not on another block respectively."
+            ],
+            "goal": "Provide precise, machine-checkable action schemas for PickUp and Unstack including preconditions and effects consistent with the environment rules."
+        },
+        "placer": {
+            "private_information": [
+                "I am responsible for actions that place a block: Put down a block on the table and Stack a block on top of another block.",
+                "I ensure that stacking makes the supporting block no longer clear and that putting down or stacking empties the hand."
+            ],
+            "goal": "Provide precise, machine-checkable action schemas for PutDown and Stack including preconditions and effects consistent with the environment rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across action schemas and ensure no bookkeeping shortcuts are used.",
+                "I check mutual exclusions, one-hand constraints, and that 'clear' and 'on' predicates are updated consistently and immediately by effects."
+            ],
+            "goal": "Audit the action schemas from other agents, remove implicit shortcuts and produce an explicit, consistent set of requirements and corrections to be integrated into a single PDDL model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the validated action schemas and produce the final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I keep agent actions distinct by naming their actions with a prefix matching the agent where appropriate."
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem for FastDownwards that implements the blocksworld task and the given initial and goal states."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "orange",
+                "yellow",
+                "red"
+            ],
+            "hand": "empty",
+            "table": "present"
+        },
+        "public_information": [
+            "Available actions are PickUp, Unstack, PutDown, and Stack.",
+            "You can only pick up or unstack one block at a time.",
+            "You can only pick up or unstack a block if your hand is empty.",
+            "A block is clear if there is no block on top of it and it is not being held.",
+            "PickUp can only be applied to a clear block that is on the table.",
+            "Unstack can only be applied to a clear block that is on top of another block and the relation on is factual.",
+            "PutDown can only be applied when you are holding a block and results in the block being on the table and clear.",
+            "Stack can only be applied when you are holding a block and the target block is clear; stacking makes the target no longer clear and results in the hand being empty.",
+            "Once you pick up or unstack a block, you are holding the block and your hand is not empty until you put it down or stack it.",
+            "Initial state: blue is clear, orange is clear, hand is empty, blue is on yellow, yellow is on red, red is on the table, orange is on the table.",
+            "Goal: blue is on top of red and orange is on top of yellow."
+        ]
+    },
+    "workflow": {
+        "lifter": {
+            "spec": {
+                "input": [],
+                "output": "spec_lifter",
+                "system_prompt": "You are an expert in formalizing action preconditions and effects for manipulation actions that remove blocks from supports. Produce explicit, unambiguous schemas for PickUp and Unstack including required preconditions, invariants, and immediate effects on predicates such as holding, handempty, on, ontable, and clear. Do not emit PDDL; give structured schema representations.",
+                "prompt": "Agent lifter context: Use the public information from the environment and your private knowledge. Provide schemas for PickUp and Unstack. For each action include the action name, parameters, preconditions as a list of predicates that must hold, and effects separated into add and delete lists. Note any implicit assumptions that must be made explicit for a planner to reason correctly, such as mutual exclusions or one-hand constraints."
+            }
+        },
+        "placer": {
+            "spec": {
+                "input": [],
+                "output": "spec_placer",
+                "system_prompt": "You are an expert in formalizing action preconditions and effects for placing actions that put blocks onto supports. Produce explicit, unambiguous schemas for PutDown and Stack including required preconditions, invariants, and immediate effects on predicates such as holding, handempty, on, ontable, and clear. Do not emit PDDL; give structured schema representations.",
+                "prompt": "Agent placer context: Use the public information from the environment and your private knowledge. Provide schemas for PutDown and Stack. For each action include the action name, parameters, preconditions as a list of predicates that must hold, and effects separated into add and delete lists. Explicitly state effects that change clear status of the involved blocks and the hand status."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "spec_lifter",
+                    "spec_placer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency in formal action models. Your job is to detect implicit shortcuts, missing mutual exclusions, hidden bookkeeping tokens, post-hoc penalties, or other informal devices and replace them by explicit predicates and constraints that a standard PDDL planner can reason about.",
+                "prompt": "Agent auditor context: Receive the lifter and placer specifications. Check that the schemas obey the one-hand constraint, properly update clear predicates, ensure that on and ontable relations are consistent, and that there are no implicit temporal assumptions. Produce a clear audit report describing required corrections, any introduced auxiliary predicates (with justification), and a corrected, explicit set of action schemas suitable to be translated into PDDL by an integrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_lifter",
+                    "spec_placer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing PDDL for the FastDownwards planner. Integrate multiple agent-provided action schemas and auditor corrections into a single coherent PDDL domain and a PDDL problem. Keep agent actions distinct by prefixing action names with agent identifiers where appropriate. Emit a PDDL domain and a PDDL problem that are directly consumable by FastDownwards. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent orchestrator context: Integrate the lifter specifications, the placer specifications, and the auditor report into a consistent PDDL model. Use the public information from the environment for initial state and goal. Ensure the domain encodes the one-hand constraint, clear predicate semantics, correct on and ontable relationships, and that effects are immediate and unambiguous. Produce the final PDDL domain and PDDL problem targeted to FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "lifter.spec->orchestrator.pddl",
+            "placer.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

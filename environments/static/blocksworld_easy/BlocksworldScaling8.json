@@ -1,0 +1,93 @@
+{
+    "name": "BlocksworldScaling8",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know the available primitive actions in this block world: pick-up, unstack, put-down, stack.",
+                "I can describe actions as operator schemas with preconditions and effects in STRIPS style."
+            ],
+            "goal": "Propose correct operator schemas and a high-level plan fragment to achieve the goal configuration."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checks and in removing bookkeeping shortcuts such as implicit tokens or post-hoc penalties.",
+                "I validate that preconditions and effects fully capture resource constraints (hand empty/holding) and that no action shortcuts are used."
+            ],
+            "goal": "Audit the planner's operator schemas and proposed fragments, identify missing causal links or improper shortcuts, and produce corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyst outputs into a final PDDL domain and problem targeting the FastDownwards planner.",
+                "I must keep actions from different contributors distinct if needed and resolve naming inconsistencies."
+            ],
+            "goal": "Produce a complete PDDL domain and problem (FastDownwards-compatible) that achieves the stated goal from the given initial state."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "orange",
+                "yellow",
+                "red"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available actions: pick-up a block, unstack a block, put-down a block, stack a block on top of another block.",
+            "Only one block can be picked up or unstacked at a time.",
+            "Pick-up/unstack requires the hand to be empty beforehand.",
+            "A block is clear if nothing is on top of it and it is not currently picked up.",
+            "Pick-up is allowed only for a clear block that is on the table.",
+            "Unstack is allowed only if the block to be unstacked is on top of another block and is clear.",
+            "After pick-up or unstack, the agent is holding that block.",
+            "Put-down is allowed only if the agent is holding a block and puts it on the table; hand becomes empty afterward.",
+            "Stack is allowed only if the agent is holding a block and the target block is clear; after stacking, the target block is no longer clear and the hand becomes empty.",
+            "Initial facts: blue is clear, orange is clear, yellow is clear, hand is empty, yellow is on top of red, red is on the table, blue is on the table, orange is on the table.",
+            "Goal: blue on top of yellow, and yellow on top of red."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_fragments",
+                "system_prompt": "You are a domain expert in block-stacking problems. Provide structured operator schemas (name, parameters, preconditions, add effects, delete effects) and a concise high-level plan fragment that moves from the initial state toward the goal. Do NOT emit a full PDDL domain or problem; do not invent solver-specific wrappers. Be explicit about resource constraints such as the 'hand empty' and 'holding' predicates and about what 'clear' means.",
+                "prompt": "Agent name: planner. Use the environment public information and your private information to produce operator schemas and a short plan fragment that respects the action restrictions and initial conditions. If information is missing, list assumptions explicitly rather than embedding them in operator shortcuts. Output must be a structured fragment suitable for later translation to PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_fragments"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Your role is to inspect operator schemas and plan fragments for hidden bookkeeping shortcuts, missing causal links, incorrect resource handling, or implicit simultaneous actions. Propose concrete corrections and clarifications so the schemas become faithful STRIPS-style operators without tokens or post-hoc penalties.",
+                "prompt": "Agent name: auditor. Examine the planner's fragments provided as input. Identify any places where the planner used shortcuts (for example, implicit hand tokens, omitted delete effects, or simultaneous actions) and produce a corrected set of operator constraints, explicit temporal/causal ordering requirements, and any additional predicates needed to avoid shortcuts. Return a concise report with corrections and justifications."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_fragments",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in creating complete PDDL domains and problems for the FastDownwards planner. Integrate the operator schemas and the auditor's corrections into a single coherent PDDL domain and a PDDL problem file targeting FastDownwards. Keep agent-contributed actions and naming distinct if they refer to different conceptual operators, resolve naming inconsistencies, and ensure all preconditions and effects are explicit. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent name: orchestrator. You receive the planner fragments and the auditor report as inputs. Integrate them into a single FastDownwards-compatible PDDL domain and a PDDL problem that models the initial state and the goal (blue on yellow, yellow on red). Keep the domain and problem well-formed for FastDownwards, make clear any additional predicates introduced by the auditor, and ensure no bookkeeping shortcuts remain. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.analysis->auditor.audit",
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

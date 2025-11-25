@@ -1,0 +1,110 @@
+{
+    "name": "HanoiScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "constraint_generator",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "There are five disks ordered smallest to largest: A, B, C, D, E",
+                "There are three pegs named left, middle, right",
+                "The only primitive physical action available is: move the top disk from one peg to another peg"
+            ],
+            "goal": "Provide a clear, declarative representation of the Tower of Hanoi domain state and abstract action schemas without emitting PDDL."
+        },
+        "constraint_generator": {
+            "private_information": [
+                "Legal-move rules must be enforced: move only one disk at a time, only the top disk of a peg may be moved, and a larger disk may never be placed on top of a smaller disk",
+                "The left peg can be used as an intermediate but must end empty at the end"
+            ],
+            "goal": "Enumerate invariants, causal constraints, and state invariants for the domain, and express them as structured constraints rather than PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Responsible for checking temporal and causal consistency and for removing modeling shortcuts that use bookkeeping tokens, quotas, or post-hoc penalties",
+                "Ensure the model stays faithful to physical rules and that any suggested optimizations preserve soundness"
+            ],
+            "goal": "Audit the model and constraints to remove bookkeeping shortcuts and produce a corrected, temporally and causally consistent constraint set."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the model, constraints, and audit results and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 5,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disk_order_smallest_to_largest": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ]
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right",
+            "There are five disks: A (smallest), B, C, D, E (largest)",
+            "Initial state: right peg holds from top to bottom A, B, C, D, E; left and middle pegs are empty",
+            "Goal state: middle peg must hold from top to bottom A, B, C, D, E and left and right pegs must be empty",
+            "Allowed primitive action: move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time, only the top disk of a peg may be moved, never place a larger disk on top of a smaller disk",
+            "The left peg may be used as an intermediate but must be empty at the end"
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "describe_model": {
+                "input": [],
+                "output": "model_description",
+                "system_prompt": "You are an expert knowledge engineer. Provide a clear, declarative representation of the Tower of Hanoi domain state and abstract action schemas. Specify objects and types, predicates to encode disk-on-disk and disk-on-peg relations, and abstract action schemas with preconditions and effects. Do not emit PDDL. Focus on an unambiguous representation that a planner engineer can translate into PDDL for FastDownwards."
+            }
+        },
+        "constraint_generator": {
+            "generate_constraints": {
+                "input": [
+                    "model_description"
+                ],
+                "output": "constraints_spec",
+                "system_prompt": "You are an expert in formal constraints for planning domains. From the provided model description, enumerate all domain invariants, mutual exclusions, and causal constraints required to ensure legal moves under the Tower of Hanoi rules. Provide these as structured constraints and guard clauses. You may propose performance-preserving encodings but do not introduce bookkeeping tokens, quotas, or post-hoc penalties; if you temporarily suggest a shortcut, mark it clearly for auditor review."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_description",
+                    "constraints_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency of planning models. Review the model description and constraints to detect and resolve temporal or causal anomalies, remove bookkeeping shortcuts such as quota tokens or post-hoc penalty schemes, and produce a corrected constraint set and a rationale for each change. Produce a concise audit report describing corrections and why they preserve soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_description",
+                    "constraints_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL for the FastDownwards planner. Integrate the model description, the constraints, and the auditor's corrections, and produce a final PDDL domain and a PDDL problem file suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain encodes objects, types, predicates, and a 'move' action that respects all Tower of Hanoi rules. Ensure the problem encodes five disks named A, B, C, D, E, initial state with all five disks on the right peg from top to bottom A,B,C,D,E, and the goal state with all five disks on the middle peg in the same order. Do not rely on bookkeeping shortcuts; use honest STRIPS-style preconditions and effects compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "modeler.describe_model->orchestrator.pddl",
+            "constraint_generator.generate_constraints->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

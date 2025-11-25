@@ -1,0 +1,106 @@
+{
+    "name": "BlocksworldScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyst",
+            "executor",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyst": {
+            "private_information": [
+                "You are an analyst of the blocks world domain and understand entities like blocks, table, and a single hand.",
+                "You know the atomic actions available: pick-up, unstack, put-down, stack.",
+                "You know the general action preconditions and effects but you must not emit PDDL directly."
+            ],
+            "goal": "Help derive a clear symbolic description of the domain primitives, predicates, and intended preconditions and effects relevant to the task."
+        },
+        "executor": {
+            "private_information": [
+                "You observe the initial configuration and can propose a step-by-step plan in natural language using the allowed actions.",
+                "You respect the constraint that only one block can be moved at a time and that moves require the hand to be empty when picking up or unstacking."
+            ],
+            "goal": "Produce a concrete, ordered plan in natural language that transforms the initial state into the goal state, using only the permitted actions and obeying action restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "You ensure all assumed shortcuts are explicitized as real preconditions or effects, and you validate that the plan is causally valid and temporally consistent."
+            ],
+            "goal": "Produce a corrective audit report that identifies any causal or temporal issues in the proposed plan or analysis and provide explicit fixes or tighter preconditions/effects."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You are the final integrator that receives analysis, natural-language plans, and audit corrections and must produce the final PDDL domain and problem."
+            ],
+            "goal": "Produce a complete PDDL domain and a PDDL problem suitable for the FastDownwards solver that implements the blocks world instance and the specified goal state."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "hand": "empty",
+            "table": "present",
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: classical blocks world with blocks and a single hand.",
+            "Available actions: pick-up, unstack, put-down, stack.",
+            "Action restrictions: only one block moved at a time; pick-up or unstack require the hand to be empty; a block must be clear to be picked up or to have another block stacked on it; unstack requires the block to be on another block.",
+            "Initial state facts: red is clear, hand is empty, red is on top of blue, blue is on top of yellow, yellow is on top of orange, orange is on the table.",
+            "Goal facts: red on top of blue, orange on top of red, yellow on top of orange."
+        ]
+    },
+    "workflow": {
+        "analyst": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_report",
+                "system_prompt": "You are an expert analyst of symbolic planning domains. Provide a clear, structured description of domain entities, predicates, and intended preconditions and effects for each action without emitting PDDL code. Focus on canonical predicate names, typing, and any implicit frame axioms that must be explicitized.",
+                "prompt": "Your name is analyst. Use the public environment information {environment->public_information} and your private information {agents->analyst->private_information} to produce a structured analysis that lists likely predicates, the arity and meaning of each predicate, the actions with their intended preconditions and effects in natural language, and any assumptions that must be made explicit for sound planning. Do not output PDDL."
+            }
+        },
+        "executor": {
+            "plan": {
+                "input": [
+                    "analysis_report"
+                ],
+                "output": "plan_natural",
+                "system_prompt": "You are a planner that writes human-readable, step-by-step plans for the blocks world. Do not output PDDL. Produce an ordered sequence of concrete actions with the exact block names used in the environment.",
+                "prompt": "Your name is executor. Use the public environment information {environment->public_information} and the analyst output {analysis_report} and your private information {agents->executor->private_information} to produce a concrete plan in natural language that achieves the stated goal {agents->orchestrator->goal}. The plan should be ordered, explicit about actions and their direct effects, and adhere to all action restrictions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_report",
+                    "plan_natural"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning. Identify any implicit bookkeeping shortcuts and turn them into explicit preconditions or effects. Do not emit PDDL. Produce a report that lists detected issues, causal dependencies, ordering constraints, and precise corrections.",
+                "prompt": "Your name is auditor. Use the public environment information {environment->public_information}, the analyst report {analysis_report}, and the concrete plan {plan_natural} to audit causal links and temporal ordering. Point out any assumptions that would be invalid in a real execution, remove bookkeeping shortcuts, and provide explicit fixes or stronger preconditions/effects so the plan becomes executable and causally sound."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_report",
+                    "plan_natural",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL generation and integration and must produce a PDDL domain and a PDDL problem targeting the FastDownwards planner. Integrate analyses and audit corrections. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Ensure the domain is fully specified with clear predicates, action schemas, preconditions and effects, and that the problem encodes the given initial state and goal. Use constructs compatible with FastDownwards and avoid nonstandard extensions.",
+                "prompt": "Your name is orchestrator. Receive the analysis {analysis_report}, the concrete plan {plan_natural}, the audit corrections {audit_report}, and the public environment information {environment->public_information}. Integrate these inputs, reconcile naming and assumptions, enforce auditor corrections, and produce a final PDDL domain and a PDDL problem suitable for FastDownwards that implements the described instance. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Keep agent actions distinct if relevant and ensure the problem and domain are consistent with the original goal {agents->orchestrator->goal}."
+            }
+        },
+        "constraints": [
+            "analyst.analysis->executor.plan",
+            "executor.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "analyst.analysis->orchestrator.pddl",
+            "executor.plan->orchestrator.pddl"
+        ]
+    }
+}

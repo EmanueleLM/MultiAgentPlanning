@@ -1,0 +1,97 @@
+(define (domain blocksworld-scaling28)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block stage)
+  (:predicates
+    (ontable ?b - block)
+    (on ?b - block ?x - block)
+    (clear ?b - block)
+    (holding ?b - block)
+    (handempty)
+    (at-stage ?s - stage)
+    (successor ?s1 - stage ?s2 - stage)
+  )
+
+  ;; Pick up a clear block from the table when the hand is empty.
+  ;; Time is advanced from stage ?s to successor ?s2.
+  (:action pickup
+    :parameters (?b - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (ontable ?b)
+                    (clear ?b)
+                    (handempty)
+                    (not (holding ?b))
+                    (at-stage ?s)
+                    (successor ?s ?s2)
+                  )
+    :effect (and
+              (not (ontable ?b))
+              (not (clear ?b))
+              (not (handempty))
+              (holding ?b)
+              (not (at-stage ?s))
+              (at-stage ?s2)
+            )
+  )
+
+  ;; Unstack a clear block ?b that is directly on ?x, when the hand is empty.
+  ;; After unstacking, ?x becomes clear.
+  (:action unstack
+    :parameters (?b - block ?x - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (on ?b ?x)
+                    (clear ?b)
+                    (handempty)
+                    (not (holding ?b))
+                    (at-stage ?s)
+                    (successor ?s ?s2)
+                  )
+    :effect (and
+              (not (on ?b ?x))
+              (holding ?b)
+              (not (clear ?b))
+              (clear ?x)
+              (not (handempty))
+              (not (at-stage ?s))
+              (at-stage ?s2)
+            )
+  )
+
+  ;; Put down a block from the hand onto the table.
+  (:action putdown
+    :parameters (?b - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (holding ?b)
+                    (at-stage ?s)
+                    (successor ?s ?s2)
+                  )
+    :effect (and
+              (ontable ?b)
+              (clear ?b)
+              (handempty)
+              (not (holding ?b))
+              (not (at-stage ?s))
+              (at-stage ?s2)
+            )
+  )
+
+  ;; Stack a held block ?b on top of a clear block ?x.
+  (:action stack
+    :parameters (?b - block ?x - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (holding ?b)
+                    (clear ?x)
+                    (not (holding ?x))
+                    (at-stage ?s)
+                    (successor ?s ?s2)
+                  )
+    :effect (and
+              (on ?b ?x)
+              (clear ?b)
+              (not (clear ?x))
+              (handempty)
+              (not (holding ?b))
+              (not (at-stage ?s))
+              (at-stage ?s2)
+            )
+  )
+)

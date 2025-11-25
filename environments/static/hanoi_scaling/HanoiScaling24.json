@@ -1,0 +1,104 @@
+{
+    "name": "HanoiScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_manager",
+            "move_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_manager": {
+            "private_information": [
+                "There are five disks named A, B, C, D, E from smallest to largest respectively.",
+                "Initial stack: middle peg contains from top to bottom A, B, C, D, E. Left and right pegs are empty.",
+                "Disks retain a strict total order by size and this ordering must be preserved in all configurations."
+            ],
+            "goal": "Provide a precise state model that lists objects, pegs, disk size ordering, the initial configuration, and the intended goal configuration."
+        },
+        "move_planner": {
+            "private_information": [
+                "Allowed atomic action: move the top disk from one peg to another peg.",
+                "Constraints: move only one disk at a time; only top disk of a peg may be moved; never place a larger disk on a smaller disk.",
+                "Use the left peg as an auxiliary but it must end empty in the final state."
+            ],
+            "goal": "Provide canonical operator descriptions for the move action and a high-level step outline to solve the 5-disk Tower of Hanoi instance."
+        },
+        "auditor": {
+            "private_information": [
+                "Responsibilities: check temporal and causal consistency of plans and remove bookkeeping shortcuts such as quota tokens, artificial penalties, or post-hoc corrections.",
+                "Ensure invariants are enforced explicitly and that no shortcutting of physical constraints occurs in the plan."
+            ],
+            "goal": "Audit the state model and high-level plan for causal and temporal consistency, and produce a report that identifies and removes any bookkeeping shortcuts or unjustified assumptions."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the models and analyses from the other agents and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that solves the 5-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5,
+            "visibility": 1
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with three pegs named left, middle, right.",
+            "Initial configuration: middle peg holds from top to bottom disks A, B, C, D, E where A is smallest and E is largest. Left and right pegs are empty.",
+            "Goal configuration: right peg must hold from top to bottom disks A, B, C, D, E and both left and middle pegs must be empty.",
+            "Action schema: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time; only the top disk on a peg may be moved; a larger disk may never be placed on top of a smaller disk; disk size ordering is strict and preserved."
+        ]
+    },
+    "workflow": {
+        "disk_manager": {
+            "analysis": {
+                "input": [],
+                "output": "disk_model",
+                "system_prompt": "You are an expert in state representation for planning. Build a clear abstract model for the Tower of Hanoi instance. List objects, pegs, disk size ordering, predicates to represent top-of-stack and disk-below relationships, and the exact initial and goal configurations. Do not emit PDDL; produce a canonical model description suitable for planners to consume.",
+                "prompt": "Your name is disk_manager. Use the public information about the environment and your private information to produce a canonical model description that enumerates pegs, disk objects, size relations, and explicit initial and goal state encodings. Focus on invariants and object definitions and avoid producing PDDL."
+            }
+        },
+        "move_planner": {
+            "planning": {
+                "input": [
+                    "disk_model"
+                ],
+                "output": "partial_plan",
+                "system_prompt": "You are an expert planner who specializes in operator schemas and high-level plan outlines. Provide a precise operator description for moving a top disk including preconditions and effects in abstract terms, and produce a high-level sequence outline for solving the 5-disk problem. Do not emit PDDL; keep the output as an operator schema and ordered step list.",
+                "prompt": "Your name is move_planner. Based on the model provided by disk_manager and the public information, produce the canonical move operator with explicit preconditions and effects and a high-level plan skeleton that would achieve the goal for five disks using left, middle, and right pegs. Do not produce full PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "disk_model",
+                    "partial_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor charged with verifying temporal and causal consistency and forbidding bookkeeping shortcuts. Identify any use of tokens, quotas, artificial penalties, or post-hoc fixes and remove them. Confirm that every move in the plan respects the top-disk and size-order constraints and that the plan does not rely on bookkeeping shortcuts.",
+                "prompt": "Your name is auditor. Using the model and plan from the previous agents, produce a consistency report that highlights causal dependencies, temporal ordering requirements, and any implicit assumptions. Remove or flag any bookkeeping shortcuts and propose corrections so the plan is physically and causally valid."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_model",
+                    "partial_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in producing PDDL suitable for the FastDownwards planner. Integrate the model, the operator schemas, and the auditor corrections to emit a complete PDDL domain and a PDDL problem that fully encode the 5-disk Tower of Hanoi instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Ensure predicates and action names are explicit, type declarations are clear if used, and the resulting PDDL is compatible with FastDownwards.",
+                "prompt": "Your name is orchestrator. Integrate the outputs from disk_manager, move_planner, and auditor and produce a final PDDL domain and PDDL problem that encode the initial and goal states and the allowed move operator for the 5-disk Tower of Hanoi. Keep agent contributions distinct in comments or naming where useful. Enclose the domain between <domain></domain> tags and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "disk_manager.analysis->move_planner.planning",
+            "disk_manager.analysis->auditor.audit",
+            "move_planner.planning->auditor.audit",
+            "move_planner.planning->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

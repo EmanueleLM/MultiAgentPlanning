@@ -1,0 +1,98 @@
+{
+    "name": "HanoiScaling14",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move exactly one top disk from one peg to another peg in a single action.",
+                "I must obey the Hanoi rules: only one disk moved at a time, only top disks may be moved, and a larger disk may never be placed on top of a smaller disk.",
+                "Disk labels from smallest to largest are A, B, C, D, E.",
+                "Initial arrangement: middle peg holds from top to bottom A, B, C, D, E. Left and right pegs are empty.",
+                "My role is to propose a concrete, explicit, step-by-step legal sequence of moves that achieves the global goal without using bookkeeping shortcuts."
+            ],
+            "goal": "Move all disks from the middle peg to the left peg in the correct order, using the right peg as auxiliary, leaving the middle and right pegs empty."
+        },
+        "auditor": {
+            "private_information": [
+                "I verify temporal and causal consistency of move sequences and remove bookkeeping shortcuts such as abstract tokens or post-hoc penalties.",
+                "I check that each stated move moves the top disk of its source peg, that no move results in a larger disk being placed on a smaller disk, and that the final state matches the goal.",
+                "I will produce corrections or minimal edits when inconsistencies are detected, and I will produce a concise justification for any change."
+            ],
+            "goal": "Audit and validate any proposed move sequence so that it is causally and temporally consistent with the Hanoi rules and ready to be encoded into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the mover's plan and the auditor's validation to produce a final PDDL domain and PDDL problem description suitable for the FastDownward planner that solves the five-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 5,
+            "disk_labels": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "initial_state": "middle holds from top to bottom A, B, C, D, E; left and right are empty",
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a standard Tower of Hanoi puzzle with three pegs: left, middle, and right.",
+            "There are five disks labeled A (smallest) through E (largest).",
+            "Legal action: move the top disk from one peg to another peg.",
+            "Rules to obey: move only one disk at a time; move only a top disk; never place a larger disk on top of a smaller disk.",
+            "Initial configuration: middle peg contains A, B, C, D, E from top to bottom; left and right pegs are empty.",
+            "Goal configuration: left peg must contain A, B, C, D, E from top to bottom and both middle and right pegs must be empty.",
+            "The right peg may be used as an intermediate but must be empty at the end."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "plan": {
+                "input": [],
+                "output": "plan_mover",
+                "system_prompt": "You are an expert at devising explicit legal move sequences for Tower of Hanoi puzzles. Provide a detailed step-by-step sequence of moves from the initial state to the goal state. Each move must identify the disk and the source and target peg, for example 'move disk A from middle to left'. Do not produce PDDL. Do not use abstract bookkeeping shortcuts. If any assumption is required, state it clearly.",
+                "prompt": "Your name is mover. Use the public information about the environment and your private knowledge of the Hanoi rules to produce an explicit sequence of legal moves that transfers all five disks from the middle peg to the left peg using the right peg as auxiliary. Present the moves in order and list any assumptions or edge cases you considered."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_mover"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor for sequential move plans. Given a concrete move sequence, verify that each move is legal under Hanoi rules, that the moved disk was on top of its source peg at the time of the move, and that no larger disk ever lands on a smaller disk. Remove or flag any bookkeeping shortcuts and provide minimal edits or corrections. Provide a brief justification for each correction.",
+                "prompt": "Your name is auditor. You will receive a proposed move sequence from the mover. Check every move for top-disk validity and size-order preservation, simulate the sequence mentally or symbolically, and return either a clean validation report confirming the sequence is correct or a corrected minimal sequence and explanations for the corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_mover",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL encoding for FastDownward. Integrate the mover's move sequence and the auditor's validation to produce a single consistent PDDL domain and PDDL problem file that represent the five-disk Tower of Hanoi instance. Target features compatible with the FastDownward planner: use STRIPS-compatible constructs without ADL or conditional effects, keep actions explicit and deterministic, and use clear object names and predicates. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions are named and parameterized clearly so that planners like FastDownward can parse them.",
+                "prompt": "Your name is orchestrator. You will receive the mover's proposed sequence and the auditor's report. Use them to build a complete PDDL domain and problem capturing the initial state and the goal for five disks labeled A through E and pegs left, middle, and right. Ensure the domain encodes a single action type for moving a top disk and enforces the size ordering constraint. The final PDDL must be executable by FastDownward. Include any typing or requirements lines necessary for compatibility. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.plan->auditor.audit",
+            "mover.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

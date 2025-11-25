@@ -88,7 +88,6 @@ def build_judge_prompt_lines(prompt_key: str) -> list[str]:
     base_lines = [
         "Determine whether the candidate plan achieves the same outcome as the golden plan.",
         "Ignore superficial wording differences; focus on whether the proposed plan satisfies the goal expressed by the golden plan.",
-        "Something that you should not ignore is whether the initial prompt is a multi-agent task or single-agent task; make sure the candidate plan matches the agent structure of the golden plan.",
     ]
     if prompt_key:
         base_lines.extend(PROMPTS_LLM_JUDGE.get(prompt_key, []))

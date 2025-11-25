@@ -1,0 +1,113 @@
+{
+    "name": "HanoiScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Produce an actionable sequence of legal moves that transfers the full stack from the right peg to the middle peg using the left peg as intermediate, while obeying the Hanoi rules."
+        },
+        "observer": {
+            "private_information": [
+                "I can observe and enumerate peg contents and simulate state transitions",
+                "I can represent states as ordered stacks for each peg"
+            ],
+            "goal": "Provide a clear state-transition model and explicit initial and goal state encodings to support planning and verification."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts",
+                "I do not accept plans that rely on quotas, post-hoc penalties, or hidden state that evades the puzzle rules"
+            ],
+            "goal": "Ensure candidate plans and models obey causal ordering and all Hanoi constraints, and produce an audit report listing any illegal assumptions or shortcuts and suggested corrections."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the analyses and the audit to produce a final PDDL domain and problem file suitable for the FastDownward solver that moves all disks from the right peg to the middle peg with the left peg empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "num_pegs": 3,
+            "num_disks": 4
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are four disks ordered from smallest to largest as disk A, disk B, disk C, and disk D.",
+            "A valid action is to move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time, only move a disk that is on top of a peg, and never place a larger disk on top of a smaller disk.",
+            "Once a disk is moved it retains its size and relative ordering constraints with other disks.",
+            "Initial condition: the right peg holds from top to bottom disk A, disk B, disk C, disk D, and the left and middle pegs are empty.",
+            "Goal condition: the middle peg should hold from top to bottom disk A, disk B, disk C, disk D, and both the left peg and the right peg should be empty.",
+            "The left peg may be used as an intermediate parking spot but must end up empty."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_mover",
+                "system_prompt": "You are the mover agent whose role is to decompose the Hanoi transfer into concrete legal move steps and to produce an abstract action schema and candidate move sequences. Do not emit final PDDL; instead provide a clear move schema, any assumptions you rely on, and one or more candidate move sequences consistent with the public information and your private knowledge.",
+                "prompt": "You are named mover. Use the public information about the environment and your private knowledge to produce an abstract action schema for moves and a stepwise candidate sequence to move all disks from the right peg to the middle peg while respecting Hanoi rules. Explicitly list any assumptions you use."
+            }
+        },
+        "observer": {
+            "model": {
+                "input": [],
+                "output": "model_observer",
+                "system_prompt": "You are the observer agent tasked with producing formal state encodings and a state-transition model for the Tower of Hanoi instance. Provide structured initial and goal state representations and the preconditions and effects for the move action in human-readable structured form. Do not emit final PDDL.",
+                "prompt": "You are named observer. Given the public information and your private knowledge, encode the initial state and goal state as explicit peg stacks, define the legal move transition and its preconditions and effects, and enumerate any invariants that must hold across transitions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_mover",
+                    "model_observer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent responsible for checking temporal and causal consistency and for removing bookkeeping shortcuts. Analyze provided plan fragments and models, identify illegal assumptions such as hidden counters, quotas, or post-hoc fixes, verify that each move respects top-only and size ordering constraints, and produce a corrective audit report. Do not emit PDDL.",
+                "prompt": "You are named auditor. Receive the mover analysis and the observer model. Verify causal ordering, detect any shortcuts or illicit bookkeeping, confirm that every move is legal with respect to disk sizes and top-only constraints, and produce an audit report listing issues and required corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_mover",
+                    "model_observer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and must integrate analyses and audit findings to produce a final PDDL domain and PDDL problem intended for the FastDownward planner. The domain and problem must be complete, consistent, and directly usable by FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-level modelling distinctions clear if relevant.",
+                "prompt": "You are named orchestrator. Use the mover analysis, the observer model, and the auditor report to create a complete PDDL domain and a PDDL problem that encodes the Tower of Hanoi instance with four disks and three pegs, initial and goal states as specified, and a move action that enforces top-only and size ordering constraints. Target the FastDownward solver and ensure the produced PDDL is self-contained and ready to run. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "observer.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -76,96 +76,88 @@ DATASET = {
         "data": DATA_PATH / "planbench/obfuscated_deceptive_logistics.json",
         "results": RESULTS_FOLDER / "planbench",
     },
-    # Blocksworld
     "blocksworld": {
         "data": DATA_PATH / "planbench/blocksworld.json",
         "results": RESULTS_FOLDER / "planbench",
     },
-    # Hanoi multi-agent
-    "hanoi_multi_agent_2_agents_10_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_10_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_10_disks",
+    "blocksworld_easy": {
+        "data": DATA_PATH / "blocksworld/blocksworld_easy.json",
+        "results": RESULTS_FOLDER / "blocksworld" / "blocksworld_easy",
     },
-    "hanoi_multi_agent_2_agents_15_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_15_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_15_disks",
+    "blocksworld_medium": {
+        "data": DATA_PATH / "blocksworld/blocksworld_medium.json",
+        "results": RESULTS_FOLDER / "blocksworld" / "blocksworld_medium",
     },
-    "hanoi_multi_agent_2_agents_20_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_2_agents_20_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_2_agents_20_disks",
+    "blocksworld_hard": {
+        "data": DATA_PATH / "blocksworld/blocksworld_hard.json",
+        "results": RESULTS_FOLDER / "blocksworld" / "blocksworld_hard",
     },
-    "hanoi_multi_agent_3_agents_10_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_10_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_10_disks",
+    "hanoi_easy": {
+        "data": DATA_PATH / "hanoi/hanoi_easy.json",
+        "results": RESULTS_FOLDER / "hanoi" / "hanoi_easy",
     },
-    "hanoi_multi_agent_3_agents_15_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_15_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_15_disks",
+    "hanoi_medium": {
+        "data": DATA_PATH / "hanoi/hanoi_medium.json",
+        "results": RESULTS_FOLDER / "hanoi" / "hanoi_medium",
     },
-    "hanoi_multi_agent_3_agents_20_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_3_agents_20_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_3_agents_20_disks",
-    },
-    "hanoi_multi_agent_4_agents_10_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_10_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_10_disks",
-    },
-    "hanoi_multi_agent_4_agents_15_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_15_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_15_disks",
-    },
-    "hanoi_multi_agent_4_agents_20_disks": {
-        "data": DATA_PATH / "hanoi_multi_agent/hanoi_4_agents_20_disks.json",
-        "results": RESULTS_FOLDER / "hanoi_multi_agent" / "hanoi_4_agents_20_disks",
-    },
+    "hanoi_hard": {
+        "data": DATA_PATH / "hanoi/hanoi_hard.json",
+        "results": RESULTS_FOLDER / "hanoi" / "hanoi_hard",
+    }
 }
 
 # LLM-as-a-judge prompts
 PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
-    "trip_planning": [
-        "Verify that the duration of each city visitation strictly matches the original prompt (prompt_0shot); when judging against the golden reference plan, keep in mind that the proposed plan may visit each city in a different order and with multiple flights; unless otherwise stated, what matters is that the stay duration in each city is correct and the meetings with other people happen as planned. This is also important: if one flies between two cities, that counts as a day spent in both cities!",
-    ],
-    "meeting_planning": [
-        "Ensure every scheduled meeting matches the golden plan in start time and duration. It is important that you check whether the proposed plan matches the constraints in the original prompt (prompt_0shot), rather than the golden plan, as the proposed plan may schedule events in a different order or time slots, as long as all constraints are satisfied.",
-    ],
     "calendar_scheduling": [
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
         "Check that every calendar event in the golden plan appears at the same time, with the same participants and resources.",
     ],
+    "meeting_planning": [
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
+        "Ensure every scheduled meeting matches the golden plan in start time and duration. It is important that you check whether the candidate plan matches the constraints in the original prompt (prompt_0shot), rather than the golden plan, as the candidate plan may schedule events in a different order or time slots, as long as all constraints are satisfied.",
+    ],
+    "trip_planning": [
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
+        "Verify that the duration of each city visitation strictly matches the original prompt (prompt_0shot); when judging against the golden reference plan, keep in mind that the candidate plan may visit each city in a different order and with multiple flights; unless otherwise stated, what matters is that the stay duration in each city is correct and the meetings with other people happen as planned. This is also important: if one flies between two cities, that counts as a day spent in both cities!",
+    ],
     "logistics": [
-        "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the proposed plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
+        "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the candidate plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
     ],
     "depots": [
-        "Ensure hoist, truck, and pallet interactions mirror the golden plan exactly, including pickup/drop ordering.",
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
+        "Ensure the actions in the candidate plan produce the correct outcome. The plan may differ, as long as the final outcomes are achieved and the actions defined in the prompt are followed and valid.",
         "Reject plans that leave objects at different depots, but keep those that introduce alternative lifting sequences or drop-off points, if they still achieve the same overall goal.",
     ],
     "blocksworld": [
-        "Check that every block stack configuration matches the golden plan at the end. If the intermediate steps differ but the final arrangement is identical and all the actions in the proposed plan are allowed, accept the plan.",
-        "Ignore cost differences only if the final arrangement is identical to the golden plan.",
+        "For this problem, check whether the natural plan, which is the candidate plan, matches the golden plan.",
+        "Check that every block stack configuration matches the golden plan at the end. If the intermediate steps differ but the final arrangement is identical and all the actions in the candidate plan are allowed, accept the plan.",
+        "Ignore cost differences if the final arrangement is identical to the golden plan.",
     ],
-    "mystery_blocksworld": [
-        "Treat the golden plan as the authoritative block arrangement; ensure the candidate builds identical towers and ordering. If the candidate plan achieves the same final arrangement with different intermediate steps, accept it, as long as the actions are allowed.",
+    "blocksworld_easy": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions and *employing the same number of actions*. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ],
-    "obfuscated_deceptive_logistics": [
-        "Confirm that all packages, vehicles, and locations end in the same configuration as the golden plan and that load/unload steps match. Keep in mind that the proposed plan may use different routes or intermediate stops, as long as the final configuration and load/unload actions are consistent with the golden plan.",
+    "blocksworld_medium": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions and *employing the same number of actions*. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ],
-    "hanoi_multi_agent_2_agents_10_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    "blocksworld_hard": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions and *employing the same number of actions*. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ],
-    "hanoi_multi_agent_2_agents_15_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    "hanoi_easy": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
     ],
-    "hanoi_multi_agent_2_agents_20_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
+    "hanoi_medium": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
     ],
-    "hanoi_multi_agent_3_agents_10_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
-    ],
-    "hanoi_multi_agent_3_agents_15_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
-    ],
-    "hanoi_multi_agent_3_agents_20_disks": [
-        "Ensure that all disks are moved from the initial peg to the target peg in the correct order, following the rules of the Tower of Hanoi. The proposed plan must not place a larger disk on top of a smaller disk at any point. The final configuration must match the golden plan exactly, yet the intermediate steps can differ as long as the final arrangement is achieved.",
-    ],
+    "hanoi_hard": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
+    ]
 }
 
 # Solvers configuration

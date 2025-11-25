@@ -1,0 +1,84 @@
+{
+    "name": "HanoiScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know recursive and iterative strategies for solving Tower of Hanoi puzzles",
+                "I can produce an ordered sequence of legal moves for 4 disks"
+            ],
+            "goal": "Move the tower of 4 disks from the right peg to the left peg following the puzzle rules and leaving the middle peg empty"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in checking temporal and causal consistency and eliminating bookkeeping shortcuts",
+                "I detect illegal moves such as moving non-top disks or placing larger disks on smaller ones"
+            ],
+            "goal": "Verify that any proposed plan respects the puzzle rules, is temporally and causally consistent, and contains no bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate analyses and produce a final PDDL domain and PDDL problem compatible with the FastDownwards solver that achieves the global goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ]
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right",
+            "There are four disks from smallest to largest named disk A disk B disk C disk D",
+            "Initial state: right peg holds from top to bottom disk A disk B disk C disk D while middle and left pegs are empty",
+            "Goal state: left peg must hold from top to bottom disk A disk B disk C disk D and both right and middle pegs must be empty",
+            "Allowed action: move the top disk from one peg to another peg",
+            "Rules: only one disk moved at a time may only move a disk that is on top of a peg may never place a larger disk on top of a smaller disk once a disk is moved it keeps its relative size ordering with the others",
+            "The middle peg may be used as an intermediate parking spot but must end up empty"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "plan_planner",
+                "system_prompt": "You are an expert planner for the Tower of Hanoi puzzle. Given the public information about pegs disks initial state and goal state produce a concrete ordered move sequence that moves the tower of four disks from the right peg to the left peg while obeying all puzzle rules. Do not emit PDDL. Present the plan as a numbered list of moves where each move is represented as a pair source->destination using peg names left middle right and refer to disks by their names A B C D. If any assumption is needed state it explicitly and avoid shortcuts or toy bookkeeping tokens."
+            }
+        },
+        "auditor": {
+            "analysis": {
+                "input": [
+                    "plan_planner"
+                ],
+                "output": "audit_planner",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency and to remove bookkeeping shortcuts from proposed plans. You will receive a move sequence produced by another agent. Verify that each move moves a top disk only that no move places a larger disk on a smaller disk and that the plan results in the required final state with the middle peg empty. If you find violations propose precise corrections and a justification for each correction. Provide a cleaned validated move sequence and a summary of any changes you applied. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_planner",
+                    "audit_planner"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and in preparing problems for the FastDownwards planner. Your task is to take the planner move sequence and the auditor validation integrate them and produce a final PDDL domain and a PDDL problem that encode the Tower of Hanoi instance described in the public information and that is solvable by FastDownwards. Use only constructs supported by FastDownwards classical STRIPS and ADL features if necessary. Explicitly model pegs disks top relation and legal move preconditions and effects so that the planner cannot bypass rules with bookkeeping tokens. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make sure the domain and problem reflect the validated sequence if relevant and are self contained and executable by FastDownwards."
+            }
+        },
+        "constraints": [
+            "planner.analysis->auditor.analysis",
+            "planner.analysis->orchestrator.pddl",
+            "auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_picker",
+            "block_stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_picker": {
+            "private_information": [
+                "I can pick up a clear block from the table if my hand is empty.",
+                "I can unstack a clear block from on top of another block if my hand is empty.",
+                "Picking up or unstacking a block results in holding that block."
+            ],
+            "goal": "Achieve the goal configuration where the blue block is on the orange block and the yellow block is on the blue block."
+        },
+        "block_stacker": {
+            "private_information": [
+                "I can stack a block I am holding onto a clear block.",
+                "Putting down or stacking a block makes my hand empty.",
+                "Stacking a block on top of another block makes the lower block not clear."
+            ],
+            "goal": "Achieve the goal configuration where the blue block is on the orange block and the yellow block is on the blue block."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I verify that all preconditions and effects used by plans are consistent with the action model and initial state."
+            ],
+            "goal": "Provide an audit report that enforces causal and temporal consistency and removes bookkeeping shortcuts from submitted plans."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent plans and the auditor report and produce a final PDDL domain and problem targeting the FastDownward solver that achieves the block stacking goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "blue",
+                "orange",
+                "yellow",
+                "red"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available actions: pick-up a block, unstack a block from on top of another block, put-down a block, stack a block on top of another block.",
+            "You can only pick up or unstack one block at a time and only when your hand is empty.",
+            "A block is clear if there is no block on top of it and it is not being held.",
+            "You can pick up a block only if it is on the table and clear.",
+            "You can unstack a block only if it is on top of another block and clear.",
+            "Once you pick up or unstack a block you are holding it; once you put down or stack a block your hand becomes empty.",
+            "You can only stack a block on another block if you are holding the block being stacked and the target block is clear.",
+            "Once a block B is stacked on block A, block A is no longer clear.",
+            "Initial facts: blue is clear, orange is clear, yellow is clear, hand is empty, orange is on top of red, red is on the table, blue is on the table, yellow is on the table.",
+            "Goal: blue is on top of orange and yellow is on top of blue."
+        ]
+    },
+    "workflow": {
+        "block_picker": {
+            "plan": {
+                "input": [],
+                "output": "plan_block_picker",
+                "system_prompt": "You are block_picker. Use your private knowledge and the environment public information to produce a detailed step-by-step natural language plan or symbolic action sequence focusing on pick-up and unstack actions. List for each action the assumed preconditions and effects. Do not produce full PDDL; produce a clear actionable plan and the assumptions you use.",
+                "prompt": "Your name is block_picker. You are in an environment with the following public information: {environment->public_information}. You have the following private knowledge: {agents->block_picker->private_information}. This is the overall goal to achieve: {agents->block_picker->goal}. Produce a sequence of pick-up and unstack actions you would perform, with explicit preconditions and effects for each action, and highlight any uncertainties or missing information."
+            }
+        },
+        "block_stacker": {
+            "plan": {
+                "input": [],
+                "output": "plan_block_stacker",
+                "system_prompt": "You are block_stacker. Use your private knowledge and the environment public information to produce a detailed step-by-step natural language plan or symbolic action sequence focusing on stack and put-down actions. List for each action the assumed preconditions and effects. Do not produce full PDDL.",
+                "prompt": "Your name is block_stacker. You are in an environment with the following public information: {environment->public_information}. You have the following private knowledge: {agents->block_stacker->private_information}. This is the overall goal to achieve: {agents->block_stacker->goal}. Produce a sequence of stack and put-down actions you would perform, with explicit preconditions and effects for each action, and highlight any uncertainties or missing information."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_block_picker",
+                    "plan_block_stacker"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your role is to inspect submitted plans for temporal and causal consistency and to remove or flag bookkeeping shortcuts such as quota tokens or post-hoc penalties. Provide a concise audit report indicating inconsistencies, missing preconditions or effects, and corrected action sequences or suggested precise preconditions/effects.",
+                "prompt": "Your name is auditor. You will receive the following plans: {plan_block_picker} and {plan_block_stacker}. Use your private knowledge: {agents->auditor->private_information} and the public information: {environment->public_information}. Produce an audit report that verifies causal ordering, ensures hand and clear predicates are used correctly, removes shorthand bookkeeping devices, and outputs corrected or augmented action steps where needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_block_picker",
+                    "plan_block_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling. Integrate agent plans and the auditor report and produce a final PDDL domain and problem targeted to the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions that originate from different agents distinct and ensure the model enforces all stated action restrictions and initial conditions.",
+                "prompt": "You are orchestrator. You will receive the following inputs: {plan_block_picker}, {plan_block_stacker}, {audit_report}. Your job is to produce a unified PDDL domain and a PDDL problem file suitable for the FastDownward solver that models blocks, hand status, clear, on, ontable, holding, and the actions pick-up, unstack, put-down, and stack. Ensure action preconditions and effects reflect the public information and the auditor corrections. The problem must encode the initial state: blue clear, orange clear, yellow clear, hand empty, orange on red, red on table, blue on table, yellow on table. The goal must be blue on orange and yellow on blue. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Keep agent actions distinct where relevant and avoid assumptions not justified by inputs."
+            }
+        },
+        "constraints": [
+            "block_picker.plan->orchestrator.pddl",
+            "block_stacker.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

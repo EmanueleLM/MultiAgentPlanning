@@ -1,0 +1,109 @@
+{
+    "name": "BlocksworldScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "stacker",
+            "unstacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I specialize in Pick up, Put down, and Stack actions",
+                "I am responsible for describing preconditions and effects for stacking operations"
+            ],
+            "goal": "Provide a precise analysis of stack-related actions and their assumptions to enable generation of a complete planner model."
+        },
+        "unstacker": {
+            "private_information": [
+                "I specialize in Unstack and Pick up actions when a block is on another block",
+                "I am responsible for describing preconditions and effects for unstacking operations"
+            ],
+            "goal": "Provide a precise analysis of unstack-related actions and their assumptions to enable generation of a complete planner model."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across agents' analyses",
+                "I remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or informal side-conditions"
+            ],
+            "goal": "Detect and resolve causal or temporal inconsistencies and produce corrected constraints and clarifications for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate analyses and the auditor report to produce a final PDDL domain and problem suitable for the FastDownward solver that achieves the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "World: a blocks world with blocks red, blue, yellow, orange and a single hand",
+            "Actions available conceptually: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block",
+            "Restrictions: only one block can be picked up or unstacked at a time",
+            "Restrictions: pick up or unstack is only allowed if the hand is empty",
+            "A block is clear if it has no blocks on top and it is not being held",
+            "Pick up is allowed only for a clear block that is on the table",
+            "Unstack is allowed only for a clear block that is on top of another block and then the top block becomes held",
+            "Put down is allowed only when the agent is holding a block and results in the block being on the table and the hand becoming empty",
+            "Stack is allowed only when holding a block and the target block is clear; stacking makes the target block no longer clear and the hand becomes empty",
+            "Causal rule: after pick up or unstack the agent is holding the block",
+            "Initial state: red is clear, blue is clear, hand is empty, blue is on top of yellow, yellow is on top of orange, red is on the table, orange is on the table",
+            "Goal: blue is on top of red and orange is on top of blue"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "analysis": {
+                "input": [],
+                "output": "stacker_analysis",
+                "system_prompt": "You are the stacker analyst. Produce a concise structured description (not PDDL) of the action schemas related to PickUp, PutDown, and Stack from the perspective of stacking responsibilities. Specify for each action: name, required preconditions, deterministic effects, and any naming conventions or assumptions you require the orchestrator to confirm.",
+                "prompt": "Your name is stacker. Using the public information and your private knowledge, enumerate the stack-related action schemas, list explicit preconditions and effects, note any required predicates (for example clear, on-table, holding), and surface any unresolved naming or domain assumptions for the orchestrator to resolve."
+            }
+        },
+        "unstacker": {
+            "analysis": {
+                "input": [],
+                "output": "unstacker_analysis",
+                "system_prompt": "You are the unstacker analyst. Produce a concise structured description (not PDDL) of action schemas related to Unstack and PickUp when a block is on another block. Specify for each action: name, required preconditions, deterministic effects, and any conventions or assumptions to confirm.",
+                "prompt": "Your name is unstacker. Using the public information and your private knowledge, enumerate the unstack-related action schemas, list explicit preconditions and effects, note required predicates, and surface any unresolved naming or domain assumptions for the orchestrator to resolve."
+            }
+        },
+        "auditor": {
+            "report": {
+                "input": [
+                    "stacker_analysis",
+                    "unstacker_analysis"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor focused on temporal and causal correctness. Do not generate PDDL. Instead, reconcile the two analyses, detect any causal or temporal inconsistencies, remove or flag any bookkeeping shortcuts (for example quota tokens or post-hoc penalties), and produce a corrected, minimal set of causal constraints and clarifications for the orchestrator.",
+                "prompt": "Your name is auditor. Compare stacker_analysis and unstacker_analysis, produce a clear report listing conflicts, missing preconditions or effects, temporal ordering constraints, and any forbidden bookkeeping shortcuts. Provide suggested corrected predicates and invariant statements for the orchestrator to use."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "stacker_analysis",
+                    "unstacker_analysis",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and must produce a complete PDDL domain and problem compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct where they originate from different agents by using clear action names, and ensure all preconditions and effects conform to STRIPS-like semantics acceptable by FastDownward.",
+                "prompt": "You are the orchestrator. Integrate the agents' analyses and the auditor_report to generate a complete PDDL domain and a PDDL problem that model the blocks world described in public information, include actions PickUp, Unstack, PutDown, Stack with the exact causal and temporal constraints from the auditor, and target the FastDownward solver. Output the PDDL domain enclosed in <domain> tags and the PDDL problem enclosed in <problem> tags. If any assumption remains unresolved, list them succinctly before the PDDL output."
+            }
+        },
+        "constraints": [
+            "stacker.analysis->orchestrator.pddl",
+            "unstacker.analysis->orchestrator.pddl",
+            "auditor.report->orchestrator.pddl"
+        ]
+    }
+}

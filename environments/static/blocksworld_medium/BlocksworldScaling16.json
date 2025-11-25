@@ -1,0 +1,105 @@
+{
+    "name": "BlocksworldScaling16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "knowledge_agent",
+            "planner_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "knowledge_agent": {
+            "private_information": [
+                "Initial facts: red is clear, blue is clear, hand is empty",
+                "red is on top of yellow, yellow is on top of orange",
+                "blue is on the table, orange is on the table",
+                "Objects: red, blue, yellow, orange"
+            ],
+            "goal": "Produce a precise, unambiguous structured description of the initial world state suitable for planning. Do not emit PDDL. Represent relations such as on, on-table, clear, holding, and hand-empty. Do not assume more than the facts you have."
+        },
+        "planner_agent": {
+            "private_information": [
+                "Action repertoire: pick-up, unstack, put-down, stack",
+                "Constraints: only one block can be moved at a time. Hand must be empty to pick-up or unstack. Block to pick-up must be on table and clear. To unstack, the block must be on another block and clear. After pick-up or unstack, the agent holds the block. Only put-down if holding. Only stack if holding and target is clear. After put-down or stack, hand becomes empty. Stacking makes the target not clear."
+            ],
+            "goal": "Propose a high-level candidate plan as an ordered list of actions that could achieve the global goal from the initial facts. Use human-readable action names and argument lists. Respect the action constraints. Do not emit PDDL. Mark any assumptions or information gaps."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts such as tokens or post-hoc penalties",
+                "Check for illegal simultaneous moves, hidden assumptions, and any steps that violate clear, holding, or hand-empty constraints"
+            ],
+            "goal": "Examine the structured initial state and the proposed plan. Produce an audit report listing causal dependencies, temporal ordering constraints that must hold, any violations, and recommended corrections. Remove any shorthand assumptions such as implicit multiple holdings or implicit concurrency. Output a corrected, causally consistent plan fragment or constraints. Do not emit PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the state description, the planner candidate plan, and the auditor report to produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that achieves the goal: blue on orange and orange on yellow. Keep agent actions distinct if relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1,
+            "domain": "classical-blocksworld"
+        },
+        "public_information": [
+            "Available atomic actions are pick-up, unstack, put-down, stack",
+            "Only one block can be moved at a time",
+            "A block is clear if no block is on top of it and it is not being held",
+            "Pick-up can only be applied to a clear block on the table and only when the hand is empty",
+            "Unstack can only be applied to a clear block that is on top of another block and only when the hand is empty",
+            "After pick-up or unstack the agent is holding the block and hand is not empty",
+            "Put-down is only allowed when holding a block and results in the block being on the table and the hand empty",
+            "Stack is only allowed when holding a block and the target block is clear. After stacking the target becomes not clear and hand becomes empty"
+        ]
+    },
+    "workflow": {
+        "knowledge_agent": {
+            "describe_world": {
+                "input": [],
+                "output": "state_desc",
+                "system_prompt": "You are an agent that constructs precise, machine-friendly descriptions of the initial world state. Use predicates such as (on A B), (on-table A), (clear A), (holding A), and (hand-empty). Do not produce PDDL domain or problem files. Only report facts you are certain of from your private information and the public information. If some relation is not provided, explicitly mark it as unknown.",
+                "prompt": "Your name is knowledge_agent. You have the following public information: {environment->public_information}. You have the following private information: {agents->knowledge_agent->private_information}. Your goal is: {agents->knowledge_agent->goal}. Provide a structured state description named state_desc. List objects, their on relations, which blocks are on the table, which blocks are clear, and whether the hand is empty. Do not invent facts."
+            }
+        },
+        "planner_agent": {
+            "propose_moves": {
+                "input": [
+                    "state_desc"
+                ],
+                "output": "partial_plan",
+                "system_prompt": "You are a planning expert who proposes high-level, ordered sequences of actions given a precise state description. Use the action vocabulary pick-up, unstack, put-down, and stack. Your output is a human-readable plan with one action per step and explicit arguments. Do not output PDDL. Flag any assumptions or missing facts that limit plan validity.",
+                "prompt": "Your name is planner_agent. You receive the state description: {state_desc}. You also have the public constraints: {environment->public_information}. Your goal is: {agents->knowledge_agent->goal}. Produce a candidate plan as an ordered list of actions. Respect the action preconditions provided in the public information. Mark assumptions if needed."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "state_desc",
+                    "partial_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your job is to detect illegal steps, concurrency issues, and hidden bookkeeping shortcuts in proposed plans. You must translate any shorthand into explicit causal orderings and remove any violations. Provide corrected causal constraints or a corrected plan fragment. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You receive the state description and the candidate plan: {state_desc}, {partial_plan}. Your private role constraints are: {agents->auditor->private_information}. Produce an audit_report that lists any precondition violations, concurrency problems, and recommended corrections. If the plan is consistent, affirm that and annotate why. If corrections are needed, provide a corrected ordered sequence or constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_desc",
+                    "partial_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and PDDL problem targeted to the FastDownwards solver. Integrate the structured state, the planner proposal, and the auditor corrections. Use standard STRIPS-style PDDL that FastDownwards accepts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-level actions distinct if multiple agents' capabilities must be represented. Resolve naming inconsistencies and ensure the problem is complete and solvable by FastDownwards.",
+                "prompt": "Your name is orchestrator. You will receive: the structured initial state {state_desc}, the candidate plan {partial_plan}, and the audit report {audit_report}. Your goal is: {agents->orchestrator->goal}. Produce a complete PDDL domain and a PDDL problem that represents the blocks world instance and the target goal. Use predicates on, on-table, clear, holding, and hand-empty. Ensure preconditions and effects reflect the published action constraints. Format the domain and problem so they are directly usable with the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "knowledge_agent.describe_world->orchestrator.pddl",
+            "planner_agent.propose_moves->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

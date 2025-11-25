@@ -1,0 +1,104 @@
+{
+    "name": "BlocksworldScaling11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "stacker",
+            "unstacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I specialize in stack actions and reasoning about target block clearance",
+                "I can describe preconditions and effects for stacking and putting down operations"
+            ],
+            "goal": "Contribute action specifications and a local stacking plan so that the blue block ends up on top of the orange block and the yellow block ends up on top of the red block"
+        },
+        "unstacker": {
+            "private_information": [
+                "I specialize in pick up and unstack actions and reasoning about hand emptiness and block clearance",
+                "I can describe preconditions and effects for pickup and unstack operations"
+            ],
+            "goal": "Contribute action specifications and a local unstacking plan so that the blue block ends up on top of the orange block and the yellow block ends up on top of the red block"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as implicit tokens or post hoc penalties",
+                "I check that all preconditions and effects are explicit and that actions consume and restore resources consistently"
+            ],
+            "goal": "Produce an audit report that identifies and resolves causal shortcuts and ensures temporal consistency across the agents' specifications and local plans"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the specifications and plans from other agents and produce the final PDDL domain and problem targeting FastDownwards",
+                "I keep actions of different agents distinct and unify object names and predicates when appropriate"
+            ],
+            "goal": "Integrate inputs and emit a final PDDL domain and problem that FastDownwards can solve to achieve the goal arrangement"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand": "empty"
+        },
+        "public_information": [
+            "There are four blocks named red blue orange and yellow",
+            "Initial spatial relations: blue is on top of yellow, red is on the table, orange is on the table, yellow is on the table",
+            "Initial clear status: red is clear, blue is clear, orange is clear",
+            "Initial hand status: hand is empty",
+            "Available atomic actions are pick up a block from the table, unstack a block from another block, put down a block on the table, and stack a block onto another block",
+            "Action restrictions: only one block can be picked up or unstacked at a time and only when the hand is empty and the block is clear",
+            "Clear predicate semantics: a block is clear if there is no block on top of it and it is not being held",
+            "Stacking semantics: after stacking block A on block B block A becomes on B and B becomes not clear",
+            "Goal: blue on orange and yellow on red"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "analysis": {
+                "input": [],
+                "output": "spec_stacker",
+                "system_prompt": "You are the stacker analyst. Describe in precise structured form the stacking and put down actions. For each action provide a name, its parameters, explicit preconditions, and explicit effects. Provide a short local plan fragment that shows how stacking actions would be used to reach the goal from the public initial state. Do not emit final PDDL domain or problem. Focus on keeping predicates explicit and naming objects consistently with the environment.",
+                "prompt": "You are the agent named stacker. Use the environment public information and your private information to produce a precise specification of stacking and put down actions, including preconditions and effects, and a short local plan fragment relevant to achieving the goal. Do not output PDDL. If some information is missing, state what is missing but do not assume hidden resources."
+            }
+        },
+        "unstacker": {
+            "analysis": {
+                "input": [],
+                "output": "spec_unstacker",
+                "system_prompt": "You are the unstacker analyst. Describe in precise structured form the pickup and unstack actions. For each action provide a name, its parameters, explicit preconditions, and explicit effects. Provide a short local plan fragment that shows how pickup and unstack actions would be used to reach the goal from the public initial state. Do not emit final PDDL domain or problem. Focus on hand occupancy and clear predicates.",
+                "prompt": "You are the agent named unstacker. Use the environment public information and your private information to produce a precise specification of pickup and unstack actions, including preconditions and effects, and a short local plan fragment relevant to achieving the goal. Do not output PDDL. If some information is missing, state what is missing but do not invent implicit bookkeeping."
+            }
+        },
+        "auditor": {
+            "analysis": {
+                "input": [
+                    "spec_stacker",
+                    "spec_unstacker"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your job is to examine the action specifications and local plan fragments from other agents and ensure temporal and causal consistency. Identify and remove bookkeeping shortcuts such as quota tokens, implicit counters, or post-hoc penalties. Make explicit any required resource consumption and restoration. Produce a report that lists inconsistencies and proposes explicit corrections suitable for encoding in PDDL. Do not emit final PDDL domain or problem.",
+                "prompt": "You are the agent named auditor. Review spec_stacker and spec_unstacker and produce an audit report that makes all preconditions and effects explicit and resolves any causal or temporal shortcuts. If you need clarifications, state them. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_stacker",
+                    "spec_unstacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and an expert in PDDL suitable for the FastDownwards planner. Integrate the action specifications and the auditor corrections into a single consistent multi-agent PDDL domain and a PDDL problem. Keep agent actions distinct by prefixing or namespacing action names. Ensure all predicates, types, initial state and goal are explicit and compatible with FastDownwards. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final output must be a PDDL domain and a PDDL problem that FastDownwards can accept.",
+                "prompt": "You are the orchestrator. Receive the spec_stacker spec_unstacker and the audit_report. Integrate and unify object names and predicates. Produce a final PDDL domain and PDDL problem targeting the FastDownwards solver. Ensure the domain contains types predicates and action definitions that reflect the corrected semantics. Ensure the problem contains objects initial state and goal. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "stacker.analysis->orchestrator.pddl",
+            "unstacker.analysis->orchestrator.pddl",
+            "auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

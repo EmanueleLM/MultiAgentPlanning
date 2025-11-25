@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I must move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Contribute a concrete step by step move strategy to relocate all disks from the middle peg to the left peg following the rules"
+        },
+        "observer": {
+            "private_information": [
+                "I see the initial configuration and can report state snapshots and canonical object naming",
+                "I can verify that moves in a proposed plan respect top-of-peg and size ordering constraints"
+            ],
+            "goal": "Produce a clear canonical representation of pegs and disks and verify state transitions proposed by the mover"
+        },
+        "auditor": {
+            "private_information": [
+                "I inspect proposals for temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I ensure the described plan is physically realizable under the stated rules"
+            ],
+            "goal": "Audit the mover and observer outputs and provide a consistency report that removes any shortcutting or unrealistic bookkeeping"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from other agents and produce the final PDDL domain and problem suitable for the FastDownwards solver"
+            ],
+            "goal": "Produce a validated PDDL domain and PDDL problem that encodes the Tower of Hanoi task with 4 disks and 3 pegs and is ready for FastDownwards"
+        }
+    },
+    "environment": {
+        "init": {
+            "number_of_pegs": 3,
+            "disks": 4
+        },
+        "public_information": [
+            "There are three pegs called left peg middle peg and right peg",
+            "There are four disks from smallest to largest named disk A disk B disk C disk D",
+            "Initial condition: the middle peg holds from top to bottom disk A disk B disk C disk D",
+            "Initial condition: the left peg is empty and the right peg is empty",
+            "Goal condition: the left peg must hold from top to bottom disk A disk B disk C disk D and the middle peg and right peg must end empty",
+            "Allowed action: move the top disk from one peg to another peg",
+            "Rules: only one disk may be moved at a time only the top disk on a peg may be moved and a larger disk may never be placed on top of a smaller disk",
+            "The right peg may be used as an intermediate but must be empty in the final state"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "strategy": {
+                "input": [],
+                "output": "strategy_mover",
+                "system_prompt": "You are a strategy specialist for sequential manipulation puzzles such as Tower of Hanoi. Produce a deterministic step by step move sequence that moves four disks from the middle peg to the left peg while obeying all rules. Do not emit PDDL. Provide moves in a clear canonical move notation such as move diskA middle left.",
+                "prompt": "Your name is mover. You have the following public information: {environment->public_information} You have the following private knowledge: {agents->mover->private_information} This is your goal: {agents->mover->goal} Provide a concrete sequence of moves that respects the rules and the initial and goal states."
+            }
+        },
+        "observer": {
+            "report": {
+                "input": [],
+                "output": "state_report_observer",
+                "system_prompt": "You are an observer that creates canonical state encodings and validates move legality. Do not emit PDDL. Produce a canonical mapping of pegs and disks and a sequence of state snapshots corresponding to a provided move plan. Flag any move that violates top-of-peg or size ordering constraints.",
+                "prompt": "Your name is observer. You have the following public information: {environment->public_information} You have the following private knowledge: {agents->observer->private_information} This is your goal: {agents->observer->goal} If given a move sequence provide state snapshots after each move and verify legality. Provide canonical object names and a mapping that the orchestrator can consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "consistency_audit",
+                "system_prompt": "You are an auditor for temporal and causal consistency. Your job is to remove bookkeeping shortcuts and ensure the proposed plan is causally realizable without hidden tokens or post-hoc corrections. Do not emit PDDL. Produce a concise report describing any shortcutting issues and corrected minimal changes so the plan remains valid under real sequential execution.",
+                "prompt": "Your name is auditor. You have the following public information: {environment->public_information} You have the following private knowledge: {agents->auditor->private_information} This is your goal: {agents->auditor->goal} Inspect move sequences and state reports and produce a consistency audit and corrective suggestions if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "strategy_mover",
+                    "state_report_observer",
+                    "consistency_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing inputs for the FastDownwards solver. Integrate the strategy the state reports and the consistency audit to produce a single coherent PDDL domain and a single coherent PDDL problem that encodes the Tower of Hanoi instance described in the public information. You must target the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep any agent-level intentions distinct in comments but produce one unified domain and one unified problem. Ensure no reliance on bookkeeping shortcuts and ensure causal temporal consistency.",
+                "prompt": "You are the orchestrator. Your inputs are the following artifacts from other agents: strategy_mover: {strategy_mover} state_report_observer: {state_report_observer} consistency_audit: {consistency_audit} You also have public information: {environment->public_information} Your task is to integrate these inputs and produce a validated PDDL domain and PDDL problem suitable to be solved by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If any ambiguity remains reconcile names and document the reconciliation in comments in the PDDL files. Keep actions and predicates clear and minimal and ensure the model enforces only-top-disk moves and disk size ordering constraints."
+            }
+        },
+        "constraints": [
+            "mover.strategy->orchestrator.pddl",
+            "observer.report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

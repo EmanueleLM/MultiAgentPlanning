@@ -1,0 +1,97 @@
+{
+    "name": "BlocksworldScaling10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "I know the basic block operations and their intuitive semantics: pick up, unstack, put down, stack.",
+                "I can formalize predicates such as on, on-table, clear, holding, handempty and describe preconditions and effects in natural structured fragments."
+            ],
+            "goal": "Provide formal domain and problem fragments describing predicates, action templates, and the initial and goal facts for the Blocks World instance."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and removal of bookkeeping shortcuts such as tokens or artificial penalties.",
+                "I will find and correct concurrency or causality assumptions, ensure single-hand constraints and that action effects preserve clear/holding/handempty invariants."
+            ],
+            "goal": "Audit the model fragments for causal and temporal consistency, eliminate bookkeeping shortcuts, and produce a cleaned report and adjusted fragments."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate the modeler fragments and the auditor report and produce a final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep agent actions distinct in the final domain if multiple agents' responsibilities map to different actions."
+            ],
+            "goal": "Assemble and emit the final PDDL domain and problem files (FastDownwards compatible) that solve the Blocks World goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack.",
+            "Action restrictions: only one block can be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if no other block is on top of it and it is not currently held.",
+            "Picking up is allowed only for a clear block on the table.",
+            "Unstacking is allowed only for a clear block that is on top of another block.",
+            "Once a block is picked up or unstacked, the agent is holding that block and the hand is not empty.",
+            "Putting down or stacking a block makes the hand empty afterward.",
+            "Stacking a block on another block makes the lower block no longer clear.",
+            "Initial facts: red is clear, yellow is clear, hand is empty, red is on top of blue, yellow is on top of orange, blue is on the table, orange is on the table.",
+            "Goal: orange is on top of red."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "domain_spec": {
+                "input": [],
+                "output": "domain_fragment",
+                "system_prompt": "You are a domain modeler familiar with classical planning formalization. Your job is to convert human action descriptions and restrictions into clear structured domain fragments and action templates, not final PDDL yet.",
+                "prompt": "You are the modeler. Using only the public information and your private information, produce a structured description of the domain including predicates, typing if any, and action templates (name, parameters, preconditions, effects) for the four primitive actions: pick-up, unstack, put-down, stack. Do not emit a final PDDL domain file. Provide the domain information as a concise machine-friendly fragment labelled as domain_fragment. Do not assume facts that are not stated; if information is missing, state the assumption explicitly."
+            },
+            "problem_spec": {
+                "input": [],
+                "output": "problem_fragment",
+                "system_prompt": "You are a problem specifier who prepares the initial state and goal fragments consistent with the domain fragment. Do not emit a final PDDL problem file yet.",
+                "prompt": "You are the modeler preparing the problem fragment. From the public information prepare a clear listing of objects, initial predicates and the goal in a structured fragment labelled problem_fragment. Use the block names red, yellow, blue, orange and the hand state as appropriate. Flag any underspecified details as assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "domain_fragment",
+                    "problem_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency and removes bookkeeping shortcuts in planning fragments. You are not required to output PDDL. Provide a corrective report and cleaned fragments.",
+                "prompt": "You are the auditor. Receive the domain_fragment and problem_fragment. Check for violations of the stated constraints: single-hand operation, handempty preconditions and effects, correct handling of clear predicate updates when stacking/putting down, and the proper linking of unstack and stack actions to actual on relations. Remove or flag any bookkeeping shortcuts such as token counters or post-hoc penalties. Produce an audit_report describing necessary corrections and produce adjusted fragments where you fixed causal or temporal issues. Output the adjusted fragments or recommendations as part of audit_report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_fragment",
+                    "problem_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating model fragments and audit corrections into a complete PDDL domain and problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is FastDownwards-compatible and names and keeps actions distinct if needed.",
+                "prompt": "You are the orchestrator. Use the domain_fragment and problem_fragment from the modeler and the audit_report from the auditor to produce a single coherent PDDL domain and a single coherent PDDL problem. Target the FastDownwards planner: include appropriate :requirements and ensure the domain encodes the single-hand constraint, correctness of clear, on, on-table, holding and handempty predicates, and the four primitive actions with correct preconditions and effects. Keep action names and responsibilities clear and do not invent unrelated bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "modeler.domain_spec->auditor.audit",
+            "modeler.problem_spec->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "modeler.domain_spec->orchestrator.pddl",
+            "modeler.problem_spec->orchestrator.pddl"
+        ]
+    }
+}

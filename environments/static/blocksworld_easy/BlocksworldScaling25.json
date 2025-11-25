@@ -1,0 +1,104 @@
+{
+    "name": "BlocksworldScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "perceiver",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "perceiver": {
+            "private_information": [
+                "I observe the world and translate natural descriptions into formal predicates and constants.",
+                "Blocks present: red, blue, orange, yellow.",
+                "Initial percepts: red clear, blue clear, orange clear, yellow clear, hand empty, red on table, blue on table, orange on table, yellow on table."
+            ],
+            "goal": "Provide a faithful formalization of the initial state and the set of constants."
+        },
+        "planner": {
+            "private_information": [
+                "I know the primitive actions available in this blocksworld domain and the stated restrictions on their preconditions and effects.",
+                "Actions to consider: pickup, unstack, putdown, stack. Each action must respect one-block-at-a-time and hand-empty constraints."
+            ],
+            "goal": "Produce a complete, structured action model (action schemas) listing names, parameters, preconditions, and effects consistent with the observed initial state and the domain restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit action schemas and proposed plans for temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I will check for implicit assumptions, ensure frame assumptions are explicit, and verify that preconditions and effects correctly capture clearance, hand state changes, and mutual exclusion constraints."
+            ],
+            "goal": "Audit the planner's action schemas and the initial state, produce corrections and a short report enumerating any causal or temporal issues and the fixes applied."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from other agents and produce the final PDDL domain and problem files suitable for the FastDownward planner.",
+                "I must keep the different agents' actions distinct and preserve the audited semantics."
+            ],
+            "goal": "Assemble the final PDDL domain and PDDL problem targeting the FastDownwards solver so the global goal can be solved: blue on yellow and orange on red."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "hand_empty": true
+        },
+        "public_information": [
+            "There are four blocks: red, blue, orange, yellow.",
+            "Initial facts: red is clear, blue is clear, orange is clear, yellow is clear.",
+            "Initial placement: red on the table, blue on the table, orange on the table, yellow on the table.",
+            "Hand is empty initially.",
+            "Available primitive operations: pick up a block from the table, unstack a block from on top of another block, put down a block onto the table, stack a block onto another block.",
+            "Action restrictions: only one block can be moved at a time; pickup and unstack require the hand to be empty; pickup requires the block to be on the table and clear; unstack requires that the block is on top of another block and is clear; after pickup or unstack the agent is holding the block; putdown and stack require the agent to be holding the block; stack requires the destination block to be clear; putting down or stacking empties the hand; stacking renders the destination block not clear."
+        ]
+    },
+    "workflow": {
+        "perceiver": {
+            "observe": {
+                "input": [],
+                "output": "initial_state",
+                "system_prompt": "You are an expert observer for a block world. Translate natural scene descriptions into a structured list of constants and predicates. Produce a canonical list of constants and an explicit list of predicate facts such as clear(block), on-table(block), on(block1,block2), holding(hand,block) or hand-empty.",
+                "prompt": "As perceiver, read the given public information and produce a precise, unambiguous formalization of the initial state. Return a list of constants and predicates representing the observed initial world state. Do not emit PDDL domain/problem, only the formalized initial facts and constants."
+            }
+        },
+        "planner": {
+            "specify": {
+                "input": [
+                    "initial_state"
+                ],
+                "output": "action_model",
+                "system_prompt": "You are an expert in action modeling for classical planning. Given an initial state and domain descriptions, produce structured action schemas (name, parameters, preconditions, positive effects, negative effects). Make explicit all required preconditions (including hand-empty and clearance) and explicit effects for hand state and clearance.",
+                "prompt": "As planner, use the observed initial state and the public action restrictions to produce a complete set of action schemas for pickup, unstack, putdown, and stack. For each schema provide: action name, parameter list, preconditions list, add effects list, delete effects list, and any typing or constraints. Do not output a PDDL domain file; output structured, machine-readable action schemas."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "action_model",
+                    "initial_state"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an expert auditor of causal and temporal consistency in planning domains. Your task is to detect and remove bookkeeping shortcuts (for example quota tokens or post-hoc penalties), ensure frame axioms are properly handled, verify mutual exclusion and resource constraints, and produce corrected action schemas or annotations where necessary.",
+                "prompt": "As auditor, analyze the planner's action schemas and the initial state for causal and temporal consistency. Identify any shortcuts, implicit assumptions, or missing effects/preconditions. Produce a report listing issues and propose corrected schemas or explicit constraints. Provide the cleaned action model and a short explanation of each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "initial_state",
+                    "action_model",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator that produces a final PDDL domain and PDDL problem designed specifically for the FastDownwards planner. Combine the initial state, the planner action schemas, and the auditor corrections into a single coherent PDDL domain and problem. Ensure actions remain distinct and their origins traceable, enforce explicit preconditions and effects identified by the auditor, and target FastDownwards compatibility (STRIPS + typing where appropriate). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "As orchestrator, merge the inputs to produce a final PDDL domain and a PDDL problem file that encode the blocksworld described and the goal: blue on yellow and orange on red. The output must be ready for FastDownwards. Keep action names unique and preserve the audited semantics. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "perceiver.observe->planner.specify",
+            "planner.specify->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

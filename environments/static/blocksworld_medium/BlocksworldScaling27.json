@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "specifier",
+            "modeller",
+            "auditor",
+            "orchestrator"
+        ],
+        "specifier": {
+            "private_information": [
+                "Domain description: a set of blocks to be arranged into stacks.",
+                "Available primitive actions: PickUp a block from the table, Unstack a block from on top of another block, PutDown a block onto the table, Stack a block on top of another block.",
+                "Action restrictions: only one block can be picked or unstacked at a time; picking or unstacking requires the hand to be empty; a block can be picked only if it is on the table and clear; unstacking requires the block to be on top of another and clear; after pick or unstack the agent is holding the block; only a held block may be put down or stacked; stacking requires the target block to be clear; after put down or stack the hand becomes empty; stacking makes the supporting block not clear.",
+                "Initial conditions: blue is clear, yellow is clear, hand is empty, orange is on top of red, yellow is on top of orange, red is on the table, blue is on the table.",
+                "Goal: red is on top of orange and blue is on top of red."
+            ],
+            "goal": "Produce a structured formal specification (types, predicates, initial state, goal, and informal operator schemas) that faithfully represents the natural language description and initial/goal states. Do not emit PDDL."
+        },
+        "modeller": {
+            "private_information": [
+                "Task: convert the structured formal specification into canonical operator schemas with explicit parameter lists, typed predicates, precise preconditions and add/delete effect lists, and any derived predicates needed to capture 'clear' or 'holding' semantics.",
+                "Output expectations: a robust neutral model representation suitable for automatic compilation into PDDL, but do not output PDDL directly."
+            ],
+            "goal": "Produce canonical operator schemas, types, and predicate definitions consistent with the specifier's structured specification, resolving any naming mismatches and making implicit constraints explicit."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency of the modeller's schemas.",
+                "Responsibilities: ensure single-handedness is modelled (no bookkeeping shortcuts like quota tokens or artificial counters), verify that 'clear' and 'holding' are represented causally and not as post-hoc penalties, remove or flag any bookkeeping shortcuts, ensure action preconditions and effects are causally sufficient and minimal, and check that initial and goal states are consistent with the model.",
+                "Do not produce PDDL; output a corrected neutral model artifact and a short report describing fixes."
+            ],
+            "goal": "Audit the model for temporal/causal consistency and remove bookkeeping shortcuts, producing an audited model artifact and a short justification of each change."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownwards. The final output must be a PDDL domain and a PDDL problem tuned for FastDownwards compatibility.",
+                "Requirement: keep action schemas and names as provided by the audited model, and ensure the final PDDL preserves semantics and agent-level separations if multiple agents are modeled."
+            ],
+            "goal": "Integrate the specifier, modeller, and auditor artifacts and produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "There are blocks that must be arranged into stacks using pick up, unstack, put down, and stack actions.",
+            "You can only pick up or unstack one block at a time.",
+            "You can only pick up or unstack a block if your hand is empty.",
+            "A block is pickable from the table only if it is on the table and clear.",
+            "A block is unstackable only if it is on top of another block and clear.",
+            "After pick up or unstack the agent is holding the block; after put down or stack the hand becomes empty.",
+            "Stacking a block on top of another makes the supporting block not clear.",
+            "Initial conditions: blue is clear; yellow is clear; hand is empty; orange is on top of red; yellow is on top of orange; red is on the table; blue is on the table.",
+            "Goal: red on top of orange and blue on top of red."
+        ]
+    },
+    "workflow": {
+        "specifier": {
+            "formalize": {
+                "input": [],
+                "output": "spec_model",
+                "system_prompt": "You are an expert in translating natural language planning tasks into concise structured formal specifications. Produce a structured specification that lists types, predicates, the initial state, the goal state, and informal operator schemas (name, parameters, preconditions, add effects, delete effects). Do not emit PDDL. Keep naming consistent and explicit so downstream agents can compile it.",
+                "prompt": "Your name is specifier. Use the environment public information and your private information to produce a structured formal specification describing types, predicate signatures, the initial state, the goal, and informal operator schemas that capture the block manipulation domain. Provide precise descriptions suitable for downstream compilation."
+            }
+        },
+        "modeller": {
+            "create_model": {
+                "input": [
+                    "spec_model"
+                ],
+                "output": "model_artifact",
+                "system_prompt": "You are an expert in producing canonical planning operator schemas. Convert the structured specification into neutral canonical operator schemas with explicit typed parameters, conjunctive preconditions, and explicit add and delete effect lists. Make implicit constraints explicit and unify naming. Do not emit PDDL. Produce a neutral serializable model artifact.",
+                "prompt": "Your name is modeller. Consume the structured formal specification from the specifier and produce canonical operator schemas, type declarations, predicate definitions, and a machine-friendly neutral model artifact that preserves semantics and is ready for auditing and PDDL compilation."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_artifact"
+                ],
+                "output": "audited_model",
+                "system_prompt": "You are an expert auditor of planning models focusing on temporal and causal consistency. Inspect the model artifact for causal soundness: ensure single-handed operation is enforced without bookkeeping tokens, ensure 'clear' and 'holding' are derived causally by action effects rather than by shortcuts, check that preconditions and effects reflect intended causal links, and remove or propose corrections for any bookkeeping shortcuts. Produce an audited neutral model artifact and a short change log. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Receive the modeller's model artifact and produce an audited model artifact that corrects any temporal or causal inconsistencies and removes bookkeeping shortcuts. Document each change and why it is required to ensure sound planning behavior."
+            }
+        },
+        "orchestrator": {
+            "compile": {
+                "input": [
+                    "spec_model",
+                    "model_artifact",
+                    "audited_model"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL compatible with the FastDownwards planner. Integrate the specifier's structured specification, the modeller's canonical schemas, and the auditor's corrections to produce a final PDDL domain and a PDDL problem that FastDownwards can solve. Preserve the audited semantics verbatim, ensure types and predicates are declared properly, include a :requirements line with features supported by FastDownwards, and avoid planner-specific shortcut hacks. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. Integrate the inputs from the specifier, modeller, and auditor and output a complete PDDL domain and PDDL problem targeted for FastDownwards. Keep action names and semantics distinct and explicit. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "specifier.formalize->modeller.create_model",
+            "modeller.create_model->auditor.audit",
+            "auditor.audit->orchestrator.compile",
+            "specifier.formalize->orchestrator.compile",
+            "modeller.create_model->orchestrator.compile"
+        ]
+    }
+}

@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_analyst",
+            "model_builder",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_analyst": {
+            "private_information": [
+                "I reason about sequences of high level actions for manipulating blocks given the domain restrictions.",
+                "I can propose step by step plans using the allowed actions PickUp, Unstack, PutDown, and Stack but I will not emit PDDL."
+            ],
+            "goal": "Arrange blocks so that red is on top of orange and yellow is on top of red."
+        },
+        "model_builder": {
+            "private_information": [
+                "I formalize predicates and action schemas in an abstract structured format including predicates, typed objects, parameters, preconditions, and effects.",
+                "I will provide a clear model specification but I will not output PDDL directly."
+            ],
+            "goal": "Provide a correct formal model of actions and state relevant to the block stacking task consistent with the public rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post hoc penalties.",
+                "I check for missing constraints, ambiguous naming, and any assumptions that hide causal relationships."
+            ],
+            "goal": "Produce an audit report identifying inconsistencies, necessary additional constraints, and recommended clarifications to ensure a sound causal and temporal model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate model fragments, plans, and audit findings and produce the final PDDL domain and problem targeted to the FastDownwards solver."
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem file suitable for FastDownwards that achieves the stacking goal while keeping agent actions distinct."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "orange",
+                "red",
+                "yellow"
+            ],
+            "hand": "empty",
+            "locations": [
+                "table"
+            ]
+        },
+        "public_information": [
+            "Available actions are PickUp a block, Unstack a block from on top of another block, PutDown a block, and Stack a block on top of another block.",
+            "You can only pick up or unstack one block at a time.",
+            "You can only pick up or unstack a block if your hand is empty.",
+            "You can only pick up a block if the block is on the table and the block is clear.",
+            "A block is clear if there is no other block on top of it and the block is not currently held.",
+            "You can only unstack a block from on top of another block if that block is actually on top of the other block and the block being unstacked is clear.",
+            "Once you pick up or unstack a block you are holding that block.",
+            "You can only put down a block that you are holding.",
+            "You can only stack a block on top of another block if you are holding the block being stacked and the destination block is clear.",
+            "Once you put down or stack a block your hand becomes empty.",
+            "Once you stack a block on top of a second block the second block is no longer clear.",
+            "Initial conditions are as follows: the blue block is clear, the orange block is clear, the hand is empty, the blue block is on top of the yellow block, the orange block is on top of the red block, the red block is on the table, and the yellow block is on the table.",
+            "The goal is that the red block is on top of the orange block and the yellow block is on top of the red block."
+        ]
+    },
+    "workflow": {
+        "planner_analyst": {
+            "analysis": {
+                "input": [],
+                "output": "plan_skeleton",
+                "system_prompt": "You are an expert at producing high level sequential plans for block manipulation tasks. Do not emit PDDL. Produce a clear ordered list of actions in abstract terms using the allowed action names PickUp, Unstack, PutDown, and Stack. For each action include the actor requirement that the hand must be empty or holding a block, the source and destination context, and any required clear or on-table conditions.",
+                "prompt": "You are planner_analyst. Use the public information about actions, constraints, initial state, and the global goal. Produce a step by step plan skeleton that transforms the initial state into the goal while obeying the action restrictions. If some information is missing, explicitly state the ambiguity and produce a partial plan for the feasible part."
+            }
+        },
+        "model_builder": {
+            "model_spec": {
+                "input": [],
+                "output": "model_spec",
+                "system_prompt": "You are an expert in formalizing planning models. Do not output PDDL. Produce a structured model specification listing object types, predicates, and action schemas with parameters, preconditions, and effects in a clear machine readable style. Highlight assumptions and naming choices.",
+                "prompt": "You are model_builder. Using the public information about allowed actions and constraints, provide a complete abstract specification of predicates and action schemas needed for the task. Ensure you capture clear, on-table, holding, on relationships, and hand emptiness. Do not produce PDDL but produce a detailed model_spec that the orchestrator can translate into FastDownwards compatible PDDL."
+            }
+        },
+        "auditor": {
+            "audit_report": {
+                "input": [
+                    "plan_skeleton",
+                    "model_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency for planning models. You remove bookkeeping shortcuts such as quota tokens or post hoc penalties and you recommend explicit constraints instead. Your output is an audit_report describing inconsistencies, missing causal links, naming conflicts, and recommended fixes. Do not produce PDDL.",
+                "prompt": "You are auditor. Receive the plan skeleton and the model specification. Check for temporal and causal consistency. Identify any assumptions that create hidden shortcuts or shortcuts in bookkeeping. Provide clear recommendations to make the model explicit and consistent and list any model or plan changes required for soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_spec",
+                    "plan_skeleton",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in producing PDDL for the FastDownwards planner. Integrate the provided model fragments, plan skeleton, and audit recommendations and produce a complete PDDL domain and a complete PDDL problem file targeted for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions originating from different agents distinct in naming or comments, and resolve naming ambiguities. Ensure the final PDDL encodes all constraints identified by the auditor and is directly usable by FastDownwards.",
+                "prompt": "You are orchestrator. Integrate the model_spec, the plan_skeleton, and the audit_report. Resolve ambiguities, apply recommended fixes, and output a final PDDL domain and a final PDDL problem targeted to FastDownwards. Use clear naming and keep agent-specific action attributions distinct when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_analyst.analysis->orchestrator.pddl",
+            "model_builder.model_spec->orchestrator.pddl",
+            "auditor.audit_report->orchestrator.pddl"
+        ]
+    }
+}

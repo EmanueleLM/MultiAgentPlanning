@@ -1,0 +1,93 @@
+{
+    "name": "BlocksworldScaling10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "You are an observer that converts natural language descriptions of block arrangements and action constraints into a precise, unambiguous formal representation suitable for planners.",
+                "Do not produce PDDL yourself. Produce a structured formalization: list of objects, initial predicates, goal predicates, and clear action schema templates with explicit preconditions and effects."
+            ],
+            "goal": "Provide a precise formal representation of the blocks world instance and the allowed action schemas without emitting PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "You are an auditor whose role is to check temporal and causal consistency of the formalization.",
+                "Your job is to remove bookkeeping shortcuts and make implicit constraints explicit. Examples of bookkeeping shortcuts to remove include quota tokens, post-hoc penalties, or any ad-hoc objects that stand in for necessary preconditions or effects.",
+                "You must ensure single-block manipulation constraints, hand-empty invariants, and correct clear/on/ontable relations are enforced in the action schemas."
+            ],
+            "goal": "Audit and correct the formalization so that it is temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You are the orchestrator that integrates formalizations and audits into a final PDDL domain and problem targeted for the FastDownward solver.",
+                "Produce a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "Target FastDownward compatibility. Prefer STRIPS-level constructs and explicit typing and constants where appropriate. Keep action names and predicates clear and consistent with inputs."
+            ],
+            "goal": "Integrate the observer and auditor outputs and produce a complete PDDL domain and problem suitable for FastDownward that accomplishes the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "This is the classic blocks world domain with actions: pick-up, unstack, put-down, stack.",
+            "Action constraints: only one block may be picked up or unstacked at a time. The hand must be empty to pick up or unstack.",
+            "A block is clear if no block is on top of it and it is not currently held.",
+            "Picking up a block from the table requires the block to be on the table and clear.",
+            "Unstacking a block requires that the block is on top of another specific block and that the block is clear.",
+            "When a block is picked up or unstacked, the agent is holding that block and the hand is no longer empty.",
+            "Putting down or stacking a block requires holding that block. After putting down or stacking, the hand becomes empty.",
+            "Stacking a block onto another block makes the destination block no longer clear.",
+            "Initial state: red is clear, hand is empty, red is on top of blue, blue is on top of yellow, yellow is on top of orange, orange is on the table.",
+            "Goal: the yellow block should be on top of the red block."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "formalize": {
+                "input": [],
+                "output": "formalized_description",
+                "system_prompt": "You are an expert that converts natural block-world descriptions into an exact formal representation. Do NOT output PDDL. Produce the following structured items: objects list, initial facts as predicate tuples, goal facts as predicate tuples, and action schema templates (name, parameters, preconditions list, add effects list, delete effects list). Use canonical predicate names: (on ?x ?y), (ontable ?x), (clear ?x), (holding ?x), (handempty). Do not invent auxiliary bookkeeping tokens. Do not assume facts not stated. If information is missing, list the missing items explicitly.",
+                "prompt": "Using the environment public information and your private information, produce a formalized representation of the instance and the allowed action schemas consistent with the block world rules. Provide objects, initial predicates, goal predicates, and action schemas for: pick-up, unstack, put-down, stack. Ensure preconditions and effects explicitly capture single-block operations and hand state changes. Output as a single structured JSON-friendly string or concise structured list labeled 'formalized_description'."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "formalized_description"
+                ],
+                "output": "audited_description",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Your job is to inspect a formalized representation and correct any implicit or shortcut mechanisms. Remove any bookkeeping artifacts, make mutual exclusions explicit, enforce the hand-empty invariant, ensure that clear conditions are correctly updated by actions, and verify that actions operate on single blocks only. Do NOT emit PDDL. Provide a corrected formalization and a short justification of each correction.",
+                "prompt": "Given the 'formalized_description' from the observer, check every action schema and all predicates for temporal and causal consistency. For each action, verify preconditions and effects conserve the single-block manipulation invariant and hand state transitions. Replace or remove any nonstandard bookkeeping devices with explicit preconditions or effects. Return a corrected structured representation labeled 'audited_description' and a list of corrections or assumptions you applied."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "formalized_description",
+                    "audited_description"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domains and problems for the FastDownward planner. Integrate multiple formalized inputs into a single, consistent PDDL domain and problem. Use STRIPS-level constructs where possible. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Name the domain 'blocksworld-scaling10-domain' and the problem 'blocksworld-scaling10-problem'. Ensure compatibility with FastDownward by avoiding solver-specific extensions and favoring clear predicate and action definitions. If ambiguities remain, state assumptions briefly at the top of the PDDL problem as comments.",
+                "prompt": "Integrate the observer's 'formalized_description' and the auditor's 'audited_description' to produce a complete PDDL domain and a PDDL problem that achieves the global goal: have the yellow block on top of the red block. Keep the action names and predicates consistent with the inputs. Ensure the produced PDDL is self-contained and directly usable with FastDownward. Enclose domain and problem as required and output them as the content of 'pddl_orchestrator'."
+            }
+        },
+        "constraints": [
+            "observer.formalize->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

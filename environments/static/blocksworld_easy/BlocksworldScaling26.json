@@ -1,0 +1,125 @@
+{
+    "name": "BlocksworldScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "picker",
+            "unstacker",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "picker": {
+            "private_information": [
+                "I specialize in picking up blocks that are on the table and clear.",
+                "I can only pick up one block at a time and only when my hand is empty."
+            ],
+            "goal": "Contribute to rearranging blocks into the target configuration: red on yellow, blue on red, orange on blue."
+        },
+        "unstacker": {
+            "private_information": [
+                "I specialize in unstacking blocks from on top of other blocks.",
+                "I can only unstack a block if it is clear and actually on top of another block, and only if my hand is empty."
+            ],
+            "goal": "Contribute to rearranging blocks into the target configuration: red on yellow, blue on red, orange on blue."
+        },
+        "stacker": {
+            "private_information": [
+                "I specialize in stacking and putting down blocks.",
+                "I can only stack a block if I am holding it and the target block is clear."
+            ],
+            "goal": "Contribute to rearranging blocks into the target configuration: red on yellow, blue on red, orange on blue."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across plans and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I check that preconditions and effects are explicit and that the hand-empty and clear predicates are not modeled as shortcuts."
+            ],
+            "goal": "Ensure the assembled plan is temporally and causally consistent and free of bookkeeping shortcuts before encoding into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and validated plans from other agents into a final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Produce a complete, FastDownwards-compatible PDDL domain and problem that achieves the target configuration: red on yellow, blue on red, orange on blue."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are four blocks named red, blue, orange, and yellow.",
+            "Initial facts: red is on top of yellow, blue is on top of orange, orange is on the table, yellow is on the table.",
+            "The red block is clear and the blue block is clear.",
+            "The agent's hand is empty at the start.",
+            "Available primitive actions include: pick up a block, unstack a block from another block, put down a block, and stack a block onto another block.",
+            "Action restrictions: only one block can be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if there is no block on top of it and it is not being held.",
+            "Stacking a block on top of another makes the supporting block no longer clear."
+        ]
+    },
+    "workflow": {
+        "picker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_picker",
+                "system_prompt": "You are an expert analyst for block manipulation primitives. Your role is to examine the environment public information and your private knowledge and produce a precise characterization of pickup-related actions, including preconditions, effects, required predicates, and any implicit assumptions that must be made explicit. Do not emit PDDL. Focus on clear, machine-friendly descriptions of action templates and constraints.",
+                "prompt": "You are the picker agent. Use the public information and your private information to produce a list of pickup action templates for blocks that are on the table and clear. For each template provide explicit preconditions and effects, list required predicates (for example clear, on-table, holding, hand-empty), and call out any ambiguities or missing information that would prevent a correct formal encoding. Do not output PDDL. Provide only structured analysis suitable for later encoding."
+            }
+        },
+        "unstacker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_unstacker",
+                "system_prompt": "You are an expert analyst for unstacking primitives in block manipulation. Your role is to examine the environment public information and your private knowledge and produce a precise characterization of unstack-related actions, including preconditions, effects, required predicates, and any implicit assumptions that must be made explicit. Do not emit PDDL. Focus on clear, machine-friendly descriptions of action templates and constraints.",
+                "prompt": "You are the unstacker agent. Use the public information and your private information to produce a list of unstack action templates for blocks that are on top of another block and are clear. For each template provide explicit preconditions and effects, list required predicates, and identify any edge cases or ambiguities. Do not output PDDL. Provide only structured analysis suitable for later encoding."
+            }
+        },
+        "stacker": {
+            "planning": {
+                "input": [
+                    "analysis_picker",
+                    "analysis_unstacker"
+                ],
+                "output": "plan_stacker",
+                "system_prompt": "You are an expert planner for stacking and putdown operations in block manipulation. Your role is to synthesize action sequences using the primitives characterized by analysis agents. Do not emit PDDL directly. Produce step-by-step plans with explicit temporal ordering, preconditions being satisfied for each step, and expected intermediate states after each action.",
+                "prompt": "You are the stacker agent. Using the analyses from the picker and unstacker, produce one or more concrete, ordered plans of primitive actions that would transform the initial state into the target configuration if the preconditions are met. For each action include the acting primitive, its parameters, preconditions at the time of execution, and the resulting effects on the world state. Highlight any assumptions you require."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_stacker"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to inspect proposed plans and the action templates used and remove or flag any bookkeeping shortcuts. Specifically, you must ensure that predicates like hand-empty and clear are modeled explicitly and that no step relies on implicit token accounting or post-hoc penalties. Do not produce PDDL. Produce a validation report and explicit corrections if needed.",
+                "prompt": "You are the auditor. Review the plan(s) produced by the stacker agent and check for temporal conflicts, causal violations, implicit assumptions, and any bookkeeping shortcuts. Produce a report detailing whether the plan is valid, list specific corrections required to make it explicit and sound, and produce corrected preconditions/effects for any actions that were underspecified. Your output should be a structured audit report suitable for the orchestrator to use."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_picker",
+                    "analysis_unstacker",
+                    "plan_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author for multi-agent Blocksworld tasks. Your job is to integrate analyses, validated plans, and the audit report and produce a single PDDL domain and a single PDDL problem file that are compatible with the FastDownwards planner. Keep agent actions distinct where appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the generated PDDL explicitly models predicates such as hand-empty and clear, does not rely on bookkeeping shortcuts, and is suitable for FastDownwards requirements.",
+                "prompt": "You are the orchestrator. Use the provided analyses, the planner's plan, and the auditor's report to produce a final, coherent PDDL domain and PDDL problem that will achieve the goal: red on yellow, blue on red, orange on blue. Make sure the domain includes clear preconditions and effects for pick-up, unstack, put-down, and stack actions, models the agent's hand state explicitly, and follows syntax and constructs recognized by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "picker.analysis->stacker.planning",
+            "unstacker.analysis->stacker.planning",
+            "stacker.planning->auditor.audit",
+            "picker.analysis->orchestrator.pddl",
+            "unstacker.analysis->orchestrator.pddl",
+            "stacker.planning->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

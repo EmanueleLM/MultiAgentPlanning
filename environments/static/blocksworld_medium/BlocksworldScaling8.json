@@ -1,0 +1,109 @@
+{
+    "name": "BlocksworldScaling8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_layer",
+            "stack_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_layer": {
+            "private_information": [
+                "Initial facts: orange is clear",
+                "Initial facts: hand is empty",
+                "Initial facts: red is on yellow",
+                "Initial facts: blue is on red",
+                "Initial facts: orange is on blue",
+                "Initial facts: yellow is on table",
+                "Blocks present: orange, red, blue, yellow"
+            ],
+            "goal": "Have the red block on top of the blue block"
+        },
+        "stack_planner": {
+            "private_information": [
+                "Primitive actions: pick_up, unstack, put_down, stack",
+                "Action constraints: only one block manipulated at a time",
+                "Action constraint: pick_up or unstack only when hand is empty",
+                "Definition: a block is clear if there is no block on it and it is not picked up",
+                "Effect summaries: picking or unstacking yields holding(block) and makes hand nonempty; putting down or stacking makes hand empty; stacking makes the target no longer clear"
+            ],
+            "goal": "Propose a sequence of primitive actions that achieves red on blue while respecting constraints"
+        },
+        "auditor": {
+            "private_information": [
+                "Role: validate temporal and causal consistency",
+                "Prohibitions: no bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Checks: hand occupancy, clearness preconditions, one-action-at-a-time, correct on-table/on relations"
+            ],
+            "goal": "Audit proposed plans and remove or correct any schedule or causal shortcut so the plan is temporally and causally sound"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate observations, a validated plan and auditor feedback to produce a final PDDL domain and problem file ready for the FastDownwards solver"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is the classic blocks world domain where blocks can be on the table or on other blocks",
+            "Available actions: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block",
+            "Constraints summary: only one block can be manipulated at a time, pick_up or unstack requires hand empty, a block must be clear to be picked up or to receive a stacked block, unstack requires the block was on top of another, holding arises after pick_up or unstack and ends after put_down or stack, stacking a block makes the supporting block not clear",
+            "Initial state described by the block_layer agent: orange clear, hand empty, red on yellow, blue on red, orange on blue, yellow on table",
+            "Goal: red should be on top of blue"
+        ]
+    },
+    "workflow": {
+        "block_layer": {
+            "observe": {
+                "input": [],
+                "output": "obs_block_layer",
+                "system_prompt": "You are the sensor agent responsible for producing a concise symbolic observation of the initial world state without emitting PDDL. Return the observed facts and a compact listing of blocks and their immediate relations.",
+                "prompt": "You are named block_layer. Using public information describe the initial configuration as a set of atomic facts and available blocks. Do not produce PDDL. Do not invent facts that are not present in your private information. Provide the observation in a deterministic symbolic form suitable for downstream planning."
+            }
+        },
+        "stack_planner": {
+            "plan": {
+                "input": [
+                    "obs_block_layer"
+                ],
+                "output": "plan_stack_planner",
+                "system_prompt": "You are a hierarchical symbolic planner that proposes a minimal sequence of primitive actions consistent with the blocks world constraints. Do not emit PDDL. Produce an explicit ordered list of primitive actions with arguments.",
+                "prompt": "You are named stack_planner. Use the public rules and the observation from block_layer to propose a step-by-step plan using only the primitive actions pick_up, unstack, put_down, and stack. Respect constraints such as hand emptiness and clearness. Avoid suggesting parallel or shortcut bookkeeping mechanisms. Output a linear plan of actions labeled and ordered."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_stack_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent that enforces temporal and causal soundness and removes bookkeeping shortcuts. Validate the provided plan for precondition satisfaction, hand occupancy, clearness, and single-action-at-a-time semantics. Do not output PDDL.",
+                "prompt": "You are named auditor. Receive a proposed plan and check each step for causal correctness and temporal feasibility. If a step violates constraints, produce corrections and a corrected plan. Explicitly state any assumptions you eliminate, and ensure the corrected plan contains only primitive actions and no artificial tokens or post-hoc penalties."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_block_layer",
+                    "plan_stack_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate observations, the planner's proposed plan, and the auditor's corrections. Produce a final PDDL domain and a PDDL problem file tailored for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep action names distinct if modeling multiple agents or roles.",
+                "prompt": "You are named orchestrator. Use the observed facts, the planner output, and the auditor report to synthesize a complete PDDL domain and a corresponding PDDL problem that encodes the initial state and the goal red on blue. Target the FastDownwards solver conventions. Ensure types, predicates, actions, preconditions, and effects are explicit and that the produced PDDL reflects the audited, causally correct plan where applicable. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "block_layer.observe->stack_planner.plan",
+            "stack_planner.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "block_layer.observe->orchestrator.pddl",
+            "stack_planner.plan->orchestrator.pddl"
+        ]
+    }
+}

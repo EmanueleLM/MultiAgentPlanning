@@ -1,0 +1,115 @@
+{
+    "name": "HanoiScaling10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must never move more than one disk at a time.",
+                "I may only move a disk that is on the top of its peg."
+            ],
+            "goal": "Characterize and enumerate legal single-disk move operations and constraints for the puzzle."
+        },
+        "planner": {
+            "private_information": [
+                "I reason about sequences of legal moves to reach a global configuration.",
+                "I may use the left peg as an intermediate parking spot but it must end empty."
+            ],
+            "goal": "Produce a high-level stepwise plan to move the full tower from the middle peg to the right peg respecting the rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I ensure temporal and causal consistency and remove bookkeeping shortcuts such as tokens or post-hoc penalties.",
+                "I check that no solution relies on illegal assumptions like moving multiple disks at once or placing larger disks on smaller ones."
+            ],
+            "goal": "Audit candidate plans for causal correctness, remove or flag any plan fragments that rely on bookkeeping shortcuts, and produce corrected constraints or clarifications."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analysis and produce the final formal planning problem targeted to a specific solver."
+            ],
+            "goal": "Integrate agent analyses and produce a complete PDDL domain and problem for the FastDownwards planner that solves the Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "disks_count": 4
+        },
+        "public_information": [
+            "This is the Tower of Hanoi with three pegs named left, middle, and right.",
+            "There are 4 disks in total. From smallest to largest they are disk A, disk B, disk C, and disk D.",
+            "Initial state: the middle peg holds, from top to bottom, disk A, disk B, disk C, and disk D. The left peg and the right peg are empty.",
+            "Goal state: the right peg must hold, from top to bottom, disk A, disk B, disk C, and disk D. Both the middle peg and the left peg must be empty at the end.",
+            "Rules: move only one disk at a time, only the top disk of any peg may be moved, and a larger disk may never be placed on top of a smaller disk.",
+            "The left peg may be used as an intermediate parking spot but must end up empty.",
+            "Once a disk is moved, its size ordering relative to the other disks remains fixed."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an expert on legal low-level move operations in the Tower of Hanoi. Your role is to enumerate and precisely describe the atomic move action and its preconditions and effects in natural language and constraints form. Do not produce full PDDL. Focus on the legal move semantics, top-of-peg requirement, single-disk move constraint, and forbidden placements.",
+                "prompt": "Your name is mover. Use the public information about the environment and your private knowledge to produce a clear description of a single legal move action, including preconditions and effects, and list any edge cases or ambiguities that a higher-level planner should know."
+            }
+        },
+        "planner": {
+            "design": {
+                "input": [
+                    "mover_analysis"
+                ],
+                "output": "planner_design",
+                "system_prompt": "You are a planning specialist for sequential puzzles. Produce a high-level stepwise plan or decomposition strategy for moving the full tower from its initial configuration to the goal, using the legal move semantics provided by mover. Do not output PDDL. Provide an ordered list of move steps or a clear algorithmic decomposition and note any assumptions.",
+                "prompt": "Your name is planner. Given the public information and the mover analysis, synthesize a candidate plan or algorithmic strategy to transfer the 4-disk tower from the middle peg to the right peg while leaving left and middle empty. Highlight where intermediate parking on the left peg is used and flag any details that require precise encoding."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_design"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Your job is to examine candidate plans and remove or flag any bookkeeping shortcuts and post-hoc adjustments. Produce corrections or clarifications to ensure that every step is causally valid under the legal move semantics. Do not emit PDDL. Focus on detecting implicit assumptions like simultaneous moves, hidden tokens, or violated preconditions.",
+                "prompt": "Your name is auditor. Review the planner_design and assess its temporal and causal consistency relative to the mover analysis and public rules. Produce an auditor report that lists detected issues and prescribes minimal corrections or stronger constraints to make the plan valid without bookkeeping shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "planner_design",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates agent analyses and must produce a complete PDDL domain and PDDL problem targeted specifically for the FastDownwards planner. Produce a correct PDDL domain and problem that encode the Tower of Hanoi instance with 4 disks and three pegs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep action names and agent responsibilities distinct if relevant. Ensure the formulation is compatible with FastDownwards conventions.",
+                "prompt": "You are orchestrator. Integrate the mover_analysis, planner_design, and auditor_report to produce a final PDDL domain and a PDDL problem that solve the task: move disks A, B, C, D from middle peg to right peg leaving left and middle empty. Use the legal move semantics and audited constraints. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Target the FastDownwards solver."
+            }
+        },
+        "constraints": [
+            "mover.analysis->planner.design",
+            "planner.design->auditor.audit",
+            "mover.analysis->orchestrator.pddl",
+            "planner.design->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

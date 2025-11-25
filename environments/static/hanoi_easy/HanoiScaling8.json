@@ -1,0 +1,117 @@
+{
+    "name": "HanoiScaling8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "There are four disks named A (smallest), B, C, D (largest).",
+                "Three pegs exist: left, middle, right.",
+                "Legal primitive action: move the top disk from one peg to another peg.",
+                "Rules to respect: move only one disk at a time; only a top disk may be moved; never place a larger disk on top of a smaller disk."
+            ],
+            "goal": "Produce a clear, formal human-readable model of the domain: list of objects, predicates, and the action schema (name, parameters, preconditions, effects) expressed in plain structured text, not in PDDL."
+        },
+        "planner": {
+            "private_information": [
+                "I specialize in producing high-level sequences of concrete moves given a formal model.",
+                "I know optimal strategies for Tower of Hanoi and common decomposition patterns for 4 disks."
+            ],
+            "goal": "Using a provided formal model, produce a concrete ordered plan as a sequence of move steps (for example: move disk A from middle to left) that transforms the initial state into the goal state while respecting the rules. Do not emit PDDL; emit an ordered list of moves and brief explanatory notes if needed."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across models and plans.",
+                "I remove bookkeeping shortcuts such as quota tokens, abstracted counters, post-hoc penalties, or other artificial constructs that hide causal ordering.",
+                "I ensure the model and plan fully respect the original domain constraints without relying on shortcuts."
+            ],
+            "goal": "Inspect the model and the plan, identify and correct any temporal or causal shortcuts, ensure each move is justified by explicit preconditions and effects, and produce an audited combined model-plus-plan in human-readable structured form that is free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited model and plan and produce a final PDDL domain and PDDL problem that encode the 4-disk Tower of Hanoi instance targeted for the FastDownwards planner. The PDDL must explicitly model disks, pegs, ordering constraints, and initial and goal states."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 4,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "starting_distribution": {
+                "left": [],
+                "middle": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ],
+                "right": []
+            }
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right.",
+            "Four disks exist ordered from smallest to largest: A, B, C, D.",
+            "Initial state: middle peg holds from top to bottom A, B, C, D. Left and right pegs are empty.",
+            "Goal state: right peg must hold from top to bottom A, B, C, D and left and middle pegs must be empty.",
+            "Allowed action: move the top disk from one peg to another peg.",
+            "Rules: move a single top disk at a time, only top disks may be moved, and a larger disk may never be placed on top of a smaller disk.",
+            "The left peg may be used as an intermediate parking spot but must end empty in the goal."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "specify": {
+                "input": [],
+                "output": "model_spec",
+                "system_prompt": "You are the domain modeler. Produce a precise human-readable formalization of the Tower of Hanoi domain for 4 disks. Provide: a list of objects with types, a set of predicates needed to represent the state, and one or more action schemas described as name, parameters, preconditions, and effects. Do not produce PDDL. Keep the representation unambiguous and explicit so a planner can rely on it.",
+                "prompt": "Your name is modeler. You see the public information describing a Tower of Hanoi instance with 4 disks. Use your private information to produce a complete human-readable domain model: objects, predicates, and action schemas with clear preconditions and effects. Do not output PDDL. Focus on correctness and clarity so other agents can create a concrete plan from this model."
+            }
+        },
+        "planner": {
+            "plan": {
+                "input": [
+                    "model_spec"
+                ],
+                "output": "plan_steps",
+                "system_prompt": "You are the planner. Given a human-readable formal model, produce an explicit ordered plan that achieves the goal from the initial state. Express each step as a concrete move of a named disk between named pegs. Do not output PDDL. If multiple optimal plans exist, prefer a standard optimal solution for Tower of Hanoi. Include minimal explanatory annotations if necessary.",
+                "prompt": "Your name is planner. Use the provided model_spec to compute a move-by-move plan to move disks A,B,C,D from the middle peg to the right peg with the left peg available as auxiliary. Respect all rules and do not assume any bookkeeping shortcuts. Output a clear ordered list of moves."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_spec",
+                    "plan_steps"
+                ],
+                "output": "audited_model_plan",
+                "system_prompt": "You are the auditor. Your role is to check temporal and causal consistency and to remove any bookkeeping shortcuts. Verify that each planned move follows directly from explicit preconditions in the model and that no abstract tokens, counters, or post-hoc justifications are relied upon. If you find shortcuts or implicit assumptions, rewrite the model and/or plan to remove them while preserving feasibility. Output a single coherent audited human-readable artifact combining the corrected model and the corrected plan. Do not output PDDL.",
+                "prompt": "Your name is auditor. Inspect model_spec and plan_steps for causal and temporal issues and for any bookkeeping shortcuts. Produce an audited_model_plan that corrects issues and explicitly documents the causal chain for each move. Ensure the artifact can be deterministically converted into PDDL by the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_model_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and a PDDL author targeting the FastDownwards planner. Receive a human-readable audited model and plan and produce a complete PDDL domain and a PDDL problem file that encode the 4-disk Tower of Hanoi instance. Ensure the domain models disks, pegs, and the move action with correct preconditions and effects that enforce size ordering. Ensure the problem encodes the initial and goal states as specified. Use PDDL constructs compatible with FastDownwards (STRIPS-level is acceptable but add typing if helpful). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-level actions distinct if multiple agent roles appear in the input artifact. Aim for a solver-ready result with explicit objects, predicates, initial state, and goal.",
+                "prompt": "Your name is orchestrator. You have the following public information and the audited model-plus-plan: Use audited_model_plan to generate a PDDL domain and a PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL precisely encodes four disks A B C D, three pegs left middle right, the legal move action, and the initial and goal configurations. If the audited artifact contains multiple named actions or roles, preserve their distinctions in predicate or action names so the final domain remains faithful."
+            }
+        },
+        "constraints": [
+            "modeler.specify->planner.plan",
+            "modeler.specify->auditor.audit",
+            "planner.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

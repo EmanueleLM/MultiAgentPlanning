@@ -1,0 +1,20 @@
+(define (problem blocks-world-problem)
+  (:domain blocks-world)
+  (:objects red orange blue yellow - block)
+  (:init
+    (handempty)
+    (clear red)
+    (clear orange)
+    (on red yellow)
+    (on orange blue)
+    (ontable blue)
+    (ontable yellow)
+
+    ;; Explicit inequality facts to enforce x != y where required
+    (neq red orange) (neq red blue) (neq red yellow)
+    (neq orange red) (neq orange blue) (neq orange yellow)
+    (neq blue red) (neq blue orange) (neq blue yellow)
+    (neq yellow red) (neq yellow orange) (neq yellow blue)
+  )
+  (:goal (and (on red yellow) (on yellow orange)))
+)

@@ -1,0 +1,109 @@
+{
+    "name": "BlocksworldScaling20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_analyzer",
+            "local_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "block_analyzer": {
+            "private_information": [
+                "I observe four blocks named red, blue, yellow, and orange",
+                "I understand the primitive actions in the domain and their intuitive preconditions and effects"
+            ],
+            "goal": "Decompose the initial configuration and produce canonical object names, clear predicates, and an inventory of relevant relations without emitting PDDL"
+        },
+        "local_planner": {
+            "private_information": [
+                "I can propose high-level ordered plan fragments that respect single-hand and one-block-at-a-time constraints",
+                "I prefer concise plans that describe steps as abstract actions referencing objects by canonical names"
+            ],
+            "goal": "Produce candidate high-level plan fragments that can reach the global goal subject to the documented action restrictions, without emitting PDDL"
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and eliminate bookkeeping shortcuts",
+                "I ensure constraints such as only holding one block at a time and hand-empty transitions are enforced explicitly"
+            ],
+            "goal": "Validate and correct plan fragments for causal and temporal consistency and produce an audit report describing required adjustments and explicit invariants"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate analyses, plan fragments, and the audit report to produce a final PDDL domain and problem compatible with the FastDownwards solver"
+            ],
+            "goal": "Produce a final PDDL domain and problem file suitable for FastDownwards that encodes the blocksworld instance and the stated goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "Domain: blocks world with actions pick-up, unstack, put-down, and stack",
+            "Action restrictions: only one block can be picked up or unstacked at a time, and only when the hand is empty",
+            "A block is clear if nothing is on top of it and it is not being held",
+            "You can pick up a block only if it is on the table and clear",
+            "You can unstack a block only if it is on top of another block and clear",
+            "After pick-up or unstack you are holding the block and your hand is not empty",
+            "You may put down a block only if you are holding it; after put-down the hand becomes empty",
+            "You may stack a block only if you are holding that block and the target block is clear; after stacking the target block becomes not clear",
+            "Initial state: red is clear, hand is empty, red is on top of blue, blue is on top of yellow, yellow is on top of orange, orange is on the table",
+            "Goal state: orange on top of red and yellow on top of blue"
+        ]
+    },
+    "workflow": {
+        "block_analyzer": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_relations",
+                "system_prompt": "You are an expert in formalizing block world facts and canonical naming. Provide a clear decomposition of the initial state, explicit predicates required, canonical object names, and a compact description of each primitive action's intuitive preconditions and effects. Do not produce PDDL. Keep the output as a structured, plain-text analysis.",
+                "prompt": "Your role is block_analyzer. Use the public information to extract objects, initial relations, and required predicates. Produce canonical names for objects and list action schemas in natural language with explicit preconditions and effects. Do not output PDDL."
+            }
+        },
+        "local_planner": {
+            "plan_fragments": {
+                "input": [
+                    "analysis_block_relations"
+                ],
+                "output": "plan_fragments",
+                "system_prompt": "You are an expert planner for block stacking who produces high-level, temporally ordered plan fragments. You must respect single-hand and one-block-at-a-time constraints and avoid implicit bookkeeping. Do not emit PDDL. Provide ordered steps referencing canonical object names.",
+                "prompt": "Your role is local_planner. Given the analysis of the initial state and action schemas, propose one or more high-level plan fragments that move toward the goal. Express each fragment as an ordered list of abstract actions such as pick-up(red) or stack(red, blue). Do not produce PDDL."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "analysis_block_relations",
+                    "plan_fragments"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal constraints for planning. Your job is to detect and remove bookkeeping shortcuts, ensure causal links are explicit, ensure hand-empty invariants are enforced between actions, and annotate required additional steps. Produce a concise audit report. Do not emit PDDL.",
+                "prompt": "Your role is temporal_auditor. Review the analysis and plan fragments. Identify temporal inconsistencies, missing causal preconditions, and any places where a plan assumes parallel or shortcut actions. Produce corrections, required additional steps, and explicit invariants that the orchestrator must encode."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_relations",
+                    "plan_fragments",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring for FastDownwards. Your task is to combine analysis, plan fragments, and audit corrections to produce a complete PDDL domain and a PDDL problem file. The domain must include explicit predicates for hand-empty, holding, on, clear, on-table, and action schemas that enforce the one-block and single-hand constraints. The problem must encode the given initial state and the goal. Target the FastDownwards solver and ensure the PDDL is syntactically compatible with it. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your role is orchestrator. Integrate the inputs to produce a final PDDL domain and problem for the FastDownwards solver that represents the blocksworld instance and the global goal that orange is on top of red and yellow is on top of blue. Keep agent-level actions distinct if relevant. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "block_analyzer.analysis->local_planner.plan_fragments",
+            "block_analyzer.analysis->temporal_auditor.audit",
+            "local_planner.plan_fragments->temporal_auditor.audit",
+            "block_analyzer.analysis->orchestrator.pddl",
+            "local_planner.plan_fragments->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_operator",
+            "stack_planner",
+            "causal_auditor",
+            "orchestrator"
+        ],
+        "block_operator": {
+            "private_information": [
+                "I am an expert in the blocksworld action model and classical STRIPS-style precondition/effect descriptions.",
+                "Blocks in this instance: red, orange, blue, yellow."
+            ],
+            "goal": "Describe precise action schemas and unambiguous world predicates that capture the pick up, unstack, put down, and stack operations and their constraints."
+        },
+        "stack_planner": {
+            "private_information": [
+                "I focus on generating feasible stepwise plans under the action constraints provided by the domain expert and current initial state.",
+                "I prefer minimal-step plans but I do not impose bookkeeping shortcuts such as quota tokens."
+            ],
+            "goal": "Propose plan fragments or candidate action sequences to reach the stated goal from the initial configuration while respecting the domain constraints."
+        },
+        "causal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, detect impossible or cyclic goals, and remove bookkeeping shortcuts like post-hoc penalties or tokens.",
+                "I assert that stack relations must be acyclic in any valid state."
+            ],
+            "goal": "Audit the described domain and plan fragments for causal/temporal consistency, flag contradictions, and recommend corrections without supplying PDDL directly."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the domain descriptions, plan fragments, and auditor corrections into a final PDDL domain and PDDL problem targeting the FastDownward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "orange",
+                "blue",
+                "yellow"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack.",
+            "You can pick up or unstack only one block at a time and only if your hand is empty.",
+            "Pick-up is allowed only for a block that is on the table and clear.",
+            "A block is clear if no other block is on top of it and the block is not currently held.",
+            "Unstack is allowed only if the block to be unstacked is on top of another block and is clear.",
+            "After pick-up or unstack, the agent is holding that block and the hand is not empty.",
+            "You can put down a block only if you are holding it; after put-down the hand becomes empty.",
+            "You can stack a held block onto another block only if the destination block is clear; after stacking the hand becomes empty and the destination block is no longer clear.",
+            "Initial facts: red is clear, orange is clear, hand is empty, red is on top of blue, blue is on top of yellow, orange is on the table, yellow is on the table.",
+            "Goal facts: blue on top of yellow, orange on top of red, yellow on top of orange.",
+            "Stacking relations must be acyclic in any valid reachable state."
+        ]
+    },
+    "workflow": {
+        "block_operator": {
+            "model": {
+                "input": [],
+                "output": "model_block_operator",
+                "system_prompt": "You are a domain expert for block stacking. Produce a precise and unambiguous, human-readable specification of predicates and action schemas (preconditions and effects) for pick-up, unstack, put-down and stack. Do not emit PDDL. Focus on clarity, explicit state predicates, and edge cases such as the meaning of 'clear' and 'hand empty'.",
+                "prompt": "Your role is block_operator. Use the public information about the blocksworld and the initial and goal facts to produce a detailed action schema specification and any recommended naming conventions for predicates and constants that will reduce ambiguity for downstream translation to PDDL."
+            }
+        },
+        "stack_planner": {
+            "plan": {
+                "input": [
+                    "model_block_operator"
+                ],
+                "output": "plan_stack_planner",
+                "system_prompt": "You are a planner that generates stepwise candidate plans respecting the action schema descriptions provided by the domain expert. Do not emit PDDL. Provide ordered action sequences, justify why each action is applicable, and note any assumptions you need about unspecified details.",
+                "prompt": "Your role is stack_planner. Given the domain specification from the block_operator and the public initial and goal facts, produce candidate plan fragments or full plans that could reach the goal. Explain applicability of each action and note any missing information that prevents producing a complete plan."
+            }
+        },
+        "causal_auditor": {
+            "audit": {
+                "input": [
+                    "model_block_operator",
+                    "plan_stack_planner"
+                ],
+                "output": "audit_causal_auditor",
+                "system_prompt": "You are an auditor of temporal and causal consistency. You do not produce PDDL. Inspect domain descriptions and plans for cycles, impossible goals, and reliance on bookkeeping shortcuts. Provide corrections, point out unreachable goals, and suggest minimal modifications to make goals consistent with physical constraints.",
+                "prompt": "Your role is causal_auditor. Evaluate the domain specification and plan fragments. Identify any causal inconsistencies (for example, cycles in stacking requirements), unresolved assumptions, or tacit bookkeeping mechanisms. Recommend concrete fixes and explicitly state whether the stated goal is reachable from the given initial state under the provided action model."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_block_operator",
+                    "plan_stack_planner",
+                    "audit_causal_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must produce a final PDDL domain and a PDDL problem aimed at the FastDownward classical planner. Integrate the domain expert specification, the planner fragments, and the auditor corrections. Provide a fully consistent STRIPS/PDDL domain and a problem file that reflect any auditor-mandated corrections. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain is compatible with FastDownward's expectations and include required :requirements and :objects sections.",
+                "prompt": "Your role is orchestrator. Merge the inputs from the domain expert, the planner, and the auditor, resolve naming mismatches, remove any bookkeeping shortcuts, and output a complete PDDL domain and PDDL problem suitable for FastDownward. Keep agent-level actions distinct if they map to distinct actors in the model. If the auditor determined the goal is unreachable or inconsistent, reflect the corrected reachable goal or include an explicit comment in the PDDL problem file explaining the inconsistency."
+            }
+        },
+        "constraints": [
+            "block_operator.model->orchestrator.pddl",
+            "stack_planner.plan->orchestrator.pddl",
+            "causal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

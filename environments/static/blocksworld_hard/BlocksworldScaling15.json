@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "picker",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "picker": {
+            "private_information": [
+                "I can pick up a block from the table if my hand is empty and the block is clear.",
+                "I can unstack a block from on top of another block if my hand is empty and the block being unstacked is clear and was on top of the other block.",
+                "When I pick up or unstack a block I will then be holding that block and my hand becomes not empty."
+            ],
+            "goal": "Rearrange the blocks so that red is on yellow, blue is on red, and yellow is on orange."
+        },
+        "stacker": {
+            "private_information": [
+                "I can put down a block that I am holding onto the table, which makes my hand empty.",
+                "I can stack a block I am holding onto another block if that target block is clear.",
+                "When I stack a block onto another block the target block becomes not clear and my hand becomes empty."
+            ],
+            "goal": "Rearrange the blocks so that red is on yellow, blue is on red, and yellow is on orange."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit state changes that are not justified by primitive actions.",
+                "I ensure that all preconditions and effects are explicit and that only one block can be moved at a time and only when the hand is empty as required."
+            ],
+            "goal": "Validate and normalize the proposed action sequences so they are temporally and causally consistent with the primitive action schema."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a complete PDDL domain and problem for the FastDownwards planner that achieves the final block configuration: red on yellow, blue on red, yellow on orange."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand_empty": true,
+            "max_stack_height": 15,
+            "description": "Classical blocksworld with a single agent hand and table surface. Actions are pick-up, unstack, put-down, and stack."
+        },
+        "public_information": [
+            "There are four blocks named red, blue, orange, and yellow.",
+            "The hand is initially empty.",
+            "Blue is on top of orange.",
+            "Orange is on top of yellow.",
+            "Red is on the table and is clear.",
+            "Yellow is on the table and is not covered by red but currently has orange on top of it.",
+            "Allowed primitive actions are: pick-up, unstack, put-down, and stack.",
+            "Only one block can be moved at a time and only if the hand is empty.",
+            "A block is clear if there is no block on top of it and it is not currently held.",
+            "Stacking a block onto another makes the receiving block not clear."
+        ]
+    },
+    "workflow": {
+        "picker": {
+            "analyze": {
+                "input": [],
+                "output": "picker_analysis",
+                "system_prompt": "You are the picker agent. Your role is to analyze which blocks can be picked up or unstacked given the current public information and your private knowledge about pick and unstack preconditions and immediate effects. Do not emit PDDL. Produce a clear analysis listing applicable primitive move candidates, their direct preconditions and effects, and any ambiguities or missing information that would prevent executing those moves.",
+                "prompt": "Agent name: picker. Use public information: {environment->public_information}. Use your private information: {agents->picker->private_information}. Global goal: {agents->picker->goal}. Provide a stepwise analysis of pick and unstack opportunities and enumerate candidate moves with explicit preconditions and effects. Do not attempt to produce PDDL."
+            }
+        },
+        "stacker": {
+            "model": {
+                "input": [],
+                "output": "stacker_model",
+                "system_prompt": "You are the stacker agent. Your role is to analyze put-down and stack actions and to propose clear, explicit action templates with preconditions and effects for stacking and putting down blocks. Do not emit PDDL. Highlight constraints about clear surfaces and the resulting changes in 'clear' predicates and hand occupancy.",
+                "prompt": "Agent name: stacker. Use public information: {environment->public_information}. Use your private information: {agents->stacker->private_information}. Global goal: {agents->stacker->goal}. Provide explicit action templates for put-down and stack with their preconditions and effects. Do not attempt to produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "picker_analysis",
+                    "stacker_model"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your role is to inspect proposed action candidates and action templates from other agents and remove or flag any bookkeeping shortcuts, implicit state transitions, or assumptions that would break causal consistency. Produce a normalization report enumerating required primitive actions and explicit sequencing constraints. Do not emit PDDL.",
+                "prompt": "Agent name: auditor. You receive inputs: {picker_analysis} and {stacker_model}. Use your private information: {agents->auditor->private_information}. Global goal: {agents->auditor->goal}. Produce an audit report that enforces single-move-at-a-time constraints, explicit hand-empty preconditions, explicit clear predicate transitions, and that removes any shortcuts. Output a normalized sequence of primitive action types and any ordering constraints required to reach the goal given the initial state from public information."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "picker_analysis",
+                    "stacker_model",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your job is to integrate analyses and the auditor report and produce a complete PDDL domain and problem file that is compatible with the FastDownwards planner. The domain must include types, predicates, and action schemata for pick-up, unstack, put-down, and stack with explicit preconditions and effects that reflect the audited normalization. The problem must describe the initial state and the goal: red on yellow, blue on red, yellow on orange. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Ensure compatibility with STRIPS requirements as used by FastDownwards. Keep agent actions distinct if multiple agents were modeled but produce a single domain and problem suitable for FastDownwards.",
+                "prompt": "You have received the following inputs from other agents: picker analysis: {picker_analysis} stacker model: {stacker_model} auditor report: {auditor_report} Use public information: {environment->public_information} and the global orchestration goal: {agents->orchestrator->goal} Produce a complete PDDL domain and a PDDL problem targeting the FastDownwards solver. Enclose the domain between <domain> and </domain> and the problem between <problem> and </problem>. Ensure all preconditions and effects match the audited normalization and that only primitive actions are used."
+            }
+        },
+        "constraints": [
+            "picker.analyze->orchestrator.pddl",
+            "stacker.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

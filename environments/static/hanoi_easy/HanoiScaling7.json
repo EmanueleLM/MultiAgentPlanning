@@ -1,0 +1,104 @@
+{
+    "name": "HanoiScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover_agent",
+            "strategy_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover_agent": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I can move only one disk at a time.",
+                "I may only move a disk that is on top of a peg.",
+                "I can never place a larger disk on top of a smaller disk."
+            ],
+            "goal": "Provide precise primitive move descriptions and validate individual moves that respect the rules."
+        },
+        "strategy_planner": {
+            "private_information": [
+                "I know high level Tower of Hanoi strategies and optimal move counts for 4 disks.",
+                "I can produce sequences of abstract moves using pegs as labels and respecting invariants."
+            ],
+            "goal": "Produce an abstract sequence of moves and a high-level decomposition that uses the left peg as an intermediate and ends with the left and middle pegs empty and the right peg holding all disks smallest-to-largest."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans.",
+                "I detect and remove bookkeeping shortcuts and artificial tokens, quotas, or post-hoc penalties that mask unsound plans."
+            ],
+            "goal": "Audit plans and action descriptions for causal soundness and temporal consistency, and provide corrections and explicit constraints needed for sound PDDL modeling."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the artifacts from other agents and produce a final PDDL domain and problem tailored for the FastDownward solver that solves the 4-disk transfer from the middle peg to the right peg with the left peg empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "initial_configuration": "Middle peg top-to-bottom: A, B, C, D. Left peg empty. Right peg empty."
+        },
+        "public_information": [
+            "There are 3 pegs: left, middle, right.",
+            "There are 4 disks named A, B, C, D from smallest to largest respectively.",
+            "Only the top disk of a peg may be moved at any time.",
+            "Only one disk may be moved at a time.",
+            "A larger disk may never be placed on top of a smaller disk.",
+            "The left peg may be used as an intermediate but must end empty.",
+            "The goal is to have the right peg hold from top to bottom A, B, C, D and both middle and left pegs empty."
+        ]
+    },
+    "workflow": {
+        "mover_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_mover",
+                "system_prompt": "You are an expert in primitive move validation for Tower of Hanoi. Provide a concise formal description of the allowed primitive move action including explicit preconditions and effects expressed in plain structured text or a small JSON fragment. Do not emit a full PDDL domain or problem. Focus on the atomic move: which predicates must hold before the move and which predicates are added and removed after the move.",
+                "prompt": "Agent name: mover_agent. Use the public information and your private information to list the primitive action schema for moving the top disk between pegs. Describe preconditions and effects precisely and give any naming conventions you assume for pegs, disks, and predicates. Do not produce final PDDL."
+            }
+        },
+        "strategy_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner",
+                "system_prompt": "You are an expert planner for Tower of Hanoi strategies. Provide a high-level plan decomposition and an ordered sequence of abstract moves for 4 disks that satisfies the public goal. Do not output full PDDL domain or problem. Indicate subgoals, ordering constraints, and any simplifying assumptions you require in plain structured text.",
+                "prompt": "Agent name: strategy_planner. Use the public information and your private information to produce an optimal or near-optimal abstract move sequence and the decomposition into subproblems. State clearly any assumed naming or abstractions. Do not emit final PDDL."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_auditor",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Inspect proposed action schemas and high-level plans and identify any temporal or causal flaws. Remove bookkeeping shortcuts such as quota tokens, artificial counters, or post-hoc penalties. Return explicit constraints, invariants, and corrections needed to represent the model soundly in PDDL. Do not emit final PDDL domain and problem.",
+                "prompt": "Agent name: auditor. Use the public information and your private information to review the primitive action descriptions and the strategy planner output. Produce a list of required invariants, mutex relations, and temporal ordering constraints needed to guarantee soundness. Provide corrections to any underspecified preconditions or effects."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_mover",
+                    "pddl_planner",
+                    "pddl_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownward planner. Integrate the primitive action descriptions, the high-level plan decomposition, and the auditor corrections, and produce a complete PDDL domain and a PDDL problem that models the 4-disk Tower of Hanoi instance. Keep actions and fragments traceable to their sources by naming integrated actions with a source prefix if needed. The produced PDDL must be compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent name: orchestrator. You will receive three artifacts: the mover_agent primitive action description, the strategy_planner high-level sequence, and the auditor corrections. Integrate them into a single coherent PDDL domain and a single PDDL problem file that implements the 4-disk transfer from middle to right with the left peg empty at the end. Ensure strong causal correctness and that no bookkeeping shortcuts remain. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mover_agent.pddl->orchestrator.pddl",
+            "strategy_planner.pddl->orchestrator.pddl",
+            "auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

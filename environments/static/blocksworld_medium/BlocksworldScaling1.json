@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_perceiver",
+            "local_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "block_perceiver": {
+            "private_information": [
+                "I can observe which blocks are on which surfaces and which blocks are clear",
+                "Current perception: orange on top of blue, yellow on top of red, red on table, blue on table, hand is empty"
+            ],
+            "goal": "Provide an accurate symbolic description of the initial state and the set of objects available for planning"
+        },
+        "local_planner": {
+            "private_information": [
+                "I can propose local action sequences and operator schemas but I will not emit full PDDL",
+                "I respect the blocksworld action restrictions: only one block moved at a time, pick/unstack only if hand is empty, only pick from table if block is clear, unstack only if the block is actually on another block and clear, stacking requires destination clear"
+            ],
+            "goal": "Produce plan fragments and a candid set of operator preconditions and effects that could be composed to reach the global goal"
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit causal and temporal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I ensure all preconditions and effects are explicit and that actions do not violate the single-hand or clear invariants"
+            ],
+            "goal": "Validate and correct plan fragments so they are temporally and causally consistent and free of hidden shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate perceptions, plan fragments, and auditor feedback to produce a final PDDL domain and PDDL problem targeting the FastDownwards solver that achieves the global goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "orange",
+                "yellow",
+                "red",
+                "blue"
+            ],
+            "visibility": 1
+        },
+        "public_information": [
+            "There are four blocks named orange, yellow, red, and blue",
+            "Allowed high level actions: Pick up a block, Unstack a block, Put down a block, Stack a block on top of another block",
+            "Action restrictions: only one block can be picked up or unstacked at a time, pick up or unstack only when hand is empty",
+            "Clearness rules: a block is clear if no block is on top of it and it is not being held",
+            "Pick up preconditions: block is on table and block is clear",
+            "Unstack preconditions: block is on top of another block and block is clear",
+            "Stack preconditions: holding the block and the destination block is clear",
+            "Put down preconditions: holding the block",
+            "Effects: when you pick up or unstack a block you are holding that block and the hand becomes non-empty; when you put down or stack a block your hand becomes empty; stacking a block on another makes the supporting block not clear",
+            "Initial facts: orange is clear, yellow is clear, hand is empty, orange is on top of blue, yellow is on top of red, red is on the table, blue is on the table",
+            "Goal: the red block is on top of the blue block"
+        ]
+    },
+    "workflow": {
+        "block_perceiver": {
+            "describe": {
+                "input": [],
+                "output": "perception_description",
+                "system_prompt": "You are the perception agent. Your task is to read the public information and your private observations and produce a concise symbolic initial state description. Do not produce PDDL. Output a list of atomic facts and object declarations that are unambiguous and machine readable.",
+                "prompt": "Your name is block_perceiver. Use the environment public information {environment->public_information} and your private knowledge {agents->block_perceiver->private_information} to create a canonical list of objects and initial atomic facts suitable for symbolic planning. Produce only object declarations and facts. Do not invent additional objects or facts."
+            }
+        },
+        "local_planner": {
+            "spec": {
+                "input": [
+                    "perception_description"
+                ],
+                "output": "plan_fragments",
+                "system_prompt": "You are a local planner that proposes operator schemas and short plan fragments. Do not emit full PDDL domain and problem files. Keep actions explicit about preconditions and effects and avoid using bookkeeping shortcuts.",
+                "prompt": "Your name is local_planner. Using the perception {perception_description} and the public rules {environment->public_information} propose operator schemas for PickUp, Unstack, PutDown, and Stack. For each operator provide a name, parameters, explicit preconditions and explicit effects. Additionally provide one or more short plan fragments that move blocks toward the goal red on blue. Keep fragments modular so they can be validated and combined."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [
+                    "plan_fragments",
+                    "perception_description"
+                ],
+                "output": "audited_fragments",
+                "system_prompt": "You are an auditor responsible for causal and temporal consistency. Remove implicit assumptions and any bookkeeping shortcuts. Convert any informal fragment to a version where every precondition and effect is explicit and temporally consistent under single-hand constraints.",
+                "prompt": "Your name is temporal_auditor. Receive plan fragments {plan_fragments} and the perception {perception_description}. Check each fragment for causal correctness, single-hand constraints, and clearness invariants. Return corrected fragments with explicit preconditions and effects. If a fragment relies on ambiguous naming or implicit steps, expand it to make dependencies explicit."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "perception_description",
+                    "plan_fragments",
+                    "audited_fragments"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. You must integrate perceptions, plan fragments, and audited corrections and produce a single coherent PDDL domain and a single coherent PDDL problem file suitable for the FastDownwards planner. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions originating from different agents clearly namespaced or commented so their origin is traceable. Ensure all preconditions and effects are explicit and that the domain models single-hand and clearness constraints exactly.",
+                "prompt": "There are multiple contributors to the planning task and you received their outputs. Integrate them to produce a final PDDL domain and a final PDDL problem that solves the goal red on blue. Use the perception {perception_description}, the original fragments {plan_fragments}, and the audited fragments {audited_fragments}. Target the FastDownwards solver by using STRIPS/lightweight ADL constructs compatible with FastDownwards. Do not rely on shortcuts. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep agent actions distinct by prefixing action names or by comments indicating the source agent."
+            }
+        },
+        "constraints": [
+            "block_perceiver.describe->orchestrator.pddl",
+            "local_planner.spec->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

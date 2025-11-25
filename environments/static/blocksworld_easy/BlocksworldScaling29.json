@@ -1,0 +1,95 @@
+{
+    "name": "BlocksworldScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "builder",
+            "auditor",
+            "orchestrator"
+        ],
+        "builder": {
+            "private_information": [
+                "I can pick up a block only if the block is on the table and clear and my hand is empty.",
+                "I can unstack a block only if it is on top of another block and the block is clear and my hand is empty.",
+                "Once I pick up or unstack a block I will be holding that block.",
+                "Once I put down or stack a block my hand becomes empty.",
+                "Stacking a block on another makes the support block not clear.",
+                "Initial facts: red is clear, yellow is clear, hand is empty, red is on top of blue, blue is on top of orange, orange is on the table, yellow is on the table."
+            ],
+            "goal": "Produce a symbolic model and a candidate high-level action sequence to reach the goal where blue is on top of orange and yellow is on top of blue."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove bookkeeping shortcuts and illegitimate post-hoc penalties.",
+                "I check single-handedness constraints, exclusivity of holding, and correctness of clear/on/ontable transitions.",
+                "I should flag any model or plan that assumes parallel manipulation, hidden token quotas, or retrospective fixes."
+            ],
+            "goal": "Review and produce an audit report that ensures the builder's model and candidate plan are temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate the builder model and the auditor report to produce a final PDDL domain and problem suitable for the FastDownwards planner."
+            ],
+            "goal": "Produce a complete, consistent PDDL domain and PDDL problem targeting the FastDownwards solver that achieves the goal: blue on top of orange and yellow on top of blue."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "blocks": [
+                "red",
+                "yellow",
+                "blue",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack.",
+            "You can only pick up or unstack one block at a time and only if your hand is empty.",
+            "Pick-up requires the block to be on the table and clear.",
+            "Unstack requires the block to be on top of another block and clear.",
+            "Once you pick up or unstack a block you hold it; once you put down or stack a block your hand becomes empty.",
+            "Stacking a block on top of another makes the target block no longer clear.",
+            "Initial configuration: red on blue, blue on orange, orange on table, yellow on table, red clear, yellow clear, hand empty.",
+            "Goal configuration: blue on top of orange and yellow on top of blue."
+        ]
+    },
+    "workflow": {
+        "builder": {
+            "model": {
+                "input": [],
+                "output": "block_model",
+                "system_prompt": "You are an expert in symbolic modeling of manipulation domains and classical planning problems. You will produce a compact, explicit symbolic model describing objects, predicates, initial facts, and operator sketches appropriate for the block stacking use case. Do not produce a full PDDL domain or problem in this step. Focus on clarity of predicates, preconditions and effects, and a candidate high-level action sequence that respects single-handed constraints.",
+                "prompt": "Your name is builder. Use the public information and your private information to construct a clear symbolic model for the block stacking task. Enumerate objects and predicates such as on, ontable, clear, holding, handempty. Provide operator sketches for pick-up, unstack, put-down, and stack with explicit preconditions and effects. Provide one or more candidate high-level action sequences that could achieve the goal blue on orange and yellow on blue. Do not emit PDDL. Be explicit about any assumptions you make."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "block_model"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency in planning models. Your job is to detect and remove bookkeeping shortcuts such as implicit token systems, retrospective repairs, or parallel-action assumptions that violate the single-handed constraint. Provide corrections and explain necessary model refinements.",
+                "prompt": "Your name is auditor. You will receive a symbolic model and candidate plan from the builder. Check that the model enforces that only one block can be held at a time, that pick-up and unstack require an empty hand, and that clear/on/ontable transitions are causally correct. Identify any shortcuts or hidden bookkeeping devices and propose concrete fixes. Produce an audit report listing issues and recommended model adjustments. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "block_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards solver. Using the builder model and the auditor report, produce a final, complete PDDL domain and a PDDL problem that encode the blocks world task. Ensure the encoding enforces single-handed manipulation and the causal constraints identified by the auditor. Use standard predicates (on, ontable, clear, holding, handempty) and STRIPS-style operators. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make the PDDL compatible with FastDownwards.",
+                "prompt": "Your name is orchestrator. Integrate the provided block_model and audit_report into a coherent PDDL domain and PDDL problem that represent the initial state and the goal where blue is on orange and yellow is on blue. Keep builder actions distinct and reflect the auditor's corrections. Output only the PDDL domain and problem enclosed respectively in <domain></domain> and <problem></problem> tags. Ensure compatibility with the FastDownwards planner."
+            }
+        },
+        "constraints": [
+            "builder.model->auditor.audit",
+            "builder.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

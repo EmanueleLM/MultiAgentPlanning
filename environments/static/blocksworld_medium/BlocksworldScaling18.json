@@ -1,0 +1,116 @@
+{
+    "name": "BlocksworldScaling18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "executor",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I can decompose high level goals into stepwise block manipulation fragments.",
+                "I reason about preconditions and effects of PickUp Unstack PutDown and Stack but will not emit final PDDL."
+            ],
+            "goal": "Produce stepwise plan fragments and enumerate the preconditions and effects for each action fragment required to achieve the global goal."
+        },
+        "executor": {
+            "private_information": [
+                "I can simulate action sequences forward from the initial state and detect illegal steps given the action restrictions.",
+                "I produce concrete state traces to show how a fragment changes the world."
+            ],
+            "goal": "Simulate plan fragments produced by the planner and produce a deterministic state trace. Flag any illegal or impossible actions under the given constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post hoc penalties.",
+                "I verify that all causal links are preserved and that the plan respects single hand and clearness constraints."
+            ],
+            "goal": "Audit plan fragments and simulation traces for causal completeness and temporal consistency and produce recommendations and corrections without inventing shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate partial analyses and produce a final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Integrate planner fragments, executor traces and auditor corrections to produce a coherent PDDL domain and problem suitable for FastDownwards that solves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "blue",
+                "orange",
+                "red",
+                "yellow"
+            ]
+        },
+        "public_information": [
+            "There are four blocks named blue, orange, red and yellow.",
+            "Available actions are PickUp, Unstack, PutDown and Stack with standard blocksworld restrictions.",
+            "Only one block can be picked up or unstacked at a time.",
+            "Pick up or unstack can only occur when the hand is empty.",
+            "A block is clear if no block is on top of it and it is not being held.",
+            "PickUp requires the block to be on the table and clear.",
+            "Unstack requires the block to be on top of another block and clear.",
+            "After a PickUp or Unstack the agent is holding that block and the hand is not empty.",
+            "PutDown requires the agent to be holding the block and results in the block on the table and the hand empty.",
+            "Stack requires the agent to be holding the block and the target block must be clear. After stacking, the hand is empty and the target block is no longer clear.",
+            "Initial facts: blue is clear, orange is clear, hand is empty, blue is on top of yellow, orange is on top of red, red is on the table, yellow is on the table.",
+            "Goal: blue on top of red, orange on top of yellow, and yellow on top of blue."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analyze": {
+                "input": [],
+                "output": "plan_fragments",
+                "system_prompt": "You are a planning analyst for block manipulation tasks. Your output should be a set of stepwise plan fragments. Do not emit PDDL. Focus on decomposing the global goal into ordered fragments with explicit preconditions and effects for each step using the available actions.",
+                "prompt": "Your name is planner. Use the environment public information and your private knowledge to produce plan fragments that move blocks toward the goal. For each fragment list the action name, the actor assumptions, the preconditions that must hold before the action, and the deterministic effects after the action. Do not assume unseen shortcuts. Keep fragments as explicit sequences of primitive actions. If information is missing, list required assumptions rather than inventing them."
+            }
+        },
+        "executor": {
+            "simulate": {
+                "input": [
+                    "plan_fragments"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are an execution simulator. You execute plan fragments deterministically from the given initial state. Do not produce PDDL. Produce a step by step state trace and indicate whether each action is legal under the stated restrictions. If an action is illegal explain why.",
+                "prompt": "Your name is executor. Take the plan fragments provided by the planner and simulate them from the initial state listed in the public information. Produce a numbered state trace showing which facts change at each step. For illegal steps provide a clear justification referencing the relevant rule. If you must alter a fragment to make it legal, produce the minimal correction and explain the change."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_fragments",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your task is to find causal gaps, temporal inconsistencies and any bookkeeping shortcuts such as tokens or penalties. Do not emit PDDL. Provide corrected fragments, explicit causal links and a summary of removed shortcuts. Ensure single hand and clearness invariants are preserved.",
+                "prompt": "Your name is auditor. Given the plan fragments and the executor simulation trace, verify that all preconditions are established by prior effects, that no action assumes multiple concurrent hand states, and that no bookkeeping shortcuts are used. Produce a report that lists each causal link, any missing causal link and a corrected fragment or ordering to repair it. Mark which parts are confirmed valid."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_fragments",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL synthesis targeting the FastDownwards planner. Integrate the plan fragments, simulation trace, and auditor corrections. Produce a complete PDDL domain and a PDDL problem file that are compatible with FastDownwards. Use STRIPS style constructs and avoid planner specific extensions that FastDownwards may not support. Enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags. Keep agent actions distinct when relevant and ensure the domain captures the single hand, clearness and stacking semantics.",
+                "prompt": "You are the orchestrator. Use the planner fragments, the executor trace, and the auditor report to produce a final PDDL domain and a PDDL problem that, when solved by FastDownwards, will achieve the stated goal from the stated initial state. Ensure all preconditions and effects are represented explicitly, and resolve any naming inconsistencies. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.analyze->executor.simulate",
+            "planner.analyze->auditor.audit",
+            "executor.simulate->auditor.audit",
+            "planner.analyze->orchestrator.pddl",
+            "executor.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

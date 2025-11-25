@@ -1,0 +1,118 @@
+{
+    "name": "BlocksworldScaling12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_picker",
+            "stack_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_picker": {
+            "private_information": [
+                "I can pick up a single block if my hand is empty and the block is on the table and clear.",
+                "I can unstack a single block from on top of another if my hand is empty and the block being unstacked is clear and was on top of the other block.",
+                "When I pick up or unstack a block I will be holding that block and my hand becomes nonempty.",
+                "When I put down or stack a block my hand becomes empty."
+            ],
+            "goal": "Provide a concise, ordered set of feasible low-level manipulation actions consistent with the initial state and local constraints. Do not produce PDDL. Report any missing information or ambiguous references."
+        },
+        "stack_planner": {
+            "private_information": [
+                "I reason about desired intermediate configurations to reach the global goal.",
+                "I may propose stacking orders and subgoals and identify necessary preconditions for each stacking step."
+            ],
+            "goal": "Propose a causal stepwise plan of block moves and temporary placements that achieves the global goal. Do not produce PDDL. Highlight any assumptions."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as implicit quotas, tokens, or post-hoc penalties.",
+                "I ensure actions respect single-handed constraints, preservation of 'clear' predicates, and state transitions are causally justified."
+            ],
+            "goal": "Audit the proposed plans for temporal and causal soundness, remove implicit shortcuts, and produce an audit report describing required corrections or confirm consistency. Do not produce PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses, planner proposals, and audit reports to produce a final consistent planning problem.",
+                "I target the FastDownwards solver and must emit a PDDL domain and a PDDL problem that encode the full multi-step blocksworld task with agent-distinct actions preserved if necessary."
+            ],
+            "goal": "Integrate inputs from other agents and produce a PDDL domain and PDDL problem suitable for FastDownwards that achieves the global goal. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand": "empty",
+            "initial_state": [
+                "clear red",
+                "clear blue",
+                "clear yellow",
+                "handempty",
+                "on yellow orange",
+                "on red table",
+                "on blue table",
+                "on orange table"
+            ]
+        },
+        "public_information": [
+            "There are four blocks: red, blue, yellow, and orange.",
+            "Actions available: pick up a block, unstack a block, put down a block, stack a block.",
+            "Only one block can be held at a time.",
+            "A block is clear if nothing is on top of it and it is not being held.",
+            "Stacking a block onto another makes the lower block non-clear.",
+            "The goal is that the orange block is on top of the blue block and the yellow block is on top of the red block."
+        ]
+    },
+    "workflow": {
+        "block_picker": {
+            "analysis": {
+                "input": [],
+                "output": "picker_analysis",
+                "system_prompt": "You are an expert low-level manipulator that reasons about single-block pickup, unstack, put down, and stack actions. Provide a concise ordered list of physically feasible primitive actions given the initial state and local constraints. Do not produce PDDL. If information is missing or ambiguous, state the ambiguity and avoid making unverifiable assumptions.",
+                "prompt": "As block_picker, use your private information and the environment public information to produce a sequence of feasible primitive moves. Report preconditions and effects for each proposed primitive action and mark when your hand changes state. Output a structured summary suitable for the orchestrator to consume."
+            }
+        },
+        "stack_planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_proposal",
+                "system_prompt": "You are a high-level stack planner that proposes causal subgoals and an ordering of moves to achieve the final configuration. Do not emit PDDL. Focus on abstract steps, required intermediate placements, and dependencies between steps.",
+                "prompt": "As stack_planner, propose an ordered plan of moves and intermediate states that would achieve the global goal. Provide the rationale for each step and list any assumptions about temporarily available table space or temporary placements."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "picker_analysis",
+                    "planner_proposal"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor specialized in removing bookkeeping shortcuts. Check that each action respects single-handed constraints, that all preconditions are actually established by prior actions, and that no implicit tokens or shortcuts are used. Do not produce PDDL. Produce a clear report of violations and required modifications.",
+                "prompt": "As auditor, examine the outputs from block_picker and stack_planner. Identify causal gaps, temporal contradictions, and any implicit bookkeeping assumptions. Recommend concrete fixes or confirm the plan is consistent. Produce an audit report designed for the orchestrator to apply adjustments before PDDL generation."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "picker_analysis",
+                    "planner_proposal",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates low-level analyses, high-level planner proposals, and auditor corrections to produce a final PDDL domain and problem suitable for the FastDownwards planner. Preserve the single-handed action semantics and explicitly encode preconditions and effects for pick-up, unstack, put-down, and stack. Keep agent reasoning distinct only where it affects action names or comments. Emit a PDDL domain and problem and enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags. The resulting PDDL must be complete and directly solvable by FastDownwards.",
+                "prompt": "Using the picker_analysis, planner_proposal, and audit_report, produce a complete PDDL domain and PDDL problem that models the blocksworld instance. Ensure that the domain encodes: single-hand constraints, clear predicate semantics, on-table and on relations, and stack/unstack/pickup/putdown actions. Ensure the problem encodes the given initial state and the goal that orange is on blue and yellow is on red. Provide no additional commentary outside the enclosed PDDL tags."
+            }
+        },
+        "constraints": [
+            "block_picker.analysis->orchestrator.pddl",
+            "stack_planner.analysis->orchestrator.pddl",
+            "auditor.consistency_audit->orchestrator.pddl"
+        ]
+    }
+}

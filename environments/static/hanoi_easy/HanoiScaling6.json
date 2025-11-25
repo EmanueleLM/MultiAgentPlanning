@@ -1,0 +1,128 @@
+{
+    "name": "HanoiScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "disk_mover",
+            "local_planner",
+            "strategist",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_mover": {
+            "private_information": [
+                "I can describe valid single-disk moves and check top-of-peg status.",
+                "I understand that moves transfer the top disk from one peg to another."
+            ],
+            "goal": "Enumerate and describe atomic legal single-disk move types, their preconditions and effects."
+        },
+        "local_planner": {
+            "private_information": [
+                "I can assemble short sequences of moves that obey local legality constraints.",
+                "I do not assume global optimality when generating local sequences."
+            ],
+            "goal": "Produce stepwise move subsequences that respect the disk-move rules and can be composed."
+        },
+        "strategist": {
+            "private_information": [
+                "I reason about recursive decomposition and minimal-move strategies for Towers of Hanoi.",
+                "I track abstract stack invariants and expected move counts (2^n-1)."
+            ],
+            "goal": "Provide a global decomposition and high-level plan structure to move the full stack from left to right using the middle peg as intermediate."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts.",
+                "I ensure that no larger disk is ever placed on a smaller disk and that top-of-peg constraints are explicit."
+            ],
+            "goal": "Validate and correct move sequences for causal/temporal consistency and explicit legality, and output any required corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and produce a final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Integrate inputs from other agents and produce a complete PDDL domain and problem for FastDownwards that encodes the 4-disk Towers of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "visibility": 0
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right.",
+            "There are four disks increasing in size from smallest to largest named disk A, disk B, disk C, disk D.",
+            "Initial state: left peg holds from top to bottom disk A, disk B, disk C, disk D. Middle and right pegs are empty.",
+            "Goal state: right peg holds from top to bottom disk A, disk B, disk C, disk D. Left and middle pegs are empty at the end.",
+            "Rules: only one disk moves at a time; only the top disk of a peg may be moved; a larger disk may never be placed on top of a smaller disk; the middle peg may be used as intermediate but must be empty in the final state.",
+            "Once moved, disks retain relative size ordering with respect to the other disks."
+        ]
+    },
+    "workflow": {
+        "disk_mover": {
+            "analyze": {
+                "input": [],
+                "output": "disk_mover.analysis",
+                "system_prompt": "You are DiskMover. Provide a concise catalog of all legal atomic move facts for the Towers of Hanoi domain: specify a move as moving the top disk from peg X to peg Y, list the abstract preconditions required (peg X nonempty, disk is top, destination top larger or empty), and list the abstract effects (disk removed from source top and becomes top at destination). Do not emit PDDL; emit clear, structured plain-text move descriptions that others can consume.",
+                "prompt": "Use the environment public information and your private knowledge to enumerate all allowed single-disk move templates between pegs and express necessary preconditions and effects in explicit terms."
+            }
+        },
+        "local_planner": {
+            "plan": {
+                "input": [
+                    "disk_mover.analysis"
+                ],
+                "output": "local_planner.plan",
+                "system_prompt": "You are LocalPlanner. Consume atomic move descriptions and assemble short valid move subsequences (e.g., move disk A from left to right then move disk B, etc.) that respect the atomic preconditions and effects. Do not produce PDDL. Produce stepwise sequences labeled and annotated with the preconditions that must hold at each step.",
+                "prompt": "Generate composable move subsequences that obey the rules and could be stitched into a full plan; annotate where assumptions are made so the auditor can validate them."
+            }
+        },
+        "strategist": {
+            "strategy": {
+                "input": [
+                    "local_planner.plan"
+                ],
+                "output": "strategist.strategy",
+                "system_prompt": "You are Strategist. Provide a global recursive decomposition for solving the 4-disk Towers of Hanoi instance, indicate the expected minimal move count, and specify how local subsequences should be arranged to realize the global plan. Do not emit PDDL. Emphasize recursion, invariants, and required intermediate states.",
+                "prompt": "Using the public information and local subsequences, produce a high-level plan structure that yields the full transfer from left to right using middle as intermediate while leaving it empty in the end."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "disk_mover.analysis",
+                    "local_planner.plan",
+                    "strategist.strategy"
+                ],
+                "output": "auditor.report",
+                "system_prompt": "You are Auditor. Check temporal and causal consistency of the provided move subsequences and the global strategy. Detect and remove bookkeeping shortcuts and implicit assumptions such as unstated tokens or retrospective penalties. Ensure every move's preconditions are achievable at the time of the move, that no larger disk is placed on a smaller disk, and that single-disk move rules hold. Provide corrections and a fully explicit, consistent set of move constraints and any required additional steps.",
+                "prompt": "Produce an audit report that enumerates any inconsistencies or missing preconditions and provide corrected, fully explicit move steps or constraints needed to guarantee a valid plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_mover.analysis",
+                    "local_planner.plan",
+                    "strategist.strategy",
+                    "auditor.report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are Orchestrator. Integrate the analyses, plans, strategy, and audit corrections to produce a complete PDDL domain and a PDDL problem targeting the FastDownwards solver for the 4-disk Towers of Hanoi instance. Keep agent actions distinct in your reasoning and make any necessary naming resolutions explicit. Provide the PDDL domain enclosed between <domain></domain> tags and the PDDL problem enclosed between <problem></problem> tags. Ensure the domain models pegs, disks, top-of-peg relations, legal move action with appropriate preconditions and effects, and enforces that no larger disk may be placed on a smaller disk. Ensure the problem encodes the initial state and the goal state described in the environment.",
+                "prompt": "Using the public information and the inputs from the other agents, produce a FastDownwards-compatible PDDL domain and PDDL problem that solves the described instance. Enclose the domain with <domain></domain> and the problem with <problem></problem>."
+            }
+        },
+        "constraints": [
+            "disk_mover.analyze->local_planner.plan",
+            "local_planner.plan->strategist.strategy",
+            "disk_mover.analyze->auditor.audit",
+            "strategist.strategy->auditor.audit",
+            "disk_mover.analyze->orchestrator.pddl",
+            "local_planner.plan->orchestrator.pddl",
+            "strategist.strategy->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

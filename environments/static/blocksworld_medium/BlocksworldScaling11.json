@@ -1,0 +1,109 @@
+{
+    "name": "BlocksworldScaling11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "stack_planner",
+            "action_auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can perceive block identities and their spatial relations and clear status",
+                "I can report the exact initial facts I observe but I do not generate PDDL"
+            ],
+            "goal": "Produce a complete and unambiguous symbolic description of objects predicates and the initial state given public information"
+        },
+        "stack_planner": {
+            "private_information": [
+                "I know the primitive actions available: pick up, unstack, put down, stack",
+                "I know the domain constraints about hand capacity and clear blocks",
+                "I generate high-level causal action sequences but not PDDL"
+            ],
+            "goal": "Produce a stepwise high-level plan that achieves the global goal while respecting all action restrictions"
+        },
+        "action_auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency auditing",
+                "I remove bookkeeping shortcuts and detect hidden assumptions such as token schemes or post-hoc penalties"
+            ],
+            "goal": "Review and correct the state model and plan to ensure valid preconditions effects and temporal ordering given the single-hand constraint"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate agent analyses and produce the final PDDL domain and problem targeting the FastDownwards solver",
+                "I keep actions of different agents distinct when mapping to PDDL operators"
+            ],
+            "goal": "Assemble inputs from other agents to output a complete PDDL domain and problem compatible with FastDownwards"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "Primitive actions available: pick up a block, unstack a block, put down a block, stack a block on another block",
+            "You can pick up or unstack only one block at a time",
+            "You can pick up or unstack a block only if your hand is empty",
+            "You can pick up a block only if the block is on the table and the block is clear",
+            "A block is clear if it has no blocks on top of it and it is not currently held",
+            "You can unstack a block only if that block is on top of another block and the block is clear",
+            "After pick up or unstack you hold the block and hand is not empty",
+            "You can put down a block only if you are holding it",
+            "You can stack a block only if you are holding it and the target block is clear",
+            "After put down or stack your hand becomes empty",
+            "Once you stack a block on a second block the second block becomes not clear",
+            "Initial facts: blue clear, orange clear, yellow clear, hand empty, blue on red, red on table, orange on table, yellow on table",
+            "Goal facts: blue on yellow and yellow on red"
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "analyze": {
+                "input": [],
+                "output": "state_model",
+                "system_prompt": "You are the observer agent and your role is to read the public information and your private information and produce a precise symbolic state model identifying objects, predicates, and all initial facts while flagging any ambiguities or missing details. Do not produce PDDL. Provide a compact machine-readable state model representation as the output string.",
+                "prompt": "Produce a compact symbolic state model listing block objects their on relations clear predicates and hand status. Highlight any ambiguous references and avoid making assumptions beyond the given public information."
+            }
+        },
+        "stack_planner": {
+            "plan": {
+                "input": [],
+                "output": "partial_plan",
+                "system_prompt": "You are the stack planner and your role is to produce a high-level causal plan that achieves the goal while respecting the action restrictions. Do not emit PDDL. Provide an ordered list of concrete actions with their actor and the preconditions and expected effects for each step.",
+                "prompt": "Given the public information and your private knowledge of available actions and constraints, produce a step-by-step plan that leads to the goal. Each step must name a primitive action and list the required preconditions and the resulting state changes. Avoid inventing additional helper tokens or shortcuts."
+            }
+        },
+        "action_auditor": {
+            "audit": {
+                "input": [
+                    "state_model",
+                    "partial_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent responsible for temporal and causal consistency and for removing bookkeeping shortcuts. Your task is to validate the state model and the partial plan for sound preconditions and effects, ensure the single-hand constraint is never violated, remove any implicit tokens or post-hoc fixes, and produce a corrected model and plan comments. Do not produce PDDL.",
+                "prompt": "Take the state model and the partial plan and produce a detailed audit report that identifies and fixes any causal or temporal inconsistencies. Explicitly state any required additions to preconditions or effects and provide corrected plan steps if necessary."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_model",
+                    "partial_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator agent responsible for integrating inputs from other agents and producing a complete PDDL domain and PDDL problem formatted for the FastDownwards planner. Produce a domain that models blocks, table, hand, clear predicates and the four primitive actions with precise preconditions and effects and typing where appropriate. Keep actions or operator names distinct when they originate from different agent contributions. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility by using standard PDDL constructs.",
+                "prompt": "Integrate the state model, the planner's partial plan, and the auditor's corrections to emit a final PDDL domain and PDDL problem suitable for FastDownwards. Ensure the domain models single-hand constraints and clear semantics and the problem encodes the initial facts and the goal blue on yellow and yellow on red. Enclose domain and problem using <domain> and <problem> tags."
+            }
+        },
+        "constraints": [
+            "observer.analyze->action_auditor.audit",
+            "stack_planner.plan->action_auditor.audit",
+            "action_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

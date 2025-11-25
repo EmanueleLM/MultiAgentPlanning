@@ -1,0 +1,117 @@
+{
+    "name": "BlocksworldScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "I specialize in converting informal domain descriptions into explicit objects predicates and operator templates.",
+                "I should not emit final PDDL; instead I produce a structured domain model describing objects predicates initial static constraints and operator preconditions and effects."
+            ],
+            "goal": "Produce a precise formalization of the blocksworld domain describing objects predicates and operator templates consistent with the public information and the action restrictions."
+        },
+        "planner": {
+            "private_information": [
+                "I specialize in generating high level sequential plans given a domain model and initial and goal facts.",
+                "I will produce a step by step plan skeleton using the available actions but not the final PDDL files."
+            ],
+            "goal": "Propose a concrete ordered sequence of actions that will achieve the global goal from the initial state under the given constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in checking temporal and causal consistency and removing bookkeeping shortcuts such as quota tokens post-hoc penalties or counterfactual allowances.",
+                "I will perform an independent analysis to ensure the model and plan obey singlehandedness uniqueness of holding and true causal preconditions and effects."
+            ],
+            "goal": "Audit the model and plan for temporal and causal consistency and produce a clear report of necessary corrections or confirmations, eliminating bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from other agents and must produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I ensure the integrated output is consistent and includes any corrections from the auditor."
+            ],
+            "goal": "Integrate the modeler planner and auditor outputs and produce a final PDDL domain and PDDL problem file suitable for FastDownwards, enclosing the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand_state": "empty"
+        },
+        "public_information": [
+            "There are four blocks: red blue orange and yellow.",
+            "Actions available are pick up unstack put down and stack with the semantics of the classic blocks world.",
+            "Only one block can be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if there is no block on top of it and it is not being held.",
+            "Pick up can be performed only for a clear block on the table when the hand is empty.",
+            "Unstack can be performed only for a clear block that is on top of another block when the hand is empty.",
+            "Once pick up or unstack is performed the agent is holding that block and the hand is not empty.",
+            "Put down can be performed only for a block that is held and returns the block to the table and empties the hand.",
+            "Stack can be performed only for a block that is held and only onto a clear block, after stacking the hand becomes empty and the target block is no longer clear.",
+            "Initial facts: red is clear blue is clear orange is clear the hand is empty orange is on yellow red is on the table blue is on the table and yellow is on the table.",
+            "Goal facts: blue is on yellow and orange is on red."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "analyze": {
+                "input": [],
+                "output": "modeler_model",
+                "system_prompt": "You are an expert in formalizing planning domains into structured models. Do not output PDDL files. Produce an explicit list of object types predicates and operator templates with clear preconditions and effects and any necessary invariants.",
+                "prompt": "You are the modeler. Use the public environment information {environment->public_information} and your private information {agents->modeler->private_information}. Produce a precise structured domain model that enumerates objects predicates and operator templates consistent with the described action restrictions and initial conditions. Emphasize singlehandedness clear semantics and which predicates denote the hand state."
+            }
+        },
+        "planner": {
+            "propose": {
+                "input": [
+                    "modeler_model"
+                ],
+                "output": "planner_plan",
+                "system_prompt": "You are an expert planner that proposes concrete sequential plans based on a provided structured domain model. Do not emit PDDL domain or problem files. Provide an ordered list of high level actions with arguments and brief justification for each step.",
+                "prompt": "You are the planner. Use the model from modeler {modeler_model} and the public information {environment->public_information} and your private knowledge {agents->planner->private_information}. Produce a step by step action sequence that achieves the goal given the initial facts. Respect all action restrictions and assume the hand starts empty."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "modeler_model",
+                    "planner_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your role is to remove bookkeeping shortcuts such as quota tokens post-hoc penalties or any unrealistic assumptions. Provide corrections suggestions or confirmations and produce a final validated set of preconditions effects and plan adjustments.",
+                "prompt": "You are the auditor. Receive the model {modeler_model} and the plan {planner_plan} and your private instructions {agents->auditor->private_information}. Check that all actions in the plan are causally supported by the model that singlehandedness is respected that clearness and on relationships are maintained and that no bookkeeping shortcuts are used. Produce a concise audit report listing issues and required changes or confirm that the artifacts are correct."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "modeler_model",
+                    "planner_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator producing a final PDDL domain and PDDL problem targeted to the FastDownwards solver. You must incorporate model corrections from the auditor and ensure the domain is STRIPS compatible for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Integrate the structured model {modeler_model} the proposed plan {planner_plan} and the audit report {audit_report} along with the public information {environment->public_information} and produce a final PDDL domain and a final PDDL problem suitable for FastDownwards. Ensure predicates actions and objects are consistent that preconditions and effects implement the stated action restrictions and that the initial state and goal match the problem statement. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "modeler.analyze->planner.propose",
+            "modeler.analyze->auditor.audit",
+            "planner.propose->auditor.audit",
+            "modeler.analyze->orchestrator.pddl",
+            "planner.propose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

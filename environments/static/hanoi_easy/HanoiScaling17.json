@@ -1,0 +1,107 @@
+{
+    "name": "HanoiScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg when legal.",
+                "I obey the physical move primitive exactly one disk at a time."
+            ],
+            "goal": "Contribute legal atomic moves that progress the configuration toward the goal state."
+        },
+        "planner": {
+            "private_information": [
+                "I know recursive decomposition strategies for Tower of Hanoi.",
+                "The left peg is intended as an intermediate parking spot and must end empty at the end."
+            ],
+            "goal": "Produce a high level sequence of move steps and decomposition into subgoals that achieves the global goal."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency.",
+                "I remove bookkeeping shortcuts. I detect and correct assumed tokens or post-hoc penalties."
+            ],
+            "goal": "Ensure the proposed plan fragments are temporally consistent, causally valid, and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate analyses and produce a final PDDL domain and problem suitable for the FastDownwards solver that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "visibility": 2
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "There are four disks. From smallest to largest they are disk A, disk B, disk C, and disk D.",
+            "Initial state: the right peg holds from top to bottom disk A, disk B, disk C, disk D. Left and middle pegs are empty.",
+            "Goal state: the middle peg must hold from top to bottom disk A, disk B, disk C, disk D. Left and right pegs must be empty.",
+            "Rules: move only one disk at a time.",
+            "Rules: you may only move a disk that is on top of a peg.",
+            "Rules: you may never place a larger disk on top of a smaller disk.",
+            "The left peg may be used as an intermediate parking spot but must end up empty."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_mover",
+                "system_prompt": "You are the low-level mover agent. Your responsibility is to enumerate legal atomic moves from a given configuration. Do not emit PDDL. Provide compact move suggestions, an explicit description of preconditions and effects for each move, and any assumptions you rely on.",
+                "prompt": "You are named mover. Use the public information and your private information to list legal atomic moves and to state the preconditions and effects of each move. Highlight any ambiguities about object naming or peg labels. Keep your output actionable and concrete."
+            }
+        },
+        "planner": {
+            "strategy": {
+                "input": [],
+                "output": "strategy_planner",
+                "system_prompt": "You are the high-level planner. Your responsibility is to generate a decomposition of the Tower of Hanoi instance into subproblems and an ordered sequence of moves at an abstract level. Do not emit PDDL. Provide the recursive plan, explicit intermediate states, and mapping between subgoals and low-level moves.",
+                "prompt": "You are named planner. Use the public information and your private information to produce a high-level plan that solves the global goal. State the sequence of subgoals and the required disk movements between pegs. Make explicit any assumptions about how the left peg will be used as intermediate. Provide clear step labels that the orchestrator can map to PDDL actions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_mover",
+                    "strategy_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent. Your responsibility is to check temporal and causal consistency and to remove bookkeeping shortcuts. Do not emit PDDL. Inspect proposed moves and plan fragments and detect cycles, illegal intermediate states, or assumptions that violate the rules. Replace any token-based shortcuts or post-hoc penalties with explicit legal steps.",
+                "prompt": "You are named auditor. Receive the mover analysis and the planner strategy. Verify that every proposed step is legal under the rules. Detect and correct any temporal or causal inconsistencies. Produce a cleaned and annotated plan fragment list with explicit justification for each move. If you must constrain or expand the plan to eliminate shortcuts, describe the added moves and rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_mover",
+                    "strategy_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your responsibility is to integrate analyses and produce a final PDDL domain and a PDDL problem file that are compatible with the FastDownwards solver. Produce a complete STRIPS-style or ADL domain and a matching problem. Keep agent-level actions distinct and name actions to reflect the mover identity. Use explicit predicates for disk-on-peg, top-of-peg, and smaller-than relations. Enclose the PDDL domain between <domain> and </domain> tags. Enclose the PDDL problem between <problem> and </problem> tags.",
+                "prompt": "You are named orchestrator. Integrate the mover analysis, planner strategy, and auditor report. Resolve naming mismatches and ensure causal orderings are satisfied. Produce a PDDL domain and a PDDL problem that encode the Tower of Hanoi instance with four disks and three pegs. Target the FastDownwards solver. Ensure the domain contains types, predicates, and actions that enforce one-disk moves, top-of-peg preconditions, and the never-place-larger-on-smaller constraint. Ensure the problem encodes the initial and goal configurations. Provide the domain between <domain> tags and the problem between <problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "planner.strategy->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

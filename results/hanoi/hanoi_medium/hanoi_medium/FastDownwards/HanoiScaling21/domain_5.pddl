@@ -1,0 +1,96 @@
+(define (domain hanoi-5-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg stage)
+
+  (:predicates
+    (on-disk ?d - disk ?below - disk)
+    (on-peg ?d - disk ?p - peg)
+    (top ?d - disk)
+    (peg-empty ?p - peg)
+    (smaller ?d1 - disk ?d2 - disk)
+    (at-stage ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
+  )
+
+  (:action move-from-disk-to-disk
+    :parameters (?d - disk ?from - disk ?to - disk ?s - stage ?s-next - stage)
+    :precondition (and
+      (at-stage ?s)
+      (next ?s ?s-next)
+      (on-disk ?d ?from)
+      (top ?d)
+      (top ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on-disk ?d ?from))
+      (on-disk ?d ?to)
+      (top ?d)
+      (top ?from)
+      (not (top ?to))
+      (not (at-stage ?s))
+      (at-stage ?s-next)
+    )
+  )
+
+  (:action move-from-disk-to-peg
+    :parameters (?d - disk ?from - disk ?to - peg ?s - stage ?s-next - stage)
+    :precondition (and
+      (at-stage ?s)
+      (next ?s ?s-next)
+      (on-disk ?d ?from)
+      (top ?d)
+      (peg-empty ?to)
+    )
+    :effect (and
+      (not (on-disk ?d ?from))
+      (on-peg ?d ?to)
+      (top ?d)
+      (top ?from)
+      (not (peg-empty ?to))
+      (not (at-stage ?s))
+      (at-stage ?s-next)
+    )
+  )
+
+  (:action move-from-peg-to-disk
+    :parameters (?d - disk ?from - peg ?to - disk ?s - stage ?s-next - stage)
+    :precondition (and
+      (at-stage ?s)
+      (next ?s ?s-next)
+      (on-peg ?d ?from)
+      (top ?d)
+      (top ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-disk ?d ?to)
+      (top ?d)
+      (peg-empty ?from)
+      (not (top ?to))
+      (not (at-stage ?s))
+      (at-stage ?s-next)
+    )
+  )
+
+  (:action move-from-peg-to-peg
+    :parameters (?d - disk ?from - peg ?to - peg ?s - stage ?s-next - stage)
+    :precondition (and
+      (at-stage ?s)
+      (next ?s ?s-next)
+      (on-peg ?d ?from)
+      (top ?d)
+      (peg-empty ?to)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+      (top ?d)
+      (peg-empty ?from)
+      (not (peg-empty ?to))
+      (not (at-stage ?s))
+      (at-stage ?s-next)
+    )
+  )
+)

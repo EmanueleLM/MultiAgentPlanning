@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_planner",
+            "stacking_controller",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_planner": {
+            "private_information": [
+                "I know the block manipulation actions and the informal preconditions and effects for each action.",
+                "I know a symbolic description of the initial configuration and the desired goal configuration, but I do not produce final PDDL."
+            ],
+            "goal": "Help derive a correct sequence of high level manipulation steps that achieves the final block placement."
+        },
+        "stacking_controller": {
+            "private_information": [
+                "I represent low level execution constraints and resource usage such as single hand at a time and atomicity of pick and place operations.",
+                "I can convert high level steps into deterministic ordered action fragments but I do not emit PDDL."
+            ],
+            "goal": "Produce an ordered, executable plan fragment that respects action atomicity and the single hand constraint."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and I remove bookkeeping shortcuts such as implicit tokens, quotas, or post hoc penalties.",
+                "I verify that every precondition is backed by a prior effect and that actions do not rely on hidden state."
+            ],
+            "goal": "Audit plan fragments for causal completeness and remove any implicit or shorthand assumptions so the final specification is explicit and solver compatible."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate analysis fragments from other agents and produce a solver-ready PDDL domain and problem targeting the FastDownwards planner."
+            ],
+            "goal": "Combine the planners, controllers and auditor outputs into a single coherent PDDL domain and problem that FastDownwards can solve and that achieves the final block arrangement."
+        }
+    },
+    "environment": {
+        "init": {
+            "block_names": [
+                "blue",
+                "yellow",
+                "orange",
+                "red"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "There are four blocks: blue, yellow, orange, red.",
+            "Actions allowed: pick up a block, unstack a block, put down a block, stack a block on another block.",
+            "Only one block can be manipulated at a time and operations require the hand to be empty when picking up or unstacking.",
+            "A block is clear if it has no blocks on top and is not currently held.",
+            "Initial configuration: blue is clear, yellow is clear, hand is empty, blue is on top of orange, orange is on top of red, red is on the table, yellow is on the table.",
+            "Goal: blue on top of yellow and orange on top of red."
+        ]
+    },
+    "workflow": {
+        "block_planner": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_planner",
+                "system_prompt": "You are an expert in symbolic task decomposition for block stacking. Provide a clear high level sequence of steps required to reach the goal from the given initial configuration. Enumerate assumptions explicitly and avoid producing PDDL. Focus on which blocks must move, the necessary unstack and stack operations, and the required intermediate clear conditions.",
+                "prompt": "You are block_planner. Use the public information and your private knowledge to produce an ordered high level plan consisting of named steps and the causal preconditions and effects for each step. Do not emit PDDL. If you need clarifications, state the missing facts instead of assuming them."
+            }
+        },
+        "stacking_controller": {
+            "control": {
+                "input": [
+                    "analysis_block_planner"
+                ],
+                "output": "control_stacking_controller",
+                "system_prompt": "You are an expert in converting high level symbolic plans into deterministic action fragments respecting single-handed atomic operations. Translate each high level step into an ordered sequence of concrete actions and explicit preconditions and effects. Do not emit PDDL. Make all implicit state explicit.",
+                "prompt": "You are stacking_controller. Receive the high level plan from block_planner and produce an ordered, executable plan fragment with concrete actions such as pick, unstack, putdown, stack, and explicit state changes including hand status. Ensure atomicity and single-hand constraints are explicit."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_block_planner",
+                    "control_stacking_controller"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning specifications. Inspect plan fragments for hidden assumptions, bookkeeping shortcuts, or implicit tokens. Produce a corrected and explicit set of preconditions and effects and flag any missing causal links. Do not produce PDDL output.",
+                "prompt": "You are auditor. Given the high level plan and the controller's executable fragments, verify that every precondition follows from a prior effect and that no step assumes hidden state. Remove any shortcuts and produce a cleaned description suitable for direct translation into PDDL axioms and actions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_planner",
+                    "control_stacking_controller",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are tasked with producing a final PDDL domain and PDDL problem tailored for the FastDownwards solver. Integrate the high level plan, the controller fragments, and the auditor corrections. Keep agent actions distinct where relevant and ensure all preconditions and effects are explicit. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be directly consumable by FastDownwards and avoid solver-incompatible shortcuts.",
+                "prompt": "You are orchestrator. Integrate the provided analysis, controller plan, and audit report into a single PDDL domain and problem pair targeted for FastDownwards. Keep actions atomic and explicit and ensure the goal is blue on yellow and orange on red. Enclose the domain in <domain> tags and the problem in <problem> tags."
+            }
+        },
+        "constraints": [
+            "block_planner.analysis->stacking_controller.control",
+            "block_planner.analysis->auditor.audit",
+            "stacking_controller.control->auditor.audit",
+            "block_planner.analysis->orchestrator.pddl",
+            "stacking_controller.control->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

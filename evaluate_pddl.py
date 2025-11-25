@@ -111,6 +111,7 @@ def llm_judge(
     llm: LLM,
     golden: str,
     candidate: str,
+    sas_plan: str = "",
     ignore_cost_differences: bool = False,
     prompt_key: str = GENERIC_PROMPT_KEY,
     prompt_0shot: str = "",
@@ -118,11 +119,12 @@ def llm_judge(
     system_prompt = "You are an expert evaluator that compares task solutions against golden references."
     prompt_lines = build_judge_prompt_lines(prompt_key)
     prompt_header = [
-        "You will receive three artefacts in this order:",
+        "You will receive four artefacts in this order:",
         "1. The original prompt that the model responded to (prompt_0shot).",
-        "2. The golden reference plan.",
-        "3. The candidate plan to evaluate.",
-        "Read the prompt first to understand the task constraints, then examine the golden plan, and finally judge whether the candidate satisfies the golden plan under the prompt. Consider that the candidate plan may use different valid strategies to achieve the same goal.",
+        "2. The golden reference plan (golden).",
+        "3. The latest PDDL/SAS plan produced by the classical planner (sas_plan).",
+        "4. The candidate natural-language plan (natural_plan) to evaluate.",
+        "Read the prompt first to understand the task constraints. The golden plan is the reference outcome; decide whether the candidate natural plan matches it.",
     ]
     prompt_lines = prompt_header + prompt_lines
     if ignore_cost_differences:
@@ -134,7 +136,9 @@ def llm_judge(
         "\n".join(prompt_lines)
         + "\n\nOriginal prompt (prompt_0shot):\n"
         + (prompt_0shot or "[none provided]")
-        + f"\n\nGolden plan:\n{golden}\n\nCandidate plan:\n{candidate}"
+        + f"\n\nGolden plan (golden):\n{golden}"
+        + f"\n\nSAS/PDDL plan (sas_plan):\n{sas_plan or '[none provided]'}"
+        + f"\n\nNatural-language candidate plan (natural_plan):\n{candidate}"
     )
     response = llm.generate_sync(system_prompt=system_prompt, prompt=prompt)
     try:
@@ -193,8 +197,10 @@ def evaluate_dataset(
                 logging.info("[%s] skipped (no final_natural_plan)", key)
             continue
 
-        natural = plan_path.read_text(encoding="utf-8").strip()
-        if normalize_text(golden) == normalize_text(natural):
+        natural_plan = plan_path.read_text(encoding="utf-8").strip()
+        latest_cost, sas_plan_raw = extract_latest_plan_cost(plan_folder)
+        sas_plan = sas_plan_raw or ""
+        if normalize_text(golden) == normalize_text(natural_plan):
             correct = True
             reason = "Exact match after normalization"
             judge_raw = "Exact match after normalization (judge not invoked)"
@@ -202,7 +208,8 @@ def evaluate_dataset(
             correct, reason, judge_raw = llm_judge(
                 llm,
                 golden,
-                natural,
+                natural_plan,
+                sas_plan=sas_plan,
                 ignore_cost_differences=dataset_is_blocksworld,
                 prompt_key=prompt_key,
                 prompt_0shot=prompt_text,
@@ -217,7 +224,6 @@ def evaluate_dataset(
                 plan_path,
             )
 
-        latest_cost = extract_latest_plan_cost(plan_folder)
         if latest_cost is not None:
             accumulated_cost += latest_cost
             cost_count += 1
@@ -226,7 +232,7 @@ def evaluate_dataset(
             ExampleResult(
                 key=key,
                 golden=golden,
-                natural_plan=natural,
+                natural_plan=natural_plan,
                 correct=correct,
                 reason=reason,
                 plan_path=plan_path,
@@ -246,21 +252,25 @@ def evaluate_dataset(
     )
 
 
-def extract_latest_plan_cost(plan_folder: Path) -> Optional[float]:
+def extract_latest_plan_cost(plan_folder: Path, latest_plan: Optional[Path] = None) -> tuple[Optional[float], Optional[str]]:
     if not plan_folder or not plan_folder.exists():
-        return None
+        return None, None
 
-    sas_files = sorted([p for p in plan_folder.glob("sas_plan_*") if p.is_file()])
-    if not sas_files:
-        return None
-
-    latest_plan = sas_files[-1]
+    plan_file = latest_plan
+    if plan_file is None:
+        sas_files = sorted([p for p in plan_folder.glob("sas_plan_*") if p.is_file()])
+        if not sas_files:
+            return None, None
+        plan_file = sas_files[-1]
+    if plan_file is None:
+        return None, None
     try:
-        last_lines = latest_plan.read_text(encoding="utf-8").strip().splitlines()
+        plan_content = plan_file.read_text(encoding="utf-8").strip()
     except OSError:
-        return None
+        return None, None
 
-    for line in reversed(last_lines):
+    cost = None
+    for line in reversed(plan_content.splitlines()):
         line = line.strip()
         if line.startswith(";") and "cost" in line:
             parts = line.split("cost =", 1)
@@ -268,10 +278,11 @@ def extract_latest_plan_cost(plan_folder: Path) -> Optional[float]:
                 continue
             try:
                 value_part = parts[1].split()[0]
-                return float(value_part)
+                cost = float(value_part)
+                break
             except (ValueError, IndexError):
                 continue
-    return None
+    return cost, plan_content
 
 
 def summarize(

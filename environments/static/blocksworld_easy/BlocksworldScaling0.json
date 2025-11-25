@@ -1,0 +1,94 @@
+{
+    "name": "BlocksworldScaling0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I can pick up a block from the table if my hand is empty and the block is clear",
+                "I can unstack a block from on top of another block if my hand is empty and the block being unstacked is clear and was on top of the other block",
+                "I can put down a block I am holding to the table",
+                "I can stack a block I am holding on top of another block if that other block is clear",
+                "When I pick up or unstack a block I become holding that block",
+                "When I put down or stack a block I become empty handed and the block I stacked makes the supporting block not clear"
+            ],
+            "goal": "Contribute a high-level, actionable plan to achieve the goal configuration: blue on top of red and yellow on top of orange."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency analysis for multi-step plans",
+                "I detect and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and ensure actions respect single-hand constraints"
+            ],
+            "goal": "Audit proposed plans for causal/temporal correctness, remove unrealistic bookkeeping shortcuts, and produce a corrected sequence or notes for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate partial plans and audits and produce a final formal planning problem suitable for an automated planner",
+                "The final PDDL must be targeted to the FastDownwards solver"
+            ],
+            "goal": "Integrate the agents' analyses and produce a complete PDDL domain and problem file that achieves the goal: blue on top of red and yellow on top of orange."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 1
+        },
+        "public_information": [
+            "Blocks available: orange, yellow, blue, red",
+            "Actions available: pick-up, unstack, put-down, stack",
+            "Only one block can be picked up or unstacked at a time",
+            "Pick-up or unstack actions are only possible if the hand is empty",
+            "A block is clear if no other block is on top of it and it is not being held",
+            "You can pick up a block only if it is on the table and clear",
+            "You can unstack a block only if it is on top of another block and it is clear",
+            "After pick-up or unstack, the agent is holding the block",
+            "You can put down a block only if you are holding it",
+            "You can stack a held block on another block only if the other block is clear",
+            "After put-down or stack, the hand becomes empty",
+            "Once a block B is stacked on block A, A is no longer clear",
+            "Initial world facts: orange is clear, yellow is clear, hand is empty, blue is on top of red, orange is on top of blue, red is on the table, yellow is on the table",
+            "Goal facts: blue is on top of red and yellow is on top of orange"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "plan_fragment": {
+                "input": [],
+                "output": "stacker_plan_fragment",
+                "system_prompt": "You are an agent that produces concise, high-level action sequences for rearranging blocks. Do not produce PDDL. Focus on concrete legal actions in the current block world and respect the single-hand constraints and clear conditions.",
+                "prompt": "Your name is stacker. Use the public information: {environment->public_information} and your private knowledge: {agents->stacker->private_information}. Produce a step-by-step high-level plan that could achieve the global goal {agents->stacker->goal}. Express actions in plain terms such as 'unstack X from Y', 'pick up X from table', 'stack X on Y', 'put down X on table'. If some information is missing, state the uncertainty and produce the best plan under current knowledge."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "stacker_plan_fragment"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an expert auditor for temporal and causal correctness in planning. Do not emit PDDL. Your role is to analyze and correct plan fragments, remove bookkeeping shortcuts, and ensure all preconditions and single-hand constraints are respected at each step.",
+                "prompt": "Your name is auditor. You will receive a plan fragment from the stacker: {stacker_plan_fragment}. Using the public information {environment->public_information} and your private knowledge {agents->auditor->private_information}, check the plan for causal and temporal consistency. Identify any steps that violate preconditions, single-hand constraints, or rely on bookkeeping shortcuts. Provide a corrected sequence or detailed notes that the orchestrator can use to produce a valid PDDL encoding. Be explicit about preconditions and effects for each action in plain language."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "stacker_plan_fragment",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL encoding and know how to produce domain and problem files compatible with the FastDownwards solver. Produce a PDDL domain and a PDDL problem that implement the valid actions and constraints for this block world. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep each agent's conceptual actions distinct if necessary, and ensure the encoding enforces single-hand constraints and the clear predicate semantics precisely. Target FastDownwards by using a STRIPS-compatible encoding where possible and include the appropriate :requirements and typing for compatibility.",
+                "prompt": "Your name is orchestrator. Integrate the public information: {environment->public_information}, the stacker's plan fragment: {stacker_plan_fragment}, and the auditor's report: {auditor_report}. Resolve any ambiguities and produce a complete PDDL domain and PDDL problem to achieve the stated goal. Ensure the domain models pick-up, unstack, put-down, and stack with correct preconditions and effects, models the single hand constraint, models clear on blocks, and enforces that stacking makes the supporting block not clear. Use clear predicate and fluent names appropriate for FastDownwards. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "stacker.plan_fragment->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

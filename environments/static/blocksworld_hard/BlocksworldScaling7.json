@@ -1,0 +1,107 @@
+{
+    "name": "BlocksworldScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "domain_designer",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can inspect and report the current configuration of blocks and the target goal.",
+                "I observe that the blue block is clear, the yellow block is clear, the hand is empty, the red block is on top of the orange block, the blue block is on top of the red block, the orange block is on the table, and the yellow block is on the table."
+            ],
+            "goal": "Provide a precise, unambiguous structured description of the initial state and the goal state without proposing planning operators."
+        },
+        "domain_designer": {
+            "private_information": [
+                "I know the canonical blocksworld action types: pick-up, unstack, put-down, stack.",
+                "I understand constraints such as single-hand capacity and 'clear' predicate semantics."
+            ],
+            "goal": "Produce structured action schemas (names, parameters, preconditions, effects) and an object list representing the problem; do not emit final PDDL domain and problem."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and removing modeling shortcuts or bookkeeping tokens.",
+                "I verify that models do not rely on post-hoc penalties, token shortcuts, or implicit simultaneity; I ensure actions are atomic and respect hand-empty constraints."
+            ],
+            "goal": "Audit the proposed action schemas and initial/goal encoding for causal and temporal consistency and suggest concrete edits so the model conforms to a true STRIPS-style blocksworld with single-hand semantics."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and produce the final planning artifacts targeting the FastDownward solver."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem file that implement the audited model and initial/goal state, formatted for FastDownward, with the domain enclosed between <domain></domain> tags and the problem enclosed between <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "There are four blocks: blue, yellow, red, orange.",
+            "Allowed atomic actions: pick-up a block, unstack a block from another block, put-down a block, stack a block on another block.",
+            "Action restrictions: only one block can be manipulated at a time and only if the hand is empty for pick-up/unstack operations.",
+            "Definition of clear: a block is clear if no other block is on top of it and it is not currently picked up.",
+            "Pick-up preconditions: block is on the table and clear; effect: holding(block) and hand no longer empty and block no longer on table and block no longer clear in table relation.",
+            "Unstack preconditions: block is on top of another block and the block is clear; effect: holding(block) and the block removed from on(other) and the block no longer clear relation for the support may change, and hand no longer empty.",
+            "Put-down preconditions: agent is holding block; effect: block on table, hand becomes empty, block becomes clear.",
+            "Stack preconditions: agent is holding block and the target block is clear; effect: block on target, hand becomes empty, target block becomes not clear.",
+            "Initial facts: clear(blue), clear(yellow), handempty, on(red, orange), on(blue, red), ontable(orange), ontable(yellow).",
+            "Goal facts: on(red, blue), on(blue, yellow), on(yellow, orange)."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "describe_state": {
+                "input": [],
+                "output": "obs_state",
+                "system_prompt": "You are an observer that inspects the block world and reports a structured representation of objects, relevant unary predicates, and binary relations for the initial state and the desired goal. Provide a concise list of objects, explicit ground predicates, and highlight any potential ambiguities requiring clarification.",
+                "prompt": "You are named observer. Use the public information about the world {environment->public_information} and your private observations {agents->observer->private_information}. Produce a structured description of the initial state and the goal. Do not propose action schemas or PDDL; only enumerate objects and ground predicates and point out any missing or ambiguous facts."
+            }
+        },
+        "domain_designer": {
+            "specify_model": {
+                "input": [
+                    "obs_state"
+                ],
+                "output": "model_spec",
+                "system_prompt": "You are a domain model designer experienced with classical planning representations. Provide structured action schemas for the blocksworld actions. Each schema must include name, parameters, preconditions, and effects in a clear structured format (JSON-like or plain lists). Avoid emitting PDDL domain or problem files at this stage.",
+                "prompt": "You are named domain_designer. Based on the observed state {obs_state} and public rules {environment->public_information} and your private knowledge {agents->domain_designer->private_information}, produce precise action schemas for pick-up, unstack, put-down, and stack. Ensure single-hand constraints are represented in preconditions and that 'clear' semantics are explicit. Provide an object list for the problem. Do not produce the final PDDL domain or problem."
+            }
+        },
+        "auditor": {
+            "audit_consistency": {
+                "input": [
+                    "model_spec",
+                    "obs_state"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency and on removing bookkeeping shortcuts. Inspect the proposed model and remove any implicit assumptions that rely on bookkeeping tokens, synchronous multi-effect shortcuts, or post-hoc penalties. Produce concrete edits to action schemas so they are causally correct and compatible with single-agent sequential execution.",
+                "prompt": "You are named auditor. Using the domain model {model_spec} and the observed state {obs_state} and your private rules {agents->auditor->private_information}, check for temporal and causal consistency, ensure atomicity of actions, verify hand-empty invariants and clear predicate updates, and remove any modeling shortcuts. Return an audit report listing required corrections, explicit corrected schemas or amendments, and rationale for each change."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_spec",
+                    "audit_report",
+                    "obs_state"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent coordination and PDDL authoring with the explicit target of producing artifacts compatible with the FastDownward planner. Integrate the supplied model specifications and audit corrections and produce a final PDDL domain and PDDL problem tuned for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions atomic and preserve distinct responsibilities from the contributing agents.",
+                "prompt": "You are named orchestrator. Integrate the model {model_spec}, the auditor findings {audit_report}, and the observed facts {obs_state} together with the public rules {environment->public_information}. Produce a complete PDDL domain and a PDDL problem aimed at FastDownward. Ensure the domain uses standard predicates such as on, ontable, clear, holding, handempty; ensure the solver requirements are compatible with FastDownward. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "observer.describe_state->domain_designer.specify_model",
+            "domain_designer.specify_model->auditor.audit_consistency",
+            "auditor.audit_consistency->orchestrator.pddl",
+            "observer.describe_state->auditor.audit_consistency"
+        ]
+    }
+}

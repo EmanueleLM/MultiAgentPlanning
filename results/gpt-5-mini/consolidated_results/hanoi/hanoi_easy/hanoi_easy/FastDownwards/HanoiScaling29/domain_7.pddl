@@ -1,0 +1,35 @@
+(define (domain hanoi)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg step)
+
+  (:predicates
+    (above ?d - disk ?x - disk)
+    (on ?d - disk ?p - peg)
+    (top ?p - peg ?d - disk)
+    (at-step ?s - step)
+    (succ ?s - step ?s2 - step)
+    (smaller ?d1 - disk ?d2 - disk)
+  )
+
+  (:action move
+    :parameters (?s ?s2 - step ?d ?below ?ttop - disk ?ps ?pt - peg)
+    :precondition (and
+      (at-step ?s)
+      (succ ?s ?s2)
+      (top ?ps ?d)
+      (on ?d ?ps)
+      (above ?d ?below)
+      (on ?below ?ps)
+      (top ?pt ?ttop)
+      (on ?ttop ?pt)
+      (smaller ?d ?ttop)
+    )
+    :effect (and
+      (not (at-step ?s)) (at-step ?s2)
+      (not (on ?d ?ps)) (on ?d ?pt)
+      (not (above ?d ?below)) (above ?d ?ttop)
+      (not (top ?ps ?d)) (top ?ps ?below)
+      (not (top ?pt ?ttop)) (top ?pt ?d)
+    )
+  )
+)

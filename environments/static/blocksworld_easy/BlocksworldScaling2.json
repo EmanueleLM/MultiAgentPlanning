@@ -1,0 +1,100 @@
+{
+    "name": "BlocksworldScaling2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "picker",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "picker": {
+            "private_information": [
+                "Specializes in pick up and unstack semantics and action signatures"
+            ],
+            "goal": "Analyze pickup and unstack actions and provide a precise structured description of their predicates, parameters, preconditions, and effects without emitting PDDL."
+        },
+        "stacker": {
+            "private_information": [
+                "Specializes in put down and stack semantics and action signatures"
+            ],
+            "goal": "Analyze putdown and stack actions and provide a precise structured description of their predicates, parameters, preconditions, and effects without emitting PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Focus on temporal and causal consistency, and removal of bookkeeping shortcuts"
+            ],
+            "goal": "Audit the combined action models for temporal and causal consistency, detect and remove bookkeeping shortcuts such as implicit tokens or post-hoc penalties, and produce a concise report identifying required constraints and invariants."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating agent analyses and producing the final PDDL domain and problem targeted at the FastDownwards solver"
+            ],
+            "goal": "Integrate the analyses from picker, stacker, and auditor to produce a complete PDDL domain and PDDL problem file compatible with the FastDownwards planner. Keep agent actions distinct in the domain."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are four blocks: red, blue, orange, yellow.",
+            "The available primitive manipulations are: pick up a block, unstack a block from another block, put down a block, and stack a block onto another block.",
+            "Only one block can be picked up or unstacked at a time.",
+            "Pick up or unstack is allowed only when the agent's hand is empty.",
+            "A block is clear if no other block is on top of it and it is not currently held.",
+            "Pick up is available only for a clear block that is on the table.",
+            "Unstack is available only for a clear block that is on top of another block and was actually on that block.",
+            "After a successful pick up or unstack action the agent is holding that block and the hand is no longer empty.",
+            "Put down is available only for a block currently held and results in the block being on the table and the hand becoming empty.",
+            "Stack is available only if the agent is holding the block to be stacked and the target block is clear; stacking makes the target block no longer clear and the hand empty.",
+            "Initial conditions: red is clear, blue is clear, hand is empty, red is on top of orange, blue is on top of yellow, orange is on the table, yellow is on the table.",
+            "Global goal: red on top of orange and blue on top of red."
+        ]
+    },
+    "workflow": {
+        "picker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_picker",
+                "system_prompt": "You are an expert in formalizing action models for manipulation domains. Produce precise structured descriptions but do not emit PDDL. Focus on pickup and unstack actions and include explicit parameter lists, preconditions, positive and negative effects, and any derived predicates. Mention frame assumptions and concurrency constraints.",
+                "prompt": "Your role is picker. Given the public information about the block domain and initial conditions from the environment, produce a clear structured specification for the actions: pick-up and unstack. For each action provide: a name, parameter list with types, preconditions as a list of grounded predicates or predicate templates, positive effects, negative effects, and any invariants required to enforce the rule 'only one block picked at a time' and 'hand must be empty to pick or unstack'. If you require unspecified object names, use the blocks listed in public information. Do not output PDDL domain or problem files. Output should be a JSON-like structure or plain structured text suitable for the orchestrator to consume."
+            }
+        },
+        "stacker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_stacker",
+                "system_prompt": "You are an expert in formalizing stacking actions and putdown behaviors in manipulation domains. Produce precise structured descriptions but do not emit PDDL. Focus on stack and put-down actions and include explicit parameter lists, preconditions, positive and negative effects, and how stacking affects the clear predicate.",
+                "prompt": "Your role is stacker. Given the public information about the block domain and initial conditions, produce a clear structured specification for the actions: put-down and stack. For each action provide: a name, parameter list with types, preconditions, positive effects, negative effects, and any invariants such as 'stacking makes target not clear' and 'put-down places block on table'. Describe how these actions interact with the hand empty/holding state. Do not output PDDL domain or problem files. Output should be a JSON-like structure or plain structured text suitable for the orchestrator to consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor for temporal and causal consistency in planning models. Your job is to detect implicit bookkeeping shortcuts and transform them into explicit constraints or invariants. You must produce recommendations and a concise report listing required invariants, mutexes, and ordering constraints. Do not emit PDDL.",
+                "prompt": "Your role is auditor. Given the public information about the domain and the planned analyses from picker and stacker, produce an audit report that: enumerates potential temporal or causal inconsistencies, identifies any bookkeeping shortcuts such as token counters or post-hoc penalty devices, prescribes explicit invariants (for example single-hand mutual exclusion, clear predicate maintenance, and preservation of on-table facts), and recommends any discrete ordering constraints necessary between actions. Provide the output as structured text or JSON-like entries so the orchestrator can apply them."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_picker",
+                    "analysis_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards planner. You must produce a complete PDDL domain and a PDDL problem compatible with FastDownwards. Keep actions from different agents distinct by prefixing action names with the agent identifier. Enforce all invariants and auditor recommendations explicitly in preconditions and effects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, objects, initial state and goal are fully specified and consistent with the environment public information.",
+                "prompt": "You are the orchestrator. Integrate the structured analyses from picker and stacker and the audit_report from auditor. Resolve naming conflicts, enforce single-hand mutual exclusion and clear predicate semantics, and produce a PDDL domain and a PDDL problem that reflect the initial conditions and the global goal 'red on top of orange and blue on top of red'. Keep agent-specific actions distinct by naming them picker-pickup, picker-unstack, stacker-putdown, stacker-stack or similar. Make sure the domain and problem are syntactically suitable for FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Provide no other output beyond these two tagged sections."
+            }
+        },
+        "constraints": [
+            "picker.analysis->orchestrator.pddl",
+            "stacker.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

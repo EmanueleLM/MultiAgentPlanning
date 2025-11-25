@@ -1,0 +1,152 @@
+{
+    "name": "HanoiScaling9",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "mover",
+            "rules_checker",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can execute and enumerate single-disk moves between pegs",
+                "I can only move the top disk of any peg and only one disk at a time"
+            ],
+            "goal": "Contribute legal single-disk moves to achieve the final stacked state on the right peg"
+        },
+        "rules_checker": {
+            "private_information": [
+                "I know the invariant constraints for Tower of Hanoi",
+                "I can detect potential rule violations such as placing a larger disk on a smaller disk"
+            ],
+            "goal": "Validate move legality and identify violated constraints or missing invariants"
+        },
+        "planner": {
+            "private_information": [
+                "I can synthesize high-level move sequences using the set of legal moves and constraints",
+                "I produce a step-by-step skeleton plan expressed as ordered moves"
+            ],
+            "goal": "Produce an ordered plan of moves that reaches the final configuration while respecting rules"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans",
+                "I remove bookkeeping shortcuts and post-hoc penalties such as quota tokens or ad hoc penalties"
+            ],
+            "goal": "Ensure the plan is temporally and causally coherent and free of bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses, the plan skeleton, and audit findings to produce the final PDDL for FastDownwards"
+            ],
+            "goal": "Produce a complete PDDL domain and problem tailored to the FastDownwards solver that solves the Tower of Hanoi instance"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "initial_stack": {
+                "left": [],
+                "middle": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ],
+                "right": []
+            },
+            "goal_stack": {
+                "left": [],
+                "middle": [],
+                "right": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 4 disks named from smallest to largest as A, B, C, D",
+            "There are three pegs: left, middle, and right",
+            "Initial state: middle peg holds from top to bottom A, B, C, D; left and right pegs are empty",
+            "Goal state: right peg must hold from top to bottom A, B, C, D; left and middle pegs must be empty",
+            "Rules: only one disk may be moved at a time",
+            "Rules: only the top disk of a peg may be moved",
+            "Rules: a larger disk may never be placed on top of a smaller disk",
+            "The left peg may be used as an intermediate but must end empty",
+            "Once a disk is moved it preserves relative size ordering with the other disks"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analyze_moves": {
+                "input": [],
+                "output": "moves_analysis",
+                "system_prompt": "You are the mover agent. Your responsibility is to enumerate all legal single-disk move actions available from the current state given the public information and your private information. Do not emit PDDL. Produce a concise formal list of moves in the form move(disk, from_peg, to_peg) and include the precondition facts required for each move expressed in plain notation.",
+                "prompt": "Agent mover. Public information: {environment->public_information}. Private information: {agents->mover->private_information}. Global goal: {agents->mover->goal}. Provide the set of legal single-disk moves from the initial configuration and the immediate preconditions for each move."
+            }
+        },
+        "rules_checker": {
+            "check_rules": {
+                "input": [],
+                "output": "rules_report",
+                "system_prompt": "You are the rules checker. Your responsibility is to verify all invariants and legality rules that must hold for any move or plan. Do not emit PDDL. Produce a report enumerating invariants, potential pitfalls, and formalized constraints that must be enforced by any planner or orchestrator.",
+                "prompt": "Agent rules_checker. Public information: {environment->public_information}. Private information: {agents->rules_checker->private_information}. Global goal: {agents->rules_checker->goal}. Validate the move model and list explicit constraints and invariants that must be present in any planning representation."
+            }
+        },
+        "planner": {
+            "plan_skeleton": {
+                "input": [
+                    "moves_analysis",
+                    "rules_report"
+                ],
+                "output": "plan_skeleton",
+                "system_prompt": "You are the planner. Your responsibility is to synthesize a high-level ordered skeleton of moves from the enumerated legal moves while respecting the constraints from the rules checker. Do not emit PDDL. Provide an ordered sequence of moves in the form step 1: move(A, middle, right) etc and annotate any assumptions you make about state evolution.",
+                "prompt": "Agent planner. Public information: {environment->public_information}. Inputs available: {workflow->mover->analyze_moves->output} and {workflow->rules_checker->check_rules->output}. Private information: {agents->planner->private_information}. Global goal: {agents->planner->goal}. Produce a step-by-step plan skeleton to transfer the stack from the middle peg to the right peg while using the left peg as intermediate and ending with left and middle empty."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_skeleton"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your responsibility is to audit the planner skeleton for temporal and causal consistency and to remove any bookkeeping shortcuts such as quota tokens, ad hoc cost penalties, or retrospective corrections. Do not emit PDDL. Produce an audit report that either approves the plan skeleton or returns required corrections and explicit causal links that must be present in a correct plan.",
+                "prompt": "Agent auditor. Public information: {environment->public_information}. Input available: {workflow->planner->plan_skeleton->output}. Private information: {agents->auditor->private_information}. Global goal: {agents->auditor->goal}. Check the plan skeleton for temporal ordering, causal links between moves, and confirm that no illegal state transitions or bookkeeping shortcuts are present. Provide a corrected plan skeleton if necessary and describe the causal justification for each move."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "moves_analysis",
+                    "rules_report",
+                    "plan_skeleton",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and the integrator that must produce the final PDDL domain and problem files targeted for the FastDownwards planner. Use the inputs from the mover, rules_checker, planner, and auditor. Produce a complete PDDL domain and problem that encode the Tower of Hanoi instance with four disks and three pegs. Ensure the representation is compatible with FastDownwards, use STRIPS-compatible constructs, and keep agent-level actions and responsibilities distinct if multiple action schemas are represented. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent orchestrator. Public information: {environment->public_information}. Inputs available: {workflow->mover->analyze_moves->output}, {workflow->rules_checker->check_rules->output}, {workflow->planner->plan_skeleton->output}, {workflow->auditor->audit->output}. Private information: {agents->orchestrator->private_information}. Global goal: {agents->orchestrator->goal}. Integrate the analyses and produce a final PDDL domain and problem targeted at FastDownwards that achieves the goal state from the initial state. Keep the model clean of bookkeeping shortcuts and ensure all causal and temporal constraints from the auditor are encoded."
+            }
+        },
+        "constraints": [
+            "mover.analyze_moves->planner.plan_skeleton",
+            "rules_checker.check_rules->planner.plan_skeleton",
+            "planner.plan_skeleton->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

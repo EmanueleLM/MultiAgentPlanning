@@ -1,0 +1,97 @@
+{
+    "name": "BlocksworldScaling20",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner_assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_assistant": {
+            "private_information": [
+                "I produce high-level sequential plans composed of primitive block-world actions.",
+                "I reason about which actions are needed to transform the initial configuration into the goal configuration."
+            ],
+            "goal": "Achieve the goal configuration where the blue block is on top of the red block."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of plans.",
+                "I detect and remove bookkeeping shortcuts such as quota tokens, deferred penalties, or implicit assumptions about concurrency.",
+                "I ensure every action in a plan respects the action preconditions and the single-handed constraint."
+            ],
+            "goal": "Verify and correct plans so they obey all domain constraints and are causally sound."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate plan proposals and audit reports and produce the final PDDL domain and problem for the Fast-Downward planner."
+            ],
+            "goal": "Produce a validated PDDL domain and PDDL problem targeting the Fast-Downward solver that achieves the goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 20,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack.",
+            "You may only pick up or unstack one block at a time.",
+            "You may only pick up or unstack a block if your hand is empty.",
+            "You may only pick up a block if the block is on the table and the block is clear.",
+            "A block is clear if there is no other block on top of it and if the block is not currently held.",
+            "You may only unstack a block from on top of another block if that block is indeed on top of the other block.",
+            "You may only unstack a block if the block being unstacked is clear.",
+            "Once you pick up or unstack a block, you are holding that block.",
+            "You may only put down a block that you are holding.",
+            "You may only stack a block onto another block if you are holding the block to be stacked.",
+            "You may only stack onto a block that is clear.",
+            "Once you put down or stack a block, the hand becomes empty.",
+            "When a block is stacked onto a second block, the second block becomes not clear.",
+            "Initial conditions: the red block is clear.",
+            "Initial conditions: the agent's hand is empty.",
+            "Initial conditions: the red block is on top of the blue block.",
+            "Initial conditions: the blue block is on top of the yellow block.",
+            "Initial conditions: the yellow block is on top of the orange block.",
+            "Initial conditions: the orange block is on the table.",
+            "Goal: the blue block is on top of the red block."
+        ]
+    },
+    "workflow": {
+        "planner_assistant": {
+            "skeleton": {
+                "input": [],
+                "output": "plan_skeleton",
+                "system_prompt": "You are an expert blocks-world planning assistant. Produce a clear high-level sequential plan expressed as an ordered list of primitive actions. Do not emit PDDL. Explicitly name each action and the block arguments, and ensure the plan respects the public action restrictions.",
+                "prompt": "Agent planner_assistant: Use the public information and your private knowledge to propose a step-by-step plan skeleton that can achieve the goal where the blue block ends up on top of the red block. Provide an ordered list of primitive actions and the blocks they act on. Do not assume extra helper tokens or bookkeeping devices."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_skeleton"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning. Your job is to check plans for precondition violations, concurrency assumptions, and any bookkeeping shortcuts. Provide corrections, identify missing preconditions, and produce a validated, causally consistent plan skeleton. Do not emit PDDL.",
+                "prompt": "Agent auditor: Receive the plan skeleton and the public information. Verify each action's preconditions and effects with respect to the domain constraints. If the plan assumes shortcuts or concurrency not allowed by the single-handed constraint, remove those shortcuts and describe the necessary modifications. Output a corrected plan skeleton and a concise audit justification."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_skeleton",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and in preparing problems for the Fast-Downward planner. Integrate the validated plan skeleton and the auditor report to produce a complete PDDL domain and a PDDL problem file. The domain must include the primitive actions pick-up, unstack, put-down, and stack with correct preconditions and effects. The problem must encode the given initial state and the goal that the blue block is on top of the red block. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the Fast-Downward solver.",
+                "prompt": "Agent orchestrator: Use the public information, the plan skeleton, and the auditor report to generate a consistent PDDL domain and PDDL problem pair ready for Fast-Downward. Keep agent-level actions distinct if necessary and ensure the domain enforces single-handedness and clear/block relations. Produce only the domain and the problem enclosed in the requested tags."
+            }
+        },
+        "constraints": [
+            "planner_assistant.skeleton->auditor.audit",
+            "planner_assistant.skeleton->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

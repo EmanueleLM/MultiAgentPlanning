@@ -1,0 +1,103 @@
+{
+    "name": "BlocksworldScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "state_reporter",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "Available primitive actions: pick-up, unstack, put-down, stack",
+                "Action constraints: only one block moved at a time, hand must be empty to pick or unstack, holding a block after pick or unstack, hand becomes empty after put-down or stack",
+                "Definitions: clear(X) means nothing on top of X and X is not held, on-table(X) means X is directly on the table, on(X,Y) means X is directly on Y, holding(X) means the agent is holding X"
+            ],
+            "goal": "Provide a precise, structured specification of each primitive action. For each action include name, parameters, preconditions, and effects using the predicates clear, on, on-table, holding, and hand-empty. Do not emit PDDL. Produce a well-structured machine-readable specification that an orchestrator can translate into a PDDL domain."
+        },
+        "state_reporter": {
+            "private_information": [
+                "Initial facts: blue is clear, orange is clear, hand is empty, orange is on yellow, yellow is on red, red is on the table, blue is on the table",
+                "Goal facts: red on orange, blue on red, yellow on blue"
+            ],
+            "goal": "Provide a structured representation of the initial state and the planning goal. Use the same predicate vocabulary as the domain expert. Do not emit PDDL. Output the initial state as a list of ground predicates and the goal as a list of goal predicates."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency between the domain specification and the state description",
+                "Ensure there are no bookkeeping shortcuts such as tokens, quotas, or implicit post-hoc penalties in the specifications",
+                "Check that preconditions and effects enforce that blocks are single objects with no simultaneous holdings and that clear status is implied correctly by on and holding predicates"
+            ],
+            "goal": "Analyze the domain expert specification and the state report. Identify mismatches, implicit assumptions, or shortcuts. Produce an audit report that lists required clarifications, corrected formal constraints, and recommended changes to ensure causal consistency. Output a clean set of enforced invariants that the orchestrator must apply before generating PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: integrate the structured outputs from domain_expert, state_reporter, and auditor and produce a final PDDL domain and problem compatible with the FastDownward planner",
+                "Maintain provenance of constructs so actions and predicates can be traced back to the contributing agent where relevant"
+            ],
+            "goal": "Take the structured action schemas, the initial state and goal, and the auditor corrections. Produce a complete PDDL domain and a PDDL problem that implement the blocks world for the given instance and that are suitable for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "orange",
+                "yellow",
+                "red"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "The available actions are pick-up a block, unstack a block from on top of another block, put down a block, and stack a block on top of another block.",
+            "Only one block can be moved at a time. The hand must be empty to pick up or unstack.",
+            "A block is clear if no block is on top of it and it is not being held. A block on the table is on-table.",
+            "Unstacking requires that the source block was on the target block and that the source block is clear before the operation.",
+            "After pick-up or unstack the agent is holding the block. After put-down or stack the agent's hand becomes empty. Stacking a block onto another makes the receiving block no longer clear."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "spec": {
+                "input": [],
+                "output": "domain_expert_spec",
+                "system_prompt": "You are a formal modeling expert for action schemas. Provide a structured specification of each primitive action. For each action include name, parameters, preconditions expressed as a list of predicates, and effects expressed as added and deleted predicates. Use the predicates on, on-table, clear, holding, and hand-empty. Do not produce PDDL. The orchestrator will translate your structured specification into PDDL."
+            }
+        },
+        "state_reporter": {
+            "state": {
+                "input": [],
+                "output": "initial_goal_spec",
+                "system_prompt": "You are an accurate state reporter. Provide the initial state as a list of ground predicates using the predicates on, on-table, clear, and hand-empty. Provide the goal as a list of goal predicates using the same predicate vocabulary. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "domain_expert_spec",
+                    "initial_goal_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor expert on temporal and causal consistency in planning specifications. Inspect the domain expert specification and the initial and goal state report. Identify any implicit assumptions, bookkeeping shortcuts, or missing invariants. Produce a corrective report that lists required invariants and modifications so that a planner cannot rely on tokens, quotas, or post-hoc penalties. Provide final enforced invariants in the same predicate vocabulary. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_expert_spec",
+                    "initial_goal_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent integrated PDDL domains and problems tailored for the FastDownward planner. Your task is to take structured action schemas, an initial state, and auditor corrections, integrate them, and emit a complete PDDL domain and problem targeting FastDownward. Keep provenance of actions and predicates where helpful. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain uses constructs supported by FastDownward and avoid reliance on planner-specific hacks. If the inputs are partial or conflicting, resolve conflicts conservatively and document assumptions in comments inside the PDDL files."
+            }
+        },
+        "constraints": [
+            "domain_expert.spec->orchestrator.pddl",
+            "state_reporter.state->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

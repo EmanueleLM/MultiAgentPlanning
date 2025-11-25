@@ -1,0 +1,35 @@
+(define (problem blocksworld-scaling7)
+  (:domain multi-agent-blocks)
+  (:objects
+    blue orange yellow red - block
+    s0 s1 s2 s3 s4 s5 s6 - stage
+  )
+
+  (:init
+    ;; Stages and contiguous successor relation
+    (stage s0) (stage s1) (stage s2) (stage s3) (stage s4) (stage s5) (stage s6)
+    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4) (next s4 s5) (next s5 s6)
+    (current s0)
+
+    ;; Shared hand initially empty
+    (handempty)
+
+    ;; Initial block arrangement (as given)
+    (on blue red)
+    (ontable red)
+    (ontable orange)
+    (ontable yellow)
+
+    ;; Clearness initially: blocks with nothing on top are clear
+    (clear blue)
+    (clear orange)
+    (clear yellow)
+    ;; Note: red is not clear initially because blue is on it
+  )
+
+  (:goal (and
+    (on red blue)
+    (on blue orange)
+    (on yellow red)
+  ))
+)

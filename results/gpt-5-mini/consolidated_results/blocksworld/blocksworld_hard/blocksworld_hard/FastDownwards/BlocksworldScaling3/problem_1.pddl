@@ -1,0 +1,18 @@
+(define (problem BlocksworldScaling3-prob)
+  (:domain BlocksworldScaling3)
+  (:objects blue orange yellow red - block)
+  (:init
+    (on orange yellow)
+    (on yellow red)
+    (on-table red)
+    (on-table blue)
+    (clear blue)
+    (clear orange)
+    (hand-empty)
+  )
+  (:goal (and
+    (on red orange)
+    (on blue red)
+    (on yellow blue)
+  ))
+)

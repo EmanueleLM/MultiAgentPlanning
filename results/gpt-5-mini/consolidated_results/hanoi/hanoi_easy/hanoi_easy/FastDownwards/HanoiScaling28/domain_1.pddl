@@ -1,0 +1,32 @@
+(define (domain hanoi)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg - place step)
+  (:predicates
+    (on ?d - disk ?p - place)
+    (clear ?p - place)
+    (can-place ?d - disk ?p - place)
+    (next ?s - step ?s2 - step)
+    (current ?s - step)
+  )
+
+  (:action move
+    :parameters (?d - disk ?from - place ?to - place ?s - step ?s2 - step)
+    :precondition (and
+      (current ?s)
+      (next ?s ?s2)
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (can-place ?d ?to)
+      (not (= ?from ?to))
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (clear ?from)
+      (not (clear ?to))
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+)

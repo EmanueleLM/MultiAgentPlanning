@@ -1,0 +1,104 @@
+{
+    "name": "BlocksworldScaling11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can pick up a block from the table if it is clear and my hand is empty.",
+                "I can unstack a block from on top of another block if the block is clear and my hand is empty.",
+                "When I pick up or unstack a block I will be holding that block until I put it down or stack it.",
+                "I can put down any block I am holding on the table.",
+                "I can stack a block I am holding on top of another clear block."
+            ],
+            "goal": "Contribute to arranging the blocks so the final configuration matches the global goal."
+        },
+        "assistant": {
+            "private_information": [
+                "I am a second operator that can perform the same primitive actions as the operator but may propose alternative action orderings.",
+                "I adhere to the same single-hand constraint and clarity preconditions as the operator."
+            ],
+            "goal": "Work with the operator to produce a valid sequence of primitive actions that leads to the global goal."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit plans for temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I ensure each action in a plan has all required preconditions satisfied at the time it is executed and that effects are applied correctly.",
+                "I flag or fix any steps that assume simultaneous multi-block moves or implicit state changes."
+            ],
+            "goal": "Produce an audit report that corrects causal and temporal issues and yields a cleaned, causally valid plan."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent plans and the auditor report and produce a final PDDL domain and PDDL problem tailored for the FastDownwards planner that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "There are four blocks: blue, orange, red, yellow.",
+            "Initial facts: blue is clear, orange is clear, the hand is empty.",
+            "Initial stacking: red is on top of yellow, orange is on top of red, blue is on the table, yellow is on the table.",
+            "A block is clear if no other block is on top of it and it is not currently being held.",
+            "Actions available: pick-up, unstack, put-down, stack. Each action moves at most one block and changes the hand occupancy accordingly.",
+            "Action restrictions: you can pick up or unstack only one block at a time and only if your hand is empty. You can pick up a block only if it is on the table and clear. You can unstack only if the block is on top of another block and is clear. You can stack only onto a block that is clear. Putting down or stacking a block makes the hand empty. Stacking a block on another makes the supporting block no longer clear."
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analysis": {
+                "input": [],
+                "output": "operator_plan",
+                "system_prompt": "You are an experienced block-world operator. Produce a step-by-step sequence of primitive actions (pick-up, unstack, put-down, stack) that you would perform given the public information and your private capabilities. Do not emit PDDL. Be explicit about preconditions you assume for each action and the expected effects.",
+                "prompt": "Your name is operator. Use the public information {environment->public_information} and your private knowledge {agents->operator->private_information}. The global arrangement goal is: red on top of yellow, blue on top of red, and yellow on top of orange. Provide a detailed action sequence with explicit preconditions and effects for each step and do not produce PDDL."
+            }
+        },
+        "assistant": {
+            "analysis": {
+                "input": [],
+                "output": "assistant_plan",
+                "system_prompt": "You are an assistant operator that can propose alternative valid action sequences and comment on concurrency choices. Produce a step-by-step action sequence with explicit preconditions and effects. Do not emit PDDL.",
+                "prompt": "Your name is assistant. Use the public information {environment->public_information} and your private information {agents->assistant->private_information}. The global goal is red on top of yellow, blue on top of red, and yellow on top of orange. Provide a complete action trace annotated with the state changes at each step and avoid suggesting simultaneous multi-block moves."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator_plan",
+                    "assistant_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Inspect the provided plans for hidden bookkeeping shortcuts such as token quotas, simultaneous moves, or steps that assume effects without proper preconditions. Produce a corrected, causally consistent plan or a detailed list of required corrections.",
+                "prompt": "Your name is auditor. You will receive plans from other agents: {operator_plan} and {assistant_plan}. Use your private information {agents->auditor->private_information} and the public environment facts {environment->public_information}. Check that every action has its preconditions satisfied by prior effects and that no action depends on implicit or removed bookkeeping shortcuts. Output either a corrected sequential plan that is causally valid or a clear report of inconsistencies and required fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator_plan",
+                    "assistant_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator who must integrate agent plans and the auditor report into a single PDDL domain and PDDL problem file suitable for the FastDownwards planner. Produce a clean STRIPS-compatible PDDL domain and a PDDL problem. Enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags. Ensure action names remain distinct if they originate from different agents and ensure the produced PDDL encodes the single-hand constraint and all causal preconditions and effects. Target FastDownwards compatibility by keeping constructs within STRIPS and typing where helpful.",
+                "prompt": "You are orchestrator. Integrate the following inputs: public environment facts {environment->public_information}, the operator plan {operator_plan}, the assistant plan {assistant_plan}, and the auditor report {audit_report}. Produce a PDDL domain and a PDDL problem that achieve the goal: red on top of yellow, blue on top of red, and yellow on top of orange. Keep agent actions distinct where appropriate and ensure the encoded domain captures the hand occupancy constraint, clarity predicate semantics, and proper preconditions and effects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The resulting PDDL should be ready for FastDownwards."
+            }
+        },
+        "constraints": [
+            "operator.analysis->auditor.audit",
+            "assistant.analysis->auditor.audit",
+            "operator.analysis->orchestrator.pddl",
+            "assistant.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

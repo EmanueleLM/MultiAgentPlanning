@@ -1,0 +1,116 @@
+{
+    "name": "BlocksworldScaling23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "placer",
+            "unstacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "placer": {
+            "private_information": [
+                "I can pick up a block from the table if it is clear and my hand is empty",
+                "I can put down a block that I am holding onto the table"
+            ],
+            "goal": "Have the red block on top of the orange block and the orange block on top of the blue block."
+        },
+        "unstacker": {
+            "private_information": [
+                "I can unstack a block from on top of another block if the block being unstacked is clear and my hand is empty",
+                "I can stack a block I am holding on top of a clear block"
+            ],
+            "goal": "Have the red block on top of the orange block and the orange block on top of the blue block."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I enforce that actions respect single-hand constraints and that preconditions are not assumed later than effects"
+            ],
+            "goal": "Ensure the plan fragments from other agents are temporally and causally consistent and free of bookkeeping shortcuts so they can be assembled into a valid plan for the global goal."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and problem suitable for FastDownwards that achieves the global goal while keeping agent actions distinct."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack",
+            "You can only pick up or unstack one block at a time",
+            "You can only pick up or unstack a block if your hand is empty",
+            "A block is clear if no other block is on top of it and it is not being held",
+            "You can pick up a block only if the block is on the table and clear",
+            "You can unstack a block only if it is on top of another block and is clear",
+            "Once you pick up or unstack a block, you are holding that block",
+            "You can only put down a block that you are holding",
+            "You can only stack a block if you are holding the block and the target block is clear",
+            "After putting down or stacking, the hand becomes empty",
+            "After stacking X on Y, Y is no longer clear",
+            "Initial facts: orange is clear",
+            "Initial facts: yellow is clear",
+            "Initial facts: hand is empty",
+            "Initial facts: red is on top of blue",
+            "Initial facts: yellow is on top of red",
+            "Initial facts: blue is on the table",
+            "Initial facts: orange is on the table",
+            "Global goal: red on orange and orange on blue"
+        ]
+    },
+    "workflow": {
+        "placer": {
+            "analysis": {
+                "input": [],
+                "output": "placer.analysis",
+                "system_prompt": "You are an agent that analyzes block-stacking moves from the perspective of picking up and placing blocks on the table or stacking onto other blocks. Provide structured observations: action schemas (name, concise preconditions, concise effects), any assumptions you must make, and a candidate ordered fragment of primitive actions limited to your local knowledge. Do not emit full PDDL. Focus on correctness of preconditions and effects and on single-hand constraints.",
+                "prompt": "Your name is placer. Use the public information: {environment->public_information} Use your private information: {agents->placer->private_information} The global goal is: {agents->placer->goal} Produce a structured analysis including action schemas relevant to pickup and put-down, assumptions you require, and a candidate sequence of primitive actions you would perform based on what you know."
+            }
+        },
+        "unstacker": {
+            "analysis": {
+                "input": [],
+                "output": "unstacker.analysis",
+                "system_prompt": "You are an agent that analyzes unstacking and stacking moves that move blocks off other blocks and stack them onto targets. Provide structured output: action schemas (name, concise preconditions, concise effects), assumptions, and a candidate ordered fragment of primitive actions limited to your local knowledge. Do not emit full PDDL. Emphasize preservation of hand-empty constraints and clear-status updates.",
+                "prompt": "Your name is unstacker. Use the public information: {environment->public_information} Use your private information: {agents->unstacker->private_information} The global goal is: {agents->unstacker->goal} Produce a structured analysis including action schemas relevant to unstack and stack, assumptions you require, and a candidate sequence of primitive actions you would perform based on what you know."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "placer.analysis",
+                    "unstacker.analysis"
+                ],
+                "output": "auditor.review",
+                "system_prompt": "You are an auditor whose role is to inspect plan fragments for temporal and causal consistency, to identify and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties, and to enforce that all preconditions and effects are explicitly represented in any fragment. Produce a concise audit report listing inconsistencies, required corrections, and any missing causal links or temporal ordering constraints.",
+                "prompt": "Your name is auditor. You receive analyses from other agents: {placer.analysis} and {unstacker.analysis}. Use the public information: {environment->public_information} Use your private information: {agents->auditor->private_information} Please produce an audit report that highlights temporal/causal inconsistencies, eliminates bookkeeping shortcuts, and provides corrected or additional constraints needed for a sound plan fragment."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "placer.analysis",
+                    "unstacker.analysis",
+                    "auditor.review"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate analysis fragments and the auditor report to produce a final, self-contained PDDL domain and PDDL problem suitable for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Maintain distinct action names or prefixes so actions coming from different agents remain distinguishable. Ensure all preconditions and effects identified by the auditor are explicitly encoded. Do not rely on bookkeeping shortcuts; encode causal and temporal constraints explicitly.",
+                "prompt": "You are orchestrator. Your task is to integrate the following inputs into a final PDDL domain and problem targeting FastDownwards: {placer.analysis} {unstacker.analysis} {auditor.review} Use the public information: {environment->public_information} The global goal is: {agents->orchestrator->goal} Produce a PDDL domain and a PDDL problem that together allow FastDownwards to find a plan achieving the goal. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep agent actions distinct by naming or prefixing them."
+            }
+        },
+        "constraints": [
+            "placer.analysis->orchestrator.pddl",
+            "unstacker.analysis->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,102 @@
+{
+    "name": "BlocksworldScaling1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "stack_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can perceive the full initial configuration of the blocks and table.",
+                "I observe which blocks are on the table and which blocks are stacked."
+            ],
+            "goal": "Report the precise initial state of the blocks world to downstream components."
+        },
+        "stack_planner": {
+            "private_information": [
+                "I know the primitive block-manipulation actions (pick-up, unstack, put-down, stack) and the usual preconditions and effects informally.",
+                "I can propose a step-by-step domain-level plan (sequence of symbolic actions) to achieve the goal, but I do not emit formal PDDL on my own."
+            ],
+            "goal": "Produce a candidate symbolic plan and note any assumptions or ambiguous names that must be resolved before formalization."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in removing bookkeeping shortcuts such as quotas, tokens, or post-hoc penalties from plans.",
+                "I ensure that each action respects single-handed constraints and that hand-empty/holding predicates are propagated consistently across steps."
+            ],
+            "goal": "Audit the candidate plan for temporal/causal consistency, remove any bookkeeping shortcuts, and produce a corrected, fully explicit action sequence with precise preconditions and effects."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I aggregate the observed state, the candidate plan, and the auditor's corrections to produce a final formal PDDL domain and problem tailored for the FastDownwards solver.",
+                "I keep actions belonging to different agents distinct and preserve the causal ordering provided by the auditor."
+            ],
+            "goal": "Produce a complete PDDL domain and a PDDL problem file suitable for FastDownwards that implements the blocks world scenario and the goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1,
+            "visibility": 2
+        },
+        "public_information": [
+            "Domain: classic blocks world. Primitive actions available: pick-up, unstack, put-down, stack.",
+            "Action restrictions: only one block can be handled at a time; pick-up or unstack requires the hand to be empty; pick-up requires the block to be on the table and clear; unstack requires the block to be on top of another block and clear; stacking requires the target block to be clear; after pick-up or unstack the agent is holding the block; after put-down or stack the hand becomes empty; stacking makes the block below no longer clear.",
+            "Initial conditions: blue is clear, yellow is clear, the hand is empty, red is on top of orange, yellow is on top of red, blue is on the table, orange is on the table.",
+            "Goal: red on top of orange, blue on top of yellow, yellow on top of red."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "observe": {
+                "input": [],
+                "output": "obs_state",
+                "system_prompt": "You are an observer agent. Your role is to read the environment public information and any available sensors to produce a precise, unambiguous symbolic description of the initial state. Do not produce PDDL. Instead, list facts such as on(blockA, blockB), ontable(blockX), clear(blockY), and handempty. Point out any naming ambiguities or missing details that other agents must resolve.",
+                "prompt": "Your name is observer. Use the environment public information and your private information to produce a clear symbolic representation of the initial state. Provide the facts and explicitly name all blocks (blue, yellow, red, orange) and table relations. Highlight any assumptions you make."
+            }
+        },
+        "stack_planner": {
+            "plan": {
+                "input": [
+                    "obs_state"
+                ],
+                "output": "partial_plan",
+                "system_prompt": "You are a planning specialist that reasons about sequences of block-manipulation actions at the symbolic level. You do not emit PDDL directly. Your job is to propose a candidate step-by-step plan in terms of the allowed actions, and note where you relied on assumptions or shortcuts that require expansion.",
+                "prompt": "Your name is stack_planner. Given the observed initial state (obs_state) and the public domain constraints, produce a candidate symbolic plan that would achieve the goal. Use action names pick-up, unstack, put-down, stack. For each step, list preconditions assumed and effects informally. Identify any shortcuts or implicit bookkeeping used so the auditor can expand them."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "partial_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Remove bookkeeping shortcuts and make every implicit precondition and effect explicit. Enforce single-handed constraints and ensure hand-empty/holding predicates are consistently tracked across steps. Do not produce PDDL, but provide a fully explicit, temporally consistent action sequence with exact preconditions and effects.",
+                "prompt": "Your name is auditor. Take the candidate plan (partial_plan). Expand all shortcuts into explicit actions if needed, ensure no action violates the one-block-at-a-time rule, and resolve any causal or temporal ambiguities. Return a corrected, detailed action sequence and a clear statement of assumptions you required to make."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_state",
+                    "partial_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL synthesis for classical planners. Your output must be a PDDL domain and a PDDL problem targeted for the FastDownwards solver. Keep the actions that originated from different agents distinct in naming if that aids traceability. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and predicates are compatible with FastDownwards and avoid using bookkeeping shortcuts in the formalization.",
+                "prompt": "You are orchestrator. Using the observed initial state (obs_state), the candidate plan (partial_plan), and the auditor's corrected sequence (audit_report), produce a complete PDDL domain and a PDDL problem file that capture the blocks world described and the goal. The domain should include predicates such as on, ontable, clear, holding, handempty, and actions pick-up, unstack, put-down, stack with explicit preconditions and effects matching the audited sequence. The problem should list all objects and the initial facts and goal. Target the resultant PDDL for the FastDownwards solver. Enclose domain and problem in the tags <domain> and <problem> respectively."
+            }
+        },
+        "constraints": [
+            "observer.observe->stack_planner.plan",
+            "stack_planner.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "observer.observe->orchestrator.pddl"
+        ]
+    }
+}

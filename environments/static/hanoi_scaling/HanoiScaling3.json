@@ -1,0 +1,90 @@
+{
+    "name": "HanoiScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_mover",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "disk_mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg following the Tower of Hanoi rules",
+                "I can only move one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I cannot place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Produce a high-level, stepwise plan to transfer all disks from the left peg to the right peg using the middle peg as intermediate while respecting all rules"
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of proposed plans",
+                "I remove bookkeeping shortcuts, tokens, ad-hoc penalties, and any post-hoc fixes that hide causal violations",
+                "I verify that each action has necessary preconditions and that overall ordering is implementable"
+            ],
+            "goal": "Validate and correct the mover's high-level plan so it is temporally and causally consistent and free of bookkeeping shortcuts; produce a clear, explicit corrected plan summary"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses from other agents and produce the final formal specification",
+                "The final output must be a PDDL domain and PDDL problem suitable for the FastDownward planner"
+            ],
+            "goal": "Integrate the mover analysis and the auditor report to produce a complete PDDL domain and PDDL problem targeting FastDownward that solves the Tower of Hanoi instance with five disks"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs_count": 3,
+            "disks_count": 5,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right",
+            "There are five disks labeled A, B, C, D, E from smallest to largest",
+            "Initial state: left peg holds from top to bottom A, B, C, D, E; middle and right pegs are empty",
+            "Goal state: right peg should hold from top to bottom A, B, C, D, E; left and middle pegs must be empty",
+            "Rules: move only one top disk at a time, may only move top disk of a peg, never place a larger disk on a smaller disk",
+            "The middle peg may be used as an intermediate but must end empty"
+        ]
+    },
+    "workflow": {
+        "disk_mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an expert in algorithmic reasoning for classical planning puzzles. Your role is to produce a clear, high-level, step-by-step plan for moving disks under the Tower of Hanoi rules. Do not emit PDDL or formal domain files. Focus on enumerating valid moves and the rationale for ordering them, note key preconditions for each move, and indicate which peg holds which disks after major phases.",
+                "prompt": "Agent disk_mover. Given the public information and your private knowledge, produce a high-level sequence of moves and phase descriptions that will transfer all five disks from the left peg to the right peg using the middle peg as intermediate while respecting all rules. Explicitly state preconditions for representative moves and any invariants you rely on. Output a concise named plan summary labeled mover_analysis."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "mover_analysis"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency for planning. Your task is to inspect a proposed high-level plan for causal completeness and temporal feasibility. You remove any bookkeeping shortcuts such as quota tokens, fictitious rollback steps, ad-hoc penalties, or assumptions that skip necessary preconditions. Do not produce PDDL. Produce a corrected, explicit plan summary and a list of required preconditions and invariants that must hold at each step.",
+                "prompt": "Agent consistency_auditor. You receive mover_analysis. Check every proposed move for causal validity and temporal consistency. Identify and remove any bookkeeping shortcuts. If the mover plan is complete and valid, confirm and restate it in an explicit stepwise form. If corrections are needed, provide the corrected explicit plan and a short explanation for each correction. Output a labeled report named auditor_report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL modeling and in preparing inputs for the FastDownward planner. Your role is to integrate the high-level mover_analysis and the auditor_report, resolve any remaining ambiguities, and produce a complete PDDL domain and a PDDL problem file that encodes the Tower of Hanoi instance with five disks. The PDDL should represent pegs and disk-size ordering, include actions that move a top disk from one peg to another with correct preconditions and effects, and avoid any bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The resulting PDDL must be suitable for FastDownward.",
+                "prompt": "Agent orchestrator. Use the mover_analysis and auditor_report to build a complete PDDL domain and problem for the five-disk Tower of Hanoi, suitable for FastDownward. Keep agent actions distinct if relevant and ensure the model enforces the rules: move only top disk, one disk at a time, no larger-on-smaller. If any information is missing from inputs, make minimal, explicit assumptions and document them before producing the PDDL. Output the domain between <domain></domain> and the problem between <problem></problem> and name the output pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "disk_mover.analysis->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

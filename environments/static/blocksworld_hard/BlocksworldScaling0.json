@@ -1,0 +1,113 @@
+{
+    "name": "BlocksworldScaling0",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "analyzer",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can sense the current positions and clear status of all blocks and the state of the hand",
+                "I do not infer action models, I only report the state observed"
+            ],
+            "goal": "Produce a canonical, unambiguous representation of the initial state of the blocks and the hand"
+        },
+        "analyzer": {
+            "private_information": [
+                "I have expertise in describing action schemas as structured preconditions and effects",
+                "I produce human readable schemas but not PDDL"
+            ],
+            "goal": "Produce structured action schemas for PickUp, Unstack, PutDown and Stack consistent with the provided action restrictions"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in removing bookkeeping shortcuts such as abstract tokens or post hoc penalties",
+                "I ensure action schemas strictly enforce single block handling and correct definitions of clear and holding"
+            ],
+            "goal": "Audit analyzer schemas and the observed state, detect and remove any bookkeeping shortcuts, and return corrected, causally consistent schemas"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I am responsible for assembling audited schemas and the initial state into a final PDDL domain and problem suitable for the FastDownward planner"
+            ],
+            "goal": "Produce a complete PDDL domain and problem targeting the FastDownward solver that achieves the stated goal from the observed initial state"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "blue",
+                "orange",
+                "yellow",
+                "red"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "Available actions are PickUp a block, Unstack a block from on top of another block, PutDown a block, and Stack a block on top of another block.",
+            "Action restrictions: only one block can be picked up or unstacked at a time.",
+            "Action restrictions: pick up or unstack can only be done if the hand is empty.",
+            "A block is clear if it has no other blocks on top of it and it is not currently picked up.",
+            "Unstacking a block requires that the block was directly on top of the other block and that it is clear.",
+            "Once a block is picked up or unstacked the agent is holding that block until it is put down or stacked.",
+            "PutDown requires holding the block, and after PutDown the hand becomes empty.",
+            "Stack requires holding the block and the target block must be clear. After stacking the source block is on top of the target and the hand becomes empty. After stacking the target is no longer clear.",
+            "Initial conditions: blue is clear, hand is empty, blue is on top of orange, orange is on top of yellow, yellow is on top of red, and red is on the table.",
+            "Goal: red is on top of orange and yellow is on top of red."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "analyze": {
+                "input": [],
+                "output": "observer_state",
+                "system_prompt": "You are the observer agent that inspects the environment and returns a single canonical representation of the initial state as structured data. Do not produce PDDL. Return block locations (on which object or table), which blocks are clear, and the state of the hand. Use plain structured text or JSON style lists and dictionaries. Do not invent facts beyond the given public information.",
+                "prompt": "Agent: observer. Use the environment public information and your private knowledge to produce the canonical observed state. Provide a concise structured representation of: list of blocks, for each block what it is on, which blocks are clear, and whether the hand is empty or holding a block. Output the data under the label observer_state."
+            }
+        },
+        "analyzer": {
+            "model": {
+                "input": [
+                    "observer_state"
+                ],
+                "output": "action_models",
+                "system_prompt": "You are the analyzer agent. Your task is to produce clear, complete structured action schemas for each action in this domain. Do not produce PDDL. For each action provide: name, parameters, preconditions as a list of atomic predicates, and effects as a list of atomic add and delete effects. Respect the action restrictions provided in the public information.",
+                "prompt": "Agent: analyzer. Using the observer_state input and the public information about available actions and restrictions, produce structured action schemas for PickUp, Unstack, PutDown, and Stack. Ensure preconditions enforce that only one block can be handled at a time and that clear and holding are used consistently. Return the result labeled action_models."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "action_models",
+                    "observer_state"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are the auditor agent. Your job is to examine the provided action_models and the observed state for temporal and causal consistency. Remove bookkeeping shortcuts such as abstract quota tokens or post-hoc penalties. Ensure schemas explicitly enforce single block handling, hand emptiness preconditions, correct definitions of clear, and that stacking makes the target non-clear. Produce corrected action schemas if necessary and a short rationale for each correction.",
+                "prompt": "Agent: auditor. Given action_models and observer_state, validate causal and temporal constraints and correct any shortcuts. Return corrected action schemas and a brief justification for each change under the label auditor_report. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "action_models",
+                    "auditor_report",
+                    "observer_state"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your responsibility is to assemble the audited action schemas and the canonical initial state into a complete PDDL domain and a complete PDDL problem targeting the FastDownward planner. Produce a STRIPS-compatible domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use consistent predicate names and typing where appropriate and ensure the goal matches the stated goal. Ensure the domain encodes that only one block can be in hand at a time and the clear predicate semantics are implemented. The PDDL should be ready for FastDownward without planner-specific shortcuts.",
+                "prompt": "Agent: orchestrator. Using the inputs action_models, auditor_report, and observer_state, produce a final PDDL domain and problem that can be solved by FastDownward to achieve the goal: red on top of orange and yellow on top of red. Enclose the domain in <domain> tags and the problem in <problem> tags. Label the output pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "observer.analyze->analyzer.model",
+            "analyzer.model->auditor.review",
+            "auditor.review->orchestrator.pddl",
+            "observer.analyze->orchestrator.pddl"
+        ]
+    }
+}

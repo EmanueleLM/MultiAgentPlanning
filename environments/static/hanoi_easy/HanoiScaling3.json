@@ -1,0 +1,84 @@
+{
+    "name": "HanoiScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "There are 4 disks named A B C D from smallest to largest",
+                "Initial state: left peg has disks A on top of B on top of C on top of D",
+                "Goal state: right peg must have A on top of B on top of C on top of D and left and middle pegs empty",
+                "Allowed action: move the top disk from one peg to another peg",
+                "Constraints: move only one disk at a time; may only move a disk that is on top of a peg; never place a larger disk on a smaller disk; the middle peg may be used as intermediate but must end empty at the end"
+            ],
+            "goal": "Help produce a correct formal model fragments and action schemas that capture the Tower of Hanoi with 4 disks and 3 pegs"
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency",
+                "I will detect bookkeeping shortcuts such as token counters or post-hoc penalties and require explicit causal preconditions and effects",
+                "I will ensure moves preserve disk ordering invariants and that intermediate parking is modeled without introducing hidden state"
+            ],
+            "goal": "Analyze model fragments to identify inconsistencies and recommend corrections so the model is temporally and causally sound"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate model fragments and auditor corrections and produce a final PDDL domain and problem suitable for FastDownwards to solve the 4-disk Tower of Hanoi"
+        }
+    },
+    "environment": {
+        "init": {
+            "number_of_disks": 4,
+            "number_of_pegs": 3
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right",
+            "Disks from smallest to largest are named A B C D",
+            "Initial configuration: left peg holds, from top to bottom, A B C D",
+            "Middle and right pegs are initially empty",
+            "Goal configuration: right peg must hold, from top to bottom, A B C D and left and middle pegs must be empty",
+            "Legal move: move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time; can only move the top disk on a peg; cannot place a larger disk on a smaller disk; middle peg may be used as intermediate but must end empty"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "model_fragments",
+                "system_prompt": "You are a formal modeler for planning tasks. Produce a clear structured representation describing state predicates, object types, constants, and candidate action schemas for moving disks under the listed constraints. Do not emit a complete PDDL domain or problem. Focus on accurate predicates such as on, on-top, clear, disk-size ordering and explicit preconditions and effects for a single move action.",
+                "prompt": "Your name is planner. Use the environment public information and your private information to produce structured model fragments that capture objects, predicates, invariants, and action schema proposals for the Tower of Hanoi with four disks. Do not output full PDDL domain and problem. Be explicit about required :requirements and typing and note any unresolved assumptions."
+            }
+        },
+        "auditor": {
+            "check": {
+                "input": [
+                    "model_fragments"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning models. Inspect model fragments and report any missing causal links, temporal issues, or bookkeeping shortcuts. Recommend precise corrections and additional preconditions or effects to ensure a correct executable model.",
+                "prompt": "Your name is auditor. Analyze the model fragments provided by the planner and produce a concise audit report that lists errors, risks, and required fixes. Focus on removing shortcuts such as fictitious counters or implicit global invariants that are not enforced by actions. Provide corrected preconditions and effects where necessary."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_fragments",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing domains and problems for the FastDownwards planner. Your task is to integrate model fragments and the auditor report into a single consistent PDDL domain and a matching PDDL problem that FastDownwards can solve. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Include necessary :requirements, types, constants, predicates, actions, initial state, and goal. Ensure actions are causally explicit and that the model enforces disk ordering by size.",
+                "prompt": "You are the orchestrator. Integrate the planner model fragments and the auditor report to produce a final PDDL domain and a final PDDL problem for the Tower of Hanoi with 4 disks and 3 pegs. Target the FastDownwards solver. Keep agent distinctions if multiple agents contributed, but output a single coherent domain and problem. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "auditor.check->orchestrator.pddl"
+        ]
+    }
+}

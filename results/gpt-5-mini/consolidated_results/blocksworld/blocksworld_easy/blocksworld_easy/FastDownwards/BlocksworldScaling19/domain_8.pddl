@@ -1,0 +1,98 @@
+(define (domain block-stacking)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block time)
+
+  (:predicates
+    (on ?b - block ?p - block)        ; ?b is directly on top of ?p
+    (ontable ?b - block)              ; ?b is on the table
+    (clear ?b - block)                ; ?b has nothing on top and is not held
+    (handempty)                       ; hand is empty
+    (holding ?b - block)              ; currently holding ?b
+    (at ?t - time)                    ; current stage/time marker
+    (next ?t1 - time ?t2 - time)      ; successor relation between consecutive stages
+  )
+
+  ;; Unstack a block ?b from on top of block ?p during consecutive stages ?t -> ?t2
+  (:action unstack
+    :parameters (?b - block ?p - block ?t - time ?t2 - time)
+    :precondition (and
+      (at ?t)
+      (next ?t ?t2)
+      (on ?b ?p)
+      (clear ?b)
+      (handempty)
+      (not (holding ?p))    ; make explicit that support is not being held
+    )
+    :effect (and
+      (not (on ?b ?p))
+      (holding ?b)
+      (not (handempty))
+      (not (clear ?b))    ; held blocks are not clear
+      (clear ?p)          ; support becomes clear when top removed
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+
+  ;; Pick up a block ?b from the table during consecutive stages ?t -> ?t2
+  (:action pickup
+    :parameters (?b - block ?t - time ?t2 - time)
+    :precondition (and
+      (at ?t)
+      (next ?t ?t2)
+      (ontable ?b)
+      (clear ?b)
+      (handempty)
+      (not (holding ?b))
+    )
+    :effect (and
+      (not (ontable ?b))
+      (holding ?b)
+      (not (handempty))
+      (not (clear ?b))    ; held blocks are not clear
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+
+  ;; Put down a held block ?b onto the table during consecutive stages ?t -> ?t2
+  (:action putdown
+    :parameters (?b - block ?t - time ?t2 - time)
+    :precondition (and
+      (at ?t)
+      (next ?t ?t2)
+      (holding ?b)
+    )
+    :effect (and
+      (not (holding ?b))
+      (handempty)
+      (ontable ?b)
+      (clear ?b)          ; placed on table with nothing on top
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+
+  ;; Stack a held block ?b onto a clear block ?p during consecutive stages ?t -> ?t2
+  (:action stack
+    :parameters (?b - block ?p - block ?t - time ?t2 - time)
+    :precondition (and
+      (at ?t)
+      (next ?t ?t2)
+      (holding ?b)
+      (clear ?p)
+      (handempty) ; requires hand to become empty only via this action's effect; ensure hand currently not empty would be false, so require nothing here other than holding ?b.
+      (not (holding ?p))  ; explicit: target must not be held
+    )
+    :effect (and
+      (not (holding ?b))
+      (handempty)
+      (on ?b ?p)
+      (not (clear ?p))    ; target now has something on top
+      (clear ?b)          ; placed block is top and hence clear
+      (not (ontable ?b))
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+)

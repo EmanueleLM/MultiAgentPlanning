@@ -1,0 +1,113 @@
+{
+    "name": "BlocksworldScaling14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "builder",
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "builder": {
+            "private_information": [
+                "I specialize in high level hierarchical planning and causal ordering",
+                "I know the set of primitive actions and their intended informal preconditions and effects"
+            ],
+            "goal": "Produce high level plan fragments to achieve the final block configuration: red on blue and orange on red"
+        },
+        "mover": {
+            "private_information": [
+                "I specialize in low level action decomposition and concrete action sequencing",
+                "I know the physical manipulation constraints such as single hand, pick up only if clear and on table, and stack effects on clear predicates"
+            ],
+            "goal": "Provide concrete ordered sequences of primitive actions that implement high level plan fragments while respecting the action restrictions"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in checking temporal and causal consistency and removing bookkeeping shortcuts",
+                "I will detect and remove quota tokens, post hoc penalties, or other unrealistic shortcuts and enforce single-handedness and clear predicate semantics"
+            ],
+            "goal": "Audit plan fragments and action sequences for temporal and causal soundness and return a corrected validated plan fragment and an audit report"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from other agents and produce the final planning specification",
+                "Target solver is FastDownwards"
+            ],
+            "goal": "Integrate validated plan fragments and action sequences into a complete PDDL domain and PDDL problem suitable for the FastDownwards solver that achieves red on blue and orange on red"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "Blocks present are red blue orange and yellow",
+            "Available primitive actions are PickUp, Unstack, PutDown, Stack",
+            "PickUp can only be done when hand is empty and the block is on the table and clear",
+            "Unstack can only be done when hand is empty and the block to unstack is on top of another block and clear",
+            "PutDown can only be done when the agent is holding the block",
+            "Stack can only be done when the agent is holding the block and the destination block is clear",
+            "Only one block can be picked up or unstacked at a time",
+            "After PickUp or Unstack the agent is holding the block and hand is not empty",
+            "After PutDown or Stack the agent hand becomes empty",
+            "When a block is stacked on another block the block below becomes not clear",
+            "Initial facts: red clear, blue clear, orange clear, hand empty, orange on yellow, red on table, blue on table, yellow on table",
+            "Goal: red on blue and orange on red"
+        ]
+    },
+    "workflow": {
+        "builder": {
+            "analysis": {
+                "input": [],
+                "output": "plan_fragment",
+                "system_prompt": "You are an expert in hierarchical planning for block stacking. Provide high level plan fragments that specify causal orderings, necessary preconditions, and expected effects. Do not emit PDDL. Identify any assumptions or missing low level details required to realize the fragments.",
+                "prompt": "You are named builder. Use the public information {environment->public_information} together with your private knowledge {agents->builder->private_information}. Your goal is {agents->builder->goal}. Produce ordered high level plan fragments and list any assumptions and missing concrete preconditions."
+            }
+        },
+        "mover": {
+            "decomposition": {
+                "input": [],
+                "output": "action_sequence",
+                "system_prompt": "You are an expert at low level action decomposition for block manipulation. Provide concrete primitive action sequences consistent with the provided rules and with single handed operation. Do not emit PDDL. Explicitly state the preconditions and effects for each primitive action in the sequence.",
+                "prompt": "You are named mover. Use the public information {environment->public_information} together with your private knowledge {agents->mover->private_information}. Your goal is {agents->mover->goal}. Produce concrete action sequences and for each action list the required predicates before the action and the effects after the action."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "builder.plan_fragment",
+                    "mover.action_sequence"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an independent auditor of temporal and causal consistency. Your role is to remove bookkeeping shortcuts and to ensure plans respect the single hand constraint and precise clear predicate semantics. Report all changes and justify them. Do not emit PDDL.",
+                "prompt": "You are named auditor. You receive {builder.plan_fragment} and {mover.action_sequence} and the public information {environment->public_information}. Your job is {agents->auditor->goal}. Produce a validated and corrected plan fragment and a detailed audit report describing any removed shortcuts and the reasons for corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "builder.plan_fragment",
+                    "mover.action_sequence",
+                    "auditor.audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration. Produce a complete PDDL domain and PDDL problem that target the FastDownwards planner. Keep actions of different agent perspectives distinct and include types, predicates, and all preconditions and effects required by the public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are named orchestrator. Integrate the inputs {builder.plan_fragment}, {mover.action_sequence}, and {auditor.audit_report} together with public information {environment->public_information}. Produce a finalized PDDL domain and a PDDL problem file formatted for the FastDownwards solver. Ensure all primitive actions PickUp Unstack PutDown and Stack are modeled with correct preconditions and effects, enforce single hand usage, enforce clear predicates, and ensure the goal red on blue and orange on red is represented. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "builder.analysis->orchestrator.pddl",
+            "mover.decomposition->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

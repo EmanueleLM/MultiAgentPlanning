@@ -1,0 +1,40 @@
+(define (problem hanoi-5)
+  (:domain hanoi)
+  (:objects
+    a b c d e left middle right
+  )
+  (:init
+    (on a b)
+    (on b c)
+    (on c d)
+    (on d e)
+    (on e middle)
+
+    (clear a)
+    (clear left)
+    (clear right)
+
+    (smaller a b)
+    (smaller a c)
+    (smaller a d)
+    (smaller a e)
+    (smaller b c)
+    (smaller b d)
+    (smaller b e)
+    (smaller c d)
+    (smaller c e)
+    (smaller d e)
+  )
+  (:goal
+    (and
+      (on a b)
+      (on b c)
+      (on c d)
+      (on d e)
+      (on e right)
+      (clear left)
+      (clear middle)
+      (clear a)
+    )
+  )
+)

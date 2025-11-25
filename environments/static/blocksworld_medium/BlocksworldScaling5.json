@@ -1,0 +1,113 @@
+{
+    "name": "BlocksworldScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_handler",
+            "plan_proposer",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_handler": {
+            "private_information": [
+                "Expertise in formalizing action schemas and state predicates for block manipulation.",
+                "Familiar with canonical blocksworld predicates such as on, ontable, clear, holding, handempty."
+            ],
+            "goal": "Analyze the domain and produce explicit action schemas for PickUp, Unstack, PutDown, and Stack, including parameters, preconditions, and effects in a structured form. Do not emit PDDL."
+        },
+        "plan_proposer": {
+            "private_information": [
+                "Skilled at grounding action schemas into sequential plans given an initial state and a goal.",
+                "Able to show the resulting state after each action and to comment on alternative choices."
+            ],
+            "goal": "Use the provided action schemas and the public initial state to propose a detailed, grounded sequential plan that would achieve the goal if possible. Do not emit PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Specialist in temporal and causal consistency analysis and in detecting bookkeeping shortcuts such as implicit tokens, simultaneous actions, or post-hoc penalties."
+            ],
+            "goal": "Audit proposed schemas and plans for hidden assumptions or shortcuts, remove bookkeeping shortcuts, and produce corrected schemas and a canonicalized sequential plan that respects all constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate schemas, the audited corrections, and the proposed plan to produce a final PDDL domain and problem file suitable for the FastDownwards solver. Ensure predicates, types, initial state, and goal are consistent."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "orange",
+                "red",
+                "yellow",
+                "blue"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "This is a classical blocks world with four blocks: orange, red, yellow, blue.",
+            "Available high level actions are PickUp a block, Unstack a block from on top of another block, PutDown a block, Stack a block on top of another block.",
+            "Only one block can be picked up or unstacked at a time.",
+            "PickUp or Unstack is only possible if the agent's hand is empty.",
+            "A block is clear if there are no blocks on top of it and if it is not currently being held.",
+            "PickUp is only allowed for a block that is on the table and clear.",
+            "Unstack is only allowed if the block to unstack is on top of another block and is clear.",
+            "When a block is picked up or unstacked, the agent becomes holding that block.",
+            "PutDown is only allowed if the agent is holding a block.",
+            "Stack is only allowed if the agent is holding the block to be stacked and the destination block is clear.",
+            "After PutDown or Stack, the agent's hand becomes empty.",
+            "After stacking a block onto another block, the block that receives the stack is no longer clear.",
+            "Initial facts: orange is clear, hand is empty, red is on top of yellow, orange is on top of red, yellow is on top of blue, blue is on the table.",
+            "Goal: the yellow block is on top of the orange block."
+        ]
+    },
+    "workflow": {
+        "block_handler": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_handler",
+                "system_prompt": "You are an expert in formalizing action schemas and state predicates for block manipulation. Produce structured action schemas and a canonical list of predicates and types. Do not emit PDDL directly.",
+                "prompt": "Your name is block_handler. You have the following public information: {environment->public_information}. You have the following private information: {agents->block_handler->private_information}. Your goal is: {agents->block_handler->goal}. Provide for each action the name, parameters, preconditions, and effects in a clear structured representation. Also produce the canonical predicate list and type declarations that you assume."
+            }
+        },
+        "plan_proposer": {
+            "analysis": {
+                "input": [
+                    "analysis_block_handler"
+                ],
+                "output": "analysis_plan_proposer",
+                "system_prompt": "You are a planning expert who turns action schemas into grounded sequential plans and can show resulting states step by step. Do not emit PDDL directly.",
+                "prompt": "Your name is plan_proposer. You have the following public information: {environment->public_information}. You have the following private information: {agents->plan_proposer->private_information}. You received action schemas: {analysis_block_handler}. Your goal is: {agents->plan_proposer->goal}. Produce a detailed, grounded sequence of actions from the initial state to the goal. For each step include the chosen grounded action, why it is legal, and the resulting state after execution. If multiple choices exist, mention alternatives and justify your selection."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_block_handler",
+                    "analysis_plan_proposer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency and in removing bookkeeping shortcuts such as implicit tokens, parallel action shortcuts, or post-hoc repairs. Provide corrections and a canonical sequential plan free of such shortcuts.",
+                "prompt": "Your name is auditor. You have the following public information: {environment->public_information}. You have the following private information: {agents->auditor->private_information}. You received the action schemas and a proposed plan: {analysis_block_handler} and {analysis_plan_proposer}. Your goal is: {agents->auditor->goal}. Produce an audit report that lists any inconsistencies, hidden assumptions, or shortcuts. Provide corrected action schemas or constraints if needed and a revised sequential plan that enforces single-handed execution and causal ordering explicitly."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_handler",
+                    "analysis_plan_proposer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in generating PDDL domains and problem files suitable for the FastDownwards planner. Integrate the provided action schemas, the audited corrections, and the candidate plan into a final PDDL domain and problem file. The output must be compatible with FastDownwards and use only supported constructs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep action names and predicates consistent and explicit.",
+                "prompt": "Your name is orchestrator. You have the following public information: {environment->public_information}. You have the following private information: {agents->orchestrator->private_information}. You received the formal schemas, the candidate plan, and the audit: {analysis_block_handler}, {analysis_plan_proposer}, {audit_report}. Your goal is: {agents->orchestrator->goal}. Produce a complete PDDL domain and a PDDL problem that encodes the initial state and the goal that yellow is on top of orange. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Ensure compatibility with FastDownwards."
+            }
+        },
+        "constraints": [
+            "block_handler.analysis->orchestrator.pddl",
+            "plan_proposer.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

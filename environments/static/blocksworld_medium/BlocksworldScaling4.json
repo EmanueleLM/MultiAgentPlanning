@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "executor",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I reason about action schemas, preconditions and effects in structured form.",
+                "I prefer to produce compact, human-readable action descriptions rather than solver-specific code."
+            ],
+            "goal": "Provide a correct, detailed model of the blocks domain in terms of predicates, action schemas, and initial and goal facts, without emitting final PDDL."
+        },
+        "executor": {
+            "private_information": [
+                "I can simulate sequences of actions under the provided domain model and initial state.",
+                "I focus on concrete step-by-step plans and may detect impossible steps given the constraints."
+            ],
+            "goal": "Produce one or more concrete sequences of actions (plans) that would achieve the goal from the initial state, described as ordered steps and justified by preconditions/effects, without producing PDDL code."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and in removing bookkeeping shortcuts.",
+                "I will flag and remove any solutions that rely on unrealistic shortcuts (for example, implicitly holding multiple blocks, using tokens, or post-hoc penalties)."
+            ],
+            "goal": "Audit models and plans for causal correctness, ensure hand/clear constraints are honored, and produce a report of required corrections or strengthened constraints for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I combine inputs from the other agents and produce the final PDDL domain and problem targeting the FastDownward solver.",
+                "I must keep agent actions distinct and reconcile naming or representation mismatches."
+            ],
+            "goal": "Integrate planner, executor, and auditor outputs into a single, coherent PDDL domain and problem file formatted for FastDownward, and emit that PDDL."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "orange",
+                "yellow",
+                "blue"
+            ],
+            "hand_empty": true,
+            "num_blocks": 4
+        },
+        "public_information": [
+            "This is a classical blocks world with pick up, unstack, put down, and stack actions.",
+            "You can only pick up or unstack one block at a time and only if your hand is empty.",
+            "Picking up is allowed only for a block that is on the table and clear. A block is clear if no block is on top of it and it is not currently held.",
+            "Unstacking is allowed only if the block is on top of another block and is clear.",
+            "When you pick up or unstack a block you will be holding it. Putting down or stacking a held block empties the hand.",
+            "Stacking a block onto another block requires the target block to be clear. After stacking, the target block becomes not clear.",
+            "Initial facts: red is clear, orange is clear, hand is empty, red is on top of yellow, orange is on top of blue, blue is on the table, yellow is on the table.",
+            "Goal: red is on top of yellow and yellow is on top of orange."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "modeling": {
+                "input": [],
+                "output": "planner_model",
+                "system_prompt": "You are a domain modeler for classical planning. Produce a clear and complete specification of predicates, object types, and action schemas with preconditions and effects in a structured textual form. Do not produce solver-specific PDDL. Your output will be consumed by other agents and by an orchestrator that will generate the final PDDL.",
+                "prompt": "Your name is planner. You have access to the following public information: {environment->public_information} You have the following private knowledge: {agents->planner->private_information} Your goal: {agents->planner->goal} Provide a detailed model of the domain including a list of predicates, a description of each action schema (name, parameters, preconditions, add effects, delete effects), any invariants or typing assumptions, and any edge cases. Make explicit the representation you assume for 'clear', 'holding', 'ontable', and 'on'. Do not emit final PDDL; produce a structured human-readable model."
+            }
+        },
+        "executor": {
+            "simulation": {
+                "input": [
+                    "planner_model"
+                ],
+                "output": "executor_plan",
+                "system_prompt": "You are a plan simulator and concrete planner. Given a domain model and an initial state, produce one or more concrete action sequences (plans), each step justified by the preconditions and effects from the model. Do not output PDDL code. Focus on explicit step ordering, required intermediate states, and any assumptions you make.",
+                "prompt": "Your name is executor. You have the following public information: {environment->public_information} You have the planner's model: {planner_model} You have the following private knowledge: {agents->executor->private_information} Your goal: {agents->executor->goal} Produce candidate plans as ordered lists of actions (e.g., unstack red yellow; putdown red; pick up yellow; stack yellow orange), annotate each step with preconditions that must hold and the expected state change. If multiple plans are possible, provide alternatives and rank them by simplicity. Highlight steps that depend on assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_model",
+                    "executor_plan"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Your job is to detect and remove bookkeeping shortcuts or implicit assumptions that violate the natural constraints of the domain (for example, holding multiple blocks, implicit teleportation, or using tokens instead of modeling resource constraints). Provide concrete corrections and strengthened constraints.",
+                "prompt": "Your name is auditor. You have the public information: {environment->public_information} You have the planner model: {planner_model} You have executor plans: {executor_plan} You have the following private knowledge: {agents->auditor->private_information} Your goal: {agents->auditor->goal} Check the provided action schemas and plans for causal and temporal consistency. Identify any steps that rely on illegal shortcuts, explain why they are invalid, and provide corrected preconditions/effects or alternative steps. Produce a succinct report suitable for the orchestrator to reconcile and enforce correct constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_model",
+                    "executor_plan",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and in preparing problems for the FastDownward planner. Integrate the model, the candidate plans, and the auditor's corrections to produce a final PDDL domain and a PDDL problem that are consistent with the canonical STRIPS-style representation expected by FastDownward. Keep agent actions distinct where they originated from if that helps traceability. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Produce only the PDDL domain and problem enclosed in those tags.",
+                "prompt": "Your name is orchestrator. You have the public information: {environment->public_information} You have the planner model: {planner_model} You have executor plans: {executor_plan} You have the auditor report: {auditor_report} You have the following private knowledge: {agents->orchestrator->private_information} Your goal: {agents->orchestrator->goal} Reconcile naming mismatches and representation differences, enforce the auditor's corrections, and emit a complete PDDL domain and a PDDL problem file suitable for FastDownward. Ensure action names and predicates are unambiguous and that all preconditions/effects reflect the true causal constraints (hand empty/holding, clear, on, ontable). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.modeling->orchestrator.pddl",
+            "executor.simulation->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

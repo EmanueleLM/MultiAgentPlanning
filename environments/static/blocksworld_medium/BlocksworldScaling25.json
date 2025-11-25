@@ -1,0 +1,86 @@
+{
+    "name": "BlocksworldScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "decomposer",
+            "auditor",
+            "orchestrator"
+        ],
+        "decomposer": {
+            "private_information": [
+                "I can reason about objects, predicates, and action schemas for block manipulation.",
+                "I observe four blocks: orange, yellow, red, blue."
+            ],
+            "goal": "Analyze the domain and produce a clean structured model of objects, predicates, and action schemas that capture the allowed actions and restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency verification and removing bookkeeping shortcuts.",
+                "I ensure there is exactly one hand and that single-action atomicity and resource constraints are enforced explicitly."
+            ],
+            "goal": "Audit the decomposer's model to remove informal shortcuts, expose any implicit tokens, and produce a causally and temporally consistent model description."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses from other agents and produce the final planning artifacts.",
+                "The target solver is FastDownwards."
+            ],
+            "goal": "Integrate the verified models and produce a complete PDDL domain and PDDL problem file ready to run with FastDownwards that achieves the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "orange",
+                "yellow",
+                "red",
+                "blue"
+            ],
+            "num_blocks": 4
+        },
+        "public_information": [
+            "Actions available: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.",
+            "Constraints: Only one block can be picked up or unstacked at a time. Pick up and unstack require the hand to be empty. A block can be picked up only if it is on the table and the block is clear. A block is clear if it has no blocks on top of it and it is not picked up. Unstacking a block requires that it is on top of another specific block and that it is clear. Once a block is picked up or unstacked, the agent is holding the block. A block can be put down only if it is held. Stacking requires holding the block being stacked and the target block must be clear. Putting down or stacking makes the hand empty. After stacking, the block that received another block is no longer clear.",
+            "Initial state facts: orange is clear, yellow is clear, hand is empty, orange is on top of red, yellow is on top of blue, red is on the table, blue is on the table.",
+            "Goal: red on top of blue and orange on top of red."
+        ]
+    },
+    "workflow": {
+        "decomposer": {
+            "analysis": {
+                "input": [],
+                "output": "decomposer_analysis",
+                "system_prompt": "You are an expert in domain modeling and action schemata for classical planning. Produce a canonical structured analysis of the block world domain tailored to the provided public information and your private observations. Provide a list of objects, a recommended set of predicates, and for each natural-language action produce a precise action schema description with parameters, preconditions, and effects. Do not emit a finalized PDDL domain or problem; instead emit a clear structured model that lists predicates and action schemas and explains any modelling choices.",
+                "prompt": "Your name is decomposer. Use the public information {environment->public_information} and your private information {agents->decomposer->private_information} and the global modeling goal {agents->decomposer->goal}. Identify objects, propose predicates, map each of the four actions to formal action schemas, and state any assumptions that must be made explicit for integration. Output a structured, human-readable model description and avoid emitting full PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "decomposer_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert in temporal and causal verification for planning domains. Your role is to inspect domain analyses and remove or replace bookkeeping shortcuts and informal tokens (for example quota tokens, post-hoc penalties, or implicit resource flags) with explicit, sound modeling constructs. Ensure single-hand semantics, atomicity of actions, and that 'clear' and 'holding' conditions are well defined and cannot be bypassed. Produce a concise verification report describing corrections and an adjusted model description ready for integration.",
+                "prompt": "Your name is auditor. You will receive the decomposer output {decomposer_analysis} plus the public information {environment->public_information}. Your goal is {agents->auditor->goal}. Check for causal or temporal inconsistencies, identify implicit assumptions, remove bookkeeping shortcuts, and produce an adjusted model description that enforces the single-hand constraint and the required preconditions and effects explicitly. Provide recommendations and a verified model summary for the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "decomposer_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in preparing domains and problems for the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem compliant with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent-specific action responsibilities distinct by using clear action names or prefixes where needed. The final PDDL must represent the verified constraints (single hand, clear definitions, allowed actions) and the given initial state and goal.",
+                "prompt": "Your name is orchestrator. Integrate the decomposer analysis {decomposer_analysis} and the auditor report {audit_report} together with the public information {environment->public_information} and your private information {agents->orchestrator->private_information}. Your job is to produce a FastDownwards-ready PDDL domain and problem that solve the stated goal {environment->public_information[3]}. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure actions are atomic, the single-hand resource is explicit, and the predicates and action names are consistent and unambiguous."
+            }
+        },
+        "constraints": [
+            "decomposer.analysis->auditor.audit",
+            "decomposer.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

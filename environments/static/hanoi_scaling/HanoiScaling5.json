@@ -1,0 +1,99 @@
+{
+    "name": "HanoiScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "strategist",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can perform a single atomic action: move the top disk from one peg to another peg.",
+                "I must only move the top disk of a peg and must never place a larger disk on a smaller disk."
+            ],
+            "goal": "Provide a concrete, ordered sequence of legal single-disk moves that will transfer the full stack from the right peg to the left peg while leaving the middle peg empty at the end."
+        },
+        "strategist": {
+            "private_information": [
+                "I understand recursive decomposition of the Tower of Hanoi problem and the minimal move count formula 2^n - 1.",
+                "I can break the global goal into subgoals and compute expected plan length and structure for 5 disks."
+            ],
+            "goal": "Produce a high-level recursive plan and move-count estimates, and identify clear subproblem boundaries that can guide a concrete move sequence."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for temporal and causal consistency auditing.",
+                "I must remove bookkeeping shortcuts like artificial tokens, post-hoc penalties, or any plan fragments that implicitly assume non-observed state changes."
+            ],
+            "goal": "Validate the provided plan fragments for causal correctness and temporal feasibility, and produce a cleaned, rule-compliant plan fragment if fixes are needed."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analysis, move fragments, and audits to produce a final, solver-ready PDDL domain and problem targeting the FastDownward planner."
+            ],
+            "goal": "Combine inputs from other agents to generate a complete PDDL domain and PDDL problem suitable for FastDownward that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5
+        },
+        "public_information": [
+            "This is the Tower of Hanoi with three pegs named left, middle, and right.",
+            "There are five disks labeled by size from smallest to largest as disk A, disk B, disk C, disk D, disk E.",
+            "Initial state: right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. Middle and left pegs are empty.",
+            "Goal state: left peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E while middle and right pegs are empty.",
+            "Legal atomic action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk.",
+            "The middle peg may be used as an intermediate location but must be empty in the final state.",
+            "Once a disk is moved its relative size ordering remains unchanged."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_plan_fragment",
+                "system_prompt": "You are the concrete move generator. Your role is to produce an explicit, ordered sequence of atomic legal moves expressed as 'move diskX from PEG1 to PEG2'. Do not emit PDDL. Do not introduce bookkeeping tokens or implicit state changes. Focus on concrete moves only and ensure each move obeys the rules provided in the public information.",
+                "prompt": "You are named mover. Use the public information and your private knowledge to produce a step by step list of legal single-disk moves to progress from the initial state toward the goal. If you need high-level decomposition details, request them from strategist via your outputs. Keep each move explicit and self-contained."
+            }
+        },
+        "strategist": {
+            "analysis": {
+                "input": [],
+                "output": "strategist_analysis",
+                "system_prompt": "You are the strategic planner. Your role is to decompose the Tower of Hanoi instance into recursive subproblems, estimate the minimal move count, and propose subgoal boundaries and patterns that a concrete mover can follow. Do not emit PDDL.",
+                "prompt": "You are named strategist. Using the public information and your private knowledge, produce a high-level recursive plan for solving 5 disks, compute the minimal move count, and enumerate the expected subgoals and checkpoints for mover to follow. Highlight assumptions and any requirements for the auditor to verify."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are the temporal and causal auditor. Your role is to review proposed move fragments and high-level plans to detect causality or temporal violations and to remove or flag any bookkeeping shortcuts or implicit assumptions. Produce corrective suggestions or a cleaned move fragment. Do not emit PDDL.",
+                "prompt": "You are named auditor. Using the public information and your private knowledge, evaluate candidate move sequences or plan fragments for causal and temporal consistency. If you detect violations of the rules or implicit shortcuts, produce a corrected, explicit fragment and an explanation of each correction."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_plan_fragment",
+                    "strategist_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a complete PDDL domain and PDDL problem targeting the FastDownward planner. Integrate inputs from the other agents, resolve naming or naming inconsistencies, and keep agent actions distinct if multiple action schemas are needed. Emit a PDDL domain and PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use explicit typing and standard FastDownward-compatible PDDL constructs and avoid solver-specific nonstandard extensions.",
+                "prompt": "You are named orchestrator. Combine the public information and the inputs from mover, strategist, and auditor to produce a final PDDL domain and PDDL problem that encodes the Tower of Hanoi instance with five disks and three pegs. Ensure predicates and action schemas capture move legality: only top disks can be moved and a larger disk cannot be placed on a smaller disk. Target the FastDownward planner by providing a clean, standard PDDL domain and problem. Include object declarations for disks and pegs, an initial state reflecting the right peg stack, and a goal state reflecting the left peg stack. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "strategist.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

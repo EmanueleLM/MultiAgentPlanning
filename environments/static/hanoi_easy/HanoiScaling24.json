@@ -1,0 +1,121 @@
+{
+    "name": "HanoiScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I can move only one disk at a time.",
+                "I may only move a disk that is on top of a peg.",
+                "I must never place a larger disk on top of a smaller disk."
+            ],
+            "goal": "Propose and describe a legal sequence of individual disk moves that transfers the tower from the middle peg to the right peg using the left peg as auxiliary, leaving left and middle pegs empty and the right peg containing disks A, B, C, D from top to bottom."
+        },
+        "planner": {
+            "private_information": [
+                "There are 4 disks named A, B, C, D ordered from smallest to largest as A < B < C < D.",
+                "There are 3 pegs named left, middle, and right.",
+                "Initial configuration: middle peg holds from top to bottom A, B, C, D; left and right pegs are empty.",
+                "Goal configuration: right peg should hold from top to bottom A, B, C, D; left and middle pegs should be empty."
+            ],
+            "goal": "Provide a clear action schema, preconditions, and effects for the single allowed primitive move and propose a compact representation of state predicates suitable for later encoding in PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency of proposed move sequences and constraint descriptions.",
+                "I will detect and reject bookkeeping shortcuts such as quota tokens, implicit global counters not grounded in state predicates, or post-hoc penalties that hide illegal moves."
+            ],
+            "goal": "Audit proposed move sequences and planner constraints to ensure full causal correctness and remove or flag any bookkeeping shortcuts, producing a corrected and unambiguous audit report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will synthesize the final PDDL domain and problem for the FastDownwards solver based on inputs from other agents."
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem targeting FastDownwards that encodes the 4-disk Tower of Hanoi and the constraints so the solver can find a legal plan achieving the goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_count": 4,
+            "disk_order_smallest_to_largest": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "positions": {
+                "left": [],
+                "middle": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ],
+                "right": []
+            }
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "There are four disks A, B, C, D ordered from smallest to largest as A, B, C, D.",
+            "Allowed primitive action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time, only move a disk that is topmost on its peg, and never place a larger disk on a smaller disk.",
+            "Initial state: the middle peg holds from top to bottom A, B, C, D and left and right pegs are empty.",
+            "Goal state: the right peg must hold from top to bottom A, B, C, D and the left and middle pegs must be empty.",
+            "The left peg may be used as an intermediate but must end up empty."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "propose_moves": {
+                "input": [],
+                "output": "plan_mover",
+                "system_prompt": "You are the mover agent. Produce a clear, human-readable sequence of individual disk moves described as 'move top disk from PEG_X to PEG_Y' that attempts to achieve the global goal given the environment public information. Do not emit PDDL. Keep each move atomic and explicit."
+            }
+        },
+        "planner": {
+            "propose_constraints": {
+                "input": [],
+                "output": "constraints_planner",
+                "system_prompt": "You are the planner agent. Describe the action schema for the primitive move including formal preconditions and effects using plain text, list the state predicates you propose to represent peg contents and disk ordering, and mention any domain-level invariants required. Do not output PDDL, but provide precise information that can be translated into PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_mover",
+                    "constraints_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Check the mover's proposed sequence and the planner's constraints for temporal and causal consistency. Identify any illegal moves or hidden bookkeeping shortcuts and produce a corrected move sequence or recommended modifications to the constraints. Provide an explicit statement that confirms the proposal is fully grounded on explicit state predicates and legal actions, or list required corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_mover",
+                    "constraints_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in creating PDDL domain and problem files targeted for the FastDownwards planner. Using the mover's move sequence, the planner's constraint descriptions, and the auditor's report, synthesize a complete PDDL domain and a PDDL problem that encode the 3-peg 4-disk Tower of Hanoi with correct predicates, types, and the single allowed move action. Ensure the encoding enforces that only top disks move and that larger disks cannot be placed on smaller ones. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Produce output fully compatible with FastDownwards."
+            }
+        },
+        "constraints": [
+            "mover.propose_moves->orchestrator.pddl",
+            "planner.propose_constraints->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

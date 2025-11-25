@@ -1,0 +1,88 @@
+{
+    "name": "BlocksworldScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "I understand the primitive block actions: pick up, unstack, put down, stack.",
+                "I can represent predicates such as on, on-table, clear, holding, hand-empty.",
+                "I will not emit full PDDL by default; instead I formalize action semantics and produce unambiguous action templates and predicate definitions."
+            ],
+            "goal": "Formalize the block actions and initial/goal state into precise action templates and a structured fragment that can be integrated into a PDDL domain and problem."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency auditing of action descriptions.",
+                "I detect and remove bookkeeping shortcuts such as token counters, ad-hoc temporal assumptions, or post-hoc penalties.",
+                "I ensure preconditions and effects are complete and that derived predicates or invariants are explicit."
+            ],
+            "goal": "Audit the modeler output for causal completeness and explicit bookkeeping removal, then produce a concise report with corrections, explicit invariants, and any required additional predicates or constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must assemble the validated fragments into a final PDDL domain and problem compatible with the FastDownward planner.",
+                "I should keep contributions from other agents distinct when mapping actions and document any naming choices."
+            ],
+            "goal": "Produce a final, FastDownward-ready PDDL domain and problem that achieves the stated goal from the given initial state."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "yellow",
+                "red",
+                "blue",
+                "orange"
+            ]
+        },
+        "public_information": [
+            "The domain is the classical blocks world with the following primitive actions: pick up a block from the table, unstack a block from on top of another block, put down a block onto the table, stack a block on top of another block.",
+            "Action restrictions: only one block can be manipulated at a time. The hand must be empty to pick up or unstack. A block is clear if nothing is on top of it and it is not being held. After pick up or unstack, the agent holds the block and the hand is not empty. After put down or stack, the agent's hand becomes empty. When stacking on a second block, that second block becomes not clear.",
+            "Initial conditions: yellow is clear, hand is empty, red is on top of blue, blue is on top of orange, yellow is on top of red, orange is on the table.",
+            "Goal: red on top of orange and blue on top of yellow."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "analysis": {
+                "input": [],
+                "output": "modeler_fragment",
+                "system_prompt": "You are an expert formalizer for action domains. Do not emit full PDDL. Instead, produce precise, unambiguous definitions that an engineer can turn into PDDL. Provide: a) a predicate list with arities and intuitive semantics; b) for each primitive action (pickup, unstack, putdown, stack) provide an action template listing parameters, preconditions, and effects in explicit logical terms; c) any necessary invariants and naming conventions. Use the environment public information and your private knowledge to avoid ambiguity. If information is missing, state assumptions explicitly.",
+                "prompt": "Your name is modeler. Environment public facts: {environment->public_information}. Your private knowledge: {agents->modeler->private_information}. Your objective: {agents->modeler->goal}. Provide action templates and predicate definitions. Be explicit about the representation of 'clear', 'on', 'on-table', 'holding', and 'hand-empty'. Do not output PDDL. State any assumptions you make."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "modeler_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal domain descriptions. Your task is to remove bookkeeping shortcuts, expose hidden assumptions, and ensure causal completeness. Produce a concise report that: a) lists any missing causal links or temporal constraints; b) replaces implicit bookkeeping tokens with explicit predicates or constraints; c) suggests fixes or alternative formalizations that preserve soundness for a STRIPS-style planner; d) mark any potential naming mismatches or ambiguous object references.",
+                "prompt": "Your name is auditor. You receive the modeler fragment: {modeler_fragment}. Your private knowledge: {agents->auditor->private_information}. Your objective: {agents->auditor->goal}. Audit the fragment for causal and temporal consistency, remove bookkeeping shortcuts, and produce explicit corrections and recommendations to make the fragment suitable for direct translation into PDDL. If you must assume details, state them clearly and justify why they are safe."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "modeler_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL assembly and FastDownward planning. Your output must be a complete PDDL domain and a PDDL problem tailored to the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure :requirements are explicit and compatible with FastDownward. Keep actions, predicates, and naming choices traceable to the modeler and auditor contributions; annotate which agent suggested each action or predicate in comments. Resolve any remaining ambiguities conservatively and document assumptions. Avoid using non-STRIPS features unless justified by the auditor and annotated.",
+                "prompt": "There are contributions from two agents to integrate into a final PDDL domain and problem for the FastDownward solver. Global goal: {agents->orchestrator->goal}. Use the modeler fragment: {modeler_fragment} and the auditor report: {audit_report}. Produce a PDDL domain and a PDDL problem that encode the initial state and the goal from the environment public information: {environment->public_information}. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If you must choose types, predicate names, or small modeling decisions, pick the most standard STRIPS-compatible encoding and document your choices as brief comments."
+            }
+        },
+        "constraints": [
+            "modeler.analysis->auditor.audit",
+            "modeler.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

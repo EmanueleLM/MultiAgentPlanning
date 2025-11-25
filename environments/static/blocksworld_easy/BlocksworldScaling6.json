@@ -1,0 +1,119 @@
+{
+    "name": "BlocksworldScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "analyst",
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "analyst": {
+            "private_information": [
+                "I focus on high-level state analysis and symbolic dependencies.",
+                "I can identify subgoals and required preconditions but I do not generate PDDL."
+            ],
+            "goal": "Derive the necessary subgoals and a minimal abstract sequence of actions to achieve that the orange block is on top of the yellow block."
+        },
+        "manipulator": {
+            "private_information": [
+                "I represent the agent that would execute physical actions on blocks.",
+                "I know the procedural meaning of actions: pick up, unstack, put down, stack."
+            ],
+            "goal": "Propose a concrete ordered action sequence using the allowed primitive actions that would transform the initial state into the goal state if executed sequentially."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, detecting hidden bookkeeping shortcuts and unrealistic assumptions.",
+                "I remove quota token tricks and post-hoc penalties and ensure every action sequence respects single-hand and clearance constraints."
+            ],
+            "goal": "Validate the proposed plan for causal and temporal soundness and produce a corrected action sequence or a list of required corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses, plans, and audits and produce the final PDDL domain and problem for automated planning.",
+                "The PDDL produced must be compatible with the FastDownward planner and must keep actions distinct per agent where appropriate."
+            ],
+            "goal": "Integrate the inputs and generate a PDDL domain and PDDL problem targeting the FastDownward solver that achieves orange on top of yellow."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "orange",
+                "yellow",
+                "blue",
+                "red"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Initial facts: the orange block is clear.",
+            "Initial facts: the yellow block is clear.",
+            "Initial facts: the hand is empty.",
+            "Initial facts: the blue block is on top of the red block.",
+            "Initial facts: the orange block is on top of the blue block.",
+            "Initial facts: the red block is on the table.",
+            "Initial facts: the yellow block is on the table.",
+            "Available primitive actions: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.",
+            "Restrictions: Only one block may be picked up or unstacked at a time.",
+            "Restrictions: Pick up or unstack is only possible when the hand is empty.",
+            "Restrictions: A block can be picked up only if it is on the table and it is clear.",
+            "Definition: A block is clear if there is no other block on top of it and it is not currently being held.",
+            "Restrictions: A block can be unstacked from another block only if it is actually on top of that block and it is clear.",
+            "Effect: After picking up or unstacking a block, the agent is holding that block.",
+            "Restrictions: A block can be put down only if the agent is holding it.",
+            "Restrictions: A block can be stacked on another block only if the agent is holding it and the target block is clear.",
+            "Effect: After putting down or stacking a block, the hand becomes empty.",
+            "Effect: After stacking a block onto a second block, the second block becomes not clear."
+        ]
+    },
+    "workflow": {
+        "analyst": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_analyst",
+                "system_prompt": "You are an expert analyst of symbolic planning problems. Provide a clear high-level analysis of the initial state, identify subgoals and preconditions required for the final goal, and list ambiguities to resolve. Do not produce PDDL.",
+                "prompt": "Your name is analyst. You are given the public information {environment->public_information} and your private knowledge {agents->analyst->private_information}. Your objective is {agents->analyst->goal}. Produce a stepwise logical analysis that enumerates subgoals, required preconditions for each subgoal, and a minimal abstract action sequence sketch that respects the stated restrictions. Do not emit PDDL."
+            }
+        },
+        "manipulator": {
+            "plan": {
+                "input": [
+                    "analysis_analyst"
+                ],
+                "output": "plan_manipulator",
+                "system_prompt": "You are an expert in operationalizing abstract plans into concrete ordered action sequences for a single-handed manipulator in blocksworld. Provide explicit ordered actions and justify each action's preconditions and effects. Do not produce PDDL.",
+                "prompt": "Your name is manipulator. You receive the analyst analysis {analysis_analyst} along with public information {environment->public_information} and your private knowledge {agents->manipulator->private_information}. Your objective is {agents->manipulator->goal}. Produce a concrete ordered action list using the available primitive actions that would achieve the goal if executed sequentially, annotate precondition and effect for each step, and highlight any assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_manipulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor validating temporal and causal consistency in plans. Detect and remove bookkeeping shortcuts and unrealistic assumptions, enforce single-hand constraints and clearance conditions, and produce corrections as needed. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You receive the manipulator plan {plan_manipulator} and public information {environment->public_information} and your private knowledge {agents->auditor->private_information}. Your objective is {agents->auditor->goal}. Audit the plan for causal and temporal soundness, list any violations, and provide a corrected plan or an explicit list of additional required actions or ordering constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_analyst",
+                    "plan_manipulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating analysis, concrete plans, and audit corrections into a final PDDL domain and problem compatible with the FastDownward planner. Keep agent actions distinct where relevant and label which action schemas correspond to each agent when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL models the single-hand constraint, clearance, and proper on/table relations and is suitable for FastDownward.",
+                "prompt": "Your name is orchestrator. You will receive the analyst analysis {analysis_analyst}, the manipulator plan {plan_manipulator}, and the auditor report {audit_report}. Your objective is {agents->orchestrator->goal}. Integrate the inputs, resolve naming inconsistencies, and output a complete PDDL domain and a PDDL problem that encodes the initial state and the goal for the FastDownward solver. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>. Keep the actions of the manipulator and any agent-specific behaviors distinct and documented in comments where possible."
+            }
+        },
+        "constraints": [
+            "analyst.analysis->manipulator.plan",
+            "manipulator.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

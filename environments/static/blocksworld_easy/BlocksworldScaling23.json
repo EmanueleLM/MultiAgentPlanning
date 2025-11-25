@@ -1,0 +1,95 @@
+{
+    "name": "BlocksworldScaling23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_mover",
+            "stack_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_mover": {
+            "private_information": [
+                "I control the manipulator that can pick up, unstack, put down, and stack one block at a time.",
+                "I can only perform an action if my hand is empty when required and I will hold a single block after pick up or unstack."
+            ],
+            "goal": "Have the orange block on top of the red block."
+        },
+        "stack_manager": {
+            "private_information": [
+                "I reason about which blocks are clear and which stacks are stable.",
+                "I maintain the relation 'clear' and enforce that when a block is stacked the supporting block becomes not clear."
+            ],
+            "goal": "Have the orange block on top of the red block."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and detect bookkeeping shortcuts such as tokens, quotas, or retroactive penalties."
+            ],
+            "goal": "Ensure the plan and the modeled actions are temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analysis from other agents and produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep agent actions distinct and label them to preserve which agent performs which action."
+            ],
+            "goal": "Produce a complete PDDL domain and problem that achieve: orange is on top of red."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "Blocks present: blue, red, orange, yellow.",
+            "Initial facts: blue is clear, orange is clear, yellow is clear, hand is empty, blue is on top of red, red is on the table, orange is on the table, yellow is on the table.",
+            "Available actions: pick-up a block, unstack a block from another block, put-down a block, stack a block on another block.",
+            "Action restrictions: only one block can be picked up or unstacked at a time; pick-up or unstack require the hand to be empty; pick-up requires the block is on the table and clear; unstack requires the block is on top of another block and the block is clear; after pick-up or unstack the agent is holding the block; put-down requires the agent is holding the block; stack requires the agent is holding the block and the target block is clear; after put-down or stack the hand becomes empty; stacking makes the supporting block not clear."
+        ]
+    },
+    "workflow": {
+        "block_mover": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_mover",
+                "system_prompt": "You are a low-level manipulator expert. Produce a clear, machine-checkable natural-language description of the primitive actions you can execute and their concrete preconditions and effects. Do not emit PDDL. Keep descriptions atomic and explicit about hand state and clear predicates.",
+                "prompt": "Your name is block_mover. You see the environment public information: {environment->public_information}. You have these private details: {agents->block_mover->private_information}. Your goal is: {agents->block_mover->goal}. Provide a stepwise listing of primitives (pick-up, unstack, put-down, stack) with explicit preconditions and effects in plain text, and identify possible edge cases where a primitive is ambiguous or underspecified."
+            }
+        },
+        "stack_manager": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_stack_manager",
+                "system_prompt": "You are a stack and state-manager expert. Provide declarative invariants and state-transition descriptions for predicates such as on, on-table, holding, clear, and handempty. Do not emit PDDL. Focus on causal consequences and ensure invariants reflect that stacking changes clearness.",
+                "prompt": "Your name is stack_manager. You have the environment public information: {environment->public_information}. You have these private details: {agents->stack_manager->private_information}. Your goal is: {agents->stack_manager->goal}. Produce a concise set of invariants, state update rules, and recommended predicate names and arities. Flag any missing information needed to create a correct PDDL encoding."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_auditor",
+                "system_prompt": "You are an independent auditor for temporal and causal consistency. Your role is to detect and remove bookkeeping shortcuts such as quota tokens, retroactive penalties, or implicit multi-step shortcuts. You provide corrections and concrete recommendations that make the model strictly causal and temporally explicit. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You have access to the environment public information: {environment->public_information}. You have these private details: {agents->auditor->private_information}. Your goal is: {agents->auditor->goal}. Produce an audit report that lists possible modeling shortcuts or inconsistencies, explains why they violate causal or temporal purity, and provides explicit remediation instructions so the orchestrator can produce a correct PDDL domain and problem for FastDownwards."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_mover",
+                    "analysis_stack_manager",
+                    "audit_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates agent analyses and the audit to produce a complete, solver-ready PDDL domain and problem targeting the FastDownwards planner. You must keep agent actions distinct by prefixing action names with the agent identifier. Provide the domain and problem files only. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure compatibility with FastDownwards and avoid any bookkeeping shortcuts.",
+                "prompt": "You are orchestrator. Use the following inputs from the other agents: {workflow->orchestrator->input}. Also use the environment public information: {environment->public_information}. Your private information: {agents->orchestrator->private_information}. The global goal is: {agents->orchestrator->goal}. Integrate the analyses and the audit, resolve any naming mismatches or underspecifications, and emit a complete PDDL domain and a PDDL problem for FastDownwards. Keep agent action names distinct by prefixing them (for example block_mover-pickup). Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "block_mover.analysis->orchestrator.pddl",
+            "stack_manager.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

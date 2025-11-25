@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "blocks_agent",
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "blocks_agent": {
+            "private_information": [
+                "I understand standard blocksworld predicates such as on, ontable, clear, holding, handempty and the usual four action types pick-up, unstack, put-down, stack.",
+                "I track object identities and the explicit initial relations among the red, yellow, orange and blue blocks."
+            ],
+            "goal": "Provide a precise symbolic description of the domain types, predicates, objects and the initial facts implied by the public information and the statement. Highlight any ambiguities or missing assumptions."
+        },
+        "manipulator": {
+            "private_information": [
+                "I reason about feasible action sequences under the single-hand constraint and clear-block preconditions and postconditions.",
+                "I can propose candidate action sequences and local ordering constraints but I will not emit PDDL."
+            ],
+            "goal": "Produce one or more concrete candidate action sequences (plans) that, if valid, would achieve the global stacking goal while respecting the described restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed plans and domain specifications.",
+                "I remove bookkeeping shortcuts and ephemeral tokens, verify that all preconditions are causally supported, and ensure the representation uses explicit invariants rather than implicit shortcuts."
+            ],
+            "goal": "Provide a corrected set of invariants, temporal/causal consistency checks, and a short report listing necessary domain constraints and removed shortcuts so that a planner cannot exploit bookkeeping artifacts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses, candidate plans and audit reports to produce a final PDDL domain and problem suitable for FastDownward."
+            ],
+            "goal": "Produce a complete PDDL domain and problem file targeted for the FastDownward planner that achieves the stated stacking goal from the given initial state while keeping agent actions distinct where appropriate."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "yellow",
+                "orange",
+                "blue"
+            ],
+            "hand_empty": true,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are four blocks: red, yellow, orange and blue.",
+            "Action repertoire: pick-up a block from the table, unstack a block from another block, put-down a held block on the table, stack a held block on another block.",
+            "Restrictions: only one block may be picked up or unstacked at a time and only if the hand is empty.",
+            "A block is clear if no block is on top of it and it is not being held.",
+            "Pick-up requires the block to be on the table and clear.",
+            "Unstack requires the block to be on top of another block and clear.",
+            "Put-down requires that the agent is holding the block.",
+            "Stack requires that the agent is holding the block and the destination block is clear. After stacking the destination block becomes not clear and the hand becomes empty.",
+            "Initial facts: red is clear and ontable, yellow is clear, orange is on top of blue, yellow is on top of orange, orange is not clear, blue is on the table and may or may not be clear depending on stacking relations, the hand is empty.",
+            "Goal: red on top of blue, orange on top of yellow, yellow on top of red."
+        ]
+    },
+    "workflow": {
+        "blocks_agent": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_blocks_agent",
+                "system_prompt": "You are blocks_agent. Produce a precise symbolic enumeration of types, objects, and predicates, and list the initial facts implied by the public information. Identify any ambiguous or missing assumptions. Do not emit PDDL domain or problem files. Focus on a clean symbolic model that will be consumed by downstream agents.",
+                "prompt": "Your role is to digest the environment public information and your private knowledge to produce: objects with their types, a canonical set of predicates, explicit initial facts for the four blocks and hand state, and an explicit statement of domain invariants required by the action descriptions. Do not produce PDDL."
+            }
+        },
+        "manipulator": {
+            "plan": {
+                "input": [
+                    "analysis_blocks_agent"
+                ],
+                "output": "plan_manipulator",
+                "system_prompt": "You are manipulator. Using the symbolic model from blocks_agent, propose concrete candidate action sequences that respect single-hand and clear preconditions and postconditions. Do not output PDDL. Provide ordered action lists with explicit preconditions and expected effects for each action step.",
+                "prompt": "Given the symbolic model from analysis_blocks_agent, enumerate one or more candidate plans as sequences of actions. For each action include the actor, the action name, its arguments, the required preconditions at that step and the effects. Flag any steps that rely on assumptions not present in the analysis."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_blocks_agent",
+                    "plan_manipulator"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are auditor. Inspect the symbolic model and candidate plans for temporal and causal consistency. Remove any bookkeeping shortcuts such as implicit tokens, quotas, or post-hoc penalties. Convert any implicit assumptions into explicit invariants or constraints. Produce a concise audit report listing corrections, added invariants, and any plan repairs needed. Do not emit PDDL.",
+                "prompt": "Using the analysis and candidate plans, produce an audit report that: lists causal chains for key goals, identifies and removes shortcuts, presents additional invariants required to prevent invalid plans, and if needed, propose minimal modifications to plans to restore causal soundness."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_blocks_agent",
+                    "plan_manipulator",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are orchestrator. Integrate the analyses, candidate plans and audit corrections to produce a single complete PDDL domain and problem suitable for the FastDownward planner. You must keep agent-level actions logically distinct if the inputs refer to agent-specific action names or capabilities. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain uses explicit invariants rather than bookkeeping shortcuts and is compatible with FastDownward requirements.",
+                "prompt": "Receive the analysis, plan candidates and audit report and output a final PDDL domain and a PDDL problem file that encode the blocks, initial state and the stated goal. The PDDL must be compatible with FastDownward. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Do not include extraneous commentary."
+            }
+        },
+        "constraints": [
+            "blocks_agent.analyze->manipulator.plan",
+            "blocks_agent.analyze->auditor.audit",
+            "manipulator.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "manipulator.plan->orchestrator.pddl"
+        ]
+    }
+}

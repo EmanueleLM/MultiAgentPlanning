@@ -1,0 +1,116 @@
+{
+    "name": "BlocksworldScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_agent",
+            "stacker_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "I know the set of blocks: red, blue, yellow, orange",
+                "I know some initial state facts: red is clear, blue is clear, yellow is clear, hand is empty, yellow is on orange, red is on the table, blue is on the table, orange is on the table"
+            ],
+            "goal": "Arrange blocks so that red is on orange, orange is on blue, and yellow is on red."
+        },
+        "stacker_agent": {
+            "private_information": [
+                "I specialize in the mechanical feasibility of pick, unstack, putdown and stack actions and in ordering those actions under the constraints of a single hand",
+                "I know the same initial state as planner_agent but my focus is on which block moves are executable given clear and handempty constraints"
+            ],
+            "goal": "Provide an executable action ordering that achieves the global goal while respecting single-hand and clear constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I check that all preconditions and effects are explicitly represented and that no implicit assumptions about simultaneity or multiple hands remain"
+            ],
+            "goal": "Produce corrections and explicit causal constraints so the plan is temporally and causally sound."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate partial analyses into a single PDDL domain and problem targeting the FastDownwards solver",
+                "I must keep actions of different agents distinct and ensure the final PDDL encodes single-hand, clear, on, ontable and holding predicates and the desired goal"
+            ],
+            "goal": "Produce a final PDDL domain and problem compatible with FastDownwards that achieves the global goal using the agents' inputs."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "init_predicates": [
+                "clear red",
+                "clear blue",
+                "clear yellow",
+                "handempty",
+                "on yellow orange",
+                "ontable red",
+                "ontable blue",
+                "ontable orange"
+            ]
+        },
+        "public_information": [
+            "Available primitive actions: pick-up, unstack, put-down, stack",
+            "Only one block can be manipulated at a time",
+            "Pick-up or unstack requires the hand to be empty",
+            "A block is clear if it has no block on top of it and it is not being held",
+            "Pick-up is allowed only if the block is on the table and clear",
+            "Unstack is allowed only if the block is on top of another block and is clear",
+            "After pick-up or unstack the agent is holding the block",
+            "Put-down or stack makes the hand empty again",
+            "To stack a block on another, the held block must be held and the target block must be clear",
+            "Stacking makes the target block no longer clear"
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "analysis": {
+                "input": [],
+                "output": "partial_spec_planner",
+                "system_prompt": "You are a planning analyst for the Blocks World task. Your role is to read the public environment description and the private information you have and produce a clear, stepwise, human-readable plan outline, a set of explicit predicates and action schemata described in declarative form (preconditions and effects), and any naming conventions you assume. Do not emit PDDL. Focus on clarity and explicitness so another agent can convert your specification into PDDL.",
+                "prompt": "Your name is planner_agent. You have the following public information: {environment->public_information}. You have the following private information: {agents->planner_agent->private_information}. The global goal to solve is: {agents->planner_agent->goal}. Provide a high-level stepwise plan outline, an explicit list of predicates and clear preconditions and effects for the relevant actions, and any assumptions or naming conventions you use. Do not produce PDDL."
+            }
+        },
+        "stacker_agent": {
+            "strategy": {
+                "input": [],
+                "output": "partial_spec_stacker",
+                "system_prompt": "You are a tactical stacking operator. Your output should be a feasible ordered sequence of concrete moves (pick, unstack, putdown, stack) that respects single-hand and clear constraints and highlights potential resource conflicts or required intermediate put-downs. Produce explicit execution constraints and recommended sequencing but do not emit PDDL.",
+                "prompt": "Your name is stacker_agent. You have the following public information: {environment->public_information}. You have the following private information: {agents->stacker_agent->private_information}. The global goal to solve is: {agents->stacker_agent->goal}. Provide an executable ordering of moves, explicit constraints for each move, and note any required intermediate states or temporary placements. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that validates temporal and causal consistency. Your job is to find implicit assumptions, remove bookkeeping shortcuts, and produce explicit causal constraints and fixes so the plan is sound for automated planners. Produce an audit report listing any missing preconditions or implicit simultaneity assumptions and recommended explicit axioms or constraints. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You have the following public information: {environment->public_information}. You have the following private information: {agents->auditor->private_information}. The global goal to solve is: {agents->auditor->goal}. Review potential plan fragments and specifications and list any causal/temporal inconsistencies, implicit assumptions, or bookkeeping shortcuts. Provide concrete corrections or additional preconditions/effects to remove shortcuts. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "partial_spec_planner",
+                    "partial_spec_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator that must integrate partial specifications and audit corrections and produce a complete PDDL domain and PDDL problem targeting the FastDownwards solver. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions originating from different agents distinct by naming or commenting, ensure single-hand constraints, clear predicate semantics, and the exact initial state and goal as provided. The final PDDL must be compatible with FastDownwards.",
+                "prompt": "You are orchestrator. You will receive the planner's specification, the stacker's strategy, and the auditor's report. Integrate these inputs into a single coherent PDDL domain and PDDL problem that achieves: {agents->orchestrator->goal}. Keep agent actions distinct in naming if relevant. Use the initial facts from {environment->init->init_predicates} and the blocks from {environment->init->blocks}. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards planner with standard STRIPS-style predicates and no execution-time bookkeeping shortcuts."
+            }
+        },
+        "constraints": [
+            "planner_agent.analysis->orchestrator.pddl",
+            "stacker_agent.strategy->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

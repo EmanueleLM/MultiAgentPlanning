@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "auditor",
+            "translator",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I specialize in generating high level, linear plans for block manipulation using the available actions.",
+                "I must respect single-handed constraints and the definition of clear blocks."
+            ],
+            "goal": "Produce a concise, step by step plan that achieves the goal configuration: blue on orange and yellow on red."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I ensure every action's preconditions and effects respect single-step causality, hand-empty constraints, and clear predicates."
+            ],
+            "goal": "Audit and correct the planner output to ensure a causally and temporally consistent plan without bookkeeping shortcuts."
+        },
+        "translator": {
+            "private_information": [
+                "I map high-level actions and objects into a structured planning representation including predicates, object lists, and action schemas, but I do not emit full PDDL domain and problem files.",
+                "I prefer STRIPS style predicates: on, ontable, clear, holding, handempty."
+            ],
+            "goal": "Translate the audited plan into a precise symbolic representation that the orchestrator can convert to a PDDL domain and problem."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from the other agents and produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep agent actions distinct if multiple agents propose differing action names or object identifiers."
+            ],
+            "goal": "Produce a complete, FastDownwards-compatible PDDL domain and problem that implements the blocksworld task and the audited plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1
+        },
+        "public_information": [
+            "There are four blocks: blue, yellow, orange, and red.",
+            "Available primitive actions are: pick-up, unstack, put-down, and stack.",
+            "Action constraints: only one block may be manipulated at a time and the hand must be empty to pick up or unstack.",
+            "A block is clear if there is no block on top of it and it is not currently held.",
+            "pick-up is applicable only when the block is on the table and clear.",
+            "unstack is applicable only when the block is on top of another block and the block is clear.",
+            "put-down is applicable only when the agent is holding a block and puts it on the table.",
+            "stack is applicable only when the agent is holding a block and the target block is clear.",
+            "Once the agent picks up or unstack a block, the agent is holding that block and the hand is not empty.",
+            "Once the agent puts down or stacks a block, the hand becomes empty.",
+            "When a block X is stacked on top of block Y, block Y becomes not clear.",
+            "Initial conditions: blue is clear, yellow is clear, hand is empty, orange is on top of red, yellow is on top of orange, red is on the table, blue is on the table.",
+            "Goal: blue is on top of orange and yellow is on top of red.",
+            "Use STRIPS style predicates such as on, ontable, clear, holding, and handempty for symbolic representations."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analyze": {
+                "input": [],
+                "output": "plan_steps",
+                "system_prompt": "You are a domain expert in block manipulation planning. Using the public information and your private knowledge produce a clear high level plan as an ordered list of primitive actions. Do not emit PDDL. Do not invent bookkeeping tokens. Keep actions expressed as pick-up X, unstack X from Y, put-down X, stack X on Y. Prefer minimal steps and explicit preconditions and effects in commentary form.",
+                "prompt": "Your role is planner. Given the environment public information and the goal, produce a candidate step by step plan expressed using the primitive actions. For each step, indicate which block is moved, the source and destination, and the immediate preconditions and effects that enable that step. Do not produce PDDL. Output should be a numbered list of actions with short rationales."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_steps"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are an auditor specializing in causal and temporal consistency for plans. You inspect candidate plans and remove any bookkeeping shortcuts, unrealistic assumptions, or implicit concurrency. You must ensure every action has its preconditions satisfied by prior steps or initial state and that the single-handed constraint is respected. Do not emit PDDL.",
+                "prompt": "Your role is auditor. Receive a planned sequence of actions from the planner. Verify each action's preconditions and effects, reorder or add necessary supporting actions to guarantee causal correctness, and remove any bookkeeping shortcuts. Return a corrected, causally sound, linear plan with annotations explaining fixes."
+            }
+        },
+        "translator": {
+            "map": {
+                "input": [
+                    "audited_plan"
+                ],
+                "output": "translator_output",
+                "system_prompt": "You are a translator that converts audited linear plans into a symbolic planning representation suitable for PDDL generation. Produce a list of objects, initial facts using STRIPS style predicates, predicate signatures, and action schemata templates mapping each primitive action to preconditions and effects. Do not emit full PDDL domain or problem files.",
+                "prompt": "Your role is translator. Given the audited plan, produce a structured representation including: the set of block objects, the initial state as a list of predicates, the goal predicates, and for every primitive action provide a canonical action template listing parameters, preconditions, and effects. Keep names consistent and avoid producing full PDDL domain or problem files."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "translator_output",
+                    "audited_plan",
+                    "plan_steps"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem targeted for the FastDownwards solver. Integrate the structured representation from the translator and the audited plan. Produce a complete PDDL domain and a PDDL problem that are compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure requirements and typing are declared appropriately and action names remain distinct. If the inputs contain differing object names or synonyms, reconcile them consistently.",
+                "prompt": "Your role is orchestrator. Integrate the translator output and the audited plan to generate two files. First produce a PDDL domain that defines predicates and action operators for pick-up, unstack, put-down, and stack consistent with STRIPS semantics and FastDownwards requirements. Then produce a PDDL problem declaring objects, the initial state, and the goal. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure the produced PDDL is ready to be solved with FastDownwards."
+            }
+        },
+        "constraints": [
+            "planner.analyze->auditor.audit",
+            "auditor.audit->translator.map",
+            "translator.map->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,97 @@
+{
+    "name": "BlocksworldScaling23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "block_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_planner": {
+            "private_information": [
+                "I know the blockworld primitives: pick up, unstack, put down, and stack.",
+                "I can only hold one block at a time and only when my hand is empty.",
+                "A block is clear if nothing is on top of it and it is not being held.",
+                "I should produce a concrete stepwise plan in natural language listing which atomic actions to perform and the relevant preconditions and effects as plain predicates, but I should not emit PDDL."
+            ],
+            "goal": "Produce a step-by-step actionable plan in plain language that transforms the initial state into the goal state."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I verify that each action in a plan respects single-handedness, clearness, and the exact preconditions stated in the domain.",
+                "I check that no step implicitly assumes simultaneous actions or hidden world changes."
+            ],
+            "goal": "Audit the proposed plan for causal and temporal correctness and produce a corrected sequence of atomic actions and explicit preconditions/effects where needed."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate partial analyses and audits into a single coherent PDDL domain and PDDL problem formatted for the FastDownwards solver.",
+                "I must keep the actions of different agents distinct when relevant and resolve naming mismatches or ambiguous references."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem for the FastDownwards solver that solves the block reconfiguration task."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "orange",
+                "blue",
+                "yellow"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available atomic actions are: pick up a block from the table, unstack a block from on top of another block, put down a block on the table, and stack a block on top of another block.",
+            "You can only pick up or unstack one block at a time and only if your hand is empty.",
+            "You can only pick up a block if the block is on the table and the block is clear.",
+            "You can only unstack a block if that block is on top of another block and the block is clear.",
+            "Once you pick up or unstack a block you are holding that block and your hand is not empty.",
+            "You can only put down a block that you are holding.",
+            "You can only stack a block on top of another block if you are holding the block being stacked and the destination block is clear.",
+            "Once you put down or stack a block your hand becomes empty.",
+            "When a block B is stacked on a block C then C is not clear anymore.",
+            "Initial state facts: yellow is clear, hand is empty, blue is on top of orange, orange is on top of red, yellow is on top of blue, red is on the table.",
+            "Goal facts: red is on top of blue, orange is on top of red, yellow is on top of orange."
+        ]
+    },
+    "workflow": {
+        "block_planner": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_planner",
+                "system_prompt": "You are an expert human-level planner for block stacking tasks. Produce an explicit natural language step-by-step plan that lists atomic actions in sequence and for each action state the minimal preconditions and effects using plain predicate notation. Do not output PDDL. Identify any assumptions or missing information that would prevent producing a deterministic plan.",
+                "prompt": "Agent block_planner context: Consider the public information: {environment->public_information} and your private knowledge: {agents->block_planner->private_information} and the global goal: {agents->block_planner->goal}. Produce a concrete ordered sequence of atomic actions in plain text such as PICKUP(yellow), UNSTACK(blue,orange), STACK(x,y) or PUTDOWN(x). For each action list the required preconditions and the expected effects using simple predicate phrases like ON(x,y), ONTABLE(x), CLEAR(x), HOLDING(x), HANDEMPTY. Indicate any ambiguities or optional choices and prefer minimal moves to reach the goal."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_block_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor who enforces temporal and causal consistency for sequential plans in the block world. You detect implicit shortcuts, concurrent-action assumptions, quota tokens, and any steps that violate single-handedness or clearness. You must remove bookkeeping shortcuts and produce a corrected, fully explicit atomic action sequence with explicit preconditions and effects. Do not produce PDDL.",
+                "prompt": "Agent auditor context: You receive the planner analysis: {analysis_block_planner}. Use the public facts: {environment->public_information} and your private knowledge: {agents->auditor->private_information} and your goal: {agents->auditor->goal}. Verify each step for causal correctness and temporal feasibility. If any action assumes multiple simultaneous changes or hidden bookkeeping, replace it with an explicit sequence of valid atomic actions. Output a corrected ordered list of atomic actions and precise preconditions and effects for each action."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and with preparing input for the FastDownwards solver. You will produce a PDDL domain file and a PDDL problem file that are compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions originating from different agents distinct where that distinction matters for preconditions or naming. Resolve any naming mismatches and integrate the auditor corrections. Ensure predicates, action schemas, types, objects, initial state and goal are explicit and complete for FastDownwards.",
+                "prompt": "Agent orchestrator context: Integrate the following materials: public environment facts: {environment->public_information}, the block planner analysis: {analysis_block_planner}, and the auditor report: {audit_report}. Your task is to produce a complete PDDL domain and PDDL problem tuned for FastDownwards that solves the global goal: {agents->orchestrator->goal}. Think step by step. Resolve ambiguities in object names or predicates. Keep agent action labels distinct if needed. Output only the PDDL domain and problem enclosed respectively in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "block_planner.analysis->auditor.audit",
+            "block_planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

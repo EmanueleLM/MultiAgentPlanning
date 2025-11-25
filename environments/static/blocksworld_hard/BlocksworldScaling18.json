@@ -1,0 +1,108 @@
+{
+    "name": "BlocksworldScaling18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "perceiver",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "perceiver": {
+            "private_information": [
+                "Initial facts: orange is clear, yellow is clear, hand is empty, red is on top of blue, orange is on top of red, blue is on the table, yellow is on the table",
+                "Available primitive actions: pick-up, unstack, put-down, stack"
+            ],
+            "goal": "Produce a faithful structured representation of the initial world state as ground predicates and list of objects."
+        },
+        "planner": {
+            "private_information": [
+                "I know the action schemas and the restrictions: only one block can be held at a time, pick-up or unstack require hand empty, pick-up requires block on table and clear, unstack requires block was on another block and is clear, put-down requires holding a block, stack requires holding the block and target clear, after stacking target becomes not clear, after put-down or stack hand becomes empty"
+            ],
+            "goal": "Produce a stepwise candidate plan (sequence of primitive actions) that attempts to reach the global goal given the perceived initial state, but do not produce PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Responsibility: check temporal and causal consistency, verify preconditions and effects across the plan, remove bookkeeping shortcuts such as tokens or post-hoc penalties, and ensure the plan respects single-hand and clearance invariants"
+            ],
+            "goal": "Take a candidate plan and produce an audited, causally consistent plan with explicit precondition/effect justifications and any necessary fixes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Target solver: FastDownwards",
+                "Final output must be a PDDL domain and a PDDL problem that encodes the Blocks World instance and the audited plan constraints where appropriate"
+            ],
+            "goal": "Integrate perception, planning, and audit outputs and produce the final PDDL domain and PDDL problem files suitable for the FastDownwards solver to realize the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "blue",
+                "red",
+                "orange",
+                "yellow"
+            ],
+            "hand_states": [
+                "empty",
+                "holding"
+            ],
+            "visibility": 1
+        },
+        "public_information": [
+            "There are four blocks named blue, red, orange, and yellow.",
+            "The available primitive actions are pick-up, unstack, put-down, and stack.",
+            "Action restrictions: only one block can be held at a time, pick-up and unstack require an empty hand, pick-up requires the block to be on the table and clear, unstack requires the block to be on another block and clear, put-down requires holding a block, stack requires holding the block and target clear, stacking makes the target not clear, putting down or stacking makes the hand empty.",
+            "Initial world facts: orange is clear, yellow is clear, hand is empty, red is on top of blue, orange is on top of red, blue is on the table, yellow is on the table.",
+            "Goal facts: red on orange, orange on yellow, yellow on blue."
+        ]
+    },
+    "workflow": {
+        "perceiver": {
+            "observe": {
+                "input": [],
+                "output": "obs_perceiver",
+                "system_prompt": "You are the perceiver. Extract and normalize the initial state from the public information into a structured list of objects and ground predicates. Represent each fact with a predicate such as on(blockA, blockB), ontable(block), clear(block), handempty, holding(block). Do not produce PDDL. Output must be a compact machine-readable JSON-like fact list.",
+                "prompt": "Given only the public information and your private information, produce a minimal structured representation of objects and the initial predicates for the blocks world instance."
+            }
+        },
+        "planner": {
+            "plan_partial": {
+                "input": [
+                    "obs_perceiver"
+                ],
+                "output": "plan_partial",
+                "system_prompt": "You are the planner. Using the perceived initial state and known action schemas, produce a candidate sequential plan composed of primitive actions pick-up, unstack, put-down, and stack that attempts to achieve the goal. Each step must be represented as an atomic action with explicit parameters, for example pick-up(red) or stack(red,orange). Do not emit PDDL. Do not introduce bookkeeping shortcuts such as abstract tokens or implicit simultaneous actions.",
+                "prompt": "From the structured initial state, generate a step-by-step candidate plan that aims to reach the goal red on orange, orange on yellow, yellow on blue. Ensure each action's parameters are explicit and list the expected preconditions and effects inline with each step."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_partial"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are the auditor. Check the candidate plan for temporal and causal consistency. Verify that for every action its preconditions are established by prior actions or initial state and that no action violates the single-hand constraint or clearance invariants. Remove or flag any bookkeeping shortcuts such as quota tokens or post-hoc penalties. If inconsistencies are found, produce corrected plan steps and a short justification for every change. Output a cleaned sequential plan with per-step precondition and effect annotations.",
+                "prompt": "Take the planner candidate plan and rigorously validate each step against the action restrictions. Produce an audited sequential plan that is causally consistent and free of bookkeeping shortcuts, and include brief justifications for any modifications."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_plan",
+                    "obs_perceiver"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator producing final PDDL for FastDownwards. Integrate the audited plan and the perceived initial state to create a PDDL domain and a PDDL problem suitable for the FastDownwards planner. Keep agent actions and roles conceptually distinct if relevant. Provide a correct STRIPS-style domain encoding blocks world primitives pick-up, unstack, put-down, and stack with appropriate preconditions and effects and a problem file that encodes the initial state and the goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility.",
+                "prompt": "Using the audited plan and the structured initial facts, produce a PDDL domain and PDDL problem pair that models the Blocks World instance and the stated goal. Ensure compatibility with FastDownwards and include all necessary predicates and types. Enclose the domain in <domain></domain> and the problem in <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "perceiver.observe->planner.plan_partial",
+            "planner.plan_partial->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

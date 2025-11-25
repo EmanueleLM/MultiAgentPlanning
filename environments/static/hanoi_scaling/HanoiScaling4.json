@@ -1,0 +1,97 @@
+{
+    "name": "HanoiScaling4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I can move only one disk at a time.",
+                "I may only move a disk that is on top of a peg.",
+                "I can never place a larger disk on top of a smaller disk.",
+                "There are five disks named A B C D E from smallest to largest.",
+                "Initial state: left peg holds from top to bottom A B C D E. Middle and right pegs are empty.",
+                "Goal state: middle peg holds from top to bottom A B C D E and left and right pegs are empty."
+            ],
+            "goal": "Produce a concrete, step by step sequence of valid moves that transfers the full tower from the left peg to the middle peg using the right peg as an intermediate."
+        },
+        "auditor": {
+            "private_information": [
+                "I validate temporal and causal consistency of move sequences.",
+                "I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and flag any plan that relies on hidden state or implicit assumptions.",
+                "I ensure the plan obeys the move rules and preserves disk size ordering at all times."
+            ],
+            "goal": "Audit the mover's proposed move sequence for correctness, causal consistency, and absence of bookkeeping shortcuts, and produce a clean, explicit audit report detailing any necessary corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the mover move sequence and the auditor report to produce a final formal planning problem.",
+                "Target solver for the final PDDL is FastDownward."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem that models the Tower of Hanoi instance for FastDownward and encodes the validated move constraints and goal state. Keep agent actions distinct when mapping behaviors to predicates and actions."
+        }
+    },
+    "environment": {
+        "init": {
+            "disk_count": 5,
+            "pegs": 3,
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs named left middle and right.",
+            "There are five disks A B C D E ordered from smallest to largest.",
+            "Only the top disk on a peg may be moved.",
+            "Only one disk may be moved at a time.",
+            "A larger disk may never be placed on top of a smaller disk.",
+            "Initial configuration: left peg holds from top to bottom disk A disk B disk C disk D disk E; middle and right pegs are empty.",
+            "Goal configuration: middle peg holds from top to bottom disk A disk B disk C disk D disk E and left and right pegs are empty.",
+            "The right peg may be used as an intermediate parking spot but must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "plan_moves": {
+                "input": [],
+                "output": "moves_mover",
+                "system_prompt": "You are the mover agent responsible for producing a concrete sequence of legal moves for the Tower of Hanoi instance. Do not emit PDDL. Provide an explicit ordered list of moves such as 'move A from left to middle' and ensure each move obeys the puzzle rules and preserves disk ordering.",
+                "prompt": "Your name is mover. Use the public information about pegs disks initial state and goal found in {environment->public_information} and the mover private information in {agents->mover->private_information}. Produce a complete step by step move sequence that transfers the tower from the left peg to the middle peg using the right peg as needed. The output should be a plain, ordered list of moves and nothing else."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "moves_mover"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency and on removing bookkeeping shortcuts. Do not produce PDDL. Your task is to inspect the mover's move sequence, confirm each step is legal, identify any implicit assumptions, remove or correct any shortcuts such as tokens or post-hoc penalties, and produce a clear audit report describing corrections or a confirmation of validity.",
+                "prompt": "Your name is auditor. You receive the mover move sequence in {moves_mover} and you have the public information {environment->public_information} and your private information {agents->auditor->private_information}. Verify that the sequence is temporally and causally consistent and that it never violates the rules. If any move is invalid or relies on hidden bookkeeping, produce corrected moves or explain the needed changes. Output a concise audit report and, if corrections are required, a corrected explicit move list."
+            }
+        },
+        "orchestrator": {
+            "orchestrate": {
+                "input": [
+                    "moves_mover",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that builds the final PDDL domain and PDDL problem targeting the FastDownward planner. Produce a single PDDL domain and a single PDDL problem that model the Tower of Hanoi instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain is compatible with FastDownward supported features and include clear typing and predicates for pegs disks and top-of relationships. Keep the mover and auditor roles and their corresponding behaviors distinguishable in the mapping to actions and predicates. The output must be PDDL only inside the tags and must not include external commentary.",
+                "prompt": "You will receive the mover's move sequence in {moves_mover} and the auditor's audit report in {audit_report}. Use the public information in {environment->public_information} and the orchestrator's private information in {agents->orchestrator->private_information}. Integrate the validated move sequence and auditor corrections to generate a final PDDL domain and problem suitable for FastDownward that encodes the initial state and the goal state. Respect the rules of the puzzle and ensure the produced PDDL is self-contained and solves the described instance."
+            }
+        },
+        "constraints": [
+            "mover.plan_moves->auditor.audit",
+            "mover.plan_moves->orchestrator.orchestrate",
+            "auditor.audit->orchestrator.orchestrate"
+        ]
+    }
+}

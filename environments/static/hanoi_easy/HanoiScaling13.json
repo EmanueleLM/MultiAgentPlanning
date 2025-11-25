@@ -1,0 +1,110 @@
+{
+    "name": "HanoiScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "Can move the top disk from one peg to another peg",
+                "May move only one disk at a time",
+                "May only move a disk that is on top of a peg",
+                "May not place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Propose a legally valid sequence of moves to transfer all disks from the right peg to the middle peg while leaving the left peg empty at the end"
+        },
+        "observer": {
+            "private_information": [
+                "Has a view of peg states and can record state transitions",
+                "Will annotate each move with preconditions and postconditions"
+            ],
+            "goal": "Produce a concise state transition log and constraints describing preconditions and effects for each move in the proposed plan"
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency",
+                "Must detect and remove bookkeeping shortcuts such as quota tokens or post hoc penalties"
+            ],
+            "goal": "Audit move sequences and transition constraints to ensure no shortcuts, that causality is preserved, and that the plan obeys Tower of Hanoi rules"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce a final PDDL domain and PDDL problem compatible with the FastDownwards planner that encodes the Tower of Hanoi transfer of four disks from the right peg to the middle peg"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "disk_order": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "initial_configuration": "Right peg has disks from top to bottom A B C D. Left and middle pegs are empty.",
+            "goal_configuration": "Middle peg must have disks from top to bottom A B C D. Left and right pegs must be empty."
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right",
+            "There are four disks with strict size ordering from smallest to largest: A B C D",
+            "Only the top disk of any peg may be moved",
+            "Only one disk may be moved at a time",
+            "A larger disk may never be placed on top of a smaller disk",
+            "The left peg may be used as an intermediate parking spot but must be empty in the final state"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "generate_moves": {
+                "input": [],
+                "output": "moves_mover",
+                "system_prompt": "You are an agent that generates concrete move sequences for Tower of Hanoi. Do not emit PDDL. Provide each move as a pair source->destination using peg names left middle right and ensure every move obeys the rules.",
+                "prompt": "Given the public information and your private knowledge, produce a step by step legal move sequence that moves all four disks from the right peg to the middle peg while keeping the left peg empty at the end. Present moves as an ordered list of actions like right->middle or right->left. No PDDL output is expected."
+            }
+        },
+        "observer": {
+            "report": {
+                "input": [
+                    "moves_mover"
+                ],
+                "output": "report_observer",
+                "system_prompt": "You are an observer that converts a move sequence into a state transition log and explicit preconditions and effects for each move. Do not emit PDDL.",
+                "prompt": "Given the move sequence you receive, produce a concise state transition log and for each move state the preconditions required and the postconditions achieved. Keep descriptions machine readable and avoid shortcuts or tokens used only for bookkeeping."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "moves_mover",
+                    "report_observer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to inspect sequences and transition constraints and remove any implicit shortcuts or bookkeeping artifacts. Do not emit PDDL.",
+                "prompt": "Given the move sequence and the observer report, verify that every move respects causality and temporal ordering, that no larger disk is placed on a smaller disk at any step, and that there are no hidden assumptions or bookkeeping shortcuts. Produce an audit report that lists any violations or a confirmation that the plan is consistent and complete."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "moves_mover",
+                    "report_observer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL engineering and in generating PDDL files compatible with the FastDownwards planner. Integrate agent outputs, keep agent actions distinct where relevant, and produce a PDDL domain and a PDDL problem that encode the Tower of Hanoi transfer for four disks. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Integrate the proposed move sequence, the observer transition constraints, and the auditor report to build a complete PDDL domain and PDDL problem targeting FastDownwards. The domain must model pegs, disks, legal top-of-peg moves, and the size ordering constraint so that no larger disk can be placed on a smaller disk. The problem must encode the initial configuration with all disks on the right peg and the goal configuration with all disks on the middle peg and left and right pegs empty. Keep actions related to individual agent moves or roles clearly named and distinct when appropriate."
+            }
+        },
+        "constraints": [
+            "mover.generate_moves->orchestrator.pddl",
+            "observer.report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

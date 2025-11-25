@@ -1,0 +1,106 @@
+{
+    "name": "BlocksworldScaling12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "manipulator",
+            "planner_assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "manipulator": {
+            "private_information": [
+                "I am the agent that models low-level physical actions and their concrete preconditions and effects.",
+                "I can pick up a block, unstack a block, put down a block, and stack a block.",
+                "Only one block can be manipulated at a time and manipulation requires the hand to be empty when starting the action.",
+                "After pick up or unstack, the hand becomes holding the block. After put down or stack, the hand becomes empty."
+            ],
+            "goal": "Describe each low-level action available in this blocks domain in a precise structured plain-text format specifying parameters, preconditions, and effects without producing PDDL."
+        },
+        "planner_assistant": {
+            "private_information": [
+                "I focus on decomposing the global goal into ordered subgoals and a high-level sequence of steps that respects the manipulation constraints.",
+                "I know the global goal: arrange blocks so that blue is on orange and orange is on yellow."
+            ],
+            "goal": "Produce a concise high-level plan consisting of ordered steps and subgoals expressed in plain structured text, and annotate any assumptions or missing information that would prevent execution."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts and post-hoc shortcuts in plans.",
+                "I check that plans respect single-handed manipulation, clearing conditions, and that no implicit tokens or shortcuts are used to bypass preconditions."
+            ],
+            "goal": "Analyze the high-level plan and the manipulator's action descriptions and produce an audit report pointing out temporal or causal violations and propose corrections in plain structured text."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I am responsible for integrating agent outputs and producing a final PDDL domain and problem compatible with the FastDownward planner.",
+                "I must keep the agents' contributions distinct and reconcile naming or representational differences."
+            ],
+            "goal": "Integrate the manipulator specifications, the planner_assistant high-level plan, and the auditor report to generate a PDDL domain and problem targeting the FastDownward solver and emitting the final PDDL files."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are five blocks of interest: red, blue, yellow, orange, and table surfaces as needed.",
+            "Available primitive actions are: pick-up, unstack, put-down, and stack.",
+            "Action restrictions: only one block can be manipulated at a time, the hand must be empty to pick up or unstack, and a block is clear if nothing is on top of it and it is not being held.",
+            "Pick-up requires the block to be on the table and clear. Unstack requires the block to be on another block and clear. Stack requires the target block to be clear and the agent to be holding the block being stacked. Put-down requires the agent to be holding a block.",
+            "Once a block is stacked on another, the support block becomes not clear. Picking up or unstacking results in holding the block; putting down or stacking results in an empty hand.",
+            "Initial conditions: red is clear, blue is clear, yellow is clear, hand is empty, red is on top of orange, blue is on the table, orange is on the table, yellow is on the table.",
+            "Goal: blue is on top of orange and orange is on top of yellow."
+        ]
+    },
+    "workflow": {
+        "manipulator": {
+            "analysis": {
+                "input": [],
+                "output": "manipulator_spec",
+                "system_prompt": "You model low-level actions for the blocks world. Provide detailed structured descriptions of each primitive action pick-up, unstack, put-down, and stack. For each action list parameters, preconditions, positive effects, and negative effects. Do not output PDDL. Keep output concise and machine-friendly.",
+                "prompt": "You are manipulator. Use the public information and your private knowledge to produce precise plain structured specifications for pick-up, unstack, put-down, and stack suitable for an orchestrator to translate to PDDL. If some information is ambiguous, state the ambiguity instead of making assumptions."
+            }
+        },
+        "planner_assistant": {
+            "decompose": {
+                "input": [],
+                "output": "high_level_plan",
+                "system_prompt": "You produce a high-level plan and subgoal decomposition given the public information and the global goal. Express the plan as an ordered list of steps and subgoals with brief rationales. Do not emit PDDL.",
+                "prompt": "You are planner_assistant. Given the public information about the blocks, produce a clear ordered high-level plan to achieve the goal that blue on orange and orange on yellow. Annotate each step with required preconditions and note any dependencies on manipulator action details."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "manipulator_spec",
+                    "high_level_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor who enforces temporal and causal consistency and removes bookkeeping shortcuts or implicit tokens that would bypass true preconditions. Provide a plain structured audit report listing any violations and corrected plan fragments. Do not emit PDDL.",
+                "prompt": "You are auditor. Examine the manipulator specifications and the high-level plan. Identify temporal or causal inconsistencies, missing preconditions, or any use of bookkeeping shortcuts. Produce corrections and a validated step list that respects single-handed manipulation and clearing constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "manipulator_spec",
+                    "high_level_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that integrates agent artifacts and produces a PDDL domain file and a PDDL problem file fully compatible with the FastDownward planner. Preserve clear typing and predicates, include requirements suitable for FastDownward, avoid planner-specific shortcuts, and ensure action names and parameters are unambiguous. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are orchestrator. Integrate the manipulator specifications, the planner_assistant high-level plan, and the auditor audit report to create a coherent PDDL domain and a PDDL problem that achieves the stated goal from the given initial conditions. Target FastDownward compatibility. Keep actions and predicates explicit and ensure all preconditions and effects necessary for soundness are included. Output the domain and problem enclosed in <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "manipulator.analysis->orchestrator.pddl",
+            "planner_assistant.decompose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "manipulator.analysis->auditor.audit",
+            "planner_assistant.decompose->auditor.audit"
+        ]
+    }
+}

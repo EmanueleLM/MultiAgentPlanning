@@ -1,0 +1,97 @@
+(define (domain hanoi-mover)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg step)
+
+  (:predicates
+    (on-peg ?d - disk ?p - peg)
+    (on-disk ?d - disk ?under - disk)
+    (clear-peg ?p - peg)
+    (clear-disk ?d - disk)
+    (smaller ?d1 - disk ?d2 - disk)
+    (succ ?s1 - step ?s2 - step)
+    (ready ?s - step)
+    (done ?s - step)
+  )
+
+  (:action move-peg-to-peg
+    :parameters (?s - step ?succ - step ?d - disk ?from - peg ?to - peg)
+    :precondition (and
+      (ready ?s)
+      (succ ?s ?succ)
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-peg ?to)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+      (clear-peg ?from)
+      (not (clear-peg ?to))
+      (not (ready ?s))
+      (done ?s)
+      (ready ?succ)
+    )
+  )
+
+  (:action move-peg-to-disk
+    :parameters (?s - step ?succ - step ?d - disk ?from - peg ?to - disk)
+    :precondition (and
+      (ready ?s)
+      (succ ?s ?succ)
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-disk ?d ?to)
+      (clear-peg ?from)
+      (not (clear-disk ?to))
+      (not (ready ?s))
+      (done ?s)
+      (ready ?succ)
+    )
+  )
+
+  (:action move-disk-to-peg
+    :parameters (?s - step ?succ - step ?d - disk ?fromdisk - disk ?to - peg)
+    :precondition (and
+      (ready ?s)
+      (succ ?s ?succ)
+      (on-disk ?d ?fromdisk)
+      (clear-disk ?d)
+      (clear-peg ?to)
+    )
+    :effect (and
+      (not (on-disk ?d ?fromdisk))
+      (on-peg ?d ?to)
+      (clear-disk ?fromdisk)
+      (not (clear-peg ?to))
+      (not (ready ?s))
+      (done ?s)
+      (ready ?succ)
+    )
+  )
+
+  (:action move-disk-to-disk
+    :parameters (?s - step ?succ - step ?d - disk ?fromdisk - disk ?to - disk)
+    :precondition (and
+      (ready ?s)
+      (succ ?s ?succ)
+      (on-disk ?d ?fromdisk)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (smaller ?d ?to)
+    )
+    :effect (and
+      (not (on-disk ?d ?fromdisk))
+      (on-disk ?d ?to)
+      (clear-disk ?fromdisk)
+      (not (clear-disk ?to))
+      (not (ready ?s))
+      (done ?s)
+      (ready ?succ)
+    )
+  )
+)

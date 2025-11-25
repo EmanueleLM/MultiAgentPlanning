@@ -1,0 +1,99 @@
+{
+    "name": "BlocksworldScaling22",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Blocks present: red, orange, yellow, blue",
+                "Initial state: orange is clear",
+                "Initial state: hand is empty",
+                "Initial state: red is on top of blue",
+                "Initial state: orange is on top of yellow",
+                "Initial state: yellow is on top of red",
+                "Initial state: blue is on the table",
+                "Available atomic actions: pick up a block from the table, unstack a block from another block, put down a block on the table, stack a block on another block"
+            ],
+            "goal": "Arrange the blocks so that red is on top of orange, orange is on top of yellow, and yellow is on top of blue."
+        },
+        "auditor": {
+            "private_information": [
+                "You must verify temporal and causal consistency of plans",
+                "You must remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Action constraints: only one block can be picked up or unstacked at a time",
+                "Hand constraints: pick up or unstack only when the hand is empty; after pick up or unstack the hand becomes holding the block; after put down or stack the hand becomes empty",
+                "Clear predicate: a block is clear if no block is on top of it and it is not currently held",
+                "Unstack precondition: the block to unstack must be on top of another block and be clear",
+                "Pick up precondition: the block must be on the table and be clear",
+                "Stack precondition: the actor must be holding the block and the destination block must be clear",
+                "Putting down precondition: the actor must be holding the block",
+                "Effect rules: stacking makes the destination block not clear; putting down or stacking makes the hand empty"
+            ],
+            "goal": "Audit and verify that any proposed plan and encoding respect temporal and causal constraints and produce corrected predicate lists and constraints suitable for PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final PDDL domain and PDDL problem encoding the initial state and the goal, suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "orange",
+                "yellow",
+                "blue"
+            ],
+            "hand_empty": true,
+            "visibility": 1
+        },
+        "public_information": [
+            "We are in a block-stacking domain with atomic actions pick-up, unstack, put-down, and stack.",
+            "Only one block can be manipulated at a time and hand occupancy rules apply.",
+            "A block is clear if nothing is on top of it and it is not being held.",
+            "Stacking a block on another makes the destination block not clear.",
+            "Initial state is known to the planner agent and should be encoded into the PDDL problem by the orchestrator."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are a planning specialist for block stacking. Produce a step-by-step abstract plan in natural language, list the sequence of atomic actions required, and for each action list explicit preconditions and effects as predicates. Also enumerate the exact initial predicates you believe are required to build a PDDL problem. Do not emit PDDL. If information is missing, mark it explicitly as unknown and do not assume values.",
+                "prompt": "Your name is planner. Use the environment public information and your private information about the initial state to produce an abstract action plan, a table of action preconditions and effects, and an explicit listing of initial predicates. This output will be consumed by an auditor and by the orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "auditor_audit",
+                "system_prompt": "You are an auditor checking temporal and causal consistency. For the received planner analysis, verify that every action's preconditions are satisfied when it is applied and that effects do not rely on bookkeeping shortcuts. Remove or flag any shortcuts and produce corrected predicates and ordering constraints that are directly representable in PDDL. Provide a concise corrected predicate list and any additional ordering constraints needed for a faithful encoding.",
+                "prompt": "Your name is auditor. You will receive the planner analysis in planner_analysis. Use your private rules and the public information to detect inconsistencies, to remove bookkeeping shortcuts, and to produce a corrected set of predicates, constraints, and notes that the orchestrator can use to build a correct PDDL domain and problem."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "auditor_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing final PDDL domains and problems suitable for the FastDownwards planner. Integrate the planner analysis and the auditor report, resolve any remaining ambiguities explicitly, and produce a single self-contained PDDL domain and PDDL problem. Target FastDownwards by using STRIPS-compatible constructs where possible. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure predicates, types, and action signatures are consistent and that atomic actions implement the blockworld constraints.",
+                "prompt": "You are the orchestrator. Use the inputs planner_analysis and auditor_audit to produce a complete PDDL domain and PDDL problem that encode the initial state and the goal. Ensure all actions are atomic, that preconditions and effects reflect the auditor corrections, and that the produced PDDL is compatible with FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.analysis->auditor.audit",
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

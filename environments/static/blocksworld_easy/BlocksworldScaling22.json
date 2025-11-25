@@ -1,0 +1,109 @@
+{
+    "name": "BlocksworldScaling22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "perception_agent",
+            "planner_assistant",
+            "auditor",
+            "orchestrator"
+        ],
+        "perception_agent": {
+            "private_information": [
+                "I can observe and report object identities and static relations from the initial setup",
+                "I do not propose actions or produce PDDL"
+            ],
+            "goal": "Accurately report the initial state of the blocks world including which blocks are clear, which are on the table, and stacking relations."
+        },
+        "planner_assistant": {
+            "private_information": [
+                "I know the available primitive actions for manipulating blocks and basic preconditions and effects in informal terms",
+                "I produce high level sequential plans but not formal PDDL"
+            ],
+            "goal": "Propose a feasible sequence of high-level actions that could achieve the global goal subject to action restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I check that plans respect single-handedness, clear predicates, and true causality"
+            ],
+            "goal": "Validate proposed plans for causal and temporal correctness and produce an audit report that removes informal shortcuts and calls out required missing details."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate perception, planning proposals and audits to produce a final formal problem for a planner",
+                "I must produce a PDDL domain and problem suitable for the FastDownwards solver"
+            ],
+            "goal": "Produce a fully-specified PDDL domain and problem file targeting the FastDownwards solver that encodes the blocks world instance and the goal that the orange block is on top of the yellow block."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are four blocks: red, blue, yellow, orange.",
+            "Available primitive actions are PickUp, Unstack, PutDown, Stack with the usual blocks world restrictions.",
+            "You can only manipulate one block at a time and only when your hand is empty.",
+            "A block is clear if no other block is on top of it and it is not currently being held.",
+            "Once you pick up or unstack a block you are holding that block and your hand is no longer empty until you PutDown or Stack.",
+            "Once a block is stacked on another block the lower block is no longer clear."
+        ],
+        "initial_state_statement": [
+            "red clear",
+            "blue clear",
+            "yellow clear",
+            "hand empty",
+            "yellow on orange",
+            "red on table",
+            "blue on table",
+            "orange on table"
+        ]
+    },
+    "workflow": {
+        "perception_agent": {
+            "describe": {
+                "input": [],
+                "output": "perception_report",
+                "system_prompt": "You are a perception specialist for the blocks world. Produce a concise machine readable report that enumerates all blocks, which blocks are on the table, which blocks are on top of which other blocks, which blocks are clear, and whether the hand is empty. Do not output PDDL. Avoid assumptions beyond the provided public information and the initial state."
+            }
+        },
+        "planner_assistant": {
+            "propose": {
+                "input": [
+                    "perception_report"
+                ],
+                "output": "proposed_plan",
+                "system_prompt": "You are a planning assistant that knows the informal preconditions and effects of PickUp, Unstack, PutDown, and Stack. Using the perception_report produce a detailed, ordered, high level action sequence that would achieve the goal that the orange block ends up on top of the yellow block. For each action include its actor assumption (single hand), the required preconditions that must hold at that step, and the intended effect. Do not output PDDL. Do not use bookkeeping shortcuts. Keep the plan explicit and stepwise."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "perception_report",
+                    "proposed_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Examine the perception_report and the proposed_plan. Verify that every action's preconditions are satisfied at the moment it is executed, that the single-hand constraint is never violated, and that 'clear' predicates are used consistently. Remove or flag any informal shortcuts such as implicit token accounting or post-hoc penalties and produce a corrected, causally explicit plan or a report of required missing steps. Provide concrete edits needed to make the plan implementable. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "perception_report",
+                    "proposed_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the perception_report, the proposed_plan, and the audit_report to produce a final PDDL domain and PDDL problem targeting the FastDownwards planner. The domain must encode the predicates and actions PickUp, Unstack, PutDown, and Stack with explicit preconditions and effects that implement the restrictions: only one block handled at a time, hand empty requirement, clear predicate semantics, and update of clear when stacking. The problem must encode the given initial state and the goal that the orange block is on top of the yellow block. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and predicate names are compatible with FastDownwards conventions and that action names and predicates are consistent between domain and problem. If any names or facts from inputs conflict, normalize them and document the normalization in a short comment inside the problem file."
+            }
+        },
+        "constraints": [
+            "perception_agent.describe->orchestrator.pddl",
+            "planner_assistant.propose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

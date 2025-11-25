@@ -7,7 +7,9 @@ MODEL=gpt-5-mini
 # === PDDL based approaches ===
 # Standard planning
 datasets=(
-"obfuscated_deceptive_logistics"
+# "hanoi_easy"
+"hanoi_medium"
+# "hanoi_hard"
 )
 for data in "${datasets[@]}"; do
     echo "Running plan_benchmark.py with $data"

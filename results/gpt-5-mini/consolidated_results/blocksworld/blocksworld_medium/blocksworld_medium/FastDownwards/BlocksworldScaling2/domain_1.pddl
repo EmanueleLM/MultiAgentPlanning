@@ -1,0 +1,107 @@
+(define (domain blocks-world-ordered)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block)
+  (:predicates
+    (on ?b - block ?c - block)
+    (ontable ?b - block)
+    (clear ?b - block)
+    (holding ?b - block)
+    (handempty)
+    ;; explicit phase predicates to enforce linear ordering of actions A1..A6
+    (phase1)
+    (phase2)
+    (phase3)
+    (phase4)
+    (phase5)
+    (phase6)
+    (phase7)
+  )
+
+  ;; A1: Unstack(orange, blue)
+  (:action unstack-orange-blue
+    :parameters ()
+    :precondition (and (clear orange) (on orange blue) (handempty) (phase1))
+    :effect (and
+      (holding orange)
+      (not (on orange blue))
+      (clear blue)
+      (not (clear orange))
+      (not (handempty))
+      (not (phase1))
+      (phase2)
+    )
+  )
+
+  ;; A2: PutDown(orange)
+  (:action putdown-orange
+    :parameters ()
+    :precondition (and (holding orange) (phase2))
+    :effect (and
+      (ontable orange)
+      (not (holding orange))
+      (clear orange)
+      (handempty)
+      (not (phase2))
+      (phase3)
+    )
+  )
+
+  ;; A3: PickUp(red)
+  (:action pickup-red
+    :parameters ()
+    :precondition (and (clear red) (ontable red) (handempty) (phase3))
+    :effect (and
+      (holding red)
+      (not (ontable red))
+      (not (clear red))
+      (not (handempty))
+      (not (phase3))
+      (phase4)
+    )
+  )
+
+  ;; A4: Stack(red, orange)
+  (:action stack-red-orange
+    :parameters ()
+    :precondition (and (holding red) (clear orange) (phase4))
+    :effect (and
+      (on red orange)
+      (not (holding red))
+      (handempty)
+      (not (clear orange))
+      (clear red)
+      (not (phase4))
+      (phase5)
+    )
+  )
+
+  ;; A5: Unstack(blue, yellow)
+  (:action unstack-blue-yellow
+    :parameters ()
+    :precondition (and (clear blue) (on blue yellow) (handempty) (phase5))
+    :effect (and
+      (holding blue)
+      (not (on blue yellow))
+      (clear yellow)
+      (not (clear blue))
+      (not (handempty))
+      (not (phase5))
+      (phase6)
+    )
+  )
+
+  ;; A6: Stack(blue, red)
+  (:action stack-blue-red
+    :parameters ()
+    :precondition (and (holding blue) (clear red) (phase6))
+    :effect (and
+      (on blue red)
+      (not (holding blue))
+      (handempty)
+      (not (clear red))
+      (clear blue)
+      (not (phase6))
+      (phase7)
+    )
+  )
+)

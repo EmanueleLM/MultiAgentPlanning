@@ -1,0 +1,117 @@
+{
+    "name": "BlocksworldScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_picker",
+            "stack_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_picker": {
+            "private_information": [
+                "I specialize in single-block manipulations such as Pick up and Unstack.",
+                "I know the low-level constraints about when a block can be grasped: hand must be empty, the block must be clear, and the block must either be on the table (for Pick up) or resting on another block (for Unstack).",
+                "When I pick up or unstack a block, I will be holding that block and my hand becomes not empty."
+            ],
+            "goal": "Contribute to achieving the global block arrangement where red is on blue, orange is on red, and yellow is on orange."
+        },
+        "stack_manager": {
+            "private_information": [
+                "I specialize in placing blocks: Put down and Stack actions.",
+                "I know the constraints for stacking: the block being stacked must be held, the destination block must be clear, and after stacking the destination is no longer clear and the hand becomes empty.",
+                "I reason about transitions when a block is put down on the table making the hand empty and the block on the table and clear."
+            ],
+            "goal": "Contribute to achieving the global block arrangement where red is on blue, orange is on red, and yellow is on orange."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across action descriptions and remove bookkeeping shortcuts such as implicit counters, post-hoc penalties, or quota tokens.",
+                "I check that preconditions and effects are causally sufficient and do not rely on implicit state not represented in the model.",
+                "I ensure the agent analyses are free of shortcuts and identify ambiguous object names or mismatched predicates."
+            ],
+            "goal": "Ensure action models and plans are temporally and causally consistent and compatible for integration into a single formal planning model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate analyses from other agents and produce the final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep the actions of different agents distinct where relevant and reconcile naming differences or missing information based on audits and analyses."
+            ],
+            "goal": "Produce a complete PDDL domain and problem that achieves the global arrangement: red on blue, orange on red, yellow on orange, suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1,
+            "initial_state": [
+                "clear(blue)",
+                "clear(orange)",
+                "handempty",
+                "on(red,yellow)",
+                "on(orange,red)",
+                "ontable(blue)",
+                "ontable(yellow)"
+            ]
+        },
+        "public_information": [
+            "This is the classical Blocksworld domain with blocks that can be picked up, unstacked, put down, and stacked.",
+            "Actions available: Pick up a block, Unstack a block, Put down a block, Stack a block.",
+            "Only one block can be manipulated at a time. Hand must be empty to pick up or unstack.",
+            "A block is clear if nothing is on top of it and it is not picked up.",
+            "Pick up is allowed only for a clear block on the table. Unstack is allowed only for a clear block on top of another block.",
+            "When a block is picked up or unstacked the actor is holding that block and the hand is not empty.",
+            "Put down requires that the actor is holding a block and results in the block on the table and the hand empty.",
+            "Stack requires that the actor is holding a block and the destination block is clear and results in the destination block not being clear and the hand empty.",
+            "Initial conditions reflect the current world state as listed in init.initial_state.",
+            "Goal: red on blue, orange on red, yellow on orange."
+        ]
+    },
+    "workflow": {
+        "block_picker": {
+            "analysis": {
+                "input": [],
+                "output": "picker_analysis",
+                "system_prompt": "You are an expert in low-level Blocksworld manipulations. Provide a clear, human-readable analysis of the Pick up and Unstack actions. Describe for each action the minimal explicit preconditions and effects using short predicate notation. Do not emit PDDL. Do not assume hidden bookkeeping variables. Identify any ambiguities in the public description or initial state that would prevent a clean formalization and flag them.",
+                "prompt": "Your name is block_picker. Using the environment public information and your private knowledge, produce explicit precondition and effect schemas for Pick up and Unstack as concise predicate lists. If information is missing, state exactly what is missing and avoid making assumptions. Keep your output non-PDDL and focused on concrete predicates and causal effects."
+            }
+        },
+        "stack_manager": {
+            "analysis": {
+                "input": [],
+                "output": "stack_manager_analysis",
+                "system_prompt": "You are an expert in block placement actions. Provide a clear, human-readable analysis of Put down and Stack actions. Describe for each action the minimal explicit preconditions and effects using short predicate notation. Do not emit PDDL. Emphasize side effects on clarity of blocks and hand state.",
+                "prompt": "Your name is stack_manager. Using the environment public information and your private knowledge, produce explicit precondition and effect schemas for Put down and Stack as concise predicate lists. If information is missing, state exactly what is missing and avoid making assumptions. Keep your output non-PDDL and focused on concrete predicates and causal effects."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "picker_analysis",
+                    "stack_manager_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Your task is to inspect action schemas for hidden shortcuts and temporal or causal inconsistencies. Do not output PDDL. Produce a short report pointing out any implicit assumptions, name mismatches, or missing predicates. Recommend exact minimal corrections to make the analyses composable into a sound single-agent PDDL model.",
+                "prompt": "Your name is auditor. You will receive analyses of action preconditions and effects from other agents. Identify any causal omissions (for example, missing hand state updates or missing clear updates), any use of bookkeeping tokens, and any naming inconsistencies. Provide explicit corrective suggestions and a final clean list of predicates that should appear in the formal model."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "picker_analysis",
+                    "stack_manager_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing PDDL domains and problems compatible with the FastDownwards planner. Integrate the analyses and audit report into a single coherent PDDL model. Keep separate action names if they originate from different agents but ensure predicates are unified and unambiguous. Produce a PDDL domain and a PDDL problem that encode the initial state and the goal exactly as given in the environment init and public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards idioms and avoid domain features not supported by classical FastDownwards.",
+                "prompt": "Your name is orchestrator. You will receive the non-PDDL analyses and an audit report. Integrate them to create a single PDDL domain and a single PDDL problem that achieves the goal: red on blue, orange on red, yellow on orange starting from the given initial state. Keep agent actions distinct in naming where relevant, but produce one combined domain. Ensure the predicates include at minimum: on, ontable, clear, holding, handempty. Use types and predicates compatible with classical FastDownwards. Output only the domain and problem enclosed in <domain></domain> and <problem></problem> respectively."
+            }
+        },
+        "constraints": [
+            "block_picker.analysis->orchestrator.pddl",
+            "stack_manager.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

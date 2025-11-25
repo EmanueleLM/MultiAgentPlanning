@@ -1,0 +1,76 @@
+(define (problem hanoi4_serial-problem)
+  (:domain hanoi4_serial)
+  (:objects
+    a b c d - disk
+    left middle right - peg
+    step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 step11 step12 step13 step14 step15 step16 - step
+  )
+
+  (:init
+    ; disk size ordering (a smallest, d largest)
+    (smaller a b) (smaller a c) (smaller a d)
+    (smaller b c) (smaller b d)
+    (smaller c d)
+
+    ; initial stacking on the right peg: top A on B on C on D (D on the peg)
+    (on-disk a b)
+    (on-disk b c)
+    (on-disk c d)
+    (on-peg d right)
+
+    ; explicit peg locations for each disk
+    (at a right)
+    (at b right)
+    (at c right)
+    (at d right)
+
+    ; top and peg clear indicators
+    (clear-disk a)
+    (clear-peg left)
+    (clear-peg middle)
+
+    ; ordered steps
+    (current-step step1)
+    (next step1 step2)
+    (next step2 step3)
+    (next step3 step4)
+    (next step4 step5)
+    (next step5 step6)
+    (next step6 step7)
+    (next step7 step8)
+    (next step8 step9)
+    (next step9 step10)
+    (next step10 step11)
+    (next step11 step12)
+    (next step12 step13)
+    (next step13 step14)
+    (next step14 step15)
+    (next step15 step16)
+
+    ; explicit peg inequality facts (used by actions)
+    (different left middle) (different left right)
+    (different middle left) (different middle right)
+    (different right left) (different right middle)
+  )
+
+  (:goal (and
+    ; final stacking on the middle peg: top A on B on C on D (D on the peg)
+    (on-disk a b)
+    (on-disk b c)
+    (on-disk c d)
+    (on-peg d middle)
+
+    ; explicit peg locations for each disk
+    (at a middle)
+    (at b middle)
+    (at c middle)
+    (at d middle)
+
+    ; left and right pegs must be empty
+    (clear-peg left)
+    (clear-peg right)
+
+    ; terminal stage reached
+    (current-step step16)
+  ))
+)

@@ -1,0 +1,108 @@
+{
+    "name": "BlocksworldScaling9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Expert in search and domain modeling for block-stacking tasks",
+                "Knows canonical blocksworld actions and typical preconditions and effects"
+            ],
+            "goal": "Analyze the domain and produce concise, structured action schemas and object/type lists to support planning. Do not emit PDDL directly."
+        },
+        "observer": {
+            "private_information": [
+                "Has access to precise start-state observations",
+                "Can enumerate factual predicates describing the world"
+            ],
+            "goal": "Produce a formalized, machine-friendly description of the initial state and the set of objects and types. Do not emit PDDL directly."
+        },
+        "auditor": {
+            "private_information": [
+                "Specialist in temporal and causal consistency",
+                "Removes bookkeeping shortcuts and ensures no hidden tokens or post-hoc penalties"
+            ],
+            "goal": "Audit the combined domain and state descriptions for causal or temporal shortcuts, identify and remove bookkeeping artifacts, and produce concrete corrections or additional constraints. Do not emit PDDL directly."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent analyses and produce a final PDDL domain and problem tailored for the FastDownwards solver. The final output must be a complete PDDL domain and a complete PDDL problem, enclosed as required."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": 4,
+            "block_names": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "There are four blocks: red, blue, orange, yellow.",
+            "Available high-level primitive actions are: pick-up a block, unstack a block, put-down a block, stack a block on another block.",
+            "Constraints: only one block can be picked up or unstacked at a time.",
+            "You can pick up or unstack a block only when your hand is empty.",
+            "A block can only be picked up if it is on the table and clear. A block is clear if it has no block on top of it and is not currently held.",
+            "A block can only be unstacked from another block if that block was directly on top of that other block and it is clear.",
+            "After picking up or unstacking a block, the agent is holding that block.",
+            "You can only put down a block that you are holding.",
+            "You can only stack a block on top of another block if you are holding the moving block and the destination block is clear.",
+            "After putting down or stacking a block, the hand becomes empty.",
+            "When a block is stacked onto another block, the block that receives the new block is no longer clear.",
+            "Initial facts: red is clear, blue is clear, orange is clear, hand is empty, red is on top of yellow, blue is on the table, orange is on the table, yellow is on the table.",
+            "Goal: red is on top of blue and blue is on top of yellow."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert blocks-world modeler and planner. Produce concise, structured, human- and machine-readable action schemas for the domain. For each primitive action, list: name, parameters and types, necessary preconditions, and effects. Also produce a minimal type and object list. Do not emit PDDL. Focus on clarity so another agent can translate to PDDL unambiguously.",
+                "prompt": "Your name is planner. Use the public information about the domain and the agent private information to enumerate action schemas and types sufficient for planning the stacking goal. Provide clear preconditions and effects for: pick-up, unstack, put-down, and stack. If some information is missing, document the assumption explicitly instead of embedding it into PDDL."
+            }
+        },
+        "observer": {
+            "modeling": {
+                "input": [],
+                "output": "observer_model",
+                "system_prompt": "You are a precise observer that converts the informal initial statement into a canonical set of ground predicates and object/type declarations. Output a structured list of predicates such as on(block1,block2), ontable(block), clear(block), holding(block) false/true, handempty true/false. Do not emit PDDL.",
+                "prompt": "Your name is observer. Convert the provided initial conditions into an explicit initial-state model listing all objects, types, and ground predicates necessary for planning. Use the public information and your private knowledge of observation formats. Highlight any ambiguities in the initial description."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Inspect action schemas and the initial-state model (once provided to you) and detect any bookkeeping shortcuts such as implicit tokens, post-hoc penalties, or assumptions that break causal semantics. Provide a prioritized list of corrections, additional constraints, or explicit predicates that must be added to preserve soundness. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Your job is to ensure that the domain and initial-state descriptions will not rely on bookkeeping shortcuts. Provide concrete recommendations to enforce: single-hand semantics, uniqueness of 'clear' predicate semantics, and that actions change exactly the predicates they should. If the planner or observer omitted necessary predicates (for example, explicit handempty or holding predicates), state exactly what to add."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "observer_model",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and you target the FastDownwards solver. Integrate the inputs from the other agents and produce a clean, complete PDDL domain and a PDDL problem file suitable for FastDownwards. Use STRIPS-style constructs compatible with FastDownwards where possible. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep operator names and predicates explicit and avoid agent-specific abbreviations. Keep actions distinct and named clearly.",
+                "prompt": "Your name is orchestrator. You will receive the planner schemas, the observer initial model, and the auditor corrections. Integrate these into a final PDDL domain and a final PDDL problem that encode the available actions: pick-up, unstack, put-down, stack. Make sure to: include explicit types, declare all predicates used by preconditions and effects, encode the single-hand constraint with handempty and holding predicates, and reflect the corrected semantics supplied by the auditor. Target FastDownwards compatibility."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "observer.modeling->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

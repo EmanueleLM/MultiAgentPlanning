@@ -1,0 +1,105 @@
+{
+    "name": "BlocksworldScaling9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "perceiver",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "perceiver": {
+            "private_information": [
+                "I can observe the current placement of blocks and whether the hand is empty.",
+                "I produce a fact list describing which block is on which object, which blocks are clear, and whether the hand is empty."
+            ],
+            "goal": "Provide an accurate formal state description of the initial world as facts that other agents can consume."
+        },
+        "planner": {
+            "private_information": [
+                "I know the available primitive actions (pick-up, unstack, put-down, stack) and their informal preconditions and effects.",
+                "I can propose an ordered action sequence (a plan) expressed as named steps that obey the world rules but I will not emit PDDL."
+            ],
+            "goal": "Produce a stepwise plan (sequence of actions with actors and pre/post conditions) to reach the global goal given the perceived facts."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in checking temporal and causal consistency and removing bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I detect implicit assumptions, concurrency violations, and places where plan fragments rely on unstated shortcuts."
+            ],
+            "goal": "Audit the planner output against the perceived facts and the action restrictions, highlight problems and produce corrections or constraints for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate percepts, plan fragments, and audit reports to produce a final, consistent PDDL domain and problem targeting the FastDownward solver.",
+                "I must ensure the resulting PDDL encodes the Blocksworld single-handed constraints and initial/goal states exactly."
+            ],
+            "goal": "Produce a complete PDDL domain and problem compatible with FastDownward that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "Entities: blocks {red, orange, yellow, blue} and a single human hand.",
+            "Actions available: pick-up a block from the table, unstack a block from another block, put-down a block on the table, stack a block onto another block.",
+            "Restrictions: only one block can be picked up or unstacked at a time, hand must be empty to pick or unstack, a block is clear if nothing is on it and it is not held, unstack requires the block was on top of another and the block is clear, stacking requires the target block to be clear, after put-down or stack the hand becomes empty, stacking makes the supporting block not clear.",
+            "Initial facts: red is clear, orange is clear, hand is empty, red is on top of yellow, yellow is on top of blue, blue is on the table, orange is on the table.",
+            "Global goal: red is on top of orange."
+        ]
+    },
+    "workflow": {
+        "perceiver": {
+            "perceive": {
+                "input": [],
+                "output": "perception_perceiver",
+                "system_prompt": "You are the Perceiver agent responsible for converting the raw human description into a formal fact set. Provide the facts as a list of simple predicates using words like (on red yellow), (ontable blue), (clear red), (handempty). Do not emit PDDL domain or problem. Do not assume unstated facts.",
+                "prompt": "Your name is perceiver. Use the public information {environment->public_information} and extract a minimal, explicit set of environment facts suitable for downstream planning and auditing. Produce only the fact list artifact labeled as the output."
+            }
+        },
+        "planner": {
+            "plan_fragment": {
+                "input": [
+                    "perception_perceiver"
+                ],
+                "output": "plan_fragment_planner",
+                "system_prompt": "You are the Planner agent. Using the fact list from the Perceiver, produce a concrete step-by-step plan as an ordered list of actions. Each action should be one of: pick-up(block), unstack(block,below), put-down(block), stack(block,target). For each step include the preconditions you rely on and the expected effects. Do not produce PDDL. Explicitly obey the action restrictions in the public information and do not use bookkeeping shortcuts.",
+                "prompt": "Your name is planner. Given {perception_perceiver} and the public rules {environment->public_information}, produce a clear ordered plan that, if executed sequentially by a single agent with one hand, would achieve the goal {agents->orchestrator->goal}. State each step, its preconditions, and its effects."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "perception_perceiver",
+                    "plan_fragment_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the Auditor agent. Your job is to check temporal and causal consistency of the proposed plan against the perceived facts and the action restrictions. Detect concurrency errors, hidden assumptions, and any uses of bookkeeping shortcuts. Produce a report listing any violated preconditions, necessary reorderings, missing intermediate actions, or additional constraints the orchestrator must encode. Do not generate PDDL.",
+                "prompt": "Your name is auditor. Using {perception_perceiver} and {plan_fragment_planner}, produce an audit that either validates the plan or details required fixes. Remove implicit shortcuts and recommend explicit actions or constraints needed to make the plan executable by a single-hand agent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "perception_perceiver",
+                    "plan_fragment_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the Orchestrator agent and an expert in PDDL for Fast Downward. Integrate the facts, plan fragment, and audit corrections to produce a final PDDL domain and problem that are compatible with the Fast Downward planner. Use STRIPS-style constructs and include an appropriate :requirements line. Ensure the domain models the single-hand constraint, clear predicate semantics, and the four primitive actions pick-up, unstack, put-down, and stack with correct preconditions and effects. Keep action names descriptive and keep any agents or actors implicit since this is a single-handed blocksworld. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The output must be the complete domain and problem suitable for Fast Downward.",
+                "prompt": "You are orchestrator. Receive {perception_perceiver}, {plan_fragment_planner}, and {audit_report}. Integrate them and produce a PDDL domain and PDDL problem that, when solved by Fast Downward, yields a plan achieving the goal {agents->orchestrator->goal}. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Ensure there are no undocumented shortcuts and encode all constraints found by the auditor."
+            }
+        },
+        "constraints": [
+            "perceiver.perceive->planner.plan_fragment",
+            "planner.plan_fragment->auditor.consistency_audit",
+            "perceiver.perceive->auditor.consistency_audit",
+            "perceiver.perceive->orchestrator.pddl",
+            "planner.plan_fragment->orchestrator.pddl",
+            "auditor.consistency_audit->orchestrator.pddl"
+        ]
+    }
+}

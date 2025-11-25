@@ -1,0 +1,102 @@
+{
+    "name": "BlocksworldScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I perceive four blocks named red, blue, orange, and yellow.",
+                "I can reason about which blocks are clear and which are stacked."
+            ],
+            "goal": "Help produce a correct symbolic description of the domain actions and objects to enable planning toward the global goal."
+        },
+        "stacker": {
+            "private_information": [
+                "I specialize in proposing high level action sequences for rearranging stacks of blocks.",
+                "I prefer to propose compact abstract step sequences and candidate ordering constraints."
+            ],
+            "goal": "Propose a feasible high level sequence of pick, unstack, putdown, and stack operations that will reach the goal configuration from the initial configuration."
+        },
+        "auditor": {
+            "private_information": [
+                "I validate temporal and causal consistency across proposed plans.",
+                "I detect and remove bookkeeping shortcuts such as implicit concurrency assumptions and latent tokens."
+            ],
+            "goal": "Audit and correct proposals and the symbolic description so that the resulting plan respects single-hand constraints, clear conditions, and causal precedences."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate analyses and proposals and produce a final PDDL domain and problem suitable for the FastDownwards solver that encodes the block stacking task and enforces all action constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is the classical Blocks World with four blocks: red, blue, orange, yellow.",
+            "Available elementary actions are Pick up a block, Unstack a block from another block, Put down a block, and Stack a block on another block.",
+            "Action restrictions: only one block can be manipulated at a time and the hand can hold at most one block.",
+            "You can pick up or unstack only if the hand is empty.",
+            "You can pick up a block only if the block is on the table and the block is clear.",
+            "You can unstack a block only if it is directly on top of another block and the unstacked block is clear.",
+            "When you pick up or unstack a block you become holding that block.",
+            "You can put down only a block you are holding.",
+            "You can stack only a block you are holding and only onto a block that is clear.",
+            "Putting down or stacking a block makes the hand empty after the action.",
+            "After stacking a block on top of a second block the second block becomes not clear.",
+            "Initial conditions: the red block is clear and is on top of the blue block, the blue block is on top of the orange block, the orange block is on top of the yellow block, and the yellow block is on the table, and the hand is empty.",
+            "Goal conditions: the blue block is on top of the orange block, the orange block is on top of the yellow block, and the yellow block is on top of the red block."
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analysis": {
+                "input": [],
+                "output": "operator.analysis",
+                "system_prompt": "You are an analysis agent. Produce a structured symbolic description of the domain objects and the intended informal preconditions and effects for the available actions. Do not emit PDDL. Focus on object list, predicates needed, action names, their preconditions, and their effects. Keep the description machine readable and precise."
+            }
+        },
+        "stacker": {
+            "proposal": {
+                "input": [],
+                "output": "stacker.proposal",
+                "system_prompt": "You are a planner-like agent that proposes a high-level action sequence to achieve the global goal. Provide an ordered list of abstract actions such as pick up, unstack, put down, and stack, and annotate each step with the subject block and target block or table. Do not emit PDDL. Indicate any assumptions you make about intermediate placements and resource constraints like the hand occupancy."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator.analysis",
+                    "stacker.proposal"
+                ],
+                "output": "auditor.report",
+                "system_prompt": "You are an auditor responsible for temporal and causal consistency. Receive the analysis and the proposed plan. Verify that all preconditions hold when actions are scheduled, that no two actions violate the single-hand constraint, and that there are no implicit bookkeeping shortcuts. Identify missing preconditions or effects and produce corrected constraints and ordering constraints. Provide a clear corrected report suitable for the orchestrator. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator.analysis",
+                    "stacker.proposal",
+                    "auditor.report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the analysis, the proposed high-level plan, and the auditor report. Produce a complete PDDL domain and a PDDL problem file that encode the Blocks World scenario exactly as constrained by the public information and the auditor corrections. The output must be targeted for the FastDownwards solver and must use constructs supported by FastDownwards. Keep actions distinct and explicit. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make sure the domain encodes single-hand constraints, clear predicates, table locations, and the four actions PickUp, Unstack, PutDown, and Stack with exact preconditions and effects. Use the object names red blue orange yellow. Produce only the PDDL domain and the PDDL problem enclosed in the requested tags."
+            }
+        },
+        "constraints": [
+            "operator.analysis->orchestrator.pddl",
+            "stacker.proposal->orchestrator.pddl",
+            "auditor.report->orchestrator.pddl"
+        ]
+    }
+}

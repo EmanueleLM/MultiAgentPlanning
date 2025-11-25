@@ -1,0 +1,121 @@
+{
+    "name": "BlocksworldScaling12",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "actor",
+            "analyzer",
+            "auditor",
+            "orchestrator"
+        ],
+        "actor": {
+            "private_information": [
+                "I can perform primitive block operations: pick-up, unstack, put-down, stack.",
+                "I can only pick up or unstack one block at a time and only if my hand is empty.",
+                "I can pick up a block only if the block is on the table and clear.",
+                "I can unstack a block only if it is on top of another block and is clear.",
+                "When I pick up or unstack a block I will be holding that block and my hand will no longer be empty.",
+                "When I put down or stack a block my hand becomes empty and the target block may become not clear."
+            ],
+            "goal": "Rearrange the blocks so that blue is on top of yellow, orange is on top of red, and yellow is on top of orange."
+        },
+        "analyzer": {
+            "private_information": [
+                "I specialize in converting narrative problem statements into formal predicate facts and explicit initial and goal conditions.",
+                "I know the domain predicates commonly used in blocks world: on, on-table, clear, holding, hand-empty."
+            ],
+            "goal": "Provide a precise formalization of the initial state and the goal state using predicate facts suitable for planning."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
+                "I ensure that action preconditions and effects follow single-threaded hand constraints and causal link integrity.",
+                "I check for cycles or inconsistencies introduced by informal plans and require explicit causal justification for moves."
+            ],
+            "goal": "Validate the causal and temporal consistency of proposed action sequences and reports and produce an audit summary of necessary corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analyses and audits from other agents and produce a final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep agent actions distinct if they are modeled as separate actors in the planning model."
+            ],
+            "goal": "Integrate inputs from actor, analyzer, and auditor and generate a complete PDDL domain and problem suitable for FastDownwards that achieves the block rearrangement goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_empty": true
+        },
+        "public_information": [
+            "There are four blocks: red, orange, blue, yellow.",
+            "The available actions are pick-up a block, unstack a block, put-down a block, and stack a block on another block.",
+            "Action restrictions: only one block may be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if no block is on top of it and it is not being held.",
+            "Once you pick up or unstack a block you are holding it and your hand is not empty until you put it down or stack it.",
+            "You can only pick up a block from the table if it is clear.",
+            "You can only unstack a block from another block if it is clear and was actually on that other block.",
+            "You can only stack onto a block that is clear; stacking makes the target block not clear."
+        ],
+        "public_state": [
+            "Initial: hand-empty true.",
+            "Initial: red is on top of orange.",
+            "Initial: blue is on top of yellow.",
+            "Initial: orange is on top of blue.",
+            "Initial: yellow is on the table.",
+            "Initial: red is clear.",
+            "Goal: blue is on top of yellow.",
+            "Goal: orange is on top of red.",
+            "Goal: yellow is on top of orange."
+        ]
+    },
+    "workflow": {
+        "actor": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_actor",
+                "system_prompt": "You are the actor agent that simulates valid primitive action sequences in the block world following the domain constraints. You should produce a step-by-step action sequence in natural language with explicit preconditions and effects for each action. Do not emit PDDL. Focus on concrete actions, ordering, and causal links.",
+                "prompt": "Using your private knowledge of primitive block operations and the public initial and goal states, produce a concrete ordered action sequence that attempts to realize the goal. For every action include the actor's preconditions and expected effects and identify which block is moved and where. Mark which steps assume the hand was empty and which steps change the clear predicates."
+            }
+        },
+        "analyzer": {
+            "report": {
+                "input": [],
+                "output": "report_analyzer",
+                "system_prompt": "You are the analyzer agent that translates problem descriptions into formal predicate facts and explicit domain constraints. You should provide a clear list of predicates, the initial facts, and the goal facts. Do not emit PDDL, just produce a precise formalization suitable for translation into PDDL.",
+                "prompt": "Given the public state and action restrictions, enumerate the domain predicates to use, list the initial-state facts precisely, and list the goal-state facts precisely. Highlight any ambiguities or missing facts that would be needed to create a full PDDL encoding."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_actor",
+                    "report_analyzer"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent responsible for checking temporal and causal consistency and removing bookkeeping shortcuts. You must verify that proposed action sequences and formalizations obey single-block-at-a-time hand constraints and causal link integrity. Do not emit PDDL. Provide corrections and explicit justifications.",
+                "prompt": "Consume the actor's action sequence and the analyzer's formalization. Identify any temporal or causal inconsistencies, missing preconditions or effects, and any 'shortcut' assumptions that hide necessary steps. Produce an audit report listing required corrections, added facts or actions, and a minimal set of constraints to ensure plan executability."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_actor",
+                    "report_analyzer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator agent. Integrate the actor, analyzer, and auditor outputs to produce a complete multi-agent aware PDDL domain and a PDDL problem file suitable for the FastDownwards solver. Keep agent-origin actions distinct if modeled separately. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards and contains explicit preconditions and effects that reflect the verified audit.",
+                "prompt": "Integrate the action sequence, the formal predicate facts, and the auditor corrections to produce a final PDDL domain and a PDDL problem that achieve the stated goal. The domain must include typed predicates and actions for pick-up, unstack, put-down, and stack that enforce hand-empty and clear constraints. The problem must encode the initial state and the goal state exactly as verified by the auditor. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "actor.analysis->auditor.audit",
+            "analyzer.report->auditor.audit",
+            "actor.analysis->orchestrator.pddl",
+            "analyzer.report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

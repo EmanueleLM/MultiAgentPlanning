@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "modeller",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I reason about sequences of object-level actions and their preconditions and effects.",
+                "I can propose partial plans that respect the block manipulation action constraints."
+            ],
+            "goal": "Help transform the initial block configuration into the specified goal configuration through a sequence of valid block actions."
+        },
+        "modeller": {
+            "private_information": [
+                "I produce formalized action schemata, typed predicates, and clear state encodings suitable for planning.",
+                "I aim to provide a compact representation of fluents, types, and lifted actions without committing to a solver format."
+            ],
+            "goal": "Provide a consistent formal model of the blocks domain including predicates, action parameterization, and explicit preconditions and effects."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in checking temporal and causal consistency and removing bookkeeping shortcuts such as ad-hoc quota tokens or post-hoc penalties.",
+                "I will flag implicit assumptions, ensure actions are atomic and resource accounting is explicit, and produce corrective suggestions."
+            ],
+            "goal": "Audit other agents' outputs for causal and temporal soundness and produce a cleaned, assumption-free report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the analyses, models, and audits produced by other agents and generate a final PDDL domain and problem targeting the FastDownward planner.",
+                "I keep actions belonging to different agents distinct and reconcile naming mismatches."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem pair, suitable for FastDownward, that solves the stated goal from the given initial state."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "Domain: Classical block stacking with the following high level actions: PickUp, Unstack, PutDown, Stack.",
+            "Action constraints: Only one block may be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if it has no blocks on top of it and it is not being held.",
+            "PickUp is allowed only for a clear block that is on the table.",
+            "Unstack is allowed only for a clear block that is on top of another block; the relationship 'on' must be genuine.",
+            "When PickUp or Unstack succeeds the agent is holding the block and the block is no longer on any surface.",
+            "PutDown is allowed only when holding a block and results in the block being on the table and the hand becoming empty.",
+            "Stack is allowed only when holding a block and the target block is clear; stacking makes the target no longer clear and the hand becomes empty.",
+            "Initial state: red is clear, blue is clear, hand is empty, red is on top of yellow, yellow is on top of orange, blue is on the table, orange is on the table.",
+            "Goal: blue is on top of orange and yellow is on top of red."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are the planner agent. Your role is to produce a careful stepwise candidate plan and to list causal links and ordering constraints between actions. Do not output solver-specific PDDL. Provide ordered action instances, their required preconditions from the domain rules, and the intended effects. Highlight any missing information or naming ambiguities that would block assembling a complete plan.",
+                "prompt": "Your name is planner. You are given the environment public information and the initial and goal configurations. Your task is to produce an ordered sequence of concrete actions (PickUp, Unstack, PutDown, Stack) that can achieve the goal from the initial state, to enumerate for each action the preconditions and effects you rely on, and to list the causal dependencies and ordering constraints between actions. If you must make an assumption, state it explicitly."
+            }
+        },
+        "modeller": {
+            "modeling": {
+                "input": [],
+                "output": "modeller_modeling",
+                "system_prompt": "You are the modeller agent. Your role is to provide a clean, typed action model suitable for translation into PDDL. Do not emit PDDL directly. Provide predicates, types, and lifted action schemata with parameter lists, preconditions, and effects. Avoid ad-hoc bookkeeping tokens and keep the model standard and minimal.",
+                "prompt": "Your name is modeller. From the public information, produce a formal model specification: types, predicates (for example on ?x ?y, clear ?x, handempty), and lifted action schemata for PickUp, Unstack, PutDown, and Stack. For each action provide parameter types, explicit preconditions, and explicit effects. Note any assumptions about unique names or typing."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis",
+                    "modeller_modeling"
+                ],
+                "output": "auditor_audit",
+                "system_prompt": "You are the auditor agent. Your job is to analyze other agents' outputs for temporal and causal consistency and to remove or flag any bookkeeping shortcuts such as quota tokens, implicit timers, or post-hoc penalties. Produce a remediation report specifying corrections, removed shortcuts, and clarified dependencies. Do not produce PDDL.",
+                "prompt": "Your name is auditor. Inspect the planner's action sequence and the modeller's schemata. Identify any causal cycles, missing preconditions or effects, implicit assumptions that would break under a strict STRIPS semantics, and any use of bookkeeping shortcuts. Provide precise fixes and produce an updated set of action preconditions/effects or constraints that reconciles the two inputs."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "modeller_modeling",
+                    "auditor_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the planner, modeller, and auditor outputs and produce a final PDDL domain and a PDDL problem formatted for the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep distinct actions and name spaces when actions or roles originate from different agents. Resolve naming mismatches and ensure the domain is pure STRIPS where possible and explicit about initial fluents and goal fluents. State any final assumptions you introduce.",
+                "prompt": "You are orchestrator. Using the public environment information and the inputs from the other agents, synthesize a complete PDDL domain and a matching PDDL problem that encode the blocks world instance and the stated goal. Ensure compatibility with FastDownward, include types, predicates, and action definitions with correct preconditions and effects, and ensure the initial state and goal are represented exactly. Enclose the domain between <domain></domain> and the problem between <problem></problem>. If you change or rename predicates or actions, document the mapping you used."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "modeller.modeling->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

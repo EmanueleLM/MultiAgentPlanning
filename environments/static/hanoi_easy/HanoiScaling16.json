@@ -1,0 +1,106 @@
+{
+    "name": "HanoiScaling16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "decomposer",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "decomposer": {
+            "private_information": [
+                "I can decompose planning problems into high level move sequences and recursive strategies.",
+                "I know the Tower of Hanoi optimal recursive algorithm conceptually."
+            ],
+            "goal": "Produce a clear high level sequence or recursive specification of moves that transfers four disks from the middle peg to the right peg using the left peg as an auxiliary without violating the rules."
+        },
+        "simulator": {
+            "private_information": [
+                "I can simulate discrete steps and verify the legality of individual moves given peg states.",
+                "I will keep explicit peg stacks and check that only top disks move and larger disks are never placed on smaller disks."
+            ],
+            "goal": "Validate the move sequence or recursive expansion produced by the decomposer and output a stepwise state trace that shows each move and the resulting peg configurations."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency in plans and remove bookkeeping shortcuts such as quotas, tokens, or post-hoc penalties.",
+                "I compare traces and plans to ensure no implicit assumptions about concurrency or invisible actions are present."
+            ],
+            "goal": "Provide an audit report that identifies any temporal or causal inconsistencies in the proposed move sequence or simulation, and produce corrected constraints or an adjusted move sequence that is strictly causal and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate analysis, simulation traces, and audit corrections to produce a final formal planning representation."
+            ],
+            "goal": "Produce a consolidated PDDL domain and PDDL problem file targeting the FastDownward solver that encodes the Tower of Hanoi with four disks and solves the task of moving the stack from the middle peg to the right peg with the left peg empty at the end."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2,
+            "pegs": 3,
+            "disks": 4
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "There are four disks named from smallest to largest as disk A, disk B, disk C, disk D.",
+            "Initial state: middle peg holds from top to bottom disk A, disk B, disk C, disk D. Left and right pegs are empty.",
+            "Goal state: right peg must hold from top to bottom disk A, disk B, disk C, disk D. Middle and left pegs must be empty at the end.",
+            "Legal action: move the top disk from one peg to another peg.",
+            "Rules: only one disk may be moved at a time. A move may only take the disk on top of its peg. You cannot place a larger disk on top of a smaller disk. Once a disk is moved its relative ordering is preserved by the rules."
+        ]
+    },
+    "workflow": {
+        "decomposer": {
+            "analysis": {
+                "input": [],
+                "output": "plan_decomposer",
+                "system_prompt": "You are an expert problem decomposer for planning tasks. Given the public environment information and your private knowledge, produce a concise high level plan or recursive strategy for solving the Tower of Hanoi instance specified. Do not output PDDL. Focus on a clear sequence specification or algorithmic recursive description that can be expanded into explicit moves.",
+                "prompt": "Your name is decomposer. You have the following public information: {environment->public_information}. You know: {agents->decomposer->private_information}. Your goal: {agents->decomposer->goal}. Provide a high level plan or recursive specification sufficient for expansion into explicit legal moves. Be explicit about the intended ordering and which peg is source, auxiliary, and target."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "plan_decomposer"
+                ],
+                "output": "simulator_trace",
+                "system_prompt": "You are an expert stepwise simulator and validator. Given a high level plan or move sequence, expand it into an explicit ordered list of single-disk moves and simulate the resulting peg states after each move. Flag any illegal moves and provide the corrected step where necessary. Do not emit PDDL.",
+                "prompt": "Your name is simulator. You have the following public information: {environment->public_information}. You will receive the decomposer output: {plan_decomposer}. Use your private information: {agents->simulator->private_information}. Produce a step by step trace of moves and resulting peg configurations that demonstrates legality at each step and identifies any violations."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_decomposer",
+                    "simulator_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency. Inspect the proposed move sequence and the simulator trace. Identify any temporal or causal issues including implicit concurrency assumptions, reliance on bookkeeping shortcuts, or post-hoc fixes. Propose concrete corrections and explicit constraints to ensure full causal and temporal validity. Do not output PDDL.",
+                "prompt": "Your name is auditor. You have the following public information: {environment->public_information}. You have the decomposer plan: {plan_decomposer} and the simulator trace: {simulator_trace}. Use your private information: {agents->auditor->private_information}. Produce an audit report that lists any inconsistencies, explains why they violate causal or temporal correctness, and gives corrected move constraints or an adjusted explicit move list that removes shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_decomposer",
+                    "simulator_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL modeling and the FastDownward planning system. Integrate the high level plan, the validated simulator trace, and the auditor corrections. Produce a single coherent PDDL domain and a PDDL problem that represent the Tower of Hanoi instance with four disks, three pegs, and the initial and goal configurations as specified. The PDDL must be suitable for FastDownward. Enclose the PDDL domain in <domain></domain> tags and the PDDL problem in <problem></problem> tags. Ensure actions model moving only the top disk, enforce size ordering constraints, and include predicate encodings for pegs and disk order.",
+                "prompt": "There are multiple agents producing analysis and verification. Integrate their outputs to produce a final PDDL domain and problem targeted for FastDownward that solves the following task: {agents->orchestrator->goal}. Use the decomposer output: {plan_decomposer}. Use the simulator trace: {simulator_trace}. Use the auditor report: {audit_report}. Provide final PDDL domain and problem enclosed in <domain></domain> and <problem></problem>."
+            }
+        },
+        "constraints": [
+            "decomposer.analysis->simulator.simulate",
+            "simulator.simulate->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "decomposer.analysis->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,116 @@
+{
+    "name": "BlocksworldScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I can reason about sequences of block actions at the symbolic level.",
+                "I am aware of typical blockstacking operators: pick-up, unstack, put-down, stack."
+            ],
+            "goal": "Produce a concise, ordered symbolic plan fragment (actions and their preconditions/effects) that moves blocks toward the global goal: put red on top of orange."
+        },
+        "simulator": {
+            "private_information": [
+                "I can step through discrete actions and compute the resulting state after each action.",
+                "I report reachable states and highlight violated preconditions when they occur."
+            ],
+            "goal": "Simulate plan fragments to produce state traces and identify any unmet preconditions or conflicts with the blockworld physics."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in detecting temporal and causal inconsistencies and removing bookkeeping shortcuts such as implicit hand states or aggregated moves.",
+                "I enforce one-action-at-a-time constraints and explicit hand-empty/holding bookkeeping."
+            ],
+            "goal": "Audit plan fragments and simulation traces to ensure causal and temporal consistency, remove shortcuts, and produce corrected constraints and annotations."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate analysis, simulation, and audit outputs and produce a final executable artifact.",
+                "I must produce a PDDL domain and a PDDL problem targeting the FastDownwards solver."
+            ],
+            "goal": "Integrate the planner, simulator, and auditor outputs and produce a complete PDDL domain and PDDL problem for FastDownwards that achieves the global goal: red on top of orange."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "yellow",
+                "blue",
+                "orange"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Available actions are pick-up, unstack, put-down, and stack.",
+            "Only one block can be moved at a time.",
+            "A pick-up or unstack requires the hand to be empty.",
+            "A block is clear if no other block is on top of it and it is not being held.",
+            "You can pick up a block only if it is on the table and clear.",
+            "You can unstack a block only if it is on top of another block and is clear.",
+            "After pick-up or unstack you are holding the block and the hand is not empty.",
+            "You can put down only a block you are holding.",
+            "You can stack only if you are holding the block and the target block is clear.",
+            "After put-down or stack the hand becomes empty.",
+            "Stacking a block on another block makes the lower block not clear.",
+            "Initial state: red is clear, hand is empty, red is on top of yellow, blue is on top of orange, yellow is on top of blue, and orange is on the table.",
+            "Goal: red is on top of orange."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "plan_fragment",
+                "system_prompt": "You are the planner agent that reasons about symbolic action sequences and their preconditions and effects in the blocksworld domain. Do not emit PDDL. Produce an ordered plan fragment composed of named actions with explicit preconditions and effects and identify which blocks each action refers to. Keep agent-level distinctions if you posit multiple actors, but assume a single manipulator hand.",
+                "prompt": "Using the public information and your private knowledge produce a step-by-step symbolic plan fragment that could achieve the goal 'red on top of orange'. For each action include the actor (manipulator), the action type from {pick-up, unstack, put-down, stack}, the object arguments, and explicit preconditions and effects. Do not produce PDDL. If any information is missing, mark it as an assumption."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "plan_fragment"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are the simulator agent that applies actions to the symbolic blockworld state and returns deterministic state traces. Do not emit PDDL. Report the state after each action and flag any action whose preconditions are violated.",
+                "prompt": "Take the supplied plan fragment and simulate it from the stated initial conditions. For each step return the resulting world state in terms of on(block,block|table), clear(block), holding(block) and hand-empty(true|false). If you detect a violated precondition, stop and report the conflict and the exact step where it occurred."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_fragment",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor focusing on temporal and causal consistency. Your role is to detect and remove bookkeeping shortcuts, enforce that all hand and clear conditions are explicit and that only one block is moved at a time, and to provide corrected constraints or annotations. Do not emit PDDL.",
+                "prompt": "Examine the plan fragment and simulation trace. Identify any implicit shortcuts such as skipped hand-empty updates, aggregated moves that violate one-move-at-a-time, or assumptions about object names. Produce an audit report that lists each detected issue, explains the inconsistency, and provides explicit corrections or additional preconditions/effects to fix the plan fragment. If the plan is consistent, state that explicitly."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_fragment",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the planner's plan fragment, the simulator's trace, and the auditor's corrections. Produce a complete PDDL domain and a PDDL problem tailored for the FastDownwards planner. The PDDL must include types, predicates, and actions reflecting pick-up, unstack, put-down, and stack with explicit preconditions and effects that enforce one-move-at-a-time and explicit hand bookkeeping. Use action names that keep agent actions distinct when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target the FastDownwards solver by including appropriate :requirements and using STRIPS-compatible constructs where possible.",
+                "prompt": "Combine the provided plan fragment, simulation trace, and audit report into a single coherent PDDL domain and PDDL problem that achieves the goal 'red on top of orange' from the given initial state. Ensure all previously identified inconsistencies are resolved and all hand and clear conditions are explicit. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Do not include commentary outside the tags."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,99 @@
+{
+    "name": "BlocksworldScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "manipulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can sense block identities and basic relations such as on, ontable, clear, and hand status."
+            ],
+            "goal": "Report the initial state as explicit symbolic facts including on, ontable, clear, holding, and hand-empty."
+        },
+        "manipulator": {
+            "private_information": [
+                "I know the available primitive actions: PICKUP, UNSTACK, PUTDOWN, STACK and their informal semantics."
+            ],
+            "goal": "Propose a step-by-step manipulation plan that achieves the global goal while obeying the action restrictions."
+        },
+        "auditor": {
+            "private_information": [
+                "I enforce temporal and causal consistency and remove bookkeeping shortcuts such as implicit hand state changes."
+            ],
+            "goal": "Audit plans and observations to ensure all preconditions and effects are explicit and causally consistent."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate observations, plans, and audits to produce a final PDDL domain and problem compatible with the FastDownwards solver that achieves the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "hand_capacity": 1,
+            "solver": "FastDownwards"
+        },
+        "public_information": [
+            "Blocks: red, orange, blue, yellow.",
+            "Available actions: Pick up a block, Unstack a block, Put down a block, Stack a block.",
+            "Action restrictions: Only one block can be held at a time; pick up or unstack requires an empty hand; pick up requires the block to be on the table and clear; unstack requires the block to be on another block and clear; stacking requires holding the block and the destination block to be clear; putting down or stacking makes the hand empty; stacking makes the destination not clear.",
+            "Initial facts: red is clear, orange is clear, hand is empty, red is on top of yellow, orange is on top of blue, blue is on the table, yellow is on the table.",
+            "Goal facts: blue on red, orange on blue, yellow on orange."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "observe": {
+                "input": [],
+                "output": "obs_facts",
+                "system_prompt": "You are an observation agent for the block world. Provide a concise explicit listing of symbolic facts representing the initial state including predicates on, ontable, clear, holding, and hand-empty. Do not emit PDDL, only list facts.",
+                "prompt": "As observer produce a consistent set of initial symbolic facts using the public information and your private knowledge. State each fact as an item like (on red yellow) or (ontable blue) or (clear red). If information is missing, indicate it explicitly."
+            }
+        },
+        "manipulator": {
+            "plan": {
+                "input": [
+                    "obs_facts"
+                ],
+                "output": "manip_plan",
+                "system_prompt": "You are a planning agent that crafts stepwise manipulation plans using atomic actions PICKUP, UNSTACK, PUTDOWN, STACK. Provide an ordered list of actions with explicit preconditions and effects in natural-language or simple symbolic form. Do not emit PDDL.",
+                "prompt": "As manipulator produce a step-by-step plan that achieves the global goal while respecting all action restrictions. Annotate each step with required preconditions and resulting effects. If additional information is required, state what is missing instead of assuming it."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "manip_plan",
+                    "obs_facts"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor responsible for temporal and causal consistency. Inspect the proposed plan and observed facts to verify that every action has its preconditions satisfied at execution time, that hand bookkeeping is explicit, and that no implicit shortcuts are used. Provide corrections and explicit causal links. Do not emit PDDL.",
+                "prompt": "As auditor check each step of the manipulator plan against the observed facts. If a step violates preconditions, propose minimal repairs or additional steps. Output a cleaned plan and a short description of any removed bookkeeping shortcuts or implicit assumptions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_facts",
+                    "manip_plan",
+                    "audit_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are the orchestrator. Integrate observations, the manipulator plan, and the auditor report to produce a complete PDDL domain and a PDDL problem that encode the block world task for the FastDownwards planner. Provide a STRIPS-compatible PDDL domain and problem, make all preconditions and effects explicit, model holding and hand-empty, and represent pickup, unstack, putdown, and stack actions. Enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags.",
+                "prompt": "As orchestrator use the observed facts, the cleaned plan, and the audit corrections to emit a full PDDL domain and problem targeting FastDownwards. The domain must include types, predicates, and action schemas for pickup, unstack, putdown, and stack with correct preconditions and effects. The problem must declare objects, initial state reflecting observer facts, and goal state reflecting the target stack order. Enclose domain in <domain></domain> and problem in <problem></problem> and ensure compatibility with FastDownwards."
+            }
+        },
+        "constraints": [
+            "observer.observe->manipulator.plan",
+            "manipulator.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "observer.observe->orchestrator.pddl",
+            "manipulator.plan->orchestrator.pddl"
+        ]
+    }
+}

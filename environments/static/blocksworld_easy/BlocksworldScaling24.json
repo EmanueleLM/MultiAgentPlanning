@@ -1,0 +1,117 @@
+{
+    "name": "BlocksworldScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "planner_assistant",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "Familiar with classical Blocksworld predicates and operators",
+                "Knows the canonical actions: pickup, putdown, stack, unstack and their typical preconditions and effects"
+            ],
+            "goal": "Rearrange blocks so that red is on top of yellow and orange is on top of blue"
+        },
+        "planner_assistant": {
+            "private_information": [
+                "Focuses on converting natural language initial and goal statements into structured initial facts and goal facts",
+                "Can enumerate the set of block objects and tabulate which are clear and which are on the table"
+            ],
+            "goal": "Provide a clean listing of initial facts, objects, and the goal state for planning"
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Audits temporal and causal consistency across proposed actions",
+                "Detects and removes bookkeeping shortcuts such as implicit tokens, post-hoc penalties, or assumptions that bypass domain invariants",
+                "Ensures single-handedness and that only one block is moved at a time"
+            ],
+            "goal": "Produce an audit report that enforces causal and temporal constraints and flag any assumptions that must be encoded explicitly"
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrates insights from other agents and generates the final PDDL domain and problem targeted for the FastDownwards solver",
+                "Keeps actions distinct per agent if needed and resolves naming mismatches"
+            ],
+            "goal": "Produce a complete PDDL domain and problem compatible with FastDownwards that achieves the global goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks_count": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ]
+        },
+        "public_information": [
+            "There is a set of blocks to be arranged into stacks",
+            "Available primitive actions are: pick up a block, unstack a block from on top of another block, put down a block, and stack a block on top of another block",
+            "You can only pick up or unstack one block at a time",
+            "You can pick up or unstack a block only if your hand is empty",
+            "A block can be picked up from the table only if it is clear",
+            "A block is clear if no other block is on top of it and it is not currently held",
+            "You can unstack a block from another block only if it is actually on top of that other block and it is clear",
+            "After pick up or unstack, you are holding the block",
+            "You can only put down a block if you are holding it",
+            "You can only stack a block on another block if you are holding the block and the target block is clear",
+            "After put down or stack, the hand becomes empty",
+            "When a block is stacked on another block, the lower block ceases to be clear",
+            "Initial facts: red is clear, orange is clear, yellow is clear, the hand is empty, red is on top of blue, blue is on the table, orange is on the table, yellow is on the table",
+            "Goal facts: red on yellow and orange on blue"
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "analysis": {
+                "input": [],
+                "output": "domain_insights",
+                "system_prompt": "You are the domain expert for Blocksworld. Your role is to describe canonical predicates and operator schemas relevant to the use-case. Do not emit final PDDL. Instead provide structured insights about predicates, operator names and informal preconditions and effects using explicit lists. Highlight any domain invariants that must be encoded, such as single-hand constraint and clear predicate semantics. If you detect ambiguity in object naming or roles, list questions rather than making assumptions.",
+                "prompt": "You are domain_expert. Use the public information to produce a concise canonical description suitable for later PDDL encoding. Enumerate the predicates that should appear, list each operator with its informal preconditions and effects, and indicate any required type declarations or typing suggestions. Do not produce a PDDL domain file. If additional clarifications are required, list them explicitly."
+            }
+        },
+        "planner_assistant": {
+            "analysis": {
+                "input": [],
+                "output": "problem_insights",
+                "system_prompt": "You are a planner assistant whose task is to extract a precise list of objects, initial facts and goal facts from the public statements. Do not emit final PDDL. Instead produce a structured problem specification: the object set, the initial ground atoms, and the goal formula. Point out any missing facts or implicit assumptions that need to be made explicit for planning.",
+                "prompt": "You are planner_assistant. Convert the narrative initial conditions and goals into a structured object list and sets of initial and goal atoms. For each atom include the predicate and its arguments. If there are ambiguous or missing facts necessary to run a planner, state them and propose minimal clarifying assumptions."
+            }
+        },
+        "temporal_auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your job is to check the proposed predicates and operator schemas for temporal and causal consistency, and to remove any bookkeeping shortcuts that would mask true causal constraints. Do not emit PDDL. Instead produce an audit report that identifies implicit violations such as simultaneous moves, implicit tokens, or assumptions that allow multi-block moves. Provide explicit constraints and suggestions to encode them as hard preconditions or invariants.",
+                "prompt": "You are temporal_auditor. Analyze the domain and problem insights that will be provided to you. Identify any potential causal cycles, temporal impossibilities, or bookkeeping shortcuts. Produce a list of mandatory constraints and explicit invariants that must be present in the final PDDL to ensure realistic single-handed block manipulation."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_insights",
+                    "problem_insights",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem files targeted for the FastDownwards solver. Integrate the inputs from the domain expert, planner assistant and temporal auditor. Keep agent-level actions distinct in comments if needed and resolve any naming mismatches. Produce a complete PDDL domain followed by a complete PDDL problem that is compatible with FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure types, predicates, action definitions, initial state, and goal are explicit and compatible with a classical STRIPS or typed FastDownwards input.",
+                "prompt": "You are orchestrator. Use the structured outputs from other agents to synthesize a correct and complete PDDL domain and a PDDL problem for FastDownwards that achieves the goal: red on yellow and orange on blue. Ensure the single-hand constraint and clear semantics are explicitly encoded. Keep actions separate if they originated from distinct agents but produce a single coherent domain. Output the domain and problem and nothing else, with the domain enclosed by <domain></domain> and the problem enclosed by <problem></problem>."
+            }
+        },
+        "constraints": [
+            "domain_expert.analysis->orchestrator.pddl",
+            "planner_assistant.analysis->orchestrator.pddl",
+            "temporal_auditor.audit->orchestrator.pddl"
+        ]
+    },
+    "constraints": [
+        "domain_expert.analysis->orchestrator.pddl",
+        "planner_assistant.analysis->orchestrator.pddl",
+        "temporal_auditor.audit->orchestrator.pddl"
+    ]
+}

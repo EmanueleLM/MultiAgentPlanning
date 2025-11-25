@@ -1,0 +1,106 @@
+{
+    "name": "BlocksworldScaling27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_picker",
+            "stack_manager",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "block_picker": {
+            "private_information": [
+                "I can pick up a block from the table if my hand is empty and the block is clear",
+                "I can unstack a block from another block if my hand is empty and the block is clear",
+                "When I pick up or unstack a block I will be holding it and my hand becomes nonempty",
+                "I operate on one block at a time"
+            ],
+            "goal": "Provide a precise symbolic description of actions and observed initial conditions relevant to picking and unstacking operations"
+        },
+        "stack_manager": {
+            "private_information": [
+                "I can put down a block I am holding onto the table",
+                "I can stack a block I am holding onto another clear block",
+                "After putting down or stacking a block the hand becomes empty and target block may become not clear",
+                "Stacking changes the 'on' and 'clear' relations"
+            ],
+            "goal": "Provide a precise symbolic description of actions and observed initial conditions relevant to stacking and putting down operations"
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of symbolic actions and remove bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties",
+                "I ensure all preconditions and effects are explicit and that there are no hidden state shortcuts"
+            ],
+            "goal": "Produce an audit report that identifies missing preconditions/effects, temporal inconsistencies, and recommended revisions to the action models so that they are suitable for a classical planner"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate agent analyses and the audit report to produce a single coherent PDDL domain and problem compatible with FastDownwards",
+                "I must keep actions distinct per agent and preserve causal distinctions between picking/unstacking and stacking/putting down"
+            ],
+            "goal": "Produce a complete PDDL domain and problem targeting the FastDownwards solver that achieves the stated goal from the given initial conditions"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "visibility": 2
+        },
+        "public_information": [
+            "Domain: classic blocks world with actions PickUp, Unstack, PutDown, Stack",
+            "Action constraints: only one block can be manipulated at a time and the hand must be empty to pick up or unstack",
+            "A block is clear if there is no block on top of it and it is not being held",
+            "Initial conditions: blue is clear, hand is empty, red is on top of orange, blue is on top of red, orange is on top of yellow, and yellow is on the table",
+            "Goal conditions: red on orange, blue on yellow, yellow on red",
+            "When you stack a block onto another block, the supporting block becomes not clear",
+            "All actions must have explicit preconditions and effects with no hidden bookkeeping shortcuts"
+        ]
+    },
+    "workflow": {
+        "block_picker": {
+            "analysis": {
+                "input": [],
+                "output": "model_block_picker",
+                "system_prompt": "You are an agent expert in the pickup and unstacking aspects of block manipulation. You must inspect the public information and your private knowledge and produce a structured symbolic fragment describing the actions PickUp and Unstack. Output should include for each action: name, parameters, explicit preconditions as predicates, and explicit effects as predicates. Do not emit full PDDL domain or problem. Keep output precise and machine-readable.",
+                "prompt": "Agent: block_picker. Use the following public information and your private knowledge to produce a structured description of PickUp and Unstack actions. Include preconditions and effects and state any assumptions explicitly. Public information: {environment->public_information}. Private information: {agents->block_picker->private_information}. Goal for your contribution: {agents->block_picker->goal}."
+            }
+        },
+        "stack_manager": {
+            "stack_planning": {
+                "input": [],
+                "output": "model_stack_manager",
+                "system_prompt": "You are an agent expert in stacking and putdown operations. You must inspect the public information and your private knowledge and produce a structured symbolic fragment describing the actions PutDown and Stack. Output should include for each action: name, parameters, explicit preconditions as predicates, and explicit effects as predicates. Do not emit full PDDL domain or problem. Keep output precise and machine-readable.",
+                "prompt": "Agent: stack_manager. Use the following public information and your private knowledge to produce a structured description of PutDown and Stack actions. Include preconditions and effects and state any assumptions explicitly. Public information: {environment->public_information}. Private information: {agents->stack_manager->private_information}. Goal for your contribution: {agents->stack_manager->goal}."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "model_block_picker",
+                    "model_stack_manager"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency of the provided action fragments and to remove or call out implicit bookkeeping shortcuts. Produce a machine-readable audit report that lists missing preconditions, missing effects, temporal ordering issues, and recommended explicit predicates to add. Do not emit PDDL domain or problem. Focus on making models planner-friendly.",
+                "prompt": "Agent: consistency_auditor. Receive the model fragments from other agents: {model_block_picker} and {model_stack_manager}. Use your private knowledge: {agents->consistency_auditor->private_information}. Produce an audit report that ensures all preconditions and effects are explicit, identifies any causal inconsistencies, and recommends changes to make the model compatible with a classical planner."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_block_picker",
+                    "model_stack_manager",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator agent. Integrate the action fragments and the audit report into a single coherent PDDL domain and PDDL problem suitable for the FastDownwards solver. Keep actions distinct according to their originating agent. Ensure the domain includes types, predicates, action definitions with explicit preconditions and effects, and that the problem encodes the initial state and goals exactly as stated in public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. State the requirement that the produced PDDL is compatible with FastDownwards.",
+                "prompt": "Agent: orchestrator. Integrate these inputs: {model_block_picker}, {model_stack_manager}, {audit_report}. Use public information: {environment->public_information}. Use your private knowledge: {agents->orchestrator->private_information}. Produce a complete PDDL domain and PDDL problem targeting the FastDownwards solver that achieves the global goal: {agents->orchestrator->goal}. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and resolve any naming mismatches or ambiguities."
+            }
+        },
+        "constraints": [
+            "block_picker.analysis->orchestrator.pddl",
+            "stack_manager.stack_planning->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,120 @@
+{
+    "name": "BlocksworldScaling27",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "auditor",
+            "simulator",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I perceive four blocks named blue, orange, red, yellow.",
+                "I know the action repertoire: pick-up, unstack, put-down, stack.",
+                "I know the constraints on actions (hand must be empty to pick/unstack, blocks must be clear, etc.)."
+            ],
+            "goal": "Produce a clear, step-by-step candidate plan in natural language that achieves the global goal: orange on top of blue."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in causal and temporal consistency checking.",
+                "I will remove bookkeeping shortcuts, quotas, and any post-hoc assumptions from plans."
+            ],
+            "goal": "Audit candidate plans for temporal and causal consistency, remove bookkeeping shortcuts, and produce a corrected, fully consistent plan trace and rationale."
+        },
+        "simulator": {
+            "private_information": [
+                "I simulate blockworld state transitions deterministically from a sequence of actions.",
+                "I check preconditions and postconditions for each action and report state snapshots and any infeasible steps."
+            ],
+            "goal": "Given a candidate plan, produce a stepwise execution trace that shows the world state after each action and flag any violations."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate planner, auditor, and simulator outputs and produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner that achieves the goal orange on top of blue."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": 4,
+            "block_names": [
+                "blue",
+                "orange",
+                "red",
+                "yellow"
+            ],
+            "initial_state": [
+                "clear(blue)",
+                "handempty",
+                "on(red,yellow)",
+                "on(blue,orange)",
+                "on(orange,red)",
+                "ontable(yellow)"
+            ]
+        },
+        "public_information": [
+            "Actions available: pick-up(block), unstack(block,block), put-down(block), stack(block,block).",
+            "You can only pick up or unstack one block at a time.",
+            "You can only pick up or unstack a block if your hand is empty.",
+            "You can only pick up a block if the block is on the table and the block is clear.",
+            "A block is clear if no other block is on top of it and it is not currently held.",
+            "You can only unstack a block from on top of another block if the block was on top of that other block and it is clear.",
+            "Once you pick up or unstack a block, you are holding that block.",
+            "You can only put down a block that you are holding.",
+            "You can only stack a block on top of another block if you are holding the block being stacked and the target block is clear.",
+            "Once you put down or stack a block, your hand becomes empty.",
+            "When a block is stacked on top of another block, the lower block is no longer clear."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "plan": {
+                "input": [],
+                "output": "partial_plan",
+                "system_prompt": "You are a blockworld planning expert producing human-readable action sequences. Do not emit PDDL. Provide a concise, ordered sequence of actions in plain text, with brief justifications and explicit precondition mentions for each step.",
+                "prompt": "You are the planner. Using only the public information and your private perceptions, propose a step-by-step candidate plan in natural language to reach the goal 'orange on top of blue' from the initial state. Be explicit about which block is being moved and whether the action is pick-up, unstack, put-down, or stack. Do not produce PDDL; produce an ordered plan and note any assumptions you must make."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "partial_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a causal and temporal auditor. Your job is to identify and remove bookkeeping shortcuts (e.g., implicit quota tokens, post-hoc penalties, invisible concurrency allowances) and to ensure every action's preconditions are explicitly satisfied before the action occurs. Provide corrections and rationale but do not emit PDDL.",
+                "prompt": "You are the auditor. Given the planner's candidate plan, check each step for temporal and causal consistency against the public rules. Remove any hidden shortcuts or unjustified assumptions. Produce a corrected plan trace with explicit ordering, justification of preconditions, and a short explanation of corrections made."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "partial_plan"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic simulator for the blocksworld domain. You apply each action in sequence, verify preconditions, compute postconditions, and output the resulting world state after each action. Report any infeasible actions.",
+                "prompt": "You are the simulator. Take the planner's candidate plan and execute it step by step from the given initial state. For each action, produce the action, whether its preconditions were met, the resulting state snapshot, and any failure or mismatch. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "partial_plan",
+                    "audit_report",
+                    "simulation_trace"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that integrates planning, audit, and simulation outputs and produces a final PDDL domain and a PDDL problem file formatted for the FastDownwards planner. Provide a single PDDL domain and a single PDDL problem that encode the blocksworld actions and the given initial and goal states. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions and assumptions explicit and avoid implicit bookkeeping shortcuts.",
+                "prompt": "You are the orchestrator. You will receive a candidate plan, an auditor's report, and a simulation trace. Reconcile them into a single consistent description of the domain and problem suitable for FastDownwards. Produce a PDDL domain that models pick-up, unstack, put-down, and stack with correct preconditions and effects, and a PDDL problem that encodes the initial state and the goal (orange on top of blue). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.plan->auditor.audit",
+            "planner.plan->simulator.simulate",
+            "planner.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl"
+        ]
+    }
+}

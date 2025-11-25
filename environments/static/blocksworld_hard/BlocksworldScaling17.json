@@ -1,0 +1,126 @@
+{
+    "name": "BlocksworldScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_builder",
+            "stack_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_builder": {
+            "private_information": [
+                "I specialize in low-level block action semantics and physical constraints",
+                "I know which actions are atomic: pick_up, unstack, put_down, stack"
+            ],
+            "goal": "Contribute accurate action preconditions and effects that reflect the physical constraints of the blocks world."
+        },
+        "stack_planner": {
+            "private_information": [
+                "I specialize in generating high-level causal sequencing and candidate partial plans",
+                "I can propose sequences of actions but I do not author final PDDL"
+            ],
+            "goal": "Propose a stepwise plan skeleton to rearrange blocks to reach the global goal."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as artificial tokens or post-hoc penalties",
+                "I ensure that action models do not rely on hidden bookkeeping predicates and that temporal ordering is coherent"
+            ],
+            "goal": "Produce an audit report that identifies and corrects causal or temporal inconsistencies in proposed models and plans."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate action models, plans and audit reports and emit the final PDDL domain and problem formatted for the FastDownwards planner",
+                "I must keep agent actions distinct and preserve the intended semantics from contributors"
+            ],
+            "goal": "Produce the final PDDL domain and problem targeting the FastDownwards solver that achieves the global stacking goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "yellow",
+                "orange",
+                "blue"
+            ],
+            "hand_capacity": 1,
+            "hand_empty": true
+        },
+        "public_information": [
+            "There are four blocks: red, yellow, orange, blue.",
+            "The hand can hold at most one block at a time.",
+            "Atomic actions available: pick_up a block from the table, unstack a block from on top of another block, put_down a block onto the table, stack a block onto another block.",
+            "You can pick up or unstack only one block at a time and only when your hand is empty.",
+            "A block is clear if there is no block on top of it and it is not currently held.",
+            "You can pick up a block only if the block is on the table and the block is clear.",
+            "You can unstack a block only if it is on top of another block and it is clear.",
+            "Once you pick up or unstack a block you are holding that block.",
+            "You can only put down a block you are holding and only stack a block if you are holding it and the target block is clear.",
+            "After you put down or stack a block, your hand becomes empty.",
+            "When a block B is stacked on block A, block A becomes not clear."
+        ],
+        "initial_state_description": [
+            "red is clear",
+            "yellow is clear",
+            "hand is empty",
+            "red is on top of orange",
+            "orange is on top of blue",
+            "blue is on the table",
+            "yellow is on the table"
+        ],
+        "goal_description": [
+            "red is on top of blue",
+            "blue is on top of yellow",
+            "yellow is on top of orange"
+        ]
+    },
+    "workflow": {
+        "block_builder": {
+            "model": {
+                "input": [],
+                "output": "model_block_builder",
+                "system_prompt": "You are an expert in formalizing low-level action semantics for block worlds. Provide precise, human-readable action models describing preconditions and effects for the atomic actions pick_up, unstack, put_down, and stack. Do not emit PDDL. Focus on correctness of preconditions and effects and on avoiding bookkeeping shortcuts. Describe physical constraints and any required typing or predicates.",
+                "prompt": "You are block_builder. Based on the public information and the initial and goal descriptions in the environment, produce clear action models for pick_up, unstack, put_down, and stack. Each model should list required preconditions and resulting effects in plain text. Do not output PDDL. Ensure the models capture the constraint that the hand holds at most one block and that blocks become clear or not clear as appropriate after actions."
+            }
+        },
+        "stack_planner": {
+            "model": {
+                "input": [],
+                "output": "model_stack_planner",
+                "system_prompt": "You are a planning specialist that proposes causal sequences and partial plans for block rearrangement. Provide candidate step sequences and causal rationales for reaching the goal. Do not emit final PDDL. Keep your output symbolic and explain ordering constraints.",
+                "prompt": "You are stack_planner. Using the environment public information and the action semantics you expect, propose a stepwise plan skeleton (sequence of named actions with their intended arguments) that transforms the initial state to the goal state. Annotate each step with the causal reason it is necessary and any ordering constraints. Avoid making hidden assumptions about persistent bookkeeping predicates."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_block_builder",
+                    "model_stack_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency in planning models. Your job is to inspect provided action models and plan skeletons, detect implicit bookkeeping shortcuts or temporal inconsistencies, and produce corrections or recommendations. Produce an audit report that lists issues and proposed fixes in plain text. Do not produce PDDL.",
+                "prompt": "You are auditor. Given the action models and the plan skeleton from other agents, inspect them for causal or temporal inconsistencies or for use of bookkeeping shortcuts. Provide a concise audit report that enumerates detected issues and gives precise corrections so the models and plan can be implemented without hidden predicates or tokens."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_block_builder",
+                    "model_stack_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating agent contributions and producing a complete PDDL domain and problem tailored for the FastDownwards planner. Keep the actions and their names distinct as supplied by contributors. Produce final PDDL domain and PDDL problem that implement the audited, corrected models. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain uses standard PDDL constructs compatible with FastDownwards, including typing and required features. The final output must be directly suitable for FastDownwards.",
+                "prompt": "You are orchestrator. Integrate the action models, plan skeleton and auditor corrections. Produce a single coherent PDDL domain and a PDDL problem that implements the environment initial state and the goal state. Use explicit predicates for holding, clear, on, ontable, and handempty. Keep action names and signatures explicit and distinct. Enclose the domain between <domain> and </domain> and the problem between <problem> and </problem>. Target the FastDownwards planner in your modeling choices and avoid any bookkeeping shortcuts."
+            }
+        },
+        "constraints": [
+            "block_builder.model->orchestrator.pddl",
+            "stack_planner.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

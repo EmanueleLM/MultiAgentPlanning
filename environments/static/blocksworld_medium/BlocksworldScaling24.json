@@ -1,0 +1,124 @@
+{
+    "name": "BlocksworldScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can pick up a block from the table if my hand is empty and the block is clear",
+                "I can unstack a block from another block if my hand is empty and the block is clear",
+                "I can put down a block that I am holding onto the table",
+                "I can stack a block that I am holding on top of another block if that other block is clear",
+                "I can only hold one block at a time"
+            ],
+            "goal": "Produce a concrete manipulation plan to achieve the stacking configuration red on blue, blue on orange, orange on yellow"
+        },
+        "observer": {
+            "private_information": [
+                "Initial facts: red is clear",
+                "Initial facts: blue is clear",
+                "Initial facts: yellow is clear",
+                "Initial facts: hand is empty",
+                "Initial facts: blue is on top of orange",
+                "Initial facts: red is on the table",
+                "Initial facts: orange is on the table",
+                "Initial facts: yellow is on the table",
+                "Blocks present: red, blue, orange, yellow"
+            ],
+            "goal": "Provide a precise grounded description of the initial state and identify any implicit assumptions about object identities or naming"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts",
+                "I ensure that single-hand constraints, preconditions, and effects are strictly enforced",
+                "I flag any plan fragments that rely on quota tokens, post-hoc penalties, or other shortcuts"
+            ],
+            "goal": "Audit the operator and observer outputs for causal and temporal soundness and produce corrected action schemas or recommendations"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent outputs and produce a final PDDL domain and problem compatible with the FastDownwards solver that achieves the stacking goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "blue",
+                "orange",
+                "yellow"
+            ],
+            "hand_capacity": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Available primitive actions: pickup, unstack, putdown, stack",
+            "Action constraints: only one block can be picked up or unstacked at a time",
+            "Action constraints: pick up or unstack only allowed when hand is empty",
+            "Definition: a block is clear when it has no blocks on top and it is not being held",
+            "Unstack precondition: the block being unstacked must be on top of another block",
+            "Unstack precondition: the block being unstacked must be clear",
+            "Effect: after pickup or unstack, the agent holds the block and the hand is not empty",
+            "Effect: after putdown or stack, the hand becomes empty",
+            "Effect: when a block is stacked onto another block, the supporting block becomes not clear",
+            "Initial state facts: red is clear",
+            "Initial state facts: blue is clear",
+            "Initial state facts: yellow is clear",
+            "Initial state facts: hand is empty",
+            "Initial state facts: blue is on orange",
+            "Initial state facts: red is on table",
+            "Initial state facts: orange is on table",
+            "Initial state facts: yellow is on table",
+            "Global goal: red on blue and blue on orange and orange on yellow"
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_operator",
+                "system_prompt": "You are the operator agent responsible for proposing concrete manipulation steps and action schemas. Do not emit PDDL. Describe actions, their explicit preconditions, and effects in a clear structured textual form. Use the provided public information and your private knowledge to produce a stepwise plan outline and any required action parameterization.",
+                "prompt": "You are named operator. Use the environment public information and your private information to produce a step-by-step manipulation plan outline to reach the global goal. List actions in execution order with their parameterized preconditions and effects and annotate any assumptions. Avoid producing PDDL directly."
+            }
+        },
+        "observer": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_observer",
+                "system_prompt": "You are the observer agent that provides a grounded factual description of the world. Do not emit PDDL. Provide the exact object set, the grounded initial state predicates, and call out any ambiguous namings or implicit assumptions.",
+                "prompt": "You are named observer. Use the environment public information and your private information to return a precise grounded initial state representation including object list, which blocks are on the table, which blocks are on other blocks, which blocks are clear, and the hand state. Highlight anything missing or ambiguous."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Do not emit PDDL. Inspect proposed action schemas and plan fragments for violations of single-hand and causality constraints and remove bookkeeping shortcuts like quota tokens or post-hoc penalties. Produce a concise report with corrections to preconditions and effects and any recommended ordering constraints.",
+                "prompt": "You are named auditor. Use the environment public information and your private information to evaluate plan fragments and action schemas for causal and temporal soundness. Provide explicit corrections and enforce that every action's preconditions are satisfied by prior effects and that no implicit bookkeeping shortcuts are used."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_operator",
+                    "analysis_observer",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and planning. Produce a PDDL domain and a PDDL problem file that are compatible with the FastDownwards solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep actions originating from different agents distinct by naming conventions. Ensure the domain uses STRIPS-compatible predicates such as (on ?x ?y), (ontable ?x), (clear ?x), (handempty), and (holding ?x). Ensure typing and object declarations are appropriate for FastDownwards and that all preconditions and effects reflect the auditor's recommended corrections.",
+                "prompt": "You are named orchestrator. Integrate the observer grounded initial state, the operator stepwise plan outline, and the auditor recommendations to produce a final PDDL domain and problem targeting FastDownwards. Preserve distinct agent action names when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. If information is incomplete, base the domain on the explicit facts provided and the auditor corrections. The final PDDL must achieve: red on blue and blue on orange and orange on yellow."
+            }
+        },
+        "constraints": [
+            "operator.analysis->orchestrator.pddl",
+            "observer.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,111 @@
+{
+    "name": "BlocksworldScaling20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I know the available primitive actions: pick up, unstack, put down, stack",
+                "I know the action preconditions and effects at an abstract level but I will produce structured analysis rather than raw PDDL"
+            ],
+            "goal": "Produce a correct symbolic plan sketch that can achieve the goal configuration from the initial configuration"
+        },
+        "simulator": {
+            "private_information": [
+                "I can perform forward simulation of symbolic actions and detect state inconsistencies",
+                "I track the hand state, clear predicates, and block-on relations during simulation"
+            ],
+            "goal": "Validate the planner's plan fragments by forward simulation and report any causal or temporal conflicts"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in auditing temporal and causal consistency and removing bookkeeping shortcuts such as token tricks or post-hoc penalties",
+                "I ensure plans do not rely on invisible bookkeeping and that all preconditions are explicitly satisfied"
+            ],
+            "goal": "Produce an audit report that identifies unsafe shortcuts, missing preconditions, and any temporal/causal issues in plan fragments"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate analyses, simulations, and audit corrections and produce the final PDDL domain and problem targeted to FastDownwards"
+            ],
+            "goal": "Generate a single coherent PDDL domain and PDDL problem suitable for FastDownwards that encodes the Blocksworld instance and the goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "red",
+                "yellow",
+                "orange"
+            ],
+            "hand_empty": true,
+            "num_blocks": 4
+        },
+        "public_information": [
+            "Available primitive actions: pick up a block, unstack a block from another block, put down a block, stack a block on another block",
+            "Only one block can be picked up or unstacked at a time",
+            "Pick up or unstack requires the hand to be empty",
+            "A block is clear if it has no block on top of it and it is not picked up",
+            "Stacking a block on another makes the lower block not clear",
+            "Initial state facts: blue is clear, hand is empty, red is on top of yellow, blue is on top of red, yellow is on top of orange, orange is on the table",
+            "Goal facts: red on top of yellow and orange on top of blue"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "plan_fragments",
+                "system_prompt": "You are an expert symbolic planner. Produce a structured analysis that lists the relevant predicates, action schemata with preconditions and effects in an abstract form, and a candidate sequence of actions or partial ordering to achieve the goal. Do not emit final PDDL. Focus on clarity, explicit preconditions for hand and clear predicates, and avoid introducing bookkeeping shortcuts.",
+                "prompt": "Agent planner context: Use the public information about actions and initial and goal facts. Use your private information to produce symbolic plan fragments and domain sketch that explicitly records preconditions and effects for pick up, unstack, put down, and stack. The output should be machine-consumable fragments but not a full PDDL domain or problem."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "plan_fragments"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic forward simulator for symbolic block operations. Given plan fragments or candidate action sequences, simulate step by step the state transitions checking hand state, clear predicates, on relations, and table positions. Report reachable states and any violated preconditions discovered during simulation. Do not produce PDDL.",
+                "prompt": "Agent simulator context: Receive the planner's plan fragments. Perform forward simulation and return a trace of states after each action and any discovered inconsistencies or failed preconditions. Mark steps that would be illegal under the environment rules."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_fragments",
+                    "simulation_trace"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your role is to inspect plan fragments and simulation traces to find hidden bookkeeping shortcuts, temporal paradoxes, or missing explicit preconditions. Propose corrective constraints and explicit predicates or ordering constraints required to make the plan causally sound. Do not produce PDDL.",
+                "prompt": "Agent auditor context: Given the planner's fragments and the simulator trace, identify where the plan relies on implicit bookkeeping or violates causal or temporal constraints. Produce a concise audit report with specific fixes and explicit additional preconditions or ordering constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_fragments",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem files formatted for the FastDownwards planner. Integrate the planner's analysis, the simulator's trace feedback, and the auditor's corrections. Produce a complete PDDL domain and a PDDL problem that encode the Blocksworld instance and the stated goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure action names remain distinct and reflect the real-world primitives. Target the PDDL syntax conventions accepted by FastDownwards.",
+                "prompt": "Agent orchestrator context: Integrate inputs and emit a final PDDL domain and PDDL problem targeting FastDownwards. The domain must include predicates for hand-empty, holding, clear, on, and on-table, and action schemata for pick-up, unstack, put-down, and stack. The problem must encode the initial state: blue clear, hand empty, red on yellow, blue on red, yellow on orange, orange on table, and the goal: red on yellow and orange on blue. Enclose domain and problem as specified."
+            }
+        },
+        "constraints": [
+            "planner.analysis->simulator.simulate",
+            "planner.analysis->auditor.audit",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "planner.analysis->orchestrator.pddl"
+        ]
+    }
+}

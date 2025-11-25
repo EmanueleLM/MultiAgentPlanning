@@ -1,0 +1,97 @@
+{
+    "name": "BlocksworldScaling0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "block_player",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "block_player": {
+            "private_information": [
+                "I can perform these primitive manipulations: pick up a block, unstack a block from on top of another block, put down a block, stack a block on top of another block.",
+                "I can only pick up or unstack one block at a time.",
+                "I can only pick up or unstack a block if my hand is empty.",
+                "I can only pick up a block if the block is on the table and the block is clear.",
+                "A block is clear if there is no block on top of it and it is not currently held.",
+                "I can only unstack a block if it was actually on top of another block and it is clear.",
+                "After I pick up or unstack a block I will be holding that block. After I put down or stack a block my hand becomes empty.",
+                "When I stack a block on top of another block, the support block becomes not clear."
+            ],
+            "goal": "Analyze the current blocks world initial state and produce a concrete, stepwise plan that transforms the initial arrangement into the desired goal arrangement. Describe required predicates and action preconditions and effects in plain structured form but do not emit PDDL directly."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across proposed plans and constraint lists.",
+                "I identify and remove bookkeeping shortcuts such as implicit quota tokens, post hoc penalties, or assumptions that violate single hand or single block constraints.",
+                "I validate that every pick or unstack happens only when the hand is empty and that every stack or putdown empties the hand.",
+                "I check that object identity is preserved and that no action claims to move more than one block at a time."
+            ],
+            "goal": "Produce an audit report that confirms temporal and causal consistency of the block_player plan and list precise corrections to eliminate any bookkeeping shortcuts or implicit assumptions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I combine analyses and audits to produce a final, solver-ready PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep actions attributable to their originating agent distinct when integrating models or action schemas."
+            ],
+            "goal": "Integrate analysis and audits into a complete PDDL domain and problem suitable for the FastDownwards solver that accomplishes the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "blue",
+                "yellow",
+                "orange"
+            ],
+            "hand_state": "empty"
+        },
+        "public_information": [
+            "There are four blocks: red, blue, yellow, and orange.",
+            "Initial state facts: red is on top of yellow, blue is on top of orange, orange is on the table, yellow is on the table, red is clear, blue is clear, and the hand is empty.",
+            "Available primitive actions are pick up, unstack, put down, and stack.",
+            "Action restrictions: only one block can be moved at a time and moves require the hand to be empty for pick up or unstack; stacking requires the target block to be clear.",
+            "A block is clear if no block is on top of it and it is not currently held.",
+            "Goal: have blue on top of yellow and yellow on top of red."
+        ]
+    },
+    "workflow": {
+        "block_player": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_player",
+                "system_prompt": "You are an expert block manipulator and planner analyst. Produce a detailed stepwise plan in plain structured form, list the predicates and the action schemas needed, include preconditions and effects for each action in human readable structured entries. Do not emit PDDL. Do not assume extra objects or capabilities beyond the public information.",
+                "prompt": "Your role is block_player. Use the environment public information and your private knowledge about allowable actions and restrictions to analyze the problem. Provide a stepwise plan, a set of predicates required, and explicit preconditions and effects for the actions you propose. If you lack information, state what is missing rather than inventing new capabilities."
+            }
+        },
+        "temporal_auditor": {
+            "analysis": {
+                "input": [
+                    "analysis_block_player"
+                ],
+                "output": "audit_report_temporal_auditor",
+                "system_prompt": "You are an expert in temporal and causal auditing for planning. Your job is to inspect proposed plans and action models to find temporal, causal, and bookkeeping inconsistencies. Produce a clear audit report listing any violations and concrete fixes. Do not produce PDDL.",
+                "prompt": "Your role is temporal_auditor. Inspect the analysis provided by block_player and confirm that every action respects single-hand and single-block move constraints, that preconditions are sufficient and that effects are causally consistent. Identify any bookkeeping shortcuts such as implicit tokens, shortcuts that allow simultaneous moves, or post-hoc corrections. Provide specific corrections and a corrected sequence of actions if needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_player",
+                    "audit_report_temporal_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL generation and FastDownwards usage. Integrate the analysis and the audit report to produce a complete PDDL domain and a PDDL problem file that are ready to be used with the FastDownwards planner. Keep actions attributable to their originating agent distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and predicates match across domain and problem. Target FastDownwards conventions and avoid using solver-specific extensions that FastDownwards does not support.",
+                "prompt": "You are the orchestrator. Combine the block_player analysis and the temporal_auditor audit to create a final PDDL domain and problem that achieve the goal: blue on top of yellow and yellow on top of red. Use explicit predicates for hand emptiness, holding, ontable, on, and clear. Ensure action schemas implement the described restrictions and that no bookkeeping shortcuts remain. Output the PDDL domain enclosed in <domain></domain> tags and the PDDL problem enclosed in <problem></problem> tags. The PDDL should be suitable for FastDownwards."
+            }
+        },
+        "constraints": [
+            "block_player.analysis->temporal_auditor.analysis",
+            "block_player.analysis->orchestrator.pddl",
+            "temporal_auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

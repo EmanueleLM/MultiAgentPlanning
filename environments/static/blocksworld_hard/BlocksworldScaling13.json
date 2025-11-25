@@ -1,0 +1,113 @@
+{
+    "name": "BlocksworldScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "describer",
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "describer": {
+            "private_information": [
+                "Initial facts: red is clear, yellow is clear, hand is empty, red is on top of orange, yellow is on top of blue, blue is on the table, orange is on the table",
+                "Available primitive actions in the domain: pick-up, unstack, put-down, stack"
+            ],
+            "goal": "Provide a precise and unambiguous structured description of the initial state and the goal state, enumerating all objects and relations."
+        },
+        "modeler": {
+            "private_information": [
+                "Action semantics and constraints known informally: only one block can be held at a time, hand must be empty to pick or unstack, clear means no block on top, stacking makes the target not clear, putting down or stacking makes hand empty"
+            ],
+            "goal": "Produce a clear, formal representation of each action schema in terms of parameters, preconditions and effects, using a STRIPS-style or similar notation but not PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency checking and in removing bookkeeping shortcuts such as artificial tokens or penalties",
+                "Focus on identifying implicit assumptions, contradictions, and shorthand modeling choices that would break when compiled for a planner"
+            ],
+            "goal": "Audit the describer and modeler outputs for temporal and causal consistency, remove or flag bookkeeping shortcuts, and produce an actionable audit report with corrections and explicit invariants."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the description, the formal action schemas, and the auditor corrections to produce a final PDDL domain and PDDL problem file intended for the FastDownwards planner that achieves the stacking goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "yellow",
+                "blue",
+                "orange"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "There are four blocks: red, yellow, blue, orange.",
+            "Red is on top of orange.",
+            "Yellow is on top of blue.",
+            "Blue is on the table.",
+            "Orange is on the table.",
+            "Red is clear.",
+            "Yellow is clear.",
+            "The hand is empty.",
+            "Available actions are: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.",
+            "Action restrictions: only one block can be picked or unstacked at a time, pick/unstack requires hand empty, picking requires block on table and clear, unstacking requires the block to be on top of another and clear, after pick or unstack you hold the block, put-down requires holding a block, stacking requires holding the block and the destination block to be clear, after put-down or stack the hand becomes empty, stacking makes the destination no longer clear.",
+            "Goal: red on top of blue, blue on top of orange, orange on top of yellow."
+        ]
+    },
+    "workflow": {
+        "describer": {
+            "describe": {
+                "input": [],
+                "output": "description_struct",
+                "system_prompt": "You are an agent that must produce a concise structured representation of the blockworld initial state and the goal. Use simple structured lists or JSON-like key value pairs. Do not produce PDDL. Enumerate objects, their locations, and which blocks are clear and whether the hand is empty. If any piece of information is missing, state it explicitly as unknown.",
+                "prompt": "Your name is describer. Use the public information about the environment and your private information to produce a clear structured description of all objects, initial relations and the goal. Do not write PDDL. Output the description as a plain structured representation suitable for downstream modeling."
+            }
+        },
+        "modeler": {
+            "model": {
+                "input": [
+                    "description_struct"
+                ],
+                "output": "action_schemas",
+                "system_prompt": "You are an agent that formalizes actions. Provide for each primitive action a schema listing parameters, preconditions and effects in a STRIPS-style or similar explicit format. Do not emit PDDL. Be explicit about frame conditions and state invariants, and mark any modeling choices you assume.",
+                "prompt": "Your name is modeler. Using the structured initial state and goal from the describer and your private knowledge of action constraints, produce formal action schemas for pick-up, unstack, put-down, and stack. For each action list parameters, required preconditions, and explicit add and delete effects. Highlight any assumptions you make about types or additional predicates."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "description_struct",
+                    "action_schemas"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent specialized in temporal and causal consistency and in removing bookkeeping shortcuts. Inspect the provided descriptions and action schemas for implicit assumptions, cycles, concurrency problems, or shorthand devices such as quota tokens or post-hoc penalties. Produce corrections and insist on explicit invariants and serializability constraints required for classical planners. Do not generate PDDL, only produce a corrective report and explicit constraints to be enforced.",
+                "prompt": "Your name is auditor. Analyze the describer and modeler outputs for consistency with the domain restrictions, for hidden shortcuts, and for temporal or causal ambiguities. Provide a prioritized list of corrections and explicit invariants that the orchestrator must enforce to obtain a valid PDDL encoding for a classical planner. If you find no issues, state that the inputs are consistent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "description_struct",
+                    "action_schemas",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in producing PDDL domains and problems targeted specifically at the FastDownwards planner. Integrate the structured description, the formal action schemas, and the auditor corrections to produce a single coherent PDDL domain and a matching PDDL problem. Ensure predicates, types, and action names are consistent, avoid bookkeeping shortcuts, and make all invariants explicit and planner-friendly. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be compatible with the requirements of FastDownwards.",
+                "prompt": "There are multiple upstream artifacts describing the same blocksworld task. Use the description, the action schemas, and the auditor report to write a complete PDDL domain and PDDL problem that achieve the goal: red on top of blue, blue on top of orange, orange on top of yellow. Keep action definitions consistent with the classical STRIPS assumptions after applying auditor corrections. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. If any required detail is still ambiguous, document the choice you make and why."
+            }
+        },
+        "constraints": [
+            "describer.describe->orchestrator.pddl",
+            "modeler.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "describer.describe->modeler.model",
+            "describer.describe->auditor.audit",
+            "modeler.model->auditor.audit"
+        ]
+    }
+}

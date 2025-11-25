@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_modeler",
+            "consistency_auditor",
+            "human_describer",
+            "orchestrator"
+        ],
+        "planner_modeler": {
+            "private_information": [
+                "Expert at formalizing planning domains into precise predicate and action schemata.",
+                "Familiar with the canonical blocks world actions: pickup, unstack, putdown, stack."
+            ],
+            "goal": "Produce a precise and unambiguous specification of predicates and action schemata that capture the action constraints and world dynamics described by the user, without emitting full PDDL domain or problem files."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Expert at temporal and causal consistency in planning models.",
+                "Skilled at identifying bookkeeping shortcuts such as quota tokens, post-hoc penalties, and hidden fluents."
+            ],
+            "goal": "Audit model fragments to remove bookkeeping shortcuts and ensure all preconditions and effects represent true causal relationships and temporal constraints."
+        },
+        "human_describer": {
+            "private_information": [
+                "Skilled at producing clear, human-readable plans and justifications.",
+                "Knows the blocks and the intended goal configuration in plain language."
+            ],
+            "goal": "Provide a step-by-step natural language plan consistent with the stated rules and initial conditions, to be used as an additional input for building the final PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating agent outputs into a single coherent PDDL domain and problem.",
+                "Must target the FastDownwards solver and ensure compatiblity and syntactic correctness."
+            ],
+            "goal": "Integrate model fragments, audit reports, and the human plan to produce a final PDDL domain and problem appropriate for FastDownwards that achieves the goal red on yellow and orange on red."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "orange",
+                "yellow",
+                "blue"
+            ],
+            "hand": "empty"
+        },
+        "public_information": [
+            "There is a blocks world domain with actions: pick up a block, unstack a block from another block, put down a block, stack a block on another block.",
+            "Only one block can be picked up or unstacked at a time.",
+            "Pick up or unstack is only possible when the hand is empty.",
+            "A block can be picked up only if it is on the table and it is clear.",
+            "A block is clear if it has no blocks on top of it and it is not currently held.",
+            "A block can be unstacked from another block only if it was on top of that block and it is clear.",
+            "After picking up or unstacking a block, the agent is holding that block.",
+            "You can put down only blocks that you are holding.",
+            "You can stack a block on another block only if you are holding the moving block and the destination block is clear.",
+            "After putting down or stacking a block, the hand becomes empty.",
+            "When a block B is stacked on block A, block A becomes not clear.",
+            "Initial conditions: red is clear, orange is clear, yellow is clear, hand is empty, yellow is on top of blue, red is on the table, blue is on the table, orange is on the table.",
+            "Goal: red on top of yellow and orange on top of red."
+        ]
+    },
+    "workflow": {
+        "planner_modeler": {
+            "model": {
+                "input": [],
+                "output": "model_fragment",
+                "system_prompt": "You are an expert in formalizing planning domains. Your task is to produce a precise specification of predicates, action schemata with parameters, preconditions and effects, and any typing or object sets needed to capture the described blocks world. Do not emit a full PDDL domain or problem. Instead, return a structured description that lists predicates, each action name with parameter list, and for each action a clear list of preconditions and effects and any invariants or assumptions. Explicitly list any assumptions you make.",
+                "prompt": "You are planner_modeler. Use the public information about the blocks world and the initial and goal conditions. Produce a structured model fragment describing predicates, action schemata, parameter types or object sets, preconditions and effects, and invariants. Do not produce full PDDL. If information is missing, state the missing items rather than making hidden assumptions."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "model_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency in planning models. Your role is to examine model fragments and find implicit bookkeeping shortcuts, hidden fluents, or post-hoc penalty constructs. Produce a report that lists potential issues, identifies places where causal links are missing or where temporal constraints are ambiguous, and recommend concrete changes to make the model strictly causal and temporally sound. Do not output PDDL. Focus on removing tokens, quotas, or shortcut fluents and replacing them with explicit preconditions and effects tied to real actions.",
+                "prompt": "You are consistency_auditor. Receive the model fragment from planner_modeler and evaluate it against the public information. Produce a clear audit report enumerating issues and suggested corrections so the model is temporally and causally correct. If a predicate is unnecessary or represents bookkeeping rather than causality, recommend its removal and show the correct causal alternative."
+            }
+        },
+        "human_describer": {
+            "plan": {
+                "input": [
+                    "model_fragment",
+                    "audit_report"
+                ],
+                "output": "plan_narrative",
+                "system_prompt": "You are a human-level planner who generates clear step-by-step action sequences in natural language consistent with the rules. Your output should be a concrete plan sequence with a brief justification for each step. Do not output PDDL. The plan should obey all constraints such as holding only one block at a time and only stacking on clear blocks.",
+                "prompt": "You are human_describer. Use the provided model fragment and the auditor report to propose a concrete sequence of actions that achieves the goal from the initial state. Present the actions in order and justify why each action is legal under the rules. If the model fragment lacks some information, indicate what is missing and how your plan addresses the uncertainty."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_fragment",
+                    "audit_report",
+                    "plan_narrative"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating model fragments, audit corrections, and the human plan into a single PDDL domain and PDDL problem targeting the FastDownwards solver. Produce a fully self-contained PDDL domain and PDDL problem that are syntactically correct and compatible with FastDownwards. Use STRIPS-style semantics and standard requirements tags appropriate for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Resolve naming mismatches and keep the conceptual actions consistent with the original actors; do not introduce bookkeeping shortcuts. If you must choose an encoding decision, document it concisely at the top of your response.",
+                "prompt": "You are orchestrator. Integrate the model fragment, the auditor's report, and the human plan to produce a final PDDL domain and problem that solve the goal of red on top of yellow and orange on top of red from the given initial state. Target the FastDownwards solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure predicates and actions reflect true causal relations and that the problem objects match the initial condition objects."
+            }
+        },
+        "constraints": [
+            "planner_modeler.model->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl",
+            "human_describer.plan->orchestrator.pddl"
+        ]
+    }
+}

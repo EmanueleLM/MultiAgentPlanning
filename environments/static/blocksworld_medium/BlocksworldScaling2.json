@@ -1,0 +1,93 @@
+{
+    "name": "BlocksworldScaling2",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I reason about object identities and minimal move sequences",
+                "I can produce high level plans and identify required predicates and actions but I should not emit PDDL directly"
+            ],
+            "goal": "Achieve a state where the red block is on top of the orange block and the blue block is on top of the red block"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I validate that actions respect single-hand constraints and genuine causal dependencies"
+            ],
+            "goal": "Ensure temporal and causal consistency of proposed plans and remove bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate other agents outputs and produce a final PDDL domain and problem compatible with FastDownward"
+            ],
+            "goal": "Produce a complete PDDL domain and problem that solves the block stacking goal using a planner compatible with FastDownward"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "orange",
+                "blue",
+                "yellow"
+            ],
+            "hand_capacity": 1,
+            "locations": [
+                "table"
+            ]
+        },
+        "public_information": [
+            "There is a set of blocks that can be stacked on each other or placed on the table",
+            "Actions available are PickUp, Unstack, PutDown, and Stack",
+            "Only one block can be picked up or unstacked at a time",
+            "PickUp and Unstack require the hand to be empty",
+            "A block is clear if there is no block on top of it and it is not being held",
+            "PickUp can be applied only to a clear block that is on the table",
+            "Unstack can be applied only to a clear block that is directly on top of another block",
+            "After PickUp or Unstack the agent is holding the block",
+            "PutDown requires that the agent is holding a block and results in the hand becoming empty",
+            "Stack requires that the agent is holding a block and the target block is clear and results in the hand becoming empty and the target becoming not clear",
+            "Initial conditions: red is clear, orange is clear, hand is empty, blue is on top of yellow, orange is on top of blue, red is on the table, yellow is on the table",
+            "Goal: red on orange and blue on red"
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planning_notes",
+                "system_prompt": "You are a planning analyst for the BlocksworldScaling2 task. Produce a high-level plan skeleton, enumerate objects, predicates, and the minimal set of actions required to achieve the goal. Do not emit PDDL. Focus on explicit preconditions and effects for each action instance and keep action identities distinct for later orchestration.",
+                "prompt": "Your name is planner. Use the following public information as context: {environment->public_information} Use your private knowledge: {agents->planner->private_information} Your task is to produce a concise planning_notes artifact that lists objects, predicates, action instances in sequence, and any potential naming ambiguities or missing facts that would affect generating a PDDL domain and problem. Do not provide PDDL output."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor for multi-agent planning outputs. Your role is to detect and remove bookkeeping shortcuts and to ensure that the plan respects single-hand constraints, causal links, and temporal order. Produce a clear audit_report describing any corrections required to make the plan causally sound without inventing solver-specific shortcuts.",
+                "prompt": "Your name is auditor. Use the following public information as context: {environment->public_information} Use your private knowledge: {agents->auditor->private_information} You will receive planning_notes from the planner. Analyze them for temporal and causal consistency and produce an audit_report that lists violations, required predicate refinements, and explicit causal links that must be enforced. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planning_notes",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator that must integrate analytical planning notes and an audit report to produce a complete PDDL domain and PDDL problem targeting the FastDownward planner. Keep agent actions distinct and preserve causal constraints identified by the auditor. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL is syntactically correct and suitable for FastDownward.",
+                "prompt": "You are orchestrator. Integrate the planner artifact {planning_notes} and the auditor artifact {audit_report} to produce a final PDDL domain and a PDDL problem that achieve the goal: {agents->orchestrator->goal} The PDDL must include explicit types, predicates, and actions matching the blocksworld semantics described in the environment public information, enforce single-hand constraints, and reflect the initial state and goal. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Output only the PDDL domain and problem in the required tags."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

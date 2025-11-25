@@ -1,0 +1,97 @@
+{
+    "name": "BlocksworldScaling19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "Deep knowledge of classical blocksworld predicates and canonical action schemas.",
+                "Familiarity with preconditions and effects for pickup, unstack, putdown, and stack operations."
+            ],
+            "goal": "Provide a precise, implementation-neutral specification of predicates, invariants, and action schemas for the block stacking task."
+        },
+        "planner": {
+            "private_information": [
+                "Experience producing abstract, ordered action sequences that respect resource constraints such as a single hand."
+            ],
+            "goal": "Propose a concrete sequence of actions (an abstract plan) to reach the goal from the initial state while respecting all action constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "Expertise in temporal and causal consistency auditing. Ability to detect bookkeeping shortcuts like implicit tokens or post-hoc penalties."
+            ],
+            "goal": "Audit the domain specification and the abstract plan for temporal and causal consistency, remove or flag any bookkeeping shortcuts, and produce an audit report."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the domain expert specification, the planner's abstract plan, and the auditor's report to produce a final PDDL domain and problem tuned for the Fast Downward solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are four blocks involved: blue, yellow, orange, red.",
+            "Actions available are pickup, unstack, putdown, and stack.",
+            "Only one block can be manipulated at a time and the agent has one hand.",
+            "Pickup and unstack require the hand to be empty before the action and result in holding the block after the action.",
+            "Pickup is only possible for a clear block that is on the table and not already picked up.",
+            "Unstack is only possible for a clear block that is on top of another block.",
+            "Stack requires the held block and a clear target block. After stacking, the target block becomes not clear and the held block is on top of it.",
+            "Putdown places a held block on the table and makes the hand empty.",
+            "Initial state: blue is clear. Yellow is clear. The hand is empty. Blue is on top of orange. Orange is on top of red. Red is on the table. Yellow is on the table.",
+            "Goal state: red is on top of blue. Orange is on top of red. Yellow is on top of orange."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_domain_expert",
+                "system_prompt": "You are a domain expert for block stacking problems. Provide a clean, unambiguous, implementation-neutral specification of predicates, types, and each action's preconditions and effects. Do not emit PDDL directly. Focus on correctness and completeness.",
+                "prompt": "You are domain_expert. Use the public information about the blockworld and the action restrictions to produce an exhaustive list of predicates, type declarations, invariant constraints, and detailed action schemas for pickup, unstack, putdown, and stack. State clearly any assumptions you require. Do not produce PDDL; produce a structured conceptual specification."
+            }
+        },
+        "planner": {
+            "plan": {
+                "input": [],
+                "output": "planner_plan",
+                "system_prompt": "You are a symbolic planner that produces abstract ordered plans consistent with specified action schemas and resource constraints. Provide step-by-step actions referencing the conceptual action names and object names. Do not emit PDDL.",
+                "prompt": "You are planner. Given the public initial state and the goal, produce an explicit ordered plan that reaches the goal while respecting all action restrictions. Use action names pickup, unstack, putdown, and stack and reference block names exactly as given. Include brief justification for each step if relevant."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your job is to inspect domain specifications and plans for implicit bookkeeping shortcuts and to ensure causal soundness. Produce a concise report of issues and suggested corrections. Do not emit PDDL.",
+                "prompt": "You are auditor. Review the conceptual specification from the domain expert and the abstract plan from the planner. Confirm that every action's preconditions are satisfied when used in the plan, that there are no implicit tokens or post-hoc penalties used to justify actions, and that temporal ordering is consistent with a single-hand model. Provide corrections or clarifications where needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_domain_expert",
+                    "planner_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an orchestrator that must integrate contributions from multiple agents to produce a final PDDL domain and a final PDDL problem file. Target the Fast Downward solver and use classical STRIPS-style constructs compatible with Fast Downward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct when encoding multi-agent intentions as separate action names if needed.",
+                "prompt": "You are orchestrator. Integrate the domain expert's specification, the planner's abstract plan, and the auditor's report. Resolve any naming inconsistencies, remove bookkeeping shortcuts flagged by the auditor, and produce a complete PDDL domain and PDDL problem tuned for Fast Downward. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Ensure the domain defines predicates for clear, on, on-table, holding, handempty and action schemas for pickup, unstack, putdown, and stack. The initial state and goal should match the public information. If any ambiguity remains, document the assumption in a short comment line at the top of the PDDL problem file."
+            }
+        },
+        "constraints": [
+            "domain_expert.analysis->orchestrator.pddl",
+            "planner.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

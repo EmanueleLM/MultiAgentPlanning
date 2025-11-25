@@ -1,0 +1,77 @@
+{
+    "name": "HanoiScaling22",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_expert",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "disk_expert": {
+            "private_information": [
+                "There are five disks labeled from smallest to largest: diskA, diskB, diskC, diskD, diskE",
+                "Allowed action: move the top disk from one peg to another",
+                "Rules: move only one disk at a time, only move a disk if it is on top of its peg, never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Provide a clear, unambiguous specification of objects, predicates, and action schemas plus a high-level plan sketch for the Tower of Hanoi instance with 5 disks and 3 pegs. Do not emit PDDL domain or problem files directly."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Role: detect temporal and causal inconsistencies and remove modeling shortcuts or bookkeeping tokens",
+                "Ensure invariants and causal links are explicit so a forward planner will not rely on implicit assumptions"
+            ],
+            "goal": "Audit the disk_expert specification for temporal and causal consistency and return corrections, required invariants, and modeling adjustments to make the instance robust for an optimal planner. Do not emit PDDL directly."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from other agents and produce a complete PDDL domain and problem pair ready for the FastDownwards solver. The PDDL must model three pegs (left middle right) and five disks (a b c d e) with the specified initial and goal states."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5
+        },
+        "public_information": [
+            "Classic Tower of Hanoi with three pegs: left, middle, right.",
+            "Disks from smallest to largest: diskA, diskB, diskC, diskD, diskE.",
+            "Initial state: middle peg holds from top to bottom diskA, diskB, diskC, diskD, diskE; left and right pegs are empty.",
+            "Goal state: left peg holds from top to bottom diskA, diskB, diskC, diskD, diskE; middle and right pegs are empty.",
+            "Allowed action: move the top disk from one peg to another, obeying the single-disk and size-ordering constraints."
+        ]
+    },
+    "workflow": {
+        "disk_expert": {
+            "analysis": {
+                "input": [],
+                "output": "disk_spec",
+                "system_prompt": "You are an expert modeler of planning problems. Provide an explicit list of objects, predicates, action schemas with clear preconditions and effects, and a concise high-level plan sketch for the 5-disk Tower of Hanoi instance. Use unambiguous names suitable for direct translation to PDDL. Do not output PDDL files."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "disk_spec"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are an expert in temporal and causal consistency for planning models. Analyze the disk_spec input and report any causal flaws, hidden bookkeeping shortcuts, or temporal assumptions. Provide concrete corrections, required invariants, and modeling recommendations so the resulting PDDL will be sound for a forward optimal planner. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_spec",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the disk_spec and consistency_report and produce a complete PDDL domain and problem pair targeting the FastDownwards solver. Keep agent actions distinct, name pegs left middle right and disks a b c d e. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL uses constructs supported by FastDownwards and is immediately usable by that solver."
+            }
+        },
+        "constraints": [
+            "disk_expert.analysis->consistency_auditor.audit",
+            "disk_expert.analysis->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

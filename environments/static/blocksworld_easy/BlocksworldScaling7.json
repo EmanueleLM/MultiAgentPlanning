@@ -1,0 +1,110 @@
+{
+    "name": "BlocksworldScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "sensor",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can perform the atomic actions: pick-up, unstack, put-down, stack.",
+                "I can only hold one block at a time.",
+                "I can only pick-up or unstack if my hand is empty.",
+                "Picking-up requires the block to be on the table and clear.",
+                "Unstacking requires the block to be on top of another block and clear.",
+                "After pick-up or unstack I am holding the block.",
+                "After put-down or stack my hand becomes empty."
+            ],
+            "goal": "Achieve the target stacking configuration given the public initial conditions and constraints."
+        },
+        "sensor": {
+            "private_information": [
+                "I observe the current static facts about blocks and their relations.",
+                "I know which blocks are clear, which blocks are on the table, and which block is on top of which."
+            ],
+            "goal": "Provide a precise, unambiguous representation of the initial state and surface any perceptual ambiguities."
+        },
+        "auditor": {
+            "private_information": [
+                "I know the formal temporal and causal restrictions of block actions and common modeling shortcuts.",
+                "I check for implicit bookkeeping shortcuts such as quota tokens, side effects introduced post-hoc, or time-bending assumptions."
+            ],
+            "goal": "Audit proposed action models for temporal and causal consistency and produce corrected preconditions and effects that eliminate bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent reports and produce a final PDDL domain and PDDL problem for the FastDownwards solver that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "red",
+                "orange",
+                "yellow",
+                "blue"
+            ],
+            "hand_initially_empty": true
+        },
+        "public_information": [
+            "There is a set of blocks: red, orange, yellow, blue.",
+            "Available primitive actions: pick-up a block, unstack a block from another, put-down a block, stack a block on another.",
+            "Action restrictions: only one block can be held at a time and pick-up/unstack require the hand to be empty.",
+            "A block is clear if nothing is on top of it and it is not being held.",
+            "Once a block is picked up or unstacked, the agent is holding that block.",
+            "Once a block is put down or stacked, the hand becomes empty and the supporting block may become not clear.",
+            "Initial state facts: red is clear, orange is clear, yellow is clear, hand is empty, orange is on top of blue, red is on the table, blue is on the table, yellow is on the table.",
+            "Goal: orange is on top of blue and yellow is on top of red."
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analysis": {
+                "input": [],
+                "output": "model_operator",
+                "system_prompt": "You are an operator agent that reasons about concrete block manipulation actions and their local preconditions and effects. Do not emit PDDL. Produce a concise structured description of each primitive action you can perform, listing for each action: required preconditions, deterministic effects, and a short example sequence of steps that could contribute to the global goal. Explicitly flag any assumptions you must make if information is missing.",
+                "prompt": "Your name is operator. You have the following public information: {environment->public_information}. You also have the following private information: {agents->operator->private_information}. Provide a structured action model for the primitives and propose candidate atomic steps toward the global goal {agents->operator->goal}. If you must assume anything not specified, state the assumption explicitly."
+            }
+        },
+        "sensor": {
+            "perception": {
+                "input": [],
+                "output": "model_sensor",
+                "system_prompt": "You are a sensor agent that produces an explicit, unambiguous encoding of the observed initial state using simple facts. Do not emit PDDL. Report any ambiguities or contradictory facts and propose a canonical naming for objects if needed.",
+                "prompt": "Your name is sensor. You observe the environment and have the following public information: {environment->public_information}. Provide a normalized initial state representation as a list of facts such as (on orange blue), (ontable red), (clear red), (handempty). If you detect any ambiguity or missing detail, report it and suggest the minimal clarification required."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_operator",
+                    "model_sensor"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent specialized in temporal and causal consistency. Do not emit PDDL. Your job is to inspect the proposed action models and state representation for implicit shortcuts or bookkeeping artifacts. Produce revised preconditions and effects where necessary, and produce a short justification for each change. Remove any reliance on tokens, post-hoc penalties, or assumptions that violate single-threaded holding constraints.",
+                "prompt": "Your name is auditor. You receive the operator model and the sensor initial state: {model_operator} and {model_sensor}. Using your private knowledge: {agents->auditor->private_information}, produce an audit report that corrects inconsistent or shortcut modeling choices, ensures that holding constraints are explicit, and provides a ready-to-integrate set of preconditions and effects suitable for translation into PDDL without bookkeeping hacks."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_operator",
+                    "model_sensor",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your task is to integrate the operator model, the sensor's initial state, and the auditor's corrections and produce a final PDDL domain and PDDL problem suitable for the FastDownwards solver. Output a PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the actions of the original operator model conceptually distinct in the domain. Use STRIPS-style predicates and avoid temporal extensions. Ensure the domain encodes holding as a single-agent boolean resource and that all preconditions and effects from the audit are respected. The resulting PDDL must be ready to feed to FastDownwards.",
+                "prompt": "There are multiple agent inputs to integrate. Goal to achieve: {agents->orchestrator->goal}. Public information: {environment->public_information}. Operator model: {model_operator}. Sensor initial state: {model_sensor}. Auditor report: {audit_report}. Integrate these inputs into a correct, fully specified PDDL domain and a matching PDDL problem for the FastDownwards solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "operator.analysis->orchestrator.pddl",
+            "sensor.perception->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

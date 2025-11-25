@@ -1,0 +1,92 @@
+(define (domain blocks-orchestrator)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block table agent stage - object)
+
+  (:predicates
+    (on ?b - block ?p - object)        ; block ?b is on support ?p (another block or the table)
+    (clear ?b - block)                 ; block ?b has nothing on top and is not held
+    (handempty ?a - agent)             ; agent ?a's hand is empty
+    (holding ?a - agent ?b - block)    ; agent ?a is holding block ?b
+    (current ?s - stage)               ; the system is at stage ?s (discrete global time/stage)
+    (next ?s1 - stage ?s2 - stage)     ; stage ordering: next ?s1 ?s2 means ?s2 follows ?s1
+  )
+
+  ; Unstack a block ?b from on top of another block ?under (pickup from block)
+  (:action pickup-from-block
+    :parameters (?a - agent ?b - block ?under - block ?s - stage ?s2 - stage)
+    :precondition (and
+      (on ?b ?under)
+      (clear ?b)
+      (handempty ?a)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (not (on ?b ?under))
+      (not (handempty ?a))
+      (holding ?a ?b)
+      (clear ?under)       ; underlying block becomes clear after removing the top block
+      (not (clear ?b))     ; held block is not clear
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  ; Pick up a block ?b that is on the table
+  (:action pickup-from-table
+    :parameters (?a - agent ?b - block ?t - table ?s - stage ?s2 - stage)
+    :precondition (and
+      (on ?b ?t)
+      (clear ?b)
+      (handempty ?a)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (not (on ?b ?t))
+      (not (handempty ?a))
+      (holding ?a ?b)
+      (not (clear ?b))     ; held block is not clear
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  ; Place a held block ?b onto another block ?target (stack)
+  (:action place-on-block
+    :parameters (?a - agent ?b - block ?target - block ?s - stage ?s2 - stage)
+    :precondition (and
+      (holding ?a ?b)
+      (clear ?target)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (not (holding ?a ?b))
+      (handempty ?a)
+      (on ?b ?target)
+      (not (clear ?target))  ; target now has something on top
+      (clear ?b)             ; newly placed block is clear (top of stack)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  ; Place a held block ?b onto the table
+  (:action place-on-table
+    :parameters (?a - agent ?b - block ?t - table ?s - stage ?s2 - stage)
+    :precondition (and
+      (holding ?a ?b)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (not (holding ?a ?b))
+      (handempty ?a)
+      (on ?b ?t)
+      (clear ?b)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+)

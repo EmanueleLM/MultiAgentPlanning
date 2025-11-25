@@ -1,0 +1,119 @@
+{
+    "name": "BlocksworldScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am responsible for producing an action model fragment and a candidate high level plan.",
+                "I should avoid introducing bookkeeping shortcuts such as synthetic tokens or post-hoc penalties."
+            ],
+            "goal": "Transform the initial block configuration into the goal configuration where blue is on yellow, orange is on red, and yellow is on orange."
+        },
+        "observer": {
+            "private_information": [
+                "I perceive the initial world state and report exact supporting relations and clear statuses of blocks."
+            ],
+            "goal": "Provide an accurate state report describing which blocks are on which blocks, which blocks are on the table, which blocks are clear, and the hand status."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of models and plans and remove bookkeeping shortcuts.",
+                "I check that preconditions and effects are consistent with single hand and single-block constraints."
+            ],
+            "goal": "Produce an audit report that verifies causal consistency and removes any artifacts that would undermine execution fidelity."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate model fragments, the observed state, and the audit report and produce the final FastDownwards compatible PDDL domain and problem."
+            ],
+            "goal": "Assemble a complete PDDL domain and problem that solves the block rearrangement using FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "red",
+                "orange",
+                "yellow"
+            ],
+            "hand_capacity": 1,
+            "visibility": 2
+        },
+        "public_information": [
+            "This is a classical blocksworld with the actions pick-up pick-up a block unstack put-down and stack.",
+            "Actions available are Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.",
+            "You can only pick up or unstack one block at a time and you can only act when your hand is empty for pick up and unstack.",
+            "A block is clear if no other block is on top of it and if it is not currently being held.",
+            "You can pick up a block only if the block is on the table and is clear.",
+            "You can unstack a block only if it is on top of another block and it is clear.",
+            "Once you pick up or unstack a block you are holding that block and your hand is no longer empty until you put down or stack it.",
+            "You can only put down a block that you are holding.",
+            "You can only stack a block on top of another block if you are holding the block being stacked and the destination block is clear.",
+            "Once you put down or stack a block your hand becomes empty.",
+            "After stacking a block on a second block the second block becomes not clear.",
+            "Initial state: orange is clear.",
+            "Initial state: hand is empty.",
+            "Initial state: blue is on top of red.",
+            "Initial state: orange is on top of yellow.",
+            "Initial state: yellow is on top of blue.",
+            "Initial state: red is on the table.",
+            "Goal state: blue is on top of yellow.",
+            "Goal state: orange is on top of red.",
+            "Goal state: yellow is on top of orange."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "modeling": {
+                "input": [],
+                "output": "model_fragment",
+                "system_prompt": "You are an expert in action model design for block manipulation domains. Provide a precise model fragment that lists operators with their parameter lists, preconditions, and effects. Do not produce final PDDL. Do not insert bookkeeping shortcuts such as synthetic tokens or post-hoc penalties. Keep actions consistent with single-hand constraints.",
+                "prompt": "Your name is planner. Use the public information about the blocksworld and your private knowledge. Produce a structured model fragment describing the relevant operators and a candidate high level plan sketch that respects the constraints on hand and clear status. Return structured output that an orchestrator can consume and not a PDDL domain."
+            }
+        },
+        "observer": {
+            "perceive": {
+                "input": [],
+                "output": "state_report",
+                "system_prompt": "You are an observer that must report the exact initial state of the world. Provide the predicates that are true in the initial state and explicit clear statuses and hand status. Do not produce PDDL. Use exact block names.",
+                "prompt": "Your name is observer. Using the public information, produce a precise state report enumerating on relations, on-table relations, clear predicates, and the hand empty or holding status. Provide the output in a structured machine readable form for the orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_fragment",
+                    "state_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Examine the model fragment and the reported state. Identify and remove any bookkeeping shortcuts and verify that preconditions and effects are consistent with single-hand single-block constraints. Provide a remediation report and explicit corrections that the orchestrator should apply. Do not output PDDL.",
+                "prompt": "Your name is auditor. Receive the model fragment and the state report. Produce an audit report that lists any inconsistencies, suggests concrete fixes to preconditions/effects or to the state encoding, and confirms that the result is causally consistent and executable under the described constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_fragment",
+                    "state_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownwards planner. Integrate the model fragment, the observed initial state, and the auditor corrections to produce a complete FastDownwards compatible PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure operators respect single-hand and single-block constraints and that the encoding uses standard STRIPS or ADL constructs supported by FastDownwards. Keep actions distinct and preserve semantics from contributors. The final PDDL must be complete and directly solvable by FastDownwards.",
+                "prompt": "There are several contributors that provided intermediate artifacts. Use the model fragment, the state report, and the audit report to construct a final PDDL domain and a PDDL problem. Your output must be compatible with FastDownwards. Enclose the domain in <domain></domain> tags and the problem in <problem></problem> tags. Make sure clarity and consistency corrections from the auditor are applied."
+            }
+        },
+        "constraints": [
+            "planner.modeling->orchestrator.pddl",
+            "observer.perceive->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

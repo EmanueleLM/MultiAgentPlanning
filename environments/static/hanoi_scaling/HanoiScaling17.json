@@ -1,0 +1,112 @@
+{
+    "name": "HanoiScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "strategist",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "There are five disks named A smallest, B, C, D, and E largest.",
+                "There are three pegs named left, middle, and right.",
+                "Initial stack is all disks on the right peg in order from top A to bottom E.",
+                "Goal is to move full stack to the middle peg preserving order with left peg empty."
+            ],
+            "goal": "Provide a clear declarative formalization of objects, types, predicates, and action schemas for the Tower of Hanoi instance without emitting final PDDL."
+        },
+        "strategist": {
+            "private_information": [
+                "Legal move: move the top disk from one peg to another peg.",
+                "Constraints: only one disk moved at a time, only top disks may move, larger cannot be placed on smaller.",
+                "Left peg may be used as intermediate but must be empty at the end."
+            ],
+            "goal": "Produce a high level plan skeleton and decomposition strategy that achieves the goal while respecting the rules and minimizing unnecessary bookkeeping shortcuts."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as artificial tokens or penalties.",
+                "I verify that actions preserve disk ordering invariants and that intermediate states are reachable."
+            ],
+            "goal": "Audit the model and plan skeleton for temporal and causal correctness and produce a report identifying inconsistencies and recommended corrections."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate modeler, strategist, and auditor outputs and produce a final PDDL domain and problem targeted for the FastDownwards solver that achieves the goal with the left peg empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "start_peg": "right",
+            "goal_peg": "middle",
+            "auxiliary_peg": "left"
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are five disks from smallest to largest named A, B, C, D, and E.",
+            "Initial state has all disks stacked on the right peg with A on top and E on bottom.",
+            "Goal state requires all disks stacked on the middle peg with A on top and E on bottom and both left and right pegs empty.",
+            "Allowed action is moving the top disk from one peg to another.",
+            "Rules: move only one disk at a time, only top disk of a peg may be moved, never place a larger disk on top of a smaller disk.",
+            "Left peg may be used as an intermediate but must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "describe_domain": {
+                "input": [],
+                "output": "modeler_model",
+                "system_prompt": "You are a domain modeler expert. Your task is to produce a clear descriptive formalization of the problem instance. Provide objects with types, predicates with signatures, and action schemas with preconditions and effects in plain structured text. Do not emit full PDDL. Do not invent bookkeeping tokens or shortcuts. Be explicit about invariants that must hold at all times.",
+                "prompt": "Your name is modeler. You see the public environment information and your private knowledge. Provide a detailed formal description useful for a planner, including object lists, type hierarchy, predicates, and action schema templates. Focus on correctness and preservation of disk ordering."
+            }
+        },
+        "strategist": {
+            "plan_skeleton": {
+                "input": [],
+                "output": "strategist_plan",
+                "system_prompt": "You are a planning strategist. Your role is to propose a high level plan skeleton and decomposition strategy for solving the Tower of Hanoi instance. Explain move sequences at the abstraction level of disk groups or recursive pattern. Do not produce final PDDL. Avoid introducing artificial bookkeeping mechanisms.",
+                "prompt": "Your name is strategist. Using the public information and your private knowledge, produce a stepwise high level plan skeleton that can be followed or compiled into concrete actions. Describe the recursive or iterative pattern and any ordering constraints needed to preserve legality of moves."
+            }
+        },
+        "auditor": {
+            "audit_report": {
+                "input": [
+                    "modeler_model",
+                    "strategist_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Inspect the model and plan skeleton for invalid assumptions, unreachable intermediate states, or bookkeeping shortcuts such as tokens or artificial penalties. Provide corrections and concrete recommendations to ensure the model and plan are causally and temporally sound.",
+                "prompt": "Your name is auditor. You will receive the modeler and strategist artifacts. Check that every precondition has a causal supporter, that disk ordering invariants cannot be violated, and that there are no hidden shortcuts. Produce a report that lists issues and recommended fixes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "modeler_model",
+                    "strategist_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent PDDL problems for the FastDownwards solver. Integrate component artifacts while resolving naming mismatches. Produce a complete PDDL domain and a PDDL problem targeted at FastDownwards. Keep agent actions distinct where relevant. Ensure the domain enforces the Tower of Hanoi invariants without bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "There are three contributor artifacts that you must integrate into a final PDDL domain and problem that FastDownwards can solve to achieve the goal. Use the modeler_model to derive objects and predicates, use the strategist_plan for structuring the problem if helpful, and apply the auditor findings to remove invalid shortcuts. Produce the final PDDL domain and PDDL problem, ensuring the left peg is empty in the goal and that all rules are enforced."
+            }
+        },
+        "constraints": [
+            "modeler.describe_domain->orchestrator.pddl",
+            "strategist.plan_skeleton->orchestrator.pddl",
+            "auditor.audit_report->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,96 @@
+(define (domain blocksworld-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types block stage)
+
+  (:predicates
+    (on ?x - block ?y - block)
+    (ontable ?x - block)
+    (clear ?x - block)
+    (holding ?x - block)
+    (handempty)
+    (current ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
+  )
+
+  ;; Pick up a clear block from the table (block_picker)
+  (:action block_picker-pick-up
+    :parameters (?b - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (ontable ?b)
+                    (clear ?b)
+                    (handempty)
+                    (current ?s)
+                    (succ ?s ?s2)
+                  )
+    :effect (and
+              (not (ontable ?b))
+              (not (clear ?b))        ;; a held block is not clear (per specification)
+              (not (handempty))
+              (holding ?b)
+              (not (current ?s))
+              (current ?s2)
+            )
+  )
+
+  ;; Unstack a clear block from on top of another block (block_picker)
+  (:action block_picker-unstack
+    :parameters (?b - block ?below - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (on ?b ?below)
+                    (clear ?b)
+                    (handempty)
+                    (current ?s)
+                    (succ ?s ?s2)
+                    (not (= ?b ?below))
+                  )
+    :effect (and
+              (not (on ?b ?below))
+              (holding ?b)
+              (not (clear ?b))       ;; being held -> not clear
+              (clear ?below)         ;; removing top makes below clear
+              (not (handempty))
+              (not (current ?s))
+              (current ?s2)
+            )
+  )
+
+  ;; Put down a held block onto the table (block_stacker)
+  (:action block_stacker-put-down
+    :parameters (?b - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (holding ?b)
+                    (current ?s)
+                    (succ ?s ?s2)
+                  )
+    :effect (and
+              (ontable ?b)
+              (clear ?b)
+              (handempty)
+              (not (holding ?b))
+              (not (current ?s))
+              (current ?s2)
+            )
+  )
+
+  ;; Stack a held block on top of a clear block (block_stacker)
+  (:action block_stacker-stack
+    :parameters (?b - block ?target - block ?s - stage ?s2 - stage)
+    :precondition (and
+                    (holding ?b)
+                    (clear ?target)
+                    (current ?s)
+                    (succ ?s ?s2)
+                    (not (= ?b ?target))
+                  )
+    :effect (and
+              (on ?b ?target)
+              (not (ontable ?b))
+              (clear ?b)
+              (not (holding ?b))
+              (handempty)
+              (not (clear ?target))
+              (not (current ?s))
+              (current ?s2)
+            )
+  )
+)

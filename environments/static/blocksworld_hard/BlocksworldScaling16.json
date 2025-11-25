@@ -1,0 +1,103 @@
+{
+    "name": "BlocksworldScaling16",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "actor",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "actor": {
+            "private_information": [
+                "I can pick up, unstack, put down, and stack blocks.",
+                "I can only hold one block at a time and only act when my hand is empty."
+            ],
+            "goal": "Achieve the target configuration: blue on yellow and orange on red."
+        },
+        "observer": {
+            "private_information": [
+                "I perceive the table and the relative positions of blocks.",
+                "I can produce symbolic state descriptions like predicates ontable, on, clear, holding, handempty."
+            ],
+            "goal": "Provide a reliable symbolic encoding of the initial state and intermediate states that is consistent with the public information."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and disallow bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I ensure single-block manipulation constraints and hand-empty invariants are enforced."
+            ],
+            "goal": "Audit proposed plans and state encodings, remove implicit shortcuts, and produce a causally sound report that the orchestrator can trust."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the actor, observer, and auditor outputs to produce a final PDDL domain and problem suitable for the FastDownward planner that achieves the goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Blocks set: blue, red, orange, yellow.",
+            "Available primitive actions: PickUp, Unstack, PutDown, Stack.",
+            "You may only pick up or unstack one block at a time and only when your hand is empty.",
+            "A block is clear if no other block is on top of it and it is not being held.",
+            "PickUp can be applied only if the block is on the table and clear.",
+            "Unstack can be applied only if the block is on top of another block and the block is clear.",
+            "Once you pick up or unstack a block, you are holding that block and your hand is not empty.",
+            "PutDown can be applied only if you are holding the block; it results in the block being on the table and the hand becoming empty.",
+            "Stack can be applied only if you are holding a block and the destination block is clear; stacking makes the destination block no longer clear and the hand empty.",
+            "Initial conditions: blue is clear, hand is empty, red is on top of orange, blue is on top of yellow, yellow is on top of red, orange is on the table.",
+            "Goal: blue is on top of yellow and orange is on top of red."
+        ]
+    },
+    "workflow": {
+        "actor": {
+            "analysis": {
+                "input": [],
+                "output": "actor_plan",
+                "system_prompt": "You are the acting agent that proposes concrete step-by-step action sequences using the primitives PickUp, Unstack, PutDown, and Stack. Produce an explicit linear plan consisting of ordered actions with operands. Respect the public domain constraints and your private information. Do not emit PDDL. Focus on actionable steps that a physical manipulator could execute under the single-block and hand-empty constraints.",
+                "prompt": "Your name is actor. You are provided the public information: {environment->public_information}. You have the following private knowledge: {agents->actor->private_information}. Your objective is: {agents->actor->goal}. Produce a numbered sequence of concrete actions that would achieve the goal from the initial conditions listed in the public information. If information is missing, produce the plan based only on what is known."
+            }
+        },
+        "observer": {
+            "report": {
+                "input": [],
+                "output": "observer_report",
+                "system_prompt": "You are the observational agent that generates formal symbolic encodings of states and state transitions. Use predicate forms such as ontable(block), on(block1,block2), clear(block), holding(block), and handempty. Provide the initial state encoding and any intermediate states implied by a candidate plan. Do not produce PDDL domain/problem files. Focus on accuracy and unambiguous naming.",
+                "prompt": "Your name is observer. You are provided the public information: {environment->public_information}. You have the following private knowledge: {agents->observer->private_information}. Your objective is: {agents->observer->goal}. Produce a detailed symbolic encoding of the initial state as a set of predicates and show how the actor plan's first few actions change those predicates. If there are ambiguities in naming or references, flag them rather than inventing new objects."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "actor_plan",
+                    "observer_report"
+                ],
+                "output": "auditor_audit",
+                "system_prompt": "You are the auditor whose responsibility is to check temporal and causal consistency and to eliminate bookkeeping shortcuts such as quota tokens, surrogate counters, or post-hoc penalties. Verify that every action respects single-block manipulation, hand-empty preconditions, and clear predicates. Produce corrective suggestions or confirm soundness. Do not generate PDDL domain or problem files.",
+                "prompt": "Your name is auditor. You receive the actor plan and the observer report: {actor_plan} and {observer_report}. Your private knowledge: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Check each step for causal validity, precondition satisfaction, and absence of bookkeeping shortcuts. If steps violate constraints, produce corrected steps or annotate how to make the plan causally correct."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "actor_plan",
+                    "observer_report",
+                    "auditor_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for synthesizing a complete PDDL domain and problem targeting the FastDownward planner. Integrate the actor plan, the observer state encodings, and the auditor's corrections. Produce a single consistent PDDL domain and a PDDL problem file that encode the Blocks World primitives and the provided initial state and goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure action preconditions and effects reflect the single-block handling and clear/handempty invariants required by the auditor.",
+                "prompt": "You are orchestrator. Inputs available: the actor plan ({actor_plan}), the observer's symbolic state encoding ({observer_report}), and the auditor's audit ({auditor_audit}). Your objective: {agents->orchestrator->goal}. Think step by step, resolve naming inconsistencies, incorporate auditor corrections, and produce a PDDL domain and a PDDL problem optimized for FastDownward. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Keep domain predicates and action names clear and unambiguous. If any required detail is missing from the inputs, make minimal explicit assumptions and document them at the top of the PDDL problem as comments."
+            }
+        },
+        "constraints": [
+            "actor.analysis->orchestrator.pddl",
+            "observer.report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

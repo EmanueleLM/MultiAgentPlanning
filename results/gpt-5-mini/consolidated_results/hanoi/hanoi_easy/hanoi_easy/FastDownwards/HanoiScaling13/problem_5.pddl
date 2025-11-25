@@ -1,0 +1,163 @@
+(define (problem hanoi-4-disks)
+  (:domain hanoi)
+
+  (:objects
+    left middle right - peg
+    d1 d2 d3 d4 - disk
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - step
+  )
+
+  (:init
+    ;; size ordering (d1 smallest ... d4 largest)
+    (smaller d1 d2)
+    (smaller d1 d3)
+    (smaller d1 d4)
+    (smaller d2 d3)
+    (smaller d2 d4)
+    (smaller d3 d4)
+
+    ;; initial stack on right peg: bottom d4 on right, d3 on d4, d2 on d3, d1 on d2
+    (on-peg d4 right)
+    (on-disk d3 d4)
+    (on-disk d2 d3)
+    (on-disk d1 d2)
+
+    ;; clear markers: left and middle pegs empty; top disk d1 has nothing on it
+    (clear-peg left)
+    (clear-peg middle)
+    (clear-disk d1)
+
+    ;; step sequencing (15 moves)
+    (step-successor s1 s2)
+    (step-successor s2 s3)
+    (step-successor s3 s4)
+    (step-successor s4 s5)
+    (step-successor s5 s6)
+    (step-successor s6 s7)
+    (step-successor s7 s8)
+    (step-successor s8 s9)
+    (step-successor s9 s10)
+    (step-successor s10 s11)
+    (step-successor s11 s12)
+    (step-successor s12 s13)
+    (step-successor s13 s14)
+    (step-successor s14 s15)
+    (last-step s15)
+
+    (current-step s1)
+
+    ;; required move sequence (15 moves) using direct supports (disk or peg) as sources/targets.
+    ;; Moves correspond to canonical 4-disk solution, expressed with direct supports.
+
+    ;; 1: move d1 from d2 -> left
+    (required-disk s1 d1)
+    (required-from-disk s1 d2)
+    (required-to-peg s1 left)
+
+    ;; 2: move d2 from d3 -> middle
+    (required-disk s2 d2)
+    (required-from-disk s2 d3)
+    (required-to-peg s2 middle)
+
+    ;; 3: move d1 from left -> d2
+    (required-disk s3 d1)
+    (required-from-peg s3 left)
+    (required-to-disk s3 d2)
+
+    ;; 4: move d3 from d4 -> left
+    (required-disk s4 d3)
+    (required-from-disk s4 d4)
+    (required-to-peg s4 left)
+
+    ;; 5: move d1 from d2 -> d4
+    (required-disk s5 d1)
+    (required-from-disk s5 d2)
+    (required-to-disk s5 d4)
+
+    ;; 6: move d2 from middle -> d3
+    (required-disk s6 d2)
+    (required-from-peg s6 middle)
+    (required-to-disk s6 d3)
+
+    ;; 7: move d1 from d4 -> d2
+    (required-disk s7 d1)
+    (required-from-disk s7 d4)
+    (required-to-disk s7 d2)
+
+    ;; 8: move d4 from right -> middle
+    (required-disk s8 d4)
+    (required-from-peg s8 right)
+    (required-to-peg s8 middle)
+
+    ;; 9: move d1 from d2 -> d4
+    (required-disk s9 d1)
+    (required-from-disk s9 d2)
+    (required-to-disk s9 d4)
+
+    ;; 10: move d2 from d3 -> right
+    (required-disk s10 d2)
+    (required-from-disk s10 d3)
+    (required-to-peg s10 right)
+
+    ;; 11: move d1 from d4 -> d2
+    (required-disk s11 d1)
+    (required-from-disk s11 d4)
+    (required-to-disk s11 d2)
+
+    ;; 12: move d3 from left -> d4
+    (required-disk s12 d3)
+    (required-from-peg s12 left)
+    (required-to-disk s12 d4)
+
+    ;; 13: move d1 from d2 -> left
+    (required-disk s13 d1)
+    (required-from-disk s13 d2)
+    (required-to-peg s13 left)
+
+    ;; 14: move d2 from right -> d3
+    (required-disk s14 d2)
+    (required-from-peg s14 right)
+    (required-to-disk s14 d3)
+
+    ;; 15: move d1 from left -> d2
+    (required-disk s15 d1)
+    (required-from-peg s15 left)
+    (required-to-disk s15 d2)
+
+    ;; distinct facts to forbid no-op moves (place pairs where first != second)
+    ;; peg-peg (3*2 = 6)
+    (distinct-pp left middle) (distinct-pp left right) (distinct-pp middle left)
+    (distinct-pp middle right) (distinct-pp right left) (distinct-pp right middle)
+
+    ;; peg-disk (3*4 = 12)
+    (distinct-pd left d1) (distinct-pd left d2) (distinct-pd left d3) (distinct-pd left d4)
+    (distinct-pd middle d1) (distinct-pd middle d2) (distinct-pd middle d3) (distinct-pd middle d4)
+    (distinct-pd right d1) (distinct-pd right d2) (distinct-pd right d3) (distinct-pd right d4)
+
+    ;; disk-peg (4*3 = 12)
+    (distinct-dp d1 left) (distinct-dp d1 middle) (distinct-dp d1 right)
+    (distinct-dp d2 left) (distinct-dp d2 middle) (distinct-dp d2 right)
+    (distinct-dp d3 left) (distinct-dp d3 middle) (distinct-dp d3 right)
+    (distinct-dp d4 left) (distinct-dp d4 middle) (distinct-dp d4 right)
+
+    ;; disk-disk (4*3 = 12)
+    (distinct-dd d1 d2) (distinct-dd d1 d3) (distinct-dd d1 d4)
+    (distinct-dd d2 d1) (distinct-dd d2 d3) (distinct-dd d2 d4)
+    (distinct-dd d3 d1) (distinct-dd d3 d2) (distinct-dd d3 d4)
+    (distinct-dd d4 d1) (distinct-dd d4 d2) (distinct-dd d4 d3)
+  )
+
+  (:goal
+    (and
+      ;; final stack on middle peg: bottom d4 on middle, d3 on d4, d2 on d3, d1 on d2
+      (on-peg d4 middle)
+      (on-disk d3 d4)
+      (on-disk d2 d3)
+      (on-disk d1 d2)
+
+      ;; left and right pegs empty
+      (clear-peg left)
+      (clear-peg right)
+    )
+  )
+)

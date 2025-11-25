@@ -1,0 +1,106 @@
+{
+    "name": "HanoiScaling28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_expert",
+            "strategy_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_expert": {
+            "private_information": [
+                "There are four disks named A (smallest), B, C, D (largest).",
+                "Allowed primitive action: move the top disk from one peg to another peg.",
+                "Physical constraints: only one disk moved at a time; can only move a disk that is top on its peg; cannot place a larger disk on a smaller disk; disk ordering is preserved by size."
+            ],
+            "goal": "Produce a precise domain model representation of objects, predicates, and primitive action semantics describing the Tower of Hanoi instance and its invariants."
+        },
+        "strategy_planner": {
+            "private_information": [
+                "I specialize in decomposing goals into high-level move sequences and heuristics such as the standard recursive pattern for Tower of Hanoi.",
+                "I can produce an ordered sequence of moves and identify subgoals and intermediate configurations."
+            ],
+            "goal": "Provide a high-level move plan and subgoal decomposition that achieves the global goal from the given initial state using allowed primitive actions."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as tokens, temporary penalties, or post-hoc adjustments.",
+                "I verify that proposed plans respect the single-move-at-a-time constraint and the disk size ordering invariant at all intermediate states."
+            ],
+            "goal": "Inspect the domain model and the plan, detect and correct any causal or temporal violations, and produce an audit report describing necessary adjustments."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Final outputs must be compatible with the FastDownward planner. Use classical PDDL domain and problem suitable for FastDownward."
+            ],
+            "goal": "Integrate the analysis, plan, and audit report and produce a final PDDL domain and PDDL problem that FastDownward can solve to move disks A,B,C,D from the right peg to the middle peg while leaving the left and right pegs empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4
+        },
+        "public_information": [
+            "This is a 3-peg Tower of Hanoi puzzle with pegs named left, middle, and right.",
+            "Disks from smallest to largest are A, B, C, D.",
+            "Initial state: right peg holds from top to bottom A, B, C, D. Left peg and middle peg are empty.",
+            "Goal state: middle peg holds from top to bottom A, B, C, D. Left peg and right peg must be empty.",
+            "Primitive action: move the top disk from one peg to another peg.",
+            "Rules: only one disk may be moved at a time, only the top disk of a peg may be moved, a larger disk may never be placed on top of a smaller disk."
+        ]
+    },
+    "workflow": {
+        "disk_expert": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_disk_expert",
+                "system_prompt": "You are a domain modeling expert for abstract puzzles. Produce a clear structured description of objects, predicates, initial facts, invariants, and the semantics of the primitive action for the Tower of Hanoi instance. Do not emit PDDL. Focus on correctness, expressiveness, and unambiguous definitions that a planner integrator can consume.",
+                "prompt": "Agent disk_expert. Use the public information about the environment and your private knowledge. Produce a structured domain model description including the set of objects, canonical names for pegs and disks, predicates needed to represent 'on top of', 'top', and 'empty', and a precise description of the move action preconditions and effects. Highlight invariants and potential edge cases. Output must be a human-readable structured analysis, not PDDL."
+            }
+        },
+        "strategy_planner": {
+            "plan": {
+                "input": [
+                    "analysis_disk_expert"
+                ],
+                "output": "plan_strategy",
+                "system_prompt": "You are a planning specialist. Using the domain analysis provided, produce a high-level sequence of moves or a recursive decomposition that reaches the goal. Do not emit PDDL. Provide an ordered list of moves described as 'move top disk from <peg> to <peg>' along with identified subgoals and suggested intermediate configurations. Indicate assumptions and any areas that need checking by the auditor.",
+                "prompt": "Agent strategy_planner. Use the domain analysis and public information. Produce a clear high-level move sequence or recursive plan skeleton for moving disks A, B, C, D from right to middle using left as intermediate. Explain the rationale for the ordering. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_disk_expert",
+                    "plan_strategy"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency and on removing bookkeeping shortcuts. Inspect the provided domain analysis and planned move sequence. Check that every step respects the single-move constraint and disk size ordering at every intermediate state. Identify any plan steps that rely on shortcuts or implicit state assumptions and produce corrected steps or invariants. Provide a concise report specifying fixes required before PDDL generation.",
+                "prompt": "Agent auditor. Use the analysis and the strategy plan. Produce an audit report that lists any causal or temporal violations, each violated rule, and proposed corrections. Confirm that after corrections the plan can be translated to a classical planning problem without auxiliary bookkeeping shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_disk_expert",
+                    "plan_strategy",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL generation targeting the FastDownward solver. Integrate the domain analysis, the high-level plan, and the auditor corrections to produce a complete PDDL domain and a PDDL problem compatible with FastDownward. Keep agent actions distinct where relevant and avoid introducing auxiliary bookkeeping tokens that the auditor removed. Use classical STRIPS-compatible constructs preferred by FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final PDDL must accurately represent the initial state and the goal: move disks A,B,C,D from right to middle with left and right pegs empty.",
+                "prompt": "Agent orchestrator. Receive the analysis, plan, and audit report. Produce a final PDDL domain and a final PDDL problem targeting the FastDownward planner. Ensure objects, predicates, and action schemas match the analysis, ensure all constraints from the audit are enforced, and ensure the initial and goal states match the public information. Enclose the domain between <domain></domain> and the problem between <problem></problem>. Output only the two tagged PDDL sections as the pddl_orchestrator output."
+            }
+        },
+        "constraints": [
+            "disk_expert.analysis->strategy_planner.plan",
+            "disk_expert.analysis->auditor.audit",
+            "strategy_planner.plan->auditor.audit",
+            "disk_expert.analysis->orchestrator.pddl",
+            "strategy_planner.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

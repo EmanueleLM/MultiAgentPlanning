@@ -1,0 +1,112 @@
+{
+    "name": "BlocksworldScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "block_picker",
+            "stack_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "block_picker": {
+            "private_information": [
+                "I can pick up a block from the table if my hand is empty and the block is clear.",
+                "I can unstack a block from another block if my hand is empty and the block to unstack is clear and is on top of that other block.",
+                "After picking up or unstacking, I will be holding the block and my hand will no longer be empty."
+            ],
+            "goal": "Contribute to achieving the configuration where red is on top of yellow and blue is on top of orange."
+        },
+        "stack_manager": {
+            "private_information": [
+                "I can put down a block that I am holding onto the table, making my hand empty.",
+                "I can stack a block that I am holding onto another block if that other block is clear.",
+                "After stacking, the block that was stacked is held no more and the block underneath becomes not clear."
+            ],
+            "goal": "Contribute to achieving the configuration where red is on top of yellow and blue is on top of orange."
+        },
+        "auditor": {
+            "private_information": [
+                "I monitor causal and temporal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I ensure single-hand constraints and mutual exclusivity of actions are enforced and that partial descriptions are not hiding implicit illegal shortcuts."
+            ],
+            "goal": "Audit the plans and analyses of other agents to ensure they are temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate agent analyses and the auditor report into a single coherent formal PDDL domain and problem suitable for FastDownwards.",
+                "I must keep actions originating from distinct agents clearly distinct in the combined domain and problem."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem that encodes the blocksworld initial state and goal and is suitable for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "orange",
+                "yellow",
+                "red",
+                "blue"
+            ],
+            "hand_empty": true,
+            "locations": [
+                "table"
+            ]
+        },
+        "public_information": [
+            "Available primitive actions are PickUp, Unstack, PutDown, and Stack.",
+            "Only one block can be picked up or unstacked at a time and only when the hand is empty.",
+            "A block is clear if nothing is on top of it and it is not being held.",
+            "PickUp can only be applied to a clear block that is on the table.",
+            "Unstack can only be applied to a clear block that is on top of another block.",
+            "PutDown can only be applied to a block that is currently being held, resulting in it being on the table and the hand becoming empty.",
+            "Stack can only be applied to a held block onto a clear block, and after stacking the previously clear support block becomes not clear and the hand becomes empty.",
+            "Initial facts: orange is clear, yellow is clear, hand is empty, orange is on top of blue, yellow is on top of red, red is on the table, blue is on the table.",
+            "Goal facts: red on top of yellow and blue on top of orange."
+        ]
+    },
+    "workflow": {
+        "block_picker": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_block_picker",
+                "system_prompt": "As block_picker, analyze the initial state and list the legal pickup and unstack moves as structured facts with explicit preconditions and postconditions. Do not emit PDDL; produce a compact, unambiguous description of available primitive actions and any assumptions made."
+            }
+        },
+        "stack_manager": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_stack_manager",
+                "system_prompt": "As stack_manager, analyze stacking and putdown consequences and enumerate legal stack and putdown moves with explicit preconditions and postconditions. Identify how stacking changes clearness and hand state. Do not emit PDDL; produce structured sequencing suggestions and constraints."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_block_picker",
+                    "analysis_stack_manager"
+                ],
+                "output": "audit_report",
+                "system_prompt": "As auditor, check the analyses for temporal and causal consistency, enforce single-hand constraints, and remove any bookkeeping shortcuts or implicit assumptions. Produce a concise audit report listing detected issues and required corrections in the analyses. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_block_picker",
+                    "analysis_stack_manager",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for integrating agent analyses and the auditor report into a single coherent PDDL domain and PDDL problem suitable for the FastDownwards planner. Keep actions originating from different agents distinct by prefixing or otherwise namespacing their action names. Use the public information, agent private information, and the audit corrections to create a complete domain encoding the primitives PickUp, Unstack, PutDown, and Stack with their exact preconditions and effects including hand occupancy and clearness. Then create a problem file encoding the provided initial state and the goal (red on top of yellow and blue on top of orange). Emit a PDDL domain and a PDDL problem only. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with FastDownwards and avoids any bookkeeping shortcuts that the auditor removed."
+            }
+        },
+        "constraints": [
+            "block_picker.analysis->auditor.audit",
+            "stack_manager.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "block_picker.analysis->orchestrator.pddl",
+            "stack_manager.analysis->orchestrator.pddl"
+        ]
+    }
+}

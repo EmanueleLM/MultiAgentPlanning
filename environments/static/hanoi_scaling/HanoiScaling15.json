@@ -1,0 +1,103 @@
+{
+    "name": "HanoiScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover_agent": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Provide a legal, stepwise move sequence to transfer all five disks from the right peg to the middle peg using the left peg as an intermediate while keeping moves legal."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of move sequences",
+                "I remove bookkeeping shortcuts such as quotas or post-hoc penalties",
+                "I verify that each move concerns the current top disk of a peg and preserves size ordering"
+            ],
+            "goal": "Audit proposed move sequences for legality and temporal and causal consistency and return an explicit audit report noting any violations or required corrections."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate mover proposals and auditor feedback and produce a final PDDL domain and PDDL problem encoding the 5-disk Tower of Hanoi instance suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs_count": 3,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks_count": 5,
+            "disks": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "disk_order_smallest_to_largest": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ]
+        },
+        "public_information": [
+            "There are three pegs named left middle and right",
+            "There are five disks named A B C D and E ordered from smallest to largest A B C D E",
+            "Initial configuration: right peg holds from top to bottom A B C D E and left and middle pegs are empty",
+            "Goal configuration: middle peg must hold from top to bottom A B C D E while left and right pegs are empty",
+            "Allowed action: move the top disk from one peg to another peg",
+            "Rules: only one disk may be moved at a time, only the top disk of a peg can be moved, never place a larger disk on top of a smaller disk",
+            "The left peg may be used as an intermediate parking spot but must end up empty"
+        ]
+    },
+    "workflow": {
+        "mover_agent": {
+            "plan": {
+                "input": [],
+                "output": "plan_mover_agent",
+                "system_prompt": "You are a Tower of Hanoi move generator. Using only the public information and your private knowledge, produce a concrete, ordered sequence of moves that transfers the full stack from the right peg to the middle peg while respecting the rules. Represent each move as a tuple or string such as move(A right middle) meaning move disk A from the right peg to the middle peg. Do not emit PDDL. Keep the sequence explicit and minimal if possible.",
+                "prompt": "Agent mover_agent: Using the environment public information and your private information, propose a step-by-step legal move sequence for the five-disk instance. State the sequence and briefly justify each move if a choice is nontrivial. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "plan_mover_agent"
+                ],
+                "output": "audit_report_auditor",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for sequential plans. Given a proposed move sequence you must verify that each move is legal at the time it is applied, that no bookkeeping shortcuts are used, and that the sequence preserves the invariant that larger disks never sit atop smaller ones. Produce a structured audit report listing any illegal moves, the timestamp or step index where they occur, a corrected move or explanation, and a final verdict of acceptance or required corrections. Do not emit PDDL.",
+                "prompt": "Agent auditor: Receive the proposed move sequence from mover_agent. Check each step for legality relative to the evolving configuration, identify any violations or ambiguous bookkeeping, and produce a corrective report and a verdict. Keep the report explicit and actionable. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_mover_agent",
+                    "audit_report_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a final PDDL domain and a PDDL problem encoding the Tower of Hanoi instance that is compatible with the FastDownwards solver. Integrate the mover agent's proposed move sequence and the auditor's audit report to ensure the encoding enforces all constraints and avoids shortcuts. Keep agent actions distinct if incorporating agent-specific predicates or action labels. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility by using standard STRIPS or ADL constructs supported by FastDownwards and keep the encoding explicit for the five-disk three-peg instance.",
+                "prompt": "Agent orchestrator: Integrate the move plan and the audit report to produce a complete PDDL domain and a complete PDDL problem for the five-disk Tower of Hanoi instance. The domain should define pegs disks the move action and constraints that prevent illegal placements. The problem should define the objects initial state and goal state reflecting the initial right peg stack and final middle peg stack with left and right empty. Enclose domain and problem in <domain></domain> and <problem></problem> tags. The output will be consumed by the FastDownwards solver."
+            }
+        },
+        "constraints": [
+            "mover_agent.plan->auditor.audit",
+            "mover_agent.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

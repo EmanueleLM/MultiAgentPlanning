@@ -1,0 +1,108 @@
+{
+    "name": "BlocksworldScaling10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "decomposer",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "I can perceive the blocks and their direct relations (on, ontable, clear).",
+                "I can report the current hand status (empty or holding)."
+            ],
+            "goal": "Produce a concise, structured observation of the current world state (objects, on relations, ontable relations, clear predicates, hand state)."
+        },
+        "decomposer": {
+            "private_information": [
+                "I understand the primitive actions available: pick-up, unstack, put-down, stack.",
+                "I know typical preconditions and effects patterns for blockworld primitives but I do not emit full PDDL."
+            ],
+            "goal": "Decompose the global goal into ordered subtasks and list, for each primitive action, the expected preconditions and effects in plain structured form that other agents can use."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency checking and in removing bookkeeping shortcuts like token quotas or post-hoc penalties.",
+                "I will ensure that reported subtasks and action descriptions respect single-handedness, exclusivity of holding, and causal preconditions/effects."
+            ],
+            "goal": "Audit the decomposed subtasks and action descriptions for temporal and causal consistency, detect implicit assumptions or shortcuts, and produce a corrected, minimal, implementation-agnostic constraint set."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate observations, decomposed subtasks, and the auditor report to produce a final PDDL domain and problem suitable for FastDownwards.",
+                "I keep agent-specific actions distinct and map them into a single coherent multi-agent planning instance when required."
+            ],
+            "goal": "Produce a validated PDDL domain and a PDDL problem that encode the initial state and the goal for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "world_type": "blocks_world",
+            "blocks_count": 4
+        },
+        "public_information": [
+            "There are four blocks: red, orange, blue, yellow.",
+            "Initial state facts: red is clear.",
+            "Initial state facts: the hand is empty.",
+            "Initial state facts: red is on top of orange.",
+            "Initial state facts: orange is on top of blue.",
+            "Initial state facts: blue is on top of yellow.",
+            "Initial state facts: yellow is on the table.",
+            "Goal: red is on top of yellow.",
+            "Goal: blue is on top of red.",
+            "Available primitive actions: pick-up, unstack, put-down, stack.",
+            "Action constraints summary: only one block may be picked or unstacked at a time; pick/unstack requires an empty hand; pick requires block on table and clear; unstack requires block on top of another and clear; after pick or unstack the agent holds the block; put-down or stack releases the hand; stacking requires the destination block to be clear."
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "observe": {
+                "input": [],
+                "output": "observations",
+                "system_prompt": "You are the observer agent. Your role is to inspect and report the concrete current facts of the block world. Do not produce PDDL. Produce a short structured observation listing objects and predicates among them.",
+                "prompt": "Your name is observer. You have access to public information: {environment->public_information}. You also have private information: {agents->observer->private_information}. Your goal: {agents->observer->goal}. Produce a concise structured observations object that enumerates blocks and the following predicates where applicable: (on ?x ?y), (ontable ?x), (clear ?x), (holding ?x) or (handempty)."
+            }
+        },
+        "decomposer": {
+            "decompose": {
+                "input": [
+                    "observations"
+                ],
+                "output": "subtasks",
+                "system_prompt": "You are the decomposer. Your role is to break the high-level goal into ordered subtasks and to provide preconditions and effects for each primitive action in plain structured form. Do not output PDDL; provide decomposed steps and action schemas readable by an orchestrator.",
+                "prompt": "Your name is decomposer. You receive the observer's observations: {observations}. You also have private knowledge: {agents->decomposer->private_information}. Your goal: {agents->decomposer->goal}. Produce an ordered list of subtasks required to achieve the goal, and for each primitive action include: name, parameters, preconditions, effects. Be explicit about hand state and clear-ness preconditions and specify any ordering constraints among subtasks."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "subtasks"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor agent. Your role is to verify temporal and causal consistency, remove bookkeeping shortcuts, and surface any implicit assumptions that would break a sound plan when implemented. Do not output PDDL. Produce corrections and a minimal set of constraints.",
+                "prompt": "Your name is auditor. You receive the decomposed subtasks: {subtasks}. You also have private information: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Check that the subtasks respect single-handed operation, exclusivity of holding, and that all preconditions are causally satisfied by prior effects. Remove or flag any bookkeeping shortcuts (for example, token quotas or implicit concurrency). Output a concise audit report with corrections and an explicit list of constraints and ordering requirements that must hold for a valid plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "observations",
+                    "subtasks",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeted for the FastDownwards planner. You must integrate observations, decomposed subtasks, and the auditor report into a single coherent PDDL domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep different agent capabilities and actions explicit and distinct when mapping to predicates and actions. Ensure the domain uses STRIPS-like constructs compatible with FastDownwards and avoids solver-specific extensions.",
+                "prompt": "You are the orchestrator. You have these inputs: observer observations: {observations}, decomposed subtasks: {subtasks}, auditor corrections and constraints: {audit_report}. Your private info: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Integrate the information, apply the auditor's constraints, and produce a validated PDDL domain and a PDDL problem that encode the initial state and the goal for the FastDownwards planner. Ensure action preconditions and effects reflect single-handedness, clear predicates, on/ontable relations, and that stacking makes the destination not clear. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "observer.observe->decomposer.decompose",
+            "decomposer.decompose->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "observer.observe->orchestrator.pddl"
+        ]
+    }
+}

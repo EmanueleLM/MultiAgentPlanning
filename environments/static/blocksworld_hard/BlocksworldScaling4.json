@@ -1,0 +1,88 @@
+{
+    "name": "BlocksworldScaling4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "stacker",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "I can think in terms of high level block moves and sequences",
+                "I understand the informal preconditions and effects of pickup unstack putdown and stack actions"
+            ],
+            "goal": "Propose a high level sequential plan in natural language to achieve the global goal given the public information"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in removing bookkeeping shortcuts like quota tokens and post-hoc penalties",
+                "I ensure plans respect single hand constraints and real causal preconditions"
+            ],
+            "goal": "Audit proposed plans for causal and temporal correctness and produce a corrected plan or report that eliminates bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate agent analyses and produce the final PDDL domain and problem files targeted to FastDownwards"
+            ],
+            "goal": "Integrate inputs from other agents and emit a final PDDL domain and problem suitable for the FastDownwards solver that solves the stated goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": 4
+        },
+        "public_information": [
+            "There are four blocks named yellow red blue and orange",
+            "Actions available are pick up a block unstack a block put down a block and stack a block on top of another block",
+            "You can only pick up or unstack one block at a time",
+            "You can only pick up or unstack a block if your hand is empty",
+            "A block is clear if no other block is on top of it and it is not currently picked up",
+            "You can only pick up a block if it is on the table and clear",
+            "You can only unstack a block from on top of another block if it was actually on top of that block and it is clear",
+            "Once you pick up or unstack a block you are holding that block and your hand is not empty",
+            "You can only put down a block that you are holding",
+            "You can only stack a held block on top of another block if the target block is clear",
+            "Once you put down or stack a block your hand becomes empty",
+            "When a block is stacked on top of another block the block underneath ceases to be clear",
+            "Initial state facts are: yellow is clear, hand is empty, red is on top of orange, blue is on top of red, yellow is on top of blue, orange is on the table",
+            "Goal is: blue is on top of orange and orange is on top of yellow"
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "analyze": {
+                "input": [],
+                "output": "analysis_stacker",
+                "system_prompt": "You are an agent that reasons in natural language about block manipulation and produces a clear step by step high level plan. Do not output PDDL. Focus on sequences of actions with explicit preconditions and effects described in plain language.",
+                "prompt": "Your name is stacker. You have the public information about the blocks world and the goal. Using that information and your private knowledge produce a concise sequential plan in natural language where each step is one primitive action chosen from pickup unstack putdown and stack. For each step state the agent hand status preconditions and effects. If a precondition is unknown do not assume it and flag it. Output a plan that respects single hand constraints and moves only one block at a time."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "analysis_stacker"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor agent specializing in temporal and causal consistency and in eliminating bookkeeping shortcuts. You do not output PDDL. Your role is to inspect a proposed plan and to produce a corrected plan or a report that identifies causal violations and suggests concrete fixes.",
+                "prompt": "Your name is auditor. You receive a proposed plan from the stacker. Check every step for causal and temporal validity against the public_information rules. Ensure hand emptiness constraints and single block move constraints are enforced. Remove any bookkeeping shortcuts such as token counters or assumed invisible concurrent actions. If a step is invalid propose a corrected sequence and explain the necessary additional moves. Output a cleaned plan or a detailed audit report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_stacker",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL problems and in producing PDDL domain and problem files targeted to the FastDownwards solver. You will produce a PDDL domain and a PDDL problem that follow STRIPS style where appropriate and that are compatible with FastDownwards. You must not rely on bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions belonging to different contributing agents conceptually distinct if relevant.",
+                "prompt": "You are the orchestrator. Integrate the stacker analysis and the auditor report. Resolve any ambiguities and enforce the formal preconditions and effects implied by the public information. Produce a complete PDDL domain and a PDDL problem that represent the initial state and the goal blue on orange and orange on yellow. The domain should include types predicates and actions pickup unstack putdown and stack with correct preconditions and effects and with an explicit fluent for hand empty and holding. The PDDL must be suitable for FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. If some information remains underspecified explain what you assumed in a brief single sentence comment outside the PDDL tags."
+            }
+        },
+        "constraints": [
+            "stacker.analyze->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

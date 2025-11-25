@@ -1,0 +1,112 @@
+{
+    "name": "BlocksworldScaling28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "perception",
+            "proposer",
+            "auditor",
+            "orchestrator"
+        ],
+        "perception": {
+            "private_information": [
+                "I observe the initial configuration of blocks and public rules",
+                "I must produce a canonical symbolic representation of objects and relations"
+            ],
+            "goal": "Produce a structured representation of objects and initial predicates corresponding to the initial conditions"
+        },
+        "proposer": {
+            "private_information": [
+                "I can use block world operators pick-up, unstack, put-down, stack in symbolic plans",
+                "I produce candidate ordered sequences with explicit preconditions and effects"
+            ],
+            "goal": "Propose a candidate action sequence expressed in structured symbolic form to reach the goal"
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in detecting temporal and causal inconsistencies and removing bookkeeping shortcuts",
+                "I check that plans respect resource constraints such as single-hand occupancy and true causal ordering"
+            ],
+            "goal": "Audit proposed plans for temporal and causal consistency and produce a corrected verified plan representation"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate verified representations into a final artifact",
+                "I must output a PDDL domain and problem suitable for FastDownwards"
+            ],
+            "goal": "Integrate perceptions, proposals, and audits to produce a final PDDL domain and PDDL problem targeted to the FastDownwards solver that achieves the stated goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "orange",
+                "red",
+                "yellow",
+                "blue"
+            ],
+            "hand_empty": true
+        },
+        "public_information": [
+            "Actions available are pick up, unstack, put down, stack",
+            "Only one block can be held at a time",
+            "A block is clear if nothing is on top of it and it is not held",
+            "You can pick up a block only if it is on the table and clear",
+            "You can unstack a block only if it is on another block and clear",
+            "After pick up or unstack you are holding the block and your hand is not empty",
+            "After put down or stack your hand becomes empty",
+            "Stacking a block on another makes the supporting block not clear",
+            "Initial conditions: orange is clear, hand is empty, red on yellow, orange on red, yellow on blue, blue on table",
+            "Goal: red on orange, blue on red, orange on yellow"
+        ]
+    },
+    "workflow": {
+        "perception": {
+            "analysis": {
+                "input": [],
+                "output": "perception_repr",
+                "system_prompt": "You are the perception agent. Extract objects and relations from the public information and initial conditions and produce a canonical symbolic representation of the world state. Represent facts using predicates such as ontable, on, clear, holding, handempty. Do not emit PDDL. Emit a structured list of facts and object type declarations.",
+                "prompt": "Your name is perception. Read the public information and initial conditions and output a canonical structured representation of the initial state including objects and predicates."
+            }
+        },
+        "proposer": {
+            "plan_proposal": {
+                "input": [
+                    "perception_repr"
+                ],
+                "output": "proposal_plan",
+                "system_prompt": "You are a planner proposer. Using the canonical world facts produce a candidate ordered plan expressed as a sequence of actions. For each step list the action name, parameters, explicit preconditions and effects in structured form. Do not produce PDDL. Avoid shortcuts like quota tokens or implicit global resets.",
+                "prompt": "Your name is proposer. Generate a candidate structured plan that attempts to achieve the goal using the available block world operators. Provide explicit preconditions and effects for each step."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "proposal_plan",
+                    "perception_repr"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for block stacking tasks. Verify that each action's preconditions hold at the time of its execution given earlier effects, that the single-hand constraint is respected, that unstack actions refer to actual on relations, and that no bookkeeping shortcuts such as implicit resource replenishment or post-hoc penalties are used. Produce a corrected verified plan representation and a concise list of detected issues and fixes.",
+                "prompt": "Your name is auditor. Audit the proposed plan for temporal and causal consistency and return a verified structured plan with any necessary corrections and an explanation of changes."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_plan",
+                    "perception_repr"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the verified plan representation and the canonical world facts. Produce a complete and standard PDDL domain and a PDDL problem targeting the FastDownwards solver. The domain must declare types, predicates including ontable, on, clear, holding, handempty and must include actions pickup, unstack, putdown, stack with accurate preconditions and effects that reflect the block world axioms. The problem must declare objects, initial state predicates and the goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is fully grounded for use with FastDownwards and avoid nonstandard extensions.",
+                "prompt": "Your name is orchestrator. Produce the final PDDL domain and PDDL problem for FastDownwards that model the audited plan and achieve the stated goal. Enclose domain and problem in the required tags."
+            }
+        },
+        "constraints": [
+            "perception.analysis->proposer.plan_proposal",
+            "proposer.plan_proposal->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

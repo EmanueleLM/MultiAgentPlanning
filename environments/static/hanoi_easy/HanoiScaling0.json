@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling0",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disks_manager",
+            "rules_checker",
+            "auditor",
+            "orchestrator"
+        ],
+        "disks_manager": {
+            "private_information": [
+                "There are four disks named A, B, C, D from smallest to largest where A is smallest and D is largest",
+                "Three pegs exist named left, middle, right",
+                "Initial configuration: middle peg holds from top to bottom A, B, C, D; left and right pegs are empty"
+            ],
+            "goal": "Provide a canonical representation of objects, sizes, initial state and goal state that can be consumed by a planner."
+        },
+        "rules_checker": {
+            "private_information": [
+                "Move semantics: move the top disk from one peg to another peg",
+                "Constraints: only one disk may be moved at a time, only the top disk of a peg may be moved, a larger disk may never be placed on top of a smaller disk"
+            ],
+            "goal": "Enumerate formal invariants and move preconditions and effects as precise logical constraints for the problem model."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts",
+                "Do not accept shortcut tokens or post-hoc penalties that hide causal ordering or resource usage"
+            ],
+            "goal": "Audit the model and the planned representation to ensure temporal and causal consistency and to remove any bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs from the other agents and produce a complete PDDL domain and PDDL problem targeting the FastDownward solver that solves the 4-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 4,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are four disks named A, B, C, D ordered from smallest to largest",
+            "Initial state: the middle peg holds from top to bottom A, B, C, D and the left and right pegs are empty",
+            "Goal state: the right peg must hold from top to bottom A, B, C, D and both middle and left pegs must be empty",
+            "Allowed move: move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time, move only the top disk of a peg, never place a larger disk on a smaller disk",
+            "The left peg may be used as an intermediate location but must end empty"
+        ]
+    },
+    "workflow": {
+        "disks_manager": {
+            "describe_state": {
+                "input": [],
+                "output": "state_description",
+                "system_prompt": "You are an analyst agent. Produce a concise canonical structured description of the Tower of Hanoi instance including object declarations, size ordering, peg names, initial predicates and goal predicates. Do not produce PDDL. Provide clear names and a mapping suitable for the orchestrator to convert into PDDL.",
+                "prompt": "Your name is disks_manager. Use the public information and your private information to produce a structured representation that lists objects and their types, an explicit ordering of sizes, a concrete initial state expressed as atomic predicates, and an explicit goal state expressed as atomic predicates. Make naming consistent and avoid abbreviations."
+            }
+        },
+        "rules_checker": {
+            "check_rules": {
+                "input": [],
+                "output": "rules_report",
+                "system_prompt": "You are a rules specialist. Analyze the puzzle rules and generate formal invariants and precondition/effect templates for the move action. Do not emit PDDL. Provide checks that the orchestrator can use to ensure the model enforces single-disk moves, top-disk-only moves, and the no-larger-on-smaller constraint.",
+                "prompt": "Your name is rules_checker. Use the public information and your private information to produce a set of formal constraints, invariants and example edge cases that must be preserved by the planner model. Output predicate-level descriptions and integrity conditions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor responsible for temporal and causal consistency. Identify and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties and call out implicit assumptions. Do not emit PDDL. Provide corrective recommendations so the orchestrator produces an explicit and causally correct PDDL model.",
+                "prompt": "Your name is auditor. Using the public information and your private information, audit the structured representation and the rule descriptions for temporal and causal soundness. List implicit assumptions, possible shortcuts to avoid, and specific changes to ensure explicit causal ordering and correct resource modeling."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "state_description",
+                    "rules_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at multi-agent PDDL modeling and planning. Integrate the structured state description, the rules report, and the audit report and produce a complete PDDL domain and a PDDL problem compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the model enforces single-disk moves, top-disk-only moves, and the no-larger-on-smaller constraint. Keep actions and predicates unambiguous and maintain traceability to agent inputs.",
+                "prompt": "You are the orchestrator. Integrate the inputs state_description, rules_report, and audit_report and resolve naming mismatches and ambiguities. Produce a full PDDL domain and a full PDDL problem ready to be solved with FastDownward. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Do not depend on bookkeeping shortcuts. Keep agent actions distinct where applicable and include comments or clear names to indicate provenance of modeled constraints."
+            }
+        },
+        "constraints": [
+            "disks_manager.describe_state->orchestrator.pddl",
+            "rules_checker.check_rules->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

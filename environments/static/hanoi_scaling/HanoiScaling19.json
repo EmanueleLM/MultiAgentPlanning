@@ -1,0 +1,85 @@
+{
+    "name": "HanoiScaling19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "I can describe state variables and action schemas for the Tower of Hanoi in abstract terms",
+                "I know there are five disks named A, B, C, D, and E ordered smallest to largest",
+                "I know there are three pegs named left, middle, and right"
+            ],
+            "goal": "Move the stack of five disks from the right peg to the left peg while leaving the middle peg empty"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of planning models",
+                "I remove bookkeeping shortcuts and ensure models enforce single-disk moves, top-only moves, and size ordering constraints",
+                "I will flag implicit assumptions and require explicit state encodings and causal links"
+            ],
+            "goal": "Ensure the proposed model is temporally and causally consistent and free of bookkeeping shortcuts so a planner can solve the Tower of Hanoi instance correctly"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the model and audit results and produce a complete PDDL domain and problem for FastDownwards that solves the Tower of Hanoi instance"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right",
+            "There are five disks from smallest to largest named A, B, C, D, and E",
+            "Only one disk may be moved at a time",
+            "Only a disk that is on top of a peg may be moved",
+            "A larger disk can never be placed on top of a smaller disk",
+            "Once moved a disk keeps its relative size ordering with the others",
+            "Initial state: the right peg holds from top to bottom A, B, C, D, E and the left and middle pegs are empty",
+            "Goal state: the left peg must hold from top to bottom A, B, C, D, E and both the middle and right pegs must be empty",
+            "The middle peg may be used as an intermediate but must be empty at the end"
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "spec": {
+                "input": [],
+                "output": "model_modeler",
+                "system_prompt": "You are a modeling expert for classical planning domains. Produce a concise and precise formal model description of the Tower of Hanoi instance including object declarations, predicates, the initial state as a set of facts, the goal condition as a logical formula, and high-level action schemas with clear preconditions and effects. Do not produce PDDL; provide an abstract model text that an orchestrator can convert to PDDL.",
+                "prompt": "Your name is modeler. You are given the following public information: {environment->public_information} You have the following private information: {agents->modeler->private_information} Your task is to produce a formal abstract model description including objects, predicates, initial facts, and action schemas for moving the top disk from one peg to another while respecting the rules. Do not emit PDDL. Provide only the abstract model text that is sufficient for an orchestrator to construct a PDDL domain and problem."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_modeler"
+                ],
+                "output": "audit_auditor",
+                "system_prompt": "You are an expert auditor of temporal and causal consistency for planning models. Analyze an abstract model to find and remove bookkeeping shortcuts, make implicit causal dependencies explicit, check that single-disk moves and top-only constraints are enforced, and ensure that size ordering invariants are maintained. Do not emit PDDL. Produce a clear audit report listing issues, suggested corrections, and any required additional predicates or invariants.",
+                "prompt": "Your name is auditor. You will receive a model description from the modeler as input: {model_modeler} You have the following private information: {agents->auditor->private_information} Your task is to produce an audit report that validates temporal and causal consistency, identifies implicit assumptions, removes bookkeeping shortcuts, and lists concrete model corrections and additional constraints needed so a planner will correctly solve the Tower of Hanoi instance."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_modeler",
+                    "audit_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL and classical planning. Your output must be a PDDL domain and a PDDL problem tailored for the FastDownwards planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain enforces single-disk moves, moves only top disks, and prevents placing larger disks on smaller ones. Use predicates and typing appropriate for FastDownwards and keep agent-origin of model elements explicit if helpful. Resolve ambiguities conservatively and integrate audit corrections.",
+                "prompt": "You are the orchestrator. Integrate the modeler output: {model_modeler} and the auditor output: {audit_auditor} to produce a complete PDDL domain and a PDDL problem that FastDownwards can consume to solve the Tower of Hanoi instance moving disks A,B,C,D,E from right to left with the middle peg empty at the end. Keep actions distinct if you preserve agent prefixes. Enforce all rules from the public information and the auditor corrections. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "modeler.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

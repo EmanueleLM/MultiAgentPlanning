@@ -1,0 +1,115 @@
+{
+    "name": "BlocksworldScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "stacker",
+            "sensing_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "stacker": {
+            "private_information": [
+                "My role is to enumerate and describe valid block manipulation actions in clear precondition and effect terms.",
+                "I specialize in operational decomposition and action schemas for pick up, unstack, put down and stack operations."
+            ],
+            "goal": "Provide a precise, implementable action model for manipulating blocks that captures the stated restrictions and supports planning."
+        },
+        "sensing_agent": {
+            "private_information": [
+                "My role is to record objects, initial world state observations and canonicalize object names and facts.",
+                "I provide the list of blocks and precise initial relations such as on, ontable, clear and holding status."
+            ],
+            "goal": "Produce a complete, unambiguous world description of objects and initial facts according to the given statement."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and remove bookkeeping shortcuts, quotas, or post-hoc penalties from partial models.",
+                "I verify that action preconditions and effects do not rely on implicit or shortcut bookkeeping tokens and that single-handedness and exclusivity constraints are enforced."
+            ],
+            "goal": "Generate a consistency report that identifies and corrects any temporal or causal shortcuts and yields constraints to be enforced by the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "My role is to integrate agent outputs and produce a final PDDL domain and problem tuned for the FastDownwards solver.",
+                "I must keep agent actions distinct, reconcile naming differences, enforce auditor constraints, and target FastDownwards compatibility."
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem, enclosed between <domain></domain> and <problem></problem> tags, that can be solved by FastDownwards to achieve the block arrangement goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_blocks": 4,
+            "blocks": [
+                "red",
+                "yellow",
+                "blue",
+                "orange"
+            ],
+            "hand_capacity": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Available actions: pick-up a block, unstack a block from on top of another, put-down a block, stack a block on top of another.",
+            "Restrictions: only one block may be picked up or unstacked at a time.",
+            "Restrictions: pick-up or unstack actions require the hand to be empty prior to the action.",
+            "A block is pick-up-able from the table only if it is on the table and clear.",
+            "A block is clear if no block is on top of it and it is not currently held.",
+            "Unstacking a block from another requires that the block was on top of that other block and that the block is clear.",
+            "When a block is picked up or unstacked, the agent is holding that block and the hand becomes non-empty.",
+            "Put-down is only possible if the agent is holding a block. After put-down, the hand becomes empty.",
+            "Stack is only possible if the agent is holding the block to be stacked and the target block is clear. After stacking, the hand becomes empty and the target block is no longer clear.",
+            "Initial state observations: orange is clear, the hand is empty, blue is on top of yellow, orange is on top of blue, yellow is on top of red, and red is on the table.",
+            "Goal conditions: red on top of yellow, blue on top of orange, and orange on top of red."
+        ]
+    },
+    "workflow": {
+        "stacker": {
+            "modeling": {
+                "input": [],
+                "output": "action_model",
+                "system_prompt": "You are an expert in formalizing action schemas for block manipulation. Produce precise precondition and effect descriptions for each action in a machine-friendly logical form, but do not emit PDDL. Identify required fluents (for example: on, ontable, clear, holding, handempty) and state exclusivity constraints. Ensure single-handedness and one-block-at-a-time rules are explicit.",
+                "prompt": "As agent 'stacker', use the public information and your private knowledge to produce an action model that lists action names, parameters, logical preconditions and logical effects. Do not output PDDL. Provide the action model in a structured plain-text format that the orchestrator can consume as 'action_model'. If you detect ambiguous terms in the public information, state the ambiguity and provide a canonical naming suggestion."
+            }
+        },
+        "sensing_agent": {
+            "world_description": {
+                "input": [],
+                "output": "world_description",
+                "system_prompt": "You are an expert at observing and canonicalizing initial world states. Provide an explicit list of objects, types, and ground facts representing the initial state. Use canonical predicate names compatible with common planning vocabularies: on, ontable, clear, holding, handempty.",
+                "prompt": "As agent 'sensing_agent', produce a canonical world description containing the object list and an explicit set of ground predicates that reflect the initial conditions from public_information. Do not emit PDDL. If any detail is underspecified, report which facts are assumed and why."
+            }
+        },
+        "auditor": {
+            "consistency_report": {
+                "input": [
+                    "action_model",
+                    "world_description"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Your job is to detect and remove bookkeeping shortcuts such as hidden quota tokens, implicit counters, or post-hoc penalties. You must ensure that action effects and preconditions are causally and temporally sound and that multi-step invariants (like hand exclusivity) are enforced explicitly.",
+                "prompt": "As agent 'auditor', consume the 'action_model' and 'world_description' and produce a consistency report that (1) identifies any implicit bookkeeping artifacts or shortcuts in the action model, (2) prescribes explicit constraints or additional fluents needed to ensure causal and temporal correctness, and (3) produce a sanitized set of constraints the orchestrator must enforce. Output the report as structured recommendations and corrections to be used by the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "action_model",
+                    "world_description",
+                    "consistency_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring, producing PDDL compatible with the FastDownwards solver. Integrate the provided action model, world description and auditor constraints. Produce a complete PDDL domain and a corresponding PDDL problem, keeping agent actions distinct when relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure typing and requirements are compatible with FastDownwards and avoid using bookkeeping shortcuts. Make any necessary disambiguations explicit in comments within the PDDL where allowed.",
+                "prompt": "As the 'orchestrator', integrate the inputs action_model, world_description and consistency_report to produce a final PDDL domain and PDDL problem that FastDownwards can consume to achieve the stated goal: red on top of yellow, blue on top of orange, and orange on top of red. Keep actions distinct and ensure all constraints from the auditor are enforced. Enclose the domain and problem between <domain></domain> and <problem></problem> tags respectively. If you must choose a representation detail, state it explicitly prior to the PDDL blocks."
+            }
+        },
+        "constraints": [
+            "stacker.modeling->orchestrator.pddl",
+            "sensing_agent.world_description->orchestrator.pddl",
+            "auditor.consistency_report->orchestrator.pddl",
+            "sensing_agent.world_description->auditor.consistency_report",
+            "stacker.modeling->auditor.consistency_report"
+        ]
+    }
+}

@@ -1,0 +1,114 @@
+{
+    "name": "BlocksworldScaling18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "observer",
+            "domain_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "observer": {
+            "private_information": [
+                "Initial facts: blue is clear",
+                "Initial facts: orange is clear",
+                "Initial facts: hand is empty",
+                "Initial facts: blue is on red",
+                "Initial facts: orange is on yellow",
+                "Initial facts: red is on table",
+                "Initial facts: yellow is on table",
+                "Objects: blue, orange, red, yellow"
+            ],
+            "goal": "Ensure blue is on top of red and yellow is on top of orange"
+        },
+        "domain_expert": {
+            "private_information": [
+                "Available primitive actions: pick-up, unstack, put-down, stack",
+                "Action constraints: one block at a time, hand must be empty to pick or unstack, blocks must be clear to be picked or to receive a stack",
+                "Clearing semantics: a block is clear if there is no block on top of it and it is not held"
+            ],
+            "goal": "Provide an accurate, unambiguous description of predicates, action schemas, and intended dynamics in natural structured form"
+        },
+        "auditor": {
+            "private_information": [
+                "Role: detect temporal and causal inconsistencies and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "Focus: ensure preconditions and effects reflect real causal relationships and that no implicit state variables are assumed"
+            ],
+            "goal": "Audit domain and instance descriptions for causal completeness and propose minimal corrections or added invariants"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a finalized PDDL domain and PDDL problem file compatible with the FastDownwards solver that achieves the stated goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "blue",
+                "orange",
+                "red",
+                "yellow"
+            ],
+            "hand_state": "empty",
+            "num_blocks": 4
+        },
+        "public_information": [
+            "There is a Blocksworld domain with blocks that can be picked, unstacked, put down, and stacked",
+            "Valid actions: pick up a block, unstack a block from another block, put down a block, stack a block on another block",
+            "Restrictions: only one block can be held at a time and only if the hand is empty",
+            "A block can be picked up only if it is on the table and it is clear",
+            "A block can be unstacked only if it is on top of another block and it is clear",
+            "A block is clear if there is no block on top of it and it is not being held",
+            "When a block is picked up or unstacked the agent is holding that block",
+            "A placed or stacked block causes the agent's hand to become empty",
+            "Stacking a block onto another block makes the target block no longer clear"
+        ]
+    },
+    "workflow": {
+        "observer": {
+            "describe": {
+                "input": [],
+                "output": "obs_initial_and_goal",
+                "system_prompt": "You are an observation agent who must provide a precise listing of objects, initial atomic facts, and the goal condition using short logical atoms or bullet style facts. Do not emit PDDL. Use consistent object names and ensure facts are non-ambiguous.",
+                "prompt": "Your name is observer. Use the public information about the Blocksworld domain and your private initial facts to produce a canonical list of objects, a canonical set of initial ground atoms such as on, on-table, clear, holding, and handempty, and the goal atoms. Provide the information as compact atomic facts and a short mapping from natural names to object identifiers."
+            }
+        },
+        "domain_expert": {
+            "analyze": {
+                "input": [],
+                "output": "domain_analysis",
+                "system_prompt": "You are an expert in classical planning domains and Blocksworld semantics. Provide predicates, action schemas, and precise preconditions and effects in structured natural language or pseudocode. Do not output full PDDL. Keep action names and parameter conventions explicit and distinct.",
+                "prompt": "Your name is domain_expert. Based on the public information about actions and constraints, and your private knowledge of action semantics, list the set of predicates to represent the world, then for each primitive action give a schema with parameters, preconditions, and effects. Also call out any required invariants or typing for objects that the orchestrator should preserve."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "obs_initial_and_goal",
+                    "domain_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Your job is to inspect the observational description and the domain analysis to identify missing causal links, implicit bookkeeping shortcuts, and possible temporal inconsistencies. Provide concrete corrections or minimal additional predicates and invariants to remove shortcuts. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Using the observation output and the domain expert analysis, inspect for causal gaps such as implicit state variables, missing deletes or adds, ambiguous clear definitions, or hidden tokens. Produce a short list of recommended fixes, additional invariants, or constraints that the orchestrator must enforce in the final PDDL so plans are causally sound."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_initial_and_goal",
+                    "domain_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the observation, domain analysis, and audit report to produce a final PDDL domain and PDDL problem targeting the FastDownwards planner. You must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure action names remain distinct and reflect the intended causal semantics. Make the PDDL fully compatible with FastDownwards, including types and requirements if needed.",
+                "prompt": "Your name is orchestrator. Combine the canonical initial atoms, the domain action schemas, and the auditor's corrections to produce a complete PDDL domain and a complete PDDL problem for the instance. Target FastDownwards compatibility. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the final PDDL enforces that only one block can be held at a time, that clear is correctly maintained, and that stacking removes the clear property from the target block."
+            }
+        },
+        "constraints": [
+            "observer.describe->orchestrator.pddl",
+            "domain_expert.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

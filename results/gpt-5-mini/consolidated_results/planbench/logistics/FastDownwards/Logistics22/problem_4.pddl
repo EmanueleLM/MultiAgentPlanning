@@ -1,60 +1,66 @@
-(define (problem logistics22-problem)
-  (:domain logistics22)
+(define (problem multi_modal_problem)
+  (:domain multi_modal_transport)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - object
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 - stage
+    ;; locations
+    location_0_0 location_0_1 location_0_2 - location
+    location_1_0 location_1_1 location_1_2 - location
+
+    ;; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    ;; packages
+    package_0 package_1 - package
+
+    ;; cities
+    city_0 city_1 - city
+
+    ;; discrete ordered stages to enforce explicit temporal progression
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 - stage
   )
+
   (:init
-    (cur stage_0)
-    (succ stage_0 stage_1)
-    (succ stage_1 stage_2)
-    (succ stage_2 stage_3)
-    (succ stage_3 stage_4)
-    (succ stage_4 stage_5)
-    (succ stage_5 stage_6)
-    (succ stage_6 stage_7)
-    (succ stage_7 stage_8)
-    (succ stage_8 stage_9)
-    (succ stage_9 stage_10)
-    (succ stage_10 stage_11)
-    (succ stage_11 stage_12)
-    (succ stage_12 stage_13)
-    (succ stage_13 stage_14)
-    (succ stage_14 stage_15)
-    (succ stage_15 stage_16)
-    (succ stage_16 stage_17)
+    ;; Airports (one per city)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (cats object_0)
-    (hand object_11)
-    (hand object_12)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Location -> city membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
 
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ;; Initial vehicle positions
+    (at airplane_0 location_1_0)
+    (at truck_0 location_0_2)
+    (at truck_1 location_1_2)
 
-    (next object_0 object_5)
-    (next object_11 object_9)
-    (next object_12 object_10)
-    (next object_3 object_6)
-    (next object_4 object_8)
+    ;; Initial package positions
+    (at-package package_0 location_0_1)
+    (at-package package_1 location_1_2)
+
+    ;; Stage ordering (explicit successor relation)
+    (next stage_0 stage_1)
+    (next stage_1 stage_2)
+    (next stage_2 stage_3)
+    (next stage_3 stage_4)
+    (next stage_4 stage_5)
+    (next stage_5 stage_6)
+    (next stage_6 stage_7)
+    (next stage_7 stage_8)
+    (next stage_8 stage_9)
+
+    ;; Initial current stage token (exactly one holds)
+    (at-stage stage_0)
   )
-  (:goal (and
-    (next object_11 object_7)
-    (next object_12 object_5)
-  ))
+
+  (:goal
+    (and
+      (at-package package_0 location_0_2)
+      (at-package package_1 location_1_0)
+    )
+  )
 )

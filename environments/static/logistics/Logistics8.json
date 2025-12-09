@@ -2,101 +2,134 @@
     "name": "Logistics8",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 5,
         "names": [
-            "planner",
-            "semantic_analyzer",
-            "temporal_auditor",
+            "city_planner",
+            "truck_operator",
+            "airline_operator",
+            "auditor",
             "orchestrator"
         ],
-        "planner": {
+        "city_planner": {
             "private_information": [
-                "I am responsible for interpreting actions and mapping them to parameterized templates with preconditions and effects.",
-                "I should produce a structured model of actions from the game-like vocabulary without producing final PDDL."
+                "There are two cities indexed 0 and 1",
+                "Each city has exactly two locations indexed 0 and 1",
+                "location_0_0 and location_1_0 are airports",
+                "Locations in the same city are directly connected for trucks",
+                "Each location belongs to exactly one city"
             ],
-            "goal": "Produce a consistent symbolic model of the available actions, their parameters, preconditions, and effects based on the provided specification and initial statements."
+            "goal": "Provide a correct structural description of cities, locations, and airports to support planning the delivery of packages to their goals"
         },
-        "semantic_analyzer": {
+        "truck_operator": {
             "private_information": [
-                "I am responsible for normalizing object and predicate names, detecting synonyms and naming conflicts, and producing a canonical object and predicate list.",
-                "I should annotate ambiguous references and propose canonical names but should not output PDDL directly."
+                "Each city has exactly one truck named truck_<city_index>",
+                "Trucks can drive between any two locations in the same city",
+                "Load and unload semantics for trucks: package must be co-located with truck to load; loading removes package from location and places it in the truck; unloading requires package in truck and places it at the truck location"
             ],
-            "goal": "Produce a cleaned ontology: canonical object list, canonical predicate names, and mappings from original names to canonical names so that different agents can refer to the same items consistently."
+            "goal": "Provide a correct model of trucks, truck capabilities, and local load/unload constraints to support planning"
         },
-        "temporal_auditor": {
+        "airline_operator": {
             "private_information": [
-                "I audit temporal and causal consistency across planned actions and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
-                "I should detect implicit bookkeeping shortcuts and propose removals or explicit encodings that preserve causal correctness."
+                "There are airplanes that move between airports of cities",
+                "Airplanes can only fly between airport locations",
+                "Load and unload semantics for airplanes: package must be at the airport to load; loading removes package from location and places it in the airplane; unloading requires package in airplane and places it at the airport location"
             ],
-            "goal": "Produce an audit report that enforces causal consistency, eliminates or replaces bookkeeping shortcuts, and suggests constraints needed for a true time- and causality-preserving planning model."
+            "goal": "Provide a correct model of airplanes, airports, and intercity flight capabilities to support planning"
+        },
+        "auditor": {
+            "private_information": [
+                "Role is to detect temporal and causal shortcutting in models and to require explicit resource or state transitions rather than bookkeeping shortcuts",
+                "Audit will check for implicit assumptions such as instant teleportation, hidden tokens, or omitted loading/unloading preconditions"
+            ],
+            "goal": "Audit combined models for causal and temporal consistency and produce a report eliminating bookkeeping shortcuts and listing necessary preconditions and effects"
         },
         "orchestrator": {
-            "private_information": [
-                "I am responsible for integrating inputs from the other agents and producing the final PDDL domain and problem files targeted to the FastDownwards solver.",
-                "I must keep agent actions distinct and resolve remaining ambiguities, then output a final domain and problem suitable for FastDownwards."
-            ],
-            "goal": "Integrate the planner, semantic analyzer, and temporal auditor outputs to produce a final PDDL domain and problem for FastDownwards that achieves the stated goals."
+            "private_information": [],
+            "goal": "Integrate the models and audit report and produce a single PDDL domain and PDDL problem tailored for the FastDownward solver that solves the global delivery goal"
         }
     },
     "environment": {
         "init": {
-            "objects_count": 11,
-            "object_prefix": "object_"
+            "cities": 2,
+            "locations_per_city": 2,
+            "airports": [
+                "location_0_0",
+                "location_1_0"
+            ]
         },
         "public_information": [
-            "There are parameterized actions available: paltry, sip, clip, wretched, memory, tightfisted.",
-            "Predicates used in action descriptions include hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
-            "Actions have preconditions and effects that manipulate next and vase and possibly other predicates.",
-            "Example action templates and constraints: To perform paltry the preconditions include hand, cats, texture, vase, and next. Paltry makes next on a different pair true and removes a vase fact.",
-            "Sip requires hand, cats, texture, and two next facts. Sip makes a vase fact true and removes one next fact.",
-            "Clip requires hand, sneeze, texture, and two next facts. Clip makes a vase fact true and removes one next fact.",
-            "Wretched requires sneeze, two texture facts, stupendous, next, and collect facts. Wretched produces a next fact and removes another next fact.",
-            "Memory requires cats, two spring facts and next. Memory produces and removes next facts appropriately.",
-            "Tightfisted requires hand, sneeze, texture, next, and vase and flips next and vase facts accordingly.",
-            "The initial statements in the scenarios mention a collection of ground atomic facts. Two goal variants are provided in separate statements."
+            "There are two cities: city_0 and city_1",
+            "Each city has two locations: location_<city>_0 and location_<city>_1",
+            "location_0_0 is an airport in city_0",
+            "location_1_0 is an airport in city_1",
+            "airplane_0 is at location_0_0",
+            "package_0 is at location_0_0",
+            "package_1 is at location_0_0",
+            "truck_0 is at location_0_0",
+            "truck_1 is at location_1_1",
+            "location_0_0 is in city_0",
+            "location_0_1 is in city_0",
+            "location_1_0 is in city_1",
+            "location_1_1 is in city_1",
+            "Actions available are: load into truck, unload from truck, drive truck between locations in same city, load into airplane, unload from airplane, fly airplane between airports",
+            "Restrictions: package and vehicle must be co-located to load into that vehicle, loading removes package from the location and places it in the vehicle, unloading requires the package to be in the vehicle and places it at the vehicle location, trucks can only drive within the same city, airplanes only fly between airport locations"
         ]
     },
     "workflow": {
-        "planner": {
+        "city_planner": {
             "model": {
                 "input": [],
-                "output": "planner_model",
-                "system_prompt": "You are an expert modeler of symbolic actions. Produce for each action a structured template that lists parameter variables, required predicates (preconditions), add effects, and delete effects. Use the action names paltry, sip, clip, wretched, memory, tightfisted. Do not emit final PDDL. Produce a clear machine-parsable mapping for each action.",
-                "prompt": "You are the planner agent. Use the public information and the use-case specification to extract and formalize action templates. If some information is missing, state what is missing and give the most conservative template consistent with the facts."
+                "output": "model_city",
+                "system_prompt": "You are the city planner subsystem. Analyze the public information and your private information and produce a concise structured model of cities, locations, and which locations are airports. Do not emit PDDL. Output a machine readable description of types, objects, and relationships such as which location belongs to which city and which location is the airport in that city.",
+                "prompt": "As city_planner you receive the public information and your private information. Produce a clear structured model listing objects, types, location-to-city membership, and airport designations. Do not assume extra objects beyond those stated. Do not output PDDL."
             }
         },
-        "semantic_analyzer": {
-            "analyze": {
+        "truck_operator": {
+            "model": {
                 "input": [],
-                "output": "semantic_analysis",
-                "system_prompt": "You are an expert in ontology normalization and naming resolution. Produce a canonical list of objects, a canonical list of predicates, and a mapping table from raw mentions to canonical names. Identify potential synonymy and ambiguous references that must be resolved before generating PDDL. Do not generate PDDL.",
-                "prompt": "You are the semantic analyzer. Normalize object names like object_0 through object_10, normalize predicate names such as hand, cats, texture, vase, next, sneeze, collect, spring, stupendous. Provide mappings and any recommended renamings."
+                "output": "model_truck",
+                "system_prompt": "You are the truck operator subsystem. Use your private information and the public information to produce a structured description of trucks, their initial locations, and the exact preconditions and effects for loading, unloading, and driving actions as they apply within a city. Do not emit PDDL. Present the local action schemas and initial truck-related facts.",
+                "prompt": "As truck_operator produce a structured model of trucks, initial truck locations, and formalized preconditions and effects for truck load, unload, and drive actions. Do not output PDDL."
             }
         },
-        "temporal_auditor": {
+        "airline_operator": {
+            "model": {
+                "input": [],
+                "output": "model_air",
+                "system_prompt": "You are the airline operator subsystem. Use your private information and the public information to produce a structured description of airplanes, their initial locations, airports, and the exact preconditions and effects for loading, unloading, and flying actions between airports. Do not emit PDDL. Present the airplane-related action schemas and initial airplane facts.",
+                "prompt": "As airline_operator produce a structured model of airplanes, initial airplane locations, airport constraints, and formalized preconditions and effects for plane load, unload, and fly actions. Do not output PDDL."
+            }
+        },
+        "auditor": {
             "audit": {
-                "input": [],
+                "input": [
+                    "model_city",
+                    "model_truck",
+                    "model_air"
+                ],
                 "output": "audit_report",
-                "system_prompt": "You are an expert auditor of temporal and causal models. Examine the planner model and semantic analysis outputs and detect temporal or causal shortcuts. Propose explicit encodings that remove bookkeeping shortcuts, such as quota tokens or post-hoc penalties. Produce concrete recommendations or transformed constraints so the resulting model preserves causality.",
-                "prompt": "You are the temporal auditor. Focus on ensuring preconditions and effects across actions preserve causal dependencies. If an action implicitly assumes bookkeeping tokens, propose explicit predicate encodings or ordering constraints to eliminate such shortcuts."
+                "system_prompt": "You are an independent auditor that checks temporal and causal consistency. Review the structured models produced by the other subsystems and produce a report that identifies any causal shortcuts, missing preconditions, or bookkeeping tokens. Propose explicit preconditions or effects to remove shortcuts and ensure the models are temporally consistent. Do not produce PDDL. Output a clear list of required corrections or confirmations.",
+                "prompt": "As auditor, receive the structured models from city_planner, truck_operator, and airline_operator. Check for causal and temporal shortcuts such as instant teleportation, omitted load or unload preconditions, or hidden resources. Produce an audit_report listing corrections, required explicit preconditions, and confirmed assumptions. Do not output PDDL."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "planner_model",
-                    "semantic_analysis",
+                    "model_city",
+                    "model_truck",
+                    "model_air",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert integrator and PDDL author. Your job is to take structured action templates, canonical ontology, and the auditor's constraints and produce a final PDDL domain and problem targeted to the FastDownwards solver. Keep agent actions distinct by prefixing action names with their originating agent when helpful. Ensure the domain is syntactically valid for FastDownwards and ensure the problem encodes the provided initial facts and goals. Provide any required typing and object declarations.",
-                "prompt": "You are the orchestrator. Integrate the planner model, semantic analysis, and audit report to produce two text artifacts: a PDDL domain and a PDDL problem file suitable for FastDownwards. The domain must include all predicates, action definitions, and any necessary typing. The problem must enumerate objects, initial facts, and goals corresponding to the scenario statements. Resolve remaining ambiguities conservatively and document assumptions in comments at the top of the domain and problem."
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the provided structured models and the auditor report and produce a complete PDDL domain and a PDDL problem file tailored for the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions produced by trucks and airplanes distinct and include all necessary types, predicates, action schemas, initial state, objects, and the global goal. Ensure the PDDL uses constructs supported by FastDownward and avoid nonstandard extensions.",
+                "prompt": "As orchestrator, integrate the models and the audit_report into a single coherent planning model. Produce a PDDL domain and a PDDL problem targeted to FastDownward. Enclose the domain with <domain></domain> tags and the problem with <problem></problem> tags. Make sure to keep agent actions distinct and to reflect all audit corrections."
             }
         },
         "constraints": [
-            "planner.model->orchestrator.pddl",
-            "semantic_analyzer.analyze->orchestrator.pddl",
-            "temporal_auditor.audit->orchestrator.pddl"
+            "city_planner.model->orchestrator.pddl",
+            "truck_operator.model->orchestrator.pddl",
+            "airline_operator.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
         ]
     }
 }

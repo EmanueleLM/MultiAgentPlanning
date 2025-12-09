@@ -1,0 +1,107 @@
+{
+    "name": "HanoiScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disktheorist",
+            "move_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "disktheorist": {
+            "private_information": [
+                "There are six disks labeled from smallest to largest as A, B, C, D, E, F",
+                "Disks keep a strict total ordering by size with A smallest and F largest",
+                "Valid atomic action concept: move the top disk from one peg to another",
+                "Legal move rules: only one disk moved at a time, only top disks can move, never place a larger disk on a smaller disk"
+            ],
+            "goal": "Provide a precise, formal model of the Tower of Hanoi domain that enumerates entities, predicates, state representation, and the legal move schema in structured neutral form for later conversion to PDDL."
+        },
+        "move_planner": {
+            "private_information": [
+                "Initial state: right peg holds from top to bottom A B C D E F and middle and left pegs are empty",
+                "Goal state: left peg must hold from top to bottom A B C D E F and middle and right pegs must be empty",
+                "Intermediate use of the middle peg is allowed but it must be empty at the end"
+            ],
+            "goal": "Produce a high level, causally ordered decomposition or recursive plan describing the sequence and grouping of moves needed to transfer six disks from the right peg to the left peg using the middle peg as auxiliary. Do not emit PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Special role: audit temporal and causal consistency and remove bookkeeping shortcuts",
+                "Examples of bookkeeping shortcuts to avoid: using quota tokens, abstract counters that bypass explicit move ordering, or post hoc penalties to enforce constraints",
+                "Ensure that all moves are justified by explicit preconditions and that no hidden state or shortcuts are introduced"
+            ],
+            "goal": "Audit the model and the plan for temporal and causal consistency, verify that every step obeys the legal move rules, and produce a report listing any implicit assumptions, removed shortcuts, and required clarifications."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the model, the plan, and the audit report to produce a final PDDL domain and problem targeting the FastDownward planner that implements the Tower of Hanoi instance with six disks and three pegs."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with three pegs named left, middle, right",
+            "Action available: move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time; may only move a disk that is on top of a peg; never place a larger disk on top of a smaller disk",
+            "Initial state: right peg holds from top to bottom disk A disk B disk C disk D disk E disk F while middle and left pegs are empty",
+            "Goal state: left peg holds from top to bottom disk A disk B disk C disk D disk E disk F and middle and right pegs are empty",
+            "Middle peg is allowed as an intermediate but must be empty at the end"
+        ]
+    },
+    "workflow": {
+        "disktheorist": {
+            "model": {
+                "input": [],
+                "output": "model_disktheorist",
+                "system_prompt": "You are an expert in formalizing discrete state transition systems and domain models. Provide a concise structured formal model that enumerates the objects, predicates, state encoding, and the schema of legal moves with explicit preconditions and effects. Do not emit PDDL. Use a neutral structured representation that is straightforward to convert to PDDL by an integrator.",
+                "prompt": "Using only your private information and the public information from the environment, produce a formal model for the Tower of Hanoi domain with six disks and three pegs. Clearly list object types, predicate signatures, and the move action schema with precise preconditions and effects. Do not assume any bookkeeping shortcuts and do not produce PDDL."
+            }
+        },
+        "move_planner": {
+            "plan": {
+                "input": [
+                    "model_disktheorist"
+                ],
+                "output": "plan_move_planner",
+                "system_prompt": "You are an expert planner who produces high level causal decompositions and recursive problem solves. Produce a clear sequence and grouping of moves or a recursive schema for moving N disks that can be followed or translated into low-level actions. Do not emit PDDL.",
+                "prompt": "Given the model provided by the disktheorist and the public initial and goal states, produce a stepwise recursive plan or an explicit ordered move list for transferring six disks from the right peg to the left peg using the middle peg as auxiliary. Ensure the plan obeys the legal move rules and makes no use of implicit bookkeeping shortcuts."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_disktheorist",
+                    "plan_move_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. Inspect domain models and plans to ensure all actions have explicit preconditions and effects, that there are no hidden tokens or counters used to shortcut the causal structure, and that the plan can be executed by only applying the allowed move action. Produce a report that lists any violations, removed shortcuts, clarifications, and suggested corrections.",
+                "prompt": "Using the model and plan you received, audit them for causal and temporal soundness. Remove or flag bookkeeping shortcuts such as quota tokens or abstract counters. Provide concrete corrections or clarifications that the orchestrator must incorporate before generating PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_disktheorist",
+                    "plan_move_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent integrated PDDL for the FastDownward planner. Integrate models, plans, and audit reports into a single consistent PDDL domain and a PDDL problem for the Tower of Hanoi instance with six disks and three pegs. Keep action definitions explicit and low level. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is syntactically compatible with the FastDownward requirements and that no bookkeeping shortcuts remain.",
+                "prompt": "Integrate the inputs from the other agents and produce a final PDDL domain and a PDDL problem that represent the Tower of Hanoi instance described in the environment. The domain must include object types, predicates, and an action move that enforces the legal move rules. The problem must instantiate six disks A B C D E F and three pegs left middle right, set the initial state with all disks stacked on the right peg in correct order, and set the goal state with all disks stacked on the left peg. Enclose the domain between <domain></domain> tags and the problem between <problem></problem>. Target the FastDownward planner and ensure no temporal or bookkeeping shortcuts are present."
+            }
+        },
+        "constraints": [
+            "disktheorist.model->move_planner.plan",
+            "disktheorist.model->auditor.audit",
+            "disktheorist.model->orchestrator.pddl",
+            "move_planner.plan->auditor.audit",
+            "move_planner.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

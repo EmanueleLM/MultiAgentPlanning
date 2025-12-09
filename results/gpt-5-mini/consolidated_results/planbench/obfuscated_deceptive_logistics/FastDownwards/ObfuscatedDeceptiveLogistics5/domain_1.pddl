@@ -1,23 +1,24 @@
-(define (domain ObfuscatedDeceptiveLogistics5)
+(define (domain obfuscated-deceptive-logistics5)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types obj)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
+    (next ?a - obj ?b - obj)
+    (cats ?o - obj)
+    (hand ?o - obj)
+    (texture ?o - obj)
+    (vase ?x - obj ?y - obj)
+    (sneeze ?o - obj)
+    (spring ?o - obj)
+    (stupendous ?o - obj)
+    (collect ?x - obj ?y - obj)
   )
 
-  ;; paltry: requires hand, cats, texture, vase(o0,o1), next(o1,o2)
-  ;; effects: add next(o0,o2), delete vase(o0,o1)
+  ;; Action: paltry
+  ;; Preconditions: hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2
+  ;; Effects: add next ?o0 ?o2, delete vase ?o0 ?o1
   (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
     :precondition (and
       (hand ?o0)
       (cats ?o1)
@@ -31,10 +32,11 @@
     )
   )
 
-  ;; sip: requires hand, cats, texture, next(o0,o2), next(o1,o2)
-  ;; effects: add vase(o0,o1), delete next(o0,o2)
+  ;; Action: sip
+  ;; Preconditions: hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2
+  ;; Effects: add vase ?o0 ?o1, delete next ?o0 ?o2
   (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
     :precondition (and
       (hand ?o0)
       (cats ?o1)
@@ -48,10 +50,11 @@
     )
   )
 
-  ;; clip: requires hand, sneeze, texture, next(o1,o2), next(o0,o2)
-  ;; effects: add vase(o0,o1), delete next(o0,o2)
+  ;; Action: clip
+  ;; Preconditions: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2
+  ;; Effects: add vase ?o0 ?o1, delete next ?o0 ?o2
   (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
     :precondition (and
       (hand ?o0)
       (sneeze ?o1)
@@ -65,11 +68,12 @@
     )
   )
 
-  ;; wretched: requires sneeze(o0), texture(o1), texture(o2), stupendous(o3),
-  ;;           next(o0,o1), collect(o1,o3), collect(o2,o3)
-  ;; effects: add next(o0,o2), delete next(o0,o1)
+  ;; Action: wretched
+  ;; Preconditions: sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3,
+  ;;                next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3
+  ;; Effects: add next ?o0 ?o2, delete next ?o0 ?o1
   (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
     :precondition (and
       (sneeze ?o0)
       (texture ?o1)
@@ -85,10 +89,11 @@
     )
   )
 
-  ;; memory: requires cats(o0), spring(o1), spring(o2), next(o0,o1)
-  ;; effects: add next(o0,o2), delete next(o0,o1)
+  ;; Action: memory
+  ;; Preconditions: cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1
+  ;; Effects: add next ?o0 ?o2, delete next ?o0 ?o1
   (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
     :precondition (and
       (cats ?o0)
       (spring ?o1)
@@ -101,10 +106,11 @@
     )
   )
 
-  ;; tightfisted: requires hand(o0), sneeze(o1), texture(o2), next(o1,o2), vase(o0,o1)
-  ;; effects: add next(o0,o2), delete vase(o0,o1)
+  ;; Action: tightfisted
+  ;; Preconditions: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1
+  ;; Effects: add next ?o0 ?o2, delete vase ?o0 ?o1
   (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
     :precondition (and
       (hand ?o0)
       (sneeze ?o1)
@@ -117,4 +123,5 @@
       (not (vase ?o0 ?o1))
     )
   )
+
 )

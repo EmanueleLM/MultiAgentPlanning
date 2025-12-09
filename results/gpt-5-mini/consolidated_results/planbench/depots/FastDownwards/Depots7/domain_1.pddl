@@ -1,112 +1,183 @@
-(define (domain multi_fragment_domain)
-  (:requirements :strips :negative-preconditions :typing)
-  (:types obj)
+(define (domain depots-logistics)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types place pallet crate hoist truck stage)
+
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
+    ;; Locations
+    (at-truck ?tr - truck ?pl - place)
+    (at-hoist  ?h  - hoist  ?pl - place)
+    (at-pallet ?p  - pallet ?pl - place)
+    (at-crate  ?c  - crate  ?pl - place)
+
+    ;; Stacking relations
+    (on-pallet ?c - crate ?p - pallet)
+    (on-crate  ?c - crate  ?d - crate)
+
+    ;; Surface clearance
+    (clear-pallet ?p - pallet)
+    (clear-crate  ?c - crate)
+
+    ;; Hoist state
+    (hoist-available ?h - hoist)
+    (lifting ?h - hoist ?c - crate)
+
+    ;; Truck content
+    (in-truck ?c - crate ?t - truck)
+
+    ;; Stage progression (explicit discrete time)
+    (current ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
+
+    ;; Self-identity facts to prohibit placing a crate onto itself without using equality
+    (same ?x - crate ?y - crate)
   )
 
-  ;; clip(h sn t)
-  (:action clip
-    :parameters (?h - obj ?sn - obj ?t - obj)
+  ;; Drive a truck from one place to another (consumes a stage, produces the successor stage)
+  (:action drive
+    :parameters (?tr - truck ?from - place ?to - place ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (next ?h ?t)
+      (at-truck ?tr ?from)
+      (current ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (vase ?h ?sn)
-      (not (next ?h ?t))
-    )
-  )
-
-  ;; wretched(sn t1 t2 s)
-  (:action wretched
-    :parameters (?sn - obj ?t1 - obj ?t2 - obj ?s - obj)
-    :precondition (and
-      (sneeze ?sn)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?s)
-      (next ?sn ?t1)
-      (collect ?t1 ?s)
-      (collect ?t2 ?s)
-    )
-    :effect (and
-      (next ?sn ?t2)
-      (not (next ?sn ?t1))
-    )
-  )
-
-  ;; tightfisted(h sn t)
-  (:action tightfisted
-    :parameters (?h - obj ?sn - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (vase ?h ?sn)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?sn))
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+      (not (current ?s1))
+      (current ?s2)
     )
   )
 
-  ;; sip(h c t)
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
+  ;; Lift a crate from a pallet using a hoist
+  (:action lift-from-pallet
+    :parameters (?h - hoist ?c - crate ?p - pallet ?pl - place ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (at-hoist ?h ?pl)
+      (at-pallet ?p ?pl)
+      (on-pallet ?c ?p)
+      (at-crate ?c ?pl)
+      (hoist-available ?h)
+      (clear-crate ?c)
+      (current ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (on-pallet ?c ?p))
+      (not (at-crate ?c ?pl))
+      (lifting ?h ?c)
+      (not (hoist-available ?h))
+      (clear-pallet ?p)
+      (not (current ?s1))
+      (current ?s2)
     )
   )
 
-  ;; memory(c s1 s2)
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+  ;; Lift a crate from another crate using a hoist
+  (:action lift-from-crate
+    :parameters (?h - hoist ?c - crate ?under - crate ?pl - place ?s1 - stage ?s2 - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (at-hoist ?h ?pl)
+      (on-crate ?c ?under)
+      (at-crate ?c ?pl)
+      (hoist-available ?h)
+      (clear-crate ?c)
+      (current ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (on-crate ?c ?under))
+      (not (at-crate ?c ?pl))
+      (lifting ?h ?c)
+      (not (hoist-available ?h))
+      (clear-crate ?under)
+      (not (current ?s1))
+      (current ?s2)
     )
   )
 
-  ;; paltry(h c t)
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+  ;; Drop a lifted crate to a pallet
+  (:action drop-to-pallet
+    :parameters (?h - hoist ?c - crate ?p - pallet ?pl - place ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (lifting ?h ?c)
+      (at-hoist ?h ?pl)
+      (at-pallet ?p ?pl)
+      (clear-pallet ?p)
+      (current ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
+      (hoist-available ?h)
+      (not (lifting ?h ?c))
+      (at-crate ?c ?pl)
+      (on-pallet ?c ?p)
+      (clear-crate ?c)
+      (not (clear-pallet ?p))
+      (not (current ?s1))
+      (current ?s2)
+    )
+  )
+
+  ;; Drop a lifted crate onto another crate (stacking)
+  (:action drop-to-crate
+    :parameters (?h - hoist ?c - crate ?d - crate ?pl - place ?s1 - stage ?s2 - stage)
+    :precondition (and
+      (lifting ?h ?c)
+      (at-hoist ?h ?pl)
+      (at-crate ?d ?pl)
+      (clear-crate ?d)
+      (not (same ?c ?d))  ;; prevent placing a crate onto itself
+      (current ?s1)
+      (next ?s1 ?s2)
+    )
+    :effect (and
+      (hoist-available ?h)
+      (not (lifting ?h ?c))
+      (at-crate ?c ?pl)
+      (on-crate ?c ?d)
+      (clear-crate ?c)
+      (not (clear-crate ?d))
+      (not (current ?s1))
+      (current ?s2)
+    )
+  )
+
+  ;; Load a lifted crate into a truck
+  (:action load-into-truck
+    :parameters (?h - hoist ?c - crate ?t - truck ?pl - place ?s1 - stage ?s2 - stage)
+    :precondition (and
+      (lifting ?h ?c)
+      (at-hoist ?h ?pl)
+      (at-truck ?t ?pl)
+      (current ?s1)
+      (next ?s1 ?s2)
+    )
+    :effect (and
+      (in-truck ?c ?t)
+      (hoist-available ?h)
+      (not (lifting ?h ?c))
+      (not (current ?s1))
+      (current ?s2)
+    )
+  )
+
+  ;; Unload a crate from a truck using a hoist (hoist becomes lifting and unavailable)
+  (:action unload-from-truck
+    :parameters (?h - hoist ?c - crate ?t - truck ?pl - place ?s1 - stage ?s2 - stage)
+    :precondition (and
+      (hoist-available ?h)
+      (at-hoist ?h ?pl)
+      (at-truck ?t ?pl)
+      (in-truck ?c ?t)
+      (current ?s1)
+      (next ?s1 ?s2)
+    )
+    :effect (and
+      (not (in-truck ?c ?t))
+      (lifting ?h ?c)
+      (not (hoist-available ?h))
+      (not (current ?s1))
+      (current ?s2)
     )
   )
 )

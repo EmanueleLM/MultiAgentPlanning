@@ -1,74 +1,38 @@
 (define (problem MysteryBlocksworld14-problem)
   (:domain MysteryBlocksworld14)
-
+  ;; Objects: four entities and a linear chain of stages to enforce ordered progression.
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6
-    object_7 object_8 object_9 object_10 object_11 object_12 - obj
+    a b c d - entity
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 - stage
   )
 
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; Initial facts provided by the human specification:
+    (craves d c)
+    (harmony)
+    (planet a)
+    (planet b)
+    (planet c)
+    (province a)
+    (province b)
+    (province d)
 
-    ;; collect relations (union of both agents' provided collects)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_8 object_2)
-
-    ;; hand facts (union)
-    (hand object_9)
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-
-    ;; next relations (union of both agents' provided next relations)
-    (next object_0 object_8)
-    (next object_0 object_7)
-    (next object_1 object_6)
-    (next object_10 object_8)
-    (next object_11 object_9)
-    (next object_11 object_5)
-    (next object_12 object_6)
-    (next object_4 object_6)
-    (next object_4 object_8)
-    (next object_5 object_9)
-    (next object_3 object_5)
-    (next object_9 object_7)
-
-    ;; sneeze facts (union)
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
-
-    ;; spring facts (union)
-    (spring object_5)
-    (spring object_6)
-    (spring object_7)
-    (spring object_8)
-
-    ;; stupendous facts (union)
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ;; texture facts (union)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Stage initialization: start at s0 and provide a successor chain s0->s1->...->s9.
+    (at-stage s0)
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (succ s4 s5)
+    (succ s5 s6)
+    (succ s6 s7)
+    (succ s7 s8)
+    (succ s8 s9)
   )
 
-  ;; Goal: chosen as the feasible combined target set (prefer agent1 mapping for object_10
-  ;; because agent2's request for object_10->object_6 conflicts with object_10->object_7).
+  ;; Goal: require both (craves c b) and (craves d a) to hold in the final state.
   (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_7)
-    (next object_12 object_7)
+    (craves c b)
+    (craves d a)
   ))
 )

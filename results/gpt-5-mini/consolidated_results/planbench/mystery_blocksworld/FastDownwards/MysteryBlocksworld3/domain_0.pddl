@@ -1,106 +1,67 @@
-(define (domain multi-agent-delivery)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types agent location object)
+(define (domain harmony-domain)
+  (:requirements :strips :typing)
+  (:types obj)
 
   (:predicates
-    (at ?a - agent ?l - location)                    ; agent is at location
-    (obj-at ?o - object ?l - location)               ; object is at location
-    (holding ?a - agent ?o - object)                 ; agent holds object
-    (delivered ?o - object)                          ; object has been delivered to its goal
-    (connected ?l1 - location ?l2 - location)       ; direct connection between locations (movement allowed)
-    (goal-loc ?o - object ?l - location)             ; designated delivery location for an object
+    (province ?x - obj)
+    (planet ?x - obj)
+    (harmony)
+    (pain ?x - obj)
+    (craves ?x ?y - obj)
   )
 
-  ; Generic move action usable by either agent
-  (:action move
-    :parameters (?a - agent ?from - location ?to - location)
-    :precondition (and
-      (at ?a ?from)
-      (connected ?from ?to)
-    )
+  ;; Attack: object must be both province and planet and global harmony holds.
+  ;; Produces a localized pain for the object and removes its province/planet and global harmony.
+  (:action Attack
+    :parameters (?o - obj)
+    :precondition (and (province ?o) (planet ?o) (harmony))
     :effect (and
-      (not (at ?a ?from))
-      (at ?a ?to)
-    )
-  )
-
-  ; Actions originating from planner_A (kept distinct to reflect role-specific capabilities)
-  (:action planner_A_pick
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_A ?l)
-      (obj-at ?o ?l)
-      (not (holding planner_A ?o))
-    )
-    :effect (and
-      (not (obj-at ?o ?l))
-      (holding planner_A ?o)
+      (pain ?o)
+      (not (province ?o))
+      (not (planet ?o))
+      (not (harmony))
     )
   )
 
-  (:action planner_A_drop
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_A ?l)
-      (holding planner_A ?o)
-    )
+  ;; Succumb: the same object that has pain can regain province/planet and global harmony.
+  (:action Succumb
+    :parameters (?o - obj)
+    :precondition (and (pain ?o))
     :effect (and
-      (not (holding planner_A ?o))
-      (obj-at ?o ?l)
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (not (pain ?o))
     )
   )
 
-  (:action planner_A_deliver
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_A ?l)
-      (holding planner_A ?o)
-      (goal-loc ?o ?l)
-    )
+  ;; Overcome: an object that has pain can seize province from other_object (which must currently hold a province).
+  ;; This creates a craves relation and re-establishes harmony; it consumes the object's pain and removes the other's province.
+  (:action Overcome
+    :parameters (?o - obj ?other - obj)
+    :precondition (and (province ?other) (pain ?o))
     :effect (and
-      (not (holding planner_A ?o))
-      (delivered ?o)
-      (obj-at ?o ?l)
+      (harmony)
+      (province ?o)
+      (craves ?o ?other)
+      (not (province ?other))
+      (not (pain ?o))
     )
   )
 
-  ; Actions originating from planner_B (kept distinct to reflect role-specific capabilities)
-  (:action planner_B_pick
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_B ?l)
-      (obj-at ?o ?l)
-      (not (holding planner_B ?o))
-    )
+  ;; Feast: actor that craves target and holds a province while harmony is true acts on target.
+  ;; This produces pain on the target, transfers the target's province to actor (i.e., deletes target's province and ensures actor has province),
+  ;; removes the craves relation, and deletes global harmony.
+  (:action Feast
+    :parameters (?actor - obj ?target - obj)
+    :precondition (and (craves ?actor ?target) (province ?actor) (harmony))
     :effect (and
-      (not (obj-at ?o ?l))
-      (holding planner_B ?o)
+      (pain ?target)
+      (province ?actor)
+      (not (craves ?actor ?target))
+      (not (province ?target))
+      (not (harmony))
     )
   )
 
-  (:action planner_B_drop
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_B ?l)
-      (holding planner_B ?o)
-    )
-    :effect (and
-      (not (holding planner_B ?o))
-      (obj-at ?o ?l)
-    )
-  )
-
-  (:action planner_B_deliver
-    :parameters (?o - object ?l - location)
-    :precondition (and
-      (at planner_B ?l)
-      (holding planner_B ?o)
-      (goal-loc ?o ?l)
-    )
-    :effect (and
-      (not (holding planner_B ?o))
-      (delivered ?o)
-      (obj-at ?o ?l)
-    )
-  )
 )

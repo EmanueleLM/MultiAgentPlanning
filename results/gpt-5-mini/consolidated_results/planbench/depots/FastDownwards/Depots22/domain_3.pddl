@@ -1,0 +1,156 @@
+(define (domain hoist-truck-warehouse)
+  (:requirements :typing :negative-preconditions :strips)
+  (:types place truck hoist thing stage)
+
+  (:predicates
+    (is-crate ?o - thing)
+    (is-pallet ?o - thing)
+    (is-support ?o - thing)
+    (truck-at ?tr - truck ?p - place)
+    (hoist-at ?h - hoist ?p - place)
+    (at ?o - thing ?p - place)
+    (on ?c - thing ?s - thing)
+    (clear ?o - thing)
+    (hoist-free ?h - hoist)
+    (hoist-lifting ?h - hoist ?c - thing)
+    (in-truck ?c - thing ?t - truck)
+    (stage ?st - stage)
+    (current ?st - stage)
+    (next ?s1 - stage ?s2 - stage)
+  )
+
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place ?st - stage ?nst - stage)
+    :precondition (and
+      (truck-at ?tr ?from)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (truck-at ?tr ?from))
+      (truck-at ?tr ?to)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - thing ?s - thing ?p - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (on ?c ?s)
+      (at ?s ?p)
+      (is-crate ?c)
+      (is-support ?s)
+      (clear ?c)
+      (hoist-free ?h)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (on ?c ?s))
+      (not (at ?c ?p))
+      (hoist-lifting ?h ?c)
+      (not (hoist-free ?h))
+      (clear ?s)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - thing ?s - thing ?p - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (hoist-lifting ?h ?c)
+      (at ?s ?p)
+      (is-support ?s)
+      (clear ?s)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (on ?c ?s)
+      (at ?c ?p)
+      (not (hoist-lifting ?h ?c))
+      (hoist-free ?h)
+      (not (clear ?s))
+      (clear ?c)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-load
+    :parameters (?h - hoist ?c - thing ?t - truck ?p - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?t ?p)
+      (hoist-lifting ?h ?c)
+      (is-crate ?c)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (hoist-lifting ?h ?c))
+      (hoist-free ?h)
+      (in-truck ?c ?t)
+      (not (at ?c ?p))
+      (clear ?c)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - thing ?t - truck ?p - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?t ?p)
+      (in-truck ?c ?t)
+      (hoist-free ?h)
+      (is-crate ?c)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (in-truck ?c ?t))
+      (hoist-lifting ?h ?c)
+      (not (hoist-free ?h))
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-move-free
+    :parameters (?h - hoist ?from - place ?to - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?from)
+      (hoist-free ?h)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (hoist-at ?h ?from))
+      (hoist-at ?h ?to)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+
+  (:action hoist-move-lifting
+    :parameters (?h - hoist ?c - thing ?from - place ?to - place ?st - stage ?nst - stage)
+    :precondition (and
+      (hoist-at ?h ?from)
+      (hoist-lifting ?h ?c)
+      (current ?st)
+      (next ?st ?nst)
+    )
+    :effect (and
+      (not (hoist-at ?h ?from))
+      (hoist-at ?h ?to)
+      (not (current ?st))
+      (current ?nst)
+    )
+  )
+)

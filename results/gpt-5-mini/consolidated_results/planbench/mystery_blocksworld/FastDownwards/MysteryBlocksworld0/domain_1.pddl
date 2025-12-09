@@ -1,119 +1,92 @@
-(define (domain MysteryBlocksworld0)
+(define (domain craving-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types obj stage)
   (:predicates
-    (hand ?x - object)
-    (cats ?x - object)
-    (texture ?x - object)
-    (vase ?a ?b - object)
-    (next ?a ?b - object)
-    (sneeze ?x - object)
-    (spring ?x - object)
-    (stupendous ?x - object)
-    (collect ?a ?b - object)
+    (province ?o - obj)
+    (planet ?o - obj)
+    (harmony)
+    (pain)
+    (craves ?x - obj ?y - obj)
+    (curr ?s - stage)                    ;; current discrete stage
+    (succ ?s1 - stage ?s2 - stage)       ;; stage ordering (static)
   )
 
-  ;; paltry: requires hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2
-  ;; effects: add next ?o0 ?o2, delete vase ?o0 ?o1
-  (:action paltry
-    :parameters (?o0 ?o1 ?o2 - object)
+  ;; All actions advance the global discrete stage from ?s to its successor ?s2.
+  ;; This enforces ordered stages and prevents oscillation by disallowing actions
+  ;; that return the current stage to a prior stage.
+
+  (:action agent_attack
+    :parameters (?attacker - obj ?target - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
+                    (curr ?s)
+                    (succ ?s ?s2)
+                    (province ?attacker)
+                    (planet ?target)
+                    (harmony)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (not (curr ?s))
+              (curr ?s2)
+              (not (province ?attacker))
+              (not (planet ?target))
+              (not (harmony))
+              (pain)
+            )
   )
 
-  ;; sip: requires hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2
-  ;; effects: add vase ?o0 ?o1, delete next ?o0 ?o2
-  (:action sip
-    :parameters (?o0 ?o1 ?o2 - object)
+  (:action agent_feast
+    :parameters (?consumer - obj ?prey - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+                    (curr ?s)
+                    (succ ?s ?s2)
+                    (craves ?consumer ?prey)
+                    (province ?consumer)
+                    (harmony)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (not (curr ?s))
+              (curr ?s2)
+              (pain)
+              (province ?prey)
+              (not (craves ?consumer ?prey))
+              (not (province ?consumer))
+              (not (harmony))
+            )
   )
 
-  ;; clip: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2
-  ;; effects: add vase ?o0 ?o1, delete next ?o0 ?o2
-  (:action clip
-    :parameters (?o0 ?o1 ?o2 - object)
+  (:action agent_succumb
+    :parameters (?recipient - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+                    (curr ?s)
+                    (succ ?s ?s2)
+                    (pain)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (not (curr ?s))
+              (curr ?s2)
+              (province ?recipient)
+              (planet ?recipient)
+              (harmony)
+              (not (pain))
+            )
   )
 
-  ;; wretched: requires sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3,
-  ;;           next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3
-  ;; effects: add next ?o0 ?o2, delete next ?o0 ?o1
-  (:action wretched
-    :parameters (?o0 ?o1 ?o2 ?o3 - object)
+  (:action agent_overcome
+    :parameters (?winner - obj ?loser - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (curr ?s)
+                    (succ ?s ?s2)
+                    (province ?loser)
+                    (pain)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; memory: requires cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1
-  ;; effects: add next ?o0 ?o2, delete next ?o0 ?o1
-  (:action memory
-    :parameters (?o0 ?o1 ?o2 - object)
-    :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; tightfisted: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1
-  ;; effects: add next ?o0 ?o2, delete vase ?o0 ?o1
-  (:action tightfisted
-    :parameters (?o0 ?o1 ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (not (curr ?s))
+              (curr ?s2)
+              (harmony)
+              (province ?winner)
+              (craves ?winner ?loser)
+              (not (province ?loser))
+              (not (pain))
+            )
   )
 )

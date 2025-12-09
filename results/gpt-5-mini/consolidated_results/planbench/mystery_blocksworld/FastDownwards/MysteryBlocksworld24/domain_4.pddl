@@ -1,106 +1,71 @@
-(define (domain MysteryBlocksworld24)
+(define (domain mysteryblocksworld24)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types object)
+
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
+    (planet ?x - object)
+    (province ?x - object)
+    (harmony)
+    (pain ?x - object)
+    (craves ?x - object ?y - object)
   )
 
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action attacker-attack
+    :parameters (?x - object)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (province ?x)
+      (planet ?x)
+      (harmony)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (pain ?x)
+      (not (province ?x))
+      (not (planet ?x))
+      (not (harmony))
     )
   )
 
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
+  (:action succumber-succumb
+    :parameters (?x - object)
+    :precondition (pain ?x)
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (province ?x)
+      (planet ?x)
+      (harmony)
+      (not (pain ?x))
     )
   )
 
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action overcomer-overcome
+    :parameters (?x - object ?y - object)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (province ?y)
+      (pain ?x)
+      (not (= ?x ?y))
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (harmony)
+      (province ?x)
+      (craves ?x ?y)
+      (not (province ?y))
+      (not (pain ?x))
     )
   )
 
-  (:action wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj)
+  (:action feaster-feast
+    :parameters (?x - object ?y - object)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
+      (craves ?x ?y)
+      (province ?x)
+      (harmony)
+      (not (= ?x ?y))
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (pain ?x)
+      (province ?y)
+      (not (craves ?x ?y))
+      (not (province ?x))
+      (not (harmony))
     )
   )
 )

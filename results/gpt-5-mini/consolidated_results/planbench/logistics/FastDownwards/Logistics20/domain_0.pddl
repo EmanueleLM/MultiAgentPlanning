@@ -1,120 +1,104 @@
-(define (domain field-ops)
+(define (domain logistics-multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent task location day)
+  (:types city location truck airplane package)
 
   (:predicates
-    ;; objects & positioning
-    (at ?a - agent ?l - location)
-    (task-at ?t - task ?l - location)
+    ;; Positions
+    (at ?o - (either package truck airplane) ?loc - location)
 
-    ;; task scheduling and progress
-    (scheduled ?t - task ?d - day)
-    (day-ready ?d - day)
-    (day-succ ?d1 - day ?d2 - day)
+    ;; Containment
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+    (free ?p - package) ; package is not inside any vehicle
 
-    ;; task status
-    (inspected ?t - task)
-    (repaired ?t - task)
-
-    ;; agent capabilities / status
-    (charged ?a - agent)
-    (has-tools ?a - agent)
-    (can-inspect ?a - agent)
-    (can-repair ?a - agent)
-
-    ;; type markers (for readability; objects declared in problem)
-    (agent-type ?a - agent)
-    (task-type ?t - task)
-    (location-type ?l - location)
-    (day-type ?d - day)
+    ;; Infrastructure
+    (road-connected ?l1 - location ?l2 - location) ; roads between locations
+    (flight-route ?a1 - location ?a2 - location)   ; routes between airports (locations)
+    (airport ?loc - location)                      ; marks airport locations
+    (in-city ?loc - location ?c - city)            ; location belongs to a city
   )
 
-  ;; Move actions are agent-specific and named with the originating agent's identifier.
-  (:action drone1_move
-    :parameters (?from - location ?to - location)
-    :precondition (and (at drone1 ?from) (not (at drone1 ?to)))
-    :effect (and (not (at drone1 ?from)) (at drone1 ?to))
-  )
-
-  (:action tech1_move
-    :parameters (?from - location ?to - location)
-    :precondition (and (at tech1 ?from) (not (at tech1 ?to)))
-    :effect (and (not (at tech1 ?from)) (at tech1 ?to))
-  )
-
-  ;; Charging action for drone1 (must be at base to charge). No other charging allowed.
-  (:action drone1_charge
-    :parameters ()
-    :precondition (and (at drone1 base) (not (charged drone1)))
-    :effect (and (charged drone1))
-  )
-
-  ;; Inspection by drone1: must be at the task location, scheduled on the current day,
-  ;; the current day must be ready, drone must be charged, and drone must have inspect capability.
-  ;; Performing the inspection consumes the drone charge and advances the day-ready marker to the successor day.
-  (:action drone1_inspect
-    :parameters (?t - task ?loc - location ?d - day ?d2 - day)
+  ;; Truck actions: load, unload, drive
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?loc - location)
     :precondition (and
-                   (task-type ?t)
-                   (task-at ?t ?loc)
-                   (at drone1 ?loc)
-                   (scheduled ?t ?d)
-                   (day-ready ?d)
-                   (day-succ ?d ?d2)
-                   (charged drone1)
-                   (can-inspect drone1)
-                   (not (inspected ?t))
-                  )
+                    (at ?t ?loc)
+                    (at ?p ?loc)
+                    (free ?p)
+                   )
     :effect (and
-              (inspected ?t)
-              (not (charged drone1))
-              (not (day-ready ?d))
-              (day-ready ?d2)
+               (not (at ?p ?loc))
+               (not (free ?p))
+               (in-truck ?p ?t)
             )
   )
 
-  ;; Optional: tech1 can also inspect if scheduled that day.
-  (:action tech1_inspect
-    :parameters (?t - task ?loc - location ?d - day ?d2 - day)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?loc - location)
     :precondition (and
-                   (task-type ?t)
-                   (task-at ?t ?loc)
-                   (at tech1 ?loc)
-                   (scheduled ?t ?d)
-                   (day-ready ?d)
-                   (day-succ ?d ?d2)
-                   (can-inspect tech1)
-                   (not (inspected ?t))
-                  )
+                    (at ?t ?loc)
+                    (in-truck ?p ?t)
+                   )
     :effect (and
-              (inspected ?t)
-              (not (day-ready ?d))
-              (day-ready ?d2)
+               (not (in-truck ?p ?t))
+               (at ?p ?loc)
+               (free ?p)
             )
   )
 
-  ;; Repair action is agent-specific (tech1 only). Enforces auditor-corrected causal constraint:
-  ;; a repair requires a prior inspection of the same task and must occur exactly on the scheduled day
-  ;; (cannot be done earlier or later). Repair consumes the day-ready marker and advances to successor.
-  (:action tech1_repair
-    :parameters (?t - task ?loc - location ?d - day ?d2 - day)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location)
     :precondition (and
-                   (task-type ?t)
-                   (task-at ?t ?loc)
-                   (at tech1 ?loc)
-                   (scheduled ?t ?d)
-                   (day-ready ?d)
-                   (day-succ ?d ?d2)
-                   (has-tools tech1)
-                   (inspected ?t)
-                   (can-repair tech1)
-                   (not (repaired ?t))
-                  )
+                    (at ?t ?from)
+                    (road-connected ?from ?to)
+                   )
     :effect (and
-              (repaired ?t)
-              (not (day-ready ?d))
-              (day-ready ?d2)
+               (not (at ?t ?from))
+               (at ?t ?to)
             )
   )
 
+  ;; Airplane actions: load, unload, fly
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?loc - location)
+    :precondition (and
+                    (at ?a ?loc)
+                    (at ?p ?loc)
+                    (airport ?loc)
+                    (free ?p)
+                   )
+    :effect (and
+               (not (at ?p ?loc))
+               (not (free ?p))
+               (in-plane ?p ?a)
+            )
+  )
+
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?loc - location)
+    :precondition (and
+                    (at ?a ?loc)
+                    (in-plane ?p ?a)
+                    (airport ?loc)
+                   )
+    :effect (and
+               (not (in-plane ?p ?a))
+               (at ?p ?loc)
+               (free ?p)
+            )
+  )
+
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and
+                    (at ?a ?from)
+                    (airport ?from)
+                    (airport ?to)
+                    (flight-route ?from ?to)
+                   )
+    :effect (and
+               (not (at ?a ?from))
+               (at ?a ?to)
+            )
+  )
 )

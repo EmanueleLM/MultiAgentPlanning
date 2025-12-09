@@ -1,0 +1,106 @@
+{
+    "name": "HanoiScaling19",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "declarative_modeler",
+            "causal_auditor",
+            "strategy_designer",
+            "orchestrator"
+        ],
+        "declarative_modeler": {
+            "private_information": [
+                "I excel at translating natural descriptions into formal declarative representations such as object types, predicates, and action schemas.",
+                "I will not emit PDDL directly unless requested; I produce clear structured descriptions that can be translated into PDDL."
+            ],
+            "goal": "Provide a clean declarative specification of objects, predicates, and action preconditions and effects for the 6-disk Tower of Hanoi instance so it can be translated into a PDDL domain and problem."
+        },
+        "causal_auditor": {
+            "private_information": [
+                "I check temporal and causal consistency, invariants, and remove bookkeeping shortcuts like quota tokens or post-hoc penalties.",
+                "I identify hidden assumptions and ensure the model enforces legality of moves and preserves disk ordering."
+            ],
+            "goal": "Audit the declarative specification and strategy fragments to ensure they are temporally and causally consistent, removing implicit shortcuts and listing required invariants and constraints."
+        },
+        "strategy_designer": {
+            "private_information": [
+                "I specialize in problem decomposition and strategy generation for recursive puzzles like Tower of Hanoi.",
+                "I produce high-level move sequences and subgoal decompositions but do not produce PDDL directly."
+            ],
+            "goal": "Provide a high-level strategy and ordered move fragments or recursive plan outline to move six disks from the right peg to the left peg using the middle peg as intermediate, ending with the middle peg empty."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate outputs from the other agents and produce the final PDDL domain and problem targeted to the FastDownwards solver.",
+                "I must resolve naming differences and ensure the final PDDL is complete, consistent, and STRIPS-compatible."
+            ],
+            "goal": "Integrate model fragments, audit reports, and strategy fragments to produce a complete PDDL domain and problem for FastDownwards that achieves the stated Hanoi goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 6
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with three pegs named left, middle, right.",
+            "Disks from smallest to largest: disk A, disk B, disk C, disk D, disk E, disk F.",
+            "Initial state: right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. Left peg empty. Middle peg empty.",
+            "Goal state: left peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. Right peg empty. Middle peg empty.",
+            "Rules: move only one disk at a time.",
+            "Rules: you may only move the top disk of any peg.",
+            "Rules: you may never place a larger disk on top of a smaller disk.",
+            "Rules: once a disk is moved it retains its relative size ordering with the others.",
+            "Constraint: the middle peg can be used as an intermediate but must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "declarative_modeler": {
+            "model": {
+                "input": [],
+                "output": "model_declarative",
+                "system_prompt": "You are an expert in formal modeling. Produce a clear declarative specification of objects, types, predicates, and action schemas for the Tower of Hanoi instance. Describe object set (pegs and disks), typing, predicate definitions, and for the single move action provide the signature, explicit preconditions and effects in a structured plain format suitable for translation to PDDL but do not output PDDL itself.",
+                "prompt": "Agent declarative_modeler: use the environment public information and your private information to produce the declarative specification of objects, predicates, and a move action schema for moving a top disk from one peg to another. Explicitly state typing, the representation of disk sizes, and the intended preconditions and effects. Avoid generating PDDL directly."
+            }
+        },
+        "causal_auditor": {
+            "audit": {
+                "input": [
+                    "model_declarative"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are responsible for auditing temporal and causal consistency. Identify implicit assumptions, required invariants, concurrency issues, and remove any bookkeeping shortcuts such as quota tokens or post-hoc penalties. Provide corrections and a checklist of invariants the final PDDL must enforce.",
+                "prompt": "Agent causal_auditor: given the declarative model fragment and environment public information, produce an audit report that lists discovered implicit assumptions, required invariants to prevent illegal moves, suggestions to make preconditions and effects conservative and causally sound, and any naming conflicts to resolve. Do not emit PDDL."
+            }
+        },
+        "strategy_designer": {
+            "plan_fragment": {
+                "input": [
+                    "model_declarative",
+                    "audit_report"
+                ],
+                "output": "strategy_plan",
+                "system_prompt": "You are an expert strategist for recursive puzzles. Provide a high-level strategy for achieving the goal with six disks, including recursive decomposition, subgoals and ordered move fragments. Indicate move counts, critical intermediate configurations, and boundaries where atomic move actions apply. Do not emit PDDL or low-level domain encodings.",
+                "prompt": "Agent strategy_designer: using the declarative model and the auditor report, produce a high-level plan outline or recursive algorithm for transferring six disks from right to left using the middle peg as intermediate. Indicate subgoals and the order of major move blocks, and point out where concurrency is impossible due to preconditions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_declarative",
+                    "audit_report",
+                    "strategy_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL development and FastDownwards target formats. Integrate the provided declarative specification, audit findings, and strategy fragments, resolve naming and representation differences, and produce a complete PDDL domain and problem suitable for FastDownwards. The domain must be STRIPS-compatible and include correctly typed objects, predicates, and a move action with sound preconditions and effects that enforce invariants described by the auditor. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the generated PDDL corresponds to the 6-disk instance and is solvable by FastDownwards.",
+                "prompt": "Agent orchestrator: integrate the following artifacts and produce the final PDDL domain and problem for FastDownwards. Here is the declarative model fragment: {model_declarative}. Here is the auditor report: {audit_report}. Here is the strategy plan: {strategy_plan}. Resolve representation differences, keep action semantics clear, ensure invariants are enforced, and emit the domain and problem enclosed between <domain></domain> and <problem></problem> tags. Target FastDownwards compatibility and STRIPS semantics."
+            }
+        },
+        "constraints": [
+            "declarative_modeler.model->orchestrator.pddl",
+            "causal_auditor.audit->orchestrator.pddl",
+            "strategy_designer.plan_fragment->orchestrator.pddl"
+        ]
+    }
+}

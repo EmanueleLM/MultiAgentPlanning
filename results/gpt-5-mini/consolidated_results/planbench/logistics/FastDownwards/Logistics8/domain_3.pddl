@@ -1,161 +1,132 @@
-(define (domain objects-manipulation)
+(define (domain logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object time)
+  (:types
+    package
+    vehicle
+      truck plane - vehicle
+    location
+    city
+    stage
+  )
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (has-next ?o - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (spring ?o - object)
+    ;; vehicle locations (for trucks and planes)
+    (at-veh ?v - vehicle ?l - location)
+    ;; package locations (package is at a location)
+    (at-package ?p - package ?l - location)
+    ;; package inside a vehicle
+    (in ?p - package ?v - vehicle)
 
-    (time-now ?t - time)
-    (succ ?t1 - time ?t2 - time)
+    ;; airport marker for locations
+    (airport ?l - location)
+
+    ;; truck local connectivity (locations in the same city)
+    (same-city ?l1 - location ?l2 - location)
+
+    ;; airplane connectivity between airports (explicit)
+    (air-connected ?from - location ?to - location)
+
+    ;; explicit discrete stage/time progression
+    (now ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry: requires vase(?hand,?cats) and next(?cats,?tex)
-  ;; creates next(?hand,?tex) — subject ?hand must not already have a next
-  (:action paltry
-    :parameters (?o_hand - object ?o_cats - object ?o_tex - object ?t - time ?t2 - time)
+  ;; Truck actions
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (cats ?o_cats)
-      (texture ?o_tex)
-      (vase ?o_hand ?o_cats)
-      (next ?o_cats ?o_tex)
-      (not (has-next ?o_hand))
+      (at-veh ?t ?from)
+      (same-city ?from ?to)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_hand)
-      (not (vase ?o_hand ?o_cats))
+      (not (at-veh ?t ?from))
+      (at-veh ?t ?to)
     )
   )
 
-  ;; sip: requires next on ?o_hand and on ?o_cats (both subjects must have has-next)
-  ;; produces vase(?o_hand,?o_cats) and removes the next of ?o_hand (thus clears has-next ?o_hand)
-  (:action sip
-    :parameters (?o_hand - object ?o_cats - object ?o_tex - object ?t - time ?t2 - time)
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?loc - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (cats ?o_cats)
-      (texture ?o_tex)
-      (next ?o_hand ?o_tex)
-      (next ?o_cats ?o_tex)
-      (has-next ?o_hand)
-      (has-next ?o_cats)
+      (at-veh ?t ?loc)
+      (at-package ?p ?loc)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (vase ?o_hand ?o_cats)
-      (not (next ?o_hand ?o_tex))
-      (not (has-next ?o_hand))
+      (not (at-package ?p ?loc))
+      (in ?p ?t)
     )
   )
 
-  ;; clip: requires next on ?o_sneeze and on ?o_hand; removes next for ?o_hand and creates vase
-  (:action clip
-    :parameters (?o_hand - object ?o_sneeze - object ?o_tex - object ?t - time ?t2 - time)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?loc - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (sneeze ?o_sneeze)
-      (texture ?o_tex)
-      (next ?o_sneeze ?o_tex)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_sneeze)
-      (has-next ?o_hand)
+      (at-veh ?t ?loc)
+      (in ?p ?t)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (vase ?o_hand ?o_sneeze)
-      (not (next ?o_hand ?o_tex))
-      (not (has-next ?o_hand))
+      (not (in ?p ?t))
+      (at-package ?p ?loc)
     )
   )
 
-  ;; wretched: moves the next link of subject ?o0 from ?o1 to ?o2 (atomic replace)
-  ;; requires collect facts and stupendous, ensures subject ?o0 had a next.
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object ?t - time ?t2 - time)
+  ;; Plane actions
+  (:action plane-fly
+    :parameters (?pl - plane ?from - location ?to - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-      (has-next ?o0)
+      (at-veh ?pl ?from)
+      (airport ?from)
+      (airport ?to)
+      (air-connected ?from ?to)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      ;; has-next remains true for ?o0 because next is replaced atomically
-      (has-next ?o0)
+      (not (at-veh ?pl ?from))
+      (at-veh ?pl ?to)
     )
   )
 
-  ;; memory: moves next from ?o1 to ?o2 for subject ?o0; requires has-next ?o0
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?t - time ?t2 - time)
+  (:action plane-load
+    :parameters (?pl - plane ?p - package ?loc - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-      (has-next ?o0)
+      (at-veh ?pl ?loc)
+      (at-package ?p ?loc)
+      (airport ?loc)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (has-next ?o0)
+      (not (at-package ?p ?loc))
+      (in ?p ?pl)
     )
   )
 
-  ;; tightfisted: requires vase(?o_hand,?o_sneeze) and next(?o_sneeze,?o_tex),
-  ;; will create next for ?o_hand (subject must not already have a next)
-  (:action tightfisted
-    :parameters (?o_hand - object ?o_sneeze - object ?o_tex - object ?t - time ?t2 - time)
+  (:action plane-unload
+    :parameters (?pl - plane ?p - package ?loc - location ?s - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (sneeze ?o_sneeze)
-      (texture ?o_tex)
-      (next ?o_sneeze ?o_tex)
-      (vase ?o_hand ?o_sneeze)
-      (has-next ?o_sneeze)
-      (not (has-next ?o_hand))
+      (at-veh ?pl ?loc)
+      (in ?p ?pl)
+      (airport ?loc)
+      (now ?s)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_hand)
-      (not (vase ?o_hand ?o_sneeze))
+      (not (in ?p ?pl))
+      (at-package ?p ?loc)
+    )
+  )
+
+  ;; Explicit stage progression: must be used to advance time.
+  ;; This enforces that actions tied to later stages cannot be executed
+  ;; before the successor relation is navigated.
+  (:action advance-stage
+    :parameters (?s1 - stage ?s2 - stage)
+    :precondition (and
+      (now ?s1)
+      (succ ?s1 ?s2)
+    )
+    :effect (and
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 )

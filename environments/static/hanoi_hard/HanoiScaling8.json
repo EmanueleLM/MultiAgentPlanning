@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "auditor",
+            "simulator",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I must obey the rules of Tower of Hanoi when proposing moves"
+            ],
+            "goal": "Rearrange the six disks so that the right peg holds, from top to bottom, disk A, disk B, disk C, disk D, disk E, and disk F, leaving the middle and left pegs empty"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of proposed plans",
+                "I remove bookkeeping shortcuts such as quota tokens and post hoc penalties and flag implicit assumptions"
+            ],
+            "goal": "Ensure any proposed plan is temporally and causally valid and contains no bookkeeping shortcuts or hidden assumptions"
+        },
+        "simulator": {
+            "private_information": [
+                "I can simulate sequences of legal moves up to a reasonable depth",
+                "I will produce concrete move traces and report where a strategy is underspecified"
+            ],
+            "goal": "Produce a feasible concrete sequence of legal moves consistent with the mover strategy and auditor constraints"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents outputs and produce a final PDDL domain and problem for FastDownward that achieves the Hanoi goal for six disks"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right",
+            "There are six disks named from smallest to largest: disk A, disk B, disk C, disk D, disk E, disk F",
+            "A legal move takes the top disk from one peg and places it on top of another peg",
+            "Only one disk may be moved at a time",
+            "Only a top disk of a peg may be moved",
+            "A larger disk may never be placed on top of a smaller disk",
+            "Once moved, disks maintain their relative size ordering",
+            "Initial state: the middle peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. The left peg is empty. The right peg is empty",
+            "Goal state: the right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. The middle peg and left peg are empty",
+            "The left peg may be used as an intermediate peg but must end empty"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "strategy": {
+                "input": [],
+                "output": "strategy_notes",
+                "system_prompt": "You are an expert in Tower of Hanoi strategies and decomposition. Provide a clear high level strategy and a decomposition into coherent subgoals and phases suitable for synthesis by an orchestrator. Do not emit PDDL domain or problem. Focus on legal-move constraints, invariants to keep, and a labeled sequence of phases that cover moving six disks from middle to right using left as auxiliary.",
+                "prompt": "Your name is mover. Use the public information about the environment and your private knowledge to produce a high level strategy and decomposition for solving the Tower of Hanoi instance with six disks. Produce labeled phases, key invariants to preserve at each phase, and any assumptions that would be needed for a full concrete plan. Do not output PDDL. Output content that the orchestrator can consume as strategy_notes."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-step plans. Your job is to detect illegal steps, inference shortcuts, hidden bookkeeping, and post-hoc adjustments. Produce a concise audit_report listing any temporal or causal issues in the provided high level strategy and recommend explicit constraints or changes to remove bookkeeping shortcuts. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Receive the environment public information and the mover role description. Describe the temporal and causal checks you will apply to the mover strategy. Explain how you will remove bookkeeping shortcuts and what explicit constraints should be enforced. Produce an audit_report the orchestrator can use."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "strategy_notes"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic simulator for Tower of Hanoi moves. Given a high level strategy, produce a concrete sequence of legal moves up to completion or until the strategy is underspecified. Represent each move as a tuple from_peg to_peg with disk identifier. If you encounter underspecification, stop and annotate the point and required detail. Do not emit PDDL.",
+                "prompt": "Your name is simulator. Use the public information and the strategy_notes input. Produce a simulation_trace containing a concrete sequence of legal moves that would implement the strategy for all six disks, or indicate precisely where the strategy is underspecified. Ensure each move obeys the rules. Output must be usable by the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "strategy_notes",
+                    "audit_report",
+                    "simulation_trace"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing planning problems for the FastDownward solver. Integrate inputs from other agents and produce a PDDL domain and a PDDL problem tailored for FastDownward. Use STRIPS-compatible constructs and explicit predicates and actions needed to model only legal moves for the Tower of Hanoi. Keep actions and any agent-specific roles explicit if relevant. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags. Do not include any extra bookkeeping shortcuts or token systems. If inputs conflict, reconcile them and document the resolution in a short comment inside the PDDL files.",
+                "prompt": "Your name is orchestrator. You will receive strategy_notes, audit_report, and simulation_trace. Your goal is to produce a PDDL domain and a PDDL problem that represent the six-disk Tower of Hanoi instance described in the public information. Model objects for six disks and three pegs, define predicates for top-of-peg and smaller-than relations if needed, and provide an action move that moves the top disk from one peg to another subject to legal-move preconditions. The initial state must reflect all six disks stacked on the middle peg with left and right empty. The goal must place all six disks on the right peg in correct order. Target FastDownward: ensure compatibility with FastDownward by using supported requirements and avoid nonstandard extensions. Enclose the domain and problem outputs between the required tags. Output the combined PDDL as pddl_orchestrator."
+            }
+        },
+        "constraints": [
+            "mover.strategy->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl"
+        ]
+    }
+}

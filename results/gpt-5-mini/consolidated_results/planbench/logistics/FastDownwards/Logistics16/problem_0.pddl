@@ -1,74 +1,61 @@
-(define (problem example_A)
-  (:domain corrected_neutral_model)
-
+(define (problem deliver-cargo-audit)
+  (:domain transport-audit)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7
-    object_8 object_9 object_10 object_11 object_12 object_13 - object
+    truck1 truck2 - truck
+    plane1 - airplane
+    loader1 - equipment
+    cargo1 - cargo
+    warehouse airportA airportB dest_depot - location
+    p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p_done - phase
   )
-
   (:init
-    ;; Type facts
-    (Cat object_0)
-    (Hand object_9)
-    (Hand object_10)
-    (Hand object_11)
-    (Hand object_12)
-    (Sneezer object_3)
-    (Sneezer object_4)
-    (SpringNode object_5)
-    (SpringNode object_7)
-    (Collector object_1)
-    (Collector object_2)
-    (Texture object_5)
-    (Texture object_6)
-    (Texture object_7)
-    (Texture object_8)
+    ;; initial positions
+    (at truck1 warehouse)
+    (at truck2 dest_depot)
+    (at plane1 airportA)
+    (at loader1 airportA)
 
-    ;; Collected relations (texture -> collector)
-    (Collected object_5 object_1)
-    (Collected object_6 object_1)
-    (Collected object_7 object_2)
-    (Collected object_8 object_2)
+    ;; initial cargo location (not on any vehicle)
+    (cargo-at cargo1 warehouse)
 
-    ;; Initial attachments (mapped from initial next(...) facts)
-    (Attached object_0 object_5)
-    (Attached object_10 object_7)
-    (Attached object_11 object_8)
-    (Attached object_12 object_5)
-    (Attached object_3 object_6)
-    (Attached object_4 object_8)
-    (Attached object_9 object_8)
+    ;; start phase and phase order (explicit successor links enforce contiguity)
+    (current-phase p1)
+    (phase-next p1 p2)
+    (phase-next p2 p3)
+    (phase-next p3 p4)
+    (phase-next p4 p5)
+    (phase-next p5 p6)
+    (phase-next p6 p7)
+    (phase-next p7 p8)
+    (phase-next p8 p9)
+    (phase-next p9 p10)
+    (phase-next p10 p_done)
 
-    ;; Free-attached facts for entities that are not attached initially
-    (free-attached object_1)
-    (free-attached object_2)
-    (free-attached object_5)
-    (free-attached object_6)
-    (free-attached object_7)
-    (free-attached object_8)
-    (free-attached object_13)
-
-    ;; Free-held: no entity is held at the start (conservative)
-    (free-held object_0)
-    (free-held object_1)
-    (free-held object_2)
-    (free-held object_3)
-    (free-held object_4)
-    (free-held object_5)
-    (free-held object_6)
-    (free-held object_7)
-    (free-held object_8)
-    (free-held object_9)
-    (free-held object_10)
-    (free-held object_11)
-    (free-held object_12)
-    (free-held object_13)
+    ;; bind each concrete phase to a semantic role (strict constraints)
+    (phase-is-inspect p1)
+    (phase-is-load-truck p2)
+    (phase-is-drive-to-airport p3)
+    (phase-is-load-airplane p4)
+    (phase-is-fuel p5)
+    (phase-is-fly p6)
+    (phase-is-drive-to-airport2 p7)
+    (phase-is-unload-airplane p8)
+    (phase-is-drive-to-dest p9)
+    (phase-is-unload-truck p10)
+    (phase-is-done p_done)
   )
-
   (:goal (and
-    (Attached object_10 object_8)
-    (Attached object_11 object_6)
-    (Attached object_12 object_8)
-    (Attached object_9 object_5)
-  ))
+           ;; final mandated terminal conditions:
+           ;; - cargo delivered to the depot
+           ;; - receiving truck ends at the depot
+           ;; - loader has been inspected (auditor remediation)
+           ;; - airplane ended at the destination airport
+           ;; - global sequence has advanced to done phase
+           (cargo-at cargo1 dest_depot)
+           (at truck2 dest_depot)
+           (loader-inspected loader1)
+           (at plane1 airportB)
+           (current-phase p_done)
+         )
+  )
 )

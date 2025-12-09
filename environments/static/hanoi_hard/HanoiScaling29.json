@@ -1,0 +1,114 @@
+{
+    "name": "HanoiScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "rule_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk"
+            ],
+            "goal": "Move the full stack of six disks from the right peg to the left peg using the middle peg as an intermediate; final state must have left peg with disks A (top) through F (bottom) and both middle and right pegs empty"
+        },
+        "rule_expert": {
+            "private_information": [
+                "Disks by size from smallest to largest: A, B, C, D, E, F",
+                "Relative ordering must always be preserved; once two disks have an ordering relation, it remains consistent",
+                "Legal action is 'move top disk from peg X to peg Y' with preconditions that source peg is nonempty and moved disk is smaller than top disk at destination if destination is nonempty"
+            ],
+            "goal": "Specify the invariants, predicates, and action schemas required to model the Tower of Hanoi instance with six disks, without emitting PDDL code"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as token quotas or post-hoc penalties",
+                "I ensure that any proposed plan respects single-disk moves, top-only moves, and size ordering constraints at every step"
+            ],
+            "goal": "Audit proposed human-readable plans and formal specifications for causal and temporal soundness, and produce an actionable report pointing out any bookkeeping shortcuts or implicit assumptions to be removed"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate analyses from the other agents and produce a final PDDL domain and problem tailored for the FastDownwards solver that solves moving six disks from the right peg to the left peg using the middle peg as intermediate while leaving the middle peg empty at the end"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ]
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right",
+            "There are six disks with size order from smallest to largest: A, B, C, D, E, F",
+            "Initial configuration: right peg holds from top to bottom A, B, C, D, E, F; left and middle pegs are empty",
+            "Legal action: move the top disk from one peg to another peg",
+            "Rules: only one disk may be moved at a time; only the top disk of a peg may be moved; a larger disk may never be placed on top of a smaller disk",
+            "Goal configuration: left peg holds from top to bottom A, B, C, D, E, F and both middle and right pegs are empty; the middle peg may be used temporarily but must end empty"
+        ]
+    },
+    "workflow": {
+        "player": {
+            "describe": {
+                "input": [],
+                "output": "player_description",
+                "system_prompt": "You are the player who will produce a clear, enumerated, human-readable sequence of moves and a high-level strategy outline for solving the described Tower of Hanoi instance. Do not emit PDDL. Focus on concrete legal moves, move ordering, and any assumptions you make about naming or indexing of pegs or disks.",
+                "prompt": "You are named player. Use the environment public information and your private knowledge to produce a step-by-step human-readable plan that moves the stack from the right peg to the left peg while obeying all rules. Include an outline of the recursive or iterative strategy and label each move in the form 'move disk X from PEG1 to PEG2'. If some detail is missing, state the missing detail instead of inventing it."
+            }
+        },
+        "rule_expert": {
+            "specify": {
+                "input": [],
+                "output": "rule_spec",
+                "system_prompt": "You are the rule expert. Provide a precise specification of predicates, invariants, and action schemas that are necessary and sufficient to represent this Tower of Hanoi instance with six disks. Do not produce executable PDDL code, but list predicate names, types of objects, and for each action give preconditions and effects in clear structured text.",
+                "prompt": "You are named rule_expert. Using the environment public information and your private knowledge, produce a compact specification that enumerates object types, predicates, and the action schema for moving a top disk between pegs, including preconditions and effects. Explicitly call out invariants that must hold across all states and list any assumptions that must be enforced by the orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "player_description",
+                    "rule_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor responsible for temporal and causal coherence and for eliminating bookkeeping shortcuts. Examine human plans and formal specs for hidden tokens, quotas, or post-hoc penalties and produce an actionable audit report describing any violations, missing causal links, implicit assumptions, or simplifications that would permit invalid solutions. Do not emit PDDL.",
+                "prompt": "You are named auditor. Given the player's plan and the rule expert's specification, verify that each move preserves legality, that preconditions and effects form a causally consistent chain, and that no bookkeeping shortcuts are used. Produce a report that lists any problematic steps, suggests corrections, and confirms when the specification and plan are fully consistent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_description",
+                    "rule_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator and an expert in multi-agent PDDL modeling and in preparing problems for the FastDownwards planner. Integrate the descriptions and reports from the other agents, resolve naming mismatches, remove any bookkeeping shortcuts identified by the auditor, and produce a complete PDDL domain and a PDDL problem file tailored to FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure action names, predicates, and object names are consistent and that the model enforces that the middle peg ends empty. Keep agent contributions distinct in comments or annotations if helpful.",
+                "prompt": "You are named orchestrator. Using the player_description, rule_spec, and audit_report, generate a final PDDL domain and PDDL problem that encode the six-disk Tower of Hanoi instance described in the environment. Target the FastDownwards solver and ensure the model enforces all rules and the final goal that left peg holds A through F in correct order while middle and right pegs are empty. Do not rely on any bookkeeping tokens or shortcuts; model constraints must be explicit. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "player.describe->orchestrator.pddl",
+            "rule_expert.specify->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

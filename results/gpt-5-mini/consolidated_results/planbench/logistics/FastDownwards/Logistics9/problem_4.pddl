@@ -1,68 +1,56 @@
-(define (problem logistics9-unified-problem)
-  (:domain logistics9)
+(define (problem deliver_packages_instance)
+  (:domain orchestrator_transport)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
-    s0 s1 s2 s3 s4 s5 - step
+    city_0 city_1 - city
+
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 - package
+
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 stage7 - stage
   )
+
   (:init
-    ;; discrete stage succession enforcing contiguous single-step execution
-    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5)
-    (enabled-at s0)
+    (location_in_city location_0_0 city_0)
+    (location_in_city location_0_1 city_0)
+    (location_in_city location_1_0 city_1)
+    (location_in_city location_1_1 city_1)
 
-    ;; Union of initial facts from both scenario statements (duplicates removed)
-    (cats object_0)
-    (cats object_1)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
+    (truck_at truck_0 location_0_0)
+    (truck_at truck_1 location_1_0)
+    (airplane_at airplane_0 location_1_0)
+    (airplane_at airplane_1 location_0_0)
 
-    (collect object_6 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    (package_at package_0 location_0_0)
+    (package_at package_1 location_1_1)
 
-    (hand object_10)
-    (hand object_9)
-    (hand object_11)
+    (connected_in_city location_0_0 location_0_1 city_0)
+    (connected_in_city location_0_1 location_0_0 city_0)
+    (connected_in_city location_1_0 location_1_1 city_1)
+    (connected_in_city location_1_1 location_1_0 city_1)
 
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_5)
+    (flight_path location_0_0 location_1_0)
+    (flight_path location_1_0 location_0_0)
 
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_4 object_6)
-    (next object_5 object_8)
+    (next stage0 stage1)
+    (next stage1 stage2)
+    (next stage2 stage3)
+    (next stage3 stage4)
+    (next stage4 stage5)
+    (next stage5 stage6)
+    (next stage6 stage7)
 
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
-
-    (spring object_5)
-    (spring object_7)
-    (spring object_6)
-    (spring object_8)
-
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    (current_stage stage0)
   )
+
   (:goal (and
-    ;; Goals requested by the two agents (both required by this unified problem)
-    (next object_10 object_6)
-    (next object_9 object_6)
-    (next object_10 object_7)
-    (next object_11 object_8)
+    (package_at package_0 location_0_1)
+    (package_at package_1 location_1_0)
   ))
 )

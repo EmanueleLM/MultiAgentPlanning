@@ -1,88 +1,34 @@
-(define (problem mysteryblocksworld28-problem)
-  (:domain MysteryBlocksworld28)
-
+(define (problem craving-problem)
+  (:domain craving-domain)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
+    a b c d - obj
+    s0 s1 s2 s3 s4 s5 s6 - stage
   )
-
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
-
-    ;; collect (union from both statements)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
-
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2) ; duplicate in union (kept once)
-    (collect object_9 object_2)
-
-    ;; hand
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
-    (hand object_14)
-
-    ;; next relations (union)
-    (next object_0 object_6)
-    (next object_1 object_9)
-    (next object_12 object_11)
-    (next object_13 object_6)
-    (next object_14 object_8)
-    (next object_4 object_7)
-    (next object_5 object_10)
-
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_5)
-    (next object_13 object_7)
-    (next object_14 object_9)
-    (next object_3 object_6)
-    (next object_4 object_9)
-
-    ;; sneeze
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
-
-    ;; spring
-    (spring object_6)
-    (spring object_9)
-    (spring object_5)
-    (spring object_8)
-
-    ;; stupendous
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ;; texture
-    (texture object_10)
-    (texture object_11)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-    (texture object_5)
+    ;; initial craves relations
+    (craves b a)
+    (craves d b)
+    ;; global harmony
+    (harmony)
+    ;; planets (static attributes provided in initial facts)
+    (planet a)
+    (planet c)
+    ;; initial province tokens
+    (province c)
+    (province d)
+    ;; time: start at s0; successor chain enforces discrete progression
+    (current s0)
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (succ s4 s5)
+    (succ s5 s6)
+    ;; explicit distinctness facts for all unequal ordered pairs
+    (distinct a b) (distinct a c) (distinct a d)
+    (distinct b a) (distinct b c) (distinct b d)
+    (distinct c a) (distinct c b) (distinct c d)
+    (distinct d a) (distinct d b) (distinct d c)
   )
-
-  (:goal (and
-    ;; goals from first statement
-    (next object_12 object_10)
-    (next object_13 object_10)
-    (next object_14 object_9)
-    ;; goals from second statement
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
-    (next object_14 object_7)
-  ))
+  (:goal (and (craves b d) (craves d c)))
 )

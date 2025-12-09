@@ -1,67 +1,102 @@
-; Domain: MysteryBlocksworld12
-; Comment: Object identifiers from the input are preserved (object_0 ... object_12).
-; No renaming applied. Two separate problem files (scenarios) follow the same domain.
-(define (domain MysteryBlocksworld12)
-  (:requirements :typing :strips :negative-preconditions)
-  (:types obj)
+(define (domain mysteryblocksworld)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types entity phase)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (stupendous ?x - obj)
-    (spring ?x - obj)
-    (collect ?x - obj ?y - obj)
+    (craves ?x - entity ?y - entity)
+    (province ?x - entity)
+    (planet ?x - entity)
+    (harmony)
+    (pain ?x - entity)
+    (phase-ready ?p - phase)
+    (phase-done ?p - phase)
+    (next ?p - phase ?q - phase)
   )
 
-  ; paltry: needs hand X, cats Y, texture Z, vase X Y, next Y Z
-  ; effects: add next X Z, delete vase X Y
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (vase ?x ?y) (next ?y ?z))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; Attack action: attacker produces pain on an object but consumes its province, planet and harmony.
+  (:action attacker-attack
+    :parameters (?o - entity ?ph - phase ?phs - phase)
+    :precondition (and
+                    (province ?o)
+                    (planet ?o)
+                    (harmony)
+                    (phase-ready ?ph)
+                    (next ?ph ?phs)
+                    (not (phase-done ?ph))
+                  )
+    :effect (and
+              (pain ?o)
+              (not (province ?o))
+              (not (planet ?o))
+              (not (harmony))
+              (phase-done ?ph)
+              (not (phase-ready ?ph))
+              (phase-ready ?phs)
+            )
   )
 
-  ; sip: needs hand X, cats Y, texture Z, next X Z, next Y Z
-  ; effects: add vase X Y, delete next X Z
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (next ?x ?z) (next ?y ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  ;; Feast action: object feasts on another, producing pain on feeder and transferring province to the other.
+  (:action feaster-feast
+    :parameters (?o - entity ?other - entity ?ph - phase ?phs - phase)
+    :precondition (and
+                    (craves ?o ?other)
+                    (province ?o)
+                    (harmony)
+                    (phase-ready ?ph)
+                    (next ?ph ?phs)
+                    (not (phase-done ?ph))
+                  )
+    :effect (and
+              (pain ?o)
+              (province ?other)
+              (not (craves ?o ?other))
+              (not (province ?o))
+              (not (harmony))
+              (phase-done ?ph)
+              (not (phase-ready ?ph))
+              (phase-ready ?phs)
+            )
   )
 
-  ; clip: needs hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ; effects: add vase X Y, delete next X Z
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (next ?x ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  ;; Succumb action: an object that is in pain restores province, planet and harmony.
+  (:action succumber-succumb
+    :parameters (?o - entity ?ph - phase ?phs - phase)
+    :precondition (and
+                    (pain ?o)
+                    (phase-ready ?ph)
+                    (next ?ph ?phs)
+                    (not (phase-done ?ph))
+                  )
+    :effect (and
+              (province ?o)
+              (planet ?o)
+              (harmony)
+              (not (pain ?o))
+              (phase-done ?ph)
+              (not (phase-ready ?ph))
+              (phase-ready ?phs)
+            )
   )
 
-  ; wretched: needs sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ; effects: add next X Z, delete next X Y
-  (:action wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj)
-    :precondition (and (sneeze ?x) (texture ?y) (texture ?z) (stupendous ?w) (next ?x ?y) (collect ?y ?w) (collect ?z ?w))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
-  )
-
-  ; memory: needs cats X, spring Y, spring Z, next X Y
-  ; effects: add next X Z, delete next X Y
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (cats ?x) (spring ?y) (spring ?z) (next ?x ?y))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
-  )
-
-  ; tightfisted: needs hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ; effects: add next X Z, delete vase X Y
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (vase ?x ?y))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; Overcome action: with province on the other and current pain, produce harmony, own province, and a craving relation.
+  (:action overcomer-overcome
+    :parameters (?o - entity ?other - entity ?ph - phase ?phs - phase)
+    :precondition (and
+                    (province ?other)
+                    (pain ?o)
+                    (phase-ready ?ph)
+                    (next ?ph ?phs)
+                    (not (phase-done ?ph))
+                  )
+    :effect (and
+              (harmony)
+              (province ?o)
+              (craves ?o ?other)
+              (not (province ?other))
+              (not (pain ?o))
+              (phase-done ?ph)
+              (not (phase-ready ?ph))
+              (phase-ready ?phs)
+            )
   )
 )

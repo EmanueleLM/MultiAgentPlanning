@@ -1,59 +1,34 @@
-(define (problem MysteryBlocksworld9-problem)
-  (:domain MysteryBlocksworld9)
+(define (problem mysteryblocksworld9-prob)
+  (:domain mysteryblocksworld9)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - thing
+    a b c d - obj
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 - stage
   )
+
   (:init
-    (cats object_0)
-    (cats object_1)
+    ;; initial cravings and world state as specified
+    (craves a d)
+    (craves b c)
+    (harmony)
+    (planet c)
+    (planet d)
+    (province a)
+    (province b)
 
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_6 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-
-    (hand object_9)
-    (hand object_10)
-    (hand object_11)
-
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_5)
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_4 object_6)
-    (next object_5 object_8)
-
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
-
-    (spring object_5)
-    (spring object_7)
-    (spring object_6)
-    (spring object_8)
-
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; stage progression: start at s0; provide a linear chain of successor stages.
+    (current s0)
+    (next s0 s1)
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
+    (next s5 s6)
+    (next s6 s7)
+    (next s7 s8)
   )
+
   (:goal (and
-    (next object_10 object_6)
-    (next object_9 object_6)
-    (next object_10 object_7)
-    (next object_11 object_8)
+    (craves b d)
+    (craves d a)
   ))
 )

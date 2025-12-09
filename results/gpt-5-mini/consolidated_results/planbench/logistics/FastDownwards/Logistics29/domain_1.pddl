@@ -1,173 +1,119 @@
-(define (domain orchestrated)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types Obj Stage)
+(define (domain logistics_combined)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types
+    city
+    location
+    vehicle
+    truck - vehicle
+    airplane - vehicle
+    package
+  )
 
   (:predicates
-    ;; object properties / tokens
-    (hand ?o - Obj)
-    (cats ?o - Obj)
-    (texture ?o - Obj)
-    (sneeze ?o - Obj)
-    (spring ?o - Obj)
-    (stupendous ?o - Obj)
+    ; whereabouts: entities (vehicles and packages) at locations
+    (at ?x - (either vehicle package) ?l - location)
 
-    ;; binary relations among objects (as specified by the human)
-    (vase ?a - Obj ?b - Obj)
-    (next ?a - Obj ?b - Obj)
-    (collect ?a - Obj ?b - Obj)
+    ; package containment in a vehicle
+    (in ?p - package ?v - vehicle)
 
-    ;; explicit discrete-time / stage progression
-    (stage ?s - Stage)
-    (succ ?s1 - Stage ?s2 - Stage)    ;; successor relation over stages
-    (current ?s - Stage)             ;; exactly one stage is current; actions advance it
+    ; static membership and airport flags
+    (in_city ?l - location ?c - city)
+    (airport ?l - location)
+
+    ; helper predicate to require flights go between different cities (explicit facts provided in problem)
+    (city-different ?c1 - city ?c2 - city)
   )
 
-  ;; Each action consumes/completes the current stage and advances to its successor.
-  ;; Preconditions include (current ?s) and (succ ?s ?s2). Effects flip current to ?s2.
-  ;; This enforces an explicit ordered stage progression and prevents oscillation.
-
-  ;; paltry: requires hand, cats, texture, a vase relation and a next link;
-  ;; effect: create next between the vase's first argument and the third arg, remove that vase relation.
-  (:action paltry
-    :parameters (?s - Stage ?s2 - Stage
-                 ?h - Obj ?c - Obj ?t - Obj
-                 ?v1 - Obj ?v2 - Obj
-                 ?n2 - Obj)
+  ;; Truck agent actions (namespaced "truck-")
+  ;; Load a package into a truck: package and truck must be co-located.
+  ;; Result: package is no longer at the location and is in the truck.
+  (:action truck-load
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?v1 ?v2)
-      (next ?v2 ?n2)
+      (at ?p ?l)
+      (at ?t ?l)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?v1 ?n2)
-      (not (vase ?v1 ?v2))
+      (not (at ?p ?l))
+      (in ?p ?t)
     )
   )
 
-  ;; sip: requires hand, cats, texture and two next relations (one from p1->p2 and one from q1->q2);
-  ;; effect: create vase(q1,q2) and remove next(q1,q2).
-  (:action sip
-    :parameters (?s - Stage ?s2 - Stage
-                 ?h - Obj ?c - Obj ?t - Obj
-                 ?p1 - Obj ?p2 - Obj
-                 ?q1 - Obj ?q2 - Obj)
+  ;; Unload a package from a truck: package must be in the truck and the truck at the location.
+  ;; Result: package is no longer in the truck and is at the truck's location.
+  (:action truck-unload
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?p1 ?p2)
-      (next ?q1 ?q2)
+      (in ?p ?t)
+      (at ?t ?l)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (vase ?q1 ?q2)
-      (not (next ?q1 ?q2))
+      (not (in ?p ?t))
+      (at ?p ?l)
     )
   )
 
-  ;; clip: like sip but requires sneeze instead of cats; effects same as sip
-  (:action clip
-    :parameters (?s - Stage ?s2 - Stage
-                 ?h - Obj ?sn - Obj ?t - Obj
-                 ?p1 - Obj ?p2 - Obj
-                 ?q1 - Obj ?q2 - Obj)
+  ;; Drive a truck between two locations inside the same city.
+  ;; Precondition enforces truck at from-location and both locations belong to one city.
+  ;; Result: truck no longer at from-location and is at to-location.
+  ;; NOTE: Packages that are in the truck remain in the truck (the in predicate is unchanged).
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?p1 ?p2)
-      (next ?q1 ?q2)
+      (at ?t ?from)
+      (in_city ?from ?c)
+      (in_city ?to ?c)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (vase ?q1 ?q2)
-      (not (next ?q1 ?q2))
+      (not (at ?t ?from))
+      (at ?t ?to)
     )
   )
 
-  ;; wretched: requires sneeze, two textures, a stupendous token, an existing next(a,b),
-  ;; and two collect relations collect(b,st) and collect(c,st).
-  ;; Effect: replace next(a,b) by next(a,c).
-  (:action wretched
-    :parameters (?s - Stage ?s2 - Stage
-                 ?sn - Obj ?t1 - Obj ?t2 - Obj ?st - Obj
-                 ?a - Obj ?b - Obj ?c - Obj)
+  ;; Air agent actions (namespaced "air-")
+  ;; Load a package into an airplane at an airport: airplane and package must be co-located at an airport.
+  (:action air-load
+    :parameters (?p - package ?ap - airplane ?a - location)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (sneeze ?sn)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?a ?b)
-      (collect ?b ?st)
-      (collect ?c ?st)
+      (airport ?a)
+      (at ?ap ?a)
+      (at ?p ?a)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?a ?c)
-      (not (next ?a ?b))
+      (not (at ?p ?a))
+      (in ?p ?ap)
     )
   )
 
-  ;; memory: requires cats and two springs and an existing next(a,b).
-  ;; Effect: replace next(a,b) by next(a,c) where c is a provided object.
-  (:action memory
-    :parameters (?s - Stage ?s2 - Stage
-                 ?cato - Obj ?sp1 - Obj ?sp2 - Obj
-                 ?a - Obj ?b - Obj ?c - Obj)
+  ;; Unload a package from an airplane at an airport.
+  (:action air-unload
+    :parameters (?p - package ?ap - airplane ?a - location)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (cats ?cato)
-      (spring ?sp1)
-      (spring ?sp2)
-      (next ?a ?b)
+      (airport ?a)
+      (at ?ap ?a)
+      (in ?p ?ap)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?a ?c)
-      (not (next ?a ?b))
+      (not (in ?p ?ap))
+      (at ?p ?a)
     )
   )
 
-  ;; tightfisted: requires hand, sneeze, texture, a next relation and a vase relation (binary).
-  ;; Effect: create next(a,v2) and remove both the previous next and the vase relation.
-  (:action tightfisted
-    :parameters (?s - Stage ?s2 - Stage
-                 ?h - Obj ?sn - Obj ?t - Obj
-                 ?a - Obj ?b - Obj
-                 ?v1 - Obj ?v2 - Obj)
+  ;; Fly an airplane between airports in different cities.
+  ;; Precondition enforces origin and destination are airports and belong to different cities.
+  (:action air-fly
+    :parameters (?ap - airplane ?from - location ?to - location ?cfrom - city ?cto - city)
     :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?b ?v2)
-      (vase ?v1 ?b)
-      ;; The human spec uses vase object_0 object_1; we model vase(v1,b).
+      (airport ?from)
+      (airport ?to)
+      (at ?ap ?from)
+      (in_city ?from ?cfrom)
+      (in_city ?to ?cto)
+      (city-different ?cfrom ?cto)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?v1 ?v2)
-      (not (next ?b ?v2))
-      (not (vase ?v1 ?b))
+      (not (at ?ap ?from))
+      (at ?ap ?to)
     )
   )
 )

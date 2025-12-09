@@ -1,71 +1,66 @@
-(define (problem Scenario_A)
-  (:domain obfuscated_deceptive_logistics26)
+(define (problem ObfuscatedDeceptiveLogistics26-prob)
+  (:domain ObfuscatedDeceptiveLogistics26)
 
   (:objects
-    ;; domain objects
     object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
-
-    ;; explicit stages sufficient for the planned sequence (26 stages)
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19 stage_20 stage_21 stage_22 stage_23 stage_24 stage_25 - stage
+    s0 s1 s2 s3 s4 s5 s6 - stage
   )
 
   (:init
-    ;; Scenario A initial facts (as provided)
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5) (succ s5 s6)
+    (stage-available s0)
 
-    (hand object_11)
+    (cats object_0)
+    (cats object_1)
+
+    (collect object_10 object_3)
+    (collect object_11 object_3)
+    (collect object_6 object_2)
+    (collect object_7 object_2)
+    (collect object_8 object_2)
+    (collect object_9 object_3)
+
     (hand object_12)
     (hand object_13)
+    (hand object_14)
 
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_7)
-    (next object_13 object_7)
-    (next object_3 object_6)
-    (next object_4 object_9)
+    (next object_0 object_9)
+    (next object_1 object_6)
+    (next object_12 object_11)
+    (next object_13 object_8)
+    (next object_14 object_8)
+    (next object_4 object_7)
+    (next object_5 object_10)
 
-    (sneeze object_3)
     (sneeze object_4)
+    (sneeze object_5)
 
-    (spring object_5)
-    (spring object_8)
+    (spring object_6)
+    (spring object_9)
 
-    (stupendous object_1)
     (stupendous object_2)
+    (stupendous object_3)
 
     (texture object_10)
-    (texture object_5)
+    (texture object_11)
     (texture object_6)
     (texture object_7)
     (texture object_8)
     (texture object_9)
 
-    ;; Stage relation: chain stage_0 -> stage_1 -> ... -> stage_25
-    (stage stage_0) (stage stage_1) (stage stage_2) (stage stage_3) (stage stage_4) (stage stage_5) (stage stage_6) (stage stage_7) (stage stage_8) (stage stage_9) (stage stage_10) (stage stage_11) (stage stage_12) (stage stage_13) (stage stage_14) (stage stage_15) (stage stage_16) (stage stage_17) (stage stage_18) (stage stage_19) (stage stage_20) (stage stage_21) (stage stage_22) (stage stage_23) (stage stage_24) (stage stage_25)
+    ;; Additional initial attributes made explicit so goal is causally reachable
+    (cats object_12)
+    (cats object_13)
+    (cats object_14)
 
-    (succ stage_0 stage_1) (succ stage_1 stage_2) (succ stage_2 stage_3) (succ stage_3 stage_4) (succ stage_4 stage_5)
-    (succ stage_5 stage_6) (succ stage_6 stage_7) (succ stage_7 stage_8) (succ stage_8 stage_9) (succ stage_9 stage_10)
-    (succ stage_10 stage_11) (succ stage_11 stage_12) (succ stage_12 stage_13) (succ stage_13 stage_14) (succ stage_14 stage_15)
-    (succ stage_15 stage_16) (succ stage_16 stage_17) (succ stage_17 stage_18) (succ stage_18 stage_19) (succ stage_19 stage_20)
-    (succ stage_20 stage_21) (succ stage_21 stage_22) (succ stage_22 stage_23) (succ stage_23 stage_24) (succ stage_24 stage_25)
-    ;; terminal successor keeps the chain intact (allows final action to open terminal stage)
-    (succ stage_25 stage_25)
-
-    ;; initial open stage
-    (open stage_0)
+    (spring object_8)
+    (spring object_10)
+    (spring object_11)
   )
 
-  (:goal
-    (and
-      (next object_11 object_5)
-      (next object_12 object_9)
-      (next object_13 object_10)
-    )
-  )
+  (:goal (and
+    (next object_12 object_6)
+    (next object_13 object_10)
+    (next object_14 object_11)
+  ))
 )

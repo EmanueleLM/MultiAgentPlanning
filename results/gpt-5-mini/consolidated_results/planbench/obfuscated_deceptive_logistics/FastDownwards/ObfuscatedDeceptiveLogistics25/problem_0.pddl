@@ -1,54 +1,51 @@
-(define (problem episode_A_orchestrator)
-  (:domain orchestrator_normalized)
+(define (problem orchestration-problem)
+  (:domain orchestration-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    ; Agents
+    analystA analystB auditor orchestrator - agent
+
+    ; Tasks
+    prepare-data analyze-data - task
+
+    ; Phases (explicit ordered sequence)
+    p1_data_collection p2_analysis p3_audit p4_finalized - phase
   )
 
   (:init
-    ;; unary facts
-    (cats object_0)
+    ; Phase order
+    (next p1_data_collection p2_analysis)
+    (next p2_analysis p3_audit)
+    (next p3_audit p4_finalized)
 
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    ; Start in the first phase
+    (current-phase p1_data_collection)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    ; Assignments and capabilities
+    (assigned prepare-data analystA)
+    (assigned analyze-data analystB)
 
-    (spring object_5)
-    (spring object_8)
+    (can-perform analystA prepare-data)
+    (can-perform analystB analyze-data)
+    (can-perform auditor analyze-data) ; auditor may perform review on the analysis task
 
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-
-    ;; collect groups (first -> second)
-    (collect object_10 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-
-    ;; next relations (initial Episode A links)
-    (next object_0 object_8)    ;; cats -> spring/texture object_8
-    (next object_11 object_10)  ;; hand 11 -> texture 10
-    (next object_12 object_6)   ;; hand 12 -> texture 6
-    (next object_13 object_9)   ;; hand 13 -> texture 9
-    (next object_3 object_7)    ;; sneeze 3 -> texture 7
-    (next object_4 object_10)   ;; sneeze 4 -> texture 10
+    ; Task-phase mappings: which phase transition performing a task effects
+    ; prepare-data moves the global phase from data_collection -> analysis
+    (task-phase prepare-data p1_data_collection p2_analysis)
+    ; analyze-data moves the global phase from analysis -> audit
+    (task-phase analyze-data p2_analysis p3_audit)
   )
 
-  (:goal (and
-    (next object_11 object_8)
-    (next object_12 object_8)
-    (next object_13 object_10)
-  ))
+  (:goal
+    (and
+      ; Terminal conditions required by the public specification:
+      ; both tasks completed, the analysis reviewed by the auditor, and finalization completed,
+      ; and the global phase must be the finalized phase.
+      (completed prepare-data)
+      (completed analyze-data)
+      (reviewed analyze-data)
+      (finalized)
+      (current-phase p4_finalized)
+    )
+  )
 )

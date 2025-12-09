@@ -1,0 +1,79 @@
+(define (problem move_crates_problem)
+  (:domain hoist_truck_domain)
+
+  (:objects
+    truck0 truck1 truck2 - truck
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    crate0 crate1 crate2 - crate
+    pallet0 pallet1 pallet2 pallet3 - pallet
+
+    depot0 depot1 depot2 distributor0 - place
+
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 - stage
+  )
+
+  (:init
+    ;; connectivity (roads fully connect all depots and distributors) -- include both directions
+    (connected depot0 depot1) (connected depot1 depot0)
+    (connected depot0 depot2) (connected depot2 depot0)
+    (connected depot0 distributor0) (connected distributor0 depot0)
+    (connected depot1 depot2) (connected depot2 depot1)
+    (connected depot1 distributor0) (connected distributor0 depot1)
+    (connected depot2 distributor0) (connected distributor0 depot2)
+
+    ;; initial locations: trucks
+    (at truck0 depot0)
+    (at truck1 depot1)
+    (at truck2 depot2)
+
+    ;; initial locations: hoists (hoists are fixed to their places)
+    (at hoist0 depot0)
+    (at hoist1 depot1)
+    (at hoist2 depot2)
+    (at hoist3 distributor0)
+
+    ;; initial locations: pallets and crates (explicit at facts)
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
+
+    (on crate0 pallet0)
+    (at crate0 depot0)
+
+    (on crate1 pallet2)
+    (at crate1 depot2)
+
+    (on crate2 crate0)
+    (at crate2 depot0)
+
+    ;; initial hoist availability
+    (hoist_available hoist0)
+    (hoist_available hoist1)
+    (hoist_available hoist2)
+    (hoist_available hoist3)
+
+    ;; initial clear facts as specified
+    (clear crate1)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet3)
+
+    ;; stage succession chain
+    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4)
+    (succ s4 s5) (succ s5 s6) (succ s6 s7) (succ s7 s8)
+    (succ s8 s9) (succ s9 s10) (succ s10 s11) (succ s11 s12)
+    (succ s12 s13) (succ s13 s14) (succ s14 s15) (succ s15 s16)
+
+    ;; start at initial stage s0
+    (at-stage s0)
+  )
+
+  (:goal (and
+    ;; require that final stackings hold at terminal stage s16
+    (on crate0 crate1)
+    (on crate1 pallet0)
+    (on crate2 pallet2)
+    (at-stage s16)
+  ))
+)

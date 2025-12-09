@@ -1,170 +1,141 @@
-(define (domain objects-manipulation)
+(define (domain logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object time)
+  (:types
+    package
+    vehicle
+      truck plane - vehicle
+    location
+    city
+    stage
+  )
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (has-next ?o - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (spring ?o - object)
+    ;; vehicle at a location
+    (at-veh ?v - vehicle ?l - location)
 
-    (time-now ?t - time)
-    (succ ?t1 - time ?t2 - time)
+    ;; package is at a location
+    (at-package ?p - package ?l - location)
+
+    ;; package inside a vehicle
+    (in ?p - package ?v - vehicle)
+
+    ;; airport marker for locations
+    (airport ?l - location)
+
+    ;; truck local connectivity: locations in the same city
+    (same-city ?l1 - location ?l2 - location)
+
+    ;; air connectivity between airports (explicit)
+    (air-connected ?from - location ?to - location)
+
+    ;; explicit discrete stage/time progression
+    (now ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry(o_hand, o_cats, o_tex):
-  ;; Preconditions: hand(o_hand), cats(o_cats), texture(o_tex), vase(o_hand,o_cats), next(o_cats,o_tex)
-  ;; Effects: add next(o_hand,o_tex), remove vase(o_hand,o_cats)
-  ;; Enforce contiguous occupancy for o_hand (must not already have an outgoing next)
-  (:action paltry
-    :parameters (?o_hand - object ?o_cats - object ?o_tex - object ?t - time ?t2 - time)
+  ;; Drive a truck within the same city from one location to an immediately succeeding stage.
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (cats ?o_cats)
-      (texture ?o_tex)
-      (vase ?o_hand ?o_cats)
-      (next ?o_cats ?o_tex)
-      (not (has-next ?o_hand))
+      (at-veh ?t ?from)
+      (same-city ?from ?to)
+      (now ?s1)
+      (succ ?s1 ?s2)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_hand)
-      (not (vase ?o_hand ?o_cats))
-    )
-  )
-
-  ;; sip(o_hand, o_cats, o_tex):
-  ;; Preconditions: hand(o_hand), cats(o_cats), texture(o_tex), next(o_hand,o_tex), next(o_cats,o_tex)
-  ;; Effects: add vase(o_hand,o_cats), remove next(o_hand,o_tex)
-  (:action sip
-    :parameters (?o_hand - object ?o_cats - object ?o_tex - object ?t - time ?t2 - time)
-    :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (cats ?o_cats)
-      (texture ?o_tex)
-      (next ?o_hand ?o_tex)
-      (next ?o_cats ?o_tex)
-      (has-next ?o_hand)
-    )
-    :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (vase ?o_hand ?o_cats)
-      (not (next ?o_hand ?o_tex))
-      (not (has-next ?o_hand))
+      (not (at-veh ?t ?from))
+      (at-veh ?t ?to)
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 
-  ;; clip(o_hand, o_sneeze, o_tex):
-  ;; Preconditions: hand(o_hand), sneeze(o_sneeze), texture(o_tex), next(o_sneeze,o_tex), next(o_hand,o_tex)
-  ;; Effects: add vase(o_hand,o_sneeze), remove next(o_hand,o_tex)
-  (:action clip
-    :parameters (?o_hand - object ?o_sneeze - object ?o_tex - object ?t - time ?t2 - time)
+  ;; Load a package into a truck occupying the same location; consumes exactly one stage step.
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?loc - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (sneeze ?o_sneeze)
-      (texture ?o_tex)
-      (next ?o_sneeze ?o_tex)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_hand)
+      (at-veh ?t ?loc)
+      (at-package ?p ?loc)
+      (now ?s1)
+      (succ ?s1 ?s2)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (vase ?o_hand ?o_sneeze)
-      (not (next ?o_hand ?o_tex))
-      (not (has-next ?o_hand))
+      (not (at-package ?p ?loc))
+      (in ?p ?t)
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 
-  ;; wretched(o0,o1,o2,o3):
-  ;; Preconditions: sneeze(o0), texture(o1), texture(o2), stupendous(o3), next(o0,o1), collect(o1,o3), collect(o2,o3)
-  ;; Effects: add next(o0,o2), remove next(o0,o1)
-  ;; Requires that subject o0 currently has an outgoing next and preserves contiguous occupancy (still has exactly one outgoing next)
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object ?t - time ?t2 - time)
+  ;; Unload a package from a truck to the truck's current location; consumes exactly one stage step.
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?loc - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-      (has-next ?o0)
+      (at-veh ?t ?loc)
+      (in ?p ?t)
+      (now ?s1)
+      (succ ?s1 ?s2)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (has-next ?o0)
+      (not (in ?p ?t))
+      (at-package ?p ?loc)
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 
-  ;; memory(o0,o1,o2):
-  ;; Preconditions: cats(o0), spring(o1), spring(o2), next(o0,o1)
-  ;; Effects: add next(o0,o2), remove next(o0,o1)
-  ;; Requires and preserves has-next for o0
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?t - time ?t2 - time)
+  ;; Fly an airplane between airports (air-connected) consuming exactly one stage step.
+  (:action plane-fly
+    :parameters (?pl - plane ?from - location ?to - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-      (has-next ?o0)
+      (at-veh ?pl ?from)
+      (airport ?from)
+      (airport ?to)
+      (air-connected ?from ?to)
+      (now ?s1)
+      (succ ?s1 ?s2)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (has-next ?o0)
+      (not (at-veh ?pl ?from))
+      (at-veh ?pl ?to)
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 
-  ;; tightfisted(o_hand,o_sneeze,o_tex):
-  ;; Preconditions: hand(o_hand), sneeze(o_sneeze), texture(o_tex), next(o_sneeze,o_tex), vase(o_hand,o_sneeze)
-  ;; Effects: add next(o_hand,o_tex), remove vase(o_hand,o_sneeze)
-  ;; Enforce contiguous occupancy for o_hand (must not already have an outgoing next)
-  (:action tightfisted
-    :parameters (?o_hand - object ?o_sneeze - object ?o_tex - object ?t - time ?t2 - time)
+  ;; Load a package into an airplane at an airport; consumes exactly one stage step.
+  (:action plane-load
+    :parameters (?pl - plane ?p - package ?loc - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (time-now ?t)
-      (succ ?t ?t2)
-      (hand ?o_hand)
-      (sneeze ?o_sneeze)
-      (texture ?o_tex)
-      (next ?o_sneeze ?o_tex)
-      (vase ?o_hand ?o_sneeze)
-      (has-next ?o_sneeze)
-      (not (has-next ?o_hand))
+      (at-veh ?pl ?loc)
+      (at-package ?p ?loc)
+      (airport ?loc)
+      (now ?s1)
+      (succ ?s1 ?s2)
     )
     :effect (and
-      (not (time-now ?t))
-      (time-now ?t2)
-      (next ?o_hand ?o_tex)
-      (has-next ?o_hand)
-      (not (vase ?o_hand ?o_sneeze))
+      (not (at-package ?p ?loc))
+      (in ?p ?pl)
+      (not (now ?s1))
+      (now ?s2)
+    )
+  )
+
+  ;; Unload a package from an airplane at an airport; consumes exactly one stage step.
+  (:action plane-unload
+    :parameters (?pl - plane ?p - package ?loc - location ?s1 - stage ?s2 - stage)
+    :precondition (and
+      (at-veh ?pl ?loc)
+      (in ?p ?pl)
+      (airport ?loc)
+      (now ?s1)
+      (succ ?s1 ?s2)
+    )
+    :effect (and
+      (not (in ?p ?pl))
+      (at-package ?p ?loc)
+      (not (now ?s1))
+      (now ?s2)
     )
   )
 )

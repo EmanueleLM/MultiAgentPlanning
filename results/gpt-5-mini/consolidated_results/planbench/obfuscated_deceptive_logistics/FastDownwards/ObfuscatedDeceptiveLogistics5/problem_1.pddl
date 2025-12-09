@@ -1,22 +1,22 @@
 (define (problem obfuscated-deceptive-logistics5-problem)
-  (:domain ObfuscatedDeceptiveLogistics5)
+  (:domain obfuscated-deceptive-logistics5)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - obj
   )
 
   (:init
-    ;; initial facts (first statement block from the human specification)
+    ;; Initial facts as provided
     (cats object_0)
     (collect object_5 object_1)
     (collect object_6 object_1)
     (collect object_7 object_2)
     (collect object_8 object_2)
     (hand object_9)
-    (next object_0 object_7)
+    (next object_0 object_5)
     (next object_3 object_5)
-    (next object_4 object_7)
-    (next object_9 object_7)
+    (next object_4 object_8)
+    (next object_9 object_6)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -29,10 +29,7 @@
     (texture object_8)
   )
 
-  ;; Goal: achieve next object_9 object_8 (the human's stated target for the first scenario).
-  (:goal
-    (and
-      (next object_9 object_8)
-    )
-  )
+  (:goal (and
+    (next object_9 object_7)
+  ))
 )

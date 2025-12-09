@@ -1,149 +1,115 @@
-(define (domain ObfuscatedDeceptiveLogistics10)
+(define (domain orchestrated)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object time)
+  (:types
+    hand_t cat_t sneeze_t stupendous_t - object
+    ;; remaining objects are plain 'object'
+  )
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
+    ;; binary relations and multi-role unary predicates kept as predicates
+    (collect ?o1 - object ?o2 - object)
+    (vase ?o1 - object ?o2 - object)
+    (next ?o1 - object ?o2 - object)
     (texture ?o - object)
-    (vase ?a - object ?b - object)
-    (next ?a - object ?b - object)
-    (sneeze ?o - object)
-    (collect ?a - object ?b - object)
     (spring ?o - object)
-    (stupendous ?o - object)
-
-    ;; discrete ordered time slots to enforce strict sequential execution
-    (succ ?t1 - time ?t2 - time)   ;; successor relation between time slots
-    (slot-free ?t - time)         ;; time slot available for an action
-    (slot-used ?t - time)         ;; time slot has been consumed
   )
 
-  ;; paltry: requires vase(a,b) and next(b,c); produces next(a,c) and removes vase(a,b)
+  ;; Action: paltry
+  ;; Preconditions: ?h is a hand, ?cat is a cat, ?tex is a texture, vase ?h ?cat, next ?cat ?tex
+  ;; Effects: add next ?h ?tex, delete vase ?h ?cat
   (:action paltry
-    :parameters (?a - object ?b - object ?c - object ?pt - time ?t - time)
+    :parameters (?h - hand_t ?cat - cat_t ?tex - object)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-      ;; enforce contiguous stage progression
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (texture ?tex)
+      (vase ?h ?cat)
+      (next ?cat ?tex)
     )
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (next ?h ?tex)
+      (not (vase ?h ?cat))
     )
   )
 
-  ;; sip: requires next(a,c) and next(b,c); produces vase(a,b) and removes next(a,c)
+  ;; Action: sip
+  ;; Preconditions: ?h is hand, ?cat is cat, ?tex is texture, next ?h ?tex, next ?cat ?tex
+  ;; Effects: add vase ?h ?cat, delete next ?h ?tex
   (:action sip
-    :parameters (?a - object ?b - object ?c - object ?pt - time ?t - time)
+    :parameters (?h - hand_t ?cat - cat_t ?tex - object)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (texture ?tex)
+      (next ?h ?tex)
+      (next ?cat ?tex)
     )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (vase ?h ?cat)
+      (not (next ?h ?tex))
     )
   )
 
-  ;; clip: requires next(b,c) and next(a,c); produces vase(a,b) and removes next(a,c)
+  ;; Action: clip
+  ;; Preconditions: ?h is hand, ?s is sneeze, ?tex is texture, next ?s ?tex, next ?h ?tex
+  ;; Effects: add vase ?h ?s, delete next ?h ?tex
   (:action clip
-    :parameters (?a - object ?b - object ?c - object ?pt - time ?t - time)
+    :parameters (?h - hand_t ?s - sneeze_t ?tex - object)
     :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (texture ?tex)
+      (next ?s ?tex)
+      (next ?h ?tex)
     )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (vase ?h ?s)
+      (not (next ?h ?tex))
     )
   )
 
-  ;; wretched: requires next(a,b) and collect relations; moves next from (a,b) to (a,c)
+  ;; Action: wretched
+  ;; Preconditions: ?s is sneeze, ?t1 and ?t2 are textures, ?p is stupendous,
+  ;;                next ?s ?t1, collect ?t1 ?p, collect ?t2 ?p
+  ;; Effects: add next ?s ?t2, delete next ?s ?t1
   (:action wretched
-    :parameters (?a - object ?b - object ?c - object ?d - object ?pt - time ?t - time)
+    :parameters (?s - sneeze_t ?t1 - object ?t2 - object ?p - stupendous_t)
     :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (texture ?t1)
+      (texture ?t2)
+      (collect ?t1 ?p)
+      (collect ?t2 ?p)
+      (next ?s ?t1)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (next ?s ?t2)
+      (not (next ?s ?t1))
     )
   )
 
-  ;; memory: requires next(a,b) and two springs; moves next from (a,b) to (a,c)
+  ;; Action: memory
+  ;; Preconditions: ?cat is cat, ?s1 and ?s2 are springs, next ?cat ?s1
+  ;; Effects: add next ?cat ?s2, delete next ?cat ?s1
   (:action memory
-    :parameters (?a - object ?b - object ?c - object ?pt - time ?t - time)
+    :parameters (?cat - cat_t ?s1 - object ?s2 - object)
     :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (spring ?s1)
+      (spring ?s2)
+      (next ?cat ?s1)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (next ?cat ?s2)
+      (not (next ?cat ?s1))
     )
   )
 
-  ;; tightfisted: requires vase(a,b) and next(b,c); produces next(a,c) and removes vase(a,b)
+  ;; Action: tightfisted
+  ;; Preconditions: ?h is hand, ?s is sneeze, ?tex is texture, next ?s ?tex, vase ?h ?s
+  ;; Effects: add next ?h ?tex, delete vase ?h ?s
   (:action tightfisted
-    :parameters (?a - object ?b - object ?c - object ?pt - time ?t - time)
+    :parameters (?h - hand_t ?s - sneeze_t ?tex - object)
     :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-      (succ ?pt ?t)
-      (slot-used ?pt)
-      (slot-free ?t)
+      (texture ?tex)
+      (next ?s ?tex)
+      (vase ?h ?s)
     )
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-      (not (slot-free ?t))
-      (slot-used ?t)
+      (next ?h ?tex)
+      (not (vase ?h ?s))
     )
   )
 )

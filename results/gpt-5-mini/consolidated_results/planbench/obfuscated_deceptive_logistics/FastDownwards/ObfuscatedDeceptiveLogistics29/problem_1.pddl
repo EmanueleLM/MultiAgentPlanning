@@ -1,10 +1,10 @@
-(define (problem odl29-instance1)
-  (:domain ObfuscatedDeceptiveLogistics29)
+(define (problem obfuscated-deceptive-logistics-29-problem)
+  (:domain obfuscated-deceptive-logistics-29)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - node
   )
   (:init
-    ;; from first statement block initial facts
+    ;; given initial facts
     (cats object_0)
     (collect object_10 object_2)
     (collect object_5 object_1)
@@ -17,12 +17,12 @@
     (hand object_13)
     (hand object_14)
     (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_5)
-    (next object_13 object_7)
-    (next object_14 object_9)
-    (next object_3 object_6)
-    (next object_4 object_9)
+    (next object_11 object_6)
+    (next object_12 object_8)
+    (next object_13 object_6)
+    (next object_14 object_5)
+    (next object_3 object_5)
+    (next object_4 object_10)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -35,11 +35,21 @@
     (texture object_7)
     (texture object_8)
     (texture object_9)
+
+    ;; structural bookkeeping consistent with the explicit next facts above:
+    (has-next object_0)
+    (has-next object_11)
+    (has-next object_12)
+    (has-next object_13)
+    (has-next object_14)
+    (has-next object_3)
+    (has-next object_4)
   )
+
   (:goal (and
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
+    (next object_11 object_10)
+    (next object_12 object_6)
+    (next object_13 object_10)
     (next object_14 object_7)
   ))
 )

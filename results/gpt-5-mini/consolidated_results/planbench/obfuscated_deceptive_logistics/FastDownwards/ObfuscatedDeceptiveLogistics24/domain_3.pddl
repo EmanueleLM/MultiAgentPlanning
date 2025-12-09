@@ -1,125 +1,109 @@
 (define (domain obfuscated-deceptive-logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types
-    object
-    hand-object - object
-    cat-object - object
-    texture-object - object
-    sneeze-object - object
-    stupendous-object - object
-    stage
-  )
+  ;; declare role types as subtypes of the base type `object`
+  (:types hand cat sneeze stupendous - object)
 
   (:predicates
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (collect ?o1 - object ?o2 - object)
-    (spring ?o - object)
-    ;; discrete-stage progression predicates
-    (succ ?s1 - stage ?s2 - stage)
-    (now ?s - stage)
+    ;; relations with explicit types
+    (vase ?h - hand ?c - cat)
+    (next ?x - object ?y - object)
+    (collect ?t - object ?st - stupendous)
+
+    ;; properties that may apply to many plain objects
+    (texture ?x - object)
+    (spring ?x - object)
   )
 
-  ;; paltry action
+  ;; paltry: requires a hand, a cat, a texture target, vase(h,c) and next(c,t)
+  ;; effects: add next(h,t), delete vase(h,c)
   (:action paltry
-    :parameters (?o0 - hand-object ?o1 - cat-object ?o2 - texture-object ?from - stage ?to - stage)
+    :parameters (?h - hand ?c - cat ?t - object)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (next ?o1 ?o2)
-    )
+                    (texture ?t)
+                    (vase ?h ?c)
+                    (next ?c ?t)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (next ?h ?t)
+              (not (vase ?h ?c))
+            )
   )
 
-  ;; sip action
+  ;; sip: requires a hand, a cat, a texture target, next(h,t) and next(c,t)
+  ;; effects: add vase(h,c), delete next(h,t)
   (:action sip
-    :parameters (?o0 - hand-object ?o1 - cat-object ?o2 - texture-object ?from - stage ?to - stage)
+    :parameters (?h - hand ?c - cat ?t - object)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+                    (texture ?t)
+                    (next ?h ?t)
+                    (next ?c ?t)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (vase ?h ?c)
+              (not (next ?h ?t))
+            )
   )
 
-  ;; clip action
+  ;; clip: requires a hand, a sneeze-source, a texture target, next(s,t) and next(h,t)
+  ;; effects: add vase(h,s), delete next(h,t)
   (:action clip
-    :parameters (?o0 - hand-object ?o1 - sneeze-object ?o2 - texture-object ?from - stage ?to - stage)
+    :parameters (?h - hand ?s - sneeze ?t - object)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+                    (texture ?t)
+                    (next ?s ?t)
+                    (next ?h ?t)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (vase ?h ?s)
+              (not (next ?h ?t))
+            )
   )
 
-  ;; wretched action
+  ;; wretched: requires sneeze s, textures t1,t2, a stupendous st, next(s,t1),
+  ;;            collect(t1,st), collect(t2,st)
+  ;; effects: add next(s,t2), delete next(s,t1)
   (:action wretched
-    :parameters (?o0 - sneeze-object ?o1 - texture-object ?o2 - texture-object ?o3 - stupendous-object ?from - stage ?to - stage)
+    :parameters (?s - sneeze ?t1 - object ?t2 - object ?st - stupendous)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (texture ?t1)
+                    (texture ?t2)
+                    (next ?s ?t1)
+                    (collect ?t1 ?st)
+                    (collect ?t2 ?st)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              (next ?s ?t2)
+              (not (next ?s ?t1))
+            )
   )
 
-  ;; memory action
+  ;; memory: requires a cat, two springs s1,s2, and next(cat,s1)
+  ;; effects: add next(cat,s2), delete next(cat,s1)
   (:action memory
-    :parameters (?o0 - cat-object ?o1 - object ?o2 - object ?from - stage ?to - stage)
+    :parameters (?c - cat ?s1 - object ?s2 - object)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
+                    (spring ?s1)
+                    (spring ?s2)
+                    (next ?c ?s1)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              (next ?c ?s2)
+              (not (next ?c ?s1))
+            )
   )
 
-  ;; tightfisted action
+  ;; tightfisted: requires a hand, a sneeze-source, a texture target, next(s,t), vase(h,s)
+  ;; effects: add next(h,t), delete vase(h,s)
   (:action tightfisted
-    :parameters (?o0 - hand-object ?o1 - sneeze-object ?o2 - texture-object ?from - stage ?to - stage)
+    :parameters (?h - hand ?s - sneeze ?t - object)
     :precondition (and
-      (now ?from)
-      (succ ?from ?to)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
+                    (texture ?t)
+                    (next ?s ?t)
+                    (vase ?h ?s)
+                  )
     :effect (and
-      (not (now ?from))
-      (now ?to)
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (next ?h ?t)
+              (not (vase ?h ?s))
+            )
   )
 )

@@ -1,71 +1,63 @@
-(define (problem depots10_problem)
-  (:domain depots10_domain)
+(define (problem depots10-prob)
+  (:domain depots10)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; surfaces: pallets and crates (crate is a subtype of surface)
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
   )
 
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; surface locations (pallets and crates locations)
+    (surface-at pallet0 depot0)
+    (surface-at pallet1 depot1)
+    (surface-at pallet2 depot2)
+    (surface-at pallet3 distributor0)
 
-    ;; hand
-    (hand object_9)
-    (hand object_10)
-    (hand object_11)
+    (surface-at crate0 depot1)
+    (surface-at crate1 depot1)
+    (surface-at crate2 depot0)
 
-    ;; texture
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; truck and hoist locations
+    (truck-at truck0 depot2)
+    (truck-at truck1 distributor0)
+    (truck-at truck2 depot1)
 
-    ;; sneeze
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
 
-    ;; spring
-    (spring object_5)
-    (spring object_6)
-    (spring object_7)
-    (spring object_8)
+    ;; hoist availability
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
 
-    ;; stupendous
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; stacking relations (crate on surface)
+    (on crate0 pallet1)
+    (on crate1 crate0)
+    (on crate2 pallet0)
 
-    ;; collect relations (merged)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-
-    ;; next relations (merged)
-    (next object_0 object_8)
-    (next object_0 object_5)
-    (next object_1 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_4 object_7)
-    (next object_5 object_8)
-    (next object_9 object_5)
-    (next object_10 object_6)
-    (next object_10 object_8)
-    (next object_11 object_9)
-    (next object_11 object_6)
+    ;; clear surfaces/ crates (those with nothing on them)
+    (clear crate1)
+    (clear crate2)
+    (clear pallet2)
+    (clear pallet3)
   )
 
   (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_8)
-    (next object_11 object_7)
-    (next object_9 object_7)
-  ))
+           (on crate0 pallet2)
+           (on crate1 pallet0)
+           (on crate2 pallet1)
+         ))
 )

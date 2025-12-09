@@ -1,59 +1,56 @@
-(define (problem multiagent-instance-staged)
-  (:domain multiagent-staged)
+(define (problem city-logistics-instance)
+  (:domain city-logistics)
 
   (:objects
-    ;; objects taken from the human specification (explicit names kept)
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - obj
-
-    s0 s1 s2 s3 s4 s5 - stage
+    city_0 city_1 - city
+    location_0_0 location_1_0 - location
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 - package
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 - stage
   )
 
   (:init
-    ;; stage ordering and initial stage
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
+    ;; City membership of locations
+    (in-city location_0_0 city_0)
+    (in-city location_1_0 city_1)
 
-    (now s0)
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ;; unary/static facts from the human specification (first statement)
-    (cats object_0)
+    ;; Air routes (explicit; only between distinct airports needed)
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
 
-    (collect object_5 object_1)
-    (collect object_6 object_2)
+    ;; No truck-connected facts are provided because each city has a single location.
 
-    (hand object_7)
-    (hand object_8)
+    ;; Temporal ordering (succ relation)
+    (succ stage0 stage1)
+    (succ stage1 stage2)
+    (succ stage2 stage3)
+    (succ stage3 stage4)
+    (succ stage4 stage5)
+    (succ stage5 stage6)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    ;; Start stage
+    (current-stage stage0)
 
-    (spring object_5)
-    (spring object_6)
+    ;; Initial positions at stage0
+    (at-airplane airplane_0 location_0_0 stage0)
+    (at-airplane airplane_1 location_0_0 stage0)
+    (at-truck truck_0 location_0_0 stage0)
+    (at-truck truck_1 location_1_0 stage0)
 
-    (stupendous object_1)
-    (stupendous object_2)
+    (at-package package_0 location_1_0 stage0)
+    (at-package package_1 location_1_0 stage0)
 
-    (texture object_5)
-    (texture object_6)
-
-    ;; time-indexed 'next' relations present at initial stage s0
-    (next object_0 object_6 s0)
-    (next object_3 object_5 s0)
-    (next object_4 object_6 s0)
-    (next object_7 object_6 s0)
-    (next object_8 object_6 s0)
-
-    ;; No vase facts are true initially (vase is absent at s0).
+    ;; No packages initially in any vehicle.
   )
 
-  (:goal
-    (and
-      ;; require the desired next relations to hold at final stage s5
-      (next object_7 object_5 s5)
-      (next object_8 object_5 s5)
-    )
-  )
+  ;; Goal: require both desired package locations at final stage stage6.
+  (:goal (and
+    (at-package package_0 location_1_0 stage6)
+    (at-package package_1 location_0_0 stage6)
+  ))
 )

@@ -1,75 +1,81 @@
-; =========================================================================
-; Problem: Orchestrated integration of two scenarios (Scenario 1 and Scenario 2)
-; Assumptions and notes:
-; - Objects are object_0 .. object_10 (as named in the scenarios).
-; - Initial facts are exactly those explicitly provided in the two scenarios.
-; - No extra (vase ...) facts are assumed initially; vases can be produced by actions.
-; - The two goals are required simultaneously in this single problem:
-;     (next object_9 object_7)  AND  (next object_10 object_6)
-; - Analysis summary:
-;   * Scenario 1: the provided plan is feasible and achieves next object_9 object_7.
-;   * Scenario 2: given the stated initial facts, next object_10 object_6 is not reachable.
-;     Missing enabling facts include (for example) a suitable (next ?Y object_6) that can be
-;     used together with a produced vase (vase object_10 ?Y) or a shared collect link
-;     allowing a wretched transition. These missing facts are NOT invented here.
-; =========================================================================
+(define (problem depots6-problem)
+  (:domain depots-hoist-ordered)
 
-(define (problem orchestrated-problem)
-  (:domain orchestrator-domain)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - obj
+    depot0 depot1 depot2 distributor0 - place
+
+    pallet0 pallet1 pallet2 pallet3 - pallet
+
+    crate0 crate1 crate2 - crate
+
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    truck0 truck1 truck2 - truck
+
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - stage
   )
 
   (:init
-    ;; ---------- Scenario 1 initial facts (player_A) ----------
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; stage initialisation (linear successor chain)
+    (now s0)
+    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4) (next s4 s5)
+    (next s5 s6) (next s6 s7) (next s7 s8) (next s8 s9) (next s9 s10)
+    (next s10 s11) (next s11 s12) (next s12 s13) (next s13 s14) (next s14 s15)
 
-    ;; ---------- Scenario 2 initial facts (player_B) ----------
-    (cats object_0)
-    (cats object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-    (hand object_10)
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_4 object_6)
-    (next object_5 object_9)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_8)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; pallets at places
+    (at-pallet pallet0 depot0)
+    (at-pallet pallet1 depot1)
+    (at-pallet pallet2 depot2)
+    (at-pallet pallet3 distributor0)
+
+    ;; crates initial stacking and locations
+    ;; crate0 is at depot2 on pallet2
+    (on-pallet crate0 pallet2)
+    (at-crate crate0 depot2)
+
+    ;; crate1 is at depot0 on pallet0
+    (on-pallet crate1 pallet0)
+    (at-crate crate1 depot0)
+
+    ;; crate2 is on crate1 (therefore at depot0 as crate1 is at depot0)
+    (on-crate crate2 crate1)
+    (at-crate crate2 depot0)
+
+    ;; hoists at places and available
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 distributor0)
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
+
+    ;; trucks at places
+    (at-truck truck0 distributor0)
+    (at-truck truck1 distributor0)
+    (at-truck truck2 depot2)
+
+    ;; clear / not-clear flags
+    ;; crate0 is clear, crate2 is clear, crate1 has crate2 on it so not clear
+    (crate-clear crate0)
+    (not (crate-clear crate1))
+    (crate-clear crate2)
+
+    ;; pallet clear flags: pallet1 and pallet3 clear; pallet0 and pallet2 hold crates
+    (pallet-clear pallet1)
+    (pallet-clear pallet3)
+    (not (pallet-clear pallet0))
+    (not (pallet-clear pallet2))
   )
 
   (:goal (and
-    (next object_9 object_7)
-    (next object_10 object_6)
+    ;; desired final stacking:
+    ;; crate0 on crate2
+    (on-crate crate0 crate2)
+    ;; crate1 on pallet2
+    (on-pallet crate1 pallet2)
+    ;; crate2 on pallet1
+    (on-pallet crate2 pallet1)
   ))
 )

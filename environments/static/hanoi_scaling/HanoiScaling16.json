@@ -4,101 +4,100 @@
     "agents": {
         "number": 4,
         "names": [
-            "disk_mover",
+            "disk_manager",
             "strategy_planner",
             "auditor",
             "orchestrator"
         ],
-        "disk_mover": {
+        "disk_manager": {
             "private_information": [
-                "I can move the top disk from one peg to another peg",
-                "I can move only one disk at a time",
-                "I may only move a disk that is on top of a peg",
-                "I must never place a larger disk on top of a smaller disk"
+                "There are seven disks ordered by size from smallest to largest: A, B, C, D, E, F, G.",
+                "Legal low-level action: Move the top disk from one peg to another peg.",
+                "Rules: only one disk moved at a time, only top disk of a peg can be moved, never place larger disk on top of smaller disk, disk ordering is preserved by size."
             ],
-            "goal": "Contribute concrete, stepwise valid moves to transfer all disks from the middle peg to the right peg following the Hanoi rules."
+            "goal": "Provide a formal model of disks, pegs, and legal move constraints that is precise and unambiguous so a planner can encode the domain."
         },
         "strategy_planner": {
             "private_information": [
-                "I know recursive decomposition patterns for the Tower of Hanoi puzzle",
-                "I can split the overall transfer into subgoals and abstract move sequences"
+                "I know the classic recursive solution for Tower of Hanoi and high-level move patterns for n disks using an auxiliary peg.",
+                "I can produce a high-level sequence of moves or a recursive decomposition suitable to generate the complete move list for seven disks."
             ],
-            "goal": "Provide a high-level plan and subgoal decomposition that results in moving all disks from the middle peg to the right peg while leaving the left peg empty at the end."
+            "goal": "Produce a high-level plan outline or ordered move sequence that achieves the goal from the initial configuration while respecting the disk rules."
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency",
-                "I detect and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
-                "I ensure stated move sequences strictly adhere to the physical constraints and ordering"
+                "I specialize in checking temporal and causal consistency and removing bookkeeping shortcuts such as token counters or post-hoc penalties.",
+                "I ensure that plans explicitly respect preconditions and effects and that no implicit or illegal shortcuts are introduced."
             ],
-            "goal": "Validate move sequences and high-level plans for rule compliance, identify any shortcut or implicit assumption, and provide corrected sequences or constraints."
+            "goal": "Audit the model and the plan for causal and temporal consistency, remove or flag any shortcutting devices, and produce a concise audit report describing any required corrections."
         },
         "orchestrator": {
-            "private_information": [],
-            "goal": "Integrate agents' analyses and produce the final PDDL domain and problem files targeting the FastDownward solver that encode the Tower of Hanoi instance with five disks and three pegs."
+            "private_information": [
+                "Target solver: FastDownwards. Outputs must be a PDDL domain and a PDDL problem compatible with FastDownwards."
+            ],
+            "goal": "Integrate the model, plan outline, and audit corrections to produce a final PDDL domain and a final PDDL problem encoding the 7-disk Tower of Hanoi instance for FastDownwards."
         }
     },
     "environment": {
         "init": {
-            "disk_count": 5,
-            "pegs": [
-                "left",
-                "middle",
-                "right"
-            ]
+            "pegs": 3,
+            "disks": 7
         },
         "public_information": [
-            "There are 5 disks in total named from smallest to largest: disk A, disk B, disk C, disk D, disk E.",
-            "Initial state: the middle peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. The left peg and the right peg are empty.",
-            "Goal state: the right peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E. The middle peg and the left peg must be empty at the end.",
-            "Valid action: move the top disk from one peg to another peg.",
-            "Rules: move only one disk at a time, may only move a disk that is top of a peg, never place a larger disk on top of a smaller disk, once moved a disk retains its relative size ordering."
+            "There are three pegs: left, middle, right.",
+            "Initial state: middle peg holds from top to bottom disks A B C D E F G, left and right pegs are empty.",
+            "Goal state: right peg should hold from top to bottom disks A B C D E F G, left and middle pegs must be empty.",
+            "Allowed primitive action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time; can only move the top disk of a peg; cannot place a larger disk on top of a smaller disk."
         ]
     },
     "workflow": {
-        "disk_mover": {
-            "analysis": {
+        "disk_manager": {
+            "model": {
                 "input": [],
-                "output": "moves_disk_mover",
-                "system_prompt": "You are a concrete move generator who lists explicit top-disk moves. Provide an ordered sequence of concrete moves that respect the Hanoi rules. Do not produce PDDL.",
-                "prompt": "Your name is disk_mover. Here is the public information: {environment->public_information}. Here is your private information: {agents->disk_mover->private_information}. Your goal: {agents->disk_mover->goal}. Provide a concrete ordered list of moves expressed as simple statements such as: move disk A from middle to left. Ensure each move obeys the rules and is explicit. Do not output PDDL."
+                "output": "disk_model",
+                "system_prompt": "You are the disk_manager. Your role is to produce a clear formal description of the objects and constraints of the Tower of Hanoi instance. Do not emit PDDL. Produce object lists, type declarations, predicates needed, and explicit precondition and effect templates for the primitive move action. Make no assumptions beyond the given public information.",
+                "prompt": "Your name is disk_manager. You are given the public information {environment->public_information}. You have this private knowledge {agents->disk_manager->private_information}. Your goal is {agents->disk_manager->goal}. Provide a formal model description that includes: a list of disks with their size ordering, the pegs, the representation of 'top of peg' and 'on' relations, the invariants that enforce disk size ordering, and the exact preconditions and effects templates for the primitive move action. Keep the output precise and implementation friendly for a planner author."
             }
         },
         "strategy_planner": {
-            "analysis": {
-                "input": [],
-                "output": "plan_strategy",
-                "system_prompt": "You are a high-level planner who decomposes the Tower of Hanoi transfer into subgoals and non-PDDL plan fragments. Provide recursion-based subgoal breakdown and an abstract sequence of phases.",
-                "prompt": "Your name is strategy_planner. Here is the public information: {environment->public_information}. Here is your private information: {agents->strategy_planner->private_information}. Your goal: {agents->strategy_planner->goal}. Produce a clear high-level plan that divides the overall transfer into subgoals and phases, indicates which disks move when relative to the recursion pattern, and summarizes invariants to maintain. Do not output PDDL."
+            "plan": {
+                "input": [
+                    "disk_manager.disk_model"
+                ],
+                "output": "plan_outline",
+                "system_prompt": "You are the strategy_planner. Your role is to provide a high-level plan outline or an explicit ordered move sequence for seven disks that achieves the goal while respecting the model constraints. Do not emit PDDL. Focus on correctness, decomposition, and an explicit mapping of moves between pegs.",
+                "prompt": "Your name is strategy_planner. You are given the public information {environment->public_information} and the disk model {disk_manager.disk_model}. You have this private knowledge {agents->strategy_planner->private_information}. Your goal is {agents->strategy_planner->goal}. Provide either a recursive decomposition suitable for generating the full move list or a complete ordered list of moves using peg names left middle right. Ensure each move respects the move preconditions from the model. Mark any assumptions you need to make."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "moves_disk_mover",
-                    "plan_strategy"
+                    "strategy_planner.plan",
+                    "disk_manager.disk_model"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are an auditor focused on temporal and causal consistency. Detect any violations of the physical rules, remove bookkeeping shortcuts and report corrections. Do not produce PDDL.",
-                "prompt": "Your name is auditor. Here is the public information: {environment->public_information}. Here is your private information: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Analyze the provided move sequences and the high-level plan from the other agents: {moves_disk_mover} and {plan_strategy}. Identify any violations of the rules, any implicit bookkeeping shortcuts, and propose corrected move sequences or constraints required to ensure causal and temporal consistency. Provide a concise report. Do not output PDDL."
+                "system_prompt": "You are the auditor. Your role is to analyze the provided model and plan for temporal and causal consistency. Your job is to remove or flag any bookkeeping shortcuts, implicit counters, or post-hoc justifications that would hide illegal moves. Produce a concise audit report with corrections or confirmations. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You receive the model {disk_manager.disk_model} and the plan {strategy_planner.plan}. You have this private knowledge {agents->auditor->private_information}. Your goal is {agents->auditor->goal}. Check that every plan step has explicit preconditions given the model, that no step relies on hidden tokens or global counters, and that disk size ordering is preserved in every step. If issues are found, describe the minimal modifications required to the plan or model so it is causally and temporally sound."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "moves_disk_mover",
-                    "plan_strategy",
-                    "audit_report"
+                    "disk_manager.disk_model",
+                    "strategy_planner.plan",
+                    "auditor.audit"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert with multi-agent PDDL modeling and a practitioner of FastDownward. Integrate agents' analyses and produce a complete PDDL domain and a PDDL problem file compatible with the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct where relevant and ensure all physical rules are enforced as preconditions and effects.",
-                "prompt": "Your name is orchestrator. You must integrate the public information {environment->public_information} and the inputs from the other agents: {moves_disk_mover}, {plan_strategy}, and {audit_report}. Produce a final PDDL domain and problem that encode the Tower of Hanoi instance with five disks on pegs left, middle, and right, with the initial and goal states as specified. The domain must include a single action representing moving the top disk from one peg to another and must encode the constraints: only top disks can move, one disk at a time, and no larger disk may be placed on a smaller disk. Ensure the PDDL is compatible with FastDownward and that the actions of the contributing agents are kept conceptually distinct if needed. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                "system_prompt": "You are the orchestrator. Your responsibility is to integrate the model, the plan outline, and the auditor corrections and produce a final PDDL domain and a PDDL problem file compatible with the FastDownwards solver. You must encode the primitive move action, types, predicates, objects, initial state, and goal state for the seven disk instance. Keep agent actions distinct if representing multi-agent aspects. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is explicit, complete, and does not rely on external bookkeeping shortcuts.",
+                "prompt": "There are multiple contributors. Integrate the disk model {disk_manager.disk_model}, the plan outline {strategy_planner.plan}, and the auditor report {auditor.audit}. Your task is {agents->orchestrator->goal}. Produce a PDDL domain and a PDDL problem that encodes the seven disk Tower of Hanoi starting with all disks on the middle peg and ending with all disks on the right peg using the left peg only as intermediate and leaving it empty at the end. Target the FastDownwards solver and ensure compatibility. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "disk_mover.analysis->orchestrator.pddl",
-            "strategy_planner.analysis->orchestrator.pddl",
-            "auditor.audit->orchestrator.pddl"
+            "disk_manager.model->strategy_planner.plan",
+            "strategy_planner.plan->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "disk_manager.model->orchestrator.pddl"
         ]
     }
 }

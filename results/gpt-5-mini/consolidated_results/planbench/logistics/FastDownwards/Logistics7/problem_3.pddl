@@ -1,51 +1,33 @@
-(define (problem example-A)
-  (:domain object-manipulation)
+(define (problem logistics7-problem)
+  (:domain logistics7)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - obj
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 - stage
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 package_1 - package
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    city_0 city_1 - city
+    step0 step1 step2 step3 step4 - step
   )
   (:init
-    ;; stage chain and initial clock at stage_0 (enough steps for sequential actions)
-    (succ stage_0 stage_1)
-    (succ stage_1 stage_2)
-    (succ stage_2 stage_3)
-    (succ stage_3 stage_4)
-    (succ stage_4 stage_5)
-    (succ stage_5 stage_6)
-    (now stage_0)
-
-    ;; unary properties
-    (cats object_0)
-    (cats object_1)
-    (hand object_10)
-
-    (sneeze object_4)
-    (sneeze object_5)
-
-    (spring object_6)
-    (spring object_8)
-
-    (stupendous object_2)
-    (stupendous object_3)
-
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-
-    ;; binary relations
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_4 object_6)
-    (next object_5 object_9)
+    (airport location_0_0)
+    (airport location_1_0)
+    (at-airplane airplane_0 location_1_0)
+    (at-package package_0 location_1_1)
+    (at-package package_1 location_0_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_1)
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (succ step0 step1)
+    (succ step1 step2)
+    (succ step2 step3)
+    (succ step3 step4)
+    (at-step step0)
   )
   (:goal (and
-    (next object_10 object_6)
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_0_0)
   ))
 )

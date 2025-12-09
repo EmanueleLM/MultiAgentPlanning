@@ -1,210 +1,130 @@
-(define (domain multiagent-orchestration)
+(define (domain orchestrator-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types orchestrator worker task phase)
 
-  ;; Predicates (public schema predicates)
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (sneeze ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?x - obj ?y - obj)
+    ;; availability
+    (available-orch ?o - orchestrator)
+    (available-worker ?w - worker)
+
+    ;; assignment and execution
+    (assigned ?t - task ?w - worker)
+    (in-progress ?t - task)
+    (working-on ?w - worker ?t - task)
+
+    ;; task/state relations
+    (task-done ?t - task)
+    (task-first ?t - task)
+    (task-predecessor ?pred - task ?t - task)
+    (task-in-phase ?t - task ?ph - phase)
+
+    ;; phase sequencing and terminal facts
+    (phase-active ?ph - phase)
+    (phase-done ?ph - phase)
+    (phase-next ?p1 - phase ?p2 - phase)
+    (phase-last-task ?ph - phase ?t - task)
+    (phase-final ?ph - phase)
   )
 
-  ;; ACTION SCHEMAS as published. Distinct agent-intended actors are reflected
-  ;; by action name prefixes actor_a_ and actor_b_. Preconditions and effects
-  ;; are fully explicit and match the public schemas cited in the audit.
-
-  ;; SIP (produces vase, consumes a specific next)
-  (:action actor_a_sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Orchestrator assigns a specific worker to a specific task in the currently active phase.
+  (:action orchestrator-assign-task
+    :parameters (?o - orchestrator ?w - worker ?t - task ?ph - phase)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
+                    (available-orch ?o)
+                    (available-worker ?w)
+                    (task-in-phase ?t ?ph)
+                    (phase-active ?ph)
+                    (not (task-done ?t))
+                    (not (assigned ?t ?w))
+                  )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+              (assigned ?t ?w)
+              (not (available-worker ?w))
+            )
   )
 
-  (:action actor_b_sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Worker starts a task that is defined as the first task in its phase.
+  (:action worker-start-first-task
+    :parameters (?w - worker ?t - task ?ph - phase)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
+                    (assigned ?t ?w)
+                    (task-first ?t)
+                    (task-in-phase ?t ?ph)
+                    (phase-active ?ph)
+                    (not (in-progress ?t))
+                  )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+              (in-progress ?t)
+              (working-on ?w ?t)
+              (not (assigned ?t ?w))
+            )
   )
 
-  ;; CLIP (similar to sip but uses sneeze instead of cats)
-  (:action actor_a_clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Worker starts a task whose predecessor task has been completed.
+  (:action worker-start-following-task
+    :parameters (?w - worker ?pred - task ?t - task ?ph - phase)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
+                    (assigned ?t ?w)
+                    (task-predecessor ?pred ?t)
+                    (task-done ?pred)
+                    (task-in-phase ?t ?ph)
+                    (phase-active ?ph)
+                    (not (in-progress ?t))
+                  )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+              (in-progress ?t)
+              (working-on ?w ?t)
+              (not (assigned ?t ?w))
+            )
   )
 
-  (:action actor_b_clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Worker completes a task they are working on. Worker becomes available again.
+  (:action worker-complete-task
+    :parameters (?w - worker ?t - task ?ph - phase)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
+                    (in-progress ?t)
+                    (working-on ?w ?t)
+                    (task-in-phase ?t ?ph)
+                    (phase-active ?ph)
+                  )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+              (task-done ?t)
+              (not (in-progress ?t))
+              (not (working-on ?w ?t))
+              (available-worker ?w)
+            )
   )
 
-  ;; PALTRY (consumes a vase and an existing next, produces a next)
-  (:action actor_a_paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Orchestrator finishes a phase and activates its successor phase.
+  (:action orchestrator-finish-phase-with-next
+    :parameters (?o - orchestrator ?ph - phase ?next - phase ?lastt - task)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
+                    (available-orch ?o)
+                    (phase-active ?ph)
+                    (phase-next ?ph ?next)
+                    (phase-last-task ?ph ?lastt)
+                    (task-done ?lastt)
+                  )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+              (phase-done ?ph)
+              (not (phase-active ?ph))
+              (phase-active ?next)
+            )
   )
 
-  (:action actor_b_paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Orchestrator finishes the final phase (no successor).
+  (:action orchestrator-finish-final-phase
+    :parameters (?o - orchestrator ?ph - phase ?lastt - task)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
+                    (available-orch ?o)
+                    (phase-active ?ph)
+                    (phase-final ?ph)
+                    (phase-last-task ?ph ?lastt)
+                    (task-done ?lastt)
+                  )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+              (phase-done ?ph)
+              (not (phase-active ?ph))
+            )
   )
-
-  ;; TIGHTFISTED (like paltry but requires sneeze on the middle object)
-  (:action actor_a_tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  (:action actor_b_tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  ;; MEMORY (re-targets an existing next from subject ?x: next ?x ?y -> next ?x ?z)
-  (:action actor_a_memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action actor_b_memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  ;; WRETCHED (alternative re-targeting with richer material preconditions)
-  (:action actor_a_wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?c - obj)
-    :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?c)
-      (next ?x ?y)
-      (collect ?y ?c)
-      (collect ?z ?c)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action actor_b_wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?c - obj)
-    :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?c)
-      (next ?x ?y)
-      (collect ?y ?c)
-      (collect ?z ?c)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
 )

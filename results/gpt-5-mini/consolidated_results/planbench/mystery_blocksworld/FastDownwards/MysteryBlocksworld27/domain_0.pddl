@@ -1,119 +1,105 @@
-(define (domain orchestrator-domain)
-  (:requirements :strips :typing)
-  (:types obj)
+(define (domain staged-assembly)
+  ; Domain: staged-assembly
+  ; Modeling choices:
+  ; - We model a strict ordered workflow with explicit phase objects (p_prepare, p_assemble, p_test, p_approve, p_deliver).
+  ; - Phase progression is enforced by explicit "advance-<from>-to-<to>" actions which require completion facts for the preceding phase.
+  ; - Each operational action is tied to a phase via (phase-active ?ph). This prevents reordering of phase-dependent work.
+  ; - Agent provenance of effects is preserved by keeping separate actions named for role/actor (fetch-by-carrier, assemble-by-assembler, run-test-by-inspector, approve-by-auditor, deliver-by-carrier).
+  ; - No bookkeeping shortcuts (tokens/penalties/quotas) are used. All constraints are encoded as hard preconditions.
+  ; - Movement of agents/parts is modeled explicitly; there is no implicit teleportation.
+  ; - Only :strips, :typing and :negative-preconditions are used to keep compatibility with FastDownwards.
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent person part location phase)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
+    ; Locations and positions
+    (at ?ag - agent ?loc - location)
+    (part-at ?p - part ?loc - location)
+
+    ; Task-state predicates
+    (assembled ?p - part)
+    (tested ?p - part)
+    (approved ?p - part)
+    (delivered ?p - part)
+
+    ; Phase-control predicates
+    (phase-active ?ph - phase)
+    (phase-next ?p1 - phase ?p2 - phase)
   )
 
-  ;; paltry(a,b,c): requires hand(a), cats(b), texture(c), vase(a,b), next(b,c).
-  ;; Effects: add next(a,c), remove vase(a,b).
-  (:action paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+  ; Generic agent movement allowed (no phase restriction) to let agents reposition to required sites.
+  (:action move-agent
+    :parameters (?ag - agent ?from - location ?to - location)
+    :precondition (and (at ?ag ?from))
+    :effect (and (not (at ?ag ?from)) (at ?ag ?to))
   )
 
-  ;; sip(a,b,c): requires hand(a), cats(b), texture(c), next(a,c), next(b,c).
-  ;; Effects: add vase(a,b), remove next(a,c).
-  (:action sip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
-    :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+  ; Prepare phase action: carrier moves the part from supplier to assembly area.
+  (:action fetch-by-carrier
+    :parameters (?carrier - agent ?part - part ?from - location ?to - location ?ph - phase)
+    :precondition (and (at ?carrier ?from) (part-at ?part ?from) (phase-active ?ph) (not (assembled ?part)))
+    ; enforce that this action must be executed in the prepare phase by binding ?ph to the active phase in the problem
+    :effect (and (not (part-at ?part ?from)) (part-at ?part ?to))
   )
 
-  ;; clip(a,b,c): requires hand(a), sneeze(b), texture(c), next(b,c), next(a,c).
-  ;; Effects: add vase(a,b), remove next(a,c).
-  (:action clip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
-    :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+  ; Assemble action: assembler makes the part assembled; must occur in assemble phase.
+  (:action assemble-by-assembler
+    :parameters (?assembler - agent ?part - part ?loc - location ?ph - phase)
+    :precondition (and (at ?assembler ?loc) (part-at ?part ?loc) (phase-active ?ph) (not (assembled ?part)))
+    :effect (and (assembled ?part))
   )
 
-  ;; wretched(a,b,c,d): requires sneeze(a), texture(b), texture(c), stupendous(d), next(a,b), collect(b,d), collect(c,d).
-  ;; Effects: add next(a,c), remove next(a,b).
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
+  ; Move part to testbench action: executed during test phase to move the part to the testbench
+  (:action move-part-to-testbench
+    :parameters (?carrier - agent ?part - part ?from - location ?testbench - location ?ph - phase)
+    :precondition (and (at ?carrier ?from) (part-at ?part ?from) (phase-active ?ph))
+    :effect (and (not (part-at ?part ?from)) (part-at ?part ?testbench))
   )
 
-  ;; memory(a,b,c): requires cats(a), spring(b), spring(c), next(a,b).
-  ;; Effects: add next(a,c), remove next(a,b).
-  (:action memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
+  ; Run test: inspector performs test; must be in test phase and part must be at the testbench
+  (:action run-test-by-inspector
+    :parameters (?inspector - agent ?part - part ?testbench - location ?ph - phase)
+    :precondition (and (at ?inspector ?testbench) (part-at ?part ?testbench) (phase-active ?ph) (assembled ?part) (not (tested ?part)))
+    :effect (and (tested ?part))
   )
 
-  ;; tightfisted(a,b,c): requires hand(a), sneeze(b), texture(c), next(b,c), vase(a,b).
-  ;; Effects: add next(a,c), remove vase(a,b).
-  (:action tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+  ; Approve action: auditor approves the tested part; must be in approve phase
+  (:action approve-by-auditor
+    :parameters (?auditor - agent ?part - part ?loc - location ?ph - phase)
+    :precondition (and (at ?auditor ?loc) (part-at ?part ?loc) (phase-active ?ph) (tested ?part) (not (approved ?part)))
+    :effect (and (approved ?part))
+  )
+
+  ; Deliver action: carrier moves the approved part to the delivery site and marks it delivered; must be in deliver phase
+  (:action deliver-by-carrier
+    :parameters (?carrier - agent ?part - part ?from - location ?dest - location ?ph - phase)
+    :precondition (and (at ?carrier ?from) (part-at ?part ?from) (phase-active ?ph) (approved ?part) (not (delivered ?part)))
+    :effect (and (not (part-at ?part ?from)) (part-at ?part ?dest) (delivered ?part))
+  )
+
+  ; Phase-transition actions enforce strict ordering.
+  ; Each transition deactivates the preceding phase and activates the successor.
+  (:action advance-prepare-to-assemble
+    :parameters (?pre - phase ?next - phase ?part - part ?assembly - location)
+    :precondition (and (phase-active ?pre) (phase-next ?pre ?next) (part-at ?part ?assembly))
+    :effect (and (not (phase-active ?pre)) (phase-active ?next))
+  )
+
+  (:action advance-assemble-to-test
+    :parameters (?pre - phase ?next - phase ?part - part)
+    :precondition (and (phase-active ?pre) (phase-next ?pre ?next) (assembled ?part))
+    :effect (and (not (phase-active ?pre)) (phase-active ?next))
+  )
+
+  (:action advance-test-to-approve
+    :parameters (?pre - phase ?next - phase ?part - part)
+    :precondition (and (phase-active ?pre) (phase-next ?pre ?next) (tested ?part))
+    :effect (and (not (phase-active ?pre)) (phase-active ?next))
+  )
+
+  (:action advance-approve-to-deliver
+    :parameters (?pre - phase ?next - phase ?part - part)
+    :precondition (and (phase-active ?pre) (phase-next ?pre ?next) (approved ?part))
+    :effect (and (not (phase-active ?pre)) (phase-active ?next))
   )
 )

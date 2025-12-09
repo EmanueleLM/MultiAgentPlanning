@@ -1,52 +1,59 @@
-(define (problem logistics10-problem1)
-  (:domain logistics10)
+(define (problem logistics-instance-1)
+  (:domain logistics-multiagent)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 package_1 package_2 - package
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    city_0 city_1 - city
   )
+
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; city membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
 
-    ;; collect
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ;; airports
+    (is-airport location_0_0)
+    (is-airport location_1_0)
 
-    ;; hand
-    (hand object_10)
-    (hand object_11)
+    ;; same-city (symmetric) for locations in the same city
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
 
-    ;; next relations (initial ordering)
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_4 object_6)
-    (next object_5 object_8)
+    ;; different: all ordered pairs of distinct locations
+    (different location_0_0 location_0_1)
+    (different location_0_0 location_1_0)
+    (different location_0_0 location_1_1)
+    (different location_0_1 location_0_0)
+    (different location_0_1 location_1_0)
+    (different location_0_1 location_1_1)
+    (different location_1_0 location_0_0)
+    (different location_1_0 location_0_1)
+    (different location_1_0 location_1_1)
+    (different location_1_1 location_0_0)
+    (different location_1_1 location_0_1)
+    (different location_1_1 location_1_0)
 
-    ;; sneeze
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; initial vehicle and package locations (dynamic state)
+    (at-airplane airplane_0 location_0_0)
 
-    ;; spring
-    (spring object_6)
-    (spring object_8)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
 
-    ;; stupendous
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ;; texture
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    (at-package package_0 location_0_0)
+    (at-package package_1 location_1_1)
+    (at-package package_2 location_0_1)
   )
 
   (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_8)
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
+    (at-package package_2 location_1_0)
   ))
 )

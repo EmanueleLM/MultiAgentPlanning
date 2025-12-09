@@ -1,65 +1,79 @@
-(define (domain multiagent-delivery)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types agent package location)
+; Domain: hoist-truck-pallet
+; Assumptions (see also separate assumptions note after the problem):
+; - Single shared location "dock" where the truck, the hoist, and all pallets are colocated.
+; - All crates start inside the single truck (truck0). Pallets are empty at start.
+; - Each pallet may hold at most one crate (enforced by pallet-free predicate).
+(define (domain hoist-truck-pallet)
+  :requirements :strips :typing :negative-preconditions
+  :types hoist truck crate pallet location
 
-  (:predicates
-    (at ?ag - agent ?loc - location)            ; agent at location
-    (at_obj ?pkg - package ?loc - location)     ; package at location (not held)
-    (holding ?ag - agent ?pkg - package)        ; agent holds package
-    (connected ?l1 - location ?l2 - location)   ; bidirectional connection between locations
-  )
+  :predicates
+    ; agent/location predicates
+    (at-hoist ?h - hoist ?loc - location)
+    (at-truck ?t - truck ?loc - location)
 
-  ;; Move an agent between connected locations
-  (:action move
-    :parameters (?ag - agent ?from - location ?to - location)
+    ; crate location predicates
+    (in-truck ?c - crate ?t - truck)
+    (crate-on-pallet ?c - crate ?p - pallet)
+
+    ; supporting predicates for action preconditions (bookkeeping as explicit state)
+    (holding ?h - hoist ?c - crate)
+    (hoist-empty ?h - hoist)
+    (pallet-at ?p - pallet ?loc - location)
+    (pallet-free ?p - pallet)
+  ; Actions used by the hoist to move crates between truck and pallets.
+  ; Hoist actions are distinct from truck actions to preserve intended separation of agents.
+
+  ; Pick a crate from a truck bed using the hoist
+  (action hoist-pick-from-truck
+    :parameters (?h - hoist ?t - truck ?c - crate ?loc - location)
     :precondition (and
-      (at ?ag ?from)
-      (connected ?from ?to)
+      (at-hoist ?h ?loc)
+      (at-truck ?t ?loc)
+      (in-truck ?c ?t)
+      (hoist-empty ?h)
     )
     :effect (and
-      (not (at ?ag ?from))
-      (at ?ag ?to)
+      (not (in-truck ?c ?t))
+      (not (hoist-empty ?h))
+      (holding ?h ?c)
     )
   )
 
-  ;; Pick up a package at the agent's current location
-  (:action pick-up
-    :parameters (?ag - agent ?pkg - package ?loc - location)
+  ; Place a crate from hoist onto a pallet
+  (action hoist-place-on-pallet
+    :parameters (?h - hoist ?p - pallet ?c - crate ?loc - location)
     :precondition (and
-      (at ?ag ?loc)
-      (at_obj ?pkg ?loc)
+      (at-hoist ?h ?loc)
+      (pallet-at ?p ?loc)
+      (holding ?h ?c)
+      (pallet-free ?p)
     )
     :effect (and
-      (not (at_obj ?pkg ?loc))
-      (holding ?ag ?pkg)
+      (not (holding ?h ?c))
+      (hoist-empty ?h)
+      (crate-on-pallet ?c ?p)
+      (not (pallet-free ?p))
     )
   )
 
-  ;; Put down a package at the agent's current location
-  (:action put-down
-    :parameters (?ag - agent ?pkg - package ?loc - location)
+  ; Pick a crate from a pallet using the hoist (allows relocating crates)
+  (action hoist-pick-from-pallet
+    :parameters (?h - hoist ?p - pallet ?c - crate ?loc - location)
     :precondition (and
-      (at ?ag ?loc)
-      (holding ?ag ?pkg)
+      (at-hoist ?h ?loc)
+      (pallet-at ?p ?loc)
+      (crate-on-pallet ?c ?p)
+      (hoist-empty ?h)
     )
     :effect (and
-      (not (holding ?ag ?pkg))
-      (at_obj ?pkg ?loc)
+      (not (crate-on-pallet ?c ?p))
+      (not (hoist-empty ?h))
+      (holding ?h ?c)
+      (pallet-free ?p)
     )
   )
 
-  ;; Handover a package from one agent to another when co-located
-  (:action handover
-    :parameters (?giver - agent ?receiver - agent ?pkg - package ?loc - location)
-    :precondition (and
-      (at ?giver ?loc)
-      (at ?receiver ?loc)
-      (holding ?giver ?pkg)
-      (not (holding ?receiver ?pkg))
-    )
-    :effect (and
-      (not (holding ?giver ?pkg))
-      (holding ?receiver ?pkg)
-    )
-  )
+  ; Optional truck movement and load/unload actions are intentionally omitted
+  ; because this problem's initial state assumes co-location at a single dock.
 )

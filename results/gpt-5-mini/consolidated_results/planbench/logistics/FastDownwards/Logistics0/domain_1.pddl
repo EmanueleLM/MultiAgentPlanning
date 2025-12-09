@@ -1,147 +1,132 @@
-(define (domain orchestrator-next-link)
+(define (domain transport-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj stage act)
+  (:types truck airplane package location city stage)
 
   (:predicates
-    ; world predicates (objects)
-    (next ?from - obj ?to - obj)
-    (cats ?o - obj)
-    (hand ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (stupendous ?o - obj)
+    ; positions
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (at-package ?p - package ?l - location)
 
-    ; explicit stage/ordering predicates
-    (current-stage ?s - stage)               ; which stage is currently active (exactly one)
-    (succ-stage ?s - stage ?t - stage)       ; successor relation between stages
-    (allowed-at ?act - act ?s - stage)       ; which actions are allowed at which stage
+    ; containment
+    (in-truck ?p - package ?t - truck)
+    (in-airplane ?p - package ?a - airplane)
+
+    ; location properties and connectivity
+    (airport ?l - location)
+    (road-connected ?l1 - location ?l2 - location)
+    (air-route ?l1 - location ?l2 - location)
+    (location-in-city ?l - location ?c - city)
+
+    ; discrete stage progression (successor graph) and current stage marker
+    (successor ?s1 - stage ?s2 - stage)
+    (current-stage ?s - stage)
   )
 
-  ; Each action requires that it is allowed at the current stage and advances the stage to its successor.
-  ; The stage token is moved from ?s to ?s2 by every action execution; this enforces contiguous stage occupancy
-  ; and a strict ordering of actions when the problem gives allowed-at facts.
-
-  (:action paltry
-    :parameters (?h - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Truck actions: each action requires the current-stage ?s and a successor ?next;
+  ;; executing an action advances the unique current-stage to ?next. This enforces
+  ;; explicit, discrete ordered stages and prevents oscillation/backtracking between
+  ;; world states within the same stage.
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?next - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?x)
-      (texture ?y)
-      (vase ?h ?x)
-      (next ?x ?y)
       (current-stage ?s)
-      (succ-stage ?s ?s2)
-      (allowed-at paltry ?s)
+      (successor ?s ?next)
+      (at-package ?p ?l)
+      (at-truck ?t ?l)
+      (not (in-truck ?p ?t))
     )
     :effect (and
-      (next ?h ?y)                ; add next h->y
-      (not (vase ?h ?x))          ; delete vase h x
+      (not (at-package ?p ?l))
+      (in-truck ?p ?t)
       (not (current-stage ?s))
-      (current-stage ?s2)
-    )
-  )
-
-  (:action sip
-    :parameters (?h - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
-    :precondition (and
-      (hand ?h)
-      (cats ?x)
-      (texture ?y)
-      (next ?h ?y)
-      (next ?x ?y)
-      (current-stage ?s)
-      (succ-stage ?s ?s2)
-      (allowed-at sip ?s)
-    )
-    :effect (and
-      (vase ?h ?x)                ; add vase h x
-      (not (next ?h ?y))          ; delete next h y
-      (not (current-stage ?s))
-      (current-stage ?s2)
+      (current-stage ?next)
     )
   )
 
-  (:action clip
-    :parameters (?h - obj ?snee - obj ?y - obj ?s - stage ?s2 - stage)
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?next - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?y)
-      (next ?snee ?y)
-      (next ?h ?y)
       (current-stage ?s)
-      (succ-stage ?s ?s2)
-      (allowed-at clip ?s)
+      (successor ?s ?next)
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
     )
     :effect (and
-      (vase ?h ?snee)             ; add vase h sneeze
-      (not (next ?h ?y))          ; delete next h y
+      (not (in-truck ?p ?t))
+      (at-package ?p ?l)
       (not (current-stage ?s))
-      (current-stage ?s2)
+      (current-stage ?next)
     )
   )
 
-  (:action wretched
-    :parameters (?snee - obj ?t1 - obj ?t2 - obj ?st - obj ?s - stage ?s2 - stage)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?s - stage ?next - stage)
     :precondition (and
-      (sneeze ?snee)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?snee ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
       (current-stage ?s)
-      (succ-stage ?s ?s2)
-      (allowed-at wretched ?s)
+      (successor ?s ?next)
+      (at-truck ?t ?from)
+      (road-connected ?from ?to)
     )
     :effect (and
-      (next ?snee ?t2)            ; add next sneeze -> t2
-      (not (next ?snee ?t1))      ; delete previous next sneeze -> t1
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
       (not (current-stage ?s))
-      (current-stage ?s2)
+      (current-stage ?next)
     )
   )
 
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj ?s - stage ?s2st - stage)
+  ;; Airplane actions
+  (:action load-airplane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?next - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
       (current-stage ?s)
-      (succ-stage ?s ?s2st)
-      (allowed-at memory ?s)
+      (successor ?s ?next)
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
+      (airport ?l)
+      (not (in-airplane ?p ?a))
     )
     :effect (and
-      (next ?c ?s2)               ; add next c -> s2
-      (not (next ?c ?s1))         ; delete next c -> s1
+      (not (at-package ?p ?l))
+      (in-airplane ?p ?a)
       (not (current-stage ?s))
-      (current-stage ?s2st)
+      (current-stage ?next)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?snee - obj ?t - obj ?s - stage ?s2 - stage)
+  (:action unload-airplane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?next - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?t)
-      (next ?snee ?t)
-      (vase ?h ?snee)
       (current-stage ?s)
-      (succ-stage ?s ?s2)
-      (allowed-at tightfisted ?s)
+      (successor ?s ?next)
+      (in-airplane ?p ?a)
+      (at-airplane ?a ?l)
+      (airport ?l)
     )
     :effect (and
-      (next ?h ?t)                ; add next h -> t
-      (not (vase ?h ?snee))
+      (not (in-airplane ?p ?a))
+      (at-package ?p ?l)
       (not (current-stage ?s))
-      (current-stage ?s2)
+      (current-stage ?next)
+    )
+  )
+
+  (:action fly-airplane
+    :parameters (?a - airplane ?from - location ?to - location ?s - stage ?next - stage)
+    :precondition (and
+      (current-stage ?s)
+      (successor ?s ?next)
+      (at-airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (air-route ?from ?to)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+      (not (current-stage ?s))
+      (current-stage ?next)
     )
   )
 )

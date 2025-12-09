@@ -1,66 +1,108 @@
-(define (domain Logistics23)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    vehicle
+    truck airplane - vehicle
+    package
+    location
+    city
+  )
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
+    ;; object locations
+    (at-package ?p - package ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?a - airplane ?l - location)
+
+    ;; containment: a package is in a vehicle (truck or airplane)
+    (in ?p - package ?v - vehicle)
+
+    ;; location-to-city relation and special airport marker
+    (in-city ?l - location ?c - city)
+    (airport ?l - location)
+
+    ;; connectivity
+    (road ?from - location ?to - location)
+    (air-route ?from - location ?to - location)
   )
 
-  ; paltry: requires hand(X), cats(Y), texture(Z), vase(X,Y), next(Y,Z)
-  ; effects: add next(X,Z), delete vase(X,Y)
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (vase ?x ?y) (next ?y ?z))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; TRUCK actions
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and
+      (at-truck ?t ?l)
+      (at-package ?p ?l)
+    )
+    :effect (and
+      (in ?p ?t)
+      (not (at-package ?p ?l))
+    )
   )
 
-  ; sip: requires hand(X), cats(Y), texture(Z), next(X,Z), next(Y,Z)
-  ; effects: add vase(X,Y), delete next(X,Z)
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (next ?x ?z) (next ?y ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and
+      (at-truck ?t ?l)
+      (in ?p ?t)
+    )
+    :effect (and
+      (at-package ?p ?l)
+      (not (in ?p ?t))
+    )
   )
 
-  ; clip: requires hand(X), sneeze(Y), texture(Z), next(Y,Z), next(X,Z)
-  ; effects: add vase(X,Y), delete next(X,Z)
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (next ?x ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  ;; Drive only between locations that are in the same city.
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and
+      (at-truck ?t ?from)
+      (road ?from ?to)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+    )
+    :effect (and
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
+    )
   )
 
-  ; wretched: requires sneeze(A), texture(B), texture(C), stupendous(D),
-  ;           next(A,B), collect(B,D), collect(C,D)
-  ; effects: add next(A,C), delete next(A,B)
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and (sneeze ?a) (texture ?b) (texture ?c) (stupendous ?d)
-                       (next ?a ?b) (collect ?b ?d) (collect ?c ?d))
-    :effect (and (next ?a ?c) (not (next ?a ?b)))
+  ;; AIRPLANE actions
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and
+      (at-plane ?a ?l)
+      (at-package ?p ?l)
+    )
+    :effect (and
+      (in ?p ?a)
+      (not (at-package ?p ?l))
+    )
   )
 
-  ; memory: requires cats(A), spring(B), spring(C), next(A,B)
-  ; effects: add next(A,C), delete next(A,B)
-  (:action memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and (cats ?a) (spring ?b) (spring ?c) (next ?a ?b))
-    :effect (and (next ?a ?c) (not (next ?a ?b)))
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and
+      (at-plane ?a ?l)
+      (in ?p ?a)
+    )
+    :effect (and
+      (at-package ?p ?l)
+      (not (in ?p ?a))
+    )
   )
 
-  ; tightfisted: requires hand(X), sneeze(Y), texture(Z), next(Y,Z), vase(X,Y)
-  ; effects: add next(X,Z), delete vase(X,Y)
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (vase ?x ?y))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; Fly only along declared air routes between airport locations.
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and
+      (at-plane ?a ?from)
+      (air-route ?from ?to)
+      (airport ?from)
+      (airport ?to)
+    )
+    :effect (and
+      (at-plane ?a ?to)
+      (not (at-plane ?a ?from))
+    )
   )
 )

@@ -1,71 +1,81 @@
-(define (problem logistics_objects-problem)
-  (:domain logistics_objects)
-  (:objects
-    ;; Scenario 1 objects
-    object_0_s1 - cats
-    object_1_s1 object_2_s1 - stupendous
-    object_3_s1 object_4_s1 - sneeze
-    object_9_s1 object_10_s1 object_11_s1 - hand
-    object_5_s1 object_6_s1 object_7_s1 object_8_s1 - obj
+(define (problem logistics_multiagent_problem)
+  (:domain logistics_multiagent)
 
-    ;; Scenario 2 objects
-    object_0_s2 object_1_s2 - cats
-    object_2_s2 object_3_s2 - stupendous
-    object_4_s2 object_5_s2 - sneeze
-    object_10_s2 object_11_s2 object_12_s2 - hand
-    object_6_s2 object_7_s2 object_8_s2 object_9_s2 - obj
+  (:objects
+    ; cities
+    city_0 city_1 - city
+
+    ; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ; vehicles: one truck and one airplane per city
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - plane
+
+    ; packages
+    package_0 package_1 package_2 - package
+
+    ; discrete global stages (explicit successor chain)
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9
+    stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19
+    stage_20 stage_21 stage_22 stage_23 stage_24 stage_25 - stage
   )
 
   (:init
-    ;; -------- Scenario 1 initial facts (trimmed: typed objects removed) --------
-    (collect object_5_s1 object_1_s1)
-    (collect object_6_s1 object_1_s1)
-    (collect object_7_s1 object_2_s1)
-    (collect object_8_s1 object_2_s1)
-    (next object_0_s1 object_5_s1)
-    (next object_10_s1 object_5_s1)
-    (next object_11_s1 object_5_s1)
-    (next object_3_s1 object_6_s1)
-    (next object_4_s1 object_7_s1)
-    (next object_9_s1 object_8_s1)
-    (spring object_5_s1)
-    (spring object_7_s1)
-    (texture object_5_s1)
-    (texture object_6_s1)
-    (texture object_7_s1)
-    (texture object_8_s1)
+    ; location -> city membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
 
-    ;; -------- Scenario 2 initial facts (trimmed: typed objects removed) --------
-    (collect object_6_s2 object_2_s2)
-    (collect object_7_s2 object_2_s2)
-    (collect object_8_s2 object_3_s2)
-    (collect object_9_s2 object_3_s2)
-    (next object_0_s2 object_6_s2)
-    (next object_1_s2 object_8_s2)
-    (next object_10_s2 object_9_s2)
-    (next object_11_s2 object_6_s2)
-    (next object_12_s2 object_6_s2)
-    (next object_4_s2 object_7_s2)
-    (next object_5_s2 object_8_s2)
-    (spring object_6_s2)
-    (spring object_8_s2)
-    (texture object_6_s2)
-    (texture object_7_s2)
-    (texture object_8_s2)
-    (texture object_9_s2)
+    ; airports
+    (is-airport location_0_0)
+    (is-airport location_1_0)
+
+    ; initial vehicle positions (as given)
+    (at airplane_0 location_0_0)
+    (at airplane_1 location_1_0)
+    (at truck_0 location_0_1)
+    (at truck_1 location_1_0)
+
+    ; initial package positions (as given)
+    (at-pkg package_0 location_1_1)
+    (at-pkg package_1 location_0_0)
+    (at-pkg package_2 location_0_0)
+
+    ; explicit stage chain and initial current stage
+    (next stage_0 stage_1)
+    (next stage_1 stage_2)
+    (next stage_2 stage_3)
+    (next stage_3 stage_4)
+    (next stage_4 stage_5)
+    (next stage_5 stage_6)
+    (next stage_6 stage_7)
+    (next stage_7 stage_8)
+    (next stage_8 stage_9)
+    (next stage_9 stage_10)
+    (next stage_10 stage_11)
+    (next stage_11 stage_12)
+    (next stage_12 stage_13)
+    (next stage_13 stage_14)
+    (next stage_14 stage_15)
+    (next stage_15 stage_16)
+    (next stage_16 stage_17)
+    (next stage_17 stage_18)
+    (next stage_18 stage_19)
+    (next stage_19 stage_20)
+    (next stage_20 stage_21)
+    (next stage_21 stage_22)
+    (next stage_22 stage_23)
+    (next stage_23 stage_24)
+    (next stage_24 stage_25)
+
+    (cur-stage stage_0)
   )
 
-  (:goal
-    (and
-      ;; Goals for scenario 1
-      (next object_10_s1 object_8_s1)
-      (next object_11_s1 object_7_s1)
-      (next object_9_s1 object_6_s1)
-
-      ;; Goals for scenario 2
-      (next object_10_s2 object_7_s2)
-      (next object_11_s2 object_9_s2)
-      (next object_12_s2 object_8_s2)
-    )
-  )
+  (:goal (and
+    (at-pkg package_0 location_0_1)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_1_0)
+  ))
 )

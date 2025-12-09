@@ -1,63 +1,60 @@
-(define (problem depots17-problem-variant1)
-  (:domain Depots17)
-  ; Assumptions and notes:
-  ; - This problem encodes the first initial-state variant provided in the scenario.
-  ; - The proposed_solution sequence (shown separately) is the plan intended to be applied to this initial state.
-  ; - All objects are of a single type "obj".
+(define (problem depots17-problem)
+  (:domain depots17)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    ; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ; pallets and crates (pallet and crate are subtypes of surface)
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ; hoists and trucks
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2 - truck
   )
 
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ; place facts for pallets
+    (at-surface pallet0 depot0)
+    (at-surface pallet1 depot1)
+    (at-surface pallet2 depot2)
+    (at-surface pallet3 distributor0)
 
-    ;; collect relations
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ; place facts for crates (crate is at a place and possibly on a surface)
+    (at-surface crate0 distributor0)
+    (at-surface crate1 distributor0)
+    (at-surface crate2 depot1)
 
-    ;; hands
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    ; stacking relationships (crate on surface)
+    (on crate0 pallet3)
+    (on crate1 crate0)
+    (on crate2 pallet1)
 
-    ;; next relations (initial variant 1)
-    (next object_0 object_6)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_11 object_8)
-    (next object_12 object_9)
-    (next object_13 object_6)
-    (next object_4 object_7)
-    (next object_5 object_9)
+    ; clear/top status as given
+    (clear crate1)
+    (clear crate2)
+    (clear pallet0)
+    (clear pallet2)
 
-    ;; sneezes
-    (sneeze object_4)
-    (sneeze object_5)
+    ; hoist locations and availability
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 distributor0)
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
 
-    ;; springs
-    (spring object_6)
-    (spring object_8)
-
-    ;; stupendous
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ;; textures
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; truck locations
+    (at-truck truck0 distributor0)
+    (at-truck truck1 depot2)
+    (at-truck truck2 distributor0)
   )
 
   (:goal (and
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_12 object_7)
-    (next object_13 object_9)
+    (on crate0 pallet0)
+    (on crate1 pallet2)
+    (on crate2 pallet3)
   ))
 )

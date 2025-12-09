@@ -1,10 +1,9 @@
-(define (problem ObfuscatedDeceptiveLogistics19-StatementA)
+(define (problem ObfuscatedDeceptiveLogistics19-problem)
   (:domain ObfuscatedDeceptiveLogistics19)
   (:objects
     object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
   )
   (:init
-    ;; Statement A initial facts
     (cats object_0)
     (collect object_10 object_2)
     (collect object_5 object_1)
@@ -13,10 +12,10 @@
     (collect object_8 object_2)
     (collect object_9 object_2)
     (hand object_11)
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_3 object_7)
-    (next object_4 object_8)
+    (next object_0 object_5)
+    (next object_11 object_8)
+    (next object_3 object_5)
+    (next object_4 object_10)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -30,5 +29,7 @@
     (texture object_8)
     (texture object_9)
   )
-  (:goal (and (next object_11 object_10)))
+  (:goal (and
+    (next object_11 object_9)
+  ))
 )

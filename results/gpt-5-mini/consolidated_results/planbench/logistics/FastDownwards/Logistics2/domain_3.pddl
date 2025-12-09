@@ -1,71 +1,136 @@
-(define (domain next-vase-domain)
+(define (domain logistics_integrated)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    city
+    location
+    stage
+    vehicle
+    truck airplane - vehicle
+    package
+  )
 
   (:predicates
-    (cats ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (hand ?x - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
+    ;; dynamic location fluents
+    (at-package ?p - package ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+
+    ;; package inside a vehicle (truck or airplane)
+    (in ?p - package ?v - vehicle)
+
+    ;; static relations
+    (location_in_city ?l - location ?c - city)
+    (is_airport ?l - location)
+    (truck_belongs_to_city ?t - truck ?c - city)
+
+    ;; discrete ordered stage progression (hard requirement)
+    (stage_succ ?s - stage ?s2 - stage)
+    (current-stage ?s - stage)
   )
 
-  ;; memory(x,y,z)
-  ;; Pre: cats(x), spring(y), spring(z), next(x,y)
-  ;; Eff: add next(x,z), del next(x,y)
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (cats ?x) (spring ?y) (spring ?z) (next ?x ?y))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
+  ;; Truck actions (internal-city movement and load/unload)
+  (:action truck_load
+    :parameters (?p - package ?t - truck ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (at-truck ?t ?loc)
+                    (at-package ?p ?loc)
+                  )
+    :effect (and
+              (in ?p ?t)
+              (not (at-package ?p ?loc))
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 
-  ;; sip(h,c,t)
-  ;; Pre: hand(h), cats(c), texture(t), next(h,t), next(c,t)
-  ;; Eff: add vase(h,c), del next(h,t)
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (next ?h ?t) (next ?c ?t))
-    :effect (and (vase ?h ?c) (not (next ?h ?t)))
+  (:action truck_unload
+    :parameters (?p - package ?t - truck ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (in ?p ?t)
+                    (at-truck ?t ?loc)
+                  )
+    :effect (and
+              (not (in ?p ?t))
+              (at-package ?p ?loc)
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 
-  ;; paltry(h,c,t)
-  ;; Pre: hand(h), cats(c), texture(t), vase(h,c), next(c,t)
-  ;; Eff: add next(h,t), del vase(h,c)
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (vase ?h ?c) (next ?c ?t))
-    :effect (and (next ?h ?t) (not (vase ?h ?c)))
+  (:action truck_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (at-truck ?t ?from)
+                    (location_in_city ?from ?c)
+                    (location_in_city ?to ?c)
+                    (truck_belongs_to_city ?t ?c)
+                  )
+    :effect (and
+              (not (at-truck ?t ?from))
+              (at-truck ?t ?to)
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 
-  ;; clip(h,s,t)
-  ;; Pre: hand(h), sneeze(s), texture(t), next(s,t), next(h,t)
-  ;; Eff: add vase(h,s), del next(h,t)
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (next ?h ?t))
-    :effect (and (vase ?h ?s) (not (next ?h ?t)))
+  ;; Airplane actions (airport-only load/unload and inter-city flight)
+  (:action airplane_load
+    :parameters (?p - package ?a - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (at-airplane ?a ?loc)
+                    (at-package ?p ?loc)
+                    (is_airport ?loc)
+                  )
+    :effect (and
+              (in ?p ?a)
+              (not (at-package ?p ?loc))
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 
-  ;; wretched(s,t1,t2,o)
-  ;; Pre: sneeze(s), texture(t1), texture(t2), stupendous(o), next(s,t1), collect(t1,o), collect(t2,o)
-  ;; Eff: add next(s,t2), del next(s,t1)
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?o - obj)
-    :precondition (and (sneeze ?s) (texture ?t1) (texture ?t2) (stupendous ?o)
-                       (next ?s ?t1) (collect ?t1 ?o) (collect ?t2 ?o))
-    :effect (and (next ?s ?t2) (not (next ?s ?t1)))
+  (:action airplane_unload
+    :parameters (?p - package ?a - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (in ?p ?a)
+                    (at-airplane ?a ?loc)
+                    (is_airport ?loc)
+                  )
+    :effect (and
+              (not (in ?p ?a))
+              (at-package ?p ?loc)
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 
-  ;; tightfisted(h,s,t)
-  ;; Pre: hand(h), sneeze(s), texture(t), next(s,t), vase(h,s)
-  ;; Eff: add next(h,t), del vase(h,s)
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (vase ?h ?s))
-    :effect (and (next ?h ?t) (not (vase ?h ?s)))
+  (:action airplane_fly
+    :parameters (?a - airplane ?from - location ?to - location ?c_from - city ?c_to - city ?s - stage ?s2 - stage)
+    :precondition (and
+                    (current-stage ?s)
+                    (stage_succ ?s ?s2)
+                    (at-airplane ?a ?from)
+                    (is_airport ?from)
+                    (is_airport ?to)
+                    (location_in_city ?from ?c_from)
+                    (location_in_city ?to ?c_to)
+                    (not (= ?c_from ?c_to))
+                  )
+    :effect (and
+              (not (at-airplane ?a ?from))
+              (at-airplane ?a ?to)
+              (not (current-stage ?s))
+              (current-stage ?s2)
+            )
   )
 )

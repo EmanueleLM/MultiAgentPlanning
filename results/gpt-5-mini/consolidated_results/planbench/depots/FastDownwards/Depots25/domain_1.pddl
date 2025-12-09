@@ -1,60 +1,103 @@
-(define (domain artifact-manipulation)
+(define (domain multiagent_logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    place
+    depot distributor - place
+    surface
+    pallet crate - surface
+    truck
+    hoist
+  )
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (vase ?x - obj ?y - obj)
+    (road-connects ?p1 - place ?p2 - place)
+
+    (at-truck ?tr - truck ?p - place)
+    (at-hoist ?h - hoist ?p - place)
+    (at-surface ?s - surface ?p - place)
+
+    (on ?c - crate ?s - surface)
+    (in-truck ?c - crate ?t - truck)
+    (holding ?h - hoist ?c - crate)
+
+    (clear ?s - surface)
+    (free-hoist ?h - hoist)
   )
 
-  ;; paltry: hand H, cats O1, texture T, vase H O1, next O1 T -> add next H T, del vase H O1
-  (:action paltry
-    :parameters (?h - obj ?o1 - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?o1) (texture ?t) (vase ?h ?o1) (next ?o1 ?t))
-    :effect (and (next ?h ?t) (not (vase ?h ?o1)))
+  (:action truck_coordinator-drive
+    :parameters (?tr - truck ?from - place ?to - place)
+    :precondition (and
+      (at-truck ?tr ?from)
+      (road-connects ?from ?to)
+    )
+    :effect (and
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+    )
   )
 
-  ;; sip: hand H, cats O1, texture T, next H T, next O1 T -> add vase H O1, del next H T
-  (:action sip
-    :parameters (?h - obj ?o1 - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?o1) (texture ?t) (next ?h ?t) (next ?o1 ?t))
-    :effect (and (vase ?h ?o1) (not (next ?h ?t)))
+  (:action hoist_manager-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
+    :precondition (and
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (on ?c ?s)
+      (clear ?c)
+      (free-hoist ?h)
+    )
+    :effect (and
+      (holding ?h ?c)
+      (not (on ?c ?s))
+      (not (free-hoist ?h))
+      (clear ?s)
+      (not (at-surface ?c ?p))
+    )
   )
 
-  ;; clip: hand H, sneeze O1, texture T, next O1 T, next H T -> add vase H O1, del next H T
-  (:action clip
-    :parameters (?h - obj ?o1 - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?o1) (texture ?t) (next ?o1 ?t) (next ?h ?t))
-    :effect (and (vase ?h ?o1) (not (next ?h ?t)))
+  (:action hoist_manager-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
+    :precondition (and
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (holding ?h ?c)
+      (clear ?s)
+    )
+    :effect (and
+      (not (holding ?h ?c))
+      (on ?c ?s)
+      (free-hoist ?h)
+      (not (clear ?s))
+      (clear ?c)
+      (at-surface ?c ?p)
+    )
   )
 
-  ;; wretched: sneeze O0, texture O1, texture O2, stupendous S, next O0 O1, collect O1 S, collect O2 S
-  ;; effect: add next O0 O2, del next O0 O1
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - obj)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?s)
-                       (next ?o0 ?o1) (collect ?o1 ?s) (collect ?o2 ?s))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
+  (:action hoist_manager-load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
+    :precondition (and
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (holding ?h ?c)
+    )
+    :effect (and
+      (not (holding ?h ?c))
+      (in-truck ?c ?t)
+      (free-hoist ?h)
+    )
   )
 
-  ;; memory: cats C, spring S1, spring S2, next C S1 -> add next C S2, del next C S1
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
-    :precondition (and (cats ?c) (spring ?s1) (spring ?s2) (next ?c ?s1))
-    :effect (and (next ?c ?s2) (not (next ?c ?s1)))
-  )
-
-  ;; tightfisted: hand H, sneeze O1, texture T, next O1 T, vase H O1 -> add next H T, del vase H O1
-  (:action tightfisted
-    :parameters (?h - obj ?o1 - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?o1) (texture ?t) (next ?o1 ?t) (vase ?h ?o1))
-    :effect (and (next ?h ?t) (not (vase ?h ?o1)))
+  (:action hoist_manager-unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
+    :precondition (and
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (in-truck ?c ?t)
+      (free-hoist ?h)
+    )
+    :effect (and
+      (holding ?h ?c)
+      (not (in-truck ?c ?t))
+      (not (free-hoist ?h))
+    )
   )
 )

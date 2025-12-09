@@ -1,143 +1,110 @@
-(define (domain Logistics13)
+(define (domain multi_transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj stage)
+  (:types city location truck airplane package)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (sneeze ?x - obj)
-    (stupendous ?x - obj)
-    (texture ?x - obj)
-    (spring ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
-    ;; explicit discrete-time / stage progression
-    (succ ?s1 - stage ?s2 - stage)
-    (current ?s - stage)
+    ;; positions
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?a - airplane ?l - location)
+    (at-pkg ?p - package ?l - location)
+
+    ;; containment
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    ;; static relations
+    (loc-in-city ?l - location ?c - city)
+    (city-airport ?c - city ?l - location)
+    (truck-assigned ?t - truck ?c - city)
+
+    ;; auxiliary distinctness predicates (no :equality requirement)
+    (distinct-loc ?l1 - location ?l2 - location)
+    (distinct-city ?c1 - city ?c2 - city)
   )
 
-  ;; Each action must be executed at the current stage and advances current to a successor stage.
-  ;; paltry: hand X, cats Y, texture Z, vase X Y, next Y Z -> next X Z, not vase X Y
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+  ;; Truck actions (operations constrained inside a city to the truck's assigned city)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
+                   (at-truck ?t ?from)
+                   (loc-in-city ?from ?c)
+                   (loc-in-city ?to ?c)
+                   (truck-assigned ?t ?c)
+                   (distinct-loc ?from ?to)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+             (not (at-truck ?t ?from))
+             (at-truck ?t ?to)
+            )
   )
 
-  ;; sip: hand X, cats Y, texture Z, next X Z, next Y Z -> vase X Y, not next X Z
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
+                   (at-pkg ?p ?l)
+                   (at-truck ?t ?l)
+                   (loc-in-city ?l ?c)
+                   (truck-assigned ?t ?c)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+             (not (at-pkg ?p ?l))
+             (in-truck ?p ?t)
+            )
   )
 
-  ;; clip: hand X, sneeze Y, texture Z, next Y Z, next X Z -> vase X Y, not next X Z
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
+                   (in-truck ?p ?t)
+                   (at-truck ?t ?l)
+                   (loc-in-city ?l ?c)
+                   (truck-assigned ?t ?c)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+             (not (in-truck ?p ?t))
+             (at-pkg ?p ?l)
+            )
   )
 
-  ;; wretched: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;; -> next X Z, not next X Y
-  (:action wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj ?t - stage ?t2 - stage)
+  ;; Airplane actions (operate only between designated city airports; cities must differ)
+  (:action fly-plane
+    :parameters (?a - airplane ?from - location ?to - location ?cf - city ?ct - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-    )
+                   (at-plane ?a ?from)
+                   (city-airport ?cf ?from)
+                   (city-airport ?ct ?to)
+                   (distinct-city ?cf ?ct)
+                   (distinct-loc ?from ?to)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
+             (not (at-plane ?a ?from))
+             (at-plane ?a ?to)
+            )
   )
 
-  ;; memory: cats X, spring Y, spring Z, next X Y -> next X Z, not next X Y
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location ?c - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
+                   (at-pkg ?p ?l)
+                   (at-plane ?a ?l)
+                   (city-airport ?c ?l)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
+             (not (at-pkg ?p ?l))
+             (in-plane ?p ?a)
+            )
   )
 
-  ;; tightfisted: hand X, sneeze Y, texture Z, next Y Z, vase X Y -> next X Z, not vase X Y
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj ?t - stage ?t2 - stage)
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location ?c - city)
     :precondition (and
-      (current ?t)
-      (succ ?t ?t2)
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
+                   (in-plane ?p ?a)
+                   (at-plane ?a ?l)
+                   (city-airport ?c ?l)
+                  )
     :effect (and
-      (not (current ?t))
-      (current ?t2)
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+             (not (in-plane ?p ?a))
+             (at-pkg ?p ?l)
+            )
   )
-
 )

@@ -11,91 +11,104 @@
         ],
         "observer": {
             "private_information": [
-                "You are tasked with reading the human natural-language specification of actions, preconditions, effects, initial statements, and plans.",
-                "Your job is to extract concrete entities, objects, initial facts, and explicit goals without performing formal encoding to PDDL."
+                "Initial facts: object a craves object d",
+                "Initial facts: object d craves object c",
+                "Initial facts: harmony",
+                "Initial facts: planet object b",
+                "Initial facts: planet object c",
+                "Initial facts: province object a",
+                "Initial facts: province object b"
             ],
-            "goal": "Extract objects, initial facts, available action descriptions, and stated goals from the human description into a structured facts report."
+            "goal": "Have object b craves object c and object d craves object a."
         },
         "modeler": {
             "private_information": [
-                "You receive the extracted facts report from the observer and must formalize action schemas, listing preconditions and positive and negative effects for each action.",
-                "Produce a neutral formal model representation (JSON action schemas) rather than PDDL. Preserve the agent-distinctness of actions."
+                "Action semantics and constraints:",
+                "Attack: requires province(object) and planet(object) and harmony; after Attack, Pain holds; after Attack, Province, Planet and Harmony become false for the attacked object(s).",
+                "Succumb: requires Pain; after Succumb, Province, Planet and Harmony become true; after Succumb, Pain becomes false.",
+                "Overcome: requires Province(other) and Pain; after Overcome, Harmony becomes true and Province(object) becomes true and ObjectCraves(other) becomes true; after Overcome, Province(other) and Pain become false.",
+                "Feast: requires ObjectCraves(other) and Province(object) and Harmony; after Feast, Pain and Province(other) become true and ObjectCraves(other), Province(object), Harmony become false."
             ],
-            "goal": "Build a formal model of actions and the world state sufficient for planning, without emitting PDDL."
+            "goal": "Provide a formal intermediate model of actions, their parameters, preconditions and effects describing the system used to reach the goal."
         },
         "auditor": {
             "private_information": [
-                "You specialize in temporal and causal consistency. You must detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or ad-hoc shortcuts in the model.",
-                "You will revise and clean the model so that causal links are explicit and any spurious bookkeeping predicates are replaced or justified."
+                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts.",
+                "Tasks: detect and remove tokens such as quota counters, post-hoc penalties and other bookkeeping shortcuts from models, ensure that all causal links are explicit and that action preconditions and effects are consistent over time."
             ],
-            "goal": "Audit the model for temporal and causal consistency and return a corrected, justification-backed model with bookkeeping shortcuts removed or explained."
+            "goal": "Produce an audited, temporally and causally consistent action model suitable for translation into PDDL."
         },
         "orchestrator": {
             "private_information": [
-                "You coordinate the outputs of observer, modeler, and auditor and must produce the final PDDL domain and problem targeting the FastDownwards solver.",
-                "Ensure that actions remain distinct per original roles and that the final PDDL is consistent with the audited model."
+                "Role: integrate audited model and observations and produce the final PDDL domain and problem targeting the FastDownward solver."
             ],
-            "goal": "Integrate the prior agents' outputs and generate a complete PDDL domain and problem suitable for FastDownwards that achieves the stated goal(s)."
+            "goal": "Produce a final PDDL domain and PDDL problem compatible with the FastDownward solver that achieves the global goal."
         }
     },
     "environment": {
         "init": {
-            "objects_range": "object_0..object_12",
-            "objects_count_estimate": 13
+            "rule_set": "mystery_blocksworld_v1"
         },
         "public_information": [
-            "Available actions and their arities: paltry(x,y,z), sip(x,y,z), clip(x,y,z), wretched(x,y,z,w), memory(x,y,z), tightfisted(x,y,z).",
-            "Action constraints summarized: each action has explicit preconditions and effects involving predicates such as hand, cats, texture, vase, next, sneeze, stupendous, collect, spring.",
-            "Examples of preconditions: paltry requires hand obj0 and cats obj1 and texture obj2 and vase obj0 obj1 and next obj1 obj2. sip requires hand obj0 cats obj1 texture obj2 next obj0 obj2 next obj1 obj2. clip requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 next obj0 obj2. wretched requires sneeze obj0 texture obj1 texture obj2 stupendous obj3 next obj0 obj1 collect obj1 obj3 collect obj2 obj3. memory requires cats obj0 spring obj1 spring obj2 next obj0 obj1. tightfisted requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 vase obj0 obj1.",
-            "Effects are also specified in the human description and include creation or deletion of next and vase predicates for different actions.",
-            "Initial facts provided by the human include two separate STATEMENT sets with multiple facts such as cats object_0 and cats object_1 and many collect, hand, next, sneeze, spring, stupendous, texture facts. Goals included are next object_12 object_11 and combinations like next object_11 object_7 and next object_12 object_5 in different scenarios.",
-            "The planner should treat object identifiers literally as object_0 ... object_12 and honor the stated preconditions and effects."
+            "Available actions: Attack object, Feast object from another object, Succumb object, Overcome object from another object.",
+            "Attack preconditions: Province(object), Planet(object), Harmony.",
+            "Attack effects: adds Pain(object); removes Province(object), Planet(object), Harmony.",
+            "Succumb preconditions: Pain.",
+            "Succumb effects: adds Province(object), Planet(object), Harmony; removes Pain.",
+            "Overcome preconditions: Province(other), Pain.",
+            "Overcome effects: adds Harmony, Province(object), ObjectCraves(other); removes Province(other), Pain.",
+            "Feast preconditions: ObjectCraves(other), Province(object), Harmony.",
+            "Feast effects: adds Pain, Province(other); removes ObjectCraves(other), Province(object), Harmony.",
+            "Initial state: object a craves object d, object d craves object c, harmony, planet object b, planet object c, province object a, province object b.",
+            "Global goal: object b craves object c and object d craves object a."
         ]
     },
     "workflow": {
         "observer": {
-            "extract_facts": {
+            "analyze": {
                 "input": [],
-                "output": "facts_observer",
-                "system_prompt": "You are an extraction specialist. Read the full human specification and produce a structured JSON facts report listing all objects, the initial facts explicitly stated, the goal statements, and the natural-language descriptions of each action with their claimed preconditions and effects. Do not emit PDDL. Produce only a clear structured facts representation that downstream agents can consume."
+                "output": "obs_analysis",
+                "system_prompt": "You are an analyst whose job is to read the public information and the observer's private information and extract a concise structured representation of entities, relations, initial facts and the stated goal. Provide a list of objects, predicates and the initial facts in a clear structured form. Do not emit PDDL.",
+                "prompt": "Your name is observer. You are given the public information {environment->public_information} and your private knowledge {agents->observer->private_information} and the global goal {agents->observer->goal}. Extract entities, relations, initial facts and the explicit goal as a short structured summary suitable for modelers."
             }
         },
         "modeler": {
-            "build_action_schema": {
+            "build_model": {
                 "input": [
-                    "facts_observer"
+                    "obs_analysis"
                 ],
-                "output": "model_modeler",
-                "system_prompt": "You are a modeler. Using the facts report from the observer, produce formal action schemas in JSON form. For each action, list parameters, required preconditions (positive literals), add effects, and delete effects. Keep the representation solver-neutral and do not output PDDL. Preserve action names and argument positions so that actions remain distinct."
+                "output": "model_partial",
+                "system_prompt": "You are a formal modeler. Translate the structured summary into an explicit intermediate action model. For each action provide a name, parameter list, preconditions and add and delete effects using predicate names. Use clear parameterized predicates such as (province ?x), (planet ?x), (harmony), (pain ?x), (craves ?x ?y). Do not produce final PDDL; produce a clear intermediate schema that is unambiguous and complete.",
+                "prompt": "Your name is modeler. You have the structured summary {obs_analysis} and your private knowledge {agents->modeler->private_information} and the global goal {agents->modeler->goal}. Produce an intermediate action schema listing all actions, parameters, preconditions, add effects and delete effects in a consistent formal notation. Avoid bookkeeping tokens and do not produce PDDL yet."
             }
         },
         "auditor": {
-            "audit_consistency": {
+            "audit": {
                 "input": [
-                    "model_modeler",
-                    "facts_observer"
+                    "model_partial"
                 ],
-                "output": "audit_report",
-                "system_prompt": "You are an auditor of temporal and causal consistency. Inspect the model and the facts report and detect causal gaps, temporal contradictions, and any bookkeeping shortcuts such as token counters, ad-hoc quota predicates, or post-hoc penalties. Remove or replace such shortcuts with explicit causal predicates or justification notes and produce a cleaned JSON model plus an audit log explaining each change. Do not emit PDDL."
+                "output": "model_audited",
+                "system_prompt": "You are an auditor of causal and temporal consistency. Inspect the intermediate action model and remove bookkeeping shortcuts, make causal links explicit, ensure preconditions and effects are temporally consistent and resolve naming ambiguities. Return a cleaned, audited model that is ready for PDDL translation.",
+                "prompt": "Your name is auditor. You are given the intermediate model {model_partial} and your private auditing rules {agents->auditor->private_information} and goal {agents->auditor->goal}. Produce an audited action model with explicit causal links, no bookkeeping artifacts and consistent predicate names suitable for direct translation to PDDL."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "facts_observer",
-                    "model_modeler",
-                    "audit_report"
+                    "model_audited",
+                    "obs_analysis"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the orchestrator that must integrate the extracted facts, the formal model, and the auditor's corrections to produce a final PDDL domain and PDDL problem targeted at the FastDownwards planner. Ensure actions remain distinct and that the domain encodes the audited causal model. Include appropriate :requirements and a metric or settings compatible with FastDownwards if relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final output should be a complete PDDL domain and problem that achieves the stated goal(s) provided in the facts report."
+                "system_prompt": "You are an expert in PDDL and in preparing domains for the FastDownward planner. Take the audited action model and the observed facts and produce a final PDDL domain and a PDDL problem compatible with FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure predicate and action names are consistent, the domain is STRIPS-compatible where possible, and the problem encodes the initial facts and the goal.",
+                "prompt": "You are orchestrator. Integrate the audited model {model_audited} and the observation summary {obs_analysis} to produce a FastDownward-ready PDDL domain and problem that achieves the global goal {agents->observer->goal}. Keep actions and their parameters explicit and distinct. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "observer.extract_facts->modeler.build_action_schema",
-            "modeler.build_action_schema->auditor.audit_consistency",
-            "auditor.audit_consistency->orchestrator.pddl",
-            "observer.extract_facts->orchestrator.pddl",
-            "modeler.build_action_schema->orchestrator.pddl"
+            "observer.analyze->modeler.build_model",
+            "modeler.build_model->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "modeler.build_model->orchestrator.pddl",
+            "observer.analyze->orchestrator.pddl"
         ]
     }
 }

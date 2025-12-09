@@ -1,28 +1,42 @@
-(define (problem stmt1-next-9-8)
-  (:domain sequence-manipulation)
-  ;; Assumptions:
-  ;; - We model a single linear chain of objects using the binary predicate (next A B) meaning A is immediately before B.
-  ;; - Actions to move an object require explicit knowledge of its immediate predecessor and successor as parameters.
-  ;; - Three agent-specific move actions are available (move_before_agent1/2/3). Any of them may be used to perform the move.
-  ;; - All objects are present and distinct; no additional objects or agents exist beyond those declared below.
-  ;; - The initial chain for Statement 1 is:
-  ;;     object_1 -> object_9 -> object_2 -> object_3 -> object_4 -> object_5 -> object_6 -> object_7 -> object_8
-  ;;   This arrangement is encoded with the corresponding (next ...) facts below.
+(define (problem craving-problem)
+  (:domain craving-domain)
+
   (:objects
-    object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
+    a b c - object
+    ag1 ag3 - agent
+    place1 place2 - place
+    p1 p2 p3 done - phase
   )
+
   (:init
-    (next object_1 object_9)
-    (next object_9 object_2)
-    (next object_2 object_3)
-    (next object_3 object_4)
-    (next object_4 object_5)
-    (next object_5 object_6)
-    (next object_6 object_7)
-    (next object_7 object_8)
+    ;; Initial object locations
+    (at a place1)
+    (at c place2)
+
+    ;; Agent initial locations
+    (at-agent ag1 place2)
+    (at-agent ag3 place1)
+
+    ;; Explicit "other object" relations (represented explicitly and symmetrically where applicable)
+    (other a b)
+    (other b a)
+    (other b c)
+    (other c b)
+
+    ;; Phase ordering and initial phase
+    (phase p1)
+    (phase-successor p1 p2)
+    (phase-successor p2 p3)
+    (phase-successor p3 done)
+
+    ;; No cravings initially (omitted since craves is false by default)
   )
+
+  ;; Goal: object a craves object c, final phase reached, both objects co-located at place1, and c not held
   (:goal (and
-    ;; Goal for Statement 1: object_9 must be immediately before object_8
-    (next object_9 object_8)
+    (craves a c)
+    (phase done)
+    (at a place1)
+    (at c place1)
+    (not (held c))
   ))
-)

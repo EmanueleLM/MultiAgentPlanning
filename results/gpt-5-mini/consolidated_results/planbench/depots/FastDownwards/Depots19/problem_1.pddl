@@ -1,43 +1,73 @@
-(define (problem statement-A)
-  (:domain multiagent-domain)
+(define (problem hoist-truck-problem)
+  (:domain hoist-truck-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
+    ;; places
+    depot0 depot1 depot2 - depot
+    distributor0 - distributor
+
+    ;; surfaces
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
   )
+
   (:init
-    ;; unary predicates
-    (cats object_0)
-    (hand object_11)
+    ;; Connectivity (roads) - symmetric assertions
+    (connected depot0 depot1) (connected depot1 depot0)
+    (connected depot0 depot2) (connected depot2 depot0)
+    (connected depot0 distributor0) (connected distributor0 depot0)
+    (connected depot1 depot2) (connected depot2 depot1)
+    (connected depot1 distributor0) (connected distributor0 depot1)
+    (connected depot2 distributor0) (connected distributor0 depot2)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    ;; Initial locations: hoists
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 distributor0)
 
-    (spring object_5)
-    (spring object_8)
+    ;; Initial locations: trucks
+    (at-truck truck0 depot0)
+    (at-truck truck1 depot2)
+    (at-truck truck2 distributor0)
 
-    (stupendous object_1)
-    (stupendous object_2)
+    ;; Initial locations: pallets (surfaces)
+    (at-surface pallet0 depot0)
+    (at-surface pallet1 depot1)
+    (at-surface pallet2 depot2)
+    (at-surface pallet3 distributor0)
 
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Initial locations: crates (surfaces)
+    (at-surface crate0 depot0)
+    (at-surface crate1 depot0)
+    (at-surface crate2 depot2)
 
-    ;; binary predicates
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ;; Stacking relationships
+    (on crate0 pallet0)
+    (on crate1 crate0)
+    (on crate2 pallet2)
 
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_3 object_7)
-    (next object_4 object_8)
+    ;; Hoists initially available
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+
+    ;; clear facts for topmost surfaces/crates
+    (clear crate1)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet3)
   )
+
   (:goal (and
-    (next object_11 object_10)
+    (on crate0 crate1)
+    (on crate1 pallet1)
   ))
 )

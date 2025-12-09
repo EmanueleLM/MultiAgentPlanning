@@ -1,0 +1,92 @@
+{
+    "name": "HanoiScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must obey the rules: move only one disk at a time, move only a disk that is on top of a peg, never place a larger disk on top of a smaller disk, once moved a disk keeps its relative size ordering."
+            ],
+            "goal": "Help design the action model and state representation to move the stack of five disks from the left peg to the right peg while using the middle peg only as intermediate storage and ending with it empty."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as artificial tokens, post-hoc penalties, or other non-physical bookkeeping devices.",
+                "I check for hidden assumptions that would invalidate correctness when executed by a planner or a real executor."
+            ],
+            "goal": "Produce an audit report that identifies causal dependencies, necessary invariants, and any shortcuts to remove so that produced plans are temporally and causally sound."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the inputs from other agents and produce the final PDDL domain and problem targeting the FastDownwards solver."
+            ],
+            "goal": "Integrate the specification and the audit to emit a clean PDDL domain and a PDDL problem file that encode the Tower of Hanoi instance with 5 disks and 3 pegs, suitable for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": 5,
+            "disks_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "initial_configuration": "left peg top-to-bottom A B C D E; middle empty; right empty"
+        },
+        "public_information": [
+            "There are 5 disks in total ordered from smallest to largest as disk A, disk B, disk C, disk D, disk E.",
+            "There are three pegs named left, middle, and right.",
+            "Initial state: left peg holds from top to bottom A, B, C, D, E; middle and right pegs are empty.",
+            "Goal state: right peg should hold from top to bottom A, B, C, D, E while left and middle pegs are empty.",
+            "Allowed action: move the top disk from one peg to another peg.",
+            "Constraints: move only one disk at a time, only move a disk that is on top of its peg, never place a larger disk on top of a smaller disk, the middle peg may be used only as an intermediate parking spot and must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "disk_mover": {
+            "spec": {
+                "input": [],
+                "output": "spec_disk_mover",
+                "system_prompt": "You are an expert on specifying action models and state encodings for classical planning problems, especially puzzles like the Tower of Hanoi. Your job is to produce a clear, implementation-ready specification of actions, predicates, types, objects, invariants, and any useful decomposition of the problem into reusable components. Do not emit PDDL directly. Focus on describing parameterized actions, precise preconditions and effects, typing of objects, and required invariants that ensure correctness under the rules.",
+                "prompt": "You are the disk_mover agent. Use the environment public information to produce a concise specification of the domain elements relevant to moving disks: list the object types, the concrete objects for this instance, the predicates that represent disk positions and size relations, and a canonical action description for moving the top disk from one peg to another including parameters, preconditions, and effects. Explicitly state any invariants that must hold at all times and any choices about representation (for example whether to represent stacks as ordered lists or with binary relations). Do not output PDDL; output a specification that the orchestrator can convert to PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal plan consistency. Your role is to detect and remove bookkeeping shortcuts, hidden assumptions, or shortcuts that could make a plan invalid when executed by a real planner or executor. Produce checks and recommendations that transform underspecified or shortcut-laden specifications into fully causal and temporally consistent specifications. Do not emit PDDL.",
+                "prompt": "You are the auditor. Based on the environment public information and the typical specifications for Tower of Hanoi, produce an audit checklist and a report that enumerates potential temporal and causal pitfalls, identifies any implicit assumptions in common compact encodings, and recommends concrete changes to the action specification or invariants to ensure soundness. Highlight any representation choices that may introduce shortcuts like token counters, aggregate counters, or post-hoc adjustments and propose explicit corrective measures."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_disk_mover",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and in producing PDDL for the FastDownwards planner. Your role is to take the specification from the domain expert and the audit report from the auditor, resolve any ambiguities, remove shortcuts, and emit a complete PDDL domain and PDDL problem pair that is compatible with FastDownwards. The domain should be explicit, sound, and include types, predicates, action schemas, and any required invariants encoded in preconditions. The problem should declare all objects, the initial state, and the goal. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Integrate the disk_mover specification and the auditor report to create a final PDDL domain and problem for the Tower of Hanoi instance with five disks and three pegs. Resolve naming mismatches, ensure that the representation enforces that only the top disk can be moved and that larger disks cannot be placed on smaller ones, and ensure the middle peg ends up empty in the goal. Target the output to be compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Think step by step and ensure no bookkeeping shortcuts remain in the translated PDDL."
+            }
+        },
+        "constraints": [
+            "disk_mover.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

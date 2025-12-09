@@ -1,0 +1,96 @@
+(define (domain hanoi)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg step)
+
+  (:predicates
+    (on-peg ?d - disk ?p - peg)
+    (on-disk ?d - disk ?d2 - disk)
+    (clear-disk ?d - disk)
+    (clear-peg ?p - peg)
+    (larger ?x - disk ?y - disk)
+    (cur-step ?t - step)
+    (succ ?t - step ?t2 - step)
+  )
+
+  (:action move-peg-to-peg
+    :parameters (?d - disk ?from - peg ?to - peg ?t - step ?t2 - step)
+    :precondition (and
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-peg ?to)
+      (cur-step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+      (not (clear-peg ?to))
+      (clear-peg ?from)
+      (not (cur-step ?t))
+      (cur-step ?t2)
+      (clear-disk ?d)
+    )
+  )
+
+  (:action move-disk-to-peg
+    :parameters (?d - disk ?from - disk ?to - peg ?t - step ?t2 - step)
+    :precondition (and
+      (on-disk ?d ?from)
+      (clear-disk ?d)
+      (clear-peg ?to)
+      (cur-step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (not (on-disk ?d ?from))
+      (on-peg ?d ?to)
+      (not (clear-peg ?to))
+      (clear-disk ?from)
+      (not (cur-step ?t))
+      (cur-step ?t2)
+      (clear-disk ?d)
+    )
+  )
+
+  (:action move-peg-to-disk
+    :parameters (?d - disk ?from - peg ?to - disk ?t - step ?t2 - step)
+    :precondition (and
+      (on-peg ?d ?from)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (larger ?to ?d)
+      (cur-step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-disk ?d ?to)
+      (not (clear-disk ?to))
+      (clear-peg ?from)
+      (not (cur-step ?t))
+      (cur-step ?t2)
+      (clear-disk ?d)
+    )
+  )
+
+  (:action move-disk-to-disk
+    :parameters (?d - disk ?from - disk ?to - disk ?t - step ?t2 - step)
+    :precondition (and
+      (on-disk ?d ?from)
+      (clear-disk ?d)
+      (clear-disk ?to)
+      (larger ?to ?d)
+      (cur-step ?t)
+      (succ ?t ?t2)
+    )
+    :effect (and
+      (not (on-disk ?d ?from))
+      (on-disk ?d ?to)
+      (not (clear-disk ?to))
+      (clear-disk ?from)
+      (not (cur-step ?t))
+      (cur-step ?t2)
+      (clear-disk ?d)
+    )
+  )
+)

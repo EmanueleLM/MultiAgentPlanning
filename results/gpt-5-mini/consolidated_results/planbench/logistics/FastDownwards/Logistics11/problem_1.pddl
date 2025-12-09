@@ -1,41 +1,70 @@
-(define (problem logistics11-scenarioA)
-  (:domain logistics11)
+(define (problem Logistics11-instance)
+  (:domain Logistics11)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
+    ;; packages
+    package_0 package_1 package_2 - package
+
+    ;; trucks and airplane
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    ;; locations (including airports)
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; explicit stages to enforce ordered progression per package
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 - stage
   )
+
   (:init
-    ;; unary predicates
-    (cats object_0)
-    (hand object_10)
-    (hand object_11)
-    (hand object_9)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; airports
+    (is-airport location_0_0)
+    (is-airport location_1_0)
 
-    ;; binary relations
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
+    ;; initial vehicle positions
+    (at-airplane airplane_0 location_0_0)
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_0)
 
-    (next object_0 object_5)
-    (next object_10 object_8)
-    (next object_11 object_6)
-    (next object_3 object_5)
-    (next object_4 object_7)
-    (next object_9 object_5)
+    ;; initial package positions
+    (at-package package_0 location_1_1)
+    (at-package package_1 location_0_0)
+    (at-package package_2 location_0_0)
+
+    ;; same-city connectivity (fully connected within each city)
+    ;; city_0: location_0_0 <-> location_0_1
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+
+    ;; city_1: location_1_0 <-> location_1_1
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
+
+    ;; air routes between airports (both directions)
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
+
+    ;; successor relation for stages
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (succ s4 s5)
+    (succ s5 s6)
+    (succ s6 s7)
+    (succ s7 s8)
+    (succ s8 s9)
+
+    ;; initial stage for every package: s0
+    (stage package_0 s0)
+    (stage package_1 s0)
+    (stage package_2 s0)
   )
+
   (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_7)
-    (next object_9 object_7)
+    ;; final package locations as specified by the problem statement
+    (at-package package_0 location_0_1)
+    (at-package package_1 location_1_1)
+    (at-package package_2 location_1_0)
   ))
 )

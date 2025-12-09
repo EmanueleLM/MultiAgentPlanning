@@ -1,44 +1,52 @@
-(define (problem multiagent-instance-staged)
-  (:domain multiagent-staged)
+(define (problem city-logistics-instance)
+  (:domain city-logistics)
 
   (:objects
-    ; only objects actually used by the integrated plan/goals are declared
-    object_0 object_5 object_6 object_7 object_8 - obj
-    s0 s1 s2 s3 s4 s5 - stage
+    city_0 city_1 - city
+    location_0_0 location_1_0 - location
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 - package
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 - stage
   )
 
   (:init
-    ; stage order and initial stage marker (needed for 5 actions)
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
-    (now s0)
+    ;; City membership
+    (in-city location_0_0 city_0)
+    (in-city location_1_0 city_1)
 
-    ; minimal static/unary facts required by the plan:
-    (cats object_0)
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (hand object_7)
-    (hand object_8)
+    ;; Air routes (both directions)
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
 
-    (texture object_5)
-    (texture object_6)
+    ;; Stage ordering (explicit linear progression)
+    (succ stage0 stage1)
+    (succ stage1 stage2)
+    (succ stage2 stage3)
+    (succ stage3 stage4)
+    (succ stage4 stage5)
+    (succ stage5 stage6)
 
-    (spring object_5)
-    (spring object_6)
+    ;; Start stage
+    (current-stage stage0)
 
-    ; only the next relations actually required initially for the provided plan
-    (next object_0 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
+    ;; Initial vehicle positions
+    (at-airplane airplane_0 location_0_0)
+    (at-airplane airplane_1 location_0_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
+
+    ;; Initial package positions
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
   )
 
-  (:goal
-    (and
-      (now s5)
-      (next object_7 object_5)
-      (next object_8 object_5)
-    )
-  )
+  (:goal (and
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_0_0)
+  ))
 )

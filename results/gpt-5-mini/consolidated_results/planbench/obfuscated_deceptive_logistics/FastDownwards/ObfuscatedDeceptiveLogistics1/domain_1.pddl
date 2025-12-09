@@ -6,17 +6,15 @@
     (hand ?o - object)
     (cats ?o - object)
     (texture ?o - object)
-    (vase ?a - object ?b - object)
-    (next ?a - object ?b - object)
+    (vase ?o1 - object ?o2 - object)
+    (next ?o1 - object ?o2 - object)
     (sneeze ?o - object)
     (spring ?o - object)
-    (collect ?a - object ?b - object)
     (stupendous ?o - object)
+    (collect ?o1 - object ?o2 - object)
   )
 
-  ;; paltry object_0 object_1 object_2.
-  ;; Preconditions: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2
-  ;; Effects: add next object_0 object_2, del vase object_0 object_1
+  ; paltry object_0 object_1 object_2.
   (:action paltry
     :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
@@ -32,9 +30,7 @@
     )
   )
 
-  ;; sip object_0 object_1 object_2.
-  ;; Preconditions: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2
-  ;; Effects: add vase object_0 object_1, del next object_0 object_2
+  ; sip object_0 object_1 object_2.
   (:action sip
     :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
@@ -50,9 +46,7 @@
     )
   )
 
-  ;; clip object_0 object_1 object_2.
-  ;; Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2
-  ;; Effects: add vase object_0 object_1, del next object_0 object_2
+  ; clip object_0 object_1 object_2.
   (:action clip
     :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
@@ -68,10 +62,7 @@
     )
   )
 
-  ;; wretched object_0 object_1 object_2 object_3.
-  ;; Preconditions: sneeze object_0, texture object_1, texture object_2, stupendous object_3,
-  ;;                next object_0 object_1, collect object_1 object_3, collect object_2 object_3
-  ;; Effects: add next object_0 object_2, del next object_0 object_1
+  ; wretched object_0 object_1 object_2 object_3.
   (:action wretched
     :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
     :precondition (and
@@ -89,9 +80,7 @@
     )
   )
 
-  ;; memory object_0 object_1 object_2.
-  ;; Preconditions: cats object_0, spring object_1, spring object_2, next object_0 object_1
-  ;; Effects: add next object_0 object_2, del next object_0 object_1
+  ; memory object_0 object_1 object_2.
   (:action memory
     :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
@@ -106,9 +95,7 @@
     )
   )
 
-  ;; tightfisted object_0 object_1 object_2.
-  ;; Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1
-  ;; Effects: add next object_0 object_2, del vase object_0 object_1
+  ; tightfisted object_0 object_1 object_2.
   (:action tightfisted
     :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and

@@ -1,139 +1,134 @@
-(define (domain logistics_objects)
+(define (domain logistics_multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types
+    truck
+    plane
+    package
+    location
+    city
+    stage
+  )
 
   (:predicates
-    ;; unary object properties
-    (hand ?x - object)
-    (cats ?x - object)
-    (sneeze ?x - object)
-    (stupendous ?x - object)
-    (texture ?x - object)
-    (spring ?x - object)
+    ;; vehicle locations
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?pl - plane ?l - location)
 
-    ;; binary relations between objects
-    (vase ?x - object ?y - object)
-    (next ?x - object ?y - object)
-    (collect ?x - object ?y - object)
+    ;; package location / containment
+    (at-pkg ?p - package ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?pl - plane)
 
-    ;; explicit discrete time / stage control
-    (now ?t - stage)
-    (succ ?t1 - stage ?t2 - stage)
+    ;; static topology
+    (is-airport ?l - location)
+    (in-city ?l - location ?c - city)
+
+    ;; explicit discrete global stage progression
+    (cur-stage ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
   )
 
-  ;; All actions require occupying the current stage and advance to its successor.
-  (:action paltry
-    :parameters (?x - object ?y - object ?z - object ?t1 - stage ?t2 - stage)
+  ;; Truck actions (intra-city). Each action advances the global stage by using the explicit successor chain.
+  (:action truck_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (now ?t1)
-      (succ ?t1 ?t2)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (now ?t1))
-      (now ?t2)
-    )
-  )
-
-  (:action sip
-    :parameters (?x - object ?y - object ?z - object ?t1 - stage ?t2 - stage)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-      (now ?t1)
-      (succ ?t1 ?t2)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (now ?t1))
-      (now ?t2)
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?x - object ?y - object ?z - object ?t1 - stage ?t2 - stage)
+  (:action truck_load
+    :parameters (?t - truck ?p - package ?l - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-      (now ?t1)
-      (succ ?t1 ?t2)
+      (at-truck ?t ?l)
+      (at-pkg ?p ?l)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (now ?t1))
-      (now ?t2)
+      (not (at-pkg ?p ?l))
+      (in-truck ?p ?t)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object ?t1 - stage ?t2 - stage)
+  (:action truck_unload
+    :parameters (?t - truck ?p - package ?l - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-      (now ?t1)
-      (succ ?t1 ?t2)
+      (at-truck ?t ?l)
+      (in-truck ?p ?t)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (now ?t1))
-      (now ?t2)
+      (not (in-truck ?p ?t))
+      (at-pkg ?p ?l)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?x - object ?y - object ?z - object ?t1 - stage ?t2 - stage)
+  ;; Airplane actions (between airports). Each action advances the global stage by using the explicit successor chain.
+  (:action plane_fly
+    :parameters (?pl - plane ?from - location ?to - location ?cf - city ?ct - city ?s1 - stage ?s2 - stage)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-      (now ?t1)
-      (succ ?t1 ?t2)
+      (at-plane ?pl ?from)
+      (is-airport ?from)
+      (is-airport ?to)
+      (in-city ?from ?cf)
+      (in-city ?to ?ct)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (now ?t1))
-      (now ?t2)
+      (not (at-plane ?pl ?from))
+      (at-plane ?pl ?to)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object ?t1 - stage ?t2 - stage)
+  (:action plane_load
+    :parameters (?pl - plane ?p - package ?l - location ?s1 - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (now ?t1)
-      (succ ?t1 ?t2)
+      (at-plane ?pl ?l)
+      (is-airport ?l)
+      (at-pkg ?p ?l)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (now ?t1))
-      (now ?t2)
+      (not (at-pkg ?p ?l))
+      (in-plane ?p ?pl)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
+    )
+  )
+
+  (:action plane_unload
+    :parameters (?pl - plane ?p - package ?l - location ?s1 - stage ?s2 - stage)
+    :precondition (and
+      (at-plane ?pl ?l)
+      (is-airport ?l)
+      (in-plane ?p ?pl)
+      (cur-stage ?s1)
+      (next ?s1 ?s2)
+    )
+    :effect (and
+      (not (in-plane ?p ?pl))
+      (at-pkg ?p ?l)
+      (not (cur-stage ?s1))
+      (cur-stage ?s2)
     )
   )
 )

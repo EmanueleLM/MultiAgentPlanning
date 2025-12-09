@@ -1,0 +1,85 @@
+{
+    "name": "HanoiScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "There are 7 disks named from smallest to largest: A, B, C, D, E, F, G",
+                "Initial configuration: left peg holds, from top to bottom, A B C D E F G",
+                "Allowed action: move the top disk from one peg to another peg"
+            ],
+            "goal": "Recreate the full tower on the middle peg with the same smallest-to-largest order and leave both left and right pegs empty"
+        },
+        "auditor": {
+            "private_information": [
+                "Specialize in temporal and causal consistency auditing for move sequences",
+                "Prohibit bookkeeping shortcuts such as quota tokens or retrospective penalties; every move must be physically justified under the puzzle rules"
+            ],
+            "goal": "Verify that any proposed move sequence is legally consistent, temporally valid, and free of bookkeeping shortcuts; provide corrections and a certified move sequence"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agents' analyses and produce a full PDDL domain and problem for the FastDownward solver that solves the 7-disk Tower of Hanoi instance moving the tower from the left peg to the middle peg while leaving the right peg empty"
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 7,
+            "pegs": 3,
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right",
+            "There are 7 disks ordered from smallest to largest: A, B, C, D, E, F, G",
+            "Initial state: the left peg holds from top to bottom A B C D E F G; middle and right pegs are empty",
+            "Goal state: the middle peg must hold from top to bottom A B C D E F G and both left and right pegs must be empty",
+            "Allowed move: move the top disk from one peg to another peg",
+            "Rules: only one disk may be moved at a time, only a top disk of a peg may be moved, and a larger disk may never be placed on top of a smaller disk",
+            "The right peg may be used as an intermediate location but must be empty in the final state",
+            "Once moved, disks retain their size ordering relative to other disks"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an expert in generating legal move sequences for the Tower of Hanoi puzzle. Your task is to produce a complete move sequence to relocate a tower of seven disks from the left peg to the middle peg following the puzzle rules. Do not emit PDDL. Provide a clear ordered list of moves in the form 'move disk X from PEG1 to PEG2' and also provide a compact symbolic representation usable by an integrator. Explain the invariants preserved by each move and any assumptions you relied on.",
+                "prompt": "Your name is mover. You are given the public environment information {environment->public_information} and your private information {agents->mover->private_information}. Your goal is {agents->mover->goal}. Think step by step and produce a full legal move sequence and a compact symbolic representation of the moves. Do not produce PDDL. If you lack information, state what is missing rather than making unsupported assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency for multi-step plans. Your role is to inspect proposed move sequences for Tower of Hanoi and to remove or flag any bookkeeping shortcuts such as tokens, quotas, or retrospective corrections. You must ensure every move is justified by the current physical state and the puzzle rules. Do not emit PDDL. Provide a corrected, certified move sequence if issues are found and explain each correction.",
+                "prompt": "Your name is auditor. You are given the public environment information {environment->public_information} and your private information {agents->auditor->private_information}. Your goal is {agents->auditor->goal}. When given a move sequence, check temporal and causal consistency step by step, remove bookkeeping shortcuts, supply corrections when needed, and produce a final certified sequence and a short justification of why the sequence is valid under the rules."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing problems for the FastDownward planner. You must integrate other agents' analyses and produce a complete PDDL domain and PDDL problem encoding the 7-disk Tower of Hanoi instance. The domain must model single-disk moves, legality constraints that prevent placing larger disks on smaller ones, and preserve disk ordering. Keep the actions attributable to agents distinct if relevant. Target the FastDownward planner and ensure the encoding is directly usable with it. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "There are multiple agents that analyzed and certified move sequences. You will receive their outputs and must integrate them into a single PDDL domain and problem that solves the task: {agents->orchestrator->goal}. Here are the mover's results: {mover_analysis}. Here is the auditor's certification: {audit_report}. Reconcile any naming or representational differences, ensure there are no implicit bookkeeping shortcuts, and produce a complete PDDL domain and problem suitable for FastDownward. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Think step by step and explain briefly any modeling choices before presenting the PDDL."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

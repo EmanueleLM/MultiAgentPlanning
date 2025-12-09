@@ -1,63 +1,53 @@
-(define (problem odl29-instance1)
-  (:domain ObfuscatedDeceptiveLogistics29)
+(define (problem obfuscated-deceptive-logistics-29-problem)
+  (:domain obfuscated-deceptive-logistics-29)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19 stage_20 - stage
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - node
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 - stage
   )
   (:init
-    ;; minimal temporal chain to accommodate the 20-step plan
-    (now stage_0)
-    (succ stage_0 stage_1) (succ stage_1 stage_2) (succ stage_2 stage_3) (succ stage_3 stage_4)
-    (succ stage_4 stage_5) (succ stage_5 stage_6) (succ stage_6 stage_7) (succ stage_7 stage_8)
-    (succ stage_8 stage_9) (succ stage_9 stage_10) (succ stage_10 stage_11) (succ stage_11 stage_12)
-    (succ stage_12 stage_13) (succ stage_13 stage_14) (succ stage_14 stage_15) (succ stage_15 stage_16)
-    (succ stage_16 stage_17) (succ stage_17 stage_18) (succ stage_18 stage_19) (succ stage_19 stage_20)
+    ;; stage ordering and initial current stage (longer chain to allow sufficient actions)
+    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5)
+    (succ s5 s6) (succ s6 s7) (succ s7 s8) (succ s8 s9) (succ s9 s10)
+    (succ s10 s11) (succ s11 s12)
+    (current s0)
 
-    ;; trimmed domain-specific facts: only those required by the plan/goal
+    ;; initial facts as provided
     (cats object_0)
-
-    ;; collect facts used by the wretched actions in the plan
     (collect object_10 object_2)
     (collect object_5 object_1)
     (collect object_6 object_1)
     (collect object_7 object_1)
     (collect object_8 object_2)
     (collect object_9 object_2)
-
-    ;; hands used by clip/sip/tightfisted occurrences in the plan
     (hand object_11)
     (hand object_12)
     (hand object_13)
     (hand object_14)
-
-    ;; initial 'next' relations necessary to bootstrap the plan
     (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_5)
-    (next object_13 object_7)
-    (next object_14 object_9)
-    (next object_3 object_6)
-    (next object_4 object_9)
-
-    ;; other unary properties used in preconditions
+    (next object_11 object_6)
+    (next object_12 object_8)
+    (next object_13 object_6)
+    (next object_14 object_5)
+    (next object_3 object_5)
+    (next object_4 object_10)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
     (spring object_8)
     (stupendous object_1)
     (stupendous object_2)
-
-    ;; only the textures actually referenced in the plan
     (texture object_10)
     (texture object_5)
+    (texture object_6)
     (texture object_7)
     (texture object_8)
     (texture object_9)
   )
+
   (:goal (and
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
+    (next object_11 object_10)
+    (next object_12 object_6)
+    (next object_13 object_10)
     (next object_14 object_7)
   ))
 )

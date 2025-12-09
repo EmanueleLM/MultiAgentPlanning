@@ -1,0 +1,84 @@
+{
+    "name": "HanoiScaling6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "rule_auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must obey the rules: move only one disk at a time, move only a top disk, and never place a larger disk on top of a smaller disk.",
+                "Disk set from smallest to largest: diskA, diskB, diskC, diskD, diskE, diskF."
+            ],
+            "goal": "Provide a detailed analysis of the objects, predicates, and action schemas needed to implement moves for the Tower of Hanoi with six disks and propose a high-level procedural plan skeleton that can guide PDDL encoding."
+        },
+        "rule_auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts.",
+                "I must ensure that proposed models do not rely on quota tokens, post-hoc penalties, or macros that bypass basic Tower of Hanoi constraints."
+            ],
+            "goal": "Audit the mover analysis for causal and temporal correctness, identify and eliminate any shortcuts, and produce a cleaned constraints report that the orchestrator can use to generate sound PDDL."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate inputs from other agents and produce the final PDDL domain and problem packaged for the FastDownwards solver.",
+                "I must keep actions originating from different agents distinct when integrating their contributions."
+            ],
+            "goal": "Integrate analysis and audit outputs and produce a complete PDDL domain and problem for the Tower of Hanoi with six disks targeted to the FastDownwards planner, encoding the initial and goal states and the required rules."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are six disks named diskA (smallest), diskB, diskC, diskD, diskE, diskF (largest).",
+            "Initial state: left peg holds from top to bottom diskA, diskB, diskC, diskD, diskE, diskF. Middle and right pegs are empty.",
+            "Goal state: right peg must hold from top to bottom diskA, diskB, diskC, diskD, diskE, diskF, and both left and middle pegs must be empty.",
+            "Rules: move only one disk at a time, only move a disk that is on top of a peg, and never place a larger disk on top of a smaller disk.",
+            "The middle peg may be used as an intermediate parking spot but must be empty at the end."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analyze": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an analyst of action models for planning problems. Produce a precise enumeration of objects, relevant predicates, and action schema templates (names, parameters, preconditions, effects) required to model moves in Tower of Hanoi with six disks. Provide a high-level procedural plan skeleton describing the sequence pattern (without emitting PDDL), and highlight any assumptions you make about invariants and ordering constraints.",
+                "prompt": "Act as the mover agent. Use the public information about the environment and your private information to produce the analysis artifacts described in the system prompt. Do not emit PDDL. Focus on clear, formal descriptions that an orchestrator can use to synthesize a domain and problem."
+            }
+        },
+        "rule_auditor": {
+            "audit": {
+                "input": [
+                    "mover_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor whose role is to verify temporal and causal consistency and to remove bookkeeping shortcuts. Check the mover_analysis for violations of core Tower of Hanoi rules and for any constructs that would allow illegal moves or that shortcut the intended combinatorial complexity. Produce a corrected constraints list, comments about any required invariants, and explicit recommendations to eliminate shortcuts.",
+                "prompt": "Act as the rule_auditor. Inspect the mover_analysis input and produce an audit report that confirms whether the analysis respects the rules: one-disk-at-a-time, top-only moves, and no larger-on-smaller placements. Identify and remove any proposed bookkeeping shortcuts and produce corrected constraints and recommendations for encoding."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL and PDDL generation targeted to the FastDownwards planner. Produce a complete PDDL domain and a PDDL problem that FastDownwards can accept. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. When integrating inputs from multiple agents, keep their action origins distinct in comments or naming where appropriate. Ensure the domain encodes the invariants: only one disk can be moved at a time, only top disk moves are allowed, and larger disks cannot be placed on smaller disks. Use explicit object names diskA diskB diskC diskD diskE diskF and pegs left middle right. The produced PDDL must encode the initial left peg stacking and the goal right peg stacking and require the middle peg to be empty at goal.",
+                "prompt": "Act as the orchestrator. Integrate mover_analysis and audit_report to generate a final, solver-ready PDDL domain and problem file targeting FastDownwards. Keep actions and reasoning from other agents traceable and distinct. Enclose domain and problem with <domain></domain> and <problem></problem> tags respectively. Make no assumptions not supported by the provided analyses and audit; if information is missing, explicitly state the assumption inside comments in the PDDL output."
+            }
+        },
+        "constraints": [
+            "mover.analyze->rule_auditor.audit",
+            "mover.analyze->orchestrator.pddl",
+            "rule_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,90 @@
+{
+    "name": "HanoiScaling20",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_modeler",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "disk_modeler": {
+            "private_information": [
+                "There are 6 disks named from smallest to largest: disk A, disk B, disk C, disk D, disk E, disk F",
+                "Initial configuration: right peg contains from top to bottom A, B, C, D, E, F. Left and middle pegs are empty",
+                "Allowed primitive action: move the top disk from one peg to another peg"
+            ],
+            "goal": "Provide a modeling specification describing entities, predicates, types, invariants, and action schemas required to represent the Tower of Hanoi instance with 6 disks, without emitting PDDL syntax. Highlight necessary state variables and constraints."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency of planning models",
+                "Watch for bookkeeping shortcuts such as quotas, tokens, or post-hoc penalties that mask real causal constraints"
+            ],
+            "goal": "Audit the proposed model to ensure it enforces that only one disk moves at a time, only top disks move, larger disks cannot be placed on smaller ones, and that no bookkeeping shortcuts are used. Produce a clear report of required corrections and confirm invariants remain explicit."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating modeling and audit outputs and producing a final PDDL domain and problem compatible with the FastDownward solver"
+            ],
+            "goal": "Integrate the model specification and the auditor report to emit a complete PDDL domain and PDDL problem that represents the six-disk Tower of Hanoi instance, ensuring the left peg is empty at the end and the middle peg holds the full tower from top to bottom A..F, suitable for FastDownward."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ]
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right",
+            "There are six disks named from smallest to largest: disk A, disk B, disk C, disk D, disk E, disk F",
+            "The only primitive action is to move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk",
+            "Initial state: right peg holds from top to bottom A, B, C, D, E, F; left peg is empty; middle peg is empty",
+            "Goal state: middle peg must hold from top to bottom A, B, C, D, E, F; left and right pegs must be empty; the left peg may be used as intermediate but must end empty"
+        ]
+    },
+    "workflow": {
+        "disk_modeler": {
+            "model": {
+                "input": [],
+                "output": "model_disk",
+                "system_prompt": "You are an expert modeler of planning domains. Your task is to describe a clean, explicit modeling specification for the Tower of Hanoi instance. Do not emit PDDL. Provide entity types, predicate candidates, parameterizations, action schema descriptions, preconditions, effects, and explicit invariants needed to enforce the puzzle rules.",
+                "prompt": "Agent disk_modeler: Use the public information {environment->public_information} and your private information {agents->disk_modeler->private_information} to produce a modeling specification for the six-disk Tower of Hanoi. Describe predicates and their intended meanings, propose action schemas for moving the top disk between pegs, and list invariants that ensure only top disks move and larger disks cannot go on smaller ones. Be precise and avoid PDDL syntax."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "model_disk"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor for temporal and causal consistency in planning models. Your role is to detect and remove modeling shortcuts that obscure true causal constraints, and to insist invariants are explicit rather than enforced by bookkeeping hacks.",
+                "prompt": "Agent consistency_auditor: Given the model specification {model_disk} and the public information {environment->public_information}, check for temporal and causal consistency, ensure only allowed primitive actions implement the rules, identify any bookkeeping shortcuts (quota tokens, counters, post-hoc penalties) and propose explicit corrections. Produce a concise audit report listing defects and concrete fixes that keep the model faithful to the puzzle rules."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_disk",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and a specialist in producing domains compatible with the FastDownward planner. Integrate modeling suggestions and audit corrections into a single coherent PDDL domain and PDDL problem. The produced PDDL must target FastDownward and be complete: include types, predicates, action definitions, initial state, and goal. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags. Keep actions for distinct agents logically separate if the model distinguishes agents, but produce a single domain/problem pair that solves the described task.",
+                "prompt": "Agent orchestrator: Integrate the modeling specification {model_disk} and the audit report {audit_report} together with the public information {environment->public_information} to produce a final PDDL domain and PDDL problem for the six-disk Tower of Hanoi instance. Ensure the PDDL enforces that only top disks move, larger disks cannot be placed on smaller ones, and the final goal places the entire tower on the middle peg with the left peg empty. Target FastDownward requirements and avoid modeling shortcuts. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "disk_modeler.model->orchestrator.pddl",
+            "consistency_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,96 +1,144 @@
-(define (domain orchestrated_domain)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types agent item location)
+(define (domain orchestrated)
+  (:requirements :strips :typing)
+  (:types object)
 
   (:predicates
-    (at ?a - agent ?l - location)            ; agent is at location
-    (item-at ?i - item ?l - location)       ; item is at location
-    (prepared ?i - item)                    ; item prepared by agent A
-    (transported ?i - item)                 ; item transported by agent B
-    (inspected ?i - item)                   ; item inspected by agent A
-    (stored ?i - item)                      ; item stored by agent B
+    ;; static/classification predicates (not produced/consumed by operators)
+    (hand ?o - object)
+    (cats ?o - object)
+    (texture ?o - object)
+    (sneeze ?o - object)
+    (spring ?o - object)
+    (stupendous ?o - object)
+    (collect ?o1 - object ?o2 - object)
+
+    ;; fluents modified by actions
+    (vase ?o1 - object ?o2 - object)
+    (next ?o1 - object ?o2 - object)
   )
 
-  ; Agent A prepares an item at its current location.
-  (:action prepare-by-A
-    :parameters (?i - item ?l - location)
+  ;; Action: paltry
+  ;; Preconditions: hand ?h, cats ?cat, texture ?tex, vase ?h ?cat, next ?cat ?tex
+  ;; Effects: add next ?h ?tex, delete vase ?h ?cat
+  (:action paltry
+    :parameters (?h - object ?cat - object ?tex - object)
     :precondition (and
-      (at object_0 ?l)
-      (item-at ?i ?l)
-      (not (prepared ?i))
+      (hand ?h)
+      (cats ?cat)
+      (texture ?tex)
+      (vase ?h ?cat)
+      (next ?cat ?tex)
     )
     :effect (and
-      (prepared ?i)
-    )
-  )
-
-  ; Agent B transports an item from one location to another.
-  ; This action also moves agent B to the destination location.
-  (:action transport-by-B
-    :parameters (?i - item ?from - location ?to - location)
-    :precondition (and
-      (at object_1 ?from)
-      (item-at ?i ?from)
-      (prepared ?i)
-      (not (transported ?i))
-    )
-    :effect (and
-      (not (item-at ?i ?from))
-      (item-at ?i ?to)
-      (transported ?i)
-      (not (at object_1 ?from))
-      (at object_1 ?to)
+      (next ?h ?tex)
+      (not (vase ?h ?cat))
     )
   )
 
-  ; Agent A inspects an item at the location where the item currently is.
-  (:action inspect-by-A
-    :parameters (?i - item ?l - location)
+  ;; Action: sip
+  ;; Preconditions: hand ?h, cats ?cat, texture ?tex, next ?h ?tex, next ?cat ?tex
+  ;; Effects: add vase ?h ?cat, delete next ?h ?tex
+  (:action sip
+    :parameters (?h - object ?cat - object ?tex - object)
     :precondition (and
-      (at object_0 ?l)
-      (item-at ?i ?l)
-      (transported ?i)
-      (not (inspected ?i))
+      (hand ?h)
+      (cats ?cat)
+      (texture ?tex)
+      (next ?h ?tex)
+      (next ?cat ?tex)
     )
     :effect (and
-      (inspected ?i)
+      (vase ?h ?cat)
+      (not (next ?h ?tex))
     )
   )
 
-  ; Agent B stores an inspected item at its current location.
-  (:action store-by-B
-    :parameters (?i - item ?l - location)
+  ;; Action: clip
+  ;; Preconditions: hand ?h, sneeze ?s, texture ?tex, next ?s ?tex, next ?h ?tex
+  ;; Effects: add vase ?h ?s, delete next ?h ?tex
+  (:action clip
+    :parameters (?h - object ?s - object ?tex - object)
     :precondition (and
-      (at object_1 ?l)
-      (item-at ?i ?l)
-      (inspected ?i)
-      (not (stored ?i))
+      (hand ?h)
+      (sneeze ?s)
+      (texture ?tex)
+      (next ?s ?tex)
+      (next ?h ?tex)
     )
     :effect (and
-      (stored ?i)
+      (vase ?h ?s)
+      (not (next ?h ?tex))
     )
   )
 
-  ; Movement actions for both agents so they can reach required locations.
-  (:action move-A
-    :parameters (?from - location ?to - location)
+  ;; Action: wretched
+  ;; Preconditions: sneeze ?s, texture ?t1, texture ?t2, stupendous ?p,
+  ;;                next ?s ?t1, collect ?t1 ?p, collect ?t2 ?p
+  ;; Effects: add next ?s ?t2, delete next ?s ?t1
+  (:action wretched
+    :parameters (?s - object ?t1 - object ?t2 - object ?p - object)
     :precondition (and
-      (at object_0 ?from)
+      (sneeze ?s)
+      (texture ?t1)
+      (texture ?t2)
+      (stupendous ?p)
+      (next ?s ?t1)
+      (collect ?t1 ?p)
+      (collect ?t2 ?p)
     )
     :effect (and
-      (not (at object_0 ?from))
-      (at object_0 ?to)
+      (next ?s ?t2)
+      (not (next ?s ?t1))
     )
   )
 
-  (:action move-B
-    :parameters (?from - location ?to - location)
+  ;; Action: memory
+  ;; Preconditions: cats ?cat, spring ?s1, spring ?s2, next ?cat ?s1
+  ;; Effects: add next ?cat ?s2, delete next ?cat ?s1
+  (:action memory
+    :parameters (?cat - object ?s1 - object ?s2 - object)
     :precondition (and
-      (at object_1 ?from)
+      (cats ?cat)
+      (spring ?s1)
+      (spring ?s2)
+      (next ?cat ?s1)
     )
     :effect (and
-      (not (at object_1 ?from))
-      (at object_1 ?to)
+      (next ?cat ?s2)
+      (not (next ?cat ?s1))
+    )
+  )
+
+  ;; Action: tightfisted
+  ;; Preconditions: hand ?h, sneeze ?s, texture ?tex, next ?s ?tex, vase ?h ?s
+  ;; Effects: add next ?h ?tex, delete vase ?h ?s
+  (:action tightfisted
+    :parameters (?h - object ?s - object ?tex - object)
+    :precondition (and
+      (hand ?h)
+      (sneeze ?s)
+      (texture ?tex)
+      (next ?s ?tex)
+      (vase ?h ?s)
+    )
+    :effect (and
+      (next ?h ?tex)
+      (not (vase ?h ?s))
+    )
+  )
+
+  ;; Conservative seed action to break vase<->next causal cycle if the problem
+  ;; does not provide initial next facts for hand objects. This action is
+  ;; deliberately minimal: it only requires static type facts (hand, texture)
+  ;; and produces next(?h,?tex).
+  (:action seed_next_for_hand
+    :parameters (?h - object ?tex - object)
+    :precondition (and
+      (hand ?h)
+      (texture ?tex)
+    )
+    :effect (and
+      (next ?h ?tex)
     )
   )
 )

@@ -1,12 +1,14 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator)
-  (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - object
-  )
+(define (problem crave-c-a)
+  (:domain craving-domain)
+  (:objects a b c d - obj)
   (:init
-    ;; initial variant specified: next object_0 object_7 and next object_1 object_7
-    (next object_0 object_7)
-    (next object_1 object_7)
+    (craves a b)
+    (craves d c)
+    (harmony)
+    (planet b)
+    (planet c)
+    (province a)
+    (province d)
   )
-  (:goal (next object_8 object_6))
+  (:goal (craves c a))
 )

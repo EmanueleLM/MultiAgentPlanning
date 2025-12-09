@@ -1,51 +1,38 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator-domain)
+(define (problem manipulator-problem)
+  (:domain manipulator-domain)
 
   (:objects
-    ; agents (typed)
-    player1 - player
-    recorder1 - recorder
-    auditor1 - auditor
-
-    ; items
-    itemA - item
-
-    ; places
-    office lab archive - place
-
-    ; phases
-    p1 p2 p3 - phase
+    manip insp aud - agent
+    p1 p2 - part
+    src assembly inspection stor - loc
   )
 
   (:init
-    ; initial agent locations
-    (at player1 office)
-    (at recorder1 lab)
-    (at auditor1 archive)
+    ; agent roles and initial agent locations
+    (manipulator manip)
+    (inspector insp)
+    (auditor aud)
+    (at manip src)
+    (at insp inspection)
+    (at aud stor)
 
-    ; initial item location
-    (item-at itemA office)
+    ; manipulator starts empty-handed
+    (handempty manip)
 
-    ; phase order and initial active phase
-    (phase-next p1 p2)
-    (phase-next p2 p3)
-    (phase-active p1)
+    ; parts initial locations (both at source)
+    (at-part p1 src)
+    (at-part p2 src)
 
-    ; No other fluents hold initially: not processed, not recorded, not archived, not verified, not finalized
+    ; station classification
+    (source src)
+    (assembly-station assembly)
+    (inspection-station inspection)
+    (storage stor)
   )
 
-  ; Goal: enforce all mandated terminal conditions explicitly.
-  (:goal
-    (and
-      (processed itemA)
-      (archived itemA)
-      (verified itemA)
-      ; final agent positions required by the specification:
-      (at player1 lab)
-      (at recorder1 archive)
-      (at auditor1 archive)
-      ; final explicit finalization step (ensures ordering)
-      (finalized)
-    )
-  )
+  ; Goal: every part must be assembled, inspected, audited, and reside in storage.
+  (:goal (and
+    (at-part p1 stor) (assembled p1) (inspected p1) (audited p1)
+    (at-part p2 stor) (assembled p2) (inspected p2) (audited p2)
+  ))
 )

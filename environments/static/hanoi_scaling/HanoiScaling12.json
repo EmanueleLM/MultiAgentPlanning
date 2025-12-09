@@ -1,109 +1,105 @@
 {
     "name": "HanoiScaling12",
     "author": "Human",
+    "orchestrator": "orchestrator",
     "agents": {
         "number": 4,
         "names": [
-            "mover",
             "strategist",
+            "formalizer",
             "auditor",
             "orchestrator"
         ],
-        "mover": {
-            "private_information": [
-                "I can move the top disk from one peg to another peg.",
-                "I must move only one disk at a time and only the disk on top of a peg.",
-                "I can never place a larger disk on top of a smaller disk."
-            ],
-            "goal": "Enumerate valid single-disk moves and provide precise preconditions and effects for a generic move action, expressed as a structured summary usable by an orchestrator."
-        },
         "strategist": {
             "private_information": [
-                "I know the canonical recursive strategy for solving Tower of Hanoi puzzles.",
-                "I can produce a high-level ordered plan for moving stacks of disks using an auxiliary peg."
+                "I think in high-level move sequences and heuristics for recursive solutions.",
+                "I prefer to describe the classical recursive pattern for Tower of Hanoi."
             ],
-            "goal": "Provide a high-level plan for transferring the full stack of five disks from the right peg to the left peg using the middle peg as auxiliary while ensuring the middle peg ends empty."
+            "goal": "Move the full tower of 7 disks from the right peg to the left peg using the middle peg as auxiliary, leaving the middle and right pegs empty."
+        },
+        "formalizer": {
+            "private_information": [
+                "I translate high-level plans into precise formal specifications and state transitions.",
+                "I focus on types, predicates, and an explicit action schema without committing to solver syntax unless asked."
+            ],
+            "goal": "Produce a clear formal model of the Tower of Hanoi instance describing objects, initial state, goal state, and legal moves."
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency and I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
-                "I check that all moves respect disk ordering and single-disk move constraints."
+                "I check temporal and causal consistency, ensure legality of moves, and remove bookkeeping shortcuts such as artificial tokens or post-hoc penalties.",
+                "I validate that all moves respect the rule that only a top disk may move and that larger disks never go on smaller disks."
             ],
-            "goal": "Analyze proposed moves and high-level plans for causal and temporal consistency, identify and remove any bookkeeping shortcuts, and produce corrective constraints and invariant assertions."
+            "goal": "Audit the proposed model and plan fragments for causal and temporal correctness and produce a correction report ensuring no bookkeeping shortcuts remain."
         },
         "orchestrator": {
             "private_information": [
-                "I must synthesize a final PDDL domain and problem compatible with the FastDownwards solver."
+                "I integrate inputs from other agents and produce the final PDDL domain and problem targeted to the FastDownwards solver.",
+                "I must keep agent actions distinct in the produced PDDL when relevant and resolve naming mismatches or ambiguities."
             ],
-            "goal": "Integrate analyses from other agents and produce a complete PDDL domain and PDDL problem file that solves the Tower of Hanoi instance for FastDownwards."
+            "goal": "Combine the strategist, formalizer, and auditor outputs and produce a complete PDDL domain and problem that solve the 7-disk Tower of Hanoi instance with FastDownwards."
         }
     },
     "environment": {
         "init": {
-            "disks_count": 5,
-            "pegs": 3,
-            "disk_names": [
-                "A",
-                "B",
-                "C",
-                "D",
-                "E"
-            ],
-            "peg_names": [
-                "left",
-                "middle",
-                "right"
-            ]
+            "disks": 7,
+            "pegs": 3
         },
         "public_information": [
-            "There are 5 disks in total. From smallest to largest they are disk A, disk B, disk C, disk D, and disk E.",
-            "Initial condition: the right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. The middle peg and the left peg are empty.",
-            "Goal condition: the left peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E, and both the right peg and the middle peg must be empty at the end.",
-            "Rules: move only one disk at a time, move only the top disk of a peg, never place a larger disk on top of a smaller disk.",
-            "The middle peg can be used as an intermediate auxiliary spot but must end empty."
+            "Puzzle: Tower of Hanoi with three pegs called left, middle, and right.",
+            "There are 7 disks ordered from smallest to largest as disk A, disk B, disk C, disk D, disk E, disk F, disk G.",
+            "Initial state: right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F, disk G. Middle and left pegs are empty.",
+            "Goal state: left peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F, disk G. Middle and right pegs are empty.",
+            "Allowed basic action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time, can only move a disk that is on top of a peg, may never place a larger disk on top of a smaller disk.",
+            "The middle peg may be used as an intermediate helper but must end empty in the final state."
         ]
     },
     "workflow": {
-        "mover": {
-            "pddl": {
+        "strategist": {
+            "analysis": {
                 "input": [],
-                "output": "pddl_mover",
-                "system_prompt": "You are the mover agent. Your role is to examine the public information and your private knowledge about valid single-disk moves and produce a concise structured summary describing the generic move action, including clear preconditions, clear effects, and the invariants that must hold before and after any move. Do not emit PDDL; emit a machine-friendly structured description that an orchestrator can consume.",
-                "prompt": "You are named mover. Given the public environment facts and your private constraints, enumerate all valid single-disk move templates and state the exact preconditions and effects for a generic move from one peg to another. Also list state invariants that must be preserved by all moves. Provide the result as a compact structured summary suitable for programmatic integration."
+                "output": "strategist.analysis",
+                "system_prompt": "You are a strategist expert in puzzle decomposition and algorithmic patterns. Provide a human-readable high-level recursive or iterative plan for solving the 7-disk Tower of Hanoi. Do not emit solver-specific code or full PDDL. Focus on the sequence of moves and the recursion structure and include any assumptions you rely on.",
+                "prompt": "Your name is strategist. You have access to the following public information: {environment->public_information} You have the following private knowledge: {agents->strategist->private_information} The global goal you should address is: {agents->strategist->goal} Produce a clear high-level move strategy and an outline of the recursive pattern to move 7 disks from right to left using middle as auxiliary. Explain any invariants you rely on."
             }
         },
-        "strategist": {
-            "pddl": {
-                "input": [],
-                "output": "pddl_strategist",
-                "system_prompt": "You are the strategist agent. Your role is to provide a high-level plan and ordering constraints for transferring the full stack using the canonical recursive strategy. Focus on the sequence of abstract steps and dependencies between steps; do not produce PDDL directly.",
-                "prompt": "You are named strategist. Using the public information and your private knowledge of the recursive algorithm, produce a high-level ordered plan to move five disks from the right peg to the left peg using the middle peg as auxiliary. Express the plan as an ordered list of abstract move groups with causal ordering constraints and indicate which moves must precede which others. Ensure the plan guarantees the middle peg will be empty at the end."
+        "formalizer": {
+            "model": {
+                "input": [
+                    "strategist.analysis"
+                ],
+                "output": "formalizer.model",
+                "system_prompt": "You are a formal modeler. Translate high-level planning ideas into a precise formal specification that covers types, predicates, the initial state representation, the goal representation, and a canonical action schema for move operations. Do not output final solver PDDL, but produce a structured formal spec that the orchestrator can convert to PDDL.",
+                "prompt": "Your name is formalizer. You have access to public information {environment->public_information} and the strategist analysis {strategist.analysis}. You have private knowledge {agents->formalizer->private_information} and must satisfy the global goal {agents->formalizer->goal} Provide a detailed formal specification that lists object types, concrete objects for this instance, predicates to represent top-of-peg and disk ordering, an action schema for moving a disk with preconditions and effects, and any invariants that must be maintained."
             }
         },
         "auditor": {
-            "pddl": {
-                "input": [],
-                "output": "pddl_auditor",
-                "system_prompt": "You are the auditor agent. Your role is to check temporal and causal consistency in proposed moves and plans, to detect bookkeeping shortcuts such as token systems or post-hoc penalties, and to provide corrected constraints and invariants. Do not emit PDDL directly.",
-                "prompt": "You are named auditor. Analyze the structured move descriptions and high-level plan patterns that an orchestrator may receive. Identify any potential temporal or causal violations, any implicit bookkeeping shortcuts, and produce a prioritized list of corrections and strengthened invariants that guarantee correctness without relying on shortcuts. Output a structured list of constraints and checks for the orchestrator to enforce."
+            "audit": {
+                "input": [
+                    "strategist.analysis",
+                    "formalizer.model"
+                ],
+                "output": "auditor.audit",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency and removes bookkeeping shortcuts. Inspect proposed plan fragments and formal specifications for illegal shortcuts such as artificial tokens, aggregated moves, or delayed checks. Produce a correction report that ensures each move is causal, legal, and respects disk ordering, and that no bookkeeping artifacts remain.",
+                "prompt": "Your name is auditor. You receive the strategist analysis {strategist.analysis} and the formal model {formalizer.model}. You have private knowledge {agents->auditor->private_information} and must enforce the global goal {agents->auditor->goal} Provide an audit report that lists any inconsistencies, proposes fixes to the model or strategy, and certifies the corrected sequence and model for use by the orchestrator."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "pddl_mover",
-                    "pddl_strategist",
-                    "pddl_auditor"
+                    "strategist.analysis",
+                    "formalizer.model",
+                    "auditor.audit"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the orchestrator. Integrate the structured summaries from the other agents and synthesize a complete PDDL domain and a PDDL problem file targeting the FastDownwards solver. Produce a domain that models pegs, disks, disk size ordering, a move action with exact preconditions and effects that enforce top-only moves and forbid placing larger disks on smaller ones, and any necessary derived predicates or typing. Produce a problem that declares objects A..E and pegs left, middle, right, encodes the initial stack on right and the goal stack on left, and ensures the middle peg ends empty. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If there are multiple agents, keep their contributions distinct while synthesizing a single coherent domain and problem.",
-                "prompt": "You are named orchestrator. You will receive structured outputs from mover, strategist, and auditor. Integrate them, resolve naming mismatches or ambiguities, enforce auditor corrections, and emit a final PDDL domain and PDDL problem optimized for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+                "system_prompt": "You are an orchestrator that integrates human-level strategy, a formal model, and an auditor's corrections to produce a complete PDDL domain and PDDL problem file targeted for the FastDownwards solver. Keep agent actions and their provenance distinct if relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL is compatible with standard FastDownwards expectations and uses STRIPS or ADL constructs acceptable to FastDownwards.",
+                "prompt": "You are orchestrator. Inputs available: strategist analysis {strategist.analysis}, formal model {formalizer.model}, auditor audit {auditor.audit}. You have private knowledge {agents->orchestrator->private_information} and must accomplish the global goal {agents->orchestrator->goal} Integrate the inputs, resolve naming or representation mismatches, and output a complete PDDL domain and PDDL problem that solve the 7-disk Tower of Hanoi instance. The PDDL should explicitly declare objects for disks A to G and pegs left, middle, right, should encode the move action respecting move-only-top and size ordering constraints, and should set the initial and goal states as specified in public information. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "mover.pddl->orchestrator.pddl",
-            "strategist.pddl->orchestrator.pddl",
-            "auditor.pddl->orchestrator.pddl"
+            "strategist.analysis->orchestrator.pddl",
+            "formalizer.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
         ]
     }
 }

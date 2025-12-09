@@ -77,14 +77,11 @@ class Hypervisor:
 
             Consider selecting the agent for refinement, depending on the issues that you see in the artefacts:
             1. Constraints — ensure the domain and problem satisfy every agent's constraints.
-            2. Multi-agency — verify the modelling distinguishes each agent's actions appropriately.
-            3. Asynchronicity — confirm the domain/problem allow independent concurrent actions when needed.
-            4. Syntax — enforce compliance with the target solver's PDDL requirements.
-            5. Temporal/Causal coherence — disallow token-based bookkeeping, enforce explicit ordering, and prevent
-               oscillating transitions when the specification expects contiguous or monotonic progress.
+            2. Syntax — enforce compliance with the target solver's PDDL requirements.
+            3. Temporal/Causal coherence — disallow token-based bookkeeping, enforce explicit ordering, and prevent oscillating transitions when the specification expects contiguous or monotonic progress.
 
             Select the class best positioned to address the most pressing issue given the current artefacts.
-            Only answer <class>NoOpAgent</class> when every objective above is demonstrably satisfied.
+            Only select the agent <class>NoOpAgent</class> when every objective above is demonstrably satisfied.
             """
         )
 

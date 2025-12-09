@@ -1,154 +1,109 @@
-(define (domain orchestrated-multiagent)
-  (:requirements :strips :typing)
-  (:types obj stage)
+; Domain: multi-agent orchestration of a single PDDL artifact through modeling, auditing, simplification, and integration phases.
+; Comments below resolve modeling choices and constraints explicitly:
+; - We model one primary artifact "symbolic_model" that must be created, audited, mapped (simplifier canonical mapping), and integrated.
+; - Agents are modeled as distinct subtypes: modeler, auditor, simplifier, orchestrator. Only the matching subtype may perform its actions.
+; - The process is strictly sequential: modeling (p1) -> audit (p2) -> simplification/mapping (p3) -> integration (p4).
+;   Sequence is enforced by an explicit current-phase predicate plus a static successor relation phase-succ.
+; - No bookkeeping shortcuts, penalties, or post-hoc fixes are permitted. Each required fact is produced by a corresponding action.
+; - All natural-language preferences (e.g., ordering) are encoded as hard constraints (preconditions) so violating plans are impossible.
+; - No resources, connectivity, or availability beyond agents, one artifact, and four explicit phases are assumed.
 
-  (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?o - obj)
-    (at-stage ?s - stage)
+(define (domain orchestration)
+  :requirements :strips :typing :negative-preconditions
+  :types
+    agent
+    modeler auditor simplifier orchestrator - agent
+    artifact
+    phase
+
+  :predicates
+    ;; core artifact state
+    (artifact-created ?a - artifact)
+    (artifact-reviewed ?a - artifact)        ; auditor has completed corrections review
+    (artifact-mapped ?a - artifact)          ; simplifier has produced canonical mapping for the artifact
+    (artifact-integrated ?a - artifact)      ; orchestrator has produced integrated artifact
+
+    ;; provenance / actor-recording
+    (owns ?ag - agent ?a - artifact)         ; actor who created the artifact
+    (reviewed-by ?a - artifact ?ag - agent)
+    (mapped-by ?a - artifact ?ag - agent)
+    (integrated-by ?a - artifact ?ag - agent)
+
+    ;; phase sequencing and control
+    (phase-done ?p - phase)
+    (phase-succ ?p1 - phase ?p2 - phase)     ; static successor relation, set in problem init
+    (current-phase ?p - phase)
+
+  ; Action: Modeler creates the symbolic model in phase p1 and advances the phase to p2.
+  (:action create-model
+    :parameters (?m - modeler ?a - artifact ?p1 - phase ?p2 - phase)
+    :precondition (and
+                    (current-phase ?p1)
+                    (phase-succ ?p1 ?p2)
+                    (not (artifact-created ?a))
+                  )
+    :effect (and
+              (artifact-created ?a)
+              (owns ?m ?a)
+              (phase-done ?p1)
+              (not (current-phase ?p1))
+              (current-phase ?p2)
+            )
   )
 
-  ;; Actions observed and reconciled from planner_alpha (prefix: alpha-)
-  ;; Each action enforces explicit stage progression so the observed plan order cannot be reordered.
-  (:action alpha-paltry
-    :parameters (?x - obj)
-    :precondition (and (hand ?x) (at-stage s0))
+  ; Action: Auditor reviews the created artifact in the audit phase and advances to the next phase.
+  ; Auditor is required to mark the artifact-reviewed fact; this is distinct from mapping.
+  (:action audit-artifact
+    :parameters (?aud - auditor ?a - artifact ?p2 - phase ?p3 - phase)
+    :precondition (and
+                    (current-phase ?p2)
+                    (phase-succ ?p2 ?p3)
+                    (artifact-created ?a)
+                    (not (artifact-reviewed ?a))
+                  )
     :effect (and
-      (not (hand ?x))
-      (collect ?x)
-      (not (at-stage s0))
-      (at-stage s1)
-    )
+              (artifact-reviewed ?a)
+              (reviewed-by ?a ?aud)
+              (phase-done ?p2)
+              (not (current-phase ?p2))
+              (current-phase ?p3)
+            )
   )
 
-  (:action alpha-clip
-    :parameters (?origin - obj ?neighbor - obj ?new - obj)
-    :precondition (and (next ?origin ?neighbor) (texture ?neighbor) (at-stage s1))
+  ; Action: Simplifier produces canonical mapping for the audited artifact, only after audit is complete.
+  (:action simplify-map
+    :parameters (?s - simplifier ?a - artifact ?p3 - phase ?p4 - phase)
+    :precondition (and
+                    (current-phase ?p3)
+                    (phase-succ ?p3 ?p4)
+                    (artifact-reviewed ?a)
+                    (not (artifact-mapped ?a))
+                  )
     :effect (and
-      (not (next ?origin ?neighbor))
-      (next ?origin ?new)
-      (not (at-stage s1))
-      (at-stage s2)
-    )
+              (artifact-mapped ?a)
+              (mapped-by ?a ?s)
+              (phase-done ?p3)
+              (not (current-phase ?p3))
+              (current-phase ?p4)
+            )
   )
 
-  (:action alpha-sip
-    :parameters (?cup - obj)
-    :precondition (and (vase ?cup) (at-stage s2))
+  ; Action: Orchestrator integrates the created, reviewed, and mapped artifact into the final integrated artifact.
+  ; Integration requires all prior facts and advances final phase p4 is completed (no further phase).
+  (:action integrate-artifact
+    :parameters (?o - orchestrator ?a - artifact ?p4 - phase)
+    :precondition (and
+                    (current-phase ?p4)
+                    (artifact-created ?a)
+                    (artifact-reviewed ?a)
+                    (artifact-mapped ?a)
+                    (not (artifact-integrated ?a))
+                  )
     :effect (and
-      (not (vase ?cup))
-      (sneeze ?cup)
-      (not (at-stage s2))
-      (at-stage s3)
-    )
-  )
-
-  (:action alpha-memory
-    :parameters (?subject - obj ?object - obj)
-    :precondition (and (cats ?subject) (texture ?object) (at-stage s3))
-    :effect (and
-      (not (texture ?object))
-      (stupendous ?object)
-      (not (at-stage s3))
-      (at-stage s4)
-    )
-  )
-
-  (:action alpha-tightfisted
-    :parameters (?item - obj)
-    :precondition (and (collect ?item) (at-stage s4))
-    :effect (and
-      (not (collect ?item))
-      (spring ?item)
-      (not (at-stage s4))
-      (at-stage s5)
-    )
-  )
-
-  ;; The original planner_alpha observation for wretched contained an ambiguous sneeze binding.
-  ;; Auditor reconciliation: require that a sneeze has happened on object_2 (the observed sip produced sneeze(object_2)),
-  ;; so wretched's precondition references that concrete fact to remove bookkeeping ambiguity.
-  (:action alpha-wretched
-    :parameters (?entity - obj)
-    :precondition (and (sneeze object_2) (at-stage s5))
-    :effect (and
-      (next ?entity object_1)
-      (not (at-stage s5))
-      (at-stage s6)
-    )
-  )
-
-  ;; Duplicate action schemas attributed to planner_beta (prefix: beta-) to reflect agent responsibility.
-  ;; Semantics are reconciled to match the integrated global model (same preconditions/effects as alpha- variants).
-  (:action beta-paltry
-    :parameters (?x - obj)
-    :precondition (and (hand ?x) (at-stage s0))
-    :effect (and
-      (not (hand ?x))
-      (collect ?x)
-      (not (at-stage s0))
-      (at-stage s1)
-    )
-  )
-
-  (:action beta-clip
-    :parameters (?origin - obj ?neighbor - obj ?new - obj)
-    :precondition (and (next ?origin ?neighbor) (texture ?neighbor) (at-stage s1))
-    :effect (and
-      (not (next ?origin ?neighbor))
-      (next ?origin ?new)
-      (not (at-stage s1))
-      (at-stage s2)
-    )
-  )
-
-  (:action beta-sip
-    :parameters (?cup - obj)
-    :precondition (and (vase ?cup) (at-stage s2))
-    :effect (and
-      (not (vase ?cup))
-      (sneeze ?cup)
-      (not (at-stage s2))
-      (at-stage s3)
-    )
-  )
-
-  (:action beta-memory
-    :parameters (?subject - obj ?object - obj)
-    :precondition (and (cats ?subject) (texture ?object) (at-stage s3))
-    :effect (and
-      (not (texture ?object))
-      (stupendous ?object)
-      (not (at-stage s3))
-      (at-stage s4)
-    )
-  )
-
-  (:action beta-tightfisted
-    :parameters (?item - obj)
-    :precondition (and (collect ?item) (at-stage s4))
-    :effect (and
-      (not (collect ?item))
-      (spring ?item)
-      (not (at-stage s4))
-      (at-stage s5)
-    )
-  )
-
-  (:action beta-wretched
-    :parameters (?entity - obj)
-    :precondition (and (sneeze object_2) (at-stage s5))
-    :effect (and
-      (next ?entity object_1)
-      (not (at-stage s5))
-      (at-stage s6)
-    )
+              (artifact-integrated ?a)
+              (integrated-by ?a ?o)
+              (phase-done ?p4)
+              (not (current-phase ?p4))
+            )
   )
 )

@@ -1,139 +1,143 @@
-(define (domain orchestrated)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types Obj Stage)
+(define (domain logistics_combined)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types
+    city
+    location
+    truck
+    airplane
+    package
+    stage
+  )
 
   (:predicates
-    (hand ?o - Obj)
-    (cats ?o - Obj)
-    (texture ?o - Obj)
-    (sneeze ?o - Obj)
-    (spring ?o - Obj)
-    (stupendous ?o - Obj)
+    ; vehicle locations
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?ap - airplane ?l - location)
 
-    (vase ?a - Obj ?b - Obj)
-    (next ?a - Obj ?b - Obj)
-    (collect ?a - Obj ?b - Obj)
+    ; package at a location (not inside a vehicle)
+    (at-p ?p - package ?l - location)
 
-    (stage ?s - Stage)
-    (succ ?s1 - Stage ?s2 - Stage)
-    (current ?s - Stage)
+    ; package containment (distinct predicates for truck vs airplane)
+    (in-truck ?p - package ?t - truck)
+    (in-airplane ?p - package ?ap - airplane)
+
+    ; static membership and airport flags
+    (in_city ?l - location ?c - city)
+    (airport ?l - location)
+
+    ; explicit cross-city relation (used to require flights between different cities)
+    (diff-city ?c1 - city ?c2 - city)
+
+    ; discrete stage progression for explicit ordering of actions
+    (current-stage ?s - stage)
+    (succ ?s - stage ?s2 - stage)
   )
 
-  ;; Actions advance the single current stage to its successor,
-  ;; enforcing strict contiguous time progression.
+  ;; All actions require a current stage ?s and a successor stage ?s2, and they advance the current-stage.
+  ;; This enforces a single-threaded discrete progression and makes ordering explicit.
 
-  (:action paltry
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj)
+  ;; Truck actions (namespaced "truck-")
+  (:action truck-load
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (current ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (at-p ?p ?l)
+      (at-truck ?t ?l)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  (:action sip
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj)
-    :precondition (and
-      (current ?s)
-      (succ ?s ?s2)
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (at-p ?p ?l))
+      (in-truck ?p ?t)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj)
+  (:action truck-unload
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (current ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (in-truck ?p ?t))
+      (at-p ?p ?l)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj ?o3 - Obj)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (current ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (at-truck ?t ?from)
+      (in_city ?from ?c)
+      (in_city ?to ?c)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj)
+  ;; Air actions (namespaced "air-")
+  (:action air-load
+    :parameters (?p - package ?ap - airplane ?a - location ?s - stage ?s2 - stage)
     :precondition (and
-      (current ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (airport ?a)
+      (at-p ?p ?a)
+      (at-airplane ?ap ?a)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at-p ?p ?a))
+      (in-airplane ?p ?ap)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?s - Stage ?s2 - Stage ?o0 - Obj ?o1 - Obj ?o2 - Obj)
+  (:action air-unload
+    :parameters (?p - package ?ap - airplane ?a - location ?s - stage ?s2 - stage)
     :precondition (and
-      (current ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (airport ?a)
+      (in-airplane ?p ?ap)
+      (at-airplane ?ap ?a)
     )
     :effect (and
-      (not (current ?s))
-      (current ?s2)
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (in-airplane ?p ?ap))
+      (at-p ?p ?a)
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
+  )
+
+  (:action air-fly
+    :parameters (?ap - airplane ?from - location ?to - location ?cfrom - city ?cto - city ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (airport ?from)
+      (airport ?to)
+      (at-airplane ?ap ?from)
+      (in_city ?from ?cfrom)
+      (in_city ?to ?cto)
+      (diff-city ?cfrom ?cto)
+    )
+    :effect (and
+      (not (at-airplane ?ap ?from))
+      (at-airplane ?ap ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

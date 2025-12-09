@@ -1,77 +1,145 @@
-; DOMAIN: next-vase-domain
-; Comment: This domain encodes the normalized action schemas and predicates
-; from the environment and the auditor's normalization. No action schemas
-; were changed. The auditor recommended plan corrections (see per-problem
-; comments below), but action preconditions/effects remain as specified:
-; memory, sip, paltry, clip, wretched, tightfisted.
-; Requirements limited to :strips to remain compatible with FastDownward.
-(define (domain next-vase-domain)
-  (:requirements :strips)
+(define (domain logistics_integrated)
+  ;; Integrated logistics domain combining truck_operator and airplane_operator actions.
+  ;; Resolutions and modeling decisions (enforced as hard constraints):
+  ;;  - Packages have exclusive location semantics: either (at ?p ?loc) OR (in ?p ?v).
+  ;;    To represent "not in any vehicle" without quantifiers, we introduce the fluent (unloaded ?p).
+  ;;    unloaded is true exactly when the package is at a concrete location (not inside a vehicle).
+  ;;    Load actions require (unloaded ?p) and delete it; unload actions add (unloaded ?p).
+  ;;  - Vehicles (trucks, airplanes) have locations given by (at ?vehicle ?loc). Moving a vehicle
+  ;;    only changes the vehicle's (at ...) fact. Packages inside vehicles remain (in ?p ?v) and
+  ;;    are not given separate (at ?p ?loc) while loaded.
+  ;;  - Airports are modeled as a predicate (is_airport ?loc). Airports are also locations.
+  ;;  - Trucks are statically assigned to a city via (truck_belongs_to_city ?t ?c); drives are constrained
+  ;;    to work only within that city (both from and to locations must belong to the same city that
+  ;;    the truck belongs to).
+  ;;  - Airplanes may only load/unload at airports; flying moves an airplane between airports in
+  ;;    different cities.
+  ;;  - Vehicles have unlimited capacity (explicitly chosen due to missing capacity info).
+  ;;  - Concurrency and resources: this model targets classical sequential planners (FastDownwards).
+  ;;    Thus actions are instantaneous and mutual exclusion is enforced implicitly by sequential planning.
+  ;;  - No bookkeeping shortcuts: vehicle movement does not update package "at" facts; load/unload maintain exclusivity.
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    city
+    location
+    airport - location
+    object
+    vehicle - object
+    package - object
+    truck airplane - vehicle
+  )
+
   (:predicates
-    (cats ?x)
-    (collect ?x ?y)
-    (hand ?x)
-    (next ?x ?y)
-    (sneeze ?x)
-    (spring ?x)
-    (stupendous ?x)
-    (texture ?x)
-    (vase ?x ?y)
+    ;; object location facts (packages when not loaded, trucks, and airplanes)
+    (at ?o - object ?l - location)
+
+    ;; package-in-vehicle relation (package is inside a vehicle)
+    (in ?p - package ?v - vehicle)
+
+    ;; helper fluent meaning package is not inside any vehicle (must be true when package is at a location)
+    (unloaded ?p - package)
+
+    ;; mapping of a location to its city (static)
+    (location_in_city ?l - location ?c - city)
+
+    ;; airport predicate (some locations are airports)
+    (is_airport ?l - location)
+
+    ;; static assignment: truck belongs to a city (static)
+    (truck_belongs_to_city ?t - truck ?c - city)
   )
 
-  ; memory(x, y, z)
-  ; Requires: cats(x), spring(y), spring(z), next(x,y)
-  ; Effects: add next(x,z); delete next(x,y)
-  (:action memory
-    :parameters (?x ?y ?z)
-    :precondition (and (cats ?x) (spring ?y) (spring ?z) (next ?x ?y))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Truck-operator actions (prefixed with truck_operator_)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (:action truck_operator_load
+    :parameters (?p - package ?t - truck ?loc - location)
+    :precondition (and
+                    (at ?t ?loc)
+                    (at ?p ?loc)
+                    (unloaded ?p)
+                  )
+    :effect (and
+              (in ?p ?t)
+              (not (at ?p ?loc))
+              (not (unloaded ?p))
+            )
   )
 
-  ; sip(h, c, t)
-  ; Requires: hand(h), cats(c), texture(t), next(h,t), next(c,t)
-  ; Effects: add vase(h,c); delete next(h,t)
-  (:action sip
-    :parameters (?h ?c ?t)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (next ?h ?t) (next ?c ?t))
-    :effect (and (vase ?h ?c) (not (next ?h ?t)))
+  (:action truck_operator_unload
+    :parameters (?p - package ?t - truck ?loc - location)
+    :precondition (and
+                    (in ?p ?t)
+                    (at ?t ?loc)
+                  )
+    :effect (and
+              (not (in ?p ?t))
+              (at ?p ?loc)
+              (unloaded ?p)
+            )
   )
 
-  ; paltry(h, c, t)
-  ; Requires: hand(h), cats(c), texture(t), vase(h,c), next(c,t)
-  ; Effects: add next(h,t); delete vase(h,c)
-  (:action paltry
-    :parameters (?h ?c ?t)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (vase ?h ?c) (next ?c ?t))
-    :effect (and (next ?h ?t) (not (vase ?h ?c)))
+  (:action truck_operator_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and
+                    (at ?t ?from)
+                    (location_in_city ?from ?c)
+                    (location_in_city ?to ?c)
+                    (truck_belongs_to_city ?t ?c)
+                  )
+    :effect (and
+              (not (at ?t ?from))
+              (at ?t ?to)
+            )
   )
 
-  ; clip(h, s, t)
-  ; Requires: hand(h), sneeze(s), texture(t), next(s,t), next(h,t)
-  ; Effects: add vase(h,s); delete next(h,t)
-  (:action clip
-    :parameters (?h ?s ?t)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (next ?h ?t))
-    :effect (and (vase ?h ?s) (not (next ?h ?t)))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Airplane-operator actions (prefixed with airplane_operator_)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (:action airplane_operator_load
+    :parameters (?p - package ?a - airplane ?loc - location)
+    :precondition (and
+                    (at ?a ?loc)
+                    (at ?p ?loc)
+                    (is_airport ?loc)
+                    (unloaded ?p)
+                  )
+    :effect (and
+              (in ?p ?a)
+              (not (at ?p ?loc))
+              (not (unloaded ?p))
+            )
   )
 
-  ; wretched(s, t1, t2, st)
-  ; Requires: sneeze(s), texture(t1), texture(t2), stupendous(st),
-  ;           next(s,t1), collect(t1,st), collect(t2,st)
-  ; Effects: add next(s,t2); delete next(s,t1)
-  (:action wretched
-    :parameters (?s ?t1 ?t2 ?st)
-    :precondition (and (sneeze ?s) (texture ?t1) (texture ?t2) (stupendous ?st)
-                       (next ?s ?t1) (collect ?t1 ?st) (collect ?t2 ?st))
-    :effect (and (next ?s ?t2) (not (next ?s ?t1)))
+  (:action airplane_operator_unload
+    :parameters (?p - package ?a - airplane ?loc - location)
+    :precondition (and
+                    (in ?p ?a)
+                    (at ?a ?loc)
+                    (is_airport ?loc)
+                  )
+    :effect (and
+              (not (in ?p ?a))
+              (at ?p ?loc)
+              (unloaded ?p)
+            )
   )
 
-  ; tightfisted(h, s, t)
-  ; Requires: hand(h), sneeze(s), texture(t), next(s,t), vase(h,s)
-  ; Effects: add next(h,t); delete vase(h,s)
-  (:action tightfisted
-    :parameters (?h ?s ?t)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (vase ?h ?s))
-    :effect (and (next ?h ?t) (not (vase ?h ?s)))
+  (:action airplane_operator_fly
+    :parameters (?a - airplane ?from - location ?to - location ?c_from - city ?c_to - city)
+    :precondition (and
+                    (at ?a ?from)
+                    (is_airport ?from)
+                    (is_airport ?to)
+                    (location_in_city ?from ?c_from)
+                    (location_in_city ?to ?c_to)
+                    (not (= ?c_from ?c_to))
+                  )
+    :effect (and
+              (not (at ?a ?from))
+              (at ?a ?to)
+            )
   )
 )

@@ -1,0 +1,97 @@
+{
+    "name": "HanoiScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "hanoi_player",
+            "auditor",
+            "orchestrator"
+        ],
+        "hanoi_player": {
+            "private_information": [
+                "There are 6 disks ordered smallest to largest: A, B, C, D, E, F.",
+                "Allowed atomic action: move the top disk from one peg to another peg.",
+                "Constraints: move only one disk at a time, only move a disk that is on top of a peg, never place a larger disk on top of a smaller disk, moved disks keep their relative size ordering."
+            ],
+            "goal": "Move the full stack from the left peg to the right peg so the right peg holds from top to bottom A, B, C, D, E, F, and the left and middle pegs are empty."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: check temporal and causal consistency of proposed plans and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "Responsibilities: ensure the plan moves exactly one top disk per step, respect disk ordering constraints at every intermediate state, and ensure the middle peg is only used as intermediate and ends empty."
+            ],
+            "goal": "Produce an audit report that confirms the plan is temporally and causally consistent or returns explicit corrections and explanations for required changes."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the player's move plan and the auditor's report to produce a final PDDL domain and problem targeting the FastDownwards solver that encodes the Tower of Hanoi instance with 3 pegs and 6 disks."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 6,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "initial_distribution": {
+                "left": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ],
+                "middle": [],
+                "right": []
+            },
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "Initial state: left peg holds, from top to bottom, A, B, C, D, E, F; middle and right pegs are empty.",
+            "Goal state: right peg must hold, from top to bottom, A, B, C, D, E, F; left and middle pegs must be empty.",
+            "Rules: move only one disk at a time; only move the top disk of a peg; never place a larger disk on top of a smaller disk; the middle peg may be used as an intermediate and must end empty."
+        ]
+    },
+    "workflow": {
+        "hanoi_player": {
+            "plan": {
+                "input": [],
+                "output": "player_plan",
+                "system_prompt": "You are an expert in solving Tower of Hanoi puzzles. Produce a concrete, ordered sequence of moves using the allowed atomic action (move top disk from one peg to another) that achieves the stated goal while obeying all rules. Provide moves in a clear move-list format (for example: MOVE A FROM LEFT TO MIDDLE). Do not emit PDDL.",
+                "prompt": "You are hanoi_player. Use the public information about the environment and your private information to produce a step-by-step move plan that moves the full stack from the left peg to the right peg while leaving the middle peg empty at the end. List each atomic move in order and ensure each move respects the Hanoi rules."
+            }
+        },
+        "auditor": {
+            "consistency_audit": {
+                "input": [
+                    "player_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency for discrete plans. Inspect the provided move sequence for violations of atomicity (one disk per move), top-of-peg constraints, disk size ordering at each intermediate state, and any bookkeeping shortcuts. Produce either a confirmation that the plan is valid or a detailed list of inconsistencies and precise corrective edits to the move sequence. Do not emit PDDL.",
+                "prompt": "You are auditor. You will receive a move sequence produced by hanoi_player. Verify that every step is legal given the Tower of Hanoi rules, that no larger disk is placed on a smaller disk at any time, and that only legitimate top-disk moves are used. If you detect implicit shortcuts or bookkeeping hacks, remove them and describe corrected moves and rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and generation targeted specifically for the FastDownwards planner. Your task is to produce a complete PDDL domain and a PDDL problem file that encode the Tower of Hanoi instance with three pegs and six disks while keeping agent actions distinct where relevant. The PDDL should include types, predicates, and actions that faithfully implement the Hanoi rules and initial/goal states. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The generated PDDL must be compatible with FastDownwards.",
+                "prompt": "You are orchestrator. Receive a concrete move plan from hanoi_player and an audit_report from auditor. Integrate the plan and the auditor's corrections into a canonical, solver-ready PDDL domain and problem for the 3-peg, 6-disk Tower of Hanoi instance. Keep agent-level actions distinct if needed, ensure no bookkeeping shortcuts remain, and target FastDownwards. Provide the PDDL domain and problem enclosed between the specified tags."
+            }
+        },
+        "constraints": [
+            "hanoi_player.plan->auditor.consistency_audit",
+            "auditor.consistency_audit->orchestrator.pddl",
+            "hanoi_player.plan->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,127 +1,128 @@
-(define (domain depots28_domain)
+(define (domain crate-hoist-orchestration)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types place truck hoist surface step crate pallet - surface)
 
   (:predicates
-    ;; unary fluents
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    ;; binary fluents
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
+    ;; Locations
+    (at-truck ?tr - truck ?p - place)
+    (hoist-at ?h - hoist ?p - place)
+    (surface-at ?s - surface ?p - place)
+
+    ;; occupancy / stacking
+    (on ?c - crate ?s - surface)             ;; crate c is on surface s (surface can be pallet or crate)
+    (in-truck ?c - crate ?tr - truck)       ;; crate c is loaded in truck tr
+
+    ;; hoist state and surface clearance
+    (hoist-available ?h - hoist)
+    (hoist-lifting ?h - hoist ?c - crate)
+    (clear ?s - surface)                    ;; surface s (pallet or crate) has nothing on it
+
+    ;; explicit discrete stage progression
+    (current-stage ?t - step)
+    (succ ?t1 - step ?t2 - step)
   )
 
-  ;; paltry(object_0, object_1, object_2)
-  ;; pre: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;; eff: add next o0 o2, del vase o0 o1
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; Drive a truck from one place to another; advances the global stage by one successor.
+  (:action drive
+    :parameters (?tr - truck ?from - place ?to - place ?t1 - step ?t2 - step)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (at-truck ?tr ?from)
+      (current-stage ?t1)
+      (succ ?t1 ?t2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ;; sip(object_0, object_1, object_2)
-  ;; pre: hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;; eff: add vase o0 o1, del next o0 o2
-  (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+      (not (current-stage ?t1))
+      (current-stage ?t2)
     )
   )
 
-  ;; clip(object_0, object_1, object_2)
-  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;; eff: add vase o0 o1, del next o0 o2
-  (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; Hoist lifts a crate from a surface at a place; advances stage.
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?surf - surface ?p - place ?t1 - step ?t2 - step)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (hoist-at ?h ?p)
+      (hoist-available ?h)
+      (on ?c ?surf)
+      (surface-at ?surf ?p)
+      (surface-at ?c ?p)
+      (clear ?c)
+      (current-stage ?t1)
+      (succ ?t1 ?t2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (on ?c ?surf))
+      (not (surface-at ?c ?p))
+      (hoist-lifting ?h ?c)
+      (not (hoist-available ?h))
+      (clear ?surf)
+      (not (current-stage ?t1))
+      (current-stage ?t2)
     )
   )
 
-  ;; wretched(object_0, object_1, object_2, object_3)
-  ;; pre: sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3
-  ;; eff: add next o0 o2, del next o0 o1
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+  ;; Hoist drops a lifted crate onto a surface at the same place; advances stage.
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?surf - surface ?p - place ?t1 - step ?t2 - step)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (hoist-at ?h ?p)
+      (surface-at ?surf ?p)
+      (clear ?surf)
+      (hoist-lifting ?h ?c)
+      (current-stage ?t1)
+      (succ ?t1 ?t2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (hoist-available ?h)
+      (not (hoist-lifting ?h ?c))
+      (on ?c ?surf)
+      (clear ?c)
+      (not (clear ?surf))
+      (surface-at ?c ?p)
+      (not (current-stage ?t1))
+      (current-stage ?t2)
     )
   )
 
-  ;; memory(object_0, object_1, object_2)
-  ;; pre: cats o0, spring o1, spring o2, next o0 o1
-  ;; eff: add next o0 o2, del next o0 o1
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; Hoist loads a lifted crate into a truck at the same place; advances stage.
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?t1 - step ?t2 - step)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (hoist-at ?h ?p)
+      (at-truck ?tr ?p)
+      (hoist-lifting ?h ?c)
+      (current-stage ?t1)
+      (succ ?t1 ?t2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (in-truck ?c ?tr)
+      (not (hoist-lifting ?h ?c))
+      (hoist-available ?h)
+      ;; crate is no longer at the place/surface while in truck
+      (not (surface-at ?c ?p))
+      (not (current-stage ?t1))
+      (current-stage ?t2)
     )
   )
 
-  ;; tightfisted(object_0, object_1, object_2)
-  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;; eff: add next o0 o2, del vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; Hoist unloads a crate from a truck (hoist begins lifting the crate); advances stage.
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?t1 - step ?t2 - step)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (hoist-at ?h ?p)
+      (hoist-available ?h)
+      (in-truck ?c ?tr)
+      (at-truck ?tr ?p)
+      (current-stage ?t1)
+      (succ ?t1 ?t2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (in-truck ?c ?tr))
+      (not (hoist-available ?h))
+      (hoist-lifting ?h ?c)
+      (not (current-stage ?t1))
+      (current-stage ?t2)
     )
   )
 )

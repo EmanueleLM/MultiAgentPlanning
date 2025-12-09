@@ -1,69 +1,152 @@
-(define (domain ObfuscatedDeceptiveLogistics21)
+(define (domain obfuscated_deceptive_logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types object stage)
+
   (:predicates
+    (next ?from - object ?to - object)
+    (vase ?a - object ?b - object)
     (hand ?o - object)
     (cats ?o - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
     (texture ?o - object)
-    (collect ?o - object ?w - object)
-    (next ?o - object ?p - object)
-    (vase ?o - object ?y - object)
+    (sneeze ?o - object)
+    (stupendous ?o - object)
+    (collect ?a - object ?b - object)
+    (spring ?o - object)
+    (current-stage ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry: pre: hand X, cats Y, texture Z, vase X Y, next Y Z
-  ;;         add: next X Z
-  ;;         del: vase X Y
+  ;; Paltry:
+  ;; Preconditions: hand ?h, cats ?c, texture ?t, vase ?h ?c, next ?c ?t, current-stage ?s, succ ?s ?s2
+  ;; Effects: add next ?h ?t, delete vase ?h ?c, advance stage
   (:action paltry
-    :parameters (?x - object ?y - object ?z - object)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (vase ?x ?y) (next ?y ?z))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (hand ?h)
+      (cats ?c)
+      (texture ?t)
+      (vase ?h ?c)
+      (next ?c ?t)
+      (current-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (next ?h ?t)
+      (not (vase ?h ?c))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; sip: pre: hand X, cats Y, texture Z, next X Z, next Y Z
-  ;;      add: vase X Y
-  ;;      del: next X Z
+  ;; Sip:
+  ;; Preconditions: hand ?h, cats ?c, texture ?t, next ?h ?t, next ?c ?t, current-stage ?s, succ ?s ?s2
+  ;; Effects: add vase ?h ?c, delete next ?h ?t, advance stage
   (:action sip
-    :parameters (?x - object ?y - object ?z - object)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (next ?x ?z) (next ?y ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (hand ?h)
+      (cats ?c)
+      (texture ?t)
+      (next ?h ?t)
+      (next ?c ?t)
+      (current-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (vase ?h ?c)
+      (not (next ?h ?t))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; clip: pre: hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ;;       add: vase X Y
-  ;;       del: next X Z
+  ;; Clip:
+  ;; Preconditions: hand ?h, sneeze ?sne, texture ?t, next ?sne ?t, next ?h ?t, current-stage ?st, succ ?st ?st2
+  ;; Effects: add vase ?h ?sne, delete next ?h ?t, advance stage
   (:action clip
-    :parameters (?x - object ?y - object ?z - object)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (next ?x ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+    :parameters (?h - object ?sne - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (hand ?h)
+      (sneeze ?sne)
+      (texture ?t)
+      (next ?sne ?t)
+      (next ?h ?t)
+      (current-stage ?st)
+      (succ ?st ?st2)
+    )
+    :effect (and
+      (vase ?h ?sne)
+      (not (next ?h ?t))
+      (not (current-stage ?st))
+      (current-stage ?st2)
+    )
   )
 
-  ;; wretched: pre: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;;           add: next X Z
-  ;;           del: next X Y
+  ;; Wretched:
+  ;; Preconditions: sneeze ?sne, texture ?t1, texture ?t2, stupendous ?stup, next ?sne ?t1,
+  ;;                collect ?t1 ?stup, collect ?t2 ?stup, current-stage ?stg, succ ?stg ?stg2
+  ;; Effects: add next ?sne ?t2, delete next ?sne ?t1, advance stage
   (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object)
-    :precondition (and (sneeze ?x) (texture ?y) (texture ?z) (stupendous ?w) (next ?x ?y) (collect ?y ?w) (collect ?z ?w))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
+    :parameters (?sne - object ?t1 - object ?t2 - object ?stup - object ?stg - stage ?stg2 - stage)
+    :precondition (and
+      (sneeze ?sne)
+      (texture ?t1)
+      (texture ?t2)
+      (stupendous ?stup)
+      (next ?sne ?t1)
+      (collect ?t1 ?stup)
+      (collect ?t2 ?stup)
+      (current-stage ?stg)
+      (succ ?stg ?stg2)
+    )
+    :effect (and
+      (next ?sne ?t2)
+      (not (next ?sne ?t1))
+      (not (current-stage ?stg))
+      (current-stage ?stg2)
+    )
   )
 
-  ;; memory: pre: cats X, spring Y, spring Z, next X Y
-  ;;         add: next X Z
-  ;;         del: next X Y
+  ;; Memory:
+  ;; Preconditions: cats ?c, spring ?s1, spring ?s2, next ?c ?s1, current-stage ?st, succ ?st ?st2
+  ;; Effects: add next ?c ?s2, delete next ?c ?s1, advance stage
   (:action memory
-    :parameters (?x - object ?y - object ?z - object)
-    :precondition (and (cats ?x) (spring ?y) (spring ?z) (next ?x ?y))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
+    :parameters (?c - object ?s1 - object ?s2 - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (cats ?c)
+      (spring ?s1)
+      (spring ?s2)
+      (next ?c ?s1)
+      (current-stage ?st)
+      (succ ?st ?st2)
+    )
+    :effect (and
+      (next ?c ?s2)
+      (not (next ?c ?s1))
+      (not (current-stage ?st))
+      (current-stage ?st2)
+    )
   )
 
-  ;; tightfisted: pre: hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ;;              add: next X Z
-  ;;              del: vase X Y
+  ;; Tightfisted:
+  ;; Preconditions: hand ?h, sneeze ?sne, texture ?t, next ?sne ?t, vase ?h ?sne, current-stage ?st, succ ?st ?st2
+  ;; Effects: add next ?h ?t, delete vase ?h ?sne, advance stage
   (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (vase ?x ?y))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+    :parameters (?h - object ?sne - object ?t - object ?st - stage ?st2 - stage)
+    :precondition (and
+      (hand ?h)
+      (sneeze ?sne)
+      (texture ?t)
+      (next ?sne ?t)
+      (vase ?h ?sne)
+      (current-stage ?st)
+      (succ ?st ?st2)
+    )
+    :effect (and
+      (next ?h ?t)
+      (not (vase ?h ?sne))
+      (not (current-stage ?st))
+      (current-stage ?st2)
+    )
   )
 )

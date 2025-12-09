@@ -1,0 +1,96 @@
+{
+    "name": "HanoiScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk",
+                "Disks from smallest to largest are A B C D E F"
+            ],
+            "goal": "Transfer the stack of six disks from the middle peg to the left peg preserving size ordering and leaving the other pegs empty"
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency",
+                "I must detect and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I must ensure every move is causally justified and respects the move constraints and disk ordering"
+            ],
+            "goal": "Verify and correct the mover's model so it is temporally and causally consistent and free of bookkeeping shortcuts"
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate agent analyses into a final PDDL domain and problem targeting FastDownward"
+            ],
+            "goal": "Produce a final PDDL domain and PDDL problem representing the Tower of Hanoi instance with six disks for the FastDownward solver"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "labels": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ]
+        },
+        "public_information": [
+            "There are three pegs: left, middle, right",
+            "There are six disks labeled from smallest to largest: A B C D E F",
+            "Initial state: middle peg holds from top to bottom A B C D E F, left and right pegs are empty",
+            "Goal state: left peg holds from top to bottom A B C D E F and middle and right pegs are empty",
+            "Legal action: move the top disk from one peg to another peg",
+            "Move rules: only one disk at a time, only top disk of a peg may be moved, never place a larger disk on a smaller disk",
+            "The right peg may be used as an intermediate but must be empty in the final state",
+            "Once moved, disk relative size ordering must be preserved"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "model": {
+                "input": [],
+                "output": "model_mover",
+                "system_prompt": "You are an expert in formalizing planning problems but do not emit PDDL. Produce a clear formal state model and an abstract stepwise plan template for solving the Tower of Hanoi with six disks. Describe objects, predicates, actions, preconditions and effects in a solver-agnostic structured format. Do not invent bookkeeping tokens or shortcuts. Keep the model explicit about peg names and disk ordering constraints.",
+                "prompt": "You are the mover agent. Use the public information about the environment and your private knowledge to produce a structured formal model of the Tower of Hanoi instance and a high-level sequence template of moves. Identify the minimal information required to create a correct PDDL encoding. If some information is missing, state what is missing. Output only the structured model and the abstract move template."
+            }
+        },
+        "consistency_auditor": {
+            "audit": {
+                "input": [
+                    "model_mover"
+                ],
+                "output": "audit_consistency",
+                "system_prompt": "You are an expert in temporal and causal analysis of plans. Your task is to inspect a provided formal model or abstract plan and ensure it is temporally and causally consistent. Remove or flag any bookkeeping shortcuts, quota tokens, or post-hoc penalties. Produce corrections and an annotated justification for each correction.",
+                "prompt": "You are the consistency_auditor. Inspect the mover agent output and verify that every action has correct preconditions and effects, that actions respect the single-disk move constraint, and that no larger disk is ever placed on a smaller disk. Produce a corrected model or a list of required corrections and a causal timeline justification. Output only the audit results and corrected model fragments."
+            }
+        },
+        "orchestrator": {
+            "pddl_fast_downward": {
+                "input": [
+                    "model_mover",
+                    "audit_consistency"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL for FastDownward. Your job is to integrate agent models and audit corrections into a final PDDL domain and a PDDL problem file suitable for the FastDownward planner. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct when relevant and ensure the encoding uses standard STRIPS/TYPED constructs compatible with FastDownward. Do not rely on bookkeeping shortcuts.",
+                "prompt": "You are the orchestrator. Integrate the mover model and the auditor corrections to produce a complete PDDL domain and a complete PDDL problem that represent the Tower of Hanoi instance with six disks, three pegs left middle right, initial and goal states as provided in the public information, and move rules enforced by preconditions. Target the FastDownward solver and ensure compatibility. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mover.model->consistency_auditor.audit",
+            "mover.model->orchestrator.pddl_fast_downward",
+            "consistency_auditor.audit->orchestrator.pddl_fast_downward"
+        ]
+    }
+}

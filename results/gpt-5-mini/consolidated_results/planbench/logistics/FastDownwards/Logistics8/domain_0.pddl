@@ -1,81 +1,115 @@
-(define (domain orchestration-domain)
+(define (domain multiagent-transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types
-    planner analyzer auditor worker - agent
-    agent task stage - object
-  )
+  (:types vehicle truck plane location roadloc airport cargo day)
 
   (:predicates
-    ; type predicates are implicit by typing; these are state predicates:
-    (agent-available ?a - agent)
-    (task-at ?t - task ?s - stage)
-    (next ?s1 - stage ?s2 - stage)
-    (analyzed ?t - task)
-    (approved ?t - task)
-    (completed ?t - task)
+    ;; location predicates
+    (at ?o - (either vehicle cargo) ?l - location)
+    (in ?c - cargo ?v - vehicle)
+
+    ;; connectivity (static)
+    (connected-road ?from - location ?to - location)
+    (connected-air ?from - location ?to - location)
+
+    ;; location classification (static)
+    (road-loc ?l - location)
+    (airport-loc ?l - location)
+
+    ;; day/time modeling
+    (now-day ?d - day)
+    (succ ?d1 - day ?d2 - day)
   )
 
-  ; Planner schedules a task from stage s1 to its successor s2.
-  (:action planner_schedule
-    :parameters (?pl - planner ?t - task ?s1 - stage ?s2 - stage)
+  ;; TRUCK ACTIONS (distinct agent actions)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?d - day)
     :precondition (and
-      (agent-available ?pl)
-      (task-at ?t ?s1)
-      (next ?s1 ?s2)
+      (at ?t ?from)
+      (connected-road ?from ?to)
+      (now-day ?d)
     )
     :effect (and
-      (task-at ?t ?s2)
-      (not (task-at ?t ?s1))
-    )
-  )
-
-  ; Analyzer performs analysis, moving the task from scheduled (s2) to analyzed (s3),
-  ; and marks it as analyzed.
-  (:action analyzer_analyze
-    :parameters (?an - analyzer ?t - task ?s2 - stage ?s3 - stage)
-    :precondition (and
-      (agent-available ?an)
-      (task-at ?t ?s2)
-      (next ?s2 ?s3)
-    )
-    :effect (and
-      (task-at ?t ?s3)
-      (not (task-at ?t ?s2))
-      (analyzed ?t)
+      (not (at ?t ?from))
+      (at ?t ?to)
     )
   )
 
-  ; Auditor approves after analysis, moving the task from analyzed (s3) to approved (s4),
-  ; and marks it as approved. Requires the analyzed flag to be set.
-  (:action auditor_approve
-    :parameters (?aud - auditor ?t - task ?s3 - stage ?s4 - stage)
+  (:action truck-load
+    :parameters (?t - truck ?c - cargo ?l - location ?d - day)
     :precondition (and
-      (agent-available ?aud)
-      (task-at ?t ?s3)
-      (next ?s3 ?s4)
-      (analyzed ?t)
+      (at ?t ?l)
+      (at ?c ?l)
+      (now-day ?d)
     )
     :effect (and
-      (task-at ?t ?s4)
-      (not (task-at ?t ?s3))
-      (approved ?t)
+      (in ?c ?t)
+      (not (at ?c ?l))
     )
   )
 
-  ; Worker executes the task after approval, moving from approved (s4) to executed/completed (s5),
-  ; and marks it completed. Requires the approved flag to be set.
-  (:action worker_execute
-    :parameters (?w - worker ?t - task ?s4 - stage ?s5 - stage)
+  (:action truck-unload
+    :parameters (?t - truck ?c - cargo ?l - location ?d - day)
     :precondition (and
-      (agent-available ?w)
-      (task-at ?t ?s4)
-      (next ?s4 ?s5)
-      (approved ?t)
+      (at ?t ?l)
+      (in ?c ?t)
+      (now-day ?d)
     )
     :effect (and
-      (task-at ?t ?s5)
-      (not (task-at ?t ?s4))
-      (completed ?t)
+      (not (in ?c ?t))
+      (at ?c ?l)
+    )
+  )
+
+  ;; PLANE ACTIONS (distinct agent actions)
+  (:action plane-fly
+    :parameters (?p - plane ?from - location ?to - location ?d - day)
+    :precondition (and
+      (at ?p ?from)
+      (connected-air ?from ?to)
+      (now-day ?d)
+    )
+    :effect (and
+      (not (at ?p ?from))
+      (at ?p ?to)
+    )
+  )
+
+  (:action plane-load
+    :parameters (?p - plane ?c - cargo ?l - location ?d - day)
+    :precondition (and
+      (at ?p ?l)
+      (at ?c ?l)
+      (now-day ?d)
+    )
+    :effect (and
+      (in ?c ?p)
+      (not (at ?c ?l))
+    )
+  )
+
+  (:action plane-unload
+    :parameters (?p - plane ?c - cargo ?l - location ?d - day)
+    :precondition (and
+      (at ?p ?l)
+      (in ?c ?p)
+      (now-day ?d)
+    )
+    :effect (and
+      (not (in ?c ?p))
+      (at ?c ?l)
+    )
+  )
+
+  ;; DAY PROGRESSION (explicit, enforces contiguous phases)
+  (:action advance-day
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and
+      (now-day ?d1)
+      (succ ?d1 ?d2)
+    )
+    :effect (and
+      (not (now-day ?d1))
+      (now-day ?d2)
     )
   )
 )

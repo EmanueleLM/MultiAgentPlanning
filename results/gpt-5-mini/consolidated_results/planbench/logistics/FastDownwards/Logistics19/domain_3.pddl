@@ -1,132 +1,133 @@
-(define (domain linking)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane package city location stage)
+
   (:predicates
-    (hand ?x - object)
-    (cats ?x - object)
-    (texture ?x - object)
-    (vase ?x - object ?y - object)
-    (next ?x - object ?y - object)
-    (sneeze ?x - object)
-    (stupendous ?x - object)
-    (collect ?x - object ?y - object)
-    (spring ?x - object)
-    (current-stage ?s - stage)
+    ;; vehicle and package locations
+    (truck_at ?t - truck ?l - location)
+    (airplane_at ?a - airplane ?l - location)
+    (package_at ?p - package ?l - location)
+
+    ;; containment
+    (in_truck ?p - package ?t - truck)
+    (in_airplane ?p - package ?a - airplane)
+
+    ;; city membership relation between locations (to be provided extensionally in :init)
+    (same_city ?l1 - location ?l2 - location)
+
+    ;; airport marker on locations (airport locations are also locations)
+    (is_airport ?l - location)
+
+    ;; explicit discrete stage progression to enforce ordering
+    (current_stage ?s - stage)
     (succ ?s1 - stage ?s2 - stage)
   )
 
-  (:action paltry
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  ;; All actions advance the current_stage from a stage to its successor to enforce a strict,
+  ;; contiguous ordering of actions. Each action requires the current stage and a succ link to
+  ;; the next stage; effects remove the current_stage and set the next.
+
+  ;; Truck-agent actions
+  (:action truck_agent-load-into-truck
+    :parameters (?tr - truck ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (package_at ?p ?loc)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_truck ?p ?tr)
+      (not (package_at ?p ?loc))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  (:action sip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-unload-from-truck
+    :parameters (?tr - truck ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (in_truck ?p ?tr)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?loc)
+      (not (in_truck ?p ?tr))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-drive
+    :parameters (?tr - truck ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?from)
+      (same_city ?from ?to)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (truck_at ?tr ?to)
+      (not (truck_at ?tr ?from))
+      ;; packages in the truck remain in_truck and thus remain associated with the truck identity.
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object ?s1 - stage ?s2 - stage)
+  ;; Airplane-agent actions
+  (:action airplane_agent-load-into-airplane
+    :parameters (?ap - airplane ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?loc)
+      (is_airport ?loc)
+      (package_at ?p ?loc)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_airplane ?p ?ap)
+      (not (package_at ?p ?loc))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-unload-from-airplane
+    :parameters (?ap - airplane ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?loc)
+      (is_airport ?loc)
+      (in_airplane ?p ?ap)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?loc)
+      (not (in_airplane ?p ?ap))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-fly
+    :parameters (?ap - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?from)
+      (is_airport ?from)
+      (is_airport ?to)
+      (not (same_city ?from ?to))
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (airplane_at ?ap ?to)
+      (not (airplane_at ?ap ?from))
+      ;; packages in the airplane remain in_airplane and travel with the airplane
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 )

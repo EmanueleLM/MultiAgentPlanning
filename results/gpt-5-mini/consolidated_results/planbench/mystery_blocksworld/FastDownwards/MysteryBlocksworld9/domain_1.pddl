@@ -1,119 +1,83 @@
-(define (domain MysteryBlocksworld9)
+(define (domain mysteryblocksworld9)
   (:requirements :strips :typing :negative-preconditions)
-  (:types thing)
+  (:types obj stage)
+
   (:predicates
-    (hand ?x - thing)
-    (cats ?x - thing)
-    (texture ?x - thing)
-    (vase ?x - thing ?y - thing)
-    (next ?x - thing ?y - thing)
-    (collect ?x - thing ?y - thing)
-    (sneeze ?x - thing)
-    (spring ?x - thing)
-    (stupendous ?x - thing)
+    (province ?o - obj)
+    (planet ?o - obj)
+    (harmony)
+    (pain)
+    (craves ?src - obj ?tgt - obj)
+    ;; marker recording which province/planet pair was attacked so Succumb can restore the same pair
+    (attacked ?prov - obj ?pl - obj)
+    ;; explicit stage progression: exactly one current stage holds at any time and actions advance it
+    (current ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry: requires hand X, cats Y, texture Z, vase X Y, next Y Z
-  ;; effect: next X Z true, vase X Y false
-  (:action paltry
-    :parameters (?x - thing ?y - thing ?z - thing)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
+  ;; Attack: consumes a specific province and a specific planet and global harmony,
+  ;; produces pain and records which pair was attacked. Advances stage.
+  (:action attack
+    :parameters (?prov - obj ?pl - obj ?s - stage ?s2 - stage)
+    :precondition (and (province ?prov) (planet ?pl) (harmony) (current ?s) (next ?s ?s2))
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  ;; sip: requires hand X, cats Y, texture Z, next X Z, next Y Z
-  ;; effect: vase X Y true, next X Z false
-  (:action sip
-    :parameters (?x - thing ?y - thing ?z - thing)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (pain)
+      (attacked ?prov ?pl)
+      (not (province ?prov))
+      (not (planet ?pl))
+      (not (harmony))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; clip: requires hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ;; effect: vase X Y true, next X Z false
-  (:action clip
-    :parameters (?x - thing ?y - thing ?z - thing)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
+  ;; Succumb: requires the specific attacked pair and pain; restores that same province and planet and harmony.
+  ;; Removes pain and the attacked marker. Advances stage.
+  (:action succumb
+    :parameters (?prov - obj ?pl - obj ?s - stage ?s2 - stage)
+    :precondition (and (pain) (attacked ?prov ?pl) (current ?s) (next ?s ?s2))
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (province ?prov)
+      (planet ?pl)
+      (harmony)
+      (not (pain))
+      (not (attacked ?prov ?pl))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; wretched: requires sneeze X, texture Y, texture Z, stupendous W,
-  ;; next X Y, collect Y W, collect Z W
-  ;; effect: next X Z true, next X Y false
-  (:action wretched
-    :parameters (?x - thing ?y - thing ?z - thing ?w - thing)
-    :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-    )
+  ;; Overcome: given that ?other currently holds province and there is pain,
+  ;; grant harmony, give province to ?obj and make ?obj crave ?other.
+  ;; Removes the other province and pain. Advances stage.
+  (:action overcome
+    :parameters (?obj - obj ?other - obj ?s - stage ?s2 - stage)
+    :precondition (and (province ?other) (pain) (current ?s) (next ?s ?s2))
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (harmony)
+      (province ?obj)
+      (craves ?obj ?other)
+      (not (province ?other))
+      (not (pain))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; memory: requires cats X, spring Y, spring Z, next X Y
-  ;; effect: next X Z true, next X Y false
-  (:action memory
-    :parameters (?x - thing ?y - thing ?z - thing)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
+  ;; Feast: consumes an existing craving from ?src to ?tgt while src holds province and harmony,
+  ;; produces pain and transfers province to the other object (?tgt).
+  ;; Removes the craving, the src's province, and harmony. Advances stage.
+  (:action feast
+    :parameters (?src - obj ?tgt - obj ?s - stage ?s2 - stage)
+    :precondition (and (craves ?src ?tgt) (province ?src) (harmony) (current ?s) (next ?s ?s2))
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  ;; tightfisted: requires hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ;; effect: next X Z true, vase X Y false
-  (:action tightfisted
-    :parameters (?x - thing ?y - thing ?z - thing)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (pain)
+      (province ?tgt)
+      (not (craves ?src ?tgt))
+      (not (province ?src))
+      (not (harmony))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 )

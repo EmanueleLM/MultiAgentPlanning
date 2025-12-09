@@ -1,6 +1,0 @@
-(define (problem scenario_b_problem)
-  (:domain scenario_b)
-  (:objects)
-  (:init)
-  (:goal (and))
-)

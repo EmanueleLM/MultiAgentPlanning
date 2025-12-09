@@ -1,107 +1,127 @@
-(define (domain Logistics17)
+(define (domain logistics17)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    package truck airplane location city stage
+  )
 
   (:predicates
-    (cats ?o - obj)
-    (hand ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
+    (at-package ?p - package ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+    (in-city ?l - location ?c - city)
+    (is-airport ?l - location)
+    (current-stage ?s - stage)
+    (succ ?s - stage ?s2 - stage)
   )
 
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+  ;; Load a package into a truck at a location (requires package and truck at same location).
+  ;; Consumes one stage and advances to its successor stage.
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (at-package ?p ?l)
+      (at-truck ?t ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (at-package ?p ?l))
+      (in-truck ?p ?t)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
+  ;; Unload a package from a truck to the truck's current location.
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (not (in-truck ?p ?t))
+      (at-package ?p ?l)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
+  ;; Drive a truck between two locations that are in the same city.
+  ;; Requires both locations belong to the same city via in-city facts.
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+  ;; Load a package into an airplane at an airport location.
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
+      (is-airport ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (at-package ?p ?l))
+      (in-plane ?p ?a)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
+  ;; Unload a package from an airplane at an airport location.
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
+      (in-plane ?p ?a)
+      (at-airplane ?a ?l)
+      (is-airport ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (not (in-plane ?p ?a))
+      (at-package ?p ?l)
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
+  )
+
+  ;; Fly an airplane from one airport location to another airport location (inter-city flights).
+  ;; Requires source and destination to be marked as airports.
+  (:action fly
+    :parameters (?a - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (at-airplane ?a ?from)
+      (is-airport ?from)
+      (is-airport ?to)
+      (current-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

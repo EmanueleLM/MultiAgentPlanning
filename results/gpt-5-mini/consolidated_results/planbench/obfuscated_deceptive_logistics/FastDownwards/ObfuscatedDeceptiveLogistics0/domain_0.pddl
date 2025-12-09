@@ -1,127 +1,114 @@
-(define (domain orchestrator_domain)
-  (:requirements :strips :typing)
+(define (domain orchestrator)
+  (:requirements :strips :typing :negative-preconditions)
   (:types obj)
 
   (:predicates
-    (hand ?o - obj)
     (cats ?o - obj)
+    (hand ?o - obj)
     (texture ?o - obj)
-    (vase ?o1 ?o2 - obj)
-    (next ?o1 ?o2 - obj)
     (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?o1 ?o2 - obj)
     (spring ?o - obj)
+    (stupendous ?o - obj)
+    (collect ?a ?b - obj)
+    (next ?a ?b - obj)
+    ;; vase is ternary to carry the Z that tied the two next facts together at creation time:
+    (vase ?x ?y ?z - obj)
   )
 
-  ;; Action: paltry
-  ;; public spec:
-  ;; requires hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2.
-  ;; adds next ?o0 ?o2 and removes vase ?o0 ?o1.
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ;; Action: sip
-  ;; requires hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2.
-  ;; adds vase ?o0 ?o1 and removes next ?o0 ?o2.
+  ;; sip: produces a transfer-token (vase X Y Z) by consuming next(X,Z) while observing next(Y,Z)
   (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (next ?x ?z)
+      (next ?y ?z)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?x ?y ?z)
+      (not (next ?x ?z))
     )
   )
 
-  ;; Action: clip
-  ;; requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2.
-  ;; adds vase ?o0 ?o1 and removes next ?o0 ?o2.
+  ;; clip: like sip but requires sneeze on the second participant
   (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (next ?x ?z)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?x ?y ?z)
+      (not (next ?x ?z))
     )
   )
 
-  ;; Action: wretched
-  ;; requires sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3, next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3.
-  ;; adds next ?o0 ?o2 and removes next ?o0 ?o1.
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
-    :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; Action: memory
-  ;; requires cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1.
-  ;; adds next ?o0 ?o2 and removes next ?o0 ?o1.
+  ;; memory: re-link next(?x,?y) -> next(?x,?z) (removes the old next and adds the new)
   (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (cats ?x)
+      (spring ?y)
+      (spring ?z)
+      (next ?x ?y)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (next ?x ?z)
+      (not (next ?x ?y))
     )
   )
 
-  ;; Action: tightfisted
-  ;; requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1.
-  ;; adds next ?o0 ?o2 and removes vase ?o0 ?o1.
+  ;; paltry: consumes a transfer-token (vase with the same Z) and completes the transfer by adding next(X,Z)
+  (:action paltry
+    :parameters (?x ?y ?z - obj)
+    :precondition (and
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (vase ?x ?y ?z)
+      (next ?y ?z)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (vase ?x ?y ?z))
+    )
+  )
+
+  ;; tightfisted: alternative consumer of the transfer-token that requires sneeze on the middle object
   (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (vase ?x ?y ?z)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (next ?x ?z)
+      (not (vase ?x ?y ?z))
     )
   )
 
+  ;; wretched: another pointer-move that uses collect facts to determine destination; removes old next and adds new
+  (:action wretched
+    :parameters (?x ?y ?z ?w - obj)
+    :precondition (and
+      (sneeze ?x)
+      (texture ?y)
+      (texture ?z)
+      (stupendous ?w)
+      (next ?x ?y)
+      (collect ?y ?w)
+      (collect ?z ?w)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (next ?x ?y))
+    )
+  )
 )

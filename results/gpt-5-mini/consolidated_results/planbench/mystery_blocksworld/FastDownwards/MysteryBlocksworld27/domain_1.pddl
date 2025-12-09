@@ -1,119 +1,67 @@
-(define (domain MysteryBlocksworld27)
+(define (domain mystery-blocksworld)
   (:requirements :strips :typing :negative-preconditions)
   (:types obj)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
+    (province ?o - obj)
+    (planet ?o - obj)
+    (craves ?o - obj ?t - obj)
+    (harmony)
+    (pain)
   )
 
-  ;; paltry(a,b,c): requires hand(a), cats(b), texture(c), vase(a,b), next(b,c).
-  ;; Effects: add next(a,c), remove vase(a,b).
-  (:action paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
+  ;; Attack: consumes province, planet and harmony on the same object and produces global pain.
+  (:action attack
+    :parameters (?o - obj)
+    :precondition (and (province ?o) (planet ?o) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+             (pain)
+             (not (province ?o))
+             (not (planet ?o))
+             (not (harmony))
+            )
   )
 
-  ;; sip(a,b,c): requires hand(a), cats(b), texture(c), next(a,c), next(b,c).
-  ;; Effects: add vase(a,b), remove next(a,c).
-  (:action sip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
+  ;; Succumb: consumes global pain and restores province, planet and harmony for a chosen object.
+  ;; Note: this action requires the global pain fluent and removes it as specified.
+  (:action succumb
+    :parameters (?o - obj)
+    :precondition (and (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+             (province ?o)
+             (planet ?o)
+             (harmony)
+             (not (pain))
+            )
   )
 
-  ;; clip(a,b,c): requires hand(a), sneeze(b), texture(c), next(b,c), next(a,c).
-  ;; Effects: add vase(a,b), remove next(a,c).
-  (:action clip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
+  ;; Overcome: requires province on the "other" object and global pain. Produces harmony,
+  ;; grants province to the primary object and creates a craves relation from primary->other.
+  ;; It removes the province on the "other" object and clears pain as specified.
+  (:action overcome
+    :parameters (?p - obj ?other - obj)
+    :precondition (and (province ?other) (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+             (harmony)
+             (province ?p)
+             (craves ?p ?other)
+             (not (province ?other))
+             (not (pain))
+            )
   )
 
-  ;; wretched(a,b,c,d): requires sneeze(a), texture(b), texture(c), stupendous(d), next(a,b), collect(b,d), collect(c,d).
-  ;; Effects: add next(a,c), remove next(a,b).
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
+  ;; Feast: requires an existing craves relation (primary craves other), province on primary, and harmony.
+  ;; It produces global pain and grants province to the other; it removes the craves relation,
+  ;; the province on the primary, and harmony as specified.
+  (:action feast
+    :parameters (?p - obj ?other - obj)
+    :precondition (and (craves ?p ?other) (province ?p) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  ;; memory(a,b,c): requires cats(a), spring(b), spring(c), next(a,b).
-  ;; Effects: add next(a,c), remove next(a,b).
-  (:action memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  ;; tightfisted(a,b,c): requires hand(a), sneeze(b), texture(c), next(b,c), vase(a,b).
-  ;; Effects: add next(a,c), remove vase(a,b).
-  (:action tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+             (pain)
+             (province ?other)
+             (not (craves ?p ?other))
+             (not (province ?p))
+             (not (harmony))
+            )
   )
 )

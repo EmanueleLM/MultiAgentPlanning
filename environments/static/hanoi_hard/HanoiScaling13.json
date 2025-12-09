@@ -1,0 +1,114 @@
+{
+    "name": "HanoiScaling13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "operator",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk",
+                "Once a disk is moved, it keeps its relative size ordering with the others"
+            ],
+            "goal": "Generate a concrete, stepwise move sequence that moves all six disks from the right peg to the middle peg following the Tower of Hanoi rules"
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of move sequences",
+                "I detect bookkeeping shortcuts and post-hoc penalties such as tokens or hypothetical rollback steps",
+                "I ensure that each reported move is executable given the prior moves and the disk size ordering"
+            ],
+            "goal": "Verify the operator move sequence, detect and correct illegal moves or hidden assumptions, and produce a clear audit report describing any corrections and a corrected move sequence if necessary"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the operator move sequence and the auditor report and produce a valid PDDL domain and problem targeting the FastDownwards solver that encodes the 6-disk Tower of Hanoi instance moving all disks from the right peg to the middle peg"
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "initial_stacks": {
+                "left": [],
+                "middle": [],
+                "right": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ]
+            },
+            "goal_stacks": {
+                "left": [],
+                "middle": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ],
+                "right": []
+            }
+        },
+        "public_information": [
+            "There are 6 disks in total from smallest to largest named A B C D E and F",
+            "There are three pegs named left middle and right",
+            "Initial condition: right peg holds from top to bottom A B C D E F and left and middle are empty",
+            "Goal condition: middle peg must hold from top to bottom A B C D E F and left and right must be empty",
+            "Rules: move only one disk at a time; only move a disk that is on top of a peg; never place a larger disk on top of a smaller disk; left peg may be used as intermediate but must end empty"
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "move_spec": {
+                "input": [],
+                "output": "operator_moves",
+                "system_prompt": "You are the moves generator for the Tower of Hanoi instance. Do not produce PDDL. Produce an explicit ordered list of moves that solves the problem. Each move must be represented as move disk X from peg Y to peg Z. Ensure every move obeys the rules and is executable given prior moves. Target a correct solution for six disks with the initial and goal stacks provided in the environment public information.",
+                "prompt": "Your name is operator. You have the following public information and private information and a goal. Use them to enumerate a correct ordered list of elementary moves that obey the Tower of Hanoi rules. Do not emit PDDL. Output only the move list and minimal annotations if needed."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator_moves"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal auditor. Do not produce PDDL. Inspect the provided move list and ensure each move is legal and executable in sequence. Detect bookkeeping shortcuts and remove them. If violations are found, provide a precise explanation and a corrected sequence of moves. If the sequence is valid, provide a confirmation and brief causal justification.",
+                "prompt": "Your name is auditor. You receive the operator move sequence. Check every step for legality, causal consistency, and absence of bookkeeping shortcuts. Produce an audit report that either confirms validity or provides corrections and a corrected move list."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator_moves",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem files suitable for the FastDownwards planner. Integrate the operator move sequence and the auditor report. Ensure the domain encodes the Tower of Hanoi rules and the problem encodes the initial and goal states for six disks. Output a PDDL domain and a PDDL problem. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Target the PDDL formulation and constructs that are compatible with FastDownwards. If the operator or auditor provided inconsistent or partial information, resolve contradictions conservatively and document assumptions in the problem comments.",
+                "prompt": "Your name is orchestrator. You will receive the operator moves and the audit report. Use them to produce a final PDDL domain and a PDDL problem suitable for FastDownwards that encodes the six disk Tower of Hanoi from right peg to middle peg. Keep agent actions distinct in any annotations and ensure the PDDL is explicit and solvable by FastDownwards."
+            }
+        },
+        "constraints": [
+            "operator.move_spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

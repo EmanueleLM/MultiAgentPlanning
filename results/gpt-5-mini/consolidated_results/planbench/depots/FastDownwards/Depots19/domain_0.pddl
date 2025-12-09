@@ -1,108 +1,123 @@
-(define (domain multiagent-domain)
-  (:requirements :strips :typing)
-  (:types object)
+(define (domain hoist-truck-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    place depot distributor
+    hoist truck
+    pallet crate
+  )
+  ;; depot and distributor are subtypes of place
+  ;; (In PDDL type declarations, list subtypes after a dash.)
+  ;; To declare them as subtypes:
+  ;; note: some planners accept 'depot distributor - place' in :types, but to keep explicit,
+  ;; we will treat them conceptually as places and use them in the problem objects with those types.
+
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?p - object ?q - object)
-    (next ?p - object ?q - object)
-    (sneeze ?o - object)
-    (collect ?p - object ?q - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    ;; location: hoists, trucks, pallets, crates are located at a place
+    (at ?obj - (either hoist truck pallet crate) ?p - place)
+
+    ;; support relation: a crate directly on a surface (pallet or crate)
+    (on ?c - crate ?s - (either pallet crate))
+
+    ;; crate inside a truck
+    (in_truck ?c - crate ?t - truck)
+
+    ;; hoist holding a crate
+    (holding ?h - hoist ?c - crate)
+
+    ;; hoist available (not holding)
+    (available ?h - hoist)
+
+    ;; a surface (pallet or crate) has no direct occupant
+    (clear ?s - (either pallet crate))
+
+    ;; road connectivity (symmetric); domain/problem will assert all pairs as connected
+    (connected ?from - place ?to - place)
   )
 
-  ;; Actions from agent_alpha
-  (:action paltry
-    :parameters (?p - object ?q - object ?r - object)
-    :precondition (and
-      (hand ?p)
-      (cats ?q)
-      (texture ?r)
-      (vase ?p ?q)
-      (next ?q ?r)
-    )
-    :effect (and
-      (next ?p ?r)
-      (not (vase ?p ?q))
-    )
-  )
+  ;; Action names are prefixed to reflect agent-type where appropriate:
+  ;; - truck-drive actions are named drive-truck
+  ;; - hoist actions are named hoist-*
+  ;; All preconditions and effects are explicit and maintain invariants described in the audit.
 
-  (:action sip
-    :parameters (?p - object ?q - object ?r - object)
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?p)
-      (cats ?q)
-      (texture ?r)
-      (next ?p ?r)
-      (next ?q ?r)
+      (at ?tr ?from)
+      (connected ?from ?to)
+      (not (= ?from ?to))
     )
     :effect (and
-      (vase ?p ?q)
-      (not (next ?p ?r))
-    )
-  )
-
-  (:action clip
-    :parameters (?p - object ?q - object ?r - object)
-    :precondition (and
-      (hand ?p)
-      (sneeze ?q)
-      (texture ?r)
-      (next ?q ?r)
-      (next ?p ?r)
-    )
-    :effect (and
-      (vase ?p ?q)
-      (not (next ?p ?r))
+      (not (at ?tr ?from))
+      (at ?tr ?to)
     )
   )
 
-  ;; Actions from agent_beta
-  (:action wretched
-    :parameters (?p - object ?q - object ?r - object ?s - object)
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - (either pallet crate) ?p - place)
     :precondition (and
-      (sneeze ?p)
-      (texture ?q)
-      (texture ?r)
-      (stupendous ?s)
-      (next ?p ?q)
-      (collect ?q ?s)
-      (collect ?r ?s)
+      (at ?h ?p)
+      (at ?s ?p)
+      (at ?c ?p)
+      (on ?c ?s)
+      (available ?h)
+      (clear ?c)
+      (not (= ?s ?c))
     )
     :effect (and
-      (next ?p ?r)
-      (not (next ?p ?q))
+      (holding ?h ?c)
+      (clear ?s)                 ;; since model enforces single direct occupant, removing on makes surface clear
+      (not (on ?c ?s))
+      (not (at ?c ?p))
+      (not (available ?h))
     )
   )
 
-  (:action memory
-    :parameters (?p - object ?q - object ?r - object)
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - (either pallet crate) ?p - place)
     :precondition (and
-      (cats ?p)
-      (spring ?q)
-      (spring ?r)
-      (next ?p ?q)
+      (at ?h ?p)
+      (holding ?h ?c)
+      (at ?s ?p)
+      (clear ?s)
+      (not (= ?s ?c))
     )
     :effect (and
-      (next ?p ?r)
-      (not (next ?p ?q))
+      (on ?c ?s)
+      (at ?c ?p)
+      (available ?h)
+      (clear ?c)
+      (not (holding ?h ?c))
+      (not (clear ?s))
     )
   )
 
-  (:action tightfisted
-    :parameters (?p - object ?q - object ?r - object)
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (hand ?p)
-      (sneeze ?q)
-      (texture ?r)
-      (next ?q ?r)
-      (vase ?p ?q)
+      (at ?h ?p)
+      (holding ?h ?c)
+      (at ?t ?p)
     )
     :effect (and
-      (next ?p ?r)
-      (not (vase ?p ?q))
+      (in_truck ?c ?t)
+      (available ?h)
+      (not (holding ?h ?c))
+      (not (at ?c ?p))
+    )
+  )
+
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
+    :precondition (and
+      (at ?h ?p)
+      (at ?t ?p)
+      (in_truck ?c ?t)
+      (available ?h)
+    )
+    :effect (and
+      (holding ?h ?c)
+      (not (in_truck ?c ?t))
+      (not (available ?h))
     )
   )
 )

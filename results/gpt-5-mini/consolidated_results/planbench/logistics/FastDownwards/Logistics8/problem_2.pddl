@@ -1,34 +1,53 @@
-(define (problem objects-manipulation-problem)
-  (:domain objects-manipulation)
+(define (problem logistics-instance)
+  (:domain logistics)
+
   (:objects
-    object_2 object_4 object_5 object_7 object_8 object_9 object_10 - object
-    step_0 step_1 step_2 step_3 - time
+    truck_0 truck_1 - truck
+    airplane_0 - plane
+    package_0 package_1 - package
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    city_0 city_1 - city
+    day0 day1 day2 - day
   )
 
   (:init
-    ; minimal time progression to execute three actions sequentially
-    (time-now step_0)
-    (succ step_0 step_1)
-    (succ step_1 step_2)
-    (succ step_2 step_3)
+    ;; Airports as stated
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ; only the facts required to support the provided plan and goals
-    (hand object_9)
-    (sneeze object_4)
-    (texture object_7)
-    (texture object_8)
+    ;; Initial vehicle locations
+    (at truck_0 location_0_0)
+    (at truck_1 location_1_1)
+    (at airplane_0 location_0_0)
 
-    (next object_4 object_8)   ; needed by clip and wretched (pre for wretched)
-    (next object_9 object_8)   ; needed by clip
-    (next object_10 object_5)  ; goal-preserving fact
+    ;; Initial package locations
+    (at package_0 location_0_0)
+    (at package_1 location_0_0)
 
-    (collect object_7 object_2)  ; required by wretched
-    (collect object_8 object_2)  ; required by wretched
-    (stupendous object_2)        ; required by wretched
+    ;; Truck connectivity within each city (bidirectional encoding)
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
+
+    ;; Air connectivity between airports (bidirectional)
+    (air-connected location_0_0 location_1_0)
+    (air-connected location_1_0 location_0_0)
+
+    ;; Discrete stage ordering
+    (succ day0 day1)
+    (succ day1 day2)
+
+    ;; Starting stage
+    (now day0)
   )
 
   (:goal (and
-    (next object_10 object_5)
-    (next object_9 object_7)
+    ;; Terminal stage requirement must be satisfied exactly
+    (now day2)
+
+    ;; Delivery goals
+    (at package_0 location_0_1)
+    (at package_1 location_0_1)
   ))
 )

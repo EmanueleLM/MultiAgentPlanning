@@ -1,0 +1,56 @@
+(define (domain hanoi-multiagent)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg - place agent step)
+
+  (:predicates
+    (on ?d - disk ?p - place)
+    (clear ?p - place)
+    (smaller ?d1 - disk ?d2 - disk)
+    (hanoi-player ?a - agent)
+    (current-step ?s - step)
+    (step-successor ?s1 - step ?s2 - step)
+  )
+
+  (:action move-to-empty-peg
+    :parameters (?a - agent ?d - disk ?under - place ?peg - peg ?s - step ?s2 - step)
+    :precondition (and
+      (hanoi-player ?a)
+      (on ?d ?under)
+      (clear ?d)
+      (clear ?peg)
+      (current-step ?s)
+      (step-successor ?s ?s2)
+      (not (= ?under ?peg))
+    )
+    :effect (and
+      (not (on ?d ?under))
+      (on ?d ?peg)
+      (clear ?under)
+      (not (clear ?peg))
+      (not (current-step ?s))
+      (current-step ?s2)
+    )
+  )
+
+  (:action move-onto-disk
+    :parameters (?a - agent ?d - disk ?under - place ?target - disk ?s - step ?s2 - step)
+    :precondition (and
+      (hanoi-player ?a)
+      (on ?d ?under)
+      (clear ?d)
+      (clear ?target)
+      (smaller ?d ?target)
+      (current-step ?s)
+      (step-successor ?s ?s2)
+      (not (= ?under ?target))
+    )
+    :effect (and
+      (not (on ?d ?under))
+      (on ?d ?target)
+      (clear ?under)
+      (not (clear ?target))
+      (not (current-step ?s))
+      (current-step ?s2)
+    )
+  )
+)

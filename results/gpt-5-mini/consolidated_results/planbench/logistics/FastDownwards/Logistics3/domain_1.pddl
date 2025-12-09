@@ -1,172 +1,143 @@
-(define (domain multiagent-staged)
+(define (domain city-logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj stage)
+  (:types
+    city
+    location
+    vehicle
+    truck - vehicle
+    airplane - vehicle
+    package
+    stage
+  )
 
   (:predicates
-    ;; static unary/object properties (assumed not time-indexed)
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (collect ?x - obj ?y - obj)
-    (stupendous ?o - obj)
+    ;; Static/topology
+    (in-city ?loc - location ?c - city)
+    (airport ?loc - location)
+    (truck-connected ?l1 - location ?l2 - location)
+    (air-route ?l1 - location ?l2 - location)
 
-    ;; time-indexed, mutable relations
-    (next ?x - obj ?y - obj ?s - stage)    ;; next relation at stage s
-    (vase ?x - obj ?y - obj ?s - stage)    ;; vase relation at stage s
+    ;; Temporal ordering
+    (succ ?s1 - stage ?s2 - stage)
+    (current-stage ?s - stage)
 
-    ;; stage bookkeeping
-    (now ?s - stage)                       ;; current stage marker
-    (succ ?s1 - stage ?s2 - stage)         ;; successor relation between stages
+    ;; Time-indexed positions (state at a given stage)
+    (at-truck ?t - truck ?loc - location ?s - stage)
+    (at-airplane ?a - airplane ?loc - location ?s - stage)
+    (at-package ?p - package ?loc - location ?s - stage)
+
+    ;; Package in vehicle (time-independent token that persists until explicitly removed)
+    (in-vehicle ?p - package ?v - vehicle)
   )
 
-  ;; Each action operates at the current stage ?s and produces a successor stage ?s2
-  ;; by requiring (now ?s) and (succ ?s ?s2) and switching the "now" marker to ?s2.
-  ;; Effects described in the human specification are applied between stages:
-  ;; - facts listed as becoming true are added at ?s2
-  ;; - facts listed as becoming false are explicitly removed at ?s2
-  ;; Note: predicates not mentioned in an action are not automatically carried forward;
-  ;; if continuity is required it must be produced by action effects (this enforces
-  ;; explicit, non-oscillating transitions).
-
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Drive truck within same city along truck-connected edges, advancing stage.
+  (:action drive-truck
+    :parameters (?tr - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c ?s)        ;; vase(h,c) must hold at current stage
-      (next ?c ?t ?s)        ;; next(c,t) at current stage
+      (at-truck ?tr ?from ?s)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (truck-connected ?from ?to)
     )
     :effect (and
-      ;; advance stage
-      (not (now ?s))
-      (now ?s2)
-
-      ;; effects specified by the human schema:
-      ;; once paltry is performed the following facts will be true: next h t
-      (next ?h ?t ?s2)
-
-      ;; once paltry is performed the following facts will be false: vase h c
-      (not (vase ?h ?c ?s2))
+      (not (at-truck ?tr ?from ?s))
+      (at-truck ?tr ?to ?s2)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Fly airplane between airports (air-route), advancing stage.
+  (:action fly-airplane
+    :parameters (?ap - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?x ?y ?s)         ;; next(x,y) at current stage
-      (next ?c ?y ?s)         ;; next(c,y) at current stage (schema requires next object_1 object_2)
+      (at-airplane ?ap ?from ?s)
+      (airport ?from)
+      (airport ?to)
+      (air-route ?from ?to)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      ;; once sip is performed the following facts will be true: vase h c
-      (vase ?h ?c ?s2)
-
-      ;; once sip is performed the following facts will be false: next x y
-      (not (next ?x ?y ?s2))
+      (not (at-airplane ?ap ?from ?s))
+      (at-airplane ?ap ?to ?s2)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?h - obj ?snee - obj ?t - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Load package into truck (co-location at current stage), advancing stage.
+  (:action truck-load
+    :parameters (?tr - truck ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?t)
-      (next ?x ?y ?s)
-      (next ?h ?y ?s)
+      (at-truck ?tr ?loc ?s)
+      (at-package ?pkg ?loc ?s)
+      (not (in-vehicle ?pkg ?tr))
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      ;; effects from schema:
-      ;; creates vase h ? (true)
-      (vase ?h ?snee ?s2)
-
-      ;; removes next h ?y (false)
-      (not (next ?h ?y ?s2))
+      (not (at-package ?pkg ?loc ?s))
+      (in-vehicle ?pkg ?tr)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?snee - obj ?t - obj ?st - obj ?x - obj ?y - obj ?c1 - obj ?c2 - obj ?s - stage ?s2 - stage)
+  ;; Unload package from truck to truck's location at successor stage.
+  (:action truck-unload
+    :parameters (?tr - truck ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (sneeze ?snee)
-      (texture ?t)
-      (stupendous ?st)
-      (next ?x ?y ?s)
-      (collect ?y ?c1)       ;; collect object_1 object_3 in schema (interpreted as collect y c1)
-      (collect ?c2 ?c1)      ;; collect object_2 object_3 in schema (interpreted as collect c2 c1)
+      (at-truck ?tr ?loc ?s)
+      (in-vehicle ?pkg ?tr)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      ;; once wretched is performed the following facts will be true: next x ?(z)
-      (next ?x ?c2 ?s2)
-
-      ;; once wretched is performed the following facts will be false: next x y
-      (not (next ?x ?y ?s2))
+      (not (in-vehicle ?pkg ?tr))
+      (at-package ?pkg ?loc ?s2)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?c - obj ?sp - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Load package into airplane at an airport, advancing stage.
+  (:action airplane-load
+    :parameters (?ap - airplane ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (cats ?c)
-      (spring ?sp)
-      (next ?x ?y ?s)
+      (at-airplane ?ap ?loc ?s)
+      (airport ?loc)
+      (at-package ?pkg ?loc ?s)
+      (not (in-vehicle ?pkg ?ap))
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      ;; once memory is performed the following facts will be true: next x z
-      (next ?x ?sp ?s2)
-
-      ;; once memory is performed the following facts will be false: next x y
-      (not (next ?x ?y ?s2))
+      (not (at-package ?pkg ?loc ?s))
+      (in-vehicle ?pkg ?ap)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?snee - obj ?t - obj ?x - obj ?y - obj ?s - stage ?s2 - stage)
+  ;; Unload package from airplane at an airport, placing it at the airport at successor stage.
+  (:action airplane-unload
+    :parameters (?ap - airplane ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?t)
-      (next ?x ?y ?s)
-      (vase ?h ?snee ?s)
+      (at-airplane ?ap ?loc ?s)
+      (airport ?loc)
+      (in-vehicle ?pkg ?ap)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      ;; once tightfisted is performed the following facts will be true: next h y
-      (next ?h ?y ?s2)
-
-      ;; once tightfisted is performed the following facts will be false: vase h sneeze
-      (not (vase ?h ?snee ?s2))
+      (not (in-vehicle ?pkg ?ap))
+      (at-package ?pkg ?loc ?s2)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
+
 )

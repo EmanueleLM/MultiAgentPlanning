@@ -1,70 +1,41 @@
-(define (problem MysteryBlocksworld10-problem)
-  (:domain MysteryBlocksworld10)
+(define (problem orchestrated-problem)
+  (:domain orchestrated-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
+    object_a object_b object_c object_d - object
+    province_a province_b province_c - province
+    planet_a planet_c planet_d - planet
+    s0 s1 s2 s3 s4 - stage
   )
+
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; Province-to-planet mappings (explicit)
+    (province-on province_a planet_a)
+    (province-on province_b planet_d)
+    (province-on province_c planet_c)
 
-    ;; hand
-    (hand object_10)
-    (hand object_11)
-    (hand object_9)
+    ;; Initial controllers for provinces (explicit assignment)
+    (controls object_a province_a)
+    (controls object_b province_b)
+    (controls object_c province_c)
+    ;; object_d initially controls no province
 
-    ;; texture (union of both agents' textures)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Initial global harmony
+    (harmony)
 
-    ;; sneeze (union)
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; Initial craving fact (given)
+    (craves object_b object_d)
 
-    ;; spring (union)
-    (spring object_5)
-    (spring object_6)
-    (spring object_7)
-    (spring object_8)
-
-    ;; stupendous (union)
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ;; collect relations (union of agent statements)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_8 object_2)
-
-    ;; next relations (union)
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_4 object_6)
-    (next object_5 object_8)
-
-    (next object_0 object_5)
-    (next object_10 object_8)
-    (next object_11 object_6)
-    (next object_3 object_5)
-    (next object_4 object_7)
-    (next object_9 object_5)
+    ;; Stage ordering and initial current stage
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (now s0)
   )
 
   (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_8)
-    (next object_11 object_7)
-    (next object_9 object_7)
+    (craves object_b object_c)
+    (craves object_d object_a)
   ))
 )

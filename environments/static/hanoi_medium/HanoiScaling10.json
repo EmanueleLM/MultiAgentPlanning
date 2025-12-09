@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "rules_keeper",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg"
+            ],
+            "goal": "Provide concise procedural fragments describing legal single-disk moves and reachable local state transitions to help build a global plan for transferring all disks from the middle peg to the right peg."
+        },
+        "rules_keeper": {
+            "private_information": [
+                "I know the size ordering of disks from smallest to largest: disk A, disk B, disk C, disk D, disk E",
+                "I enforce that a larger disk may never be placed on top of a smaller disk",
+                "I preserve relative size ordering once disks are moved"
+            ],
+            "goal": "Formalize invariants and constraints for legal configurations and transitions without emitting a full PDDL domain, providing clear predicate-style invariants and typing that an orchestrator can translate into PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency across fragments",
+                "I detect and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
+                "I ensure fragments are causally composable and do not rely on implicit global state not provided in public information"
+            ],
+            "goal": "Produce an audit report that identifies temporal ordering requirements, causal dependencies, forbidden shortcuts, and adjustments required so fragment outputs can be integrated into a correct PDDL model."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate fragments and the audit report to produce a final PDDL domain and PDDL problem suitable for the FastDownward solver that achieves the goal of moving all disks from the middle peg to the right peg while leaving the left and middle pegs empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are 5 disks in total named from smallest to largest: disk A, disk B, disk C, disk D, disk E",
+            "Initial condition: the middle peg holds from top to bottom disk A, disk B, disk C, disk D, disk E and the left and right pegs are empty",
+            "Goal condition: the right peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E and the left and middle pegs must be empty",
+            "Legal action: move the top disk from one peg to another peg",
+            "Constraints: only one disk may be moved at a time, only a top disk may be moved, a larger disk may never be placed on a smaller disk"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analyze": {
+                "input": [],
+                "output": "frag_mover",
+                "system_prompt": "You are an expert in procedural decomposition of classical puzzles. Provide compact move templates and local state transition descriptions for single-disk moves that can be used as input fragments for PDDL construction. Do not emit a full PDDL domain or problem.",
+                "prompt": "Your name is mover. You operate with the following public information: {environment->public_information} You have this private knowledge: {agents->mover->private_information} Your goal is: {agents->mover->goal} Provide concise move templates and example state transition fragments that specify preconditions and effects in plain predicate-like form. Label your output as frag_mover."
+            }
+        },
+        "rules_keeper": {
+            "encode_rules": {
+                "input": [],
+                "output": "frag_rules",
+                "system_prompt": "You are an expert in invariant specification and type/predicate design. Produce clear invariant statements, predicate definitions, typing suggestions, and constraint fragments that capture the Tower of Hanoi rules. Do not output a full PDDL domain or problem.",
+                "prompt": "Your name is rules_keeper. Use the following public information: {environment->public_information} You know: {agents->rules_keeper->private_information} Your goal is: {agents->rules_keeper->goal} Provide predicate definitions, typing guidance, and invariant constraints that an orchestrator can translate into PDDL. Label your output as frag_rules."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "frag_mover",
+                    "frag_rules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor for temporal and causal models. Check fragments for hidden bookkeeping shortcuts, temporal or causal inconsistencies, and missing explicit state required for sound composition. Recommend precise edits and removal of shortcuts so the resulting model is implementable in classical planning form.",
+                "prompt": "Your name is auditor. You receive these fragments: {frag_mover} and {frag_rules} and the public information: {environment->public_information} You have the following responsibilities: {agents->auditor->private_information} Your goal is: {agents->auditor->goal} Produce an audit_report listing detected issues, required explicit state, forbidden bookkeeping constructs, and exact suggestions to make fragments composable."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "frag_mover",
+                    "frag_rules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-fragment integration and PDDL authoring for the FastDownward planner. Integrate the provided fragments and the audit report to produce a complete PDDL domain and a complete PDDL problem targeting the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use appropriate :requirements and typing and ensure the model enforces all Hanoi rules and the stated initial and goal conditions. Keep all actions and predicates explicitly defined and avoid implicit bookkeeping shortcuts.",
+                "prompt": "You are the orchestrator. You receive these inputs: {frag_mover}, {frag_rules}, {audit_report} and the public information: {environment->public_information} Your goal is: {agents->orchestrator->goal} Think step by step and produce a final PDDL domain and a final PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analyze->orchestrator.pddl",
+            "rules_keeper.encode_rules->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

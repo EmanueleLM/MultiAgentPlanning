@@ -1,120 +1,151 @@
-(define (domain orchestrated-domain)
+(define (domain transport-hoists-trucks)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj world)
+  (:types
+    place surface depot distributor pallet crate truck hoist
+  )
 
   (:predicates
-    (hand ?o - obj ?w - world)
-    (cats ?o - obj ?w - world)
-    (texture ?o - obj ?w - world)
-    (vase ?x - obj ?y - obj ?w - world)
-    (next ?a - obj ?b - obj ?w - world)
-    (collect ?a - obj ?b - obj ?w - world)
-    (sneeze ?o - obj ?w - world)
-    (spring ?o - obj ?w - world)
-    (stupendous ?o - obj ?w - world)
+    ;; Locations
+    (hoist-at ?h - hoist ?p - place)
+    (truck-at ?tr - truck ?p - place)
+    (surface-at ?s - surface ?p - place)    ;; a surface (pallet or crate) is located at a place
+
+    ;; Stacking / containment
+    (crate-on ?c - crate ?s - surface)      ;; crate ?c is directly on surface ?s
+    (surface-clear ?s - surface)            ;; surface has no crate on top of it
+    (crate-clear ?c - crate)                ;; crate used as a surface has no crate on top
+    (crate-in-truck ?c - crate ?tr - truck) ;; crate is inside a truck
+
+    ;; Hoist resource state
+    (hoist-available ?h - hoist)
+    (hoist-holding ?h - hoist ?c - crate)
+
+    ;; Road connectivity
+    (road ?from - place ?to - place)
   )
 
-  ;; paltry: pre: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;;         add: next o0 o2 ; del: vase o0 o1
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?w - world)
+  ;; Drive a truck along a road (explicit roads provided in problem)
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?o0 ?w)
-      (cats ?o1 ?w)
-      (texture ?o2 ?w)
-      (vase ?o0 ?o1 ?w)
-      (next ?o1 ?o2 ?w)
+      (truck-at ?tr ?from)
+      (road ?from ?to)
     )
     :effect (and
-      (next ?o0 ?o2 ?w)
-      (not (vase ?o0 ?o1 ?w))
-    )
-  )
-
-  ;; sip: pre: hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;;      add: vase o0 o1 ; del: next o0 o2
-  (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?w - world)
-    :precondition (and
-      (hand ?o0 ?w)
-      (cats ?o1 ?w)
-      (texture ?o2 ?w)
-      (next ?o0 ?o2 ?w)
-      (next ?o1 ?o2 ?w)
-    )
-    :effect (and
-      (vase ?o0 ?o1 ?w)
-      (not (next ?o0 ?o2 ?w))
+      (not (truck-at ?tr ?from))
+      (truck-at ?tr ?to)
     )
   )
 
-  ;; clip: pre: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;;       add: vase o0 o1 ; del: next o0 o2
-  (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?w - world)
+  ;; Hoist lifts a crate from a pallet surface
+  (:action hoist-lift-from-pallet
+    :parameters (?h - hoist ?c - crate ?pal - pallet ?p - place)
     :precondition (and
-      (hand ?o0 ?w)
-      (sneeze ?o1 ?w)
-      (texture ?o2 ?w)
-      (next ?o1 ?o2 ?w)
-      (next ?o0 ?o2 ?w)
+      (hoist-at ?h ?p)
+      (surface-at ?pal ?p)
+      (crate-on ?c ?pal)
+      (crate-clear ?c)
+      (hoist-available ?h)
+      (surface-at ?c ?p)
     )
     :effect (and
-      (vase ?o0 ?o1 ?w)
-      (not (next ?o0 ?o2 ?w))
+      (hoist-holding ?h ?c)
+      (not (hoist-available ?h))
+      (not (crate-on ?c ?pal))
+      (surface-clear ?pal)
+      (not (surface-at ?c ?p))
     )
   )
 
-  ;; wretched: pre: sneeze o0, texture o1, texture o2, stupendous o3,
-  ;;           next o0 o1, collect o1 o3, collect o2 o3
-  ;;           add: next o0 o2 ; del: next o0 o1
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj ?w - world)
+  ;; Hoist lifts a crate from another crate surface
+  (:action hoist-lift-from-crate
+    :parameters (?h - hoist ?c - crate ?surf - crate ?p - place)
     :precondition (and
-      (sneeze ?o0 ?w)
-      (texture ?o1 ?w)
-      (texture ?o2 ?w)
-      (stupendous ?o3 ?w)
-      (next ?o0 ?o1 ?w)
-      (collect ?o1 ?o3 ?w)
-      (collect ?o2 ?o3 ?w)
+      (hoist-at ?h ?p)
+      (surface-at ?surf ?p)
+      (crate-on ?c ?surf)
+      (crate-clear ?c)
+      (hoist-available ?h)
+      (surface-at ?c ?p)
     )
     :effect (and
-      (next ?o0 ?o2 ?w)
-      (not (next ?o0 ?o1 ?w))
+      (hoist-holding ?h ?c)
+      (not (hoist-available ?h))
+      (not (crate-on ?c ?surf))
+      (surface-clear ?surf)
+      (crate-clear ?surf)
+      (not (surface-at ?c ?p))
     )
   )
 
-  ;; memory: pre: cats o0, spring o1, spring o2, next o0 o1
-  ;;         add: next o0 o2 ; del: next o0 o1
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?w - world)
+  ;; Hoist drops a crate onto a pallet surface
+  (:action hoist-drop-onto-pallet
+    :parameters (?h - hoist ?c - crate ?pal - pallet ?p - place)
     :precondition (and
-      (cats ?o0 ?w)
-      (spring ?o1 ?w)
-      (spring ?o2 ?w)
-      (next ?o0 ?o1 ?w)
+      (hoist-at ?h ?p)
+      (surface-at ?pal ?p)
+      (surface-clear ?pal)
+      (hoist-holding ?h ?c)
     )
     :effect (and
-      (next ?o0 ?o2 ?w)
-      (not (next ?o0 ?o1 ?w))
+      (crate-on ?c ?pal)
+      (not (surface-clear ?pal))
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      (surface-at ?c ?p)
+      (crate-clear ?c)
     )
   )
 
-  ;; tightfisted: pre: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;;              add: next o0 o2 ; del: vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?w - world)
+  ;; Hoist drops a crate onto a crate surface
+  (:action hoist-drop-onto-crate
+    :parameters (?h - hoist ?c - crate ?surf - crate ?p - place)
     :precondition (and
-      (hand ?o0 ?w)
-      (sneeze ?o1 ?w)
-      (texture ?o2 ?w)
-      (next ?o1 ?o2 ?w)
-      (vase ?o0 ?o1 ?w)
+      (hoist-at ?h ?p)
+      (surface-at ?surf ?p)
+      (surface-clear ?surf)
+      (hoist-holding ?h ?c)
     )
     :effect (and
-      (next ?o0 ?o2 ?w)
-      (not (vase ?o0 ?o1 ?w))
+      (crate-on ?c ?surf)
+      (not (surface-clear ?surf))
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      (surface-at ?c ?p)
+      (crate-clear ?c)
+      (not (crate-clear ?surf))
+    )
+  )
+
+  ;; Hoist loads a held crate into a co-located truck
+  (:action hoist-load-onto-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
+      (hoist-holding ?h ?c)
+    )
+    :effect (and
+      (crate-in-truck ?c ?tr)
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      (not (surface-at ?c ?p))
+    )
+  )
+
+  ;; Hoist unloads a crate from a truck into hoist's grip (crate is then being held, not at place)
+  (:action hoist-unload-from-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
+      (hoist-available ?h)
+      (crate-in-truck ?c ?tr)
+    )
+    :effect (and
+      (hoist-holding ?h ?c)
+      (not (crate-in-truck ?c ?tr))
+      (not (hoist-available ?h))
     )
   )
 )

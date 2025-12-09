@@ -2,105 +2,148 @@
     "name": "MysteryBlocksworld17",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 6,
         "names": [
-            "planner_agent",
-            "simulator_agent",
+            "attacker",
+            "feaster",
+            "succumber",
+            "overcomer",
             "auditor",
             "orchestrator"
         ],
-        "planner_agent": {
+        "attacker": {
             "private_information": [
-                "I know the set of high level actions available: paltry, sip, clip, wretched, memory, tightfisted",
-                "I know the informal precondition and effect descriptions for each action as provided in the use case",
-                "I know there are objects named object_0 through object_13 referenced in the scenario"
+                "I can perform the Attack action.",
+                "I know that planet object b exists and planet object d exists.",
+                "I know that province object b and province object c exist."
             ],
-            "goal": "Analyze the action descriptions and the provided plans to extract canonical, variable-agnostic preconditions and effects and to normalize predicate names and object argument positions"
+            "goal": "Contribute analysis and constraints needed to enable attack related transitions toward the global goal."
         },
-        "simulator_agent": {
+        "feaster": {
             "private_information": [
-                "I can take a canonical action model and a concrete plan and compute a deterministic state trace of facts being added and removed",
-                "I have the initial facts from the statements and I can simulate the plan sequences"
+                "I can perform the Feast action.",
+                "I observe that object a craves object d at the initial state.",
+                "I observe that object c craves object a at the initial state."
             ],
-            "goal": "Simulate the concrete plan steps using the canonical action models and produce a step by step state trace showing which predicates become true or false at each step"
+            "goal": "Contribute analysis and constraints needed to enable feast related transitions toward the global goal."
+        },
+        "succumber": {
+            "private_information": [
+                "I can perform the Succumb action.",
+                "I understand that Succumb consumes Pain and restores Province, Planet and Harmony facts when applicable.",
+                "I observe that Harmony holds initially."
+            ],
+            "goal": "Provide analysis of Succumb preconditions and effects and where Succumb integrates in plans."
+        },
+        "overcomer": {
+            "private_information": [
+                "I can perform the Overcome action.",
+                "I know how Overcome interacts with Province other object and Pain facts to produce Harmony and crave relations."
+            ],
+            "goal": "Provide analysis of Overcome preconditions, effects, and candidate object pairs to achieve desired craving relations."
         },
         "auditor": {
             "private_information": [
-                "I specialize in temporal and causal consistency checking and removing bookkeeping shortcuts such as quota tokens and post-hoc penalties",
-                "I will identify cycles, hidden dependencies, and any uses of ephemeral bookkeeping facts and propose canonical replacements"
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts that obscure causality.",
+                "I will identify and remove quota tokens, post-hoc penalties, and other bookkeeping shortcuts and replace them with explicit causal steps."
             ],
-            "goal": "Audit the canonical model and the simulated trace to detect temporal or causal inconsistencies, remove bookkeeping shortcuts, and propose corrected preconditions and effects suitable for a sound PDDL model"
+            "goal": "Produce an audit report that ensures that plans from other agents are temporally and causally consistent and free of bookkeeping shortcuts."
         },
         "orchestrator": {
             "private_information": [
-                "I integrate reports from the other agents and produce the final formal domain and problem files targeting the FastDownwards planner",
-                "I must keep actions distinct per agent where relevant and resolve naming ambiguities"
+                "I coordinate the other agents and will produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep actions of different agents distinct and reconcile naming differences."
             ],
-            "goal": "Merge the analyzer, simulator, and auditor outputs and produce a final PDDL domain and PDDL problem file formatted for the FastDownwards solver"
+            "goal": "Produce a complete PDDL domain and a PDDL problem that encodes the model of actions Attack, Feast, Succumb and Overcome, the initial state, and the goal using names consistent across agents so the FastDownwards solver can be used."
         }
     },
     "environment": {
         "init": {
-            "grid_size": 4,
-            "visibility": 1
+            "objects": [
+                "a",
+                "b",
+                "c",
+                "d"
+            ],
+            "init_facts": [
+                "object a craves object d",
+                "object c craves object a",
+                "harmony",
+                "planet object b",
+                "planet object d",
+                "province object b",
+                "province object c"
+            ]
         },
         "public_information": [
-            "Objects in the world are named object_0 through object_13",
-            "Predicates in the informal model include hand, cats, texture, vase, next, collect, sneeze, spring, stupendous",
-            "Available actions with their informal constraints are paltry, sip, clip, wretched, memory, tightfisted",
-            "Initial condition fragments and two alternative initial statements and two goals were provided in the use case text",
-            "The planning target is to achieve certain next predicates between specified objects"
+            "Available actions are Attack, Feast, Succumb, Overcome.",
+            "Attack requires Province object, Planet object, and Harmony. Attack makes Pain true and makes Province object, Planet object, and Harmony false.",
+            "Succumb requires Pain. Succumb makes Province object, Planet object, and Harmony true and makes Pain false.",
+            "Overcome requires Province other object and Pain. Overcome makes Harmony true, makes Province object true, makes Object Craves other object true, and makes Province other object and Pain false.",
+            "Feast requires Object Craves other object, Province object, and Harmony. Feast makes Pain true and Province other object true and makes Object Craves other object, Province object and Harmony false."
         ]
     },
     "workflow": {
-        "planner_agent": {
-            "analyze": {
+        "attacker": {
+            "analysis": {
                 "input": [],
-                "output": "planner_report",
-                "system_prompt": "You are an expert analyst of action schemas. Extract canonical action signatures, normalize predicate names and argument orders, and produce for each action a concise list of preconditions and effects in variable form. Do not emit PDDL. Focus on clarity, disambiguation of objects, and list any assumptions and ambiguities found.",
-                "prompt": "Your name is planner_agent. Use the public information about objects and predicates and the private information you have. Produce a canonicalized action model for paltry, sip, clip, wretched, memory, and tightfisted. List any ambiguous references and unresolved object index overlaps and annotate which parts of the provided plan rely on each action."
+                "output": "analysis_attacker",
+                "system_prompt": "You are an agent that specializes in the Attack action and its uses. Provide a concise structured analysis of Attack preconditions, immediate effects, likely side effects on other fluents, and suggestions for object bindings relevant to the goal. Do not emit PDDL.",
+                "prompt": "Your name is attacker. You have access to the following public facts: {environment->public_information}. You have the following private information: {agents->attacker->private_information}. Your task is to provide a clear analysis of Attack, including required preconditions, produced effects, and which initial facts you know that make Attack applicable or not. Provide any assumptions explicitly as a short list."
             }
         },
-        "simulator_agent": {
-            "simulate": {
-                "input": [
-                    "planner_report"
-                ],
-                "output": "simulation_trace",
-                "system_prompt": "You are an expert deterministic state simulator. Take a canonical action model and a concrete plan and generate a step by step state trace showing facts added and removed at each plan step. Flag steps that cannot be applied due to unmet preconditions. Do not emit PDDL.",
-                "prompt": "Your name is simulator_agent. Use the canonical action models from planner_report and the provided concrete plan sequences from the use case. Start from the provided initial facts and simulate each listed plan action in order. Produce a detailed trace listing the step index, action applied, arguments, preconditions checked, facts deleted, facts added, and the resulting state snapshot summary."
+        "feaster": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_feaster",
+                "system_prompt": "You are an agent that specializes in the Feast action and its uses. Provide a concise structured analysis of Feast preconditions, immediate effects, likely side effects on other fluents, and suggestions for object bindings relevant to the goal. Do not emit PDDL.",
+                "prompt": "Your name is feaster. You have access to the following public facts: {environment->public_information}. You have the following private information: {agents->feaster->private_information}. Your task is to provide a clear analysis of Feast, including required preconditions, produced effects, and how initial cravings may enable or block Feast. Provide any assumptions explicitly as a short list."
+            }
+        },
+        "succumber": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_succumber",
+                "system_prompt": "You are an agent that specializes in the Succumb action and its uses. Provide a concise structured analysis of Succumb preconditions, immediate effects, and where Succumb fits temporally relative to other actions. Do not emit PDDL.",
+                "prompt": "Your name is succumber. You have access to the following public facts: {environment->public_information}. You have the following private information: {agents->succumber->private_information}. Your task is to provide a clear analysis of Succumb, explain how it restores Province, Planet and Harmony when Pain is present, and note any timing constraints and dependencies. Provide any assumptions explicitly as a short list."
+            }
+        },
+        "overcomer": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_overcomer",
+                "system_prompt": "You are an agent that specializes in the Overcome action and its uses. Provide a concise structured analysis of Overcome preconditions, immediate effects, and candidate object pairings that help achieve the final craving relations. Do not emit PDDL.",
+                "prompt": "Your name is overcomer. You have access to the following public facts: {environment->public_information}. You have the following private information: {agents->overcomer->private_information}. Your task is to provide a clear analysis of Overcome, including how it uses Province other object and Pain to produce Harmony and new crave links. Provide any assumptions explicitly as a short list."
             }
         },
         "auditor": {
-            "audit": {
-                "input": [
-                    "planner_report",
-                    "simulation_trace"
-                ],
-                "output": "audit_report",
-                "system_prompt": "You are an expert auditor for temporal and causal consistency. Identify cycles, hidden dependencies, and uses of bookkeeping shortcuts such as quota tokens and post hoc penalties. Propose canonical fixes that remove bookkeeping shortcuts and ensure causal soundness. Produce a corrected canonical action model and a list of recommended changes. Do not emit PDDL.",
-                "prompt": "Your name is auditor. Use the canonical models from planner_report and the simulation_trace to find temporal inconsistencies and bookkeeping shortcuts. For each detected issue provide a clear remediation, adjusted preconditions or effects, and note any effects that should be split or relabeled to be planner-friendly. Produce an audited action model and a short rationale for each change."
+            "analysis": {
+                "input": [],
+                "output": "analysis_auditor",
+                "system_prompt": "You are an auditor of temporal and causal consistency. Your role is to inspect planning fragments, detect and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties, and to replace such shortcuts with explicit causal steps. Produce an audit report listing any problematic shortcuts and a corrected sequence of causal steps. Do not emit PDDL.",
+                "prompt": "Your name is auditor. You have access to the following public facts: {environment->public_information}. You have the following private information: {agents->auditor->private_information}. Your task is to inspect the analyses produced by other agents and produce a temporal and causal audit that removes bookkeeping shortcuts and produces explicit causal sequences that can be put into a planner. Provide concrete corrections and a short rationale for each."
             }
         },
         "orchestrator": {
-            "orchestrate": {
+            "pddl": {
                 "input": [
-                    "planner_report",
-                    "simulation_trace",
-                    "audit_report"
+                    "analysis_attacker",
+                    "analysis_feaster",
+                    "analysis_succumber",
+                    "analysis_overcomer",
+                    "analysis_auditor"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert at producing PDDL domains and problems targeting the FastDownwards solver. Integrate the canonical action schemas, the simulation trace findings, and the auditor corrections. Resolve naming ambiguities consistently and keep agent actions distinct where multiple agent perspectives contributed different schemas. Provide a complete PDDL domain and a PDDL problem file suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Make any modelling decisions explicit in a short preamble above the domain tag.",
-                "prompt": "Your name is orchestrator. Use planner_report, simulation_trace, and audit_report as inputs. Produce a final audited PDDL domain and a PDDL problem file that encodes the initial facts and the stated goal most consistent with the audited model. Target the FastDownwards solver and ensure types, predicates, and action names are consistent. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+                "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownwards solver. You must integrate the analyses and the auditor report into a single coherent PDDL domain and a PDDL problem that FastDownwards can solve. Keep actions of different agents distinct by prefixing or otherwise namespacing actions when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target STRIPS compatible constructs where possible and include typing only if necessary.",
+                "prompt": "You are the orchestrator. Your goal is: {agents->orchestrator->goal}. Here are the public facts about actions and the initial facts: {environment->public_information} and {environment->init->init_facts}. Here are the analyses from the other agents: {analysis_attacker} {analysis_feaster} {analysis_succumber} {analysis_overcomer} {analysis_auditor}. Reconcile naming mismatches and incomplete fragments. Produce a complete PDDL domain and a PDDL problem ready for FastDownwards. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "planner_agent.analyze->simulator_agent.simulate",
-            "planner_agent.analyze->auditor.audit",
-            "simulator_agent.simulate->auditor.audit",
-            "planner_agent.analyze->orchestrator.orchestrate",
-            "simulator_agent.simulate->orchestrator.orchestrate",
-            "auditor.audit->orchestrator.orchestrate"
+            "attacker.analysis->orchestrator.pddl",
+            "feaster.analysis->orchestrator.pddl",
+            "succumber.analysis->orchestrator.pddl",
+            "overcomer.analysis->orchestrator.pddl",
+            "auditor.analysis->orchestrator.pddl"
         ]
     }
 }

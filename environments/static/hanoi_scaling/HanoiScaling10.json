@@ -4,97 +4,108 @@
     "agents": {
         "number": 4,
         "names": [
-            "mover",
-            "rules_keeper",
+            "mover_agent",
+            "strategy_agent",
             "auditor",
             "orchestrator"
         ],
-        "mover": {
+        "mover_agent": {
             "private_information": [
                 "I can move the top disk from one peg to another peg",
-                "I can move only one disk at a time",
-                "I may only move a disk that is on top of a peg"
+                "I obey atomic move rules: move one disk at a time, only the top disk may be moved, and a larger disk may never be placed on top of a smaller disk"
             ],
-            "goal": "Provide concise procedural fragments describing legal single-disk moves and reachable local state transitions to help build a global plan for transferring all disks from the middle peg to the right peg."
+            "goal": "Provide precise low-level action specifications for disk moves and the predicates required to model them"
         },
-        "rules_keeper": {
+        "strategy_agent": {
             "private_information": [
-                "I know the size ordering of disks from smallest to largest: disk A, disk B, disk C, disk D, disk E",
-                "I enforce that a larger disk may never be placed on top of a smaller disk",
-                "I preserve relative size ordering once disks are moved"
+                "I know recursive and iterative solution patterns for the Tower of Hanoi",
+                "I can enumerate an optimal sequence of moves for N disks using the classic recursive decomposition"
             ],
-            "goal": "Formalize invariants and constraints for legal configurations and transitions without emitting a full PDDL domain, providing clear predicate-style invariants and typing that an orchestrator can translate into PDDL."
+            "goal": "Provide a high-level plan structure and an ordered move outline for 7 disks, specifying intermediate peb usage and invariants"
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency across fragments",
-                "I detect and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
-                "I ensure fragments are causally composable and do not rely on implicit global state not provided in public information"
+                "I check temporal and causal consistency and ensure no bookkeeping shortcuts are used",
+                "I remove quota tokens, post-hoc penalties, and any modeling shortcuts that would bypass real causal constraints"
             ],
-            "goal": "Produce an audit report that identifies temporal ordering requirements, causal dependencies, forbidden shortcuts, and adjustments required so fragment outputs can be integrated into a correct PDDL model."
+            "goal": "Produce an audit report with invariants and corrections to guarantee realisable temporal and causal constraints in the final model"
         },
         "orchestrator": {
-            "private_information": [],
-            "goal": "Integrate fragments and the audit report to produce a final PDDL domain and PDDL problem suitable for the FastDownward solver that achieves the goal of moving all disks from the middle peg to the right peg while leaving the left and middle pegs empty."
+            "private_information": [
+                "I combine agent analyses into a single planning model and produce the final PDDL domain and problem compatible with Fast Downward"
+            ],
+            "goal": "Integrate inputs from the other agents and emit a PDDL domain and problem that the Fast Downward solver can execute to solve the task"
         }
     },
     "environment": {
         "init": {
-            "pegs": 3,
-            "disks": 5,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": 7,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F",
+                "G"
+            ],
             "visibility": 1
         },
         "public_information": [
-            "There are 5 disks in total named from smallest to largest: disk A, disk B, disk C, disk D, disk E",
-            "Initial condition: the middle peg holds from top to bottom disk A, disk B, disk C, disk D, disk E and the left and right pegs are empty",
-            "Goal condition: the right peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E and the left and middle pegs must be empty",
-            "Legal action: move the top disk from one peg to another peg",
-            "Constraints: only one disk may be moved at a time, only a top disk may be moved, a larger disk may never be placed on a smaller disk"
+            "This is a Tower of Hanoi puzzle with three pegs called left, middle, and right",
+            "There are seven disks listed smallest to largest as A, B, C, D, E, F, G",
+            "Allowed action: move the top disk from one peg to another peg",
+            "Rules: move only one disk at a time; only move a disk that is on top of a peg; never place a larger disk on top of a smaller disk; once a disk is moved it keeps its relative size ordering with the others",
+            "Initial state: the middle peg holds from top to bottom disks A, B, C, D, E, F, G and left and right pegs are empty",
+            "Goal state: the right peg must hold from top to bottom disks A, B, C, D, E, F, G; both middle and left pegs must be empty",
+            "The left peg may be used as an intermediate parking spot but must end up empty"
         ]
     },
     "workflow": {
-        "mover": {
-            "analyze": {
+        "mover_agent": {
+            "analysis": {
                 "input": [],
-                "output": "frag_mover",
-                "system_prompt": "You are an expert in procedural decomposition of classical puzzles. Provide compact move templates and local state transition descriptions for single-disk moves that can be used as input fragments for PDDL construction. Do not emit a full PDDL domain or problem.",
-                "prompt": "Your name is mover. You operate with the following public information: {environment->public_information} You have this private knowledge: {agents->mover->private_information} Your goal is: {agents->mover->goal} Provide concise move templates and example state transition fragments that specify preconditions and effects in plain predicate-like form. Label your output as frag_mover."
+                "output": "model_mover",
+                "system_prompt": "You are mover_agent, an expert in primitive action modeling for physical puzzles. Produce precise formal descriptions of the primitive move action with explicit preconditions and effects, list the predicates needed, and enumerate invariants derived from the rules. Do not emit PDDL in this output.",
+                "prompt": "Your name is mover_agent. Use the public information and your private information to create atomic action specifications for moving a top disk between pegs. Provide preconditions and effects using predicate names and types that could be directly translated to PDDL later. Emphasize the top-disk constraint and size ordering."
             }
         },
-        "rules_keeper": {
-            "encode_rules": {
+        "strategy_agent": {
+            "strategy": {
                 "input": [],
-                "output": "frag_rules",
-                "system_prompt": "You are an expert in invariant specification and type/predicate design. Produce clear invariant statements, predicate definitions, typing suggestions, and constraint fragments that capture the Tower of Hanoi rules. Do not output a full PDDL domain or problem.",
-                "prompt": "Your name is rules_keeper. Use the following public information: {environment->public_information} You know: {agents->rules_keeper->private_information} Your goal is: {agents->rules_keeper->goal} Provide predicate definitions, typing guidance, and invariant constraints that an orchestrator can translate into PDDL. Label your output as frag_rules."
+                "output": "plan_strategy",
+                "system_prompt": "You are strategy_agent, an expert in planning algorithms for Tower of Hanoi. Provide a high-level recursive plan pattern and an explicit ordered move outline for 7 disks. Do not emit PDDL in this output.",
+                "prompt": "Your name is strategy_agent. Using the public information and your private information produce a compact recursive decomposition and a concrete sequence outline or algorithmic description that solves the puzzle for N=7. Indicate when the left peg is used as intermediate and ensure it ends empty."
             }
         },
         "auditor": {
             "audit": {
-                "input": [
-                    "frag_mover",
-                    "frag_rules"
-                ],
+                "input": [],
                 "output": "audit_report",
-                "system_prompt": "You are an expert auditor for temporal and causal models. Check fragments for hidden bookkeeping shortcuts, temporal or causal inconsistencies, and missing explicit state required for sound composition. Recommend precise edits and removal of shortcuts so the resulting model is implementable in classical planning form.",
-                "prompt": "Your name is auditor. You receive these fragments: {frag_mover} and {frag_rules} and the public information: {environment->public_information} You have the following responsibilities: {agents->auditor->private_information} Your goal is: {agents->auditor->goal} Produce an audit_report listing detected issues, required explicit state, forbidden bookkeeping constructs, and exact suggestions to make fragments composable."
+                "system_prompt": "You are auditor, responsible for temporal and causal consistency. Identify potential modeling shortcuts or artefacts such as quota tokens or post-hoc penalties and provide corrected invariants and stronger constraints to ensure realizable plans. Do not emit PDDL in this output.",
+                "prompt": "Your name is auditor. Using the public information and your private information, produce an audit report that enumerates temporal and causal checks, forbids bookkeeping workarounds, and proposes explicit constraints and invariants that the final model must include to be sound and executable."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "frag_mover",
-                    "frag_rules",
+                    "model_mover",
+                    "plan_strategy",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-fragment integration and PDDL authoring for the FastDownward planner. Integrate the provided fragments and the audit report to produce a complete PDDL domain and a complete PDDL problem targeting the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use appropriate :requirements and typing and ensure the model enforces all Hanoi rules and the stated initial and goal conditions. Keep all actions and predicates explicitly defined and avoid implicit bookkeeping shortcuts.",
-                "prompt": "You are the orchestrator. You receive these inputs: {frag_mover}, {frag_rules}, {audit_report} and the public information: {environment->public_information} Your goal is: {agents->orchestrator->goal} Think step by step and produce a final PDDL domain and a final PDDL problem suitable for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are orchestrator, an expert in multi-agent planning and PDDL authoring. Integrate the primitive action specifications, high-level strategy, and the auditor's corrections into a single PDDL domain and problem file compatible with the Fast Downward planner. Use the STRIPS subset where possible, keep agent actions distinct if multiple actions names overlap, and encode the three pegs and seven disks with preserved size ordering. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL does not rely on bookkeeping shortcuts and can be solved by Fast Downward.",
+                "prompt": "You are orchestrator. Integrate the inputs named model_mover, plan_strategy, and audit_report into a coherent and complete PDDL domain and a PDDL problem that implements the global goal: move the full stack of disks from the middle peg to the right peg with the left peg ending empty. Produce a domain and problem that Fast Downward can parse and solve. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "mover.analyze->orchestrator.pddl",
-            "rules_keeper.encode_rules->orchestrator.pddl",
+            "mover_agent.analysis->orchestrator.pddl",
+            "strategy_agent.strategy->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
     }

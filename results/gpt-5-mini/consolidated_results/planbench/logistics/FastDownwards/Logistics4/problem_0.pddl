@@ -1,42 +1,54 @@
-(define (problem scenario1)
-  (:domain orchestrated-collection)
+(define (problem move-package-0-to-location_1_1)
+  (:domain multi-transport)
 
   (:objects
-    alice - human
-    toby - cat
-    ball coin vase1 - obj
-    rough smooth - texture
-    p1 p2 p3 - phase
+    ; cities (included for completeness)
+    city_0 city_1 - city
+
+    ; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    ; package
+    package_0 - package
   )
 
   (:init
-    ; Phase ordering and starting phase
-    (next p1 p2)
-    (next p2 p3)
-    (spring p1)
+    ; initial vehicle and package locations from the specification
+    (at-airplane airplane_0 location_1_0)
+    (at-pkg package_0 location_1_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
 
-    ; Cat is present in no phase initially (toby not present in any phase)
-    ; (no cats facts set)
+    ; airport facts
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ; Textures
-    (texture ball rough)
-    (texture coin smooth)
-    (texture vase1 smooth)
+    ; same-city (explicit, symmetric) facts for city_0
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    (same-city location_0_0 location_0_0)
+    (same-city location_0_1 location_0_1)
 
-    ; Vase identity
-    (vase vase1)
+    ; same-city (explicit, symmetric) facts for city_1
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
+    (same-city location_1_0 location_1_0)
+    (same-city location_1_1 location_1_1)
 
-    ; No initial collections, no hands, no sneezes, no stupendous
+    ; availability predicates (encoded as hard preconditions; set true here)
+    (available truck_0)
+    (available truck_1)
+    (available-airplane airplane_0)
   )
 
-  ; Goals: alice must collect ball and coin, be declared stupendous,
-  ; and no sneeze may occur in any of the phases (hard constraint).
-  (:goal (and
-    (collect alice ball)
-    (collect alice coin)
-    (stupendous alice)
-    (not (sneeze p1))
-    (not (sneeze p2))
-    (not (sneeze p3))
-  ))
+  (:goal
+    (and
+      ; mandated terminal condition: package_0 at location_1_1
+      (at-pkg package_0 location_1_1)
+    )
+  )
 )

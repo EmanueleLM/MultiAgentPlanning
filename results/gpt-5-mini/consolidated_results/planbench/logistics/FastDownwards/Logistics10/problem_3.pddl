@@ -1,50 +1,87 @@
-(define (problem logistics10-problem1)
-  (:domain logistics10)
+(define (problem logistics-instance-1)
+  (:domain logistics-multiagent)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
-    s0 s1 s2 s3 s4 s5 s6 s7 - stage
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 package_1 package_2 - package
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    city_0 city_1 - city
+    ;; discrete global stages to enforce ordered action progression
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9
+    stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19 stage_20 - stage
   )
 
   (:init
-    ;; static properties (from the scenario used to build the previous problem)
-    (hand object_10)
-    (hand object_11)
+    ;; city membership (static)
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; airports (one per city as specified)
+    (is-airport location_0_0)
+    (is-airport location_1_0)
 
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; same-city (symmetric) for locations in the same city (static)
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
 
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; different: all ordered pairs of distinct locations (static)
+    (different location_0_0 location_0_1)
+    (different location_0_0 location_1_0)
+    (different location_0_0 location_1_1)
+    (different location_0_1 location_0_0)
+    (different location_0_1 location_1_0)
+    (different location_0_1 location_1_1)
+    (different location_1_0 location_0_0)
+    (different location_1_0 location_0_1)
+    (different location_1_0 location_1_1)
+    (different location_1_1 location_0_0)
+    (different location_1_1 location_0_1)
+    (different location_1_1 location_1_0)
 
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ;; stage successor relation (static)
+    (next stage_0 stage_1)
+    (next stage_1 stage_2)
+    (next stage_2 stage_3)
+    (next stage_3 stage_4)
+    (next stage_4 stage_5)
+    (next stage_5 stage_6)
+    (next stage_6 stage_7)
+    (next stage_7 stage_8)
+    (next stage_8 stage_9)
+    (next stage_9 stage_10)
+    (next stage_10 stage_11)
+    (next stage_11 stage_12)
+    (next stage_12 stage_13)
+    (next stage_13 stage_14)
+    (next stage_14 stage_15)
+    (next stage_15 stage_16)
+    (next stage_16 stage_17)
+    (next stage_17 stage_18)
+    (next stage_18 stage_19)
+    (next stage_19 stage_20)
 
-    ;; initial dynamic relations are placed at the initial stage s0
-    (next_at object_10 object_6 s0)
-    (next_at object_11 object_9 s0)
-    (next_at object_4 object_6 s0)
-    (next_at object_5 object_8 s0)
+    ;; initial current stage
+    (current-stage stage_0)
 
-    ;; explicit successor chain to enforce contiguous stage progression
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
-    (succ s5 s6)
-    (succ s6 s7)
+    ;; initial vehicle and package locations (dynamic state)
+    (at-airplane airplane_0 location_0_0)
+
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
+
+    (at-package package_0 location_0_0)
+    (at-package package_1 location_1_1)
+    (at-package package_2 location_0_1)
   )
 
-  ;; Terminal conditions are required exactly at the final stage s7: no auxiliary slack allowed.
   (:goal (and
-    (next_at object_10 object_7 s7)
-    (next_at object_11 object_8 s7)
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
+    (at-package package_2 location_1_0)
   ))
 )

@@ -1,41 +1,42 @@
-(define (problem scenario_one)
-  (:domain multi_fragment_domain)
+(define (problem stacking-problem)
+  (:domain stacking)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10
+    worker1 - agent
+    crate0 crate1 crate2 - crate
+    pallet1 pallet2 pallet3 - pallet
   )
+
   (:init
-    ;; unary facts
-    (cats object_0)
-    (cats object_1)
+    ;; Initial placements: each crate is initially on a distinct pallet
+    (on-pallet crate0 pallet1)
+    (on-pallet crate1 pallet2)
+    (on-pallet crate2 pallet3)
 
-    (hand object_10)
+    ;; Top-of-stack status: each crate currently has nothing on top
+    (clear-crate crate0)
+    (clear-crate crate1)
+    (clear-crate crate2)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; Pallets with crates on them are not declared clear (absence = not clear).
+    ;; The pallet clear predicate is only true when explicitly asserted.
 
-    (spring object_6)
-    (spring object_8)
+    ;; Agent starts free-handed
+    (arm-empty worker1)
 
-    (stupendous object_2)
-    (stupendous object_3)
-
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-
-    ;; binary facts
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_4 object_6)
-    (next object_5 object_9)
-    ;; note: no vase facts initially
+    ;; Distinctness facts for crates to prohibit placing a crate on itself
+    (distinct crate0 crate1)
+    (distinct crate0 crate2)
+    (distinct crate1 crate0)
+    (distinct crate1 crate2)
+    (distinct crate2 crate0)
+    (distinct crate2 crate1)
   )
-  (:goal (next object_10 object_6))
-)
+
+  (:goal (and
+    ;; Mandated terminal placements:
+    (on-pallet crate0 pallet3)
+    (on-crate  crate1 crate2)
+    (on-pallet crate2 pallet1)
+    ;; Ensure agent finishes not holding anything
+    (arm-empty worker1)
+  ))

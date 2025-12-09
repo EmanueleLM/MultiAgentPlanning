@@ -1,65 +1,41 @@
-; PDDL Problem: pddl_orchestrator
-; This problem uses the pddl_orchestrator domain. The initial facts reflect audited corrections:
-; - part1 is in loc_storage
-; - part2 was corrected by the auditor's audit and is initially at loc_workstation
-; The goal enforces final phase p5 and that both parts are corrected, agents at loc_sink,
-; and the manipulator holds nothing (encoded as negative goal literals).
-(define (problem pddl_orchestrator_problem)
-  (:domain pddl_orchestrator)
-
+(define (problem transport_problem)
+  (:domain transport_domain)
   (:objects
-    ; Agents
-    manip1 - manipulator
-    aud1   - auditor
-
-    ; Parts
-    part1 part2 - part
-
-    ; Locations
-    loc_storage loc_workstation loc_inspection loc_sink - location
-
-    ; Phases
-    p1 p2 p3 p4 p5 - phase
+    truck_0 - truck
+    airplane_0 - airplane
+    package_0 package_1 - package
+    location_1_0 location_1_1 - location
   )
 
   (:init
-    ; Agent locations
-    (at_agent manip1 loc_storage)
-    (at_agent aud1 loc_inspection)
+    ;; initial package locations (start positions)
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_1)
 
-    ; Parts initial locations (audited correction: part2 at loc_workstation)
-    (at_part part1 loc_storage)
-    (at_part part2 loc_workstation)
+    ;; packages are initially available (not loaded)
+    (available package_0)
+    (available package_1)
 
-    ; No part has been processed/inspected/corrected yet (absence modeled by no predicate).
+    ;; vehicle initial locations
+    (at-truck truck_0 location_1_0)
+    (at-plane airplane_0 location_1_1)
 
-    ; Phase ordering and initial phase
-    (phase_successor p1 p2)
-    (phase_successor p2 p3)
-    (phase_successor p3 p4)
-    (phase_successor p4 p5)
+    ;; connectivity: only provide the explicit routes that exist in this environment
+    ;; truck can drive between the two locations (both directions)
+    (road location_1_0 location_1_1)
+    (road location_1_1 location_1_0)
 
-    (current_phase p1)
-
-    ; Note: phase_ready predicates will be set by explicit check_* actions when prerequisites are met.
+    ;; airplane can fly between the two locations (both directions)
+    (air-route location_1_0 location_1_1)
+    (air-route location_1_1 location_1_0)
   )
 
   (:goal
     (and
-      ; Final phase must be reached
-      (current_phase p5)
-
-      ; Both parts must be corrected
-      (corrected part1)
-      (corrected part2)
-
-      ; Final agent locations (explicit terminal conditions)
-      (at_agent manip1 loc_sink)
-      (at_agent aud1 loc_sink)
-
-      ; Ensure manipulator is holding no parts at termination (negative preconditions allowed)
-      (not (holding manip1 part1))
-      (not (holding manip1 part2))
+      ;; specified terminal conditions: package_0 must end at location_1_1,
+      ;; package_1 must end at location_1_0
+      (at-package package_0 location_1_1)
+      (at-package package_1 location_1_0)
     )
   )
 )

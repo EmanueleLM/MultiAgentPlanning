@@ -1,144 +1,88 @@
-(define (domain linking)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane package city location airport - location)
+
   (:predicates
-    (hand ?x - object)
-    (cats ?x - object)
-    (texture ?x - object)
-    (vase ?x - object ?y - object)
-    (next ?x - object ?y - object)
-    (sneeze ?x - object)
-    (stupendous ?x - object)
-    (collect ?x - object ?y - object)
-    (spring ?x - object)
-    (current-stage ?s - stage)
-    (succ ?s1 - stage ?s2 - stage)
+    (truck_at ?t - truck ?l - location)
+    (airplane_at ?a - airplane ?l - airport)
+    (package_at ?p - package ?l - location)
+    (in_truck ?p - package ?t - truck)
+    (in_airplane ?p - package ?a - airplane)
+    (same_city ?l1 - location ?l2 - location)
+    (different_city ?l1 - location ?l2 - location)
   )
 
-  ;; paltry: pre: hand X, cats Y, texture Z, vase X Y, next Y Z
-  ;; effects: add next X Z, del vase X Y
-  (:action paltry
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  ;; Truck-agent actions (prefixed with truck_agent-)
+  (:action truck_agent-load-into-truck
+    :parameters (?tr - truck ?p - package ?loc - location)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (package_at ?p ?loc)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_truck ?p ?tr)
+      (not (package_at ?p ?loc))
     )
   )
 
-  ;; sip: pre: hand X, cats Y, texture Z, next X Z, next Y Z
-  ;; effects: add vase X Y, del next X Z
-  (:action sip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-unload-from-truck
+    :parameters (?tr - truck ?p - package ?loc - location)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (in_truck ?p ?tr)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?loc)
+      (not (in_truck ?p ?tr))
     )
   )
 
-  ;; clip: pre: hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ;; effects: add vase X Y, del next X Z
-  (:action clip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-drive
+    :parameters (?tr - truck ?from - location ?to - location)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?from)
+      (same_city ?from ?to)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (truck_at ?tr ?to)
+      (not (truck_at ?tr ?from))
     )
   )
 
-  ;; wretched: pre: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;; effects: add next X Z, del next X Y
-  (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object ?s1 - stage ?s2 - stage)
+  ;; Airplane-agent actions (prefixed with airplane_agent-)
+  (:action airplane_agent-load-into-airplane
+    :parameters (?ap - airplane ?p - package ?airport - airport)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?airport)
+      (package_at ?p ?airport)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_airplane ?p ?ap)
+      (not (package_at ?p ?airport))
     )
   )
 
-  ;; memory: pre: cats X, spring Y, spring Z, next X Y
-  ;; effects: add next X Z, del next X Y
-  (:action memory
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-unload-from-airplane
+    :parameters (?ap - airplane ?p - package ?airport - airport)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?airport)
+      (in_airplane ?p ?ap)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?airport)
+      (not (in_airplane ?p ?ap))
     )
   )
 
-  ;; tightfisted: pre: hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ;; effects: add next X Z, del vase X Y
-  (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-fly
+    :parameters (?ap - airplane ?from - airport ?to - airport)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?from)
+      (different_city ?from ?to)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (airplane_at ?ap ?to)
+      (not (airplane_at ?ap ?from))
     )
   )
 )

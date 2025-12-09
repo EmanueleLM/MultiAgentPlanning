@@ -1,120 +1,92 @@
-(define (domain logistics_objects)
+(define (domain logistics_multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types vehicle package location city truck plane)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
+    (at ?v - vehicle ?l - location)          ; vehicle (truck or plane) at location
+    (at-pkg ?p - package ?l - location)      ; package at location
+    (in ?p - package ?v - vehicle)           ; package in vehicle
+    (is-airport ?l - location)               ; location is an airport
+    (in-city ?l - location ?c - city)        ; location belongs to a city
   )
 
-  ;; Action paltry: requires hand, cats, texture, vase(x,y), next(y,z)
-  ;; Effects: set next(x,z), remove vase(x,y)
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Truck actions: intra-city movement and load/unload at truck location
+  (:action truck_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (at ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (at ?t ?from))
+      (at ?t ?to)
     )
   )
 
-  ;; Action sip: requires hand, cats, texture, next(x,z), next(y,z)
-  ;; Effects: set vase(x,y), remove next(x,z)
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action truck_load
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
+      (at ?t ?l)
+      (at-pkg ?p ?l)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (at-pkg ?p ?l))
+      (in ?p ?t)
     )
   )
 
-  ;; Action clip: requires hand, sneeze, texture, next(y,z), next(x,z)
-  ;; Effects: set vase(x,y), remove next(x,z)
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action truck_unload
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (at ?t ?l)
+      (in ?p ?t)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (in ?p ?t))
+      (at-pkg ?p ?l)
     )
   )
 
-  ;; Action wretched: requires sneeze(x), texture(y), texture(z), stupendous(w),
-  ;; next(x,y), collect(y,w), collect(z,w)
-  ;; Effects: set next(x,z), remove next(x,y)
-  (:action wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj)
+  ;; Airplane actions: inter-city movement between airports and load/unload at airport
+  (:action plane_fly
+    :parameters (?pl - plane ?from - location ?to - location ?cf - city ?ct - city)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
+      (at ?pl ?from)
+      (is-airport ?from)
+      (is-airport ?to)
+      (in-city ?from ?cf)
+      (in-city ?to ?ct)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (not (at ?pl ?from))
+      (at ?pl ?to)
     )
   )
 
-  ;; Action memory: requires cats(x), spring(y), spring(z), next(x,y)
-  ;; Effects: set next(x,z), remove next(x,y)
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action plane_load
+    :parameters (?pl - plane ?p - package ?l - location)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
+      (at ?pl ?l)
+      (is-airport ?l)
+      (at-pkg ?p ?l)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (not (at-pkg ?p ?l))
+      (in ?p ?pl)
     )
   )
 
-  ;; Action tightfisted: requires hand(x), sneeze(y), texture(z), next(y,z), vase(x,y)
-  ;; Effects: set next(x,z), remove vase(x,y)
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
+  (:action plane_unload
+    :parameters (?pl - plane ?p - package ?l - location)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (at ?pl ?l)
+      (is-airport ?l)
+      (in ?p ?pl)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (in ?p ?pl))
+      (at-pkg ?p ?l)
     )
   )
 )

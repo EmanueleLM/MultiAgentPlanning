@@ -1,0 +1,94 @@
+{
+    "name": "HanoiScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move exactly one top disk at a time.",
+                "I maintain the ordering relationship between disks and can produce a concrete sequence of moves but will not produce PDDL."
+            ],
+            "goal": "Produce a concise, concrete sequence of valid moves that transfers all six disks from the left peg to the middle peg following the Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency of move sequences.",
+                "I remove bookkeeping shortcuts and any post-hoc penalties or tokens used for convenience in plans."
+            ],
+            "goal": "Audit the mover's sequence to ensure each step moves the top disk of a peg, never places a larger disk on top of a smaller disk, and that the final configuration meets the stated goal; produce corrections and explanatory notes if needed."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the mover analysis and the auditor report and produce a final PDDL domain and problem file tailored to the FastDownward planner that solves the 6-disk Tower of Hanoi instance and achieves the stated goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "There are six disks named from smallest to largest: A, B, C, D, E, F.",
+            "Initial configuration: left peg holds from top to bottom A, B, C, D, E, F. Middle and right pegs are empty.",
+            "Goal configuration: middle peg must hold from top to bottom A, B, C, D, E, F. Left and right pegs must be empty at the end.",
+            "Rules: move only one top disk at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk.",
+            "The right peg may be used as an intermediate parking spot but must end empty in the final state.",
+            "Once a disk is moved it keeps its relative size ordering with others (disk sizes are immutable)."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are the mover analyst for the Tower of Hanoi instance. Using the public information about pegs and disk ordering, produce a concrete, ordered sequence of moves that would transfer all disks from the left peg to the middle peg. Represent each move as a simple triple or short sentence using disk labels and peg names, for example: move A left middle. Do not emit PDDL. Provide reasoning only if necessary to justify nontrivial choices.",
+                "prompt": "Your name is mover. You see these public facts and rules from the environment. Use them and your private knowledge to produce a valid move sequence to reach the goal. Do not output PDDL. Output should be a minimal, correct sequence of steps and may include short annotations if a step is subtle."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "mover_analysis"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor whose role is to check temporal and causal consistency and to remove bookkeeping shortcuts. Given a proposed move sequence, verify that every move moves the current top disk of its source peg and that no move places a larger disk onto a smaller disk. Detect and correct implicit shortcuts such as 'batch moves', quota tokens, or any post-hoc penalties. Produce a corrected move sequence if needed and an explicit justification for each correction. Do not produce PDDL.",
+                "prompt": "Your name is auditor. Receive the mover's sequence and check each step against the public rules and the evolving state. Provide corrections and a short explanation of why a correction was made. Ensure the final audited sequence is fully explicit and causally valid."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL planning and in preparing planning problems for the FastDownward solver. Integrate the mover analysis and the auditor report and produce a complete PDDL domain and a PDDL problem that captures the 6-disk Tower of Hanoi instance. Use STRIPS-style predicates and actions suitable for FastDownward. Keep actions corresponding to agent roles distinct if they appear in the schema. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure object names match the environment disk and peg names and that initial and goal states reflect the public information.",
+                "prompt": "You are orchestrator. Using the public information, the mover's analysis, and the auditor's report, produce a PDDL domain and a PDDL problem for FastDownward that solve the Tower of Hanoi instance as stated. The domain should include predicates for disk locations and ordering constraints and an action schema for moving the top disk from one peg to another. The problem should declare all disk and peg objects and the initial and goal states. Enclose domain and problem outputs in the required tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

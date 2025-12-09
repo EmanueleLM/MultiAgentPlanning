@@ -1,80 +1,85 @@
-(define (domain sequence-manipulation)
+(define (domain craving-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object agent)
+  (:types object agent place phase)
 
-  ;; Predicates:
-  ;; (next ?a ?b) means object ?a is immediately followed by object ?b in the linear sequence.
   (:predicates
-    (next ?a - object ?b - object)
+    (at ?o - object ?p - place)                 ; object at a place
+    (at-agent ?ag - agent ?p - place)           ; agent at a place
+    (held ?o - object)                          ; object is held by some agent
+    (held-by ?o - object ?ag - agent)           ; object is held by a specific agent
+    (other ?o1 - object ?o2 - object)           ; explicit "other object" relation
+    (phase ?ph - phase)                         ; current phase marker
+    (phase-successor ?p1 - phase ?p2 - phase)   ; allowed phase successor relation
+    (craves ?o1 - object ?o2 - object)          ; craving relation: o1 craves o2
   )
 
-  ;; Three agent-specific actions that move an object ?x to be immediately before object ?y.
-  ;; Each action has identical semantics but distinct names to preserve agent-specific capabilities.
-  ;; Parameters:
-  ;;   ?x  - the object being moved
-  ;;   ?y  - the target object before which ?x must be placed
-  ;;   ?prex - the object currently immediately before ?x (predecessor of x)
-  ;;   ?succx - the object currently immediately after ?x (successor of x)
-  ;;   ?prey - the object currently immediately before ?y (predecessor of y)
-  ;;
-  ;; Preconditions require the explicit predecessor/successor facts so the action can
-  ;; unlink ?x from its current place and splice it into the position immediately before ?y.
-  ;; Effects remove the previous linkage and install the new adjacency preserving the chain.
-  (:action move_before_agent1
-    :parameters (?x - object ?y - object ?prex - object ?succx - object ?prey - object)
+  ;; Agent 1: picks an object at its current place and advances phase (p -> successor)
+  (:action agent1_pick
+    :parameters (?ag - agent ?o - object ?place - place ?ph - phase ?ph-next - phase)
     :precondition (and
-      (next ?prex ?x)
-      (next ?x ?succx)
-      (next ?prey ?y)
-      (not (next ?x ?y))
+      (phase ?ph)
+      (phase-successor ?ph ?ph-next)
+      (at ?o ?place)
+      (at-agent ?ag ?place)
+      (not (held ?o))
     )
     :effect (and
-      ;; unlink x from its previous predecessor and successor
-      (not (next ?prex ?x))
-      (not (next ?x ?succx))
-      ;; unlink predecessor of y from y (we will place x between them)
-      (not (next ?prey ?y))
-      ;; relink the chain: predecessor of x -> successor of x
-      (next ?prex ?succx)
-      ;; predecessor of y -> x, and x -> y
-      (next ?prey ?x)
-      (next ?x ?y)
+      (held ?o)
+      (held-by ?o ?ag)
+      (not (at ?o ?place))
+      (not (phase ?ph))
+      (phase ?ph-next)
     )
   )
 
-  (:action move_before_agent2
-    :parameters (?x - object ?y - object ?prex - object ?succx - object ?prey - object)
+  ;; Agent 1: move while holding an object (does not change phase)
+  (:action agent1_move
+    :parameters (?ag - agent ?o - object ?from - place ?to - place ?ph - phase)
     :precondition (and
-      (next ?prex ?x)
-      (next ?x ?succx)
-      (next ?prey ?y)
-      (not (next ?x ?y))
+      (phase ?ph)
+      (at-agent ?ag ?from)
+      (held-by ?o ?ag)
     )
     :effect (and
-      (not (next ?prex ?x))
-      (not (next ?x ?succx))
-      (not (next ?prey ?y))
-      (next ?prex ?succx)
-      (next ?prey ?x)
-      (next ?x ?y)
+      (at-agent ?ag ?to)
+      (not (at-agent ?ag ?from))
     )
   )
 
-  (:action move_before_agent3
-    :parameters (?x - object ?y - object ?prex - object ?succx - object ?prey - object)
+  ;; Agent 1: drop a held object at the place where a receiver object is located; advance phase
+  (:action agent1_drop
+    :parameters (?ag - agent ?o - object ?receiver - object ?place - place ?ph - phase ?ph-next - phase)
     :precondition (and
-      (next ?prex ?x)
-      (next ?x ?succx)
-      (next ?prey ?y)
-      (not (next ?x ?y))
+      (phase ?ph)
+      (phase-successor ?ph ?ph-next)
+      (held-by ?o ?ag)
+      (at-agent ?ag ?place)
+      (at ?receiver ?place)
     )
     :effect (and
-      (not (next ?prex ?x))
-      (not (next ?x ?succx))
-      (not (next ?prey ?y))
-      (next ?prex ?succx)
-      (next ?prey ?x)
-      (next ?x ?y)
+      (not (held-by ?o ?ag))
+      (not (held ?o))
+      (at ?o ?place)
+      (not (phase ?ph))
+      (phase ?ph-next)
+    )
+  )
+
+  ;; Agent 3: persuade / induce craving when two objects are co-located and agent 3 is present; advance phase
+  (:action agent3_persuade
+    :parameters (?ag - agent ?receiver - object ?target - object ?place - place ?ph - phase ?ph-next - phase)
+    :precondition (and
+      (phase ?ph)
+      (phase-successor ?ph ?ph-next)
+      (at ?receiver ?place)
+      (at ?target ?place)
+      (at-agent ?ag ?place)
+      (not (craves ?receiver ?target))
+    )
+    :effect (and
+      (craves ?receiver ?target)
+      (not (phase ?ph))
+      (phase ?ph-next)
     )
   )
 )

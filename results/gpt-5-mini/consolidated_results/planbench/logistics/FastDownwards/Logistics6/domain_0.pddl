@@ -1,163 +1,195 @@
-(define (domain assembly)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object agent operator assistant location step)
+  (:types package truck airplane location city)
 
   (:predicates
-    ;; object/location relations
-    (at ?o - object ?l - location)
-    ;; agent/location relation
-    (at-agent ?ag - agent ?l - location)
-    ;; agent holding an object
-    (holding ?ag - agent ?o - object)
-    ;; whether agent is free to pick another object
-    (free ?ag - agent)
-    ;; link relation required by goals
-    (next ?o1 - object ?o2 - object)
-    ;; helper predicate set when objects are prepared to be linked
-    (ready-to-link ?o1 - object ?o2 - object)
-    ;; single current step marker to enforce ordering
-    (current-step ?s - step)
-    ;; successor relation for steps (static)
-    (step-succ ?s1 - step ?s2 - step)
+    ;; package state
+    (pkg-at ?p - package ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?pl - airplane)
+
+    ;; vehicle locations
+    (truck-at ?t - truck ?l - location)
+    (plane-at ?pl - airplane ?l - location)
+
+    ;; static location properties
+    (airport ?l - location)
+    (loc-in-city ?l - location ?c - city)
   )
 
-  ;; Operator picks an object when co-located, consumes the current step and advances to the successor step.
-  (:action pick-op
-    :parameters (?op - operator ?o - object ?loc - location ?s - step ?ns - step)
+  ;; Truck actions for driver_0 (truck_0 in city_0)
+  (:action drive_truck_0
+    :parameters (?from - location ?to - location)
     :precondition (and
-      (at ?o ?loc)
-      (at-agent ?op ?loc)
-      (free ?op)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_0 ?from)
+      (loc-in-city ?from city_0)
+      (loc-in-city ?to city_0)
     )
     :effect (and
-      (holding ?op ?o)
-      (not (at ?o ?loc))
-      (not (free ?op))
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (truck-at truck_0 ?from))
+      (truck-at truck_0 ?to)
     )
   )
 
-  ;; Assistant picks an object when co-located, consumes the current step and advances.
-  (:action pick-asst
-    :parameters (?as - assistant ?o - object ?loc - location ?s - step ?ns - step)
+  (:action load_truck_0
+    :parameters (?p - package ?loc - location)
     :precondition (and
-      (at ?o ?loc)
-      (at-agent ?as ?loc)
-      (free ?as)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_0 ?loc)
+      (pkg-at ?p ?loc)
+      ;; package must not already be in any vehicle (explicit checks for all vehicles)
+      (not (in-truck ?p truck_0))
+      (not (in-truck ?p truck_1))
+      (not (in-plane ?p airplane_0))
+      (not (in-plane ?p airplane_1))
     )
     :effect (and
-      (holding ?as ?o)
-      (not (at ?o ?loc))
-      (not (free ?as))
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (pkg-at ?p ?loc))
+      (in-truck ?p truck_0)
     )
   )
 
-  ;; Move an agent while holding an object from one location to another, advances the step.
-  (:action move-with-op
-    :parameters (?op - operator ?o - object ?from - location ?to - location ?s - step ?ns - step)
+  (:action unload_truck_0
+    :parameters (?p - package ?loc - location)
     :precondition (and
-      (holding ?op ?o)
-      (at-agent ?op ?from)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_0 ?loc)
+      (in-truck ?p truck_0)
     )
     :effect (and
-      (not (at-agent ?op ?from))
-      (at-agent ?op ?to)
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (in-truck ?p truck_0))
+      (pkg-at ?p ?loc)
     )
   )
 
-  (:action move-with-asst
-    :parameters (?as - assistant ?o - object ?from - location ?to - location ?s - step ?ns - step)
+  ;; Truck actions for driver_1 (truck_1 in city_1)
+  (:action drive_truck_1
+    :parameters (?from - location ?to - location)
     :precondition (and
-      (holding ?as ?o)
-      (at-agent ?as ?from)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_1 ?from)
+      (loc-in-city ?from city_1)
+      (loc-in-city ?to city_1)
     )
     :effect (and
-      (not (at-agent ?as ?from))
-      (at-agent ?as ?to)
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (truck-at truck_1 ?from))
+      (truck-at truck_1 ?to)
     )
   )
 
-  ;; Place an object: agent must be holding it and be at the placement location; agent becomes free again.
-  (:action place-op
-    :parameters (?op - operator ?o - object ?loc - location ?s - step ?ns - step)
+  (:action load_truck_1
+    :parameters (?p - package ?loc - location)
     :precondition (and
-      (holding ?op ?o)
-      (at-agent ?op ?loc)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_1 ?loc)
+      (pkg-at ?p ?loc)
+      ;; package must not already be in any vehicle
+      (not (in-truck ?p truck_0))
+      (not (in-truck ?p truck_1))
+      (not (in-plane ?p airplane_0))
+      (not (in-plane ?p airplane_1))
     )
     :effect (and
-      (at ?o ?loc)
-      (free ?op)
-      (not (holding ?op ?o))
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (pkg-at ?p ?loc))
+      (in-truck ?p truck_1)
     )
   )
 
-  (:action place-asst
-    :parameters (?as - assistant ?o - object ?loc - location ?s - step ?ns - step)
+  (:action unload_truck_1
+    :parameters (?p - package ?loc - location)
     :precondition (and
-      (holding ?as ?o)
-      (at-agent ?as ?loc)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (truck-at truck_1 ?loc)
+      (in-truck ?p truck_1)
     )
     :effect (and
-      (at ?o ?loc)
-      (free ?as)
-      (not (holding ?as ?o))
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (in-truck ?p truck_1))
+      (pkg-at ?p ?loc)
     )
   )
 
-  ;; Prepare two co-located objects for linking; requires them to be placed at the same location.
-  ;; This prevents a bookkeeping shortcut that would allow creating 'next' without physical placement.
-  (:action prepare-link
-    :parameters (?op - operator ?o1 - object ?o2 - object ?loc - location ?s - step ?ns - step)
+  ;; Airplane actions for pilot_0 (airplane_0)
+  (:action fly_airplane_0
+    :parameters (?from - location ?to - location)
     :precondition (and
-      (at ?o1 ?loc)
-      (at ?o2 ?loc)
-      (current-step ?s)
-      (step-succ ?s ?ns)
+      (plane-at airplane_0 ?from)
+      (airport ?from)
+      (airport ?to)
     )
     :effect (and
-      (ready-to-link ?o1 ?o2)
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (plane-at airplane_0 ?from))
+      (plane-at airplane_0 ?to)
     )
   )
 
-  ;; Link two objects producing the 'next' relation. Requires explicit preparation and operator participation.
-  (:action link-objects
-    :parameters (?op - operator ?o1 - object ?o2 - object ?s - step ?ns - step)
+  (:action load_airplane_0
+    :parameters (?p - package ?loc - location)
     :precondition (and
-      (ready-to-link ?o1 ?o2)
-      (current-step ?s)
-      (step-succ ?s ?ns)
-      (at-agent ?op ?loc) ;; ensure operator present somewhere; prevents remote-link shortcuts
+      (plane-at airplane_0 ?loc)
+      (airport ?loc)
+      (pkg-at ?p ?loc)
+      ;; package must not already be in any vehicle
+      (not (in-plane ?p airplane_0))
+      (not (in-plane ?p airplane_1))
+      (not (in-truck ?p truck_0))
+      (not (in-truck ?p truck_1))
     )
     :effect (and
-      (next ?o1 ?o2)
-      (not (ready-to-link ?o1 ?o2))
-      (not (current-step ?s))
-      (current-step ?ns)
+      (not (pkg-at ?p ?loc))
+      (in-plane ?p airplane_0)
+    )
+  )
+
+  (:action unload_airplane_0
+    :parameters (?p - package ?loc - location)
+    :precondition (and
+      (plane-at airplane_0 ?loc)
+      (airport ?loc)
+      (in-plane ?p airplane_0)
+    )
+    :effect (and
+      (not (in-plane ?p airplane_0))
+      (pkg-at ?p ?loc)
+    )
+  )
+
+  ;; Airplane actions for pilot_1 (airplane_1)
+  (:action fly_airplane_1
+    :parameters (?from - location ?to - location)
+    :precondition (and
+      (plane-at airplane_1 ?from)
+      (airport ?from)
+      (airport ?to)
+    )
+    :effect (and
+      (not (plane-at airplane_1 ?from))
+      (plane-at airplane_1 ?to)
+    )
+  )
+
+  (:action load_airplane_1
+    :parameters (?p - package ?loc - location)
+    :precondition (and
+      (plane-at airplane_1 ?loc)
+      (airport ?loc)
+      (pkg-at ?p ?loc)
+      ;; package must not already be in any vehicle
+      (not (in-plane ?p airplane_0))
+      (not (in-plane ?p airplane_1))
+      (not (in-truck ?p truck_0))
+      (not (in-truck ?p truck_1))
+    )
+    :effect (and
+      (not (pkg-at ?p ?loc))
+      (in-plane ?p airplane_1)
+    )
+  )
+
+  (:action unload_airplane_1
+    :parameters (?p - package ?loc - location)
+    :precondition (and
+      (plane-at airplane_1 ?loc)
+      (airport ?loc)
+      (in-plane ?p airplane_1)
+    )
+    :effect (and
+      (not (in-plane ?p airplane_1))
+      (pkg-at ?p ?loc)
     )
   )
 )

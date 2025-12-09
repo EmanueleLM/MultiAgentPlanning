@@ -1,76 +1,143 @@
-(define (domain orchestration_workflow)
+(define (domain objects-actions)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent doc)
+
+  (:types
+    obj
+    stage
+  )
 
   (:predicates
-    ;; availability of documents
-    (available ?d - doc)
-    ;; orchestrator requests
-    (requested_env_public)
-    (requested_planners_info)
-    ;; fragments produced by planners
-    (fragmentA_ready ?d - doc)
-    (fragmentB_ready ?d - doc)
-    ;; cleaned fragment artifact produced by auditor
-    (clean_fragments_ready ?d - doc)
-    ;; final compiled artifacts flags
-    (compiled_domain)
-    (compiled_problem)
+    (hand ?o - obj)
+    (cats ?o - obj)
+    (texture ?o - obj)
+    (vase ?o - obj ?p - obj)
+    (next ?o - obj ?p - obj)
+    (sneeze ?o - obj)
+    (collect ?o - obj ?p - obj)
+    (spring ?o - obj)
+    (stupendous ?o - obj)
+
+    ;; Explicit discrete stage progression to enforce ordering/contiguity
+    (current-stage ?s - stage)
+    (stage-next ?s - stage ?t - stage)
   )
 
-  ;; Orchestrator requests both environment public info and planner private info.
-  (:action request_blocks_orchestrator
-    :parameters ()
-    :precondition (and (not (requested_env_public)) (not (requested_planners_info)))
-    :effect (and (requested_env_public) (requested_planners_info))
+  ;; Each action must be executed at the current stage and advances to the successor stage.
+  ;; This enforces an explicit, contiguous ordering of action occurrences and prevents
+  ;; oscillation/bypassing: an action consumes the current-stage and produces its successor.
+
+  (:action paltry
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (vase ?o0 ?o1)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; Environment posts the public information document in response to a request.
-  (:action env_provide_public
-    :parameters (?env_doc - doc)
-    :precondition (and (requested_env_public) (not (available ?env_doc)))
-    :effect (and (available ?env_doc))
+  (:action sip
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (next ?o0 ?o2)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; Planner A makes its private information available in response to the request.
-  (:action plannerA_provide_private
-    :parameters (?pa_doc - doc)
-    :precondition (and (requested_planners_info) (not (available ?pa_doc)))
-    :effect (and (available ?pa_doc))
+  (:action clip
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (next ?o0 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; Planner B makes its private information available in response to the request.
-  (:action plannerB_provide_private
-    :parameters (?pb_doc - doc)
-    :precondition (and (requested_planners_info) (not (available ?pb_doc)))
-    :effect (and (available ?pb_doc))
+  (:action wretched
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (sneeze ?o0)
+      (texture ?o1)
+      (texture ?o2)
+      (stupendous ?o3)
+      (next ?o0 ?o1)
+      (collect ?o1 ?o3)
+      (collect ?o2 ?o3)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; Planner A produces fragment A after both the public info and its private info are available.
-  (:action produce_fragmentA_by_plannerA
-    :parameters (?pa_doc - doc ?env_doc - doc ?fragA_doc - doc)
-    :precondition (and (available ?pa_doc) (available ?env_doc) (not (fragmentA_ready ?fragA_doc)))
-    :effect (and (fragmentA_ready ?fragA_doc) (available ?pa_doc) (available ?env_doc))
+  (:action memory
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (cats ?o0)
+      (spring ?o1)
+      (spring ?o2)
+      (next ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 
-  ;; Planner B produces fragment B after both the public info and its private info are available.
-  (:action produce_fragmentB_by_plannerB
-    :parameters (?pb_doc - doc ?env_doc - doc ?fragB_doc - doc)
-    :precondition (and (available ?pb_doc) (available ?env_doc) (not (fragmentB_ready ?fragB_doc)))
-    :effect (and (fragmentB_ready ?fragB_doc) (available ?pb_doc) (available ?env_doc))
-  )
-
-  ;; Auditor audits the two planner fragments and produces a cleaned fragment artifact.
-  (:action auditor_audit
-    :parameters (?fragA_doc - doc ?fragB_doc - doc ?clean_doc - doc)
-    :precondition (and (fragmentA_ready ?fragA_doc) (fragmentB_ready ?fragB_doc) (not (clean_fragments_ready ?clean_doc)))
-    :effect (and (clean_fragments_ready ?clean_doc))
-  )
-
-  ;; Orchestrator compiles the final domain/problem artifacts after cleaned fragments are available.
-  (:action orchestrator_compile
-    :parameters (?clean_doc - doc)
-    :precondition (and (clean_fragments_ready ?clean_doc) (not (compiled_domain)) (not (compiled_problem)))
-    :effect (and (compiled_domain) (compiled_problem))
+  (:action tightfisted
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (stage-next ?s ?s2)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (vase ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
   )
 )

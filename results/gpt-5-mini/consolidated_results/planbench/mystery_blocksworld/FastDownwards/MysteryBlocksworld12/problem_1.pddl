@@ -1,39 +1,40 @@
-; Problem: scenario-1
-; Corresponds to the first statement (objects object_0 .. object_11).
-(define (problem mysteryblocksworld12-scenario1)
-  (:domain MysteryBlocksworld12)
+(define (problem mysteryblocksworld-problem)
+  (:domain mysteryblocksworld)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
+    a b c d - entity
+    ph1 ph2 ph3 ph4 ph5 ph6 ph7 ph8 ph9 ph10 ph11 ph12 - phase
   )
   (:init
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_10)
-    (hand object_11)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_11 object_5)
-    (next object_3 object_6)
-    (next object_4 object_7)
-    (next object_9 object_8)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; initial craving relations
+    (craves a b)
+    (craves b c)
+    (craves c d)
+
+    ;; initial world state
+    (harmony)
+    (planet d)
+    (province a)
+
+    ;; phase adjacency: linear sequence ph1 -> ph2 -> ... -> ph12 ; final phase loops to itself
+    (next ph1 ph2)
+    (next ph2 ph3)
+    (next ph3 ph4)
+    (next ph4 ph5)
+    (next ph5 ph6)
+    (next ph6 ph7)
+    (next ph7 ph8)
+    (next ph8 ph9)
+    (next ph9 ph10)
+    (next ph10 ph11)
+    (next ph11 ph12)
+    (next ph12 ph12)
+
+    ;; only the first phase is ready at start
+    (phase-ready ph1)
   )
   (:goal (and
-    (next object_10 object_8)
-    (next object_11 object_7)
-    (next object_9 object_6)
+    (craves b c)
+    (craves c d)
+    (craves d a)
   ))
 )

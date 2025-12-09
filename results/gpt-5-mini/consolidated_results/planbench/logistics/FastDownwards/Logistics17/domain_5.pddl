@@ -1,148 +1,153 @@
-(define (domain Logistics17)
+(define (domain logistics17)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    package truck airplane location city stage
+  )
 
   (:predicates
-    (cats ?o - obj)
-    (hand ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
-    ;; occupancy marker: object currently has exactly one "next" target (maintained by actions)
-    (has-next ?o - obj)
+    ; package/location and vehicle/location relations
+    (at-package ?p - package ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+
+    ; package-in-vehicle relations
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    ; city membership and airport marker
+    (in-city ?l - location ?c - city)
+    (is-airport ?l - location)
+
+    ; a simple exclusivity predicate: package is not inside any vehicle
+    (free ?p - package)
+
+    ; explicit discrete time / stage progression
+    (current-stage ?s - stage)
+    (succ ?s - stage ?s2 - stage)
   )
 
-  ;; paltry:
-  ;; pre: hand ?h, cats ?c, texture ?t, vase ?h ?c, next ?c ?t, ?c must already have a next, ?h must not already have a next
-  ;; add: next ?h ?t, has-next ?h
-  ;; del: vase ?h ?c
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+  ; Load package into a truck at the truck's location.
+  ; Preconditions: package is at the same location, truck is at that location, package is free (not in any vehicle),
+  ; current stage must advance to a direct successor stage.
+  ; Effects: package removed from location, placed in truck, marked not free, and stage advances.
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-      (has-next ?c)
-      (not (has-next ?h))
+      (at-package ?p ?l)
+      (at-truck ?t ?l)
+      (free ?p)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (has-next ?h)
-      (not (vase ?h ?c))
-    )
-  )
-
-  ;; sip:
-  ;; pre: hand ?h, cats ?c, texture ?t, next ?h ?t, next ?c ?t, both must have has-next
-  ;; add: vase ?h ?c
-  ;; del: next ?h ?t, has-next ?h
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-      (has-next ?h)
-      (has-next ?c)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
-      (not (has-next ?h))
+      (not (at-package ?p ?l))
+      (in-truck ?p ?t)
+      (not (free ?p))
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; clip:
-  ;; pre: hand ?h, sneeze ?s, texture ?t, next ?s ?t, next ?h ?t, both have has-next
-  ;; add: vase ?h ?s
-  ;; del: next ?h ?t, has-next ?h
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
+  ; Unload package from a truck to the truck's current location.
+  ; Preconditions: package is in the truck, truck is at the specified location, stage advances.
+  ; Effects: package removed from truck, placed at location, marked free, and stage advances.
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
-      (has-next ?s)
-      (has-next ?h)
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
-      (not (has-next ?h))
+      (not (in-truck ?p ?t))
+      (at-package ?p ?l)
+      (free ?p)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; wretched:
-  ;; pre: sneeze ?s, texture ?t1, texture ?t2, stupendous ?st, next ?s ?t1, collect ?t1 ?st, collect ?t2 ?st, and ?s must have has-next
-  ;; add: next ?s ?t2
-  ;; del: next ?s ?t1
-  ;; (has-next for ?s remains true because it moves its target)
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
+  ; Drive a truck between two locations in the same city.
+  ; Preconditions: truck at from-location, both locations in same city, stage advances.
+  ; Effects: truck moves from from-location to to-location, and stage advances.
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (has-next ?s)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; memory:
-  ;; pre: cats ?c, spring ?s1, spring ?s2, next ?c ?s1, and ?c must have has-next
-  ;; add: next ?c ?s2
-  ;; del: next ?c ?s1
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+  ; Load package into an airplane at an airport location.
+  ; Preconditions: package at same airport location, airplane at that airport, package free, stage advances.
+  ; Effects: package removed from location, placed in airplane, marked not free, and stage advances.
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
-      (has-next ?c)
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
+      (is-airport ?l)
+      (free ?p)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (at-package ?p ?l))
+      (in-plane ?p ?a)
+      (not (free ?p))
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; tightfisted:
-  ;; pre: hand ?h, sneeze ?s, texture ?t, next ?s ?t, vase ?h ?s, ?s must have has-next, ?h must not have has-next
-  ;; add: next ?h ?t, has-next ?h
-  ;; del: vase ?h ?s
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
+  ; Unload package from an airplane at an airport location.
+  ; Preconditions: package is in the plane, airplane is at the specified airport, stage advances.
+  ; Effects: package removed from plane, placed at the airport location, marked free, and stage advances.
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (has-next ?s)
-      (vase ?h ?s)
-      (not (has-next ?h))
+      (in-plane ?p ?a)
+      (at-airplane ?a ?l)
+      (is-airport ?l)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (has-next ?h)
-      (not (vase ?h ?s))
+      (not (in-plane ?p ?a))
+      (at-package ?p ?l)
+      (free ?p)
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
+  )
+
+  ; Fly an airplane from one airport to another airport (different or same city).
+  ; Preconditions: airplane at from-airport, both locations are airports, stage advances.
+  ; Effects: airplane moves to to-airport and stage advances. Packages inside the airplane remain in-plane.
+  (:action fly
+    :parameters (?a - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (at-airplane ?a ?from)
+      (is-airport ?from)
+      (is-airport ?to)
+      (current-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

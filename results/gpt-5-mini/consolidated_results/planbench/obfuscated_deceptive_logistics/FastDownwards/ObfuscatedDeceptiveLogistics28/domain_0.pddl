@@ -1,74 +1,129 @@
-(define (domain orchestration)
+(define (domain pipeline-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent doc)
 
+  ;; Types for the pipeline
+  (:types
+    phase
+    dataset
+    model
+    analyzer
+    synthesizer
+    auditor
+    orchestrator
+  )
+
+  ;; Predicates
+  ;; Phase management
   (:predicates
-    ;; Document availability
-    (available ?d - doc)
-    ;; Explicit request flags to enforce ordering
-    (requested_env_public)
-    (requested_planners_info)
-    ;; Fragments produced by the orchestrator
-    (fragment_ready ?d - doc)
-    ;; Final compiled artifacts
-    (compiled_domain)
-    (compiled_problem)
+    (current-phase ?p - phase)
+    (phase-next ?p - phase ?q - phase)
+
+    ;; Permissions for which phase an action is allowed in
+    (allowed-analyze ?p - phase)
+    (allowed-synthesize ?p - phase)
+    (allowed-audit ?p - phase)
+    (allowed-deliver ?p - phase)
+
+    ;; Data and artifact facts
+    (analyzed ?d - dataset)
+    (analysis-done-by ?d - dataset ?a - analyzer)
+
+    (model-created ?m - model)
+    (model-valid ?m - model)
+    (synthesized-by ?m - model ?s - synthesizer)
+
+    (audited ?m - model)
+    (audited-by ?m - model ?u - auditor)
+
+    (delivered ?m - model)
   )
 
-  ;; The orchestrator explicitly requests the two required data blocks.
-  ;; This makes subsequent provide actions depend on a prior request, enforcing order.
-  (:action request_blocks_orchestrator
-    :parameters ()
-    :precondition (and (not (requested_env_public)))
-    :effect (and (requested_env_public) (requested_planners_info))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Actions contributed by the "Analyzer" agent (analysis phase)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; The analyze action is only permitted in phases marked as allowed-analyze.
+  ;; It requires the pipeline to be in the current phase and advances the phase
+  ;; to the next phase specified by phase-next.
+  (:action analyze
+    :parameters (?an - analyzer ?d - dataset ?p - phase ?q - phase)
+    :precondition (and
+      (current-phase ?p)
+      (phase-next ?p ?q)
+      (allowed-analyze ?p)
+      (not (analyzed ?d))
+    )
+    :effect (and
+      (analyzed ?d)
+      (analysis-done-by ?d ?an)
+      (not (current-phase ?p))
+      (current-phase ?q)
+    )
   )
 
-  ;; The environment posts the public information document in response to a request.
-  ;; Can be applied to any doc object; in the problem instance the intended object is env_public_doc.
-  (:action env_provide_public
-    :parameters (?d - doc)
-    :precondition (and (requested_env_public) (not (available ?d)))
-    :effect (and (available ?d))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Actions contributed by the "Synthesizer" agent (synthesis phase)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; The synthesize action is only permitted in phases marked as allowed-synthesize.
+  ;; It requires analyzed data and advances the pipeline to the next phase.
+  ;; It must create a model and must mark that model valid (no post-hoc fixes allowed).
+  (:action synthesize
+    :parameters (?s - synthesizer ?d - dataset ?m - model ?p - phase ?q - phase)
+    :precondition (and
+      (current-phase ?p)
+      (phase-next ?p ?q)
+      (allowed-synthesize ?p)
+      (analyzed ?d)
+      (not (model-created ?m))
+    )
+    :effect (and
+      (model-created ?m)
+      (model-valid ?m)               ; hard constraint: synthesized models are valid
+      (synthesized-by ?m ?s)
+      (not (current-phase ?p))
+      (current-phase ?q)
+    )
   )
 
-  ;; Planner B posts its private initial facts and produced plan.
-  ;; In the problem instance the intended object is plannerB_private_doc.
-  (:action plannerB_provide_private
-    :parameters (?d - doc)
-    :precondition (and (requested_planners_info) (not (available ?d)))
-    :effect (and (available ?d))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Actions contributed by the "Auditor" agent (audit phase)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; The audit action is only permitted in phases marked as allowed-audit.
+  ;; It requires a created, valid model and advances the pipeline to the next phase.
+  (:action audit
+    :parameters (?u - auditor ?m - model ?p - phase ?q - phase)
+    :precondition (and
+      (current-phase ?p)
+      (phase-next ?p ?q)
+      (allowed-audit ?p)
+      (model-created ?m)
+      (model-valid ?m)
+      (not (audited ?m))
+    )
+    :effect (and
+      (audited ?m)
+      (audited-by ?m ?u)
+      (not (current-phase ?p))
+      (current-phase ?q)
+    )
   )
 
-  ;; Planner A posts its private initial facts and/or produced plan.
-  ;; In the problem instance the intended object is plannerA_private_doc.
-  (:action plannerA_provide_private
-    :parameters (?d - doc)
-    :precondition (and (requested_planners_info) (not (available ?d)))
-    :effect (and (available ?d))
-  )
-
-  ;; The orchestrator produces fragment_B after both the environment public info
-  ;; and planner B's private info are available. The fragment object is provided
-  ;; as a parameter so its identity is explicit in the grounded plan.
-  (:action produce_fragmentB_orchestrator
-    :parameters (?env_doc - doc ?pb_doc - doc ?frag_doc - doc)
-    :precondition (and (available ?env_doc) (available ?pb_doc) (not (fragment_ready ?frag_doc)))
-    :effect (and (fragment_ready ?frag_doc))
-  )
-
-  ;; The orchestrator produces fragment_A after environment public info
-  ;; and planner A's private info are available.
-  (:action produce_fragmentA_orchestrator
-    :parameters (?env_doc - doc ?pa_doc - doc ?frag_doc - doc)
-    :precondition (and (available ?env_doc) (available ?pa_doc) (not (fragment_ready ?frag_doc)))
-    :effect (and (fragment_ready ?frag_doc))
-  )
-
-  ;; The orchestrator compiles the final domain and problem only after both fragments are ready.
-  ;; The compiled artifacts are modeled as boolean goal predicates compiled_domain and compiled_problem.
-  (:action compile_domain_problem_by_orchestrator
-    :parameters (?fragA - doc ?fragB - doc)
-    :precondition (and (fragment_ready ?fragA) (fragment_ready ?fragB) (not (compiled_domain)) (not (compiled_problem)))
-    :effect (and (compiled_domain) (compiled_problem))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Action contributed by the "Orchestrator" agent (delivery / terminal phase)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; The deliver action is only permitted in phases marked as allowed-deliver.
+  ;; It requires that the model has been audited. It does not allow delivery
+  ;; unless prior phases and constraints have been satisfied.
+  (:action deliver
+    :parameters (?o - orchestrator ?m - model ?p - phase)
+    :precondition (and
+      (current-phase ?p)
+      (allowed-deliver ?p)
+      (audited ?m)
+      (not (delivered ?m))
+    )
+    :effect (and
+      (delivered ?m)
+      ;; keep current-phase ?p as the terminal phase, do not revert or bypass
+    )
   )
 )

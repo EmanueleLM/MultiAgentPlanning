@@ -1,0 +1,106 @@
+{
+    "name": "HanoiScaling14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_planner",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_planner": {
+            "private_information": [
+                "There are 6 disks labeled A (smallest) through F (largest).",
+                "Legal moves are moving the top disk from one peg to another subject to the rules."
+            ],
+            "goal": "Move the full tower from the middle peg to the left peg while leaving the right peg empty, obeying all Tower of Hanoi rules."
+        },
+        "simulator": {
+            "private_information": [
+                "The simulator can deterministically apply a move sequence to pegs and report the resulting stacks.",
+                "The simulator enforces that only the top disk of a peg may be moved and that no larger disk may be placed on a smaller one."
+            ],
+            "goal": "Validate and trace a proposed move sequence for the Tower of Hanoi instance and report any rule violations."
+        },
+        "auditor": {
+            "private_information": [
+                "The auditor inspects temporal and causal consistency and removes bookkeeping shortcuts such as token quotas or post-hoc penalties.",
+                "The auditor prefers explicit, causal step-by-step correctness over compressed or annotated plans."
+            ],
+            "goal": "Ensure the candidate plan is temporally and causally consistent, remove bookkeeping shortcuts, and suggest corrected moves if needed."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate plans, simulation traces, and audit reports to produce final artifacts for planners."
+            ],
+            "goal": "Produce a FastDownward-compatible PDDL domain and problem that encode the Tower of Hanoi instance and solve the task."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "visibility": 0
+        },
+        "public_information": [
+            "There are three pegs named left middle and right.",
+            "There are six disks from smallest to largest named A B C D E F.",
+            "Initial state: the middle peg holds from top to bottom A B C D E F and the left and right pegs are empty.",
+            "Goal state: the left peg should hold from top to bottom A B C D E F and both the middle peg and right peg should be empty.",
+            "Allowed action: move the top disk from one peg to another subject to the rules.",
+            "Rules: only one disk at a time, only move the top disk of a peg, and never place a larger disk on top of a smaller disk.",
+            "The right peg may be used as an intermediate but must end empty."
+        ]
+    },
+    "workflow": {
+        "disk_planner": {
+            "plan": {
+                "input": [],
+                "output": "planner_plan",
+                "system_prompt": "You are an expert in Tower of Hanoi reasoning for concrete instances. Given the public information and your private information, generate a legal, ordered move sequence that solves the instance for six disks. Do not produce PDDL. Represent each move as source->target using peg names left middle right. Keep the sequence explicit and precise.",
+                "prompt": "Your name is disk_planner. You see the following public information: {environment->public_information}. You have these private facts: {agents->disk_planner->private_information}. Your objective is: {agents->disk_planner->goal}. Produce an ordered list of moves that would solve the problem under the stated rules with no omitted intermediate moves."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "planner_plan"
+                ],
+                "output": "simulation_trace",
+                "system_prompt": "You are a deterministic simulator for Tower of Hanoi move sequences. Given an ordered list of moves, apply them step by step to the initial configuration. For each move, report the move index, the move, the state of all three pegs after the move represented as ordered stacks top-to-bottom, and flag any rule violations. Do not produce PDDL. Focus on exact state transitions and clear violation reporting.",
+                "prompt": "Your name is simulator. You have the public information: {environment->public_information}. You have private facts: {agents->simulator->private_information}. You will receive a candidate plan: {planner_plan}. Simulate it and return a detailed trace as described."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "simulation_trace",
+                    "planner_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Do not output PDDL. Inspect the plan and simulation trace to detect subtle temporal, causal, or bookkeeping shortcuts. Remove or flag any implicit shortcuts such as aggregated tokens, hypothetical retroactive fixes, quotas, or post-hoc penalties. If the plan requires correction for causal consistency, produce a corrected explicit move sequence and a short justification for each correction.",
+                "prompt": "Your name is auditor. You see public information: {environment->public_information}. Your private knowledge: {agents->auditor->private_information}. You will receive the planner plan and the simulation trace: {planner_plan} {simulation_trace}. Provide an audit report that confirms consistency or returns corrections and explanations that make the plan fully explicit and causally sound."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_plan",
+                    "simulation_trace",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL modelling and in preparing problems for the FastDownward planner. Integrate the planner plan, simulation trace, and auditor corrections to produce a single, complete FastDownward-compatible PDDL domain and PDDL problem that encode the Tower of Hanoi instance with six disks and three pegs. Use STRIPS-style actions and avoid planner-specific extensions unsupported by FastDownward. Keep action definitions explicit and, if representing agents or roles, keep their actions distinct in the domain. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The output must be only the two tagged PDDL sections.",
+                "prompt": "Your name is orchestrator. The global goal to solve is: {agents->orchestrator->goal}. Public information: {environment->public_information}. The other agents provided the following artifacts: planner plan: {planner_plan} simulation trace: {simulation_trace} audit report: {audit_report}. Integrate these inputs, resolve naming inconsistencies, apply auditor corrections if any, and output a FastDownward-compatible PDDL domain and problem that represent the initial and goal configurations and the legal move action(s) for the six-disk Tower of Hanoi instance. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "disk_planner.plan->simulator.simulate",
+            "simulator.simulate->auditor.audit",
+            "disk_planner.plan->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

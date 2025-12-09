@@ -1,19 +1,35 @@
-(define (problem logistics1-problem0)
+(define (problem transport_problem)
   (:domain Logistics1)
+
   (:objects
-    object_5 object_6 object_7 object_8 - obj
+    package_0 package_1 - package
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    location_0_0 location_1_0 - location
+    city_0 city_1 - city
   )
+
   (:init
-    ;; Minimal initial facts needed to achieve the goals:
-    ;; object_7 already points to object_6, and object_8 can be advanced from object_5 to object_6 via memory
-    (next object_7 object_6)
-    (next object_8 object_5)
-    (cats object_8)
-    (spring object_5)
-    (spring object_6)
+    ;; Initial package locations
+    (package-at package_0 location_1_0)
+    (package-at package_1 location_0_0)
+
+    ;; Initial vehicle locations
+    (truck-at truck_0 location_0_0)
+    (truck-at truck_1 location_1_0)
+    (airplane-at airplane_0 location_1_0)
+
+    ;; Geography
+    (located-in-city location_0_0 city_0)
+    (located-in-city location_1_0 city_1)
+
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
   )
+
   (:goal (and
-    (next object_7 object_6)
-    (next object_8 object_6)
+    (package-at package_0 location_1_0)
+    (package-at package_1 location_1_0)
   ))
 )

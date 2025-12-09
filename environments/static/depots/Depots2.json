@@ -2,107 +2,186 @@
     "name": "Depots2",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 5,
         "names": [
-            "planner",
-            "simulator",
+            "driver",
+            "hoist_operator",
+            "depot_manager",
             "auditor",
             "orchestrator"
         ],
-        "planner": {
+        "driver": {
             "private_information": [
-                "Role: analyze the domain-level action descriptions and the human plan",
-                "Output: structured symbolic analysis of preconditions and effects mapped to canonical predicate names"
+                "I am responsible for routing and driving trucks between places.",
+                "Trucks can drive along roads connecting any two depots or distributors.",
+                "Driving a truck requires the truck to be at the origin place."
             ],
-            "goal": "Produce a clear mapping from the described actions to standard PDDL-style predicates and identify any missing or ambiguous references in the plan or initial statements."
+            "goal": "Transport crates so that crate1 is on pallet0 and crate2 is on pallet3."
         },
-        "simulator": {
+        "hoist_operator": {
             "private_information": [
-                "Role: perform deterministic forward simulation of action sequences on the provided initial states",
-                "Output: state transition traces and detected mismatches between required preconditions and actual state"
+                "I operate hoists that can lift, drop, load into trucks, and unload from trucks.",
+                "A hoist can only manipulate a crate if it is at the same place as the crate.",
+                "Hoists have availability status and can be lifting a crate or available."
             ],
-            "goal": "Simulate the given plans step by step on the initial states and report resulting states and any failures or unexpected side effects."
+            "goal": "Coordinate hoist actions to move crates to achieve crate1 on pallet0 and crate2 on pallet3."
+        },
+        "depot_manager": {
+            "private_information": [
+                "I manage the inventory and surfaces (pallets and crates) at depots and distributors.",
+                "Surfaces include pallets and crates, and 'clear' indicates nothing is on top of that surface."
+            ],
+            "goal": "Ensure crates and pallets are placed and sequenced so the overall delivery goal is met."
         },
         "auditor": {
             "private_information": [
-                "Role: audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
-                "Output: a conservative corrected constraint set and recommendations that eliminate post-hoc adjustments and ensure causal monotonicity"
+                "I audit temporal and causal consistency of plans and remove bookkeeping shortcuts or implicit assumptions.",
+                "I check for missing preconditions, race conditions, concurrency issues, and post-hoc penalties."
             ],
-            "goal": "Detect and correct temporal, causal, and bookkeeping shortcuts in the action models and plan traces so the orchestrator can produce an honest PDDL encoding suitable for automated planners."
+            "goal": "Provide an audit report that enforces explicit causal tokens and removes bookkeeping shortcuts so plans are executable and consistent."
         },
         "orchestrator": {
             "private_information": [
-                "Role: integrate analyses and produce the final PDDL domain and problem files targeting the FastDownwards solver",
-                "Keep agent contributions distinct and ensure the final encoding is executable by FastDownwards"
+                "I integrate specifications from other agents and produce the final PDDL domain and problem suitable for the FastDownwards solver.",
+                "I must keep each agent's actions distinct and resolve naming or modeling ambiguities."
             ],
-            "goal": "Emit a complete PDDL domain and a PDDL problem compatible with FastDownwards that achieves the stated goals for the given initial conditions after integrating planner, simulator, and auditor outputs."
+            "goal": "Produce a combined PDDL domain and problem that achieves crate1 on pallet0 and crate2 on pallet3 and is compatible with FastDownwards."
         }
     },
     "environment": {
         "init": {
-            "grid_size": 4,
-            "visibility": 1
+            "places": [
+                "depot0",
+                "depot1",
+                "depot2",
+                "distributor0"
+            ],
+            "pallets": [
+                "pallet0",
+                "pallet1",
+                "pallet2",
+                "pallet3"
+            ],
+            "crates": [
+                "crate0",
+                "crate1",
+                "crate2"
+            ],
+            "hoists": [
+                "hoist0",
+                "hoist1",
+                "hoist2",
+                "hoist3"
+            ],
+            "trucks": [
+                "truck0",
+                "truck1",
+                "truck2"
+            ],
+            "initial_facts": [
+                "crate0 is at depot2",
+                "crate1 is at depot0",
+                "crate2 is at depot2",
+                "hoist0 is at depot0",
+                "hoist1 is at depot1",
+                "hoist2 is at depot2",
+                "hoist3 is at distributor0",
+                "pallet0 is at depot0",
+                "pallet1 is at depot1",
+                "pallet2 is at depot2",
+                "pallet3 is at distributor0",
+                "truck0 is at depot2",
+                "truck1 is at depot0",
+                "truck2 is at depot2",
+                "hoist0 is available",
+                "hoist1 is available",
+                "hoist2 is available",
+                "hoist3 is available",
+                "crate1 is clear",
+                "crate2 is clear",
+                "pallet1 is clear",
+                "pallet3 is clear",
+                "crate0 is on pallet2",
+                "crate1 is on pallet0",
+                "crate2 is on crate0"
+            ],
+            "goal_facts": [
+                "crate1 is on pallet0",
+                "crate2 is on pallet3"
+            ]
         },
         "public_information": [
-            "Objects present: object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8",
-            "Actions and arities: paltry(object_0,object_1,object_2), sip(object_0,object_1,object_2), clip(object_0,object_1,object_2), wretched(object_0,object_1,object_2,object_3), memory(object_0,object_1,object_2), tightfisted(object_0,object_1,object_2)",
-            "paltry preconditions: hand O0, cats O1, texture O2, vase O0 O1, next O1 O2; paltry effects: add next O0 O2; del vase O0 O1",
-            "sip preconditions: hand O0, cats O1, texture O2, next O0 O2, next O1 O2; sip effects: add vase O0 O1; del next O0 O2",
-            "clip preconditions: hand O0, sneeze O1, texture O2, next O1 O2, next O0 O2; clip effects: add vase O0 O1; del next O0 O2",
-            "wretched preconditions: sneeze O0, texture O1, texture O2, stupendous O3, next O0 O1, collect O1 O3, collect O2 O3; wretched effects: add next O0 O2; del next O0 O1",
-            "memory preconditions: cats O0, spring O1, spring O2, next O0 O1; memory effects: add next O0 O2; del next O0 O1",
-            "tightfisted preconditions: hand O0, sneeze O1, texture O2, next O1 O2, vase O0 O1; tightfisted effects: add next O0 O2; del vase O0 O1",
-            "Initial statement A: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6",
-            "Goal A: next object_7 object_6 and next object_8 object_6",
-            "Plan A: memory object_0 object_6 object_5 ; sip object_8 object_0 object_5 ; memory object_0 object_5 object_6 ; paltry object_8 object_0 object_6",
-            "Initial statement B: cats object_0, collect object_5 object_1, collect object_6 object_2, hand object_7, hand object_8, next object_0 object_6, next object_3 object_5, next object_4 object_6, next object_7 object_6, next object_8 object_6, sneeze object_3, sneeze object_4, spring object_5, spring object_6, stupendous object_1, stupendous object_2, texture object_5, texture object_6",
-            "Goal B: next object_7 object_5 and next object_8 object_5",
-            "Plan B: (not provided) the human left the second plan blank and expects analysis and a validity check"
+            "There are places of type depot and distributor.",
+            "Depots and distributors are fully connected by roads so trucks can drive between any pair of places.",
+            "A depot is a type of place.",
+            "A distributor is a type of place.",
+            "A pallet is a type of surface.",
+            "A crate is a type of surface and crates can be stacked.",
+            "Actions available are drive truck, hoist lift, hoist drop, hoist load-into-truck, hoist unload-from-truck.",
+            "Driving a truck moves the truck from origin place to destination place and requires the truck to be at the origin.",
+            "Hoist lift requires hoist and crate to be at the same place, the hoist to be available, and the crate to be clear.",
+            "After hoist lift the crate is held by the hoist, the hoist is not available, the crate is no longer at the place, and the previous surface becomes clear.",
+            "Hoist drop requires hoist and target surface to be at the same place, the surface to be clear, and the hoist to be lifting that crate.",
+            "After hoist drop the hoist becomes available, the crate is at the place on the surface, the surface is not clear, the crate is clear, and the hoist is not lifting the crate.",
+            "Hoist load-into-truck requires hoist and truck to be at the same place and the hoist to be lifting the crate.",
+            "Hoist unload-from-truck requires hoist and truck at the same place, the hoist to be available, and the crate to be in the truck. After unload the crate is held by the hoist and the hoist becomes not available.",
+            "Modeling should avoid bookkeeping shortcuts and must make preconditions and effects explicit for temporal and concurrent execution."
         ]
     },
     "workflow": {
-        "planner": {
-            "analysis": {
+        "driver": {
+            "spec": {
                 "input": [],
-                "output": "planner_analysis",
-                "system_prompt": "You are the planner analyst. Inspect the environment public information and the human plan and produce a concise structured mapping from the described natural-language action schemas to canonical predicate names and parameter roles. Do not produce final PDDL files here; instead output a canonical action table with preconditions, add effects, delete effects, and any explicit ambiguities or missing references.",
-                "prompt": "Agent name: planner. Use the environment public information: {environment->public_information}. Use the planner private information: {agents->planner->private_information}. Goal: {agents->planner->goal}. Provide a step-by-step symbolic analysis of actions and the given plan, listing for each action the required preconditions, add effects, delete effects, parameter bindings as understood, and any ambiguities to resolve."
+                "output": "spec_driver",
+                "system_prompt": "You are the driver expert. Provide a concise specification of the driving actions for trucks including preconditions, effects, parameters, and any required invariants. Do not emit PDDL. Focus on the motion model, required location predicates, and concurrency considerations.",
+                "prompt": "Your role is driver. You see the public information and initial facts. Describe the drive action from one place to another, list required predicates and typical preconditions and effects, and call out any modeling choices or ambiguities that an orchestrator must resolve. Mention assumptions about instantaneous versus durative driving and resource conflicts for trucks."
             }
         },
-        "simulator": {
-            "trace": {
+        "hoist_operator": {
+            "spec": {
                 "input": [],
-                "output": "simulator_trace",
-                "system_prompt": "You are the deterministic simulator. Take an initial state and a candidate plan and simulate each action application, producing the state trace after each step and any precondition failures or unexpected deletions. Do not write PDDL domain or problem files; produce an execution trace and a summary of failures or successful goal attainment.",
-                "prompt": "Agent name: simulator. Use the environment public information: {environment->public_information}. Use the simulator private information: {agents->simulator->private_information}. Goal: {agents->simulator->goal}. Simulate the human plan(s) on the matching initial statement(s) and provide a stepwise state trace and a final assessment whether the goal is reached, and if not, why."
+                "output": "spec_hoist_operator",
+                "system_prompt": "You are the hoist operations expert. Provide a concise specification of hoist actions including lift, drop, load-into-truck, and unload-from-truck. Do not emit PDDL. Include preconditions, effects, parameters, and constraints about availability and place alignment. Highlight stacking rules and surface clearance semantics.",
+                "prompt": "Your role is hoist operator. Use the public information and initial facts to describe hoist-related actions in detail. Enumerate predicates needed to represent hoist availability, lifting state, crate-in-truck state, crate-on-surface state, and any necessary invariants. Note any ambiguities such as how to represent 'lifting' versus 'in-truck' and whether load and unload are atomic."
+            }
+        },
+        "depot_manager": {
+            "spec": {
+                "input": [],
+                "output": "spec_depot_manager",
+                "system_prompt": "You are the depot and inventory expert. Provide a concise specification of surface and stacking semantics and of initial placement interpretation. Do not emit PDDL. Emphasize constraints about 'clear' predicates, stacking order, and how to represent 'crate on crate' and 'crate on pallet'.",
+                "prompt": "Your role is depot manager. Using the public information and initial facts, describe the ontology of pallets and crates, the semantics of 'clear', and any constraints that must be encoded for safe hoist operations. Point out potential inconsistencies in the initial facts and recommend explicit predicates to model stacks and surfaces."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "planner_analysis",
-                    "simulator_trace"
+                    "spec_driver",
+                    "spec_hoist_operator",
+                    "spec_depot_manager"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are the auditor of temporal and causal consistency. Your job is to remove bookkeeping shortcuts and post-hoc adjustments, detect temporal reversals or non-monotonic effects, and propose conservative corrections and constraints so the model is honest and planner-friendly. Produce an explicit list of corrected preconditions/effects and additional invariants the orchestrator must enforce.",
-                "prompt": "Agent name: auditor. Use the planner analysis: {planner_analysis} and the simulator trace: {simulator_trace}. Use auditor private information: {agents->auditor->private_information}. Goal: {agents->auditor->goal}. Identify any quota tokens, post-hoc penalties, or bookkeeping shortcuts, explain why they are problematic for automated planning, and provide corrected causal constraints and invariants."
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Produce an audit report that identifies missing preconditions, concurrency hazards, and any bookkeeping shortcuts. Recommend explicit causal tokens and model corrections to remove implicit assumptions. Do not emit PDDL.",
+                "prompt": "Your role is auditor. Review the three specifications provided and the initial facts and goal. Identify race conditions, places where resource locking is required, where implicit effects or inverse effects were omitted, and where modeling choices could break under parallel execution. Produce a prioritized list of fixes the orchestrator should apply before PDDL generation."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "planner_analysis",
-                    "simulator_trace",
+                    "spec_driver",
+                    "spec_hoist_operator",
+                    "spec_depot_manager",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the orchestrator. Integrate the planner analysis, simulator trace, and the auditor report and produce a complete PDDL domain and a PDDL problem file targeted specifically for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, action schemas, initial state and goal are consistent, conservative with auditor corrections, and that multi-agent responsibilities remain distinct if relevant.",
-                "prompt": "Agent name: orchestrator. You receive the following inputs: planner analysis: {planner_analysis} ; simulator trace: {simulator_trace} ; auditor report: {audit_report}. Use orchestrator private information: {agents->orchestrator->private_information}. Global goal: {agents->orchestrator->goal}. Integrate the inputs, resolve naming ambiguities, enforce auditor constraints, and emit a FastDownwards-compatible PDDL domain and problem. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+                "system_prompt": "You are the orchestrator who must integrate agent specifications and the auditor report and produce a PDDL domain and PDDL problem suitable for the FastDownwards solver. Keep actions produced by different agents distinct and resolve naming mismatches. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Ensure the model is explicit about preconditions, effects, mutexes or resources, and stack semantics so the produced files work with FastDownwards.",
+                "prompt": "You are the orchestrator. Integrate inputs from drivers, hoist operators, depot manager, and the auditor. Resolve ambiguities and produce a complete PDDL domain and problem that achieves the goal crate1 on pallet0 and crate2 on pallet3. Keep each agent's actions namespaced so actions remain distinct across agents. Output only the PDDL domain and problem enclosed in <domain> and <problem> tags."
             }
         },
         "constraints": [
-            "planner.analysis->orchestrator.pddl",
-            "simulator.trace->orchestrator.pddl",
+            "driver.spec->orchestrator.pddl",
+            "hoist_operator.spec->orchestrator.pddl",
+            "depot_manager.spec->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
     }

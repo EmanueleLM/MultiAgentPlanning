@@ -1,121 +1,116 @@
-(define (domain depots10_domain)
+(define (domain depots10)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types place depot distributor
+          surface pallet crate
+          truck hoist)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 ?o2 - object)
-    (next ?o1 ?o2 - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 ?o2 - object)
-    (spring ?o - object)
+    ;; locations
+    (truck-at ?tr - truck ?p - place)
+    (hoist-at ?h - hoist ?p - place)
+    (surface-at ?s - surface ?p - place)
+
+    ;; stacking and containment
+    (on ?c - crate ?s - surface)        ;; crate c on surface s
+    (in ?c - crate ?tr - truck)         ;; crate c in truck tr
+
+    ;; hoist status and surface availability
+    (available ?h - hoist)
+    (lifting ?h - hoist ?c - crate)
+    (clear ?s - surface)
   )
 
-  ;; paltry requires hand O0, cats O1, texture O2, vase O0 O1, next O1 O2
-  ;; effects: add next O0 O2, delete vase O0 O1
-  (:action paltry
-    :parameters (?o0 ?o1 ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
+  ;; Drive a truck from one place to another.
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place)
+    :precondition (and (truck-at ?tr ?from))
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (not (truck-at ?tr ?from))
+              (truck-at ?tr ?to)
+            )
   )
 
-  ;; sip requires hand O0, cats O1, texture O2, next O0 O2, next O1 O2
-  ;; effects: add vase O0 O1, delete next O0 O2
-  (:action sip
-    :parameters (?o0 ?o1 ?o2 - object)
+  ;; Hoist lifts a crate from a surface at a place.
+  ;; Preconditions require the hoist at the place, hoist available, crate clear,
+  ;; crate and supporting surface located at same place, and crate on that surface.
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+                    (hoist-at ?h ?p)
+                    (available ?h)
+                    (clear ?c)
+                    (on ?c ?s)
+                    (surface-at ?s ?p)
+                    (surface-at ?c ?p)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              ;; crate removed from the place / surface
+              (not (surface-at ?c ?p))
+              (not (on ?c ?s))
+
+              ;; hoist now lifting and becomes unavailable
+              (lifting ?h ?c)
+              (not (available ?h))
+
+              ;; supporting surface becomes clear
+              (clear ?s)
+            )
   )
 
-  ;; clip requires hand O0, sneeze O1, texture O2, next O1 O2, next O0 O2
-  ;; effects: add vase O0 O1, delete next O0 O2
-  (:action clip
-    :parameters (?o0 ?o1 ?o2 - object)
+  ;; Hoist drops a crate to a surface at a place.
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+                    (hoist-at ?h ?p)
+                    (surface-at ?s ?p)
+                    (clear ?s)
+                    (lifting ?h ?c)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              ;; crate placed back at place on surface
+              (surface-at ?c ?p)
+              (on ?c ?s)
+
+              ;; hoist becomes available and is no longer lifting
+              (available ?h)
+              (not (lifting ?h ?c))
+
+              ;; surface occupied, crate becomes clear (nothing on top)
+              (not (clear ?s))
+              (clear ?c)
+            )
   )
 
-  ;; wretched requires sneeze O0, texture O1, texture O2, stupendous O3,
-  ;; next O0 O1, collect O1 O3, collect O2 O3
-  ;; effects: add next O0 O2, delete next O0 O1
-  (:action wretched
-    :parameters (?o0 ?o1 ?o2 ?o3 - object)
+  ;; Hoist loads a currently-lifted crate into a truck at the same place.
+  (:action hoist-load-into-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (hoist-at ?h ?p)
+                    (truck-at ?tr ?p)
+                    (lifting ?h ?c)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              ;; crate now in the truck; no longer held by hoist
+              (in ?c ?tr)
+              (not (lifting ?h ?c))
+              (available ?h)
+            )
   )
 
-  ;; memory requires cats O0, spring O1, spring O2, next O0 O1
-  ;; effects: add next O0 O2, delete next O0 O1
-  (:action memory
-    :parameters (?o0 ?o1 ?o2 - object)
+  ;; Hoist unloads a crate from a truck at the place of the truck (hoist must be at same place).
+  (:action hoist-unload-from-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
+                    (hoist-at ?h ?p)
+                    (truck-at ?tr ?p)
+                    (available ?h)
+                    (in ?c ?tr)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              ;; crate removed from truck and hoist becomes unavailable and starts lifting it
+              (not (in ?c ?tr))
+              (not (available ?h))
+              (lifting ?h ?c)
+            )
   )
-
-  ;; tightfisted requires hand O0, sneeze O1, texture O2, next O1 O2, vase O0 O1
-  ;; effects: add next O0 O2, delete vase O0 O1
-  (:action tightfisted
-    :parameters (?o0 ?o1 ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
 )

@@ -1,31 +1,32 @@
-(define (problem stmt1-next-9-8)
-  (:domain MysteryBlocksworld5)
+(define (problem craving-problem)
+  (:domain craving-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
+    a b c d - object
+    p1 p2 p3 p4 p5 - phase
   )
+
   (:init
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_9)
-    (next object_0 object_7)
-    (next object_3 object_5)
-    (next object_4 object_7)
-    (next object_9 object_7)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; Initial craving relations
+    (craves a d)
+    (craves b c)
+    (craves d b)
+
+    ;; Initial global facts
+    (harmony)
+    (planet c)
+    (province a)
+
+    ;; Phase ordering and initial current phase
+    (phase p1) (phase p2) (phase p3) (phase p4) (phase p5)
+    (phase-successor p1 p2)
+    (phase-successor p2 p3)
+    (phase-successor p3 p4)
+    (phase-successor p4 p5)
+    (current-phase p1)
   )
+
   (:goal (and
-    (next object_9 object_8)
+    (craves a c)
   ))
 )

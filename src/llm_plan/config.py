@@ -103,6 +103,10 @@ DATASET = {
     "hanoi_hard": {
         "data": DATA_PATH / "hanoi/hanoi_hard.json",
         "results": RESULTS_FOLDER / "hanoi" / "hanoi_hard",
+    },
+    "hanoi_extreme": {
+        "data": DATA_PATH / "hanoi/hanoi_extreme.json",
+        "results": RESULTS_FOLDER / "hanoi" / "hanoi_extreme",
     }
 }
 
@@ -148,15 +152,19 @@ PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
     ],
     "hanoi_easy": [
         "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
-        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same, i.e., if the candidate plan is correct and optimal. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ],
     "hanoi_medium": [
         "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
-        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same, i.e., if the candidate plan is correct and optimal. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ],
     "hanoi_hard": [
         "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
-        "Check that the actions executed in the candidate plan and in the golden plan are the same or, equivalently, that the candidate plan achieves the same final goal with valid actions. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible and produces the same final outcome.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same, i.e., if the candidate plan is correct and optimal. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
+    ],
+    "hanoi_extreme": [
+        "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
+        "Check that the actions executed in the candidate plan and in the golden plan are the same, i.e., if the candidate plan is correct and optimal. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
     ]
 }
 

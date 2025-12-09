@@ -1,144 +1,129 @@
-(define (domain linking)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane package city location airport - location stage)
+
   (:predicates
-    (hand ?x - object)
-    (cats ?x - object)
-    (texture ?x - object)
-    (vase ?x - object ?y - object)
-    (next ?x - object ?y - object)
-    (sneeze ?x - object)
-    (stupendous ?x - object)
-    (collect ?x - object ?y - object)
-    (spring ?x - object)
-    (current-stage ?s - stage)
+    ;; vehicle and package locations
+    (truck_at ?t - truck ?l - location)
+    (airplane_at ?a - airplane ?l - airport)
+    (package_at ?p - package ?l - location)
+
+    ;; containment
+    (in_truck ?p - package ?t - truck)
+    (in_airplane ?p - package ?a - airplane)
+
+    ;; city membership relation between locations (symmetric entries supplied in :init)
+    (same_city ?l1 - location ?l2 - location)
+    ;; different_city used to permit flights (symmetric entries supplied in :init)
+    (different_city ?l1 - location ?l2 - location)
+
+    ;; explicit discrete stage progression to enforce ordering (succ is an acyclic successor relation)
+    (current_stage ?s - stage)
     (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry: pre: hand X, cats Y, texture Z, vase X Y, next Y Z
-  ;; effect: set next X Z, remove vase X Y, advance stage
-  (:action paltry
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  ;; All actions advance the current_stage from a stage to its successor to enforce a strict,
+  ;; contiguous ordering of actions (no slack or oscillation). Each action requires the current
+  ;; stage and a succ link to the next stage; effects remove the current_stage and set the next.
+
+  ;; Truck-agent actions
+  (:action truck_agent-load-into-truck
+    :parameters (?tr - truck ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (package_at ?p ?loc)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_truck ?p ?tr)
+      (not (package_at ?p ?loc))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  ;; sip: pre: hand X, cats Y, texture Z, next X Z, next Y Z
-  ;; effect: set vase X Y, remove next X Z, advance stage
-  (:action sip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-unload-from-truck
+    :parameters (?tr - truck ?p - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?loc)
+      (in_truck ?p ?tr)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?loc)
+      (not (in_truck ?p ?tr))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  ;; clip: pre: hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ;; effect: set vase X Y, remove next X Z, advance stage
-  (:action clip
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action truck_agent-drive
+    :parameters (?tr - truck ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (truck_at ?tr ?from)
+      (same_city ?from ?to)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (truck_at ?tr ?to)
+      (not (truck_at ?tr ?from))
+      ;; packages carried remain in_truck and therefore move implicitly with the truck's identity;
+      ;; they are not placed at intermediate locations by this action.
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  ;; wretched: pre: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;; effect: set next X Z, remove next X Y, advance stage
-  (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object ?s1 - stage ?s2 - stage)
+  ;; Airplane-agent actions
+  (:action airplane_agent-load-into-airplane
+    :parameters (?ap - airplane ?p - package ?airport - airport ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?airport)
+      (package_at ?p ?airport)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (in_airplane ?p ?ap)
+      (not (package_at ?p ?airport))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  ;; memory: pre: cats X, spring Y, spring Z, next X Y
-  ;; effect: set next X Z, remove next X Y, advance stage
-  (:action memory
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-unload-from-airplane
+    :parameters (?ap - airplane ?p - package ?airport - airport ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?airport)
+      (in_airplane ?p ?ap)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (package_at ?p ?airport)
+      (not (in_airplane ?p ?ap))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
-  ;; tightfisted: pre: hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ;; effect: set next X Z, remove vase X Y, advance stage
-  (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object ?s1 - stage ?s2 - stage)
+  (:action airplane_agent-fly
+    :parameters (?ap - airplane ?from - airport ?to - airport ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (current-stage ?s1)
-      (succ ?s1 ?s2)
+      (airplane_at ?ap ?from)
+      (different_city ?from ?to)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (current-stage ?s1))
-      (current-stage ?s2)
+      (airplane_at ?ap ?to)
+      (not (airplane_at ?ap ?from))
+      ;; packages in the airplane remain in_airplane and travel with the airplane
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 )

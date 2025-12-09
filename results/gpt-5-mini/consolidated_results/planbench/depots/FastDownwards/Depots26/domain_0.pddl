@@ -1,95 +1,159 @@
-(define (domain orchestrated-domain)
-  (:requirements :strips :typing)
-  (:types obj)
-
+(define (domain transport-hoists-trucks)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    place depot distributor
+    surface pallet crate
+    truck
+    hoist
+  )
+  ;; Note: pallet and crate are subtypes of surface; depot and distributor are subtypes of place.
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?a - obj ?b - obj)
-    (collect ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
+    ;; Location predicates
+    (hoist-at ?h - hoist ?p - place)
+    (truck-at ?tr - truck ?p - place)
+    (surface-at ?s - surface ?p - place)
+
+    ;; Crate placement / containment / co-location
+    (crate-on-surface ?c - crate ?s - surface)   ;; crate is directly on top of surface
+    (surface-clear ?s - surface)                 ;; no crate on top of this surface
+    (crate-clear ?c - crate)                     ;; no crate on top of this crate (crate used as surface)
+    (crate-in-truck ?c - crate ?tr - truck)      ;; crate loaded inside truck
+    (at ?c - crate ?p - place)                   ;; crate co-located with place (valid when crate on a surface at that place, held by hoist at that place, or after unload)
+    
+    ;; Hoist resource / holding
+    (hoist-available ?h - hoist)
+    (hoist-holding ?h - hoist ?c - crate)
+
+    ;; Road connectivity (explicitly encode full connectivity between different places to forbid no-op drives)
+    (road ?from - place ?to - place)
   )
 
-  ;; Action schemas drawn from both analysts, kept distinct where semantics differed.
-  ;; PlayerA-style actions (suffix _a)
-  (:action paltry_a
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (vase ?h ?c) (next ?c ?t))
-    :effect (and (next ?h ?t) (not (vase ?h ?c)))
+  ;; Drive truck along road (roads explicitly provided in problem). Does not change hoist or surface predicates.
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place)
+    :precondition (and
+      (truck-at ?tr ?from)
+      (road ?from ?to)
+    )
+    :effect (and
+      (not (truck-at ?tr ?from))
+      (truck-at ?tr ?to)
+    )
   )
 
-  (:action sip_a
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (next ?h ?t) (next ?c ?t))
-    :effect (and (vase ?h ?c) (not (next ?h ?t)))
+  ;; Hoist lift from a pallet surface
+  (:action hoist-lift-from-pallet
+    :parameters (?h - hoist ?c - crate ?pal - pallet ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (surface-at ?pal ?p)
+      (crate-on-surface ?c ?pal)
+      (crate-clear ?c)
+      (hoist-available ?h)
+    )
+    :effect (and
+      (hoist-holding ?h ?c)
+      (not (hoist-available ?h))
+      (not (crate-on-surface ?c ?pal))
+      ;; The pallet becomes clear after the top crate is removed
+      (surface-clear ?pal)
+      ;; crate remains co-located at ?p; (at ?c ?p) is kept unchanged
+    )
   )
 
-  (:action clip_a
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (next ?h ?t))
-    :effect (and (vase ?h ?s) (not (next ?h ?t)))
+  ;; Hoist lift from a crate surface (surface is a crate; must update crate-clear of that surface)
+  (:action hoist-lift-from-crate
+    :parameters (?h - hoist ?c - crate ?surf - crate ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (surface-at ?surf ?p)
+      (crate-on-surface ?c ?surf)
+      (crate-clear ?c)
+      (hoist-available ?h)
+    )
+    :effect (and
+      (hoist-holding ?h ?c)
+      (not (hoist-available ?h))
+      (not (crate-on-surface ?c ?surf))
+      ;; the crate-surface becomes clear and its crate-clear becomes true
+      (surface-clear ?surf)
+      (crate-clear ?surf)
+    )
   )
 
-  (:action wretched_a
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
-    :precondition (and (sneeze ?s) (texture ?t1) (texture ?t2) (stupendous ?st) (next ?s ?t1) (collect ?t1 ?st) (collect ?t2 ?st))
-    :effect (and (next ?s ?t2) (not (next ?s ?t1)))
+  ;; Hoist drop onto a pallet surface
+  (:action hoist-drop-on-pallet
+    :parameters (?h - hoist ?c - crate ?pal - pallet ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (surface-at ?pal ?p)
+      (surface-clear ?pal)
+      (hoist-holding ?h ?c)
+    )
+    :effect (and
+      (crate-on-surface ?c ?pal)
+      (crate-clear ?c)
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      (not (surface-clear ?pal))
+      ;; pallet is not a crate so no crate-clear predicate for the pallet is changed beyond surface-clear
+      ;; crate remains at ?p (at ?c ?p) - maintain or add if needed by other actions
+    )
   )
 
-  (:action memory_cat_a
-    :parameters (?c - obj ?sp1 - obj ?sp2 - obj)
-    :precondition (and (cats ?c) (spring ?sp1) (spring ?sp2) (next ?c ?sp1))
-    :effect (and (next ?c ?sp2) (not (next ?c ?sp1)))
+  ;; Hoist drop onto a crate surface (the target surface is a crate; update crate-clear of that surface)
+  (:action hoist-drop-on-crate
+    :parameters (?h - hoist ?c - crate ?surf - crate ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (surface-at ?surf ?p)
+      (surface-clear ?surf)
+      (hoist-holding ?h ?c)
+    )
+    :effect (and
+      (crate-on-surface ?c ?surf)
+      (crate-clear ?c)
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      (not (surface-clear ?surf))
+      ;; the crate used as surface is no longer clear as a surface
+      (not (crate-clear ?surf))
+    )
   )
 
-  (:action tightfisted_a
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (vase ?h ?s))
-    :effect (and (next ?h ?t) (not (vase ?h ?s)))
+  ;; Hoist load crate into truck (truck must be co-located with hoist)
+  (:action hoist-load-onto-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
+      (hoist-holding ?h ?c)
+    )
+    :effect (and
+      (crate-in-truck ?c ?tr)
+      (hoist-available ?h)
+      (not (hoist-holding ?h ?c))
+      ;; while inside truck, we remove the explicit at ?c ?p fact so drives need not update at for crates in trucks
+      (not (at ?c ?p))
+    )
   )
 
-  ;; PlayerB-style actions (suffix _b) — these provide the move primitives used in the validated plan
-  (:action paltry_b
-    :parameters (?h - obj ?from - obj ?to - obj ?c - obj)
-    :precondition (and (hand ?h) (next ?h ?from) (cats ?c) (next ?c ?to))
-    :effect (and (next ?h ?to) (not (next ?h ?from)))
-  )
-
-  (:action sip_b
-    :parameters (?h - obj ?from - obj ?inter - obj ?to - obj)
-    :precondition (and (hand ?h) (next ?h ?from) (next ?inter ?to) (sneeze ?inter) (texture ?to))
-    :effect (and (next ?h ?to) (not (next ?h ?from)))
-  )
-
-  ;; clip_b moves a hand to a target that is currently targeted by some other object
-  (:action clip_b
-    :parameters (?h - obj ?from - obj ?to - obj ?other - obj)
-    :precondition (and (hand ?h) (next ?h ?from) (next ?other ?to) (texture ?to))
-    :effect (and (next ?h ?to) (not (next ?h ?from)))
-  )
-
-  ;; wretched_b variant aligned to playerB interpretation (hand-moving)
-  (:action wretched_b
-    :parameters (?h - obj ?from - obj ?to - obj ?s - obj)
-    :precondition (and (hand ?h) (next ?h ?from) (stupendous ?s) (collect ?to ?s) (texture ?to))
-    :effect (and (next ?h ?to) (not (next ?h ?from)))
-  )
-
-  ;; memory_hand moves a hand to any object that is both spring and textured (playerB)
-  (:action memory_hand
-    :parameters (?h - obj ?from - obj ?to - obj)
-    :precondition (and (hand ?h) (next ?h ?from) (spring ?to) (texture ?to))
-    :effect (and (next ?h ?to) (not (next ?h ?from)))
-  )
-
-  ;; tightfisted_b: generic pointer update (playerB)
-  (:action tightfisted_b
-    :parameters (?obj - obj ?from - obj ?to - obj)
-    :precondition (and (next ?obj ?from) (texture ?to))
-    :effect (and (next ?obj ?to) (not (next ?obj ?from)))
+  ;; Hoist unload crate from truck (hoist must be available)
+  (:action hoist-unload-from-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
+      (hoist-available ?h)
+      (crate-in-truck ?c ?tr)
+      ;; ensure hoist is not already holding something is implied by hoist-available
+    )
+    :effect (and
+      (hoist-holding ?h ?c)
+      (crate-clear ?c)
+      (at ?c ?p)
+      (not (crate-in-truck ?c ?tr))
+      (not (hoist-available ?h))
+    )
   )
 )

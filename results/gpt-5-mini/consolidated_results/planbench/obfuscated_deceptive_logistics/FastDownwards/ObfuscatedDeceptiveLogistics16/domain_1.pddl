@@ -1,24 +1,23 @@
-(define (domain obfuscated-deceptive-logistics-16)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+(define (domain obfuscated_deceptive_logistics16)
+  :requirements :strips :typing :negative-preconditions
+  :types
+    object
 
-  (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-  )
+  :predicates
+    (hand ?x - object)
+    (cats ?x - object)
+    (texture ?x - object)
+    (vase ?x - object ?y - object)
+    (next ?x - object ?y - object)
+    (sneeze ?x - object)
+    (collect ?x - object ?y - object)
+    (spring ?x - object)
+    (stupendous ?x - object)
 
-  ;; All actions attributed to planner_alpha (local view used to derive the plan).
-  ;; Action schemas exactly follow the human specification for preconditions and effects.
-
-  (:action alpha-paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; paltry: requires (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2)
+  ;; effects: add (next ?o0 ?o2), del (vase ?o0 ?o1)
+  (:action paltry
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
       (hand ?o0)
       (cats ?o1)
@@ -32,8 +31,10 @@
     )
   )
 
-  (:action alpha-sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; sip: requires (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2)
+  ;; effects: add (vase ?o0 ?o1), del (next ?o0 ?o2)
+  (:action sip
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
       (hand ?o0)
       (cats ?o1)
@@ -47,8 +48,10 @@
     )
   )
 
-  (:action alpha-clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; clip: requires (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2)
+  ;; effects: add (vase ?o0 ?o1), del (next ?o0 ?o2)
+  (:action clip
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
       (hand ?o0)
       (sneeze ?o1)
@@ -62,8 +65,11 @@
     )
   )
 
-  (:action alpha-wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+  ;; wretched: requires (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3)
+  ;;           (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3)
+  ;; effects: add (next ?o0 ?o2), del (next ?o0 ?o1)
+  (:action wretched
+    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
     :precondition (and
       (sneeze ?o0)
       (texture ?o1)
@@ -79,8 +85,10 @@
     )
   )
 
-  (:action alpha-memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; memory: requires (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1)
+  ;; effects: add (next ?o0 ?o2), del (next ?o0 ?o1)
+  (:action memory
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
       (cats ?o0)
       (spring ?o1)
@@ -93,8 +101,10 @@
     )
   )
 
-  (:action alpha-tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; tightfisted: requires (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1)
+  ;; effects: add (next ?o0 ?o2), del (vase ?o0 ?o1)
+  (:action tightfisted
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
       (hand ?o0)
       (sneeze ?o1)

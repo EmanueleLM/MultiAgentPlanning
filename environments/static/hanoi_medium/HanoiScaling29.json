@@ -1,0 +1,107 @@
+{
+    "name": "HanoiScaling29",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "rules_keeper",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must move exactly one disk per atomic action.",
+                "I may only move a disk that is currently on top of a peg."
+            ],
+            "goal": "Provide a precise, unambiguous specification of the primitive move action for the Tower of Hanoi domain in structured plain language so it can be encoded by the orchestrator."
+        },
+        "rules_keeper": {
+            "private_information": [
+                "I know and enforce the canonical Tower of Hanoi invariants.",
+                "I ensure that a larger disk may never be placed on top of a smaller disk.",
+                "I represent legal state constraints and required invariants."
+            ],
+            "goal": "Produce a concise list of invariants, preconditions, and effects that must hold for every move action, expressed in structured plain language for the orchestrator to consume."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and identify bookkeeping shortcuts or post-hoc penalties.",
+                "I check for implicit assumptions such as multi-disk moves, token quotas, or helper constructs that would break purity of the puzzle.",
+                "I recommend minimal corrections to make the specification temporally and causally sound."
+            ],
+            "goal": "Examine the action and invariant specifications from other agents, remove bookkeeping shortcuts, identify causal or temporal inconsistencies, and produce an audit report with recommended fixes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must integrate specifications and the auditor report and produce a final PDDL domain and problem targeted to the FastDownwards planner.",
+                "I must keep agent actions distinct when mapping them into multi-agent or multi-component encodings if necessary."
+            ],
+            "goal": "Integrate inputs from mover, rules_keeper, and auditor to generate a complete PDDL domain and a PDDL problem file compatible with FastDownwards that solves the stated Tower of Hanoi instance with 5 disks and three pegs."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5,
+            "visibility": 1
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with three pegs named left, middle, and right.",
+            "Disks: Five disks from smallest to largest are disk A, disk B, disk C, disk D, disk E.",
+            "Initial state: Right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. Left peg and middle peg are empty.",
+            "Goal state: Left peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E. Right peg and middle peg must be empty.",
+            "Rules: Move only one disk at a time. Only the top disk of any peg may be moved. A larger disk may never be placed on top of a smaller disk. The middle peg may be used as an intermediate but must end up empty.",
+            "Available primitive action: Move the top disk from one peg to another peg."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "spec": {
+                "input": [],
+                "output": "spec_mover",
+                "system_prompt": "You are the agent that formalizes the primitive physical action for this puzzle. Do not emit PDDL. Provide a clear, machine-friendly description of the action named MoveTop that includes parameters, a precise natural-language precondition list, and an effect list. Describe how the action determines which disk is on top and how ordering is preserved.",
+                "prompt": "Agent mover context. Use the public information from the environment and your private information to produce a structured action specification. Include parameter names, type constraints, exact preconditions required to perform the action, and the state changes that occur when the action executes. Keep the description precise so the orchestrator can translate it into PDDL."
+            }
+        },
+        "rules_keeper": {
+            "spec": {
+                "input": [],
+                "output": "spec_rules",
+                "system_prompt": "You are the agent that encodes domain invariants and integrity constraints in structured plain language. Do not emit PDDL. Focus on rules and forbidden states such as disk size ordering, single-disk move restriction, and peg occupancy constraints.",
+                "prompt": "Agent rules_keeper context. Using the environment public information and your private information, list all invariants, global constraints, and forbidden configurations. Provide these as explicit precondition templates and invariant statements so the orchestrator can integrate them into the final domain and problem."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "spec_mover",
+                    "spec_rules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Do not emit PDDL. Your job is to detect implicit assumptions, bookkeeping shortcuts, or constructs that would compromise a faithful Tower of Hanoi encoding. Provide corrections and remove any suggested constructs that rely on tokens, quotas, or post-hoc penalties.",
+                "prompt": "Agent auditor context. Receive the mover specification and the rules_keeper specification. Analyze them for causal loops, missing preconditions, hidden multi-disk moves, or auxiliary shortcuts. Produce a numbered audit report describing each issue and the recommended minimal corrective change so the orchestrator can produce a clean, causally sound PDDL encoding."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_mover",
+                    "spec_rules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL integrator and you will produce a final PDDL domain and a PDDL problem file compatible with the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and predicates explicit and preserve agent-distinct actions if multiple roles imply distinct operators. Target the FastDownwards planner by using STRIPS-style constructs and declare types and predicates clearly.",
+                "prompt": "Agent orchestrator context. You will receive the mover action specification, the rules_keeper invariants, and the auditor report. Integrate these inputs to produce a complete PDDL domain and a PDDL problem that solves the Tower of Hanoi instance given in the environment public information. If the inputs contain ambiguities, resolve them conservatively in favor of the canonical Tower of Hanoi rules. Preserve the requirement that the middle peg may be used but must be empty at the goal. Provide the final PDDL domain and problem formatted for FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.spec->orchestrator.pddl",
+            "rules_keeper.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "mover.spec->auditor.audit",
+            "rules_keeper.spec->auditor.audit"
+        ]
+    }
+}

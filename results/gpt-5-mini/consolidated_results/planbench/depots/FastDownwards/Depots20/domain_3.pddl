@@ -1,108 +1,144 @@
-(define (domain depots20)
-  (:requirements :strips :typing)
-  (:types obj)
+(define (domain depots-revised)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    place
+    surface pallet crate
+    hoist truck
+    step
+  )
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 ?o2 - obj)
-    (next ?o1 ?o2 - obj)
-    (collect ?o1 ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
+    ;; positions
+    (hoist-at ?h - hoist ?p - place)
+    (truck-at ?tr - truck ?p - place)
+    (crate-at ?c - crate ?p - place)
+    (surface-at ?s - surface ?p - place)
+
+    ;; stacking / containment
+    (on ?c - crate ?s - surface)        ;; crate is on a surface (pallet or crate)
+    (in-truck ?c - crate ?tr - truck)  ;; crate is inside/on a truck
+
+    ;; availability / clear / lifting
+    (surface-clear ?s - surface)
+    (crate-clear ?c - crate)
+    (hoist-available ?h - hoist)
+    (hoist-lifting ?h - hoist ?c - crate)
+
+    ;; explicit ordered steps (linear timeline)
+    (step-next ?s1 - step ?s2 - step)
+    (step-done ?s - step)
   )
 
-  (:action paltry
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ;; Drive a truck from one place to another.
+  ;; Uses step tokens to enforce a single action per stage and linear progression.
+  (:action drive-truck
+    :parameters (?tr - truck ?from - place ?to - place ?sprev - step ?s - step)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
+                    (truck-at ?tr ?from)
+                    (step-next ?sprev ?s)
+                    (step-done ?sprev)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (truck-at ?tr ?to)
+              (not (truck-at ?tr ?from))
+              (not (step-done ?sprev))
+              (step-done ?s)
+            )
   )
 
-  (:action sip
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ;; Hoist lifts a crate from a surface at a place.
+  ;; Preconditions: hoist and crate co-located, hoist available, crate clear, crate on the surface at same place, and timeline.
+  ;; Effects: hoist holds crate, crate removed from place and surface, hoist becomes unavailable, surface becomes clear, advance timeline.
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?p - place ?srf - surface ?sprev - step ?s - step)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+                    (hoist-at ?h ?p)
+                    (crate-at ?c ?p)
+                    (on ?c ?srf)
+                    (surface-at ?srf ?p)
+                    (hoist-available ?h)
+                    (crate-clear ?c)
+                    (step-next ?sprev ?s)
+                    (step-done ?sprev)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (hoist-lifting ?h ?c)
+              (not (crate-at ?c ?p))
+              (not (on ?c ?srf))
+              (not (hoist-available ?h))
+              (surface-clear ?srf)
+              (not (step-done ?sprev))
+              (step-done ?s)
+            )
   )
 
-  (:action clip
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ;; Hoist drops a crate to a surface at a place.
+  ;; Preconditions: hoist and surface at same place, surface clear, hoist is lifting the crate, and timeline.
+  ;; Effects: crate at place and on surface, crate becomes clear, hoist available, hoist no longer lifting, surface no longer clear, advance timeline.
+  (:action hoist-drop-to-surface
+    :parameters (?h - hoist ?c - crate ?p - place ?srf - surface ?sprev - step ?s - step)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+                    (hoist-at ?h ?p)
+                    (surface-at ?srf ?p)
+                    (surface-clear ?srf)
+                    (hoist-lifting ?h ?c)
+                    (step-next ?sprev ?s)
+                    (step-done ?sprev)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (crate-at ?c ?p)
+              (on ?c ?srf)
+              (crate-clear ?c)
+              (hoist-available ?h)
+              (not (hoist-lifting ?h ?c))
+              (not (surface-clear ?srf))
+              (not (step-done ?sprev))
+              (step-done ?s)
+            )
   )
 
-  (:action wretched
-    :parameters (?o0 ?o1 ?o2 ?o3 - obj)
+  ;; Hoist loads a crate into a truck at a place.
+  ;; Preconditions: hoist and truck co-located with place, hoist is lifting the crate, and timeline.
+  ;; Effects: crate becomes in-truck (no longer at place), hoist becomes available and no longer lifting the crate; advance timeline.
+  (:action hoist-load-into-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?sprev - step ?s - step)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (hoist-at ?h ?p)
+                    (truck-at ?tr ?p)
+                    (hoist-lifting ?h ?c)
+                    (step-next ?sprev ?s)
+                    (step-done ?sprev)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              (in-truck ?c ?tr)
+              (hoist-available ?h)
+              (not (hoist-lifting ?h ?c))
+              (not (crate-at ?c ?p))
+              (not (step-done ?sprev))
+              (step-done ?s)
+            )
   )
 
-  (:action memory
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ;; Hoist unloads a crate from a truck at a place.
+  ;; Preconditions: hoist and truck co-located at place, hoist available, crate in truck, and timeline.
+  ;; Effects: crate removed from truck, hoist begins lifting crate (hoist unavailable), crate is not at place while lifted; advance timeline.
+  (:action hoist-unload-from-truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?sprev - step ?s - step)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
+                    (hoist-at ?h ?p)
+                    (truck-at ?tr ?p)
+                    (hoist-available ?h)
+                    (in-truck ?c ?tr)
+                    (step-next ?sprev ?s)
+                    (step-done ?sprev)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              (hoist-lifting ?h ?c)
+              (not (in-truck ?c ?tr))
+              (not (hoist-available ?h))
+              (not (crate-at ?c ?p))
+              (not (step-done ?sprev))
+              (step-done ?s)
+            )
   )
-
-  (:action tightfisted
-    :parameters (?o0 ?o1 ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
 )

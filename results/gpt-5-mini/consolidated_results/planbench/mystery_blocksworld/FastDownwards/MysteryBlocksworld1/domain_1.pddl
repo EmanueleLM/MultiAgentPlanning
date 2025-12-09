@@ -1,125 +1,95 @@
-(define (domain next-domain)
+(define (domain craving-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types obj stage)
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (collect ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    (craves ?x - obj ?y - obj)
+    (province ?x - obj)
+    (planet ?x - obj)
+    (harmony)
+    (pain)
+    (at-stage ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
   )
 
-  ; Action: paltry
-  ; Preconditions: hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2
-  ; Effects: add next ?o0 ?o2, remove vase ?o0 ?o1
-  (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Attack action: consumes a province and a planet (possibly different objects) and harmony, produces pain,
+  ;; and advances the global stage.
+  (:action attacker_attack
+    :parameters (?p - obj ?pl - obj ?from - stage ?to - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (province ?p)
+      (planet ?pl)
+      (harmony)
+      (at-stage ?from)
+      (next ?from ?to)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ; Action: sip
-  ; Preconditions: hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2
-  ; Effects: add vase ?o0 ?o1, remove next ?o0 ?o2
-  (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (pain)
+      (not (province ?p))
+      (not (planet ?pl))
+      (not (harmony))
+      (not (at-stage ?from))
+      (at-stage ?to)
     )
   )
 
-  ; Action: clip
-  ; Preconditions: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2
-  ; Effects: add vase ?o0 ?o1, remove next ?o0 ?o2
-  (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Succumb action: consumes pain and advances the stage; restores province, planet and harmony to a chosen object.
+  (:action succumber_succumb
+    :parameters (?x - obj ?from - stage ?to - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (pain)
+      (at-stage ?from)
+      (next ?from ?to)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (province ?x)
+      (planet ?x)
+      (harmony)
+      (not (pain))
+      (not (at-stage ?from))
+      (at-stage ?to)
     )
   )
 
-  ; Action: wretched
-  ; Preconditions: sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3, next ?o0 ?o1,
-  ;                collect ?o1 ?o3, collect ?o2 ?o3
-  ; Effects: add next ?o0 ?o2, remove next ?o0 ?o1
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
+  ;; Overcome action: requires province on 'other' and pain; grants harmony, province to ?x and (craves ?x ?other),
+  ;; removes the province from other and consumes pain; advances the stage.
+  (:action overcomer_overcome
+    :parameters (?x - obj ?other - obj ?from - stage ?to - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (province ?other)
+      (pain)
+      (at-stage ?from)
+      (next ?from ?to)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (harmony)
+      (province ?x)
+      (craves ?x ?other)
+      (not (province ?other))
+      (not (pain))
+      (not (at-stage ?from))
+      (at-stage ?to)
     )
   )
 
-  ; Action: memory
-  ; Preconditions: cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1
-  ; Effects: add next ?o0 ?o2, remove next ?o0 ?o1
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Feast action: requires that ?x craves ?other and ?x has province and harmony;
+  ;; produces pain and transfers province to other; removes the craves relation and harmony; advances the stage.
+  (:action feaster_feast
+    :parameters (?x - obj ?other - obj ?from - stage ?to - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (craves ?x ?other)
+      (province ?x)
+      (harmony)
+      (at-stage ?from)
+      (next ?from ?to)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ; Action: tightfisted
-  ; Preconditions: hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1
-  ; Effects: add next ?o0 ?o2, remove vase ?o0 ?o1
-  (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (pain)
+      (province ?other)
+      (not (craves ?x ?other))
+      (not (province ?x))
+      (not (harmony))
+      (not (at-stage ?from))
+      (at-stage ?to)
     )
   )
 )

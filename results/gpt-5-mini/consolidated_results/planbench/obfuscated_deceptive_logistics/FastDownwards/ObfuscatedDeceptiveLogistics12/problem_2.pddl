@@ -1,50 +1,83 @@
-(define (problem obfuscated-manipulation-problem1)
-  (:domain obfuscated-manipulation)
+(define (problem obfuscated-deceptive-logistics-problem)
+  (:domain obfuscated-deceptive-logistics)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
-    st0 st1 st2 st3 st4 st5 st6 st7 st8 st9 st10 st11 st12 st13 st14 st15 st16 st17 st18 st19 - stage
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - obj
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19 stage_20 stage_21 stage_22 stage_23 stage_24 stage_25 stage_26 stage_27 stage_28 stage_29 stage_30 - stage
   )
 
   (:init
-    ;; explicit stages and successor chain (discrete time windows)
-    (stage st0) (stage st1) (stage st2) (stage st3) (stage st4) (stage st5) (stage st6) (stage st7) (stage st8) (stage st9)
-    (stage st10) (stage st11) (stage st12) (stage st13) (stage st14) (stage st15) (stage st16) (stage st17) (stage st18) (stage st19)
-    (succ st0 st1) (succ st1 st2) (succ st2 st3) (succ st3 st4) (succ st4 st5) (succ st5 st6) (succ st6 st7) (succ st7 st8) (succ st8 st9)
-    (succ st9 st10) (succ st10 st11) (succ st11 st12) (succ st12 st13) (succ st13 st14) (succ st14 st15) (succ st15 st16) (succ st16 st17) (succ st17 st18) (succ st18 st19)
-    ;; start at the initial stage
-    (current st0)
-
-    ;; From scenario 1 initial facts (canonicalized, duplicates removed)
     (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
+    (cats object_1)
+
+    (collect object_6 object_2)
     (collect object_7 object_2)
-    (collect object_8 object_2)
+    (collect object_8 object_3)
+    (collect object_9 object_3)
+
     (hand object_10)
     (hand object_11)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_11 object_5)
-    (next object_3 object_6)
+    (hand object_12)
+
+    (next object_0 object_6)
+    (next object_1 object_8)
+    (next object_10 object_9)
+    (next object_11 object_6)
+    (next object_12 object_6)
     (next object_4 object_7)
-    (next object_9 object_8)
-    (sneeze object_3)
+    (next object_5 object_8)
+
     (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
+    (sneeze object_5)
+
+    (spring object_6)
+    (spring object_8)
+
     (stupendous object_2)
-    (texture object_5)
+    (stupendous object_3)
+
     (texture object_6)
     (texture object_7)
     (texture object_8)
+    (texture object_9)
+
+    (succ stage_0 stage_1)
+    (succ stage_1 stage_2)
+    (succ stage_2 stage_3)
+    (succ stage_3 stage_4)
+    (succ stage_4 stage_5)
+    (succ stage_5 stage_6)
+    (succ stage_6 stage_7)
+    (succ stage_7 stage_8)
+    (succ stage_8 stage_9)
+    (succ stage_9 stage_10)
+    (succ stage_10 stage_11)
+    (succ stage_11 stage_12)
+    (succ stage_12 stage_13)
+    (succ stage_13 stage_14)
+    (succ stage_14 stage_15)
+    (succ stage_15 stage_16)
+    (succ stage_16 stage_17)
+    (succ stage_17 stage_18)
+    (succ stage_18 stage_19)
+    (succ stage_19 stage_20)
+    (succ stage_20 stage_21)
+    (succ stage_21 stage_22)
+    (succ stage_22 stage_23)
+    (succ stage_23 stage_24)
+    (succ stage_24 stage_25)
+    (succ stage_25 stage_26)
+    (succ stage_26 stage_27)
+    (succ stage_27 stage_28)
+    (succ stage_28 stage_29)
+    (succ stage_29 stage_30)
+
+    (current stage_0)
   )
 
   (:goal (and
-    (next object_10 object_8)
-    (next object_11 object_7)
-    (next object_9 object_6)
+    (next object_10 object_7)
+    (next object_11 object_9)
+    (next object_12 object_8)
   ))
 )

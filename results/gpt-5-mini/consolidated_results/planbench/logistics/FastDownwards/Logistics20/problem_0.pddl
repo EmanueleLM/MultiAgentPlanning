@@ -1,77 +1,55 @@
-(define (problem field-ops-problem)
-  (:domain field-ops)
+(define (problem deliver-package-0)
+  (:domain logistics-multiagent)
 
   (:objects
-    ;; agents
-    tech1 drone1 - agent
+    ;; Cities
+    city_0 city_1 - city
 
-    ;; tasks
-    inspect-siteA repair-siteA inspect-siteB - task
+    ;; Locations (explicit airports included)
+    location_0_0 location_0_airport location_1_airport location_1_2 - location
 
-    ;; locations
-    base siteA siteB - location
+    ;; Vehicles
+    truck_0 truck_1 - truck
+    plane_0 - airplane
 
-    ;; days (explicit ordered slots; contiguity enforced by day-ready and day-succ)
-    day1 day2 day3 - day
+    ;; Package
+    package_0 - package
   )
 
   (:init
-    ;; type markers (helpful but not relied on by planner)
-    (agent-type tech1)
-    (agent-type drone1)
-    (task-type inspect-siteA)
-    (task-type repair-siteA)
-    (task-type inspect-siteB)
-    (location-type base)
-    (location-type siteA)
-    (location-type siteB)
-    (day-type day1)
-    (day-type day2)
-    (day-type day3)
+    ;; City membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_airport city_0)
+    (in-city location_1_airport city_1)
+    (in-city location_1_2 city_1)
 
-    ;; initial agent positions
-    (at tech1 base)
-    (at drone1 base)
+    ;; Airports
+    (airport location_0_airport)
+    (airport location_1_airport)
 
-    ;; initial capabilities / status
-    (has-tools tech1)           ;; tech1 has the necessary tools to repair
-    (can-repair tech1)          ;; only tech1 can repair (auditor-corrected)
-    (can-inspect tech1)         ;; tech1 may inspect if needed
-    (can-inspect drone1)        ;; drone1 may inspect but cannot repair
-    ;; drone initially not charged; must charge at base before first inspect
-    (not (charged drone1))
+    ;; Roads (truck movement constrained to these connections)
+    (road-connected location_0_0 location_0_airport)
+    (road-connected location_0_airport location_0_0)
+    (road-connected location_1_airport location_1_2)
+    (road-connected location_1_2 location_1_airport)
 
-    ;; tasks and locations
-    (task-at inspect-siteA siteA)
-    (task-at repair-siteA siteA)  ;; repair is at the same physical site as the inspection (same siteA)
-    (task-at inspect-siteB siteB)
+    ;; Flight routes (airplane routes between airports)
+    (flight-route location_0_airport location_1_airport)
+    (flight-route location_1_airport location_0_airport)
 
-    ;; scheduling: unique one task per day to enforce simple day progression
-    (scheduled inspect-siteA day1)
-    (scheduled repair-siteA day2)
-    (scheduled inspect-siteB day3)
+    ;; Initial positions
+    (at package_0 location_0_0)
+    (free package_0)
 
-    ;; day succession: explicit chain; last day loops to itself to keep a defined successor
-    (day-succ day1 day2)
-    (day-succ day2 day3)
-    (day-succ day3 day3)
+    (at truck_0 location_0_0)         ;; truck in origin city to pick up package
+    (at truck_1 location_1_airport)   ;; truck in destination city to move package from airport to final loc
 
-    ;; start with day1 ready
-    (day-ready day1)
-
-    ;; ensure tasks start uninspected/unrepaired by omission (no inspected/repaired facts)
+    (at plane_0 location_0_airport)   ;; airplane located at origin airport
   )
 
   (:goal
     (and
-      ;; All mandated terminal task conditions:
-      (inspected inspect-siteA)
-      (repaired repair-siteA)
-      (inspected inspect-siteB)
-
-      ;; Final locations mandated as terminal conditions:
-      (at tech1 base)
-      (at drone1 base)
+      (at package_0 location_1_2)
     )
   )
 )

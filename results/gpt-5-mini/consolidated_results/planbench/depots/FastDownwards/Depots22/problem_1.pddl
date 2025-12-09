@@ -1,39 +1,97 @@
-(define (problem orchestrator-problem-1)
-  (:domain orchestrator)
+(define (problem depots22-problem)
+  (:domain hoist-truck-warehouse)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    ;; physical objects (pallets and crates) all as 'object' typed items
+    pallet0 pallet1 pallet2 pallet3
+    crate0 crate1 crate2
+      - object
+
+    ;; discrete stages for explicit ordering (s0 -> s1 -> ... -> s20)
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 - stage
   )
+
   (:init
-    ; initial facts from the first STATEMENT block
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (hand object_11)
-    (hand object_12)
-    (next object_0 object_5)
-    (next object_11 object_9)
-    (next object_12 object_10)
-    (next object_3 object_6)
-    (next object_4 object_8)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Mark which objects are crates and which are supports (pallets are supports; crates act as crates and supports)
+    (is-pallet pallet0) ;; auxiliary, not used by domain but harmless if present
+    (is-pallet pallet1)
+    (is-pallet pallet2)
+    (is-pallet pallet3)
+    (is-crate crate0)
+    (is-crate crate1)
+    (is-crate crate2)
+
+    ;; Both pallets and crates are usable supports (allow stacking on pallets or crates)
+    (is-support pallet0)
+    (is-support pallet1)
+    (is-support pallet2)
+    (is-support pallet3)
+    (is-support crate0)
+    (is-support crate1)
+    (is-support crate2)
+
+    ;; Locations of pallets
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
+
+    ;; Initial crate placements (each crate is on its pallet and at the same place)
+    (on crate0 pallet1)
+    (at crate0 depot1)
+
+    (on crate1 pallet2)
+    (at crate1 depot2)
+
+    (on crate2 pallet3)
+    (at crate2 distributor0)
+
+    ;; clear top-surface facts (crate tops are clear; pallet0 is clear; others with crates are not clear)
+    (clear crate0)
+    (clear crate1)
+    (clear crate2)
+    (clear pallet0)
+    ;; pallet1, pallet2, pallet3 are not declared clear because they hold crates
+
+    ;; Hoist locations and availability
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
+
+    (hoist-free hoist0)
+    (hoist-free hoist1)
+    (hoist-free hoist2)
+    (hoist-free hoist3)
+
+    ;; Truck locations
+    (truck-at truck0 distributor0)
+    (truck-at truck1 depot1)
+    (truck-at truck2 depot1)
+
+    ;; Stage initialization: start at s0 and chain next relations to enforce stage progression
+    (stage s0) (stage s1) (stage s2) (stage s3) (stage s4) (stage s5)
+    (stage s6) (stage s7) (stage s8) (stage s9) (stage s10) (stage s11)
+    (stage s12) (stage s13) (stage s14) (stage s15) (stage s16) (stage s17)
+    (stage s18) (stage s19) (stage s20)
+
+    (current s0)
+    (next s0 s1) (next s1 s2) (next s2 s3) (next s3 s4) (next s4 s5)
+    (next s5 s6) (next s6 s7) (next s7 s8) (next s8 s9) (next s9 s10)
+    (next s10 s11) (next s11 s12) (next s12 s13) (next s13 s14) (next s14 s15)
+    (next s15 s16) (next s16 s17) (next s17 s18) (next s18 s19) (next s19 s20)
   )
+
   (:goal (and
-    (next object_11 object_7)
-    (next object_12 object_5)
+    ;; goal: crate0 stacked on crate1, and crate1 stacked on pallet0
+    (on crate0 crate1)
+    (on crate1 pallet0)
   ))
-)

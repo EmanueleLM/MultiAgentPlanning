@@ -1,23 +1,61 @@
-(define (problem mapping-instance)
-  (:domain multiagent-mapping)
+(define (problem orchestrator-problem)
+  (:domain orchestrator-domain)
+
+  ;; Objects (o0..o13 reflect analyst object indices 0..13)
   (:objects
-    object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 o11 o12 o13 - obj
   )
 
-  ; Initial state (corrected by the auditor): no adjacency relationships or successor/predecessor marks exist.
-  ; All relevant predicates are therefore false by absence; we assert no positive next/has-* facts here.
+  ;; Initial facts (translated from analyst initial state)
   (:init
-    ; no facts asserted: closed-world assumption applies and all (has-*) and (next ...) are false initially
+    ;; unary type-like predicates
+    (cat o0)
+    (cat o1)
+
+    (stupendous o2)
+    (stupendous o3)
+
+    (sneeze o4)
+    (sneeze o5)
+
+    (spring o6)
+    (spring o9)
+
+    (hand o12)
+    (hand o13)
+
+    ;; textures (objects 6..11 are textures; object 9 explicitly mentioned)
+    (texture o6)
+    (texture o7)
+    (texture o8)
+    (texture o9)
+    (texture o10)
+    (texture o11)
+
+    ;; collect relations (collect(texture, stupendous))
+    (collect o10 o3)
+    (collect o11 o3)
+    (collect o9  o3)
+    (collect o6  o2)
+    (collect o7  o2)
+    (collect o8  o2)
+
+    ;; next links present initially
+    (next o0 o9)   ;; cat o0 -> texture o9
+    (next o1 o9)   ;; cat o1 -> texture o9
+
+    (next o12 o11) ;; hand o12 -> texture o11
+    (next o13 o7)  ;; hand o13 -> texture o7
+
+    (next o4 o8)   ;; sneeze o4 -> texture o8
+    (next o5 o11)  ;; sneeze o5 -> texture o11
+
+    ;; NOTE: No vase(...) facts exist initially (explicitly none). Actions must create them.
   )
 
-  ; Goals: union of required next relations from the use-case statements.
-  ; Each required "next" relation must hold in the final state.
-  (:goal
-    (and
-      (next object_11 object_7)
-      (next object_12 object_8)
-      (next object_12 object_10)
-      (next object_13 object_9)
-    )
-  )
+  ;; Goal: enforce the mandated terminal conditions exactly
+  (:goal (and
+    (next o12 o10)   ;; require hand o12 -> texture o10
+    (next o13 o9)    ;; require hand o13 -> texture o9
+  ))
 )

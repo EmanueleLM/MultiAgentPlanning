@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "observer",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg as a single atomic action.",
+                "I must obey the rules: move only one disk, move only top disks, never place larger on smaller.",
+                "Disks ordered smallest to largest: A, B, C, D, E, F."
+            ],
+            "goal": "Provide a clear, structured description of move primitives, state transitions, and required predicates useful for planning the Tower of Hanoi with 6 disks."
+        },
+        "observer": {
+            "private_information": [
+                "I have direct knowledge of the initial and desired goal configuration of the pegs.",
+                "Initial state: left peg contains A on top of B on top of C on top of D on top of E on top of F, middle and right pegs empty.",
+                "Goal state: right peg contains A on top of B on top of C on top of D on top of E on top of F, left and middle pegs empty."
+            ],
+            "goal": "Produce an explicit, canonical symbolic representation of the initial and goal states and canonical naming for disks and pegs suitable for integration into a planner."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and removing bookkeeping shortcuts.",
+                "I must identify and remove any non-physical shortcuts such as token counters or post-hoc penalties and enforce invariants required by correct Tower of Hanoi solutions."
+            ],
+            "goal": "Audit proposed action descriptions and state representations to ensure they enforce single-disk moves, top-only moves, and the never-larger-on-smaller invariant, and produce any additional constraints or invariants needed for sound planning."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate information from mover, observer, and auditor and produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep actions distinct if multiple agents contributed action schemas and ensure the final PDDL is self-contained."
+            ],
+            "goal": "Produce a complete PDDL domain and PDDL problem file that models the 6-disk Tower of Hanoi instance and is suitable for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "max_height": 6,
+            "visibility": 1
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with 6 disks named from smallest to largest A, B, C, D, E, F.",
+            "Rules: move only one disk at a time, can move only the top disk of any peg, never place a larger disk on top of a smaller disk.",
+            "Initial configuration: left peg holds from top to bottom A, B, C, D, E, F; middle and right pegs are empty.",
+            "Goal configuration: right peg must hold from top to bottom A, B, C, D, E, F; left and middle pegs must be empty.",
+            "The middle peg may be used as an intermediate but must be empty at the end."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an expert in modeling action primitives for the Tower of Hanoi puzzle. Your task is to produce a clear, structured description of allowed move primitives, the preconditions and effects of a single disk move, and the set of predicates that succinctly and unambiguously describe state transitions. Do not emit PDDL. Focus on action templates, required predicates, invariants to preserve, and illustrative move examples.",
+                "prompt": "Agent mover: You know the public rules and your private information. Your goal is to produce a concise specification of move primitives for the Tower of Hanoi with 6 disks. Provide for each move primitive a name, its preconditions in symbolic form, its effects in symbolic form, the predicates you rely on (including their argument types), and any assumptions you make. List common move examples using canonical disk and peg names."
+            }
+        },
+        "observer": {
+            "state_report": {
+                "input": [],
+                "output": "observer_state",
+                "system_prompt": "You observe the initial and goal configurations and must produce an explicit canonical symbolic representation of both states and canonical identifiers for pegs and disks. Do not produce PDDL. Ensure naming consistency and specify the ordering of disks on each peg explicitly.",
+                "prompt": "Agent observer: Using the public information and your private information, produce a compact, canonical listing of the initial state and the goal state suitable for a planner. Define canonical names for pegs and disks and represent the stacking order as explicit predicates or ordered lists. Note any ambiguities and resolve them explicitly."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "auditor_report",
+                "system_prompt": "You are responsible for auditing temporal and causal consistency. Identify any modeling shortcuts that could undermine correct planning such as quota tokens, aggregated counters, or post-hoc penalties. Recommend invariant constraints and remove any bookkeeping shortcuts. Do not produce PDDL. Focus on invariants and corrections needed to guarantee that any derived plan respects the physical rules.",
+                "prompt": "Agent auditor: Based on the public information and potential action descriptions, list the invariants and causal constraints that must be enforced to ensure soundness of a plan. If any proposed modeling shortcuts appear that could allow invalid solutions, explain them and propose explicit corrections or stricter predicates to eliminate them."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "observer_state",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing planning problems for the FastDownwards solver. Your job is to integrate the analysis, state representation, and audit recommendations and produce a complete PDDL domain and PDDL problem targeting FastDownwards. The final output must be self-contained and include typing, requirements, predicates, action schemas, and the problem initial and goal states. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent orchestrator: Integrate the information from mover_analysis, observer_state, and auditor_report and produce a PDDL domain and problem that model the 6-disk Tower of Hanoi for the FastDownwards planner. Keep any actions contributed by other agents distinct in name if relevant. Ensure the domain uses appropriate requirements and types, encodes the never-larger-on-smaller invariant, models single-disk top-only moves, and represents the initial and goal states exactly as specified. If the inputs contain ambiguities, resolve them explicitly and document the resolutions as comments in the PDDL where supported. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "observer.state_report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

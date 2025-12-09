@@ -1,37 +1,61 @@
-(define (problem logistics28-problem)
-  (:domain logistics28)
-  (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
-    time_0 time_1 time_2 time_3 time_4 time_5 time_6 time_7 time_8 time_9 time_10 time_11 time_12 time_13 time_14 time_15 - time
-  )
-  (:init
-    ;; temporal structure: successor chain and all time slots initially free
-    (succ time_0 time_1) (succ time_1 time_2) (succ time_2 time_3) (succ time_3 time_4)
-    (succ time_4 time_5) (succ time_5 time_6) (succ time_6 time_7) (succ time_7 time_8)
-    (succ time_8 time_9) (succ time_9 time_10) (succ time_10 time_11) (succ time_11 time_12)
-    (succ time_12 time_13) (succ time_13 time_14) (succ time_14 time_15)
-    (free time_0) (free time_1) (free time_2) (free time_3) (free time_4) (free time_5) (free time_6) (free time_7)
-    (free time_8) (free time_9) (free time_10) (free time_11) (free time_12) (free time_13) (free time_14) (free time_15)
+(define (problem multi_agent_transport_problem)
+  (:domain multi_agent_transport)
 
-    ;; combined initial predicates from both provided statements (union)
-    (cats object_0) (cats object_1)
-    (collect object_10 object_3) (collect object_11 object_3) (collect object_6 object_2) (collect object_7 object_2) (collect object_8 object_2) (collect object_9 object_3)
-    (collect object_10 object_2) (collect object_5 object_1) (collect object_6 object_1) (collect object_7 object_1) (collect object_9 object_2)
-    (hand object_12) (hand object_13) (hand object_14) (hand object_11)
-    (next object_0 object_6) (next object_1 object_9) (next object_12 object_11) (next object_13 object_6) (next object_14 object_8) (next object_4 object_7) (next object_5 object_10)
-    (next object_0 object_8) (next object_11 object_10) (next object_12 object_5) (next object_13 object_7) (next object_14 object_9) (next object_3 object_6) (next object_4 object_9)
-    (sneeze object_4) (sneeze object_5) (sneeze object_3)
-    (spring object_6) (spring object_9) (spring object_5) (spring object_8)
-    (stupendous object_2) (stupendous object_3) (stupendous object_1)
-    (texture object_10) (texture object_11) (texture object_6) (texture object_7) (texture object_8) (texture object_9) (texture object_5)
+  ;; objects
+  (:objects
+    ;; cities
+    city_0 city_1 - city
+
+    ;; locations
+    location_0_0 location_0_1 location_0_2
+    location_1_0 location_1_1 location_1_2 - location
+
+    ;; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    ;; packages
+    package_0 package_1 package_2 package_3 - package
   )
+
+  ;; initial state
+  (:init
+    ;; location -> city mapping
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
+
+    ;; airports
+    (airport location_0_0)
+    (airport location_1_0)
+
+    ;; initial positions of vehicles
+    (at-airplane airplane_0 location_1_0)
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_1)
+
+    ;; initial package positions (as given)
+    (at-package package_0 location_1_2)
+    (at-package package_1 location_0_0)
+    (at-package package_2 location_0_2)
+    (at-package package_3 location_1_1)
+
+    ;; start in preparation phase0
+    (current-phase phase0)
+
+    ;; package_1 starts at an airport (location_0_0). We consider it prepared for flight
+    ;; if it needs inter-city transport; marking ready-for-flight here encodes that no truck
+    ;; preparation is needed for package_1 in this instance.
+    (ready-for-flight package_1)
+  )
+
+  ;; goal: match the specified terminal conditions exactly
   (:goal (and
-    (next object_12 object_10)
-    (next object_13 object_10)
-    (next object_14 object_9)
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
-    (next object_14 object_7)
+    (at-package package_0 location_1_1)
+    (at-package package_1 location_1_0)
+    (at-package package_2 location_0_0)
+    (at-package package_3 location_0_2)
   ))
-)

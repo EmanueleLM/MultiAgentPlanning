@@ -1,49 +1,29 @@
-(define (problem next-problem)
-  (:domain next-domain)
+(define (problem craving-problem)
+  (:domain craving-domain)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - object
+    a b c d - obj
+    s1 s2 s3 - stage
   )
   (:init
-    ; unary predicates (from both agents' initial facts)
-    (cats object_0)
-    (cats object_1)
+    ;; initial craving relations
+    (craves b c)
+    (craves c d)
+    (craves d a)
 
-    (hand object_7)
-    (hand object_8)
+    ;; initial global facts
+    (harmony)
+    (planet a)
+    (province b)
 
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
-
-    (spring object_5)
-    (spring object_6)
-    (spring object_7)
-
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
-
-    ; binary predicates (collect / next) - union of both agents' facts
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_3)
-
-    (next object_0 object_7)
-    (next object_1 object_7)
-    (next object_4 object_6)
-    (next object_5 object_7)
-    (next object_8 object_7)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_7 object_6)
-    (next object_8 object_5)
+    ;; explicit ordered stages to enforce monotonic progression of time/stages
+    (next s1 s2)
+    (next s2 s3)
+    (at-stage s1)
   )
-  (:goal (and
-    (next object_7 object_6)
-    (next object_8 object_6)
-  ))
+  (:goal
+    (and
+      (craves a c)
+      (craves d a)
+    )
+  )
 )

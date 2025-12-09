@@ -1,22 +1,46 @@
-(define (problem orchestration-instance)
-  (:domain orchestration)
+(define (problem pipeline-problem)
+  (:domain pipeline-domain)
+
+  ;; Objects: phases, a dataset, a model, and one agent of each role.
   (:objects
-    orchestrator environment plannerA plannerB - agent
-    env_public_doc plannerB_private_doc plannerA_private_doc - doc
-    fragmentB_doc fragmentA_doc - doc
+    ph1 ph2 ph3 ph4 - phase
+    data1 - dataset
+    model1 - model
+    analyzer1 - analyzer
+    synthesizer1 - synthesizer
+    auditor1 - auditor
+    orchestrator1 - orchestrator
   )
 
   (:init
-    ;; Initially no documents are available, no requests made, no fragments, and nothing compiled.
-    ;; All ordering and availability is driven by actions.
+    ;; Initial pipeline phase
+    (current-phase ph1)
+
+    ;; Phase ordering (enforces contiguous sequence ph1 -> ph2 -> ph3 -> ph4)
+    (phase-next ph1 ph2)
+    (phase-next ph2 ph3)
+    (phase-next ph3 ph4)
+
+    ;; Declare which actions are permitted in which phases
+    (allowed-analyze ph1)
+    (allowed-synthesize ph2)
+    (allowed-audit ph3)
+    (allowed-deliver ph4)
+
+    ;; No analysis, model, audit, or delivery facts are true initially.
+    ;; (These facts must be produced by the corresponding actions.)
   )
 
-  ;; Goal: both fragments must be produced and both compiled artifacts must be produced.
-  ;; This enforces completion of every mandated terminal condition.
+  ;; Goal: all mandated terminal conditions are true.
+  ;; The pipeline must have analyzed the dataset, created a valid model,
+  ;; audited it, and delivered it. Also require that the pipeline reached
+  ;; the final phase (ph4) so ordering is enforced in the final state.
   (:goal (and
-    (fragment_ready fragmentA_doc)
-    (fragment_ready fragmentB_doc)
-    (compiled_domain)
-    (compiled_problem)
+    (analyzed data1)
+    (model-created model1)
+    (model-valid model1)
+    (audited model1)
+    (delivered model1)
+    (current-phase ph4)
   ))
 )

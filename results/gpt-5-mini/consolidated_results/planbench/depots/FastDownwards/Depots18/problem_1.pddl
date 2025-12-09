@@ -1,51 +1,82 @@
-(define (problem depots18-player)
-  (:domain Depots18)
+(define (problem depots-hoist-trucks-problem)
+  (:domain depots-hoist-trucks)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7
-    object_8 object_9 object_10 object_11 object_12 object_13 - object
+    ; Places
+    depot0 depot1 depot2 distributor0 - place
+
+    ; Pallets
+    pallet0 pallet1 pallet2 pallet3 - pallet
+
+    ; Crates
+    crate0 crate1 crate2 - crate
+
+    ; Hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    ; Trucks
+    truck0 truck1 truck2 - truck
+
+    ; Stages (discrete time steps). Planner must advance stage strictly via actions.
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 - stage
   )
+
   (:init
-    ;; from first statement fragment (player private initial facts)
-    (cats object_0)
-    (cats object_1)
+    ; Stage chain and initial stage
+    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5)
+    (succ s5 s6) (succ s6 s7) (succ s7 s8) (succ s8 s9) (succ s9 s10)
+    (stage s0)
 
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ; Locations of pallets
+    (at-pallet pallet0 depot0)
+    (at-pallet pallet1 depot1)
+    (at-pallet pallet2 depot2)
+    (at-pallet pallet3 distributor0)
 
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    ; Pallet clearness (pallet2 initially clear; pallet0/pallet1/pallet3 may have crates)
+    (clear-pallet pallet2)
 
-    (next object_0 object_8)
-    (next object_1 object_8)
-    (next object_10 object_7)
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_9)
-    (next object_4 object_7)
-    (next object_5 object_9)
+    ; Locations of crates (each crate has explicit place and support)
+    (at-crate crate0 depot1)
+    (on-pallet crate0 pallet1)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    (at-crate crate1 depot0)
+    (on-pallet crate1 pallet0)
 
-    (spring object_6)
-    (spring object_8)
+    (at-crate crate2 distributor0)
+    (on-pallet crate2 pallet3)
 
-    (stupendous object_2)
-    (stupendous object_3)
+    ; Crates that are clear on top (no crate on top)
+    (clear-crate crate0)
+    (clear-crate crate1)
+    (clear-crate crate2)
 
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; Hoists at places and available
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 distributor0)
+
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
+
+    ; Trucks initial positions
+    (at-truck truck0 depot0)
+    (at-truck truck1 depot0)
+    (at-truck truck2 distributor0)
+
+    ; No crate is in a truck initially (omitted)
   )
+
   (:goal (and
-    (next object_10 object_6)
-    (next object_11 object_8)
-    (next object_12 object_7)
-    (next object_13 object_9)
-  ))
+           ; Final required placements
+           (on-crate crate0 crate2)
+           (on-pallet crate1 pallet2)
+           (on-pallet crate2 pallet3)
+           ; And require plan reaches final declared stage to force progression (terminal condition)
+           (stage s10)
+         )
+  )
 )

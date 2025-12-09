@@ -1,127 +1,142 @@
-(define (domain ObfuscatedDeceptiveLogistics23)
+(define (domain orchestrator-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types obj stage)
 
-  ; Predicates used in the human specification
+  ;; Predicates
   (:predicates
     (hand ?x - obj)
-    (cats ?x - obj)
+    (cat ?x - obj)
     (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
     (sneeze ?x - obj)
+    (spring ?x - obj)
     (stupendous ?x - obj)
     (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
+    (next ?x - obj ?y - obj)
+    (vase ?x - obj ?y - obj)
+    ;; Stage progression predicates to enforce monotonic, contiguous occupancy
+    (at-stage ?x - obj ?st - stage)
+    (succ-stage ?st1 - stage ?st2 - stage)
   )
 
-  ; Action: paltry object_0 object_1 object_2.
-  ; Preconditions: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2
-  ; Effects: add next object_0 object_2, delete vase object_0 object_1
+  ;; Action: paltry
   (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?h - obj ?c - obj ?t - obj ?st - stage ?nst - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (hand ?h)
+      (cat ?c)
+      (texture ?t)
+      (vase ?h ?c)
+      (next ?c ?t)
+      (at-stage ?h ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (next ?h ?t)
+      (not (vase ?h ?c))
+      (not (at-stage ?h ?st))
+      (at-stage ?h ?nst)
     )
   )
 
-  ; Action: sip object_0 object_1 object_2.
-  ; Preconditions: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2
-  ; Effects: add vase object_0 object_1, delete next object_0 object_2
+  ;; Action: sip
   (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?h - obj ?c - obj ?t - obj ?st - stage ?nst - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (hand ?h)
+      (cat ?c)
+      (texture ?t)
+      (next ?h ?t)
+      (next ?c ?t)
+      (at-stage ?h ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?h ?c)
+      (not (next ?h ?t))
+      (not (at-stage ?h ?st))
+      (at-stage ?h ?nst)
     )
   )
 
-  ; Action: clip object_0 object_1 object_2.
-  ; Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2
-  ; Effects: add vase object_0 object_1, delete next object_0 object_2
+  ;; Action: clip
   (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?h - obj ?sn - obj ?t - obj ?st - stage ?nst - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (hand ?h)
+      (sneeze ?sn)
+      (texture ?t)
+      (next ?sn ?t)
+      (next ?h ?t)
+      (at-stage ?h ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?h ?sn)
+      (not (next ?h ?t))
+      (not (at-stage ?h ?st))
+      (at-stage ?h ?nst)
     )
   )
 
-  ; Action: wretched object_0 object_1 object_2 object_3.
-  ; Preconditions: sneeze object_0, texture object_1, texture object_2, stupendous object_3,
-  ;                next object_0 object_1, collect object_1 object_3, collect object_2 object_3
-  ; Effects: add next object_0 object_2, delete next object_0 object_1
+  ;; Action: wretched
   (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+    :parameters (?sn - obj ?t1 - obj ?t2 - obj ?sp - obj ?st - stage ?nst - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (sneeze ?sn)
+      (texture ?t1)
+      (texture ?t2)
+      (stupendous ?sp)
+      (next ?sn ?t1)
+      (collect ?t1 ?sp)
+      (collect ?t2 ?sp)
+      (at-stage ?sn ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (next ?sn ?t2)
+      (not (next ?sn ?t1))
+      (not (at-stage ?sn ?st))
+      (at-stage ?sn ?nst)
     )
   )
 
-  ; Action: memory object_0 object_1 object_2.
-  ; Preconditions: cats object_0, spring object_1, spring object_2, next object_0 object_1
-  ; Effects: add next object_0 object_2, delete next object_0 object_1
+  ;; Action: memory
   (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?c - obj ?s1 - obj ?s2 - obj ?st - stage ?nst - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (cat ?c)
+      (spring ?s1)
+      (spring ?s2)
+      (next ?c ?s1)
+      (at-stage ?c ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (next ?c ?s2)
+      (not (next ?c ?s1))
+      (not (at-stage ?c ?st))
+      (at-stage ?c ?nst)
     )
   )
 
-  ; Action: tightfisted object_0 object_1 object_2.
-  ; Preconditions: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1
-  ; Effects: add next object_0 object_2, delete vase object_0 object_1
+  ;; Action: tightfisted
   (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?h - obj ?sn - obj ?t - obj ?st - stage ?nst - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (hand ?h)
+      (sneeze ?sn)
+      (texture ?t)
+      (next ?sn ?t)
+      (vase ?h ?sn)
+      (at-stage ?h ?st)
+      (succ-stage ?st ?nst)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (next ?h ?t)
+      (not (vase ?h ?sn))
+      (not (at-stage ?h ?st))
+      (at-stage ?h ?nst)
     )
   )
+
 )

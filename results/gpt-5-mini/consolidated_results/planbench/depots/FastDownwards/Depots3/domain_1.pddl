@@ -1,200 +1,101 @@
-(define (domain depots3-multiagent)
+(define (domain depot-hoist-truck)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types place hoist truck crate surface)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-    (spring ?o - obj)
+    ;; location predicates
+    (at-hoist ?h - hoist ?p - place)
+    (at-truck ?t - truck ?p - place)
+    (at-surface ?s - surface ?p - place)
+
+    ;; object placement and containment
+    (on ?c - crate ?s - surface)        ; crate is on a surface/pallet
+    (in-truck ?c - crate ?t - truck)   ; crate is inside truck
+    (holding ?h - hoist ?c - crate)     ; hoist holds crate
+
+    ;; resource availability and clear predicates
+    (available ?h - hoist)              ; hoist free (not holding)
+    (clear-surface ?s - surface)        ; surface has no crate on it
+    (clear-crate ?c - crate)            ; crate has nothing on top
   )
 
-  ;; Player1 actions (p1- prefix)
-  (:action p1-sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; hoist lifts a crate off a surface (all at same place P)
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (on ?c ?s)
+      (clear-crate ?c)
+      (available ?h)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
-  )
-
-  (:action p1-paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (holding ?h ?c)
+      (clear-surface ?s)
+      (not (on ?c ?s))
+      (not (available ?h))
     )
   )
 
-  (:action p1-clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; hoist drops its held crate onto a surface (all at same place P)
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (holding ?h ?c)
+      (clear-surface ?s)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (on ?c ?s)
+      (available ?h)
+      (clear-crate ?c)
+      (not (holding ?h ?c))
+      (not (clear-surface ?s))
     )
   )
 
-  (:action p1-wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
+  ;; hoist places a held crate into a co-located truck (all at P)
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (holding ?h ?c)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
+      (in-truck ?c ?t)
+      (available ?h)
+      (not (holding ?h ?c))
     )
   )
 
-  (:action p1-memory
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; hoist removes a crate from a co-located truck and holds it (all at P)
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (available ?h)
+      (in-truck ?c ?t)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (holding ?h ?c)
+      (not (in-truck ?c ?t))
+      (not (available ?h))
     )
   )
 
-  (:action p1-tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; drive truck between distinct places (trucks can drive between any two places)
+  (:action drive
+    :parameters (?t - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (at-truck ?t ?from)
+      (not (= ?from ?to))
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  ;; Player2 actions (p2- prefix) -- identical semantics but distinct names
-  (:action p2-sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
-  )
-
-  (:action p2-paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  (:action p2-clip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
-  )
-
-  (:action p2-wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action p2-memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action p2-tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
     )
   )
 )

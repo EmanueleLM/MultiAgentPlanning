@@ -1,38 +1,36 @@
-(define (problem orchestrator-instance-1)
-  (:domain orchestrator-domain)
+(define (problem orchestrator-problem)
+  (:domain orchestrator)
   (:objects
-    loader1 assembler1 - agent
-    item1 item2 - item
-    depot handoff assembly - location
+    observer reasoner auditor - agent
+    day1 day2 day3 - day
+    collect analyze remediate - task
   )
 
   (:init
-    ;; Agent initial locations
-    (at loader1 depot)
-    (at assembler1 assembly)
+    ;; start on day1
+    (current-day day1)
 
-    ;; Items initial locations
-    (item-at item1 depot)
-    (item-at item2 depot)
-
-    ;; Hands free initially
-    (free loader1)
-    (free assembler1)
-
-    ;; No item has been picked, transported, or assembled initially
-    ;; (Absence of picked/transported/assembled facts implies false)
+    ;; explicit successive day links (enforce contiguity)
+    (successor day1 day2)
+    (successor day2 day3)
   )
 
-  ;; Goals: both items must be assembled, and final mandatory terminal conditions for agents fixed.
-  ;; - assembled item1 and item2 must be true (terminal task completion)
-  ;; - loader1 must be back at depot
-  ;; - assembler1 must remain at assembly
+  ;; Goal fixes every mandated terminal condition:
+  ;; - each task completed
+  ;; - each task performed by the specified agent
+  ;; - timeline finished on day3
   (:goal
     (and
-      (assembled item1)
-      (assembled item2)
-      (at loader1 depot)
-      (at assembler1 assembly)
+      (done collect)
+      (performed-by collect observer)
+
+      (done analyze)
+      (performed-by analyze reasoner)
+
+      (done remediate)
+      (performed-by remediate auditor)
+
+      (current-day day3)
     )
   )
 )

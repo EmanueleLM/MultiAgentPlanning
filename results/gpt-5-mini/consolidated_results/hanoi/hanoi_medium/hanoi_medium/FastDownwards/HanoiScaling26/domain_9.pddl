@@ -1,0 +1,96 @@
+(define (domain hanoi)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg stage)
+
+  (:predicates
+    (on-peg ?d - disk ?p - peg)
+    (on-disk ?d - disk ?under - disk)
+    (clear-peg ?p - peg)
+    (clear-disk ?d - disk)
+    (smaller ?d1 - disk ?d2 - disk)
+    (next ?s1 - stage ?s2 - stage)
+    (stage-ready ?s - stage)
+  )
+
+  (:action move-peg-to-peg
+    :parameters (?disk - disk ?from - peg ?to - peg ?cur - stage ?next - stage)
+    :precondition (and
+      (on-peg ?disk ?from)
+      (clear-disk ?disk)
+      (clear-peg ?to)
+      (stage-ready ?cur)
+      (next ?cur ?next)
+      (not (on-peg ?disk ?to))
+    )
+    :effect (and
+      (not (on-peg ?disk ?from))
+      (on-peg ?disk ?to)
+      (not (clear-peg ?to))
+      (clear-peg ?from)
+      (not (stage-ready ?cur))
+      (stage-ready ?next)
+    )
+  )
+
+  (:action move-peg-to-disk
+    :parameters (?disk - disk ?from - peg ?target - disk ?cur - stage ?next - stage)
+    :precondition (and
+      (on-peg ?disk ?from)
+      (clear-disk ?disk)
+      (clear-disk ?target)
+      (smaller ?disk ?target)
+      (stage-ready ?cur)
+      (next ?cur ?next)
+      (not (on-disk ?disk ?target))
+    )
+    :effect (and
+      (not (on-peg ?disk ?from))
+      (on-disk ?disk ?target)
+      (not (clear-disk ?target))
+      (clear-peg ?from)
+      (not (stage-ready ?cur))
+      (stage-ready ?next)
+    )
+  )
+
+  (:action move-disk-to-peg
+    :parameters (?disk - disk ?from - disk ?to - peg ?cur - stage ?next - stage)
+    :precondition (and
+      (on-disk ?disk ?from)
+      (clear-disk ?disk)
+      (clear-peg ?to)
+      (stage-ready ?cur)
+      (next ?cur ?next)
+      (not (on-peg ?disk ?to))
+    )
+    :effect (and
+      (not (on-disk ?disk ?from))
+      (on-peg ?disk ?to)
+      (clear-disk ?from)
+      (not (clear-peg ?to))
+      (not (stage-ready ?cur))
+      (stage-ready ?next)
+    )
+  )
+
+  (:action move-disk-to-disk
+    :parameters (?disk - disk ?from - disk ?target - disk ?cur - stage ?next - stage)
+    :precondition (and
+      (on-disk ?disk ?from)
+      (clear-disk ?disk)
+      (clear-disk ?target)
+      (smaller ?disk ?target)
+      (stage-ready ?cur)
+      (next ?cur ?next)
+      (not (on-disk ?disk ?target))
+    )
+    :effect (and
+      (not (on-disk ?disk ?from))
+      (on-disk ?disk ?target)
+      (clear-disk ?from)
+      (not (clear-disk ?target))
+      (not (stage-ready ?cur))
+      (stage-ready ?next)
+    )
+  )
+)

@@ -1,46 +1,64 @@
-(define (problem objects-manipulation-problem)
-  (:domain objects-manipulation)
+(define (problem logistics-instance)
+  (:domain logistics)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - object
-    step_0 step_1 step_2 step_3 step_4 step_5 - time
+    ;; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - plane
+
+    ;; packages
+    package_0 package_1 - package
+
+    ;; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; cities (used only for modeling; connectivity encoded explicitly)
+    city_0 city_1 - city
+
+    ;; discrete stages
+    day0 day1 day2 - day
   )
 
   (:init
-    ; time initialization: actions must advance step by step
-    (time-now step_0)
-    (succ step_0 step_1)
-    (succ step_1 step_2)
-    (succ step_2 step_3)
-    (succ step_3 step_4)
-    (succ step_4 step_5)
+    ;; airports (one per city as stated)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ; initial domain facts (first scenario from specification)
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_10)
-    (hand object_9)
-    (next object_0 object_7)
-    (next object_10 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_8)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; initial locations of vehicles
+    (at truck_0 location_0_0)
+    (at truck_1 location_1_1)
+    (at airplane_0 location_0_0)
+
+    ;; initial package locations
+    (at package_0 location_0_0)
+    (at package_1 location_0_0)
+
+    ;; truck connectivity: any two locations in the same city are directly reachable.
+    ;; city_0 locations
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    ;; city_1 locations
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
+
+    ;; air connectivity between airports (cities connected)
+    (air-connected location_0_0 location_1_0)
+    (air-connected location_1_0 location_0_0)
+
+    ;; stage ordering
+    (succ day0 day1)
+    (succ day1 day2)
+
+    ;; starting stage
+    (now day0)
   )
 
   (:goal (and
-    (next object_10 object_5)
-    (next object_9 object_7)
+    ;; mandated final stage (planner must reach final stage explicitly)
+    (now day2)
+
+    ;; delivery goals: both packages at location_0_1
+    (at package_0 location_0_1)
+    (at package_1 location_0_1)
   ))
 )

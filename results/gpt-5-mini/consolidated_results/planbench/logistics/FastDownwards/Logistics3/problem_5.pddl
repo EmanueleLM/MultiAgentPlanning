@@ -1,60 +1,45 @@
-(define (problem multiagent-instance-staged)
-  (:domain multiagent-staged)
+(define (problem city-logistics-instance)
+  (:domain city-logistics)
 
   (:objects
-    ; world objects referenced in the integrated initial state and plan
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
-
-    ; explicit stages: number of stages equals number of actions to be executed (5 actions -> 6 stages)
-    s0 s1 s2 s3 s4 s5 - stage
+    city_0 city_1 - city
+    location_0_0 location_1_0 - location
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 - package
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 - stage
   )
 
   (:init
-    ; explicit stage order and initial active stage
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
-    (now s0)
+    (in-city location_0_0 city_0)
+    (in-city location_1_0 city_1)
 
-    ; unary/static facts from the supplied initial statement
-    (cats object_0)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (hand object_7)
-    (hand object_8)
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
 
-    (texture object_5)
-    (texture object_6)
+    (succ stage0 stage1)
+    (succ stage1 stage2)
+    (succ stage2 stage3)
+    (succ stage3 stage4)
+    (succ stage4 stage5)
+    (succ stage5 stage6)
 
-    (spring object_5)
-    (spring object_6)
+    (current-stage stage0)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    (at-airplane airplane_0 location_0_0)
+    (at-airplane airplane_1 location_0_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
 
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-
-    ; mutable binary relations present initially
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
   )
 
-  (:goal
-    (and
-      ;; require terminal occupancy at the final stage to enforce completion
-      (now s5)
-
-      ;; goal relations specified by the instance
-      (next object_7 object_5)
-      (next object_8 object_5)
-    )
-  )
+  (:goal (and
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_0_0)
+  ))
 )

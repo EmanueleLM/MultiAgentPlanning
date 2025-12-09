@@ -1,204 +1,132 @@
-(define (domain obfuscated-deceptive-logistics3)
+(define (domain obfuscated-deceptive-logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types object)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (sneeze ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?x - obj ?y - obj)
+    (hand ?o - object)
+    (cats ?o - object)
+    (texture ?o - object)
+    (vase ?a - object ?b - object)
+    (next ?a - object ?b - object)
+    (sneeze ?o - object)
+    (spring ?o - object)
+    (collect ?a - object ?b - object)
+    (stupendous ?o - object)
   )
 
-  ;; SIP
-  (:action actor_a_sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; paltry object_0 object_1 object_2.
+  ;; pre: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
+  ;; add: next o0 o2
+  ;; del: vase o0 o1
+  (:action paltry
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (vase ?o0 ?o1)
+      (next ?o1 ?o2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
-  )
-
-  (:action actor_b_sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
     )
   )
 
-  ;; CLIP
-  (:action actor_a_clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; sip object_0 object_1 object_2.
+  ;; pre: hand o0, cats o1, texture o2, next o0 o2, next o1 o2
+  ;; add: vase o0 o1
+  ;; del: next o0 o2
+  (:action sip
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (next ?o0 ?o2)
+      (next ?o1 ?o2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
     )
   )
 
-  (:action actor_b_clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; clip object_0 object_1 object_2.
+  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
+  ;; add: vase o0 o1
+  ;; del: next o0 o2
+  (:action clip
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (next ?o0 ?o2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
     )
   )
 
-  ;; PALTRY
-  (:action actor_a_paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; wretched object_0 object_1 object_2 object_3.
+  ;; pre: sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3
+  ;; add: next o0 o2
+  ;; del: next o0 o1
+  (:action wretched
+    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (sneeze ?o0)
+      (texture ?o1)
+      (texture ?o2)
+      (stupendous ?o3)
+      (next ?o0 ?o1)
+      (collect ?o1 ?o3)
+      (collect ?o2 ?o3)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
     )
   )
 
-  (:action actor_b_paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; memory object_0 object_1 object_2.
+  ;; pre: cats o0, spring o1, spring o2, next o0 o1
+  ;; add: next o0 o2
+  ;; del: next o0 o1
+  (:action memory
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (cats ?o0)
+      (spring ?o1)
+      (spring ?o2)
+      (next ?o0 ?o1)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
     )
   )
 
-  ;; TIGHTFISTED
-  (:action actor_a_tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; tightfisted object_0 object_1 object_2.
+  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
+  ;; add: next o0 o2
+  ;; del: vase o0 o1
+  (:action tightfisted
+    :parameters (?o0 - object ?o1 - object ?o2 - object)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (vase ?o0 ?o1)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
     )
   )
 
-  (:action actor_b_tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  ;; MEMORY
-  (:action actor_a_memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action actor_b_memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  ;; WRETCHED
-  (:action actor_a_wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?c - obj)
-    :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?c)
-      (next ?x ?y)
-      (collect ?y ?c)
-      (collect ?z ?c)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
-
-  (:action actor_b_wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?c - obj)
-    :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?c)
-      (next ?x ?y)
-      (collect ?y ?c)
-      (collect ?z ?c)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
-  )
 )

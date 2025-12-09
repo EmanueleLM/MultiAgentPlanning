@@ -1,0 +1,161 @@
+{
+    "name": "HanoiScaling24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "validator",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is on top of a peg",
+                "I can never place a larger disk on top of a smaller disk",
+                "Once a disk is moved, it keeps its relative size ordering with the others",
+                "Disks from smallest to largest are disk A, disk B, disk C, disk D, disk E, disk F",
+                "Initial state: middle peg holds from top to bottom A, B, C, D, E, F; left and right pegs are empty"
+            ],
+            "goal": "Produce a complete, explicit sequence of legal moves that transfers all six disks from the middle peg to the right peg using the left peg as auxiliary, leaving left and middle pegs empty",
+            "actions": {
+                "plan_moves": {
+                    "input": [],
+                    "output": "move_sequence",
+                    "system_prompt": "You are an expert in Tower of Hanoi move generation. Provide a detailed, step-by-step sequence of individual moves expressed as ordered pairs (disk, from-peg, to-peg) that accomplish the task while obeying the rules. Do not emit PDDL. Provide the minimal necessary assumptions and do not invent extra objects.",
+                    "prompt": "Agent mover context: You know the public information and your private information. Your objective is to generate the ordered list of moves that will transfer all disks from the middle peg to the right peg using the left peg as an auxiliary. Output a clear move_sequence artifact composed of lines like A middle right or (A, middle, left). Do not produce PDDL."
+                }
+            }
+        },
+        "validator": {
+            "private_information": [
+                "I verify move legality given the Tower of Hanoi rules and initial state",
+                "I can annotate each move with a justification and identify any violations"
+            ],
+            "goal": "Check the mover's move sequence for rule compliance and produce a per-step legal_checks artifact marking any illegal or suspicious steps",
+            "actions": {
+                "check_legality": {
+                    "input": [
+                        "move_sequence"
+                    ],
+                    "output": "legal_checks",
+                    "system_prompt": "You are an expert verifier of symbolic move sequences. Given an explicit move sequence and the Tower of Hanoi rules and initial configuration, verify that each step is legal, provide local stack states after each move, and flag any violations. Do not produce PDDL. Focus on correctness and completeness.",
+                    "prompt": "Agent validator context: Receive the move_sequence from mover and the public information. Produce legal_checks that list each move with a boolean legal flag, the resulting configuration after the move, and a short justification or an error description if illegal."
+                }
+            }
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency, and I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I ensure the move sequence does not rely on hidden bookkeeping or implicit state changes beyond canonical disk positions"
+            ],
+            "goal": "Produce an audit_report that confirms global temporal and causal consistency of the proposed plan and that no bookkeeping shortcuts are required to enact it",
+            "actions": {
+                "audit": {
+                    "input": [
+                        "move_sequence",
+                        "legal_checks"
+                    ],
+                    "output": "audit_report",
+                    "system_prompt": "You are an auditor specializing in temporal and causal consistency for sequential plans. Inspect the move_sequence and legal_checks, ensure there are no implicit shortcuts or bookkeeping hacks, verify that all preconditions and effects are causally supported step by step, and produce an audit_report that either certifies the plan as causally and temporally consistent or lists required corrections. Do not produce PDDL.",
+                    "prompt": "Agent auditor context: Given the move_sequence and the validator's legal_checks, produce an audit_report that states whether the sequence is fully implementable under the Tower of Hanoi rules, identifies any implicit assumptions, and suggests modifications to remove bookkeeping shortcuts if any exist."
+                }
+            }
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate agents' artifacts into a final planning specification",
+                "Target solver: FastDownwards"
+            ],
+            "goal": "Integrate inputs from mover, validator, and auditor and produce a complete PDDL domain and problem file suitable for the FastDownwards solver that encodes the 6-disk Tower of Hanoi instance and the requirement that the left peg ends empty",
+            "actions": {
+                "pddl": {
+                    "input": [
+                        "move_sequence",
+                        "legal_checks",
+                        "audit_report"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are an expert in multi-agent PDDL modeling and integration. Using the artifacts provided by the agents, produce a complete PDDL domain and PDDL problem targeted for the FastDownwards planner. Ensure the domain models six disks named A B C D E F and three pegs left middle right, includes clear type and predicate declarations, actions that preserve disk ordering, and a problem file encoding the initial stack on middle and the goal stack on right with left empty. Keep agent contributions distinct and reconciled, avoid assumptions beyond inputs, and enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                    "prompt": "Agent orchestrator context: Integrate the mover move_sequence, validator legal_checks, and auditor audit_report into a single PDDL domain and problem suitable for FastDownwards. The domain should make explicit constraints that prevent larger-on-smaller placements, allow moving only the top disk of a peg, and support the representation of pegs and disk ordering. The problem must represent the initial state with all six disks on middle from top A to bottom F and the goal state with all six disks on right in the same order and left and middle empty. Output the domain and problem artifacts only, enclosed in <domain></domain> and <problem></problem> respectively."
+                }
+            }
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 6,
+            "disk_labels": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "There are 6 disks labeled from smallest to largest as disk A disk B disk C disk D disk E disk F",
+            "Initial configuration: middle peg holds from top to bottom disk A disk B disk C disk D disk E disk F while left and right pegs are empty",
+            "Goal configuration: right peg must hold from top to bottom disk A disk B disk C disk D disk E disk F and both middle and left pegs must be empty",
+            "Rules: move only one disk at a time may only move a disk that is on top of a peg can never place a larger disk on top of a smaller disk left peg may be used as auxiliary but must end up empty"
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "plan_moves": {
+                "input": [],
+                "output": "move_sequence",
+                "system_prompt": "You are an expert in Tower of Hanoi move generation. Provide a detailed, step-by-step sequence of individual moves expressed as ordered triples disk from-peg to-peg. Do not emit PDDL.",
+                "prompt": "Your name is mover. Use the public information and your private information to produce move_sequence that transfers all disks from middle to right using left as auxiliary. Express moves succinctly and unambiguously."
+            }
+        },
+        "validator": {
+            "check_legality": {
+                "input": [
+                    "move_sequence"
+                ],
+                "output": "legal_checks",
+                "system_prompt": "You are an expert verifier of move sequences. For each move verify legality under Tower of Hanoi rules and provide resulting configurations. Do not emit PDDL.",
+                "prompt": "Your name is validator. Receive move_sequence and produce legal_checks listing legality boolean per move and the peg stacks after each move."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "move_sequence",
+                    "legal_checks"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Ensure the plan has no implicit bookkeeping shortcuts and that all causal preconditions are supported. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Given move_sequence and legal_checks produce audit_report certifying causal and temporal implementability or providing corrections to remove any bookkeeping shortcuts."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "move_sequence",
+                    "legal_checks",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the provided artifacts and output a PDDL domain and a PDDL problem targeting the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep the contributions of individual agents distinct and explicitly reconciled.",
+                "prompt": "Your name is orchestrator. Use move_sequence legal_checks and audit_report to construct a complete PDDL domain and problem encoding the 6-disk Tower of Hanoi initial and goal states and the rules, suitable for FastDownwards. Ensure action schemas prevent illegal placements and only allow moving the top disk of a peg. Enclose domain and problem as specified."
+            }
+        },
+        "constraints": [
+            "mover.plan_moves->validator.check_legality",
+            "validator.check_legality->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "mover.plan_moves->orchestrator.pddl",
+            "validator.check_legality->orchestrator.pddl"
+        ]
+    }
+}

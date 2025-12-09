@@ -1,107 +1,137 @@
-(define (domain Depots9)
+(define (domain hoist-truck-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    place
+    object
+    hoist truck surface - object
+    crate pallet - surface
+  )
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 - obj ?o2 - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (spring ?o - obj)
+    ; location of objects (hoists, trucks, surfaces, crates)
+    (at ?obj - object ?p - place)
+
+    ; crate stacking / placement: crate directly on a surface (pallet or crate)
+    (on ?c - crate ?s - surface)
+
+    ; crate inside a truck
+    (in ?c - crate ?t - truck)
+
+    ; hoist is currently holding the crate
+    (lifting ?h - hoist ?c - crate)
+
+    ; hoist availability (exclusive resource)
+    (available ?h - hoist)
+
+    ; top-of-surface free predicate (applies to pallets and crates)
+    (clear ?s - surface)
   )
 
-  (:action paltry
-    :parameters (?pa - obj ?pb - obj ?pc - obj)
+  ; DRIVE: move a truck between places (connectivity universal)
+  (:action drive
+    :parameters (?tr - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?pa)
-      (cats ?pb)
-      (texture ?pc)
-      (vase ?pa ?pb)
-      (next ?pb ?pc)
-    )
+                    (at ?tr ?from)
+                  )
     :effect (and
-      (next ?pa ?pc)
-      (not (vase ?pa ?pb))
-    )
+              (not (at ?tr ?from))
+              (at ?tr ?to)
+            )
   )
 
-  (:action sip
-    :parameters (?sa - obj ?sb - obj ?sc - obj)
+  ; HOIST LIFT: hoist lifts a crate off a surface at a place
+  ; Preconditions require hoist and surface at same place, hoist available, crate is on the surface and top-clear.
+  (:action hoist_lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?sa)
-      (cats ?sb)
-      (texture ?sc)
-      (next ?sa ?sc)
-      (next ?sb ?sc)
-    )
+                    (at ?h ?p)
+                    (at ?s ?p)
+                    (on ?c ?s)
+                    (clear ?c)
+                    (available ?h)
+                  )
     :effect (and
-      (vase ?sa ?sb)
-      (not (next ?sa ?sc))
-    )
+              ; crate leaves the surface and the place (it is being lifted)
+              (not (on ?c ?s))
+              (not (at ?c ?p))
+
+              ; hoist becomes occupied holding the crate
+              (not (available ?h))
+              (lifting ?h ?c)
+
+              ; surface becomes clear after removal
+              (clear ?s)
+
+              ; crate top remains clear while lifted
+              (clear ?c)
+            )
   )
 
-  (:action clip
-    :parameters (?ca - obj ?cb - obj ?cc - obj)
+  ; HOIST DROP: hoist drops a held crate onto a surface at a place
+  (:action hoist_drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?ca)
-      (sneeze ?cb)
-      (texture ?cc)
-      (next ?cb ?cc)
-      (next ?ca ?cc)
-    )
+                    (at ?h ?p)
+                    (at ?s ?p)
+                    (lifting ?h ?c)
+                    (clear ?s)
+                  )
     :effect (and
-      (vase ?ca ?cb)
-      (not (next ?ca ?cc))
-    )
+              ; hoist released
+              (not (lifting ?h ?c))
+              (available ?h)
+
+              ; crate is now at place and on the surface
+              (at ?c ?p)
+              (on ?c ?s)
+
+              ; surface now occupied, crate top is clear
+              (not (clear ?s))
+              (clear ?c)
+            )
   )
 
-  (:action wretched
-    :parameters (?wa - obj ?wb - obj ?wc - obj ?wd - obj)
+  ; HOIST LOAD: hoist places a held crate into a truck at the same place
+  (:action hoist_load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (sneeze ?wa)
-      (texture ?wb)
-      (texture ?wc)
-      (stupendous ?wd)
-      (next ?wa ?wb)
-      (collect ?wb ?wd)
-      (collect ?wc ?wd)
-    )
+                    (at ?h ?p)
+                    (at ?t ?p)
+                    (lifting ?h ?c)
+                  )
     :effect (and
-      (next ?wa ?wc)
-      (not (next ?wa ?wb))
-    )
+              ; hoist released and crate placed inside truck
+              (not (lifting ?h ?c))
+              (in ?c ?t)
+              (available ?h)
+
+              ; crate no longer has a ground/location at the place while inside truck
+              (not (at ?c ?p))
+
+              ; crate top remains clear inside truck
+              (clear ?c)
+            )
   )
 
-  (:action memory
-    :parameters (?ma - obj ?mb - obj ?mc - obj)
+  ; HOIST UNLOAD: hoist takes a crate out of a truck at that place
+  (:action hoist_unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (cats ?ma)
-      (spring ?mb)
-      (spring ?mc)
-      (next ?ma ?mb)
-    )
+                    (at ?h ?p)
+                    (at ?t ?p)
+                    (available ?h)
+                    (in ?c ?t)
+                  )
     :effect (and
-      (next ?ma ?mc)
-      (not (next ?ma ?mb))
-    )
-  )
+              ; crate removed from truck
+              (not (in ?c ?t))
 
-  (:action tightfisted
-    :parameters (?ta - obj ?tb - obj ?tc - obj)
-    :precondition (and
-      (hand ?ta)
-      (sneeze ?tb)
-      (texture ?tc)
-      (next ?tb ?tc)
-      (vase ?ta ?tb)
-    )
-    :effect (and
-      (next ?ta ?tc)
-      (not (vase ?ta ?tb))
-    )
+              ; hoist becomes occupied holding the crate
+              (not (available ?h))
+              (lifting ?h ?c)
+
+              ; crate has no ground/on facts while lifted
+              (not (at ?c ?p))
+            )
   )
 )

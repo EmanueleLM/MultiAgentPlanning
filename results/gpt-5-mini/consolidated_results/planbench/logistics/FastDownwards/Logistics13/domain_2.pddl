@@ -1,100 +1,59 @@
-(define (domain Logistics13)
+(define (domain multi_transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types hand cat sneeze stupendous obj)
+  (:types city location truck airplane package)
 
   (:predicates
-    (texture ?x - obj)
-    (spring ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
+    ;; vehicle/location and package/location and package/container
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?a - airplane ?l - location)
+    (at-pkg ?p - package ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    ;; city membership used to constrain truck movement
+    (loc-in-city ?l - location ?c - city)
+
+    ;; airport designation used to constrain airplane operations
+    (airport ?l - location)
   )
 
-  ;; paltry: hand X, cats Y, texture Z, vase X Y, next Y Z -> next X Z, not vase X Y
-  (:action paltry
-    :parameters (?x - hand ?y - cat ?z - obj)
-    :precondition (and
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+  ;; Truck actions (distinct from airplane actions)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and (at-truck ?t ?from)
+                       (loc-in-city ?from ?c)
+                       (loc-in-city ?to ?c))
+    :effect (and (not (at-truck ?t ?from)) (at-truck ?t ?to))
   )
 
-  ;; sip: hand X, cats Y, texture Z, next X Z, next Y Z -> vase X Y, not next X Z
-  (:action sip
-    :parameters (?x - hand ?y - cat ?z - obj)
-    :precondition (and
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (at-pkg ?p ?l) (at-truck ?t ?l))
+    :effect (and (not (at-pkg ?p ?l)) (in-truck ?p ?t))
   )
 
-  ;; clip: hand X, sneeze Y, texture Z, next Y Z, next X Z -> vase X Y, not next X Z
-  (:action clip
-    :parameters (?x - hand ?y - sneeze ?z - obj)
-    :precondition (and
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
-    )
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (in-truck ?p ?t) (at-truck ?t ?l))
+    :effect (and (not (in-truck ?p ?t)) (at-pkg ?p ?l))
   )
 
-  ;; wretched: sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;; -> next X Z, not next X Y
-  (:action wretched
-    :parameters (?x - sneeze ?y - obj ?z - obj ?w - stupendous)
-    :precondition (and
-      (texture ?y)
-      (texture ?z)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
+  ;; Airplane actions (distinct)
+  (:action fly-plane
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at-plane ?a ?from) (airport ?from) (airport ?to) (not (= ?from ?to)))
+    :effect (and (not (at-plane ?a ?from)) (at-plane ?a ?to))
   )
 
-  ;; memory: cats X, spring Y, spring Z, next X Y -> next X Z, not next X Y
-  (:action memory
-    :parameters (?x - cat ?y - obj ?z - obj)
-    :precondition (and
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
-    )
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (at-pkg ?p ?l) (at-plane ?a ?l) (airport ?l))
+    :effect (and (not (at-pkg ?p ?l)) (in-plane ?p ?a))
   )
 
-  ;; tightfisted: hand X, sneeze Y, texture Z, next Y Z, vase X Y -> next X Z, not vase X Y
-  (:action tightfisted
-    :parameters (?x - hand ?y - sneeze ?z - obj)
-    :precondition (and
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (in-plane ?p ?a) (at-plane ?a ?l) (airport ?l))
+    :effect (and (not (in-plane ?p ?a)) (at-pkg ?p ?l))
   )
-
 )

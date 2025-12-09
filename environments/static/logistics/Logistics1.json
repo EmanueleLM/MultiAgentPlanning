@@ -4,99 +4,107 @@
     "agents": {
         "number": 4,
         "names": [
-            "player",
+            "truck_operator",
+            "air_operator",
             "auditor",
-            "analyst",
             "orchestrator"
         ],
-        "player": {
+        "truck_operator": {
             "private_information": [
-                "I observe the user's described actions, preconditions, effects, initial statements, and proposed plans.",
-                "I represent the raw plan steps and the concrete object arguments used in those steps."
+                "I control trucks, one per city.",
+                "Trucks can move between any two locations within the same city.",
+                "Trucks load and unload packages at locations."
             ],
-            "goal": "Extract structured facts, action instances, objects, initial facts, and goals from the human specification without producing final PDDL."
+            "goal": "Provide accurate local action schemas and constraints for truck-level operations so packages can be moved within cities."
+        },
+        "air_operator": {
+            "private_information": [
+                "I control airplanes that fly between city airports.",
+                "Each city has exactly one airport which is a specific location in that city.",
+                "Airplanes load and unload packages at airports."
+            ],
+            "goal": "Provide accurate inter-city action schemas and constraints for airplane operations so packages can be moved between cities."
         },
         "auditor": {
             "private_information": [
-                "I specialize in temporal and causal consistency auditing and in removing bookkeeping shortcuts such as quota tokens and post-hoc penalties.",
-                "I check for missing prerequisites, conflicting effects, or steps that depend on transient bookkeeping facts."
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts.",
+                "I ensure that action preconditions and effects are explicit and that no hidden tokens or post-hoc penalties are used."
             ],
-            "goal": "Analyze the extracted plan and model to detect causal or temporal inconsistencies and propose corrective adjustments or clarifications."
-        },
-        "analyst": {
-            "private_information": [
-                "I translate natural language and structured facts into a canonical, solver-agnostic formal model that lists predicates, objects, actions with preconditions and effects, initial facts, and goals.",
-                "I avoid emitting final PDDL but produce a clean formal representation that the orchestrator can convert to PDDL."
-            ],
-            "goal": "Produce a canonical formal model representation of predicates, objects, action schemas, and the instance-level initial state and goals, incorporating auditor corrections."
+            "goal": "Produce an audit report identifying missing causal links, temporal violations, and suggest canonicalized preconditions and effects for integration."
         },
         "orchestrator": {
             "private_information": [
-                "I integrate the formal model and produce the final PDDL domain and PDDL problem targeting the FastDownwards solver.",
-                "I ensure actions remain distinct and respect any agent-specific distinctions made by the analyst."
+                "I integrate local models and the auditor report into a final planning model suitable for FastDownward.",
+                "I must keep actions of different agents distinct and produce a single PDDL domain and problem."
             ],
-            "goal": "Generate a complete PDDL domain and problem suitable for FastDownwards that encodes the task and the corrected plan requirements."
+            "goal": "Integrate inputs from the other agents and produce a complete PDDL domain and problem targeting the FastDownward solver that achieves the global logistics goal."
         }
     },
     "environment": {
         "init": {
-            "objects": 9
+            "grid_size": 2,
+            "visibility": 2
         },
         "public_information": [
-            "Actions and their specifications: Paltry requires hand obj0 cats obj1 texture obj2 vase obj0 obj1 next obj1 obj2 ; Paltry adds next obj0 obj2 and removes vase obj0 obj1.",
-            "Sip requires hand obj0 cats obj1 texture obj2 next obj0 obj2 next obj1 obj2 ; Sip adds vase obj0 obj1 and removes next obj0 obj2.",
-            "Clip requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 next obj0 obj2 ; Clip adds vase obj0 obj1 and removes next obj0 obj2.",
-            "Wretched requires sneeze obj0 texture obj1 texture obj2 stupendous obj3 next obj0 obj1 collect obj1 obj3 collect obj2 obj3 ; Wretched adds next obj0 obj2 and removes next obj0 obj1.",
-            "Memory requires cats obj0 spring obj1 spring obj2 next obj0 obj1 ; Memory adds next obj0 obj2 and removes next obj0 obj1.",
-            "Tightfisted requires hand obj0 sneeze obj1 texture obj2 next obj1 obj2 vase obj0 obj1 ; Tightfisted adds next obj0 obj2 and removes vase obj0 obj1.",
-            "Statement A initial facts: cats obj0 cats obj1 collect obj6 obj2 collect obj7 obj3 hand obj8 next obj0 obj7 next obj1 obj7 next obj4 obj6 next obj5 obj7 next obj8 obj7 sneeze obj4 sneeze obj5 spring obj6 spring obj7 stupendous obj2 stupendous obj3 texture obj6 texture obj7. Goal: next obj8 obj6. Proposed plan: sip obj8 obj1 obj7 ; memory obj1 obj7 obj6 ; paltry obj8 obj1 obj6.",
-            "Statement B initial facts: cats obj0 collect obj5 obj1 collect obj6 obj2 hand obj7 hand obj8 next obj0 obj6 next obj3 obj5 next obj4 obj6 next obj7 obj6 next obj8 obj5 sneeze obj3 sneeze obj4 spring obj5 spring obj6 stupendous obj1 stupendous obj2 texture obj5 texture obj6. Goal: next obj7 obj6 and next obj8 obj6. No plan provided."
+            "There are multiple cities. Each city contains multiple locations and exactly one truck.",
+            "Each city has exactly one location designated as the airport.",
+            "Locations within the same city are directly connected so trucks can move between any two locations of that city.",
+            "Cities are connected by flights between their airports so airplanes can fly from one airport to another airport.",
+            "Actions available: load-truck, unload-truck, drive-truck, load-airplane, unload-airplane, fly-airplane.",
+            "Load into truck requires package and truck at the same location. After loading the package is in the truck and not at the location.",
+            "Unload from truck requires the package to be in the truck. After unloading the package is at the truck's current location and not in the truck.",
+            "Load into airplane requires package and airplane at the same airport location. After loading the package is in the airplane and not at the location.",
+            "Unload from airplane requires the package to be in the airplane. After unloading the package is at the airplane's current airport location and not in the airplane.",
+            "Drive truck requires the truck to be at the source location and both source and destination to be locations in the same city. After driving the truck is at the destination and not at the source.",
+            "Fly airplane requires the airplane to be at the source airport location and both source and destination locations to be airports. After flying the airplane is at the destination airport and not at the source.",
+            "Initial facts: location_0_0 is an airport. location_1_0 is an airport. airplane_0 is at location_1_0. package_0 is at location_1_0. package_1 is at location_0_0. truck_0 is at location_0_0. truck_1 is at location_1_0. location_0_0 is in city city_0. location_1_0 is in city city_1.",
+            "Goal: package_0 is at location_1_0 and package_1 is at location_1_0."
         ]
     },
     "workflow": {
-        "player": {
-            "extract": {
+        "truck_operator": {
+            "spec": {
                 "input": [],
-                "output": "facts_player",
-                "system_prompt": "You are the extractor agent. Your job is to parse the public information and the human specification and return a structured set of objects, predicates, action instances, initial facts, and goals. Do not produce PDDL. Produce canonical names for predicates and objects and list concrete plan steps as sequences of action names with arguments.",
-                "prompt": "You are named player. Use the environment public information and your private information to identify all objects, all predicate ground facts in each statement, the goal facts, and each proposed plan step. Provide a structured summary that lists objects and maps them to consistent identifiers, lists initial facts, lists goal facts, and enumerates plan steps in order."
+                "output": "truck_spec",
+                "system_prompt": "You are the truck domain specialist. Provide a precise, structured description of truck-related predicates, action schemas, preconditions and effects, and any capacity or locality constraints. Do not emit PDDL. Be explicit about what you assume versus what you know.",
+                "prompt": "Your name is truck_operator. Based on the public information and your private information provide a clear, structured specification for truck actions: load-truck, unload-truck, drive-truck. For each action list required preconditions, deterministic effects, and any locality constraints. State any assumptions you need for payload capacity or simultaneous actions. Use plain structured text and lists."
+            }
+        },
+        "air_operator": {
+            "spec": {
+                "input": [],
+                "output": "air_spec",
+                "system_prompt": "You are the airplane domain specialist. Provide a precise, structured description of airplane-related predicates, action schemas, preconditions and effects. Do not emit PDDL. Be explicit about airport constraints and assumptions.",
+                "prompt": "Your name is air_operator. Based on the public information and your private information provide a clear, structured specification for airplane actions: load-airplane, unload-airplane, fly-airplane. For each action list required preconditions, deterministic effects, and any inter-city constraints. State any assumptions required for flight connections or simultaneous operations. Use plain structured text and lists."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "facts_player"
+                    "truck_spec",
+                    "air_spec"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are the auditor agent. Your role is to validate temporal and causal consistency, to detect reliance on bookkeeping shortcuts, and to propose concrete corrections or required extra preconditions or effects. Produce an audit report with identified issues and recommended fixes. Do not emit final PDDL.",
-                "prompt": "You are named auditor. Given the structured facts and plans from the player, analyze each plan step for missing preconditions, transient facts that are consumed but never produced, conflicting effects, and any bookkeeping shortcuts. Recommend adjustments to action preconditions or effects or to plan ordering that would make the plan causally valid."
-            }
-        },
-        "analyst": {
-            "formalize": {
-                "input": [
-                    "facts_player",
-                    "audit_report"
-                ],
-                "output": "formal_model",
-                "system_prompt": "You are the analyst agent. Your role is to convert the cleaned and audited specification into a solver-agnostic formal model. Provide predicate declarations, object lists, action schema templates with parameters and preconditions and effects, and one or more instance encodings of initial state and goal. Do not produce final PDDL, but produce a clear formal model that the orchestrator can convert.",
-                "prompt": "You are named analyst. Using the player's extracted facts and the auditor's report, create a canonical formal model. List all predicate names and arities, list all objects with types if applicable, and for each action type provide its parameters, preconditions, add effects, and delete effects. Also produce the instance-level initial facts and the instance-level goals. Keep names consistent and avoid solver-specific syntax."
+                "system_prompt": "You are an auditor for planning model consistency. Identify temporal and causal issues and remove bookkeeping shortcuts. Produce corrections and canonical preconditions and effects that must be enforced in the final model. Do not emit PDDL.",
+                "prompt": "Your name is auditor. Using the truck specification and the airplane specification produce an audit report. Validate that preconditions and effects are causally consistent across load and unload operations. Point out implicit shortcuts like capacity tokens, hidden counters, or post-hoc penalties and replace them with explicit predicates or constraints. Provide recommended canonicalized predicate names and any ordering constraints the orchestrator should enforce."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "formal_model"
+                    "truck_spec",
+                    "air_spec",
+                    "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the orchestrator agent responsible for producing a complete PDDL domain and a PDDL problem file targeting the FastDownwards planner. Integrate the formal model and ensure typing, action names, and object definitions are consistent. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL is compatible with FastDownwards expectations.",
-                "prompt": "You are named orchestrator. Receive the formal model and generate a PDDL domain and a PDDL problem that encode the actions, predicates, objects, initial state, and goals. Keep agent-level distinctions if the analyst marked any actions as agent-specific. Make sure the PDDL uses consistent predicate and object naming, includes all required predicates, and is using standard PDDL 1.2 STRIPS style constructs acceptable to FastDownwards. Enclose domain in <domain></domain> and problem in <problem></problem>."
+                "system_prompt": "You are the orchestrator responsible for integrating model fragments and the audit report into a single complete PDDL domain and PDDL problem file suitable for the FastDownward solver. Produce a coherent domain and problem. Keep actions from different agents distinct by prefixing action names with agent identifiers when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownward compatibility, use STRIPS-style predicates and actions where possible, and avoid planner-specific extensions. Ensure initial state and goal reflect the public information.",
+                "prompt": "You receive the truck specification, the airplane specification, and the auditor report. Integrate them to produce a PDDL domain and a PDDL problem for FastDownward that solves the global goal: package_0 at location_1_0 and package_1 at location_1_0. Keep truck and airplane actions distinct. Include predicates for package locations, in-truck, in-airplane, truck-at, airplane-at, located-in-city, airport predicates, and any auxiliary predicates recommended by the auditor. Enclose the pddl domain between <domain></domain> tags and the pddl problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "player.extract->auditor.audit",
-            "auditor.audit->analyst.formalize",
-            "analyst.formalize->orchestrator.pddl"
+            "truck_operator.spec->orchestrator.pddl",
+            "air_operator.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
         ]
     }
 }

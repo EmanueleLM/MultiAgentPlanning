@@ -1,0 +1,64 @@
+(define (problem hanoi-5)
+  (:domain hanoi)
+  (:objects
+    d1 d2 d3 d4 d5 - disk
+    b1 b2 b3 - peg
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 s10
+    s11 s12 s13 s14 s15 s16 s17 s18 s19 s20
+    s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 - step
+  )
+  (:init
+    ;; initial tower on b1: bottom d5 ... top d1
+    (on d5 b1)
+    (on d4 d5)
+    (on d3 d4)
+    (on d2 d3)
+    (on d1 d2)
+
+    ;; clear: top disk and empty pegs
+    (clear d1)
+    (clear b2)
+    (clear b3)
+
+    ;; size ordering for disks (d1 < d2 < d3 < d4 < d5)
+    (smaller d1 d2) (smaller d1 d3) (smaller d1 d4) (smaller d1 d5)
+    (smaller d2 d3) (smaller d2 d4) (smaller d2 d5)
+    (smaller d3 d4) (smaller d3 d5)
+    (smaller d4 d5)
+
+    ;; every disk is smaller than every peg (allows placing disk on empty peg)
+    (smaller d1 b1) (smaller d1 b2) (smaller d1 b3)
+    (smaller d2 b1) (smaller d2 b2) (smaller d2 b3)
+    (smaller d3 b1) (smaller d3 b2) (smaller d3 b3)
+    (smaller d4 b1) (smaller d4 b2) (smaller d4 b3)
+    (smaller d5 b1) (smaller d5 b2) (smaller d5 b3)
+
+    ;; step ordering: linear chain s1 -> s2 -> ... -> s31
+    (next s1 s2) (next s2 s3) (next s3 s4) (next s4 s5)
+    (next s5 s6) (next s6 s7) (next s7 s8) (next s8 s9) (next s9 s10)
+    (next s10 s11) (next s11 s12) (next s12 s13) (next s13 s14) (next s14 s15)
+    (next s15 s16) (next s16 s17) (next s17 s18) (next s18 s19) (next s19 s20)
+    (next s20 s21) (next s21 s22) (next s22 s23) (next s23 s24) (next s24 s25)
+    (next s25 s26) (next s26 s27) (next s27 s28) (next s28 s29) (next s29 s30)
+    (next s30 s31)
+
+    ;; first step marker
+    (first s1)
+  )
+
+  (:goal (and
+    ;; entire tower transferred to b3 with identical ordering
+    (on d5 b3)
+    (on d4 d5)
+    (on d3 d4)
+    (on d2 d3)
+    (on d1 d2)
+
+    ;; require left and middle pegs (b1, b2) be empty
+    (clear b1)
+    (clear b2)
+
+    ;; require the final step used (enforces contiguous use of prior steps)
+    (used s31)
+  ))
+)

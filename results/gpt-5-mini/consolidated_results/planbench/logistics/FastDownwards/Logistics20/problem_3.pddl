@@ -1,72 +1,70 @@
-(define (problem objects-play-problem)
-  (:domain objects-play)
+(define (problem deliver-package-0)
+  (:domain logistics-multiagent)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - object
-    stage0 stage1 stage2 stage3 stage4 stage5 stage6 - stage
+    ; cities
+    city_0 city_1 - city
+
+    ; locations (airports are explicit via the airport predicate in :init)
+    location_0_0 location_0_1 location_0_2
+    location_1_0 location_1_1 location_1_2 - location
+
+    ; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+
+    ; package
+    package_0 - package
+
+    ; discrete time / stages (linear ordering via succ)
+    time_0 time_1 time_2 time_3 time_4 time_5 time_6 time_7 time_8 time_9 - time
   )
 
   (:init
-    ;; discrete stage chain (contiguous occupancy enforced by actions consuming current and producing successor)
-    (succ stage0 stage1)
-    (succ stage1 stage2)
-    (succ stage2 stage3)
-    (succ stage3 stage4)
-    (succ stage4 stage5)
-    (succ stage5 stage6)
-    (current stage0)
+    ; city membership for each location (topology)
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
 
-    ;; INITIAL FACTS: combined exactly from the two STATEMENT blocks (no assumptions)
-    ;; From STATEMENT 1
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (hand object_11)
-    (next object_0 object_5)
-    (next object_11 object_8)
-    (next object_3 object_5)
-    (next object_4 object_10)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
 
-    ;; From STATEMENT 2
-    (cats object_1)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
-    (hand object_12)
-    (next object_0 object_6)
-    (next object_1 object_9)
-    (next object_12 object_10)
-    (next object_4 object_7)
-    (next object_5 object_9)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_9)
-    (stupendous object_3)
-    (texture object_11)
-    ;; texture object_10,6,7,8,9 already set above; duplicates from STATEMENT 2 are intentionally not re-declared
+    ; airports (one per city as given in the initial facts)
+    (airport location_0_0)
+    (airport location_1_0)
+
+    ; initial vehicle positions
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_0)
+
+    (at-plane airplane_0 location_0_0)
+    (at-plane airplane_1 location_1_0)
+
+    ; package initial position
+    (at-pkg package_0 location_1_1)
+
+    ; discrete stages and their ordering
+    (stage time_0) (stage time_1) (stage time_2) (stage time_3) (stage time_4)
+    (stage time_5) (stage time_6) (stage time_7) (stage time_8) (stage time_9)
+
+    (succ time_0 time_1)
+    (succ time_1 time_2)
+    (succ time_2 time_3)
+    (succ time_3 time_4)
+    (succ time_4 time_5)
+    (succ time_5 time_6)
+    (succ time_6 time_7)
+    (succ time_7 time_8)
+    (succ time_8 time_9)
+
+    ; initial active stage (exactly one current-stage holds initially; every action transitions it)
+    (current-stage time_0)
   )
 
-  (:goal (and
-    (next object_11 object_9)
-    (next object_12 object_11)
-  ))
+  (:goal
+    (and
+      (at-pkg package_0 location_1_2)
+    )
+  )
 )

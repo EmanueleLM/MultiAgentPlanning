@@ -1,52 +1,38 @@
-(define (problem repoint-problem)
-  (:domain repoint-domain)
-
+(define (problem deliver_packages)
+  (:domain transport_combined)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - item
+    package_0 package_1 package_2 package_3 - package
+    truck_0 - truck
+    airplane_0 - airplane
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
   )
-
   (:init
-    ;; unary predicates
-    (cats object_0)
-    (cats object_1)
+    ;; Vehicles initial locations
+    (at truck_0 location_0_0)
+    (at airplane_0 location_1_1)
 
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
+    ;; Packages initial locations and free status
+    (at package_0 location_0_0)
+    (free package_0)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    (at package_1 location_1_1)
+    (free package_1)
 
-    (spring object_6)
-    (spring object_8)
+    (at package_2 location_0_1)
+    (free package_2)
 
-    (stupendous object_2)
-    (stupendous object_3)
+    (at package_3 location_1_1)
+    (free package_3)
 
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-
-    ;; binary predicates (as provided)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-
-    ;; adjacency (next) links
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_8)
-    (next object_11 object_9)
-    (next object_12 object_6)
-    (next object_4 object_6)
-    (next object_5 object_9)
+    ;; No package is in any vehicle initially (explicitly ensure none of the in predicates hold)
+    ;; (No additional facts required because by default predicates are false unless stated.)
   )
-
-  (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_7)
-    (next object_12 object_7)
-  ))
+  (:goal
+    (and
+      (at package_0 location_0_1)
+      (at package_1 location_0_1)
+      (at package_2 location_1_0)
+      (at package_3 location_1_0)
+    )
+  )
 )

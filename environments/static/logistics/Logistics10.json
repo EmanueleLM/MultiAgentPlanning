@@ -4,114 +4,116 @@
     "agents": {
         "number": 4,
         "names": [
-            "actor",
-            "simulator",
+            "truck_agent",
+            "airplane_agent",
             "auditor",
             "orchestrator"
         ],
-        "actor": {
+        "truck_agent": {
             "private_information": [
-                "I am responsible for extracting and formalizing action schemas from the human domain description.",
-                "Action inventory includes: paltry, sip, clip, wretched, memory, tightfisted. Parameters are objects named object_0 up to object_11."
+                "There is exactly one truck per city.",
+                "Trucks can drive between any two locations within the same city.",
+                "Loading into a truck requires the package and the truck to be in the same location.",
+                "When a package is loaded into a truck it ceases to be at the location and is considered inside the truck.",
+                "Unloading from a truck requires the package to be inside the truck and places the package at the truck's current location."
             ],
-            "goal": "Produce precise formal action schemas (names, parameters, preconditions, add effects, delete effects) derived from the provided natural language domain description."
+            "goal": "Contribute models and constraints for truck-based transport so that packages can be moved within cities toward the final destinations."
         },
-        "simulator": {
+        "airplane_agent": {
             "private_information": [
-                "I am responsible for simulating plans using the formalized action schemas.",
-                "I will execute a given sequence of grounded actions against an initial state and report state transitions and any execution failures."
+                "Each city has exactly one location that serves as an airport.",
+                "Airplanes can fly between airports in different cities.",
+                "Loading into an airplane requires the package and the airplane to be at the same airport location.",
+                "When a package is loaded into an airplane it is no longer at the location and is considered inside the airplane.",
+                "Unloading from an airplane requires the package to be inside the airplane and places the package at the airplane's current airport location."
             ],
-            "goal": "Simulate candidate plans step by step and produce an execution trace showing which actions succeeded, which failed, and the resulting state after each step."
+            "goal": "Contribute models and constraints for air-based inter-city transport so that packages can be moved between cities using airports."
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency. I detect and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties and report corrected causal links.",
-                "I check for hidden dependencies, implicit synchronization assumptions, and remove any shortcuts that would obscure correct causal sequencing."
+                "I audit temporal and causal consistency of action models.",
+                "I remove informal bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties and require explicit preconditions and effects.",
+                "I ensure action preconditions and effects are explicit, non-circular, and that concurrent assumptions are documented."
             ],
-            "goal": "Review the action schemas and simulation traces to identify temporal or causal inconsistencies and produce a corrected, bookkeeping-free specification plus audit notes."
+            "goal": "Analyze the partial models produced by other agents, produce an audit report with corrections and explicit causal links, and flag any implicit assumptions."
         },
         "orchestrator": {
             "private_information": [
-                "I integrate contributions from other agents and produce the final PDDL domain and problem targeting the FastDownward planner.",
-                "I ensure agent actions remain distinct, resolve naming conflicts, and produce a FastDownward-compatible output."
+                "I will integrate the domain models and audit reports into a single multi-agent PDDL domain and problem.",
+                "The final PDDL must target the FastDownwards planner and must keep actions of different agents distinct and namespaced."
             ],
-            "goal": "Integrate schemas, traces, and audit corrections into a single PDDL domain and problem suitable for the FastDownward solver and return them enclosed between <domain></domain> and <problem></problem> tags."
+            "goal": "Integrate the truck and airplane models and the auditor report to produce a complete PDDL domain and problem that achieves the global delivery goals, suitable for FastDownwards."
         }
     },
     "environment": {
         "init": {
-            "objects": 12,
-            "object_names": [
-                "object_0",
-                "object_1",
-                "object_2",
-                "object_3",
-                "object_4",
-                "object_5",
-                "object_6",
-                "object_7",
-                "object_8",
-                "object_9",
-                "object_10",
-                "object_11"
-            ],
-            "scenarios": 2
+            "num_cities": 2,
+            "locations_per_city": 2,
+            "airports": [
+                "location_0_0",
+                "location_1_0"
+            ]
         },
         "public_information": [
-            "Domain predicates include: hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
-            "Actions in the domain: paltry, sip, clip, wretched, memory, tightfisted. Each action takes object parameters according to the human specification.",
-            "Actions have preconditions and effects that may add or delete binary predicate instances, for example next X Y or vase X Y.",
-            "Two scenario style initial statements and target goals are provided separately. The orchestrator will need to consolidate scenario-specific initial states and goals when generating PDDL problems."
+            "There are two cities: city_0 and city_1.",
+            "Each city contains two locations: city_0 contains location_0_0 and location_0_1; city_1 contains location_1_0 and location_1_1.",
+            "Within a city, any two locations are directly connected for trucks.",
+            "Between cities, airports are directly connected for airplanes.",
+            "location_0_0 is an airport.",
+            "location_1_0 is an airport.",
+            "Initial placement: airplane_0 is at location_0_0.",
+            "Initial placement: package_0 is at location_0_0.",
+            "Initial placement: package_1 is at location_1_1.",
+            "Initial placement: package_2 is at location_0_1.",
+            "Initial placement: truck_0 is at location_0_0.",
+            "Initial placement: truck_1 is at location_1_0.",
+            "Location-city membership: location_0_0 is in city_0, location_0_1 is in city_0, location_1_0 is in city_1, location_1_1 is in city_1.",
+            "Global goal: package_0 is at location_1_0, package_1 is at location_1_0, and package_2 is at location_1_0."
         ]
     },
     "workflow": {
-        "actor": {
-            "analyze": {
+        "truck_agent": {
+            "analysis": {
                 "input": [],
-                "output": "actor_action_schemas",
-                "system_prompt": "You are an expert in formalizing action schemas from natural language. Your job is to extract each action name, its parameter list, its positive preconditions, its add effects, and its delete effects. Produce a concise structured JSON of schemas. Do not emit PDDL here.",
-                "prompt": "Your name is actor. You are given the public domain information: {environment->public_information}. You have the following private information: {agents->actor->private_information}. Formalize the actions and their logical preconditions and effects according to the human description. Output a structured JSON listing each action with parameters, positive preconditions, add effects, and delete effects. If an element is unspecified, leave it explicit as unknown rather than assuming additional facts."
+                "output": "truck_model",
+                "system_prompt": "You are a transport domain expert for ground vehicles. Provide precise, structured action schemas, preconditions, and effects for truck actions that operate within a city. Do not emit PDDL. Instead, return a neutral structured model that lists action names, parameters, preconditions, and effects. Make all assumptions explicit and avoid bookkeeping shortcuts.",
+                "prompt": "Your name is truck_agent. You have the following public information: {environment->public_information}. You have the following private knowledge: {agents->truck_agent->private_information}. Your objective is: {agents->truck_agent->goal}. Provide a clear, unambiguous structured model for the actions: load into truck, unload from truck, drive truck between locations in the same city. Enumerate preconditions and effects and any required type declarations or predicates."
             }
         },
-        "simulator": {
-            "simulate": {
-                "input": [
-                    "actor_action_schemas"
-                ],
-                "output": "simulator_trace",
-                "system_prompt": "You are an expert discrete simulator. Given action schemas and a grounded plan you must simulate step by step and produce a trace of states, indicating successful actions and failures. Do not produce PDDL.",
-                "prompt": "Your name is simulator. You receive action schemas: {actor_action_schemas} and scenario initial states and candidate plans. Use the schemas to execute each grounded action in order. For each step report the action applied, whether preconditions held, which effects were applied, and the resulting state. If an action cannot be executed flag the failure and explain why. Provide a concise execution trace and the final reached state."
+        "airplane_agent": {
+            "analysis": {
+                "input": [],
+                "output": "airplane_model",
+                "system_prompt": "You are a transport domain expert for aircraft. Provide precise, structured action schemas, preconditions, and effects for airplane actions that operate between airports. Do not emit PDDL. Instead, return a neutral structured model that lists action names, parameters, preconditions, and effects. Make all assumptions explicit and avoid bookkeeping shortcuts.",
+                "prompt": "Your name is airplane_agent. You have the following public information: {environment->public_information}. You have the following private knowledge: {agents->airplane_agent->private_information}. Your objective is: {agents->airplane_agent->goal}. Provide a clear, unambiguous structured model for the actions: load into airplane, unload from airplane, fly airplane between airports. Enumerate preconditions and effects and any required type declarations or predicates."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "actor_action_schemas",
-                    "simulator_trace"
+                    "truck_model",
+                    "airplane_model"
                 ],
-                "output": "auditor_report",
-                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your role is to identify hidden shortcuts such as quota tokens, post-hoc penalties, or other bookkeeping artifacts and produce corrected causal specifications and notes. Do not produce PDDL.",
-                "prompt": "Your name is auditor. You are given the action schemas {actor_action_schemas} and execution traces {simulator_trace}. Check for temporal inconsistencies, implicit assumptions, and bookkeeping shortcuts. Produce a report that removes such shortcuts and provides corrected preconditions or effects where necessary, and list any required causal reformulations. Provide concrete recommendations to make the model causally explicit."
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Inspect the structured models from other agents and produce an audit report that removes implicit bookkeeping shortcuts, makes concurrency assumptions explicit, and corrects or augments preconditions and effects to avoid causal cycles. Do not emit PDDL. Provide explicit corrections and a concise summary of any required additional predicates or invariants.",
+                "prompt": "Your name is auditor. You will receive the truck model and the airplane model. Your private knowledge: {agents->auditor->private_information}. Your objective: {agents->auditor->goal}. Analyze the inputs {truck_model} and {airplane_model} and produce an audit report named {audit_report} that lists corrections, additional predicates, and explicit causal ordering constraints required for a sound multi-modal logistics domain."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "actor_action_schemas",
-                    "simulator_trace",
-                    "auditor_report"
+                    "truck_model",
+                    "airplane_model",
+                    "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert in multi-agent PDDL modelling and generation targeting the FastDownward planner. Integrate the provided action schemas, execution traces, and auditor corrections into a complete PDDL domain and one or more PDDL problem files. Ensure compatibility with FastDownward by using STRIPS or ADL constructs supported by FastDownward, avoid planner-specific extensions not supported by FastDownward, and declare objects, initial state, and goals. Keep actions coming from different agents distinct by prefixing action names with the originating agent when appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
-                "prompt": "Your name is orchestrator. You will receive structured schemas, execution traces, and audit corrections. Integrate these inputs to produce a final PDDL domain and PDDL problem suitable for FastDownward. Make conservative choices when information is partial: prefer to expose unknowns as explicit facts or omitted objects rather than inventing hidden predicates. Keep agent actions distinct and resolve naming conflicts consistently. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and in preparing problems for the FastDownwards planner. Integrate the supplied structured models and the auditor report into a single complete PDDL domain and a PDDL problem. Keep actions of different agents distinct by namespacing or clear prefixes. Ensure types, predicates, action schemas, initial state, and goal are fully specified. The produced PDDL must be compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You will receive the outputs {truck_model}, {airplane_model}, and {audit_report}. Your private knowledge: {agents->orchestrator->private_information}. Your objective: {agents->orchestrator->goal}. Integrate the inputs, resolve naming discrepancies, and produce a final PDDL domain and PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep truck and airplane actions distinct and ensure the initial state matches the environment public information and the global goal."
             }
         },
         "constraints": [
-            "actor.analyze->simulator.simulate",
-            "actor.analyze->auditor.audit",
-            "simulator.simulate->auditor.audit",
-            "actor.analyze->orchestrator.pddl",
-            "simulator.simulate->orchestrator.pddl",
+            "truck_agent.analysis->orchestrator.pddl",
+            "airplane_agent.analysis->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
     }

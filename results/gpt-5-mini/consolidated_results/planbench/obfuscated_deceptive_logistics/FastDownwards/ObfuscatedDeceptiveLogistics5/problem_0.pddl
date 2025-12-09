@@ -1,52 +1,31 @@
 (define (problem orchestrator-problem)
   (:domain orchestrator-domain)
 
+  ; Minimal assumptions about missing environment public initial facts:
+  ; - No public initial "next" relations were provided. We assert none exist here.
+  ; - We declare objects object_1 .. object_9 and the three agents acting_agent, observer_agent, auditor_agent.
+  ; If the environment provided different or additional initial facts, they must replace these assumptions.
   (:objects
-    paltry sip clip wretched memory tightfisted - act
-    p1 p2 p3 p4 p5 p6 p7 - phase
+    acting_agent observer_agent auditor_agent - agent
+    object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - obj
   )
 
   (:init
-    ;; Phase ordering: enforce strict linear sequence p1 -> p2 -> p3 -> p4 -> p5 -> p6 -> p7
-    (next p1 p2)
-    (next p2 p3)
-    (next p3 p4)
-    (next p4 p5)
-    (next p5 p6)
-    (next p6 p7)
+    ; Agents are present (so their prefixed actions are permitted).
+    (agent-present acting_agent)
+    (agent-present observer_agent)
+    (agent-present auditor_agent)
 
-    ;; Start at the first phase
-    (current p1)
-
-    ;; Assign each named action to its designated phase (one action per phase)
-    (assigned paltry p1)
-    (assigned sip p2)
-    (assigned clip p3)
-    (assigned wretched p4)
-    (assigned memory p5)
-    (assigned tightfisted p6)
-
-    ;; No actions are done initially (omitted because default is false)
+    ; Explicitly assert no existing successor / predecessor relations by omission:
+    ; (Because PDDL initial state lists positive facts only, the absence of (has-successor ...) and (has-predecessor ...),
+    ; and the absence of any (next ...) facts, is the representation of "no links initially".)
+    ; (No further initial facts were supplied by the environment public information.)
   )
 
-  ;; Goals: every named action must be completed and the system must have advanced to the terminal phase p7.
-  ;; The successor relation is also required to match the declared sequence explicitly (included here to
-  ;; reflect the "declared goal next predicate" constraint).
-  (:goal
-    (and
-      (done paltry)
-      (done sip)
-      (done clip)
-      (done wretched)
-      (done memory)
-      (done tightfisted)
-      (current p7)
-      (next p1 p2)
-      (next p2 p3)
-      (next p3 p4)
-      (next p4 p5)
-      (next p5 p6)
-      (next p6 p7)
-    )
-  )
+  ; Goal enforces the mandated terminal condition: object_9 must be immediately before object_7.
+  ; The planner must construct a plan composed of one of the agent-prefixed link actions that
+  ; creates (next object_9 object_7) while respecting uniqueness constraints.
+  (:goal (and
+    (next object_9 object_7)
+  ))
 )

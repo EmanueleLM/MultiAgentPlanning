@@ -1,132 +1,93 @@
-(define (domain MysteryBlocksworld10)
+(define (domain orchestrated-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types object province planet stage)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (vase ?a - obj ?b - obj)
+    (harmony)
+    (pain ?o - object)
+    (craves ?s - object ?t - object)
+    (controls ?o - object ?p - province)
+    (province-on ?p - province ?pl - planet)
+    (now ?t - stage)
+    (succ ?t - stage ?t2 - stage)
   )
 
-  ;; paltry:
-  ;; pre: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;; add: next o0 o2
-  ;; del: vase o0 o1
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+  ;; Attacker agent's Attack action (advances global stage)
+  (:action attacker-attack
+    :parameters (?att - object ?p - province ?pl - planet ?t - stage ?t2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (controls ?att ?p)
+      (province-on ?p ?pl)
+      (harmony)
+      (now ?t)
+      (succ ?t ?t2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  ;; sip:
-  ;; pre: hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;; add: vase o0 o1
-  ;; del: next o0 o2
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (pain ?att)
+      (not (controls ?att ?p))
+      (not (province-on ?p ?pl))
+      (not (harmony))
+      (not (now ?t))
+      (now ?t2)
     )
   )
 
-  ;; clip:
-  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;; add: vase o0 o1
-  ;; del: next o0 o2
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
+  ;; Succumber agent's Succumb action (advances global stage)
+  (:action succumber-succumb
+    :parameters (?actor - object ?p - province ?pl - planet ?t - stage ?t2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (pain ?actor)
+      (now ?t)
+      (succ ?t ?t2)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (controls ?actor ?p)
+      (province-on ?p ?pl)
+      (harmony)
+      (not (pain ?actor))
+      (not (now ?t))
+      (now ?t2)
     )
   )
 
-  ;; wretched:
-  ;; pre: sneeze o0, texture o1, texture o2, stupendous o3,
-  ;;      next o0 o1, collect o1 o3, collect o2 o3
-  ;; add: next o0 o2
-  ;; del: next o0 o1
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
+  ;; Overcomer agent's Overcome action (advances global stage)
+  (:action overcomer-overcome
+    :parameters (?actor - object ?other - object ?p - province ?t - stage ?t2 - stage)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (controls ?other ?p)
+      (pain ?actor)
+      (now ?t)
+      (succ ?t ?t2)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (harmony)
+      (controls ?actor ?p)
+      (craves ?actor ?other)
+      (not (controls ?other ?p))
+      (not (pain ?actor))
+      (not (now ?t))
+      (now ?t2)
     )
   )
 
-  ;; memory:
-  ;; pre: cats o0, spring o1, spring o2, next o0 o1
-  ;; add: next o0 o2
-  ;; del: next o0 o1
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+  ;; Feaster agent's Feast action (advances global stage)
+  (:action feaster-feast
+    :parameters (?actor - object ?other - object ?p - province ?t - stage ?t2 - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (craves ?actor ?other)
+      (controls ?actor ?p)
+      (harmony)
+      (now ?t)
+      (succ ?t ?t2)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
-    )
-  )
-
-  ;; tightfisted:
-  ;; pre: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;; add: next o0 o2
-  ;; del: vase o0 o1
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (pain ?actor)
+      (controls ?other ?p)
+      (not (craves ?actor ?other))
+      (not (controls ?actor ?p))
+      (not (harmony))
+      (not (now ?t))
+      (now ?t2)
     )
   )
 )

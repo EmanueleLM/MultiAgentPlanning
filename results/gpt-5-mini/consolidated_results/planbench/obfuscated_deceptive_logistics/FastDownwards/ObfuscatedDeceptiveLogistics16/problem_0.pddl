@@ -1,31 +1,55 @@
-(define (problem scenario_reconciled)
-  (:domain orchestrated-multiagent)
+; Problem instance that targets FastDownwards planner.
+; This problem defines:
+; - One symbolic artifact named sym_model.
+; - Four explicit phases: p1_modeling -> p2_audit -> p3_simplify -> p4_integrate (with successor links).
+; - Four agents, one of each subtype, to keep responsibilities distinct.
+; - Initial state sets the current-phase to p1_modeling and provides static phase sequence.
+; Goals require completion of all phases and the artifact to be created, reviewed, mapped, and integrated.
+
+(define (problem orchestration-instance)
+  (:domain orchestration)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
-    s0 s1 s2 s3 s4 s5 s6 - stage
+    ; agents (distinct subtypes enforce role restrictions)
+    modeler1 - modeler
+    auditor1 - auditor
+    simplifier1 - simplifier
+    orchestrator1 - orchestrator
+
+    ; single artifact that flows through all phases
+    sym_model - artifact
+
+    ; explicit phase objects
+    p1_modeling p2_audit p3_simplify p4_integrate - phase
   )
 
-  ;; Initial facts reflect the reconciled S0 local view from planner_alpha plus the global object universe.
-  ;; Bookkeeping shortcuts removed; order enforced by explicit at-stage facts and stage transitions in actions.
   (:init
-    (hand object_3)
-    (next object_5 object_7)
-    (vase object_2)
-    (cats object_4)
-    (texture object_11)
-    (collect object_0)
-    (at-stage s0)
+    ; phase successor (static)
+    (phase-succ p1_modeling p2_audit)
+    (phase-succ p2_audit p3_simplify)
+    (phase-succ p3_simplify p4_integrate)
+
+    ; start in modeling phase
+    (current-phase p1_modeling)
+
+    ; No artifact-created, reviewed, mapped or integrated facts at start (omitted intentionally).
+    ; No phase-done facts at start (they will be set strictly by actions).
+
+    ; Record agent identities via types are implicit via objects typed above.
   )
 
-  ;; Goal: enforce the terminal conditions implied by the integrated scenario and observed plan sequence.
-  ;; Each required final fact is included as a hard constraint.
   (:goal (and
-    (at-stage s6)
-    (next object_5 object_10)
-    (next object_9 object_1)
-    (spring object_0)
-    (stupendous object_11)
-    (sneeze object_2)
-    (collect object_3)
-  ))
+           ; terminal artifact state: fully integrated
+           (artifact-created sym_model)
+           (artifact-reviewed sym_model)
+           (artifact-mapped sym_model)
+           (artifact-integrated sym_model)
+
+           ; enforce that each explicit phase was completed; this prevents skipping
+           (phase-done p1_modeling)
+           (phase-done p2_audit)
+           (phase-done p3_simplify)
+           (phase-done p4_integrate)
+         )
+  )
 )

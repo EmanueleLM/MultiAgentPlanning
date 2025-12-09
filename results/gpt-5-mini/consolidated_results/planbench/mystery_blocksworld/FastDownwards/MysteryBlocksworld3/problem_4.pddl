@@ -1,0 +1,22 @@
+(define (problem harmony-problem)
+  (:domain harmony-domain)
+  (:objects a b c d - obj
+            t0 t1 t2 t3 - stage)
+  (:init
+    (craves b a)
+    (craves c b)
+    (harmony)
+    (planet a)
+    (planet d)
+    (province c)
+    (province d)
+    (succ t0 t1)
+    (succ t1 t2)
+    (succ t2 t3)
+    (current-stage t0)
+  )
+  (:goal (and
+    (craves b a)
+    (craves d c)
+  ))
+)

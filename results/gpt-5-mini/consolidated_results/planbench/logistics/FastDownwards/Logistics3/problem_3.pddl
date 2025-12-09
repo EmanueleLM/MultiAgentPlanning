@@ -1,57 +1,52 @@
-(define (problem multiagent-instance-staged)
-  (:domain multiagent-staged)
+(define (problem city-logistics-instance)
+  (:domain city-logistics)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - obj
-    s0 s1 s2 s3 s4 s5 - stage
+    city_0 city_1 - city
+    location_0_0 location_1_0 - location
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 - package
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 - stage
   )
 
   (:init
-    ; stage order and initial stage marker
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
+    ;; City membership
+    (in-city location_0_0 city_0)
+    (in-city location_1_0 city_1)
 
-    (now s0)
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ; static/unary facts (from the first initial statement integrated)
-    (cats object_0)
+    ;; Air routes (both directions)
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
 
-    (collect object_5 object_1)
-    (collect object_6 object_2)
+    ;; Stage ordering
+    (succ stage0 stage1)
+    (succ stage1 stage2)
+    (succ stage2 stage3)
+    (succ stage3 stage4)
+    (succ stage4 stage5)
+    (succ stage5 stage6)
 
-    (hand object_7)
-    (hand object_8)
+    ;; Start stage
+    (current-stage stage0)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    ;; Initial vehicle positions
+    (at-airplane airplane_0 location_0_0)
+    (at-airplane airplane_1 location_0_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
 
-    (spring object_5)
-    (spring object_6)
-
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_5)
-    (texture object_6)
-
-    ; initial 'next' relations (global, persistence enforced by actions that do not remove them)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
-
-    ; no vase facts initially
+    ;; Initial package positions
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
   )
 
-  (:goal
-    (and
-      (now s5)
-      (next object_7 object_5)
-      (next object_8 object_5)
-    )
-  )
+  (:goal (and
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_0_0)
+  ))
 )

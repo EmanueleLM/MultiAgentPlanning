@@ -1,9 +1,12 @@
-(define (problem odl22-instance1)
-  (:domain obfuscated_deceptive_logistics22)
+(define (problem orchestrated-problem)
+  (:domain orchestrated-domain)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - obj
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - object
+    step1 step2 step3 step4 step5 step6 step7 step8 - stage
   )
+
   (:init
+    ;; provided initial facts
     (cats object_0)
     (collect object_10 object_2)
     (collect object_5 object_1)
@@ -13,11 +16,11 @@
     (collect object_9 object_2)
     (hand object_11)
     (hand object_12)
-    (next object_0 object_5)
-    (next object_11 object_9)
+    (next object_0 object_8)
+    (next object_11 object_6)
     (next object_12 object_10)
-    (next object_3 object_6)
-    (next object_4 object_8)
+    (next object_3 object_7)
+    (next object_4 object_10)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -30,9 +33,22 @@
     (texture object_7)
     (texture object_8)
     (texture object_9)
+
+    ;; explicit ordered stages (linear chain)
+    (stage-next step1 step2)
+    (stage-next step2 step3)
+    (stage-next step3 step4)
+    (stage-next step4 step5)
+    (stage-next step5 step6)
+    (stage-next step6 step7)
+    (stage-next step7 step8)
+
+    ;; start at the first stage
+    (at-stage step1)
   )
+
   (:goal (and
     (next object_11 object_7)
-    (next object_12 object_5)
+    (next object_12 object_8)
   ))
 )

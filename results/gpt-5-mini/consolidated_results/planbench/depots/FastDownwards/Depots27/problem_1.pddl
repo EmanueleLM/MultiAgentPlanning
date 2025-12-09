@@ -1,49 +1,80 @@
-(define (problem depots27-scenario1)
-  (:domain orchestrated-domain)
+(define (problem depots27-problem)
+  (:domain depots27)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5
-    object_6 object_7 object_8 object_9 object_10 object_11
-    object_12 object_13 object_14 - obj
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; surfaces
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ;; hoists and trucks
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2 - truck
+
+    ;; discrete stages for explicit ordering (12 stages)
+    stage0 stage1 stage2 stage3 stage4 stage5 stage6 stage7 stage8 stage9 stage10 stage11 - stage
   )
+
   (:init
-    ;; unary facts
-    (cats object_0)
-    (cats object_1)
-    (hand object_12)
-    (hand object_13)
-    (hand object_14)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_9)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_10)
-    (texture object_11)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; place of pallets (surfaces)
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
 
-    ;; binary relations
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
+    ;; crates initial on surfaces
+    (on crate0 pallet0)
+    (on crate1 crate0)
+    (on crate2 pallet1)
 
-    (next object_0 object_9)
-    (next object_1 object_6)
-    (next object_12 object_11)
-    (next object_13 object_8)
-    (next object_14 object_8)
-    (next object_4 object_7)
-    (next object_5 object_10)
+    ;; crates (surfaces) located at places as well
+    (at crate0 depot0)
+    (at crate1 depot0)
+    (at crate2 depot1)
+
+    ;; hoists and trucks locations
+    (at-hoist hoist0 depot0)
+    (at-hoist hoist1 depot1)
+    (at-hoist hoist2 depot2)
+    (at-hoist hoist3 distributor0)
+
+    (at-truck truck0 depot0)
+    (at-truck truck1 depot0)
+    (at-truck truck2 depot1)
+
+    ;; hoist availability
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+
+    ;; initial clearance: only top-most surfaces/crates that are not covered are clear
+    (clear crate1)
+    (clear crate2)
+    (clear pallet2)
+    (clear pallet3)
+    ;; pallet0 is not clear because crate0 is on it; crate0 is not clear because crate1 is on it
+
+    ;; no crate in any truck initially (absence of in-truck facts)
+
+    ;; stage ordering and initial current stage
+    (succ stage0 stage1)
+    (succ stage1 stage2)
+    (succ stage2 stage3)
+    (succ stage3 stage4)
+    (succ stage4 stage5)
+    (succ stage5 stage6)
+    (succ stage6 stage7)
+    (succ stage7 stage8)
+    (succ stage8 stage9)
+    (succ stage9 stage10)
+    (succ stage10 stage11)
+
+    (current-stage stage0)
   )
+
   (:goal (and
-    (next object_12 object_6)
-    (next object_13 object_10)
-    (next object_14 object_11)
+    (on crate0 pallet3)
+    (on crate1 pallet0)
   ))
-)

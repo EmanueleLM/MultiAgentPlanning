@@ -1,104 +1,69 @@
 (define (domain orchestrator-domain)
+  ; Minimal assumptions documented as required by the task:
+  ; Assumption: No environment public initial facts were provided to the orchestrator.
+  ; Therefore we assume the only required objects are object_1 .. object_9 and three named agents.
+  ; We assume initially there are no (next ...) links and no (has-successor / has-predecessor) facts.
+  ; These assumptions are recorded here so the problem file can be interpreted; if real initial facts
+  ; are supplied, they must replace the assumed facts in the problem file.
   (:requirements :strips :typing :negative-preconditions)
-  (:types act phase)
+  (:types agent obj)
 
   (:predicates
-    (current ?p - phase)             ; which phase is currently active (exactly one true at a time)
-    (next ?p1 - phase ?p2 - phase)   ; immediate successor relation for phases (enforces order)
-    (assigned ?a - act ?p - phase)   ; which action is assigned to which phase
-    (done ?a - act)                  ; action has been executed/completed
+    ; next represents the immediate successor relation in a linear ordering:
+    (next ?a - obj ?b - obj)
+    ; bookkeeping predicates to ensure uniqueness of successor / predecessor:
+    (has-successor ?a - obj)
+    (has-predecessor ?a - obj)
+    ; Agents declared for provenance of actions (presence facts may be provided in the problem):
+    (agent-present ?ag - agent)
   )
 
-  ;; paltry must be executed in its assigned phase, only if that phase is current,
-  ;; and only once. Executing paltry marks it done, deactivates the current phase,
-  ;; and advances to the successor phase.
-  (:action paltry
-    :parameters (?p - phase ?p2 - phase)
+  ; Actions are prefixed with the agent names to keep provenance explicit.
+  ; Each action enforces uniqueness: a source cannot already have a successor and
+  ; a target cannot already have a predecessor. No unlink or penalty actions exist,
+  ; so once a successor / predecessor edge is established it cannot be removed.
+  (:action acting_agent_link
+    :parameters (?x - obj ?y - obj)
     :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned paltry ?p)
-      (not (done paltry))
+      (not (has-successor ?x))
+      (not (has-predecessor ?y))
+      ; Agent must be present to perform the action if the problem models presence:
+      (agent-present acting_agent)
     )
     :effect (and
-      (done paltry)
-      (not (current ?p))
-      (current ?p2)
-    )
-  )
-
-  (:action sip
-    :parameters (?p - phase ?p2 - phase)
-    :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned sip ?p)
-      (not (done sip))
-    )
-    :effect (and
-      (done sip)
-      (not (current ?p))
-      (current ?p2)
+      (next ?x ?y)
+      (has-successor ?x)
+      (has-predecessor ?y)
     )
   )
 
-  (:action clip
-    :parameters (?p - phase ?p2 - phase)
+  (:action observer_agent_link
+    :parameters (?x - obj ?y - obj)
     :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned clip ?p)
-      (not (done clip))
+      (not (has-successor ?x))
+      (not (has-predecessor ?y))
+      (agent-present observer_agent)
     )
     :effect (and
-      (done clip)
-      (not (current ?p))
-      (current ?p2)
+      (next ?x ?y)
+      (has-successor ?x)
+      (has-predecessor ?y)
     )
   )
 
-  (:action wretched
-    :parameters (?p - phase ?p2 - phase)
+  ; The auditor's action is phrased as a correction action coming from the auditor agent.
+  ; As an auditor-correction it follows the same constraints (cannot create conflicting links).
+  (:action auditor_agent_link
+    :parameters (?x - obj ?y - obj)
     :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned wretched ?p)
-      (not (done wretched))
+      (not (has-successor ?x))
+      (not (has-predecessor ?y))
+      (agent-present auditor_agent)
     )
     :effect (and
-      (done wretched)
-      (not (current ?p))
-      (current ?p2)
-    )
-  )
-
-  (:action memory
-    :parameters (?p - phase ?p2 - phase)
-    :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned memory ?p)
-      (not (done memory))
-    )
-    :effect (and
-      (done memory)
-      (not (current ?p))
-      (current ?p2)
-    )
-  )
-
-  (:action tightfisted
-    :parameters (?p - phase ?p2 - phase)
-    :precondition (and
-      (current ?p)
-      (next ?p ?p2)
-      (assigned tightfisted ?p)
-      (not (done tightfisted))
-    )
-    :effect (and
-      (done tightfisted)
-      (not (current ?p))
-      (current ?p2)
+      (next ?x ?y)
+      (has-successor ?x)
+      (has-predecessor ?y)
     )
   )
 )

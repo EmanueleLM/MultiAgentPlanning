@@ -1,0 +1,87 @@
+{
+    "name": "HanoiScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I represent the agent that performs disk moves.",
+                "A single action moves the top disk from one peg to another peg."
+            ],
+            "goal": "Provide a complete, explicit operational specification of the available move action, enumerating parameters, preconditions, and effects consistent with the Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency and remove modeling shortcuts.",
+                "I ensure invariants are enforced instead of using bookkeeping tokens or post-hoc penalties."
+            ],
+            "goal": "Audit the action descriptions and state encoding to guarantee that only legal moves are permitted, that ordering invariants are explicit, and that no modeling shortcuts remain."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate fragments from other agents and produce the final PDDL for the FastDownward solver.",
+                "I must keep actions attributable to their originating agent and resolve naming or representation mismatches."
+            ],
+            "goal": "Integrate inputs from mover and auditor to produce a final PDDL domain and a PDDL problem targeting the FastDownward planner that solves the 6-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "number_of_pegs": 3,
+            "number_of_disks": 6,
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ]
+        },
+        "public_information": [
+            "The puzzle is the Tower of Hanoi with three pegs named left, middle, and right.",
+            "Disks from smallest to largest are disk_A, disk_B, disk_C, disk_D, disk_E, disk_F.",
+            "Only one disk may be moved at a time.",
+            "Only the top disk on a peg may be moved.",
+            "A larger disk may never be placed on top of a smaller disk.",
+            "Initial state: left peg holds, from top to bottom, disk_A, disk_B, disk_C, disk_D, disk_E, disk_F. Middle and right pegs are empty.",
+            "Goal state: middle peg holds, from top to bottom, disk_A, disk_B, disk_C, disk_D, disk_E, disk_F. Left and right pegs must be empty at the end.",
+            "The right peg may be used as an intermediate peg but must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_mover",
+                "system_prompt": "You are an expert in formalizing actions for classical planning domains, with specific knowledge of the Tower of Hanoi. Produce an operational specification for the move action that includes the action name, parameters, precise preconditions, and effects. Use object names disk_A through disk_F and pegs left, middle, right. Do not emit the final integrated PDDL domain and problem. Instead provide structured, clearly labeled fragments and examples that the orchestrator can integrate.",
+                "prompt": "You are the mover agent. Given the public information about the Tower of Hanoi instance and your private role, produce a clear fragment describing each action variant you propose. Describe parameters, preconditions that enforce top-of-peg and size ordering, and effects that update which disk is on which peg and which disk is top. Provide any auxiliary predicates you require and justify them. Think step by step and be explicit about how the fragment enforces the rule that only the smaller disk may be placed on a larger disk."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_auditor",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency for planning domain models. Your purpose is to detect and remove bookkeeping shortcuts such as token counters, post-hoc penalties, or implicit assumptions that hide causal dependencies. Produce a list of invariants, constraints, and corrections that must be enforced in the model to guarantee legal behavior without runtime shortcuts.",
+                "prompt": "You are the auditor agent. Review the mover fragments and the public problem statement and produce a concise set of formal invariants and explicit causal ordering constraints. Identify potential modeling shortcuts and provide corrected encodings or invariants. Produce your output as structured items the orchestrator can use to validate or modify the domain and problem. Do not generate final PDDL domain or problem files."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_mover",
+                    "pddl_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in producing final PDDL files compatible with the FastDownward planner. You must integrate the fragments and corrections provided by the other agents, resolve naming and representation mismatches, keep each agent's actions distinct and attributable, and output a complete PDDL domain and a PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the produced PDDL is syntactically compatible with FastDownward and relies on classical STRIPS or ADL constructs supported by FastDownward.",
+                "prompt": "You are the orchestrator agent. Your inputs are the mover fragments and the auditor invariants. Integrate them to produce a final PDDL domain and problem that solve the 6-disk Tower of Hanoi instance. Preserve per-agent action names or prefixes so actions remain attributable. Resolve any representation ambiguities, enforce the auditor invariants, and ensure no bookkeeping shortcuts remain. Output the final PDDL domain enclosed in <domain></domain> and the final PDDL problem enclosed in <problem></problem>. The domain and problem must be ready to run with FastDownward to produce a valid plan that moves all disks from the left peg to the middle peg while leaving the right peg empty."
+            }
+        },
+        "constraints": [
+            "mover.pddl->orchestrator.pddl",
+            "auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

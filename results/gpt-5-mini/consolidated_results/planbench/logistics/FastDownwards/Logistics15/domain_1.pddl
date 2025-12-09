@@ -1,119 +1,143 @@
-(define (domain Logistics15)
+(define (domain logistics-ns)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types truck plane package location city stage)
+
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?x - object ?y - object)
-    (next ?x - object ?y - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
-    (collect ?x - object ?y - object)
+    ;; type predicates (instances are declared in problem objects; kept for clarity)
+    (truck ?t - truck)
+    (plane ?p - plane)
+    (package ?pkg - package)
+    (location ?l - location)
+    (city ?c - city)
+    (stage ?s - stage)
+
+    ;; classification
+    (airport ?l - location)
+    (in-city ?l - location ?c - city)
+
+    ;; positional predicates
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?p - plane ?l - location)
+    (at-pack ?pkg - package ?l - location)
+
+    ;; containment
+    (in-truck ?pkg - package ?t - truck)
+    (in-plane ?pkg - package ?p - plane)
+
+    ;; explicit discrete time progression
+    (current-stage ?s - stage)
+    (next ?s1 - stage ?s2 - stage)
   )
 
-  ;; paltry: requires hand X, cats Y, texture Z, vase X Y, next Y Z
-  ;; effects: add next X Z, remove vase X Y
-  (:action paltry
-    :parameters (?x - object ?y - object ?z - object)
+  ;; Load package into truck
+  (:action truck-load
+    :parameters (?t - truck ?loc - location ?pkg - package ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (at-truck ?t ?loc)
+      (at-pack ?pkg ?loc)
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (at-pack ?pkg ?loc))
+      (in-truck ?pkg ?t)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; sip: requires hand X, cats Y, texture Z, next X Z, next Y Z
-  ;; effects: add vase X Y, remove next X Z
-  (:action sip
-    :parameters (?x - object ?y - object ?z - object)
+  ;; Unload package from truck at truck location
+  (:action truck-unload
+    :parameters (?t - truck ?loc - location ?pkg - package ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
+      (at-truck ?t ?loc)
+      (in-truck ?pkg ?t)
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (in-truck ?pkg ?t))
+      (at-pack ?pkg ?loc)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; clip: requires hand X, sneeze Y, texture Z, next Y Z, next X Z
-  ;; effects: add vase X Y, remove next X Z
-  (:action clip
-    :parameters (?x - object ?y - object ?z - object)
+  ;; Drive truck between two locations in the same city (no-op drive disallowed)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (not (at-truck ?t ?to))
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; wretched: requires sneeze X, texture Y, texture Z, stupendous W, next X Y, collect Y W, collect Z W
-  ;; effects: add next X Z, remove next X Y
-  (:action wretched
-    :parameters (?x - object ?y - object ?z - object ?w - object)
+  ;; Load package into plane (only at airports)
+  (:action plane-load
+    :parameters (?p - plane ?loc - location ?pkg - package ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
+      (at-plane ?p ?loc)
+      (at-pack ?pkg ?loc)
+      (airport ?loc)
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (not (at-pack ?pkg ?loc))
+      (in-plane ?pkg ?p)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; memory: requires cats X, spring Y, spring Z, next X Y
-  ;; effects: add next X Z, remove next X Y
-  (:action memory
-    :parameters (?x - object ?y - object ?z - object)
+  ;; Unload package from plane at airport
+  (:action plane-unload
+    :parameters (?p - plane ?loc - location ?pkg - package ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
+      (at-plane ?p ?loc)
+      (in-plane ?pkg ?p)
+      (airport ?loc)
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (not (in-plane ?pkg ?p))
+      (at-pack ?pkg ?loc)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; tightfisted: requires hand X, sneeze Y, texture Z, next Y Z, vase X Y
-  ;; effects: add next X Z, remove vase X Y
-  (:action tightfisted
-    :parameters (?x - object ?y - object ?z - object)
+  ;; Fly plane between airports in different cities (no-op fly disallowed; enforces inter-city move)
+  (:action plane-fly
+    :parameters (?p - plane ?from - location ?to - location ?cf - city ?ct - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (at-plane ?p ?from)
+      (airport ?from)
+      (airport ?to)
+      (in-city ?from ?cf)
+      (in-city ?to ?ct)
+      ;; ensure cities differ: ?from is not in city ?ct
+      (not (in-city ?from ?ct))
+      (not (at-plane ?p ?to))
+      (current-stage ?s)
+      (next ?s ?s2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (at-plane ?p ?from))
+      (at-plane ?p ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
-
 )

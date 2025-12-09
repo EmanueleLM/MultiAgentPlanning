@@ -1,86 +1,116 @@
-(define (domain orchestrated-collection)
+(define (domain multi-transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types human cat obj phase texture)
+  (:types
+    vehicle truck airplane
+    package
+    city
+    location
+  )
 
   (:predicates
-    (hand ?h - human ?o - obj)
-    (cats ?c - cat ?p - phase)
-    (texture ?o - obj ?t - texture)
-    (vase ?o - obj)
-    (next ?p1 - phase ?p2 - phase)
-    (sneeze ?p - phase)
-    (stupendous ?h - human)
-    (collect ?h - human ?o - obj)
-    (spring ?p - phase)
+    ; location predicates for each actor type
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (at-pkg ?p - package ?l - location)
+
+    ; package-in-vehicle (vehicle is either truck or airplane)
+    (in ?p - package ?v - vehicle)
+
+    ; infrastructure and topological predicates
+    (airport ?l - location)
+    (same-city ?l1 - location ?l2 - location)
+
+    ; availability predicates that are required preconditions
+    (available ?t - truck)
+    (available-airplane ?a - airplane)
   )
 
-  ; Human picks up an object during the current phase.
-  (:action pick-up
-    :parameters (?h - human ?o - obj ?p - phase)
+  ; -------------------------
+  ; TRUCK actions (names prefixed with truck-)
+  ; -------------------------
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (spring ?p)
-      (not (collect ?h ?o))
-      (not (hand ?h ?o))
+      (at-truck ?t ?l)
+      (at-pkg ?p ?l)
+      (available ?t)
     )
     :effect (and
-      (hand ?h ?o)
-    )
-  )
-
-  ; Human stores an object into their collection during the current phase.
-  (:action store
-    :parameters (?h - human ?o - obj ?p - phase)
-    :precondition (and
-      (spring ?p)
-      (hand ?h ?o)
-      (not (collect ?h ?o))
-    )
-    :effect (and
-      (collect ?h ?o)
-      (not (hand ?h ?o))
+      (in ?p ?t)
+      (not (at-pkg ?p ?l))
     )
   )
 
-  ; Advance from one phase to its immediate successor. Enforces contiguity via next.
-  (:action advance-phase
-    :parameters (?p1 - phase ?p2 - phase)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (spring ?p1)
-      (next ?p1 ?p2)
+      (at-truck ?t ?l)
+      (in ?p ?t)
+      (available ?t)
     )
     :effect (and
-      (not (spring ?p1))
-      (spring ?p2)
+      (at-pkg ?p ?l)
+      (not (in ?p ?t))
     )
   )
 
-  ; Cat can sneeze in a phase when present there and that phase is active.
-  ; Sneeze occurrence is permanent for the phase (sneeze fact added).
-  (:action cat-sneeze
-    :parameters (?c - cat ?p - phase)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location)
     :precondition (and
-      (cats ?c ?p)
-      (spring ?p)
-      (not (sneeze ?p))
+      (at-truck ?t ?from)
+      (same-city ?from ?to)
+      (available ?t)
     )
     :effect (and
-      (sneeze ?p)
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
+      ; packages inside the truck remain (no change to (in ?p ?t))
     )
   )
 
-  ; The human can declare themselves stupendous in a phase after collecting two non-vase objects.
-  ; This action is parameterized by the two collected objects (explicit enumeration avoids implicit quantification).
-  (:action declare-stupendous
-    :parameters (?h - human ?p - phase ?o1 - obj ?o2 - obj)
+  ; -------------------------
+  ; AIRPLANE actions (names prefixed with plane-)
+  ; -------------------------
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?l - location)
     :precondition (and
-      (spring ?p)
-      (collect ?h ?o1)
-      (collect ?h ?o2)
-      (not (vase ?o1))
-      (not (vase ?o2))
+      (airport ?l)
+      (at-airplane ?a ?l)
+      (at-pkg ?p ?l)
+      (available-airplane ?a)
     )
     :effect (and
-      (stupendous ?h)
+      (in ?p ?a)
+      (not (at-pkg ?p ?l))
+    )
+  )
+
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and
+      (airport ?l)
+      (at-airplane ?a ?l)
+      (in ?p ?a)
+      (available-airplane ?a)
+    )
+    :effect (and
+      (at-pkg ?p ?l)
+      (not (in ?p ?a))
+    )
+  )
+
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and
+      (at-airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (available-airplane ?a)
+    )
+    :effect (and
+      (at-airplane ?a ?to)
+      (not (at-airplane ?a ?from))
+      ; packages inside the airplane remain (no change to (in ?p ?a))
     )
   )
 )

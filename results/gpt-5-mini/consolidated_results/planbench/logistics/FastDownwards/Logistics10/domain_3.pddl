@@ -1,137 +1,131 @@
-(define (domain logistics10)
+(define (domain logistics-multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane package location city stage)
 
   (:predicates
-    ;; static/object properties
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (sneeze ?o - object)
-    (collect ?x - object ?y - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    ;; static / geographic relations (treated as static facts in the problem file)
+    (in-city ?l - location ?c - city)
+    (same-city ?l1 - location ?l2 - location)
+    (different ?l1 - location ?l2 - location)
+    (is-airport ?l - location)
+    (next ?s1 - stage ?s2 - stage)
 
-    ;; temporal/succession relation between stage objects
-    (succ ?s1 - stage ?s2 - stage)
+    ;; stage progression (global discrete time)
+    (current-stage ?s - stage)
 
-    ;; time-indexed dynamic relations to enforce explicit stage progression
-    (next_at ?x - object ?y - object ?s - stage)
-    (vase_at ?x - object ?y - object ?s - stage)
+    ;; dynamic state
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?ap - airplane ?l - location)
+    (at-package ?p - package ?l - location)
+
+    ;; containment
+    (in-truck ?p - package ?t - truck)
+    (in-airplane ?p - package ?ap - airplane)
   )
 
-  ;; All actions require a current stage ?s and its immediate successor ?s2 (succ ?s ?s2).
-  ;; Effects always delete dynamic facts at the current stage and add dynamic facts at the successor stage,
-  ;; making temporal progression explicit and preventing oscillation without consuming bookkeeping tokens.
-
-  ;; paltry: requires (hand ?h) (cats ?c) (texture ?t) (vase_at ?h ?c ?s) (next_at ?c ?t ?s)
-  ;; effects: add (next_at ?h ?t ?s2), delete (vase_at ?h ?c ?s)
-  (:action paltry
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  ;; Truck actions (namespaced: truck-*)
+  ;; All actions consume the current stage and advance to its successor to enforce discrete,
+  ;; contiguous occupancy of intermediate stages and to prevent oscillation within a single stage.
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location ?st - stage ?st2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase_at ?h ?c ?s)
-      (next_at ?c ?t ?s)
-      (succ ?s ?s2)
+      (at-truck ?t ?l)
+      (at-package ?p ?l)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next_at ?h ?t ?s2)
-      (not (vase_at ?h ?c ?s))
+      (in-truck ?p ?t)
+      (not (at-package ?p ?l))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
 
-  ;; sip: requires (hand ?h) (cats ?c) (texture ?t) (next_at ?h ?t ?s) (next_at ?c ?t ?s)
-  ;; effects: add (vase_at ?h ?c ?s2), delete (next_at ?h ?t ?s)
-  (:action sip
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location ?st - stage ?st2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next_at ?h ?t ?s)
-      (next_at ?c ?t ?s)
-      (succ ?s ?s2)
+      (at-truck ?t ?l)
+      (in-truck ?p ?t)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (vase_at ?h ?c ?s2)
-      (not (next_at ?h ?t ?s))
+      (at-package ?p ?l)
+      (not (in-truck ?p ?t))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
 
-  ;; clip: requires (hand ?h) (sneeze ?sobj) (texture ?t) (next_at ?sobj ?t ?s) (next_at ?h ?t ?s)
-  ;; effects: add (vase_at ?h ?sobj ?s2), delete (next_at ?h ?t ?s)
-  (:action clip
-    :parameters (?h - object ?sobj - object ?t - object ?s - stage ?s2 - stage)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?st - stage ?st2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sobj)
-      (texture ?t)
-      (next_at ?sobj ?t ?s)
-      (next_at ?h ?t ?s)
-      (succ ?s ?s2)
+      (at-truck ?t ?from)
+      (same-city ?from ?to)
+      (different ?from ?to)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (vase_at ?h ?sobj ?s2)
-      (not (next_at ?h ?t ?s))
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
 
-  ;; wretched: requires (sneeze ?sobj) (texture ?t1) (texture ?t2) (stupendous ?st)
-  ;;           (next_at ?sobj ?t1 ?s) (collect ?t1 ?st) (collect ?t2 ?st)
-  ;; effects: add (next_at ?sobj ?t2 ?s2), delete (next_at ?sobj ?t1 ?s)
-  (:action wretched
-    :parameters (?sobj - object ?t1 - object ?t2 - object ?st - object ?s - stage ?s2 - stage)
+  ;; Airplane actions (namespaced: plane-*)
+  (:action plane-load
+    :parameters (?ap - airplane ?p - package ?l - location ?st - stage ?st2 - stage)
     :precondition (and
-      (sneeze ?sobj)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next_at ?sobj ?t1 ?s)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
-      (succ ?s ?s2)
+      (is-airport ?l)
+      (at-airplane ?ap ?l)
+      (at-package ?p ?l)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next_at ?sobj ?t2 ?s2)
-      (not (next_at ?sobj ?t1 ?s))
+      (in-airplane ?p ?ap)
+      (not (at-package ?p ?l))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
 
-  ;; memory: requires (cats ?c) (spring ?s1) (spring ?s2) (next_at ?c ?s1 ?s)
-  ;; effects: add (next_at ?c ?s2 ?s2), delete (next_at ?c ?s1 ?s)
-  (:action memory
-    :parameters (?c - object ?s1 - object ?s2 - object ?s - stage ?s2st - stage)
+  (:action plane-unload
+    :parameters (?ap - airplane ?p - package ?l - location ?st - stage ?st2 - stage)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next_at ?c ?s1 ?s)
-      (succ ?s ?s2st)
+      (is-airport ?l)
+      (at-airplane ?ap ?l)
+      (in-airplane ?p ?ap)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next_at ?c ?s2 ?s2st)
-      (not (next_at ?c ?s1 ?s))
+      (at-package ?p ?l)
+      (not (in-airplane ?p ?ap))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
 
-  ;; tightfisted: requires (hand ?h) (sneeze ?sobj) (texture ?t) (next_at ?sobj ?t ?s) (vase_at ?h ?sobj ?s)
-  ;; effects: add (next_at ?h ?t ?s2), delete (vase_at ?h ?sobj ?s)
-  (:action tightfisted
-    :parameters (?h - object ?sobj - object ?t - object ?s - stage ?s2 - stage)
+  (:action plane-fly
+    :parameters (?ap - airplane ?from - location ?to - location ?st - stage ?st2 - stage)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sobj)
-      (texture ?t)
-      (next_at ?sobj ?t ?s)
-      (vase_at ?h ?sobj ?s)
-      (succ ?s ?s2)
+      (at-airplane ?ap ?from)
+      (is-airport ?from)
+      (is-airport ?to)
+      (not (same-city ?from ?to))
+      (different ?from ?to)
+      (current-stage ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next_at ?h ?t ?s2)
-      (not (vase_at ?h ?sobj ?s))
+      (at-airplane ?ap ?to)
+      (not (at-airplane ?ap ?from))
+      (not (current-stage ?st))
+      (current-stage ?st2)
     )
   )
-
 )

@@ -1,0 +1,80 @@
+{
+    "name": "HanoiScaling4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I can move only one disk at a time.",
+                "I may only move a disk that is on top of a peg.",
+                "I can never place a larger disk on top of a smaller disk."
+            ],
+            "goal": "Help produce a correct sequence of actions and a formal description that leads from the initial configuration to the goal configuration."
+        },
+        "auditor": {
+            "private_information": [
+                "I must audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I enforce that once a disk is moved it preserves its relative size ordering with the others."
+            ],
+            "goal": "Provide a checklist of causal and temporal invariants, identify hidden assumptions, and produce concrete corrections so the plan and formal model are sound."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent analyses and produce a final PDDL domain and PDDL problem file compatible with the Fast Downward solver that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right.",
+            "Disks from smallest to largest are disk A, disk B, disk C, disk D, disk E, and disk F.",
+            "Initial condition: left peg holds disks from top to bottom A, B, C, D, E, F. Middle peg is empty. Right peg is empty.",
+            "Goal condition: middle peg must hold disks from top to bottom A, B, C, D, E, F. Left and right pegs must be empty.",
+            "Rules: move only one disk at a time, can only move the top disk of a peg, cannot place larger disk on top of a smaller disk, right peg may be used as intermediate but must be empty at the end.",
+            "Once a disk is moved its relative ordering by size among disks is preserved by the rules."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "pddl": {
+                "input": [],
+                "output": "analysis_mover",
+                "system_prompt": "You are an analyst specialized in the Tower of Hanoi domain. Your task is to produce a precise structured description of the action model and representation choices that an automated planner would use. Do not emit PDDL. Provide the following items: a formal encoding of objects and types, a canonical action schema for moving a top disk from one peg to another with explicit preconditions and effects, the invariants that must hold globally, any assumptions about how pegs and disk ordering are represented, and edge cases that a planner must enforce. List any ambiguities and enumerate required clarifications for the orchestrator.",
+                "prompt": "Context: You operate under the public information and your private knowledge. Public information: {environment->public_information}. Your private information: {agents->mover->private_information}. Global goal: get all disks from left peg to middle peg in correct order and leave left and right pegs empty. Produce a concise, structured analysis that a PDDL integrator can consume. Do not produce PDDL."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [],
+                "output": "analysis_auditor",
+                "system_prompt": "You are an auditor whose role is to examine proposed action models and plan sketches for temporal and causal consistency and to remove bookkeeping shortcuts. Do not emit PDDL. Provide a checklist of invariants and constraints that must be enforced to avoid invalid plans. Detect and correct common modeling shortcuts such as implicit global counters, quota tokens, post-hoc penalties, or assumptions that violate single-disk-move or size-ordering rules. Provide suggested corrections to the action schema and object representations so the model remains sound and compatible with planners that do not support nonstandard bookkeeping.",
+                "prompt": "Context: You have the public information {environment->public_information} and your private information {agents->auditor->private_information}. Your goal is {agents->auditor->goal}. Produce a structured audit report describing potential causal and temporal violations, a prioritized list of fixes, and explicit invariants to be encoded in PDDL so the orchestrator can generate a correct model. Do not produce PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_mover",
+                    "analysis_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and generation targeting the Fast Downward planner. Your job is to integrate the analyses from the mover and the auditor, reconcile naming and representation choices, and produce a final PDDL domain and a PDDL problem that are directly compatible with Fast Downward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions remain distinct if representing multiple actors or conceptual roles. Use only constructs supported by Fast Downward and avoid planner-specific extensions unless they are standard in Fast Downward. Ensure the model enforces single-disk moves, top-disk-only preconditions, and size-ordering constraints so larger disks never end up on smaller ones. The generated PDDL must represent the six disks and three pegs and must achieve the stated goal while leaving the right peg empty at the end.",
+                "prompt": "You will receive the public information {environment->public_information}, the mover analysis {analysis_mover}, and the auditor report {analysis_auditor}. Integrate these inputs, resolve any naming or representation conflicts, and output a complete PDDL domain and problem pair that solves the stated goal for six disks and three pegs. Target the Fast Downward solver. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "mover.pddl->orchestrator.pddl",
+            "auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

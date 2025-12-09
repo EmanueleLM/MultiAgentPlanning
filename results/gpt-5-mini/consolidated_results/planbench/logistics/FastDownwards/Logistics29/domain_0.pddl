@@ -1,123 +1,127 @@
-(define (domain orchestrated)
-  (:requirements :typing :negative-preconditions)
-  (:types Obj)
+(define (domain logistics_combined)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types
+    city
+    entity
+    location - entity
+    vehicle - entity
+    truck - vehicle
+    airplane - vehicle
+    package - entity
+  )
 
   (:predicates
-    (hand ?o - Obj)
-    (cats ?o - Obj)
-    (texture ?o - Obj)
-    (vase ?o - Obj)
-    (next ?x - Obj ?y - Obj)
-    (collect ?o - Obj)
-    (sneeze ?o - Obj)
-    (spring ?o - Obj)
-    (stupendous ?o - Obj)
+    ; canonical location/containment predicates
+    (at ?e - entity ?l - location)            ; entity (package or vehicle) is at location
+    (in ?p - package ?v - vehicle)            ; package is inside vehicle
+
+    ; membership and airport flags
+    (in_city ?x - entity ?c - city)           ; a location or vehicle belongs to a city
+    (airport ?l - location)                   ; location is an airport
+
+    ; bookkeeping predicates to enforce exclusivity and capacity (capacity forced to 1 for safety)
+    (pkg-free ?p - package)                   ; package is not in any vehicle (i.e., is at a location)
+    (capacity-free ?v - vehicle)              ; vehicle has at least one free capacity slot
+
+    ; helper predicate to enforce inter-city flight precondition (inequality)
+    (city-different ?c1 - city ?c2 - city)
   )
 
-  ;; paltry: consumes a vase object and creates next(vase, p)
-  (:action paltry
-    :parameters (?h - Obj ?c - Obj ?t - Obj ?v - Obj ?p - Obj ?q - Obj)
+  ;; Truck agent actions (namespaced with "truck-")
+  (:action truck-load
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?v)
-      (next ?p ?q)
+      (at ?p ?l)
+      (at ?t ?l)
+      (in_city ?l ?c)
+      (in_city ?t ?c)
+      (pkg-free ?p)
+      (capacity-free ?t)
     )
     :effect (and
-      (not (vase ?v))
-      (next ?v ?p)
-    )
-  )
-
-  ;; sip: requires two distinct next relations, makes q1 a vase and removes its next link
-  (:action sip
-    :parameters (?h - Obj ?c - Obj ?t - Obj
-                 ?p1 - Obj ?p2 - Obj ?q1 - Obj ?q2 - Obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?p1 ?p2)
-      (next ?q1 ?q2)
-      ;; enforce the two next relations are not the identical pair
-      (not (= ?p1 ?q1))
-      (not (= ?p2 ?q2))
-    )
-    :effect (and
-      (vase ?q1)
-      (not (next ?q1 ?q2))
+      (not (at ?p ?l))
+      (in ?p ?t)
+      (not (pkg-free ?p))
+      (not (capacity-free ?t))
     )
   )
 
-  ;; clip: like sip but requires sneeze instead of cats
-  (:action clip
-    :parameters (?h - Obj ?s - Obj ?t - Obj
-                 ?p1 - Obj ?p2 - Obj ?q1 - Obj ?q2 - Obj)
+  (:action truck-unload
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?p1 ?p2)
-      (next ?q1 ?q2)
-      (not (= ?p1 ?q1))
-      (not (= ?p2 ?q2))
+      (in ?p ?t)
+      (at ?t ?l)
+      (in_city ?l ?c)
+      (in_city ?t ?c)
     )
     :effect (and
-      (vase ?q1)
-      (not (next ?q1 ?q2))
+      (not (in ?p ?t))
+      (at ?p ?l)
+      (pkg-free ?p)
+      (capacity-free ?t)
     )
   )
 
-  ;; wretched: replaces an existing next(?a,?b) with next(?c1,?c2) where c1 and c2 are collect objects
-  (:action wretched
-    :parameters (?s - Obj ?t - Obj ?st - Obj
-                 ?a - Obj ?b - Obj ?c1 - Obj ?c2 - Obj)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t)
-      (stupendous ?st)
-      (next ?a ?b)
-      (collect ?c1)
-      (collect ?c2)
-      (not (= ?c1 ?c2))
+      (at ?t ?from)
+      (in_city ?from ?c)
+      (in_city ?to ?c)
+      (in_city ?t ?c)
     )
     :effect (and
-      (next ?c1 ?c2)
-      (not (next ?a ?b))
+      (not (at ?t ?from))
+      (at ?t ?to)
     )
   )
 
-  ;; memory: replaces next(a,b) by next(b,c) using a cats object and requires two springs (kept as guards)
-  (:action memory
-    :parameters (?c - Obj ?s1 - Obj ?s2 - Obj ?a - Obj ?b - Obj)
+  ;; Air agent actions (namespaced with "air-")
+  (:action air-load
+    :parameters (?p - package ?ap - airplane ?a - location)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?a ?b)
-      (not (= ?s1 ?s2))
+      (airport ?a)
+      (at ?ap ?a)
+      (at ?p ?a)
+      (pkg-free ?p)
+      (capacity-free ?ap)
     )
     :effect (and
-      (not (next ?a ?b))
-      (next ?b ?c)
+      (not (at ?p ?a))
+      (in ?p ?ap)
+      (not (pkg-free ?p))
+      (not (capacity-free ?ap))
     )
   )
 
-  ;; tightfisted: reroutes next(a,b) to next(a,v) consuming vase v
-  (:action tightfisted
-    :parameters (?h - Obj ?s - Obj ?t - Obj ?a - Obj ?b - Obj ?v - Obj)
+  (:action air-unload
+    :parameters (?p - package ?ap - airplane ?a - location)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?a ?b)
-      (vase ?v)
+      (airport ?a)
+      (at ?ap ?a)
+      (in ?p ?ap)
     )
     :effect (and
-      (next ?a ?v)
-      (not (next ?a ?b))
-      (not (vase ?v))
+      (not (in ?p ?ap))
+      (at ?p ?a)
+      (pkg-free ?p)
+      (capacity-free ?ap)
+    )
+  )
+
+  (:action air-fly
+    :parameters (?ap - airplane ?from - location ?to - location ?cfrom - city ?cto - city)
+    :precondition (and
+      (airport ?from)
+      (airport ?to)
+      (at ?ap ?from)
+      (in_city ?from ?cfrom)
+      (in_city ?to ?cto)
+      (city-different ?cfrom ?cto)
+    )
+    :effect (and
+      (not (at ?ap ?from))
+      (at ?ap ?to)
     )
   )
 )

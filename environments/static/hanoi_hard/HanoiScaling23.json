@@ -1,0 +1,101 @@
+{
+    "name": "HanoiScaling23",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg.",
+                "I must obey the Tower of Hanoi rules: move one disk at a time, only move a disk that is on top, never place a larger disk on a smaller disk."
+            ],
+            "goal": "Produce a candidate sequence of single-disk moves that transfers the tower from the left peg to the right peg while using the middle peg as an intermediate and leaving it empty at the end."
+        },
+        "modeler": {
+            "private_information": [
+                "There are 6 disks named A (smallest), B, C, D, E, F (largest).",
+                "There are three pegs: left, middle, right.",
+                "I should provide a formal domain specification and object/predicate list, but not emit final PDDL unless asked by the orchestrator."
+            ],
+            "goal": "Provide a clear formal model specification of the Hanoi domain: types, objects, predicates, action schemata and invariants that capture the rules."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties.",
+                "I will check that any proposed move sequence and any model specification strictly respect the constraints and do not rely on hidden bookkeeping."
+            ],
+            "goal": "Produce an audit report that verifies the move sequence and the model for causal correctness, temporal feasibility, and absence of bookkeeping shortcuts, and propose required corrections."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the model, the candidate move sequence, and the audit report and produce the final PDDL domain and problem for FastDownwards."
+            ],
+            "goal": "Produce a complete, coherent PDDL domain and problem that can be solved by FastDownwards to move 6 disks from left to right using middle as intermediate and ending with middle empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 6,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are 6 disks in total: from smallest to largest they are disk A, disk B, disk C, disk D, disk E, disk F.",
+            "There are three pegs: left, middle, right.",
+            "Initial state: left peg holds from top to bottom disks A, B, C, D, E, F. Middle peg is empty. Right peg is empty.",
+            "Goal state: right peg must hold from top to bottom disks A, B, C, D, E, F. Left peg and middle peg must be empty.",
+            "Rules: move only one disk at a time, only move a top disk of a peg, never place a larger disk on a smaller disk, once disks are moved they retain their relative size ordering."
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "analysis": {
+                "input": [],
+                "output": "move_sequence",
+                "system_prompt": "You are the operator. Your responsibility is to conceptualize single-disk moves that achieve the global goal. Do not emit PDDL. Produce a candidate sequence of moves in an explicit ordered list format. Each move should be represented as a tuple from-peg to-peg with the disk moved. Make sure every step respects the Tower of Hanoi constraints.",
+                "prompt": "Your name is operator. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->operator->private_information} This is the global goal to solve: {agents->operator->goal} Think step by step and provide an explicit move sequence that attempts to reach the goal while respecting the rules."
+            }
+        },
+        "modeler": {
+            "spec": {
+                "input": [],
+                "output": "hanoi_spec",
+                "system_prompt": "You are the modeler. Your role is to produce a formal specification of the domain and problem objects and invariants but do not output full PDDL unless requested by the orchestrator. Provide types, objects, predicates, action schemata with preconditions and effects, and note any assumptions.",
+                "prompt": "Your name is modeler. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->modeler->private_information} This is the global goal to solve: {agents->modeler->goal} Think carefully about the entities, predicates, and actions and provide a clear abstract specification that the orchestrator can convert to PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "move_sequence",
+                    "hanoi_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your responsibility is to check temporal and causal consistency and to remove bookkeeping shortcuts. Specifically, detect and flag any use of implicit quota tokens, post-hoc penalties, or other bookkeeping that would make the plan invalid under a pure action semantics. Propose concrete fixes and validated assumptions.",
+                "prompt": "Your name is auditor. You are in an environment with the following public information: {environment->public_information} You have the following knowledge: {agents->auditor->private_information} Examine the provided move sequence and the model specification. Verify causal order, top-disk movement constraints, and that no larger disk is placed on a smaller disk at any step. Produce an audit report describing any violations and suggested corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "hanoi_spec",
+                    "move_sequence",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Your task is to integrate the modeler specification, the operator move sequence, and the auditor report and produce a final PDDL domain and PDDL problem suitable for the FastDownwards planner. Ensure the domain uses constructs supported by FastDownwards (STRIPS style or ADL features that FastDownwards supports), avoid durative actions, and keep actions and predicates explicit. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The produced PDDL must be complete and consistent so FastDownwards can be invoked directly.",
+                "prompt": "There are multiple collaborators producing partial artifacts. You will receive their outputs. Integrate them to produce a final PDDL domain and problem that achieves the global goal: {agents->orchestrator->goal} Use the specification provided by the modeler: {hanoi_spec} Use the candidate move sequence as guidance but obey the auditor's corrections: {audit_report} Keep any actions or agent-specific behaviors distinct if relevant. Think step by step and provide a final PDDL domain and a PDDL problem for FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "modeler.spec->orchestrator.pddl",
+            "operator.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

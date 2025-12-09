@@ -1,120 +1,199 @@
-(define (domain orchestrator-domain)
+(define (domain depot-distributor)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    location truck hoist surface step
+  )
+  (:types
+    crate pallet - surface
+  )
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (vase ?x - obj ?y - obj)
+    ;; Locations
+    (truck_at ?tr - truck ?l - location)
+    (hoist_at ?h - hoist ?l - location)
+    (surface_at ?s - surface ?l - location)
+
+    ;; Stage progression
+    (current ?st - step)
+    (next ?st - step ?st2 - step)
+
+    ;; Placement and containers
+    (crate_on_surface ?c - crate ?s - surface)  ;; crate placed on a surface (pallet or crate)
+    (in_truck ?c - crate ?tr - truck)
+    (crate_at ?c - crate ?l - location)         ;; crate is located at a place (when resting or after drop)
+
+    ;; Surface and resource availability
+    (surface_clear ?s - surface)               ;; no object on this surface
+    (pallet_free ?p - pallet)                  ;; pallet free (no crate on it)
+    (hoist_free ?h - hoist)
+    (hoist_lifting ?h - hoist ?c - crate)      ;; hoist currently lifting this crate
+
+    ;; Per-crate clear (nothing on top of this crate)
+    (crate_clear ?c - crate)
   )
 
-  ;; paltry(X,Y,Z): requires hand(X), cats(Y), texture(Z), vase(X,Y), next(Y,Z).
-  ;; Effect: add next(X,Z); remove vase(X,Y).
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; DRIVER actions (namespaced)
+  (:action driver-drive-truck
+    :parameters (?tr - truck ?from - location ?to - location ?st - step ?st2 - step)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (truck_at ?tr ?from)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (truck_at ?tr ?from))
+      (truck_at ?tr ?to)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
-  ;; sip(X,Y,Z): requires hand(X), cats(Y), texture(Z), next(X,Z), next(Y,Z).
-  ;; Effect: add vase(X,Y); remove next(X,Z).
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; HOIST movement
+  (:action hoist-move
+    :parameters (?h - hoist ?from - location ?to - location ?st - step ?st2 - step)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
+      (hoist_at ?h ?from)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (hoist_at ?h ?from))
+      (hoist_at ?h ?to)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
-  ;; clip(X,Y,Z): requires hand(X), sneeze(Y), texture(Z), next(Y,Z), next(X,Z).
-  ;; Effect: add vase(X,Y); remove next(X,Z).
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; LIFT actions (two flavors: lift a crate from a pallet surface, or from another crate surface)
+  (:action hoist-lift-from-pallet
+    :parameters (?h - hoist ?p - pallet ?loc - location ?c - crate ?st - step ?st2 - step)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (hoist_at ?h ?loc)
+      (surface_at ?p ?loc)
+      (crate_on_surface ?c ?p)
+      (hoist_free ?h)
+      (crate_clear ?c)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (crate_on_surface ?c ?p))
+      (not (crate_at ?c ?loc))
+      (hoist_lifting ?h ?c)
+      (not (hoist_free ?h))
+      (surface_clear ?p)
+      (pallet_free ?p)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
-  ;; wretched(A,B,C,D): requires sneeze(A), texture(B), texture(C), stupendous(D), next(A,B), collect(B,D), collect(C,D).
-  ;; Effect: add next(A,C); remove next(A,B).
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
+  (:action hoist-lift-from-crate
+    :parameters (?h - hoist ?s - crate ?loc - location ?c - crate ?st - step ?st2 - step)
     :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
+      (hoist_at ?h ?loc)
+      (surface_at ?s ?loc)
+      (crate_on_surface ?c ?s)
+      (hoist_free ?h)
+      (crate_clear ?c)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
+      (not (crate_on_surface ?c ?s))
+      (not (crate_at ?c ?loc))
+      (hoist_lifting ?h ?c)
+      (not (hoist_free ?h))
+      (surface_clear ?s)
+      (crate_clear ?s)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
-  ;; memory(X,Y,Z): requires cats(X), spring(Y), spring(Z), next(X,Y).
-  ;; Effect: add next(X,Z); remove next(X,Y).
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; LOAD into truck (hoist places lifted crate into truck)
+  (:action hoist-load-into-truck
+    :parameters (?h - hoist ?tr - truck ?loc - location ?c - crate ?st - step ?st2 - step)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
+      (hoist_at ?h ?loc)
+      (truck_at ?tr ?loc)
+      (hoist_lifting ?h ?c)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (in_truck ?c ?tr)
+      (not (hoist_lifting ?h ?c))
+      (hoist_free ?h)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
-  ;; tightfisted(X,Y,Z): requires hand(X), sneeze(Y), texture(Z), next(Y,Z), vase(X,Y).
-  ;; Effect: add next(X,Z); remove vase(X,Y).
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; UNLOAD from truck (hoist picks crate out of truck, becomes not free and lifts crate)
+  (:action hoist-unload-from-truck
+    :parameters (?h - hoist ?tr - truck ?loc - location ?c - crate ?st - step ?st2 - step)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (hoist_at ?h ?loc)
+      (truck_at ?tr ?loc)
+      (hoist_free ?h)
+      (in_truck ?c ?tr)
+      (current ?st)
+      (next ?st ?st2)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (in_truck ?c ?tr))
+      (not (hoist_free ?h))
+      (hoist_lifting ?h ?c)
+      (not (current ?st))
+      (current ?st2)
     )
   )
 
+  ;; DROP actions (two flavors: drop onto a pallet, or drop onto another crate)
+  (:action hoist-drop-to-pallet
+    :parameters (?h - hoist ?p - pallet ?loc - location ?c - crate ?st - step ?st2 - step)
+    :precondition (and
+      (hoist_at ?h ?loc)
+      (surface_at ?p ?loc)
+      (surface_clear ?p)
+      (hoist_lifting ?h ?c)
+      (current ?st)
+      (next ?st ?st2)
+    )
+    :effect (and
+      (hoist_free ?h)
+      (not (hoist_lifting ?h ?c))
+      (crate_at ?c ?loc)
+      (not (surface_clear ?p))
+      (not (pallet_free ?p))
+      (crate_clear ?c)
+      (crate_on_surface ?c ?p)
+      (not (current ?st))
+      (current ?st2)
+    )
+  )
+
+  (:action hoist-drop-to-crate
+    :parameters (?h - hoist ?s - crate ?loc - location ?c - crate ?st - step ?st2 - step)
+    :precondition (and
+      (hoist_at ?h ?loc)
+      (surface_at ?s ?loc)
+      (surface_clear ?s)
+      (hoist_lifting ?h ?c)
+      (current ?st)
+      (next ?st ?st2)
+    )
+    :effect (and
+      (hoist_free ?h)
+      (not (hoist_lifting ?h ?c))
+      (crate_at ?c ?loc)
+      (not (surface_clear ?s))
+      (crate_clear ?c)
+      (not (crate_clear ?s))
+      (crate_on_surface ?c ?s)
+      (not (current ?st))
+      (current ?st2)
+    )
+  )
 )

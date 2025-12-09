@@ -1,120 +1,66 @@
-(define (domain MysteryBlocksworld3)
+(define (domain harmony-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types obj)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (collect ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    (province ?x - obj)
+    (planet ?x - obj)
+    (harmony)
+    (pain ?x - obj)
+    (craves ?x ?y - obj)
   )
 
-  ;; paltry: requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;; effects: add next o0 o2, remove vase o0 o1
-  (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
+  ;; Attack: requires the object to be both a province and a planet and global harmony.
+  ;; Effects: the object acquires pain, and loses its province and planet; global harmony is removed.
+  (:action Attack
+    :parameters (?o - obj)
+    :precondition (and (province ?o) (planet ?o) (harmony))
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (pain ?o)
+      (not (province ?o))
+      (not (planet ?o))
+      (not (harmony))
     )
   )
 
-  ;; sip: requires hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;; effects: add vase o0 o1, remove next o0 o2
-  (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+  ;; Succumb: requires pain on the object.
+  ;; Effects: restores province, planet, and global harmony to that object; removes its pain.
+  (:action Succumb
+    :parameters (?o - obj)
+    :precondition (and (pain ?o))
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (not (pain ?o))
     )
   )
 
-  ;; clip: requires hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;; effects: add vase o0 o1, remove next o0 o2
-  (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+  ;; Overcome: requires the actor to have pain and the other to hold a province.
+  ;; Effects: actor gains harmony, gains the province, and begins to crave the other; the other's province and the actor's pain are removed.
+  (:action Overcome
+    :parameters (?o - obj ?other - obj)
+    :precondition (and (province ?other) (pain ?o))
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (harmony)
+      (province ?o)
+      (craves ?o ?other)
+      (not (province ?other))
+      (not (pain ?o))
     )
   )
 
-  ;; wretched: requires sneeze o0, texture o1, texture o2, stupendous o3,
-  ;;           next o0 o1, collect o1 o3, collect o2 o3
-  ;; effects: add next o0 o2, remove next o0 o1
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
-    :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+  ;; Feast: requires the actor to crave the other, the actor to hold a province, and global harmony.
+  ;; Effects: the actor acquires pain, the other gains the province; the craving, the actor's province, and global harmony are removed.
+  (:action Feast
+    :parameters (?actor - obj ?other - obj)
+    :precondition (and (craves ?actor ?other) (province ?actor) (harmony))
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; memory: requires cats o0, spring o1, spring o2, next o0 o1
-  ;; effects: add next o0 o2, remove next o0 o1
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; tightfisted: requires hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;; effects: add next o0 o2, remove vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (pain ?actor)
+      (province ?other)
+      (not (craves ?actor ?other))
+      (not (province ?actor))
+      (not (harmony))
     )
   )
 )

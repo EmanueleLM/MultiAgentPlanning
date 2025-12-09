@@ -1,90 +1,150 @@
-(define (domain depots24-multiagent)
+(define (domain logistics_hoist_driving)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types
+    place
+    surface
+    pallet crate - surface
+    truck
+    hoist
+    stage
+  )
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o - object ?p - object)
-    (next ?o - object ?p - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o - object ?p - object)
-    (spring ?o - object)
+    (at-truck ?tr - truck ?p - place)        ; truck at place (exclusive per truck)
+    (at-hoist  ?h  - hoist  ?p - place)      ; hoist at place
+    (at-surface ?s - surface ?p - place)    ; surface (pallet or crate) at place
+    (on ?c - crate ?s - surface)             ; crate immediately on surface s
+    (clear ?s - surface)                     ; top of surface s is clear (nothing on it)
+    (available ?h - hoist)                   ; hoist idle (not lifting)
+    (lifting ?h - hoist ?c - crate)          ; hoist h is lifting crate c
+    (in-truck ?c - crate ?t - truck)         ; crate is inside truck
+    (connected ?p1 - place ?p2 - place)      ; movement allowed between places
+    (current ?st - stage)                    ; the current global stage
+    (succ ?s1 - stage ?s2 - stage)           ; discrete successor relation over stages
   )
 
-  ;; ACTION TEMPLATES for player1 (namespaced)
-  (:action player1-paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
+  ;; Driver action: move truck from one place to another and advance stage.
+  (:action driver-drive
+    :parameters (?tr - truck ?from - place ?to - place ?st - stage ?stn - stage)
+    :precondition (and
+                    (at-truck ?tr ?from)
+                    (connected ?from ?to)
+                    (not (= ?from ?to))
+                    (current ?st)
+                    (succ ?st ?stn)
+                  )
+    :effect (and
+              (not (at-truck ?tr ?from))
+              (at-truck ?tr ?to)
+              (not (current ?st))
+              (current ?stn)
+            )
   )
 
-  (:action player1-sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; Hoist lifts a crate from a supporting surface at the hoist's place and advances stage.
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place ?st - stage ?stn - stage)
+    :precondition (and
+                    (at-hoist ?h ?p)
+                    (at-surface ?s ?p)
+                    (on ?c ?s)
+                    (clear ?c)
+                    (available ?h)
+                    (current ?st)
+                    (succ ?st ?stn)
+                  )
+    :effect (and
+              ;; hoist becomes busy lifting this crate
+              (lifting ?h ?c)
+              (not (available ?h))
+              ;; crate removed from supporting surface and no longer at the place
+              (not (on ?c ?s))
+              (not (at-surface ?c ?p))
+              ;; supporting surface becomes clear
+              (clear ?s)
+              ;; advance stage
+              (not (current ?st))
+              (current ?stn)
+            )
   )
 
-  (:action player1-clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; Hoist drops the crate it is lifting onto a surface at the hoist's place; advance stage.
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place ?st - stage ?stn - stage)
+    :precondition (and
+                    (at-hoist ?h ?p)
+                    (at-surface ?s ?p)
+                    (clear ?s)
+                    (lifting ?h ?c)
+                    (current ?st)
+                    (succ ?st ?stn)
+                  )
+    :effect (and
+              ;; crate placed on surface S at place P
+              (on ?c ?s)
+              (at-surface ?c ?p)
+              ;; crate is clear immediately after drop (nothing on it)
+              (clear ?c)
+              ;; surface S now occupied (no longer clear)
+              (not (clear ?s))
+              ;; hoist releases crate and becomes available
+              (not (lifting ?h ?c))
+              (available ?h)
+              ;; advance stage
+              (not (current ?st))
+              (current ?stn)
+            )
   )
 
-  (:action player1-wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3) (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
+  ;; Hoist loads a currently-lifted crate into a truck co-located at the place; advance stage.
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?st - stage ?stn - stage)
+    :precondition (and
+                    (at-hoist ?h ?p)
+                    (at-truck ?tr ?p)
+                    (lifting ?h ?c)
+                    (current ?st)
+                    (succ ?st ?stn)
+                  )
+    :effect (and
+              ;; crate is now inside truck
+              (in-truck ?c ?tr)
+              ;; hoist no longer lifts crate and becomes available
+              (not (lifting ?h ?c))
+              (available ?h)
+              ;; crate is not at any surface/place while in truck (ensure at-surface/on facts absent)
+              (not (at-surface ?c ?p))
+              (not (on ?c ?tr))
+              ;; advance stage
+              (not (current ?st))
+              (current ?stn)
+            )
   )
 
-  (:action player1-memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
+  ;; Hoist unloads a crate from truck into its gripper (crate becomes lifted); advance stage.
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place ?st - stage ?stn - stage)
+    :precondition (and
+                    (at-hoist ?h ?p)
+                    (at-truck ?tr ?p)
+                    (available ?h)
+                    (in-truck ?c ?tr)
+                    (current ?st)
+                    (succ ?st ?stn)
+                  )
+    :effect (and
+              ;; crate removed from truck and hoist takes it (crate suspended)
+              (lifting ?h ?c)
+              (not (in-truck ?c ?tr))
+              ;; hoist is now busy
+              (not (available ?h))
+              ;; ensure crate not considered at any place or on any surface
+              (not (at-surface ?c ?p))
+              (not (on ?c ?tr))
+              ;; advance stage
+              (not (current ?st))
+              (current ?stn)
+            )
   )
 
-  (:action player1-tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
-
-  ;; ACTION TEMPLATES for player2 (namespaced)
-  (:action player2-paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
-
-  (:action player2-sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
-  )
-
-  (:action player2-clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
-  )
-
-  (:action player2-wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3) (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  (:action player2-memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  (:action player2-tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
 )

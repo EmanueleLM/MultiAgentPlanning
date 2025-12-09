@@ -1,52 +1,48 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator-domain)
+(define (problem load-and-deliver)
+  (:domain depot-distributor)
+
+  ;; Short comment on conservative modeling choices:
+  ;; - Two explicit locations: depot and distributor.
+  ;; - Two surfaces: surface0 at depot (initial crate locations) and surface1 at distributor (where pallets are).
+  ;; - Only one truck (truck0) and one hoist (hoist0) exist as specified.
+  ;; - The driver (actions prefixed driver-) can only drive the truck.
+  ;; - The hoist operator (actions prefixed hoist-) performs all crate transfers.
+  ;; - Pallets can accept only one crate (enforced by pallet_free predicate).
+  ;; These choices conservatively reflect the provided descriptions without adding extra resources.
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5
-    object_6 object_7 object_8 object_9 object_10 - obj
+    depot distributor - location
+    truck0 - truck
+    hoist0 - hoist
+    surface0 surface1 - surface
+    pallet0 pallet1 - pallet
+    crate0 crate2 - crate
   )
 
   (:init
-    ;; Union of observed initial facts from both agents' views
-    (cats object_0)
+    ;; Locations of surfaces and pallets
+    (surface_at surface0 depot)
+    (surface_at surface1 distributor)
+    (pallet_at pallet0 distributor)
+    (pallet_at pallet1 distributor)
 
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
+    ;; Initial crate locations: both crates start on surface0 at depot
+    (crate_on_surface crate0 surface0)
+    (crate_on_surface crate2 surface0)
 
-    (hand object_10)
-    (hand object_9)
+    ;; Resources free/available
+    (pallet_free pallet0)
+    (pallet_free pallet1)
+    (hoist_free hoist0)
 
-    ;; next relations (combined observations)
-    (next object_0 object_7)
-    (next object_10 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_8)
-
-    (next object_0 object_5)    ;; observed in the other agent's view
-    (next object_9 object_5)    ;; observed in the other agent's view
-
-    (sneeze object_3)
-    (sneeze object_4)
-
-    (spring object_5)
-    (spring object_7)
-
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-
-    ;; No vase(...) facts initially (explicitly omitted)
+    ;; Initial vehicle/hoist locations
+    (truck_at truck0 depot)
+    (hoist_at hoist0 depot)
   )
 
+  ;; Goal: crate0 on pallet0 and crate2 on pallet1 (explicit final placement)
   (:goal (and
-    (next object_10 object_6)
-    (next object_9 object_6)
+    (on_pallet crate0 pallet0)
+    (on_pallet crate2 pallet1)
   ))
 )

@@ -1,125 +1,119 @@
-(define (domain MysteryBlocksworld20)
+(define (domain harmony-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types object stage)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (spring ?o - object)
+    (province ?o - object)
+    (planet ?o - object)
+    (craves ?x - object ?y - object)
+    (harmony)                 ; global boolean
+    (pain)                    ; global boolean
+    (distinct ?x - object ?y - object) ; explicit inequality encoding (all ordered unequal pairs must appear in :init)
+    (current ?s - stage)      ; current discrete stage/timepoint
+    (next ?s - stage ?s2 - stage) ; static successor relation between stages
   )
 
-  ;; paltry: pre: hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;;         add: next o0 o2
-  ;;         del: vase o0 o1
-  (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ; Modeling notes (inside domain):
+  ; - Discrete linear time: actions explicitly move the current stage forward.
+  ;   Every action requires (current ?t) and a static (next ?t ?t2) and
+  ;   effects atomically replace (current ?t) with (current ?t2).
+  ;   This enforces a strict ordering of actions with no implicit oscillation
+  ;   or post-hoc fixes.
+  ;
+  ; - No bookkeeping shortcuts: a single Succumb action performs all restores
+  ;   required by the specification. No auxiliary "toggle" variants or
+  ;   "pay shortfall" actions exist.
+  ;
+  ; - Inequality is encoded via (distinct ...) predicate. All ordered pairs for
+  ;   unequal objects must be included in the problem :init.
+  ;
+  ; - All preconditions and effects mandated by the human specification are
+  ;   encoded as hard preconditions/effects. Effects are STRIPS-style atomic
+  ;   add/delete lists applied at the stage transition.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; Attack action
+  (:action attack
+    :parameters (?prov - object ?pl - object ?t - stage ?t2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
+                    (province ?prov)
+                    (planet ?pl)
+                    (harmony)
+                    (current ?t)
+                    (next ?t ?t2)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
+              (pain)
+              (not (province ?prov))
+              (not (planet ?pl))
+              (not (harmony))
+              (not (current ?t))
+              (current ?t2)
+            )
   )
 
-  ;; sip: pre: hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;;      add: vase o0 o1
-  ;;      del: next o0 o2
-  (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Succumb action: restores Province and Planet (for given objects) and Harmony, clears Pain
+  (:action succumb
+    :parameters (?prov - object ?pl - object ?t - stage ?t2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
+                    (pain)
+                    (current ?t)
+                    (next ?t ?t2)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (harmony)
+              (province ?prov)
+              (planet ?pl)
+              (not (pain))
+              (not (current ?t))
+              (current ?t2)
+            )
   )
 
-  ;; clip: pre: hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;;       add: vase o0 o1
-  ;;       del: next o0 o2
-  (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Overcome: requires province on ?other and Pain; gives Harmony, Province to ?subject and makes ?subject crave ?other,
+  ;; removes Province on ?other and clears Pain. Enforces distinctness subject != other.
+  (:action overcome
+    :parameters (?subject - object ?other - object ?t - stage ?t2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
+                    (province ?other)
+                    (pain)
+                    (distinct ?subject ?other)
+                    (current ?t)
+                    (next ?t ?t2)
+                  )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
+              (harmony)
+              (province ?subject)
+              (craves ?subject ?other)
+              (not (province ?other))
+              (not (pain))
+              (not (current ?t))
+              (current ?t2)
+            )
   )
 
-  ;; wretched: pre: sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3
-  ;;           add: next o0 o2
-  ;;           del: next o0 o1
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
+  ;; Feast: requires craves(eater, prey), eater holds Province and Harmony; produces Pain and gives Province to prey;
+  ;; deletes the craves relation, removes Province from eater and removes Harmony. Enforces distinctness eater != prey.
+  (:action feast
+    :parameters (?eater - object ?prey - object ?t - stage ?t2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (craves ?eater ?prey)
+                    (province ?eater)
+                    (harmony)
+                    (distinct ?eater ?prey)
+                    (current ?t)
+                    (next ?t ?t2)
+                  )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
+              (pain)
+              (province ?prey)
+              (not (craves ?eater ?prey))
+              (not (province ?eater))
+              (not (harmony))
+              (not (current ?t))
+              (current ?t2)
+            )
   )
 
-  ;; memory: pre: cats o0, spring o1, spring o2, next o0 o1
-  ;;         add: next o0 o2
-  ;;         del: next o0 o1
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; tightfisted: pre: hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;;              add: next o0 o2
-  ;;              del: vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
 )

@@ -1,27 +1,48 @@
-(define (problem object-relations-problem)
-  (:domain object-relations)
-  ; Nine objects available as specified in the analysis (object_0 .. object_8).
+(define (problem depot_orchestration_problem)
+  (:domain depot_orchestration)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    ;; crates
+    crate1 crate2 - crate
+
+    ;; pallets (explicit target pallet objects)
+    pallet0 pallet3 - pallet
+
+    ;; truck
+    truck1 - truck
+
+    ;; actors
+    driver1 - driver
+    hoist1 - hoist
+    auditor1 - auditor
+
+    ;; locations (explicit locations and pallet locations)
+    staging1 staging2 pallet_spot0 pallet_spot3 - location
   )
 
-  ; Initial state:
-  ; The analysis provided no explicit, complete initial-state scenarios. Per instructions we do not invent
-  ; availability beyond the provided data, so the initial state is intentionally left empty (no ground facts).
-  ; Planners will therefore find no action applicable unless additional facts are supplied externally.
   (:init
+    ;; initial crate positions
+    (crate-at crate1 staging1)
+    (crate-at crate2 staging2)
+
+    ;; truck and hoist initial locations
+    (truck-at truck1 staging1)
+    (hoist-at hoist1 staging1)
+
+    ;; pallet placements
+    (pallet-at pallet0 pallet_spot0)
+    (pallet-at pallet3 pallet_spot3)
+
+    ;; availability / capacity flags
+    (truck-empty truck1)
+    (pallet-empty pallet0)
+    (pallet-empty pallet3)
+    (hoist-free hoist1)
   )
 
-  ; Goal:
-  ; No explicit goal was provided in the analysis. A conjunctive goal is specified here only to make the
-  ; problem syntactically complete. This goal is illustrative; it does not invent initial facts, but it
-  ; requests the planner to reach a state where a 'next' and a 'vase' relation hold between concrete objects.
-  ; If you intend to verify specific plans, replace this goal (and/or the empty init) with the concrete
-  ; initial facts and the scenario-specific goals that were requested in the analysis.
-  (:goal
-    (and
-      (next object_0 object_1)
-      (vase object_2 object_3)
-    )
-  )
+  ;; Enforce final conditions explicitly: crate1 must be on pallet0 and crate2 on pallet3.
+  ;; No other terminal conditions are allowed to be left unspecified for mandated outputs.
+  (:goal (and
+    (on-pallet crate1 pallet0)
+    (on-pallet crate2 pallet3)
+  ))
 )

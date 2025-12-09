@@ -1,40 +1,65 @@
-(define (problem objects-manipulation-problem)
-  (:domain objects-manipulation)
+(define (problem logistics-instance)
+  (:domain logistics)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - object
-    step_0 step_1 step_2 step_3 - time
+    ;; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - plane
+
+    ;; packages
+    package_0 package_1 - package
+
+    ;; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; cities (kept for completeness; connectivity encoded explicitly)
+    city_0 city_1 - city
+
+    ;; discrete stages (sufficient for the required sequence of actions)
+    day0 day1 day2 day3 day4 day5 - stage
   )
 
   (:init
-    ; discrete time progression for three actions
-    (time-now step_0)
-    (succ step_0 step_1)
-    (succ step_1 step_2)
-    (succ step_2 step_3)
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ; initial facts (constructed conservatively from the scenario and matching the provided plan)
-    (hand object_9)
-    (sneeze object_4)
+    ;; Initial vehicle positions
+    (at-veh truck_0 location_0_0)
+    (at-veh truck_1 location_1_1)
+    (at-veh airplane_0 location_0_0)
 
-    (texture object_7)
-    (texture object_8)
+    ;; Initial package positions
+    (at-package package_0 location_0_0)
+    (at-package package_1 location_0_0)
 
-    (next object_4 object_8)
-    (next object_9 object_8)
-    (next object_10 object_5)
+    ;; Truck local connectivity (bidirectional within each city)
+    (same-city location_0_0 location_0_1)
+    (same-city location_0_1 location_0_0)
+    (same-city location_1_0 location_1_1)
+    (same-city location_1_1 location_1_0)
 
-    ; occupancy flags consistent with initial next facts
-    (has-next object_4)
-    (has-next object_9)
-    (has-next object_10)
+    ;; Air connectivity between airports (bidirectional)
+    (air-connected location_0_0 location_1_0)
+    (air-connected location_1_0 location_0_0)
 
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (stupendous object_2)
+    ;; Explicit discrete stage ordering (linear, no cycles)
+    (succ day0 day1)
+    (succ day1 day2)
+    (succ day2 day3)
+    (succ day3 day4)
+    (succ day4 day5)
+
+    ;; Start at initial stage
+    (now day0)
   )
 
   (:goal (and
-    (next object_10 object_5)
-    (next object_9 object_7)
+    ;; Terminal condition: planning must reach the final stage exactly
+    (now day5)
+
+    ;; Delivery goals: both packages at location_0_1
+    (at-package package_0 location_0_1)
+    (at-package package_1 location_0_1)
   ))
 )

@@ -4,117 +4,103 @@
     "agents": {
         "number": 4,
         "names": [
-            "analyzer",
-            "simulator",
+            "truck_operator",
+            "air_operator",
             "auditor",
             "orchestrator"
         ],
-        "analyzer": {
+        "truck_operator": {
             "private_information": [
-                "You have the textual domain description of actions: paltry, sip, clip, wretched, memory, tightfisted and their preconditions and effects as stated in the use case.",
-                "You have two separate statement blocks that enumerate initial facts and goals for two planning subproblems.",
-                "Objects are named object_0 through object_13 and predicates include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous."
+                "I control the city-level trucks and can move packages by driving between locations within a city.",
+                "Each city has exactly one truck and trucks only drive intra-city."
             ],
-            "goal": "Produce a clean, structured intermediate representation listing objects, predicates, action schemas with typed parameters, preconditions and effects, and the two initial and goal fact-sets."
+            "goal": "Model and enable reliable intra-city transport by truck so packages can be moved to city airports or destination locations."
         },
-        "simulator": {
+        "air_operator": {
             "private_information": [
-                "You can apply action schemas to fact sets and generate stepwise state traces when given an ordered plan.",
-                "You can detect unsatisfied preconditions at each step and report which step fails and why."
+                "I control the airplanes that fly between city airports.",
+                "Airplanes only move between airports and handle inter-city transfers."
             ],
-            "goal": "Take the intermediate representation and the provided plan sequences and produce deterministic simulation traces for each plan, annotate which actions succeed or fail, and produce the final derived facts if simulation succeeds."
+            "goal": "Model and enable reliable inter-city transport by airplane so packages can be moved between city airports."
         },
         "auditor": {
             "private_information": [
-                "Your role is to audit temporal and causal consistency across the descriptions and the provided plans.",
-                "You must identify and remove bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties, and flag any use of such shortcuts or assumptions.",
-                "You ensure that actions' preconditions and effects are explicit and that causal chains are well founded."
+                "I check temporal and causal consistency and remove bookkeeping shortcuts such as implicit quotas or undeclared state transitions.",
+                "I ensure load/unload and movement preconditions and effects are explicitly modeled and that cargo accounting is sound."
             ],
-            "goal": "Produce an audit report that lists causal inconsistencies, implicit assumptions, normalization suggestions for predicates and action names, and produce a minimal set of corrections to make plans causally valid without using bookkeeping shortcuts."
+            "goal": "Audit fragments for missing predicates, invariants, and ordering constraints and produce corrections for the orchestrator."
         },
         "orchestrator": {
-            "private_information": [
-                "You will receive the analyzer intermediate representation, the simulator traces, and the auditor report.",
-                "Your responsibility is to integrate those inputs, resolve naming mismatches, incorporate auditor corrections, and output a final PDDL domain and problem suitable for the FastDownwards planner."
-            ],
-            "goal": "Synthesize a single coherent PDDL domain and one or more PDDL problem files capturing the corrected planning tasks and targeting FastDownwards. Keep agent-level actions distinct if representing multi-agent aspects and ensure the domain encodes deterministic STRIPS-like actions compatible with FastDownwards."
+            "private_information": [],
+            "goal": "Integrate domain fragments and the audit report and produce a final PDDL domain and problem targeting the FastDownwards solver to achieve the global goal: package_0 at location_1_2."
         }
     },
     "environment": {
         "init": {
-            "objects_count": 14,
-            "object_names": [
-                "object_0",
-                "object_1",
-                "object_2",
-                "object_3",
-                "object_4",
-                "object_5",
-                "object_6",
-                "object_7",
-                "object_8",
-                "object_9",
-                "object_10",
-                "object_11",
-                "object_12",
-                "object_13"
-            ]
+            "cities": 2,
+            "locations_per_city": 3
         },
         "public_information": [
-            "Actions available: paltry, sip, clip, wretched, memory, tightfisted with parameterized object arguments.",
-            "Predicates used: hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
-            "Effects are deterministic and include positive and negative literal changes to predicates such as next and vase.",
-            "Plans consist of ordered action invocations over the object set."
+            "Locations within a city are directly connected and trucks can drive between any two locations in the same city.",
+            "Cities are connected via airports and airplanes can fly between city airports.",
+            "In each city there is exactly one truck.",
+            "Each city has exactly one location that serves as an airport.",
+            "Available actions: load-truck, unload-truck, drive-truck, load-airplane, unload-airplane, fly-airplane.",
+            "A package can be loaded into a truck only if the package and the truck are in the same location. When loaded the package is in the truck and not at the location.",
+            "A package can be loaded into an airplane only if the package and the airplane are in the same location. When loaded the package is in the airplane and not at the location.",
+            "A package can be unloaded from a truck only if the package is in the truck. When unloaded the package is at the truck location and not in the truck.",
+            "A package can be unloaded from an airplane only if the package is in the airplane. When unloaded the package is at the airplane location and not in the airplane.",
+            "A truck can be driven from one location to another only if both locations belong to the same city and the truck is at the from-location. After driving the truck is at the to-location and not at the from-location.",
+            "An airplane can be flown from one city airport to another only if the airplane is at the from-airport. After flying the airplane is at the destination airport and not at the origin airport.",
+            "Initial facts: location_0_0 is an airport, location_1_0 is an airport, airplane_0 is at location_1_0, package_0 is at location_0_1, truck_0 is at location_0_2, truck_1 is at location_1_0, location_0_0, location_0_1, location_0_2 are in city_0, location_1_0, location_1_1, location_1_2 are in city_1.",
+            "Global goal: package_0 is at location_1_2."
         ]
     },
     "workflow": {
-        "analyzer": {
-            "extract": {
+        "truck_operator": {
+            "analysis": {
                 "input": [],
-                "output": "facts_and_schemas",
-                "system_prompt": "You are an agent that must read the natural language domain and statement blocks and produce a normalized machine readable intermediate representation. Do not emit PDDL. Output objects list, predicates list, canonical action schemas with parameter names and explicit preconditions and effects, and both initial and goal fact sets.",
-                "prompt": "Use the provided public information and the use-case statements to extract a structured representation. List each action with parameter types and explicit positive and negative effects. Represent initial facts separately for each statement block and enumerate the intended goals. Do not assume facts beyond what is stated. If information is ambiguous, mark the ambiguity in the representation."
+                "output": "truck_fragment",
+                "system_prompt": "You are an expert on city-level truck logistics and action modeling. Provide a detailed description of truck-related predicates, parameters, preconditions, and effects required to represent load-truck, unload-truck, and drive-truck actions. Do not emit full PDDL domain and problem files. Emphasize required state variables and modeling pitfalls that the auditor should check.",
+                "prompt": "Agent truck_operator. Use the public information: {environment->public_information} and your private knowledge: {agents->truck_operator->private_information}. Produce a clear action schema description and identify assumptions and gaps relevant to intra-city truck operations and package handling. Output should be machine-friendly text suitable as input to an orchestrator."
             }
         },
-        "simulator": {
-            "simulate": {
-                "input": [
-                    "facts_and_schemas"
-                ],
-                "output": "simulation_traces",
-                "system_prompt": "You are a deterministic simulator for the extracted intermediate representation. You do not produce PDDL. You apply ordered plans to the initial facts and produce stepwise state traces and precondition violation reports.",
-                "prompt": "Given the intermediate representation and an ordered plan, simulate the plan step by step. For each action report whether preconditions are met, list the state before and after the action, and if a precondition is unmet, identify the missing facts and halt the simulation for that plan. Produce the final derived facts when the plan completes successfully."
+        "air_operator": {
+            "analysis": {
+                "input": [],
+                "output": "air_fragment",
+                "system_prompt": "You are an expert on aircraft logistics and action modeling. Provide a detailed description of airplane-related predicates, parameters, preconditions, and effects for load-airplane, unload-airplane, and fly-airplane actions. Do not produce full PDDL domain and problem files. Highlight airport constraints and cargo accounting concerns for the auditor.",
+                "prompt": "Agent air_operator. Use the public information: {environment->public_information} and your private knowledge: {agents->air_operator->private_information}. Produce a clear action schema description and identify assumptions and gaps relevant to inter-city airplane operations and package handling. Output should be machine-friendly text suitable as input to an orchestrator."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "facts_and_schemas",
-                    "simulation_traces"
+                    "truck_fragment",
+                    "air_fragment"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are a temporal and causal auditor. You do not produce PDDL. Your job is to remove bookkeeping shortcuts, expose implicit tokens or assumptions, ensure causality is explicit, and produce concrete correction suggestions for action preconditions and effects so that plans are causally valid without hidden bookkeeping.",
-                "prompt": "Analyze the intermediate representation and the simulation traces. Detect implicit assumptions and bookkeeping shortcuts such as implicit tokens, counting mechanisms, or post-hoc penalties. Produce a report that lists each detected issue, explains why it is problematic for deterministic planning, and propose explicit fixes to preconditions or effects that remove the shortcuts. Recommend normalization of predicate names or parameter orders if needed."
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for planning domains. Inspect domain fragments and remove bookkeeping shortcuts such as implicit quotas, post-hoc penalties, or undeclared state transitions. Produce an audit report listing corrections, required additional predicates, invariants, and ordering constraints. Do not produce PDDL domain or problem files.",
+                "prompt": "Agent auditor. Receive the fragments: {truck_fragment} and {air_fragment}. Using the public information: {environment->public_information} and your private knowledge: {agents->auditor->private_information}, produce an audit_report describing inconsistencies, missing invariants, and recommended changes so the orchestrator can build a sound PDDL model."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "facts_and_schemas",
-                    "simulation_traces",
+                    "truck_fragment",
+                    "air_fragment",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert PDDL synthesizer targeting the FastDownwards planner. Use the analyzer representation and auditor corrections to create a single coherent PDDL domain and one or more PDDL problem files. The domain must be compatible with STRIPS/ADL features supported by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and each PDDL problem between <problem></problem> tags. Preserve distinct agent action identities if representing multi-agent behavior.",
-                "prompt": "Integrate the analyzer extracted schemas, the simulator traces, and the auditor corrections. Resolve any naming inconsistencies and incorporate auditor-suggested fixes. Emit a PDDL domain and one or more PDDL problem files that represent the corrected planning tasks and that can be consumed by FastDownwards. Enclose the domain in <domain></domain> and the problem(s) in <problem></problem> tags. Do not include simulator traces or audit logs inside the PDDL artifacts."
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards solver. Using the fragments and the auditor report, produce a complete PDDL domain and a PDDL problem file compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and include explicit predicates for locations, cities, trucks, airplanes, packages, airports, in-truck and in-airplane relations. Ensure all preconditions and effects reflect the auditor corrections and that the model is solvable by FastDownwards.",
+                "prompt": "Agent orchestrator. Integrate the inputs: {truck_fragment}, {air_fragment}, and {audit_report} plus the public information: {environment->public_information} and the global goal: {agents->orchestrator->goal}. Produce the final PDDL domain and problem files suitable for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
             }
         },
         "constraints": [
-            "analyzer.extract->simulator.simulate",
-            "analyzer.extract->auditor.audit",
-            "simulator.simulate->auditor.audit",
-            "analyzer.extract->orchestrator.pddl",
-            "simulator.simulate->orchestrator.pddl",
+            "truck_operator.analysis->auditor.audit",
+            "air_operator.analysis->auditor.audit",
+            "truck_operator.analysis->orchestrator.pddl",
+            "air_operator.analysis->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
     }

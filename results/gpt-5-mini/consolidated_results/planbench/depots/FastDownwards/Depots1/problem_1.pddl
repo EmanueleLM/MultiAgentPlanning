@@ -1,50 +1,67 @@
-(define (problem orchestrator_problem)
-  (:domain orchestrator_domain)
+(define (problem Depots1-prob)
+  (:domain Depots1)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    ;; places
+    depot0 depot1 depot2 - depot
+    distributor0 - distributor
+
+    ;; surfaces: pallets and crates (crates are also surfaces)
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ;; hoists and trucks
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2 - truck
   )
+
   (:init
-    ;; unary facts (union of the two provided initial states)
-    (hand object_7)
-    (hand object_8)
+    ;; Hoist locations and availability
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
 
-    (cats object_0)
-    (cats object_1)
+    ;; Truck locations
+    (truck-at truck0 depot0)
+    (truck-at truck1 depot1)
+    (truck-at truck2 depot0)
 
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
+    ;; Surface locations (pallets)
+    (surface-at pallet0 depot0)
+    (surface-at pallet1 depot1)
+    (surface-at pallet2 depot2)
+    (surface-at pallet3 distributor0)
 
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; Crates initial positions and surface-location facts (crates are surfaces too)
+    (at crate0 depot0)
+    (surface-at crate0 depot0)
+    (at crate1 depot0)
+    (surface-at crate1 depot0)
+    (at crate2 depot2)
+    (surface-at crate2 depot2)
 
-    (spring object_5)
-    (spring object_6)
-    (spring object_7)
+    ;; On relations (stacking)
+    (on crate0 pallet0)
+    (on crate1 crate0)
+    (on crate2 pallet2)
 
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; Clear predicates (top of surface free)
+    ;; crate1 and crate2 and pallet1 and pallet3 are initially clear per specification
+    (clear crate1)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet3)
 
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_3)
-
-    ;; binary next facts (union of the two provided initial states)
-    (next object_0 object_7)
-    (next object_1 object_7)
-    (next object_4 object_6)
-    (next object_5 object_7)
-    (next object_8 object_7)
-
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_7 object_6)
-    (next object_8 object_5)
+    ;; Note: pallet0 and crate0 and pallet2 are not clear because they have crates on them
   )
+
   (:goal (and
-    (next object_7 object_6)
-    (next object_8 object_6)
+    (on crate0 pallet3)
+    (on crate1 pallet0)
+    (on crate2 crate0)
   ))
 )

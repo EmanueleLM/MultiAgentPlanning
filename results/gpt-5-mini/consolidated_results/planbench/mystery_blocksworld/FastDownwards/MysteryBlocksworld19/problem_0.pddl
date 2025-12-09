@@ -1,73 +1,42 @@
-(define (problem orchestrator-problem-next-11-9)
-  (:domain orchestrator)
+(define (problem orchestrator-problem)
+  (:domain orchestrator-domain)
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ; Objects
-  ; We model all referenced objects from the analyst reports.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (:objects
-    object_0 object_1 object_2 object_3 object_4
-    object_5 object_6 object_7 object_8 object_9
-    object_10 object_11 - obj
+    a b c d - entity
   )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ; Initial state
-  ; Facts are taken directly from the analyst inputs.
-  ; If any information was ambiguous in the textual reports,
-  ; we preserved only the explicitly listed initial facts.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Initial facts (mapped exactly from provided environment facts)
   (:init
-    ;; unary static properties
-    (cats object_0)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (hand object_11)
+    ;; initial craves relations
+    (craves a c)
+    (craves d a)
 
-    ;; texture facts explicitly given
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; initial global harmony
+    (harmony)
 
-    ;; collect relations (static)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ;; initial planets
+    (at-planet b)
+    (at-planet c)
 
-    ;; initial next relations N as reported
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_3 object_7)
-    (next object_4 object_8)
+    ;; initial provinces
+    (has-province b)
+    (has-province d)
 
-    ;; No vase facts initially (explicit in the report)
+    ;; explicit distinctness facts to enforce object != other constraints without using :equality
+    ;; All ordered pairs of distinct entities are listed so actions may require (distinct ?x ?y).
+    (distinct a b) (distinct a c) (distinct a d)
+    (distinct b a) (distinct b c) (distinct b d)
+    (distinct c a) (distinct c b) (distinct c d)
+    (distinct d a) (distinct d b) (distinct d c)
   )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ; Goal selection
-  ; The analyst produced two relevant goals in different sections:
-  ;  - next object_11 object_10 (achieved by 11-step plan in report part A)
-  ;  - next object_11 object_9  (achieved by a concise 4-action plan in report part B)
-  ;
-  ; This problem instance encodes the concise goal: next object_11 object_9
-  ; (the 4-action plan provided in the report is sufficient from the
-  ; given initial state and the domain actions).
-  ;
-  ; If you prefer the alternative goal (next object_11 object_10),
-  ; create a separate problem instance with that goal; both goals are
-  ; expressible in this domain without adding further predicates.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Goal:
+  ;; The auditor and orchestrator target the craves relations forming the intended cycle.
+  ;; Require these craves facts to hold simultaneously in the final state.
   (:goal (and
-    (next object_11 object_9)
-  ))
+            (craves a c)
+            (craves b d)
+            (craves d a)
+          )
+  )
 )

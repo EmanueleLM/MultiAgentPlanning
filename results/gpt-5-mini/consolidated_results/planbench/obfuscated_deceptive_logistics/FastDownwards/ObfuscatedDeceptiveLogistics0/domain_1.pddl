@@ -1,120 +1,113 @@
-(define (domain orchestrator_domain)
+(define (domain orchestrator)
   (:requirements :strips :typing :negative-preconditions)
   (:types obj)
 
   (:predicates
-    (hand ?o - obj)
     (cats ?o - obj)
+    (hand ?o - obj)
     (texture ?o - obj)
-    (vase ?o1 ?o2 - obj)
-    (next ?o1 ?o2 - obj)
     (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?o1 ?o2 - obj)
     (spring ?o - obj)
+    (stupendous ?o - obj)
+    (collect ?a ?b - obj)
+    (next ?a ?b - obj)
+    (vase ?x ?y - obj)
   )
 
-  ;; paltry: requires hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2.
-  ;; adds next ?o0 ?o2; removes vase ?o0 ?o1.
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ;; sip: requires hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2.
-  ;; adds vase ?o0 ?o1; removes next ?o0 ?o2.
+  ;; sip: requires an existing link next(X,Z) and next(Y,Z); consumes next(X,Z) and creates vase(X,Y)
   (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (next ?x ?z)
+      (next ?y ?z)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?x ?y)
+      (not (next ?x ?z))
     )
   )
 
-  ;; clip: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2.
-  ;; adds vase ?o0 ?o1; removes next ?o0 ?o2.
+  ;; clip: like sip but requires sneeze on Y and consumes next(X,Z) while observing next(Y,Z)
   (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (next ?x ?z)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (vase ?x ?y)
+      (not (next ?x ?z))
     )
   )
 
-  ;; wretched: requires sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3,
-  ;;            next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3.
-  ;; adds next ?o0 ?o2; removes next ?o0 ?o1.
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
-    :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-    )
-  )
-
-  ;; memory: requires cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1.
-  ;; adds next ?o0 ?o2; removes next ?o0 ?o1.
+  ;; memory: relinks next(X,Y) -> next(X,Z) when X is a cat and Y,Z are springs
   (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (cats ?x)
+      (spring ?y)
+      (spring ?z)
+      (next ?x ?y)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (next ?x ?z)
+      (not (next ?x ?y))
     )
   )
 
-  ;; tightfisted: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1.
-  ;; adds next ?o0 ?o2; removes vase ?o0 ?o1.
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; paltry: consumes vase(X,Y) and, given next(Y,Z), creates next(X,Z)
+  (:action paltry
+    :parameters (?x ?y ?z - obj)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (vase ?x ?y)
+      (next ?y ?z)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (next ?x ?z)
+      (not (vase ?x ?y))
+    )
+  )
+
+  ;; tightfisted: alternative consumer of vase that requires sneeze on the middle object
+  (:action tightfisted
+    :parameters (?x ?y ?z - obj)
+    :precondition (and
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (vase ?x ?y)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (vase ?x ?y))
+    )
+  )
+
+  ;; wretched: pointer-move using collect pairs to determine destination; removes old next and adds new next
+  (:action wretched
+    :parameters (?x ?y ?z ?w - obj)
+    :precondition (and
+      (sneeze ?x)
+      (texture ?y)
+      (texture ?z)
+      (stupendous ?w)
+      (next ?x ?y)
+      (collect ?y ?w)
+      (collect ?z ?w)
+    )
+    :effect (and
+      (next ?x ?z)
+      (not (next ?x ?y))
     )
   )
 )

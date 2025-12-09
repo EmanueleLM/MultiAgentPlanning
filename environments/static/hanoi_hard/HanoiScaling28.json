@@ -1,0 +1,103 @@
+{
+    "name": "HanoiScaling28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_manager",
+            "move_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_manager": {
+            "private_information": [
+                "There are 6 disks labeled A (smallest), B, C, D, E, F (largest).",
+                "Initial configuration: right peg (top->bottom): A, B, C, D, E, F. Left peg empty. Middle peg empty.",
+                "Disks keep a strict size ordering: A < B < C < D < E < F."
+            ],
+            "goal": "Describe precisely the canonical state representation and invariants of the Tower of Hanoi instance so other agents can plan legal moves."
+        },
+        "move_planner": {
+            "private_information": [
+                "Allowed atomic action: move the top disk from one peg to another peg.",
+                "Legal move constraints: move only one disk at a time; move only top disk of a peg; never place a larger disk on a smaller disk."
+            ],
+            "goal": "Provide legal single-disk move suggestions and short sequences consistent with the rules and the disk_manager state, without producing final PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: check temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "Focus: ensure no hidden assumptions about concurrency, implicit stacking, or temporary violations of ordering."
+            ],
+            "goal": "Audit move suggestions and state reports for causal/temporal correctness and highlight or correct any bookkeeping shortcuts or illegal assumptions."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating inputs and producing final PDDL domain and problem tailored for the FastDownwards planner."
+            ],
+            "goal": "Integrate the agents' reports and produce a complete PDDL domain and PDDL problem that models the 6-disk Tower of Hanoi instance and is ready for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 6,
+            "pegs": 3
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with three pegs: left, middle, right.",
+            "Disks from smallest to largest are named A, B, C, D, E, F.",
+            "Initial state: right peg holds (top->bottom) A, B, C, D, E, F. Left and middle pegs are empty.",
+            "Goal state: middle peg must hold (top->bottom) A, B, C, D, E, F, and both left and right pegs must be empty.",
+            "Rules: move only one disk at a time; move only the top disk of a peg; never place a larger disk on top of a smaller disk.",
+            "Left peg may be used as intermediate but must end empty."
+        ]
+    },
+    "workflow": {
+        "disk_manager": {
+            "state_analysis": {
+                "input": [],
+                "output": "state_report",
+                "system_prompt": "You are the Disk Manager. Produce a canonical, unambiguous description of the instance state and invariants so other agents can plan. Do not emit PDDL. Use a clear listing of pegs, the top-of-peg order, and explicit size relations.",
+                "prompt": "Produce a precise state report for the Tower of Hanoi instance containing the disk set with their canonical size ordering, the initial occupancy of each peg, and any derived invariants that planners must respect."
+            }
+        },
+        "move_planner": {
+            "move_suggestions": {
+                "input": [
+                    "disk_manager.state_report"
+                ],
+                "output": "move_suggestions",
+                "system_prompt": "You are the Move Planner. Generate legally valid single-disk moves and short move sequences consistent with the state report and rules. Do not emit PDDL. Express each suggested move in the form 'move top disk X from PEG1 to PEG2' and include preconditions and immediate postconditions for each move.",
+                "prompt": "Given the canonical state report, produce a set of legal single-disk move suggestions and short sequences that could be used to reach the goal. Highlight assumptions and prerequisites for each suggested move."
+            }
+        },
+        "auditor": {
+            "audit_report": {
+                "input": [
+                    "disk_manager.state_report",
+                    "move_planner.move_suggestions"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the Auditor. Inspect state reports and move suggestions for temporal and causal consistency. Remove or flag any bookkeeping shortcuts such as quota tokens, implicit simultaneous moves, or post-hoc penalties. Do not emit PDDL. Provide corrections, required invariants, and a verified sequence of allowed assumptions.",
+                "prompt": "Audit the provided state report and move suggestions for any violations of the Tower of Hanoi rules or hidden assumptions about concurrency or bookkeeping. Produce an audit report that confirms consistency or lists precise corrections needed."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_manager.state_report",
+                    "move_planner.move_suggestions",
+                    "auditor.audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the Orchestrator responsible for producing a complete PDDL domain and a PDDL problem file that encode the 6-disk Tower of Hanoi instance and are compatible with the FastDownwards planner. Integrate the state report, move suggestions, and auditor corrections. Keep agent actions distinct in your modeling where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem>. Target FastDownwards semantics: use STRIPS and ADL constructs that FastDownwards supports, avoid temporal PDDL extensions, and ensure the problem is solvable by standard delete-relaxation planners.",
+                "prompt": "Integrate the inputs from the disk manager, the move planner, and the auditor to produce a final PDDL domain and PDDL problem that model the 6-disk Tower of Hanoi with pegs left, middle, right. The domain should include predicates representing disk-on-disk and disk-on-peg relations, actions for moving the top disk between pegs with appropriate preconditions and effects, and typing or static definitions if useful. The problem should encode the initial configuration (all disks on right peg top->bottom A..F) and the goal configuration (all disks on middle peg top->bottom A..F with left and right empty). Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "disk_manager.state_analysis->orchestrator.pddl",
+            "move_planner.move_suggestions->orchestrator.pddl",
+            "auditor.audit_report->orchestrator.pddl"
+        ]
+    }
+}

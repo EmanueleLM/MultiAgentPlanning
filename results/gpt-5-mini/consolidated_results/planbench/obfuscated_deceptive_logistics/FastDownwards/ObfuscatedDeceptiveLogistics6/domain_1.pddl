@@ -1,120 +1,116 @@
-(define (domain ObfuscatedDeceptiveLogistics6)
+(define (domain orchestrated-domain)
   (:requirements :strips :typing :negative-preconditions)
   (:types object)
-
   (:predicates
     (hand ?o - object)
     (cats ?o - object)
+    (sneeze ?o - object)
     (texture ?o - object)
+    (spring ?o - object)
+    (stupendous ?o - object)
+    (collect ?c - object ?i - object)
     (vase ?a - object ?b - object)
     (next ?a - object ?b - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?a - object ?b - object)
-    (spring ?o - object)
   )
 
-  ;; paltry: preconds: hand ?h, cats ?c, texture ?t, vase ?h ?c, next ?c ?t
-  ;; effects: add (next ?h ?t), delete (vase ?h ?c)
+  ; paltry: requires vase(X,Y) and successor Y->Z; replaces X's current successor with Z and removes vase(X,Y)
   (:action paltry
-    :parameters (?h - object ?c - object ?t - object)
+    :parameters (?x - object ?y - object ?z - object ?old - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (vase ?x ?y)
+      (next ?y ?z)
+      (next ?x ?old)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
+      (not (vase ?x ?y))
+      (not (next ?x ?old))
+      (next ?x ?z)
     )
   )
 
-  ;; sip: preconds: hand ?h, cats ?c, texture ?t, next ?h ?t, next ?c ?t
-  ;; effects: add (vase ?h ?c), delete (next ?h ?t)
+  ; sip: requires both X and Y currently point to Z; creates vase(X,Y) and removes X->Z
   (:action sip
-    :parameters (?h - object ?c - object ?t - object)
+    :parameters (?x - object ?y - object ?z - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (hand ?x)
+      (cats ?y)
+      (texture ?z)
+      (next ?x ?z)
+      (next ?y ?z)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (vase ?x ?y)
+      (not (next ?x ?z))
     )
   )
 
-  ;; clip: preconds: hand ?h, sneeze ?s, texture ?t, next ?s ?t, next ?h ?t
-  ;; effects: add (vase ?h ?s), delete (next ?h ?t)
+  ; clip: similar to sip but Y must be sneeze; creates vase(X,Y) and removes X->Z
   (:action clip
-    :parameters (?h - object ?s - object ?t - object)
+    :parameters (?x - object ?y - object ?z - object)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (next ?x ?z)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (vase ?x ?y)
+      (not (next ?x ?z))
     )
   )
 
-  ;; wretched: preconds: sneeze ?s, texture ?t1, texture ?t2, stupendous ?sp,
-  ;;            next ?s ?t1, collect ?t1 ?sp, collect ?t2 ?sp
-  ;; effects: add (next ?s ?t2), delete (next ?s ?t1)
+  ; wretched: requires X->Y, textures on Y and Z, and both Y and Z collect W; replaces X->Y with X->Z
   (:action wretched
-    :parameters (?s - object ?t1 - object ?t2 - object ?sp - object)
+    :parameters (?x - object ?y - object ?z - object ?w - object)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?sp)
-      (next ?s ?t1)
-      (collect ?t1 ?sp)
-      (collect ?t2 ?sp)
+      (sneeze ?x)
+      (texture ?y)
+      (texture ?z)
+      (stupendous ?w)
+      (next ?x ?y)
+      (collect ?y ?w)
+      (collect ?z ?w)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (not (next ?x ?y))
+      (next ?x ?z)
     )
   )
 
-  ;; memory: preconds: cats ?c, spring ?s1, spring ?s2, next ?c ?s1
-  ;; effects: add (next ?c ?s2), delete (next ?c ?s1)
+  ; memory: requires X->Y and springs at Y and Z; replaces X->Y with X->Z
   (:action memory
-    :parameters (?c - object ?s1 - object ?s2 - object)
+    :parameters (?x - object ?y - object ?z - object)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (cats ?x)
+      (spring ?y)
+      (spring ?z)
+      (next ?x ?y)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (next ?x ?y))
+      (next ?x ?z)
     )
   )
 
-  ;; tightfisted: preconds: hand ?h, sneeze ?s, texture ?t, next ?s ?t, vase ?h ?s
-  ;; effects: add (next ?h ?t), delete (vase ?h ?s)
+  ; tightfisted: requires vase(X,Y) and Y->Z; replaces X's current successor with Z and removes vase(X,Y)
   (:action tightfisted
-    :parameters (?h - object ?s - object ?t - object)
+    :parameters (?x - object ?y - object ?z - object ?old - object)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
+      (hand ?x)
+      (sneeze ?y)
+      (texture ?z)
+      (next ?y ?z)
+      (vase ?x ?y)
+      (next ?x ?old)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (not (vase ?x ?y))
+      (not (next ?x ?old))
+      (next ?x ?z)
     )
   )
 )

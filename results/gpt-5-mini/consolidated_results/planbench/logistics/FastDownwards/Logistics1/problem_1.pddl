@@ -1,30 +1,35 @@
-(define (problem logistics1-problem0)
+(define (problem transport_problem)
   (:domain Logistics1)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    package_0 package_1 - package
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    location_0_0 location_1_0 - location
+    city_0 city_1 - city
   )
+
   (:init
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (hand object_7)
-    (hand object_8)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_5)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_6)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
+    ;; Initial package locations
+    (package-at package_0 location_1_0)
+    (package-at package_1 location_0_0)
+
+    ;; Initial vehicle locations
+    (truck-at truck_0 location_0_0)
+    (truck-at truck_1 location_1_0)
+    (airplane-at airplane_0 location_1_0)
+
+    ;; Geography
+    (located-in-city location_0_0 city_0)
+    (located-in-city location_1_0 city_1)
+
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
   )
+
   (:goal (and
-    (next object_7 object_6)
-    (next object_8 object_6)
+    (package-at package_0 location_1_0)
+    (package-at package_1 location_1_0)
   ))
 )

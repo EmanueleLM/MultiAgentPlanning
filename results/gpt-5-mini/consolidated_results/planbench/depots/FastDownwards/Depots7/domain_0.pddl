@@ -1,112 +1,92 @@
-(define (domain multi_fragment_domain)
-  (:requirements :strips)
+(define (domain stacking)
+  (:requirements :strips :typing)
+  (:types agent crate pallet)
+
   (:predicates
-    (hand ?x)
-    (cats ?x)
-    (texture ?x)
-    (vase ?x ?y)
-    (next ?x ?y)
-    (sneeze ?x)
-    (collect ?x ?y)
-    (spring ?x)
-    (stupendous ?x)
+    ;; Relations describing placement
+    (on-pallet ?c - crate ?p - pallet)
+    (on-crate  ?c - crate ?d - crate)
+
+    ;; Top-of-stack predicates
+    (clear-crate  ?c - crate)    ;; true when no crate is on top of this crate
+    (clear-pallet ?p - pallet)   ;; true when no crate is on top of this pallet
+
+    ;; Agent state
+    (holding ?a - agent ?c - crate)
+    (arm-empty ?a - agent)
+
+    ;; Explicit distinctness to prohibit placing a crate on itself
+    (distinct ?x - crate ?y - crate)
   )
 
-  ;; clip(h sn t)
-  (:action clip
-    :parameters (?h ?sn ?t)
+  ;; Pick a crate that lies directly on a pallet
+  (:action pickup-from-pallet
+    :parameters (?a - agent ?c - crate ?p - pallet)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (next ?h ?t)
+      (on-pallet ?c ?p)
+      (clear-crate ?c)
+      (arm-empty ?a)
     )
     :effect (and
-      (vase ?h ?sn)
-      (not (next ?h ?t))
+      (not (on-pallet ?c ?p))
+      (not (arm-empty ?a))
+      (holding ?a ?c)
+      ;; removing the top crate makes the pallet clear (no crate directly on it)
+      (clear-pallet ?p)
     )
   )
 
-  ;; wretched(sn t1 t2 s)
-  (:action wretched
-    :parameters (?sn ?t1 ?t2 ?s)
+  ;; Pick a crate that lies directly on another crate
+  (:action pickup-from-crate
+    :parameters (?a - agent ?c - crate ?under)
     :precondition (and
-      (sneeze ?sn)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?s)
-      (next ?sn ?t1)
-      (collect ?t1 ?s)
-      (collect ?t2 ?s)
+      (on-crate ?c ?under)
+      (clear-crate ?c)
+      (arm-empty ?a)
     )
     :effect (and
-      (next ?sn ?t2)
-      (not (next ?sn ?t1))
+      (not (on-crate ?c ?under))
+      (not (arm-empty ?a))
+      (holding ?a ?c)
+      ;; underlying crate becomes clear after removing the top crate
+      (clear-crate ?under)
     )
   )
 
-  ;; tightfisted(h sn t)
-  (:action tightfisted
-    :parameters (?h ?sn ?t)
+  ;; Place a held crate directly onto an empty pallet (pallet must be clear)
+  (:action place-on-pallet
+    :parameters (?a - agent ?c - crate ?p - pallet)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (vase ?h ?sn)
+      (holding ?a ?c)
+      (clear-pallet ?p)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?sn))
+      (not (holding ?a ?c))
+      (arm-empty ?a)
+      (on-pallet ?c ?p)
+      ;; pallet is no longer clear when a crate is placed on it
+      (not (clear-pallet ?p))
+      ;; the placed crate has nothing on top of it initially
+      (clear-crate ?c)
     )
   )
 
-  ;; sip(h c t)
-  (:action sip
-    :parameters (?h ?c ?t)
+  ;; Place a held crate onto the top of another crate (destination crate must be clear)
+  (:action place-on-crate
+    :parameters (?a - agent ?c - crate ?d - crate)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (holding ?a ?c)
+      (clear-crate ?d)
+      (distinct ?c ?d)   ;; forbid placing a crate onto itself
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (holding ?a ?c))
+      (arm-empty ?a)
+      (on-crate ?c ?d)
+      ;; destination crate is no longer clear (it now has a crate on top)
+      (not (clear-crate ?d))
+      ;; the placed crate has nothing on top of it initially
+      (clear-crate ?c)
     )
   )
-
-  ;; memory(c s1 s2)
-  (:action memory
-    :parameters (?c ?s1 ?s2)
-    :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
-    )
-    :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
-    )
-  )
-
-  ;; paltry(h c t)
-  (:action paltry
-    :parameters (?h ?c ?t)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
 )

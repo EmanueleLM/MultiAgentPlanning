@@ -1,146 +1,220 @@
-(define (domain corrected_neutral_model)
+(define (domain transport-audit)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
-
+  (:types
+    vehicle truck airplane
+    equipment
+    cargo
+    location
+    phase
+  )
   (:predicates
-    (Hand ?h - object)
-    (Cat ?c - object)
-    (Texture ?t - object)
-    (Holds ?h - object ?x - object)        ; hand h holds entity x (cat or sneezer)
-    (Attached ?x - object ?t - object)    ; entity x is attached to texture t
-    (Sneezer ?s - object)
-    (Collected ?t - object ?collector - object)
-    (SpringNode ?s - object)
-    (Collector ?st - object)
-    (free-attached ?x - object)            ; x currently has no Attached relation (source is free)
-    (free-held ?x - object)                ; x currently not held by any Hand
+    ;; location predicates for vehicles and equipment
+    (at ?x - (either vehicle equipment) ?l - location)
+
+    ;; cargo location and mounting
+    (cargo-at ?c - cargo ?l - location)
+    (on ?c - cargo ?v - vehicle)
+
+    ;; safety / readiness predicates
+    (loader-inspected ?ldr - equipment)
+    (plane-fueled ?p - airplane)
+
+    ;; phase sequencing predicates
+    (current-phase ?ph - phase)
+    (phase-next ?ph1 - phase ?ph2 - phase)
+
+    ;; role labels that bind specific phases to particular tasks (enforce exact ordering)
+    (phase-is-inspect ?ph - phase)
+    (phase-is-load-truck ?ph - phase)
+    (phase-is-drive-to-airport ?ph - phase)
+    (phase-is-load-airplane ?ph - phase)
+    (phase-is-fuel ?ph - phase)
+    (phase-is-fly ?ph - phase)
+    (phase-is-drive-to-airport2 ?ph - phase)
+    (phase-is-unload-airplane ?ph - phase)
+    (phase-is-drive-to-dest ?ph - phase)
+    (phase-is-unload-truck ?ph - phase)
+    (phase-is-done ?ph - phase)
   )
 
-  ;; sip: create a Holds relation between a hand and a cat when both are attached to same texture.
-  (:action sip
-    :parameters (?h - object ?c - object ?t - object)
+  ;; 1) Loader inspection must occur in the inspection phase; advances the global phase.
+  (:action inspect-loader
+    :parameters (?ldr - equipment ?ph - phase ?phn - phase)
     :precondition (and
-      (Hand ?h)
-      (Cat ?c)
-      (Texture ?t)
-      (Attached ?h ?t)
-      (Attached ?c ?t)
-      (free-held ?c)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-inspect ?ph)
+                    (not (loader-inspected ?ldr))
+                  )
     :effect (and
-      (Holds ?h ?c)
-      (not (free-held ?c))
-    )
+              (loader-inspected ?ldr)
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; paltry: establish attachment of a hand to a texture by using a held cat's attachment.
-  ;; Requires the hand to be free-attached so we do not create multiple attachments for same source.
-  (:action paltry
-    :parameters (?h - object ?c - object ?t - object)
+  ;; 2) Load cargo onto a truck at a location (warehouse). Distinct truck loading action.
+  (:action load-truck
+    :parameters (?t - truck ?c - cargo ?loc - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Hand ?h)
-      (Cat ?c)
-      (Texture ?t)
-      (Holds ?h ?c)
-      (Attached ?c ?t)
-      (free-attached ?h)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-load-truck ?ph)
+                    (at ?t ?loc)
+                    (cargo-at ?c ?loc)
+                  )
     :effect (and
-      (Attached ?h ?t)
-      (not (free-attached ?h))
-    )
+              (on ?c ?t)
+              (not (cargo-at ?c ?loc))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; clip: create a Holds relation between a hand and a sneezer when both are attached to same texture.
-  (:action clip
-    :parameters (?h - object ?s - object ?t - object)
+  ;; 3) Drive a truck between locations (used for truck that takes cargo to airport).
+  (:action drive-truck-to-airport
+    :parameters (?t - truck ?from - location ?to - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Hand ?h)
-      (Sneezer ?s)
-      (Texture ?t)
-      (Attached ?s ?t)
-      (Attached ?h ?t)
-      (free-held ?s)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-drive-to-airport ?ph)
+                    (at ?t ?from)
+                  )
     :effect (and
-      (Holds ?h ?s)
-      (not (free-held ?s))
-    )
+              (at ?t ?to)
+              (not (at ?t ?from))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; wretched: move a sneezer's attachment from t1 to t2 when both textures are collected by same Collector.
-  ;; This is an explicit move: it deletes the old attachment and adds the new.
-  (:action wretched
-    :parameters (?s - object ?t1 - object ?t2 - object ?collector - object)
+  ;; 4) Loader loads cargo from a truck to an airplane at a common location.
+  (:action load-airplane
+    :parameters (?ldr - equipment ?t - truck ?p - airplane ?c - cargo ?loc - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Sneezer ?s)
-      (Texture ?t1)
-      (Texture ?t2)
-      (Collector ?collector)
-      (Attached ?s ?t1)
-      (Collected ?t1 ?collector)
-      (Collected ?t2 ?collector)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-load-airplane ?ph)
+                    (loader-inspected ?ldr)
+                    (at ?ldr ?loc)
+                    (at ?t ?loc)
+                    (at ?p ?loc)
+                    (on ?c ?t)
+                  )
     :effect (and
-      (Attached ?s ?t2)
-      (not (Attached ?s ?t1))
-    )
+              (on ?c ?p)
+              (not (on ?c ?t))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; memory: move a cat's attachment between spring nodes (explicit move).
-  (:action memory
-    :parameters (?c - object ?s1 - object ?s2 - object)
+  ;; 5) Fuel the airplane before flight (distinct airplane preparation).
+  (:action fuel-airplane
+    :parameters (?p - airplane ?loc - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Cat ?c)
-      (SpringNode ?s1)
-      (SpringNode ?s2)
-      (Attached ?c ?s1)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-fuel ?ph)
+                    (at ?p ?loc)
+                  )
     :effect (and
-      (Attached ?c ?s2)
-      (not (Attached ?c ?s1))
-    )
+              (plane-fueled ?p)
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; tightfisted: create an attachment for a hand by using an existing Holds relation to a sneezer and the sneezer's attachment.
-  (:action tightfisted
-    :parameters (?h - object ?s - object ?t - object)
+  ;; 6) Fly airplane from one location to another with cargo mounted. Must be fueled.
+  (:action fly-airplane
+    :parameters (?p - airplane ?from - location ?to - location ?c - cargo ?ph - phase ?phn - phase)
     :precondition (and
-      (Hand ?h)
-      (Sneezer ?s)
-      (Texture ?t)
-      (Attached ?s ?t)
-      (Holds ?h ?s)
-      (free-attached ?h)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-fly ?ph)
+                    (at ?p ?from)
+                    (plane-fueled ?p)
+                    (on ?c ?p)
+                  )
     :effect (and
-      (Attached ?h ?t)
-      (not (free-attached ?h))
-    )
+              (at ?p ?to)
+              (not (at ?p ?from))
+              (not (plane-fueled ?p))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; Explicit release of a hold: frees the held entity.
-  (:action release_hold
-    :parameters (?h - object ?x - object)
+  ;; 7) Drive a second truck (receiving truck) to the destination airport where the plane will land.
+  (:action drive-truck2-to-airport
+    :parameters (?t - truck ?from - location ?to - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Holds ?h ?x)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-drive-to-airport2 ?ph)
+                    (at ?t ?from)
+                  )
     :effect (and
-      (not (Holds ?h ?x))
-      (free-held ?x)
-    )
+              (at ?t ?to)
+              (not (at ?t ?from))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
-  ;; Explicit detach: remove an Attached relation and mark the source free-attached.
-  (:action detach
-    :parameters (?x - object ?t - object)
+  ;; 8) Loader unloads cargo from airplane to a truck at the arrival airport. Requires inspected loader.
+  (:action unload-airplane-to-truck
+    :parameters (?ldr - equipment ?p - airplane ?t - truck ?c - cargo ?loc - location ?ph - phase ?phn - phase)
     :precondition (and
-      (Attached ?x ?t)
-    )
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-unload-airplane ?ph)
+                    (loader-inspected ?ldr)
+                    (at ?ldr ?loc)
+                    (at ?t ?loc)
+                    (at ?p ?loc)
+                    (on ?c ?p)
+                  )
     :effect (and
-      (not (Attached ?x ?t))
-      (free-attached ?x)
-    )
+              (on ?c ?t)
+              (not (on ?c ?p))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
   )
 
+  ;; 9) Drive the receiving truck from the arrival airport to the final depot with the cargo.
+  (:action drive-truck-to-dest
+    :parameters (?t - truck ?from - location ?to - location ?ph - phase ?phn - phase)
+    :precondition (and
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-drive-to-dest ?ph)
+                    (at ?t ?from)
+                  )
+    :effect (and
+              (at ?t ?to)
+              (not (at ?t ?from))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
+  )
+
+  ;; 10) Unload cargo from truck to final depot location (terminal condition). Advances to done phase.
+  (:action unload-truck
+    :parameters (?t - truck ?c - cargo ?loc - location ?ph - phase ?phn - phase)
+    :precondition (and
+                    (current-phase ?ph)
+                    (phase-next ?ph ?phn)
+                    (phase-is-unload-truck ?ph)
+                    (at ?t ?loc)
+                    (on ?c ?t)
+                  )
+    :effect (and
+              (cargo-at ?c ?loc)
+              (not (on ?c ?t))
+              (not (current-phase ?ph))
+              (current-phase ?phn)
+            )
+  )
 )

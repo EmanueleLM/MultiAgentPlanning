@@ -1,86 +1,84 @@
-; ===============================================================
-; Reconciliations and assumptions for FastDownwards compatibility:
-; - No structured analyst inputs were available, so I used a canonical
-;   "logistics" style domain (trucks, packages, locations) as the
-;   public action schemas. This choice is documented and consistent
-;   with typical public templates: drive, load, unload.
-; - Mapped concepts:
-;     "drive"  -> action drive (move truck between locations)
-;     "load"   -> action load  (put package into truck)
-;     "unload" -> action unload (remove package from truck)
-;   These are treated as authoritative action names.
-; - To allow a single at predicate for both trucks and packages, I
-;   introduced a parent type "obj" and made truck and package subtypes.
-;   Predicates are:
-;     (at ?o - obj ?l - location)
-;     (in ?p - package ?t - truck)
-; - All natural-language preferences were treated as hard constraints.
-; - Requirements limited to :strips, :typing, and :negative-preconditions
-;   (all supported by FastDownwards). No :costs, no :durative-actions,
-;   no functions, no equality requirement.
-; - No additional availability/inventory was invented beyond the objects
-;   and initial facts provided in the problem file below.
-; ===============================================================
-
-(define (domain logistics-reconciled)
+(define (domain hoist-stacking)
   (:requirements :strips :typing :negative-preconditions)
   (:types
-    obj
-    truck package - obj
-    location
+    thing location hoist pallet crate truck - thing
   )
-
   (:predicates
-    ;; a single at predicate for any object that is a subtype of obj
-    (at ?o - obj ?l - location)
-    ;; package containment in truck
-    (in ?p - package ?t - truck)
+    ; location of movable objects (hoists, pallets, trucks, crates)
+    (at ?o - thing ?loc - location)
+    ; stacking relation: crate on a support (support may be a pallet or another crate or any thing)
+    (on ?c - crate ?s - thing)
+    ; nothing on top of this thing (applies to crates and pallets)
+    (clear ?t - thing)
+    ; hoist availability (true when free, false when carrying)
+    (available ?h - hoist)
+    ; hoist is holding a crate
+    (holding ?h - hoist ?c - crate)
   )
 
-  ;; Drive a truck from one location to another.
-  ;; Precondition: truck is at source and not already at destination.
-  ;; Effect: truck is no longer at source and is at destination.
-  (:action drive
-    :parameters (?t - truck ?from - location ?to - location)
+  ; A hoist picks a clear crate from a support present at the same location.
+  (:action hoist-pick
+    :parameters (?h - hoist ?c - crate ?s - thing ?loc - location)
     :precondition (and
-                    (at ?t ?from)
-                    (not (at ?t ?to))
-                  )
+      (at ?h ?loc)
+      (at ?s ?loc)
+      (on ?c ?s)
+      (clear ?c)
+      (available ?h)
+    )
     :effect (and
-              (not (at ?t ?from))
-              (at ?t ?to)
-            )
+      (not (on ?c ?s))
+      (not (clear ?c))
+      (clear ?s)
+      (not (available ?h))
+      (holding ?h ?c)
+    )
   )
 
-  ;; Load a package into a truck at the same location.
-  ;; Precondition: both package and truck at the same location and
-  ;;              package is not already in that truck.
-  ;; Effect: package is in truck and no longer at the location.
-  (:action load
-    :parameters (?p - package ?t - truck ?loc - location)
+  ; A hoist places a crate it is holding onto a clear support at the same location.
+  (:action hoist-place
+    :parameters (?h - hoist ?c - crate ?s - thing ?loc - location)
     :precondition (and
-                    (at ?t ?loc)
-                    (at ?p ?loc)
-                    (not (in ?p ?t))
-                  )
+      (holding ?h ?c)
+      (at ?h ?loc)
+      (at ?s ?loc)
+      (clear ?s)
+    )
     :effect (and
-              (in ?p ?t)
-              (not (at ?p ?loc))
-            )
+      (not (holding ?h ?c))
+      (available ?h)
+      (on ?c ?s)
+      (not (clear ?s))
+      (clear ?c)
+      (at ?c ?loc)
+    )
   )
 
-  ;; Unload a package from a truck to the truck's current location.
-  ;; Precondition: package is in the truck and truck is at the target location.
-  ;; Effect: package is at the location and no longer in the truck.
-  (:action unload
-    :parameters (?p - package ?t - truck ?loc - location)
+  ; Move a hoist that is not carrying a crate.
+  (:action hoist-move-free
+    :parameters (?h - hoist ?from - location ?to - location)
     :precondition (and
-                    (in ?p ?t)
-                    (at ?t ?loc)
-                  )
+      (at ?h ?from)
+      (available ?h)
+    )
     :effect (and
-              (not (in ?p ?t))
-              (at ?p ?loc)
-            )
+      (not (at ?h ?from))
+      (at ?h ?to)
+    )
+  )
+
+  ; Move a hoist while carrying a specific crate; the crate's location moves with the hoist.
+  (:action hoist-move-with
+    :parameters (?h - hoist ?c - crate ?from - location ?to - location)
+    :precondition (and
+      (at ?h ?from)
+      (holding ?h ?c)
+    )
+    :effect (and
+      (not (at ?h ?from))
+      (at ?h ?to)
+      (not (at ?c ?from))
+      (at ?c ?to)
+    )
   )
 )

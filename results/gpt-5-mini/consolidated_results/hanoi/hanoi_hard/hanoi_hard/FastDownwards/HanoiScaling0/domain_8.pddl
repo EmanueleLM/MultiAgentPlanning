@@ -1,0 +1,97 @@
+(define (domain hanoi6)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg step)
+
+  (:predicates
+    (at ?d - disk ?p - peg)
+    (on ?d - disk ?under - disk)
+    (on-base ?d - disk ?p - peg)
+    (clear ?d - disk)
+    (empty ?p - peg)
+    (smaller ?d1 - disk ?d2 - disk)
+    (current ?s - step)
+    (succ ?s1 - step ?s2 - step)
+  )
+
+  (:action move-disk-from-disk-to-disk
+    :parameters (?s - step ?s2 - step ?d - disk ?from - peg ?to - peg ?under - disk ?destTop - disk)
+    :precondition (and
+      (current ?s) (succ ?s ?s2)
+      (at ?d ?from)
+      (clear ?d)
+      (on ?d ?under)
+      (at ?under ?from)
+      (at ?destTop ?to)
+      (clear ?destTop)
+      (smaller ?d ?destTop)
+    )
+    :effect (and
+      (not (current ?s)) (current ?s2)
+      (not (at ?d ?from)) (at ?d ?to)
+      (not (on ?d ?under)) (on ?d ?destTop)
+      (not (clear ?destTop))
+      (clear ?d)
+      (clear ?under)
+    )
+  )
+
+  (:action move-disk-from-disk-to-base
+    :parameters (?s - step ?s2 - step ?d - disk ?from - peg ?to - peg ?under - disk)
+    :precondition (and
+      (current ?s) (succ ?s ?s2)
+      (at ?d ?from)
+      (clear ?d)
+      (on ?d ?under)
+      (at ?under ?from)
+      (empty ?to)
+    )
+    :effect (and
+      (not (current ?s)) (current ?s2)
+      (not (at ?d ?from)) (at ?d ?to)
+      (not (on ?d ?under)) (on-base ?d ?to)
+      (not (empty ?to))
+      (clear ?d)
+      (clear ?under)
+    )
+  )
+
+  (:action move-disk-from-base-to-disk
+    :parameters (?s - step ?s2 - step ?d - disk ?from - peg ?to - peg ?destTop - disk)
+    :precondition (and
+      (current ?s) (succ ?s ?s2)
+      (at ?d ?from)
+      (clear ?d)
+      (on-base ?d ?from)
+      (at ?destTop ?to)
+      (clear ?destTop)
+      (smaller ?d ?destTop)
+    )
+    :effect (and
+      (not (current ?s)) (current ?s2)
+      (not (at ?d ?from)) (at ?d ?to)
+      (not (on-base ?d ?from)) (on ?d ?destTop)
+      (not (clear ?destTop))
+      (clear ?d)
+      (empty ?from)
+    )
+  )
+
+  (:action move-disk-from-base-to-base
+    :parameters (?s - step ?s2 - step ?d - disk ?from - peg ?to - peg)
+    :precondition (and
+      (current ?s) (succ ?s ?s2)
+      (at ?d ?from)
+      (clear ?d)
+      (on-base ?d ?from)
+      (empty ?to)
+    )
+    :effect (and
+      (not (current ?s)) (current ?s2)
+      (not (at ?d ?from)) (at ?d ?to)
+      (not (on-base ?d ?from)) (on-base ?d ?to)
+      (not (empty ?to))
+      (empty ?from)
+      (clear ?d)
+    )
+  )
+)

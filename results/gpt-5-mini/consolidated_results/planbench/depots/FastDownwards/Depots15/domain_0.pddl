@@ -1,144 +1,140 @@
-(define (domain adjacency-domain)
+(define (domain hoist-truck-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
-
+  (:types
+    place depot distributor
+    surface pallet crate
+    truck hoist
+  )
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 - obj ?o2 - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
+    ;; location / containment
+    (at ?obj - object ?pl - place)           ;; object (pallet, crate, truck, hoist) is at place
+    (on ?c - crate ?s - surface)            ;; crate is directly on surface (pallet or crate)
+    (in ?c - crate ?t - truck)              ;; crate is inside truck
+    (lifting ?h - hoist ?c - crate)         ;; hoist is currently lifting crate
+
+    ;; hoist state & resource tokens
+    (available ?h - hoist)                  ;; hoist is available (idle)
+    (crate_reserved ?c - crate)             ;; temporary exclusive reservation for crate (prevents double manipulation)
+
+    ;; surface occupancy / clearance
+    (clear ?s - surface)                    ;; surface has no crate directly on top
   )
 
-  ;; Action: paltry(OBJ0, OBJ1, OBJ2)
-  ;; Preconditions:
-  ;;   hand(OBJ0), cats(OBJ1), texture(OBJ2), vase(OBJ0,OBJ1), next(OBJ1,OBJ2)
-  ;; Effects:
-  ;;   add next(OBJ0,OBJ2)
-  ;;   delete vase(OBJ0,OBJ1)
-  (:action paltry
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; TRUCK action: move truck between places (fully connected topology)
+  (:action truck-drive
+    :parameters (?tr - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?obj0)
-      (cats ?obj1)
-      (texture ?obj2)
-      (vase ?obj0 ?obj1)
-      (next ?obj1 ?obj2)
+      (at ?tr ?from)
+      (not (at ?tr ?to))    ;; prevents no-op drive when already at destination
     )
     :effect (and
-      (next ?obj0 ?obj2)
-      (not (vase ?obj0 ?obj1))
+      (not (at ?tr ?from))
+      (at ?tr ?to)
     )
   )
 
-  ;; Action: clip(OBJ0, OBJ1, OBJ2)
-  ;; Preconditions:
-  ;;   hand(OBJ0), sneeze(OBJ1), texture(OBJ2), next(OBJ1,OBJ2), next(OBJ0,OBJ2)
-  ;; Effects:
-  ;;   add vase(OBJ0,OBJ1)
-  ;;   delete next(OBJ0,OBJ2)
-  (:action clip
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; HOIST actions (prefix 'hoist-' to make agent ownership explicit)
+  ;; Note: actions explicitly touch only the listed predicates; frame axioms are enforced by explicit effects.
+
+  ;; Hoist lifts a top crate from a surface at the same place: hoist becomes busy (lifting), surface becomes clear, crate no longer at place or on surface
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?obj0)
-      (sneeze ?obj1)
-      (texture ?obj2)
-      (next ?obj1 ?obj2)
-      (next ?obj0 ?obj2)
+      (at ?h ?p)
+      (at ?s ?p)
+      (on ?c ?s)
+      (available ?h)
+      (clear ?c)
+      (not (crate_reserved ?c))
     )
     :effect (and
-      (vase ?obj0 ?obj1)
-      (not (next ?obj0 ?obj2))
+      ;; crate is removed from its support and from place while held
+      (not (on ?c ?s))
+      (not (at ?c ?p))
+
+      ;; hoist state change
+      (lifting ?h ?c)
+      (not (available ?h))
+
+      ;; surface becomes clear (its single top spot freed)
+      (clear ?s)
+
+      ;; reserve the crate to prevent concurrent manipulation
+      (crate_reserved ?c)
     )
   )
 
-  ;; Action: tightfisted(OBJ0, OBJ1, OBJ2)
-  ;; Preconditions:
-  ;;   hand(OBJ0), sneeze(OBJ1), texture(OBJ2), next(OBJ1,OBJ2), vase(OBJ0,OBJ1)
-  ;; Effects:
-  ;;   add next(OBJ0,OBJ2)
-  ;;   delete vase(OBJ0,OBJ1)
-  (:action tightfisted
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; Hoist drops the crate it is lifting onto a clear surface at the same place:
+  ;; hoist becomes available, crate is placed on the surface and at the place, surface not clear, crate becomes clear (top)
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?obj0)
-      (sneeze ?obj1)
-      (texture ?obj2)
-      (next ?obj1 ?obj2)
-      (vase ?obj0 ?obj1)
+      (lifting ?h ?c)
+      (at ?h ?p)
+      (at ?s ?p)
+      (clear ?s)
     )
     :effect (and
-      (next ?obj0 ?obj2)
-      (not (vase ?obj0 ?obj1))
+      ;; hoist no longer lifting, becomes available
+      (not (lifting ?h ?c))
+      (available ?h)
+
+      ;; crate placed on surface and at place
+      (on ?c ?s)
+      (at ?c ?p)
+
+      ;; occupation/clear updates
+      (clear ?c)
+      (not (clear ?s))
+
+      ;; release reservation on crate
+      (not (crate_reserved ?c))
     )
   )
 
-  ;; Action: sip(OBJ0, OBJ1, OBJ2)
-  ;; Preconditions:
-  ;;   hand(OBJ0), cats(OBJ1), texture(OBJ2), next(OBJ0,OBJ2), next(OBJ1,OBJ2)
-  ;; Effects:
-  ;;   add vase(OBJ0,OBJ1)
-  ;;   delete next(OBJ0,OBJ2)
-  (:action sip
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; Hoist loads a crate it is currently lifting into a truck at the same place:
+  ;; crate becomes inside the truck, hoist becomes available
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (hand ?obj0)
-      (cats ?obj1)
-      (texture ?obj2)
-      (next ?obj0 ?obj2)
-      (next ?obj1 ?obj2)
+      (lifting ?h ?c)
+      (at ?h ?p)
+      (at ?t ?p)
     )
     :effect (and
-      (vase ?obj0 ?obj1)
-      (not (next ?obj0 ?obj2))
+      ;; crate is now inside truck (no longer at place)
+      (in ?c ?t)
+      (not (at ?c ?p))
+
+      ;; hoist becomes available and stops lifting
+      (not (lifting ?h ?c))
+      (available ?h)
+
+      ;; release crate reservation
+      (not (crate_reserved ?c))
     )
   )
 
-  ;; Action: wretched(OBJ0, OBJ1, OBJ2, OBJ3)
-  ;; Preconditions:
-  ;;   sneeze OBJ0, texture OBJ1, texture OBJ2, stupendous OBJ3,
-  ;;   next OBJ0 OBJ1, collect OBJ1 OBJ3, collect OBJ2 OBJ3
-  ;; Effects:
-  ;;   add next OBJ0 OBJ2
-  ;;   delete next OBJ0 OBJ1
-  (:action wretched
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj ?obj3 - obj)
+  ;; Hoist unloads a crate from a truck: crate removed from truck and hoist starts lifting it (becomes busy)
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (sneeze ?obj0)
-      (texture ?obj1)
-      (texture ?obj2)
-      (stupendous ?obj3)
-      (next ?obj0 ?obj1)
-      (collect ?obj1 ?obj3)
-      (collect ?obj2 ?obj3)
+      (available ?h)
+      (at ?h ?p)
+      (at ?t ?p)
+      (in ?c ?t)
+      (not (crate_reserved ?c))
     )
     :effect (and
-      (next ?obj0 ?obj2)
-      (not (next ?obj0 ?obj1))
-    )
-  )
+      ;; crate removed from truck and hoist begins lifting it
+      (not (in ?c ?t))
+      (lifting ?h ?c)
 
-  ;; Action: memory(OBJ0, OBJ1, OBJ2)
-  ;; Preconditions:
-  ;;   cats OBJ0, spring OBJ1, spring OBJ2, next OBJ0 OBJ1
-  ;; Effects:
-  ;;   add next OBJ0 OBJ2
-  ;;   delete next OBJ0 OBJ1
-  (:action memory
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
-    :precondition (and
-      (cats ?obj0)
-      (spring ?obj1)
-      (spring ?obj2)
-      (next ?obj0 ?obj1)
-    )
-    :effect (and
-      (next ?obj0 ?obj2)
-      (not (next ?obj0 ?obj1))
+      ;; hoist becomes unavailable
+      (not (available ?h))
+
+      ;; reserve crate during manipulation
+      (crate_reserved ?c)
     )
   )
 )

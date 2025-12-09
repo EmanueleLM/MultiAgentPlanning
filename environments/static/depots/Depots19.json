@@ -4,110 +4,113 @@
     "agents": {
         "number": 4,
         "names": [
-            "planner_1",
-            "planner_2",
-            "auditor",
+            "hoist_operator",
+            "truck_driver",
+            "logistics_auditor",
             "orchestrator"
         ],
-        "planner_1": {
+        "hoist_operator": {
             "private_information": [
-                "I focus on analyzing action schemas and grounding preconditions on available objects",
-                "I prefer representing effects and preconditions in a normalized predicate list"
+                "I operate hoists that can lift, drop, load, and unload crates.",
+                "Hoists are located at places and can be available or lifting.",
+                "Hoists cannot move by themselves; they act only at the place where they are located."
             ],
-            "goal": "Analyze the provided action descriptions and produce a clear, machine readable partial action model capturing preconditions and effects for reusable actions"
+            "goal": "Contribute models and constraints for hoist-related actions so the global goal can be achieved: crate0 on crate1 and crate1 on pallet1."
         },
-        "planner_2": {
+        "truck_driver": {
             "private_information": [
-                "I focus on mapping concrete plan steps to required predicates and spotting name mismatches",
-                "I extract how actions change 'next' relations and identify resource requirements like hand, vase, or collect"
+                "I operate trucks that drive between places (depots and distributors).",
+                "A truck must be at a place to be driven from that place to another place.",
+                "Driving changes the truck's location from origin to destination."
             ],
-            "goal": "Produce a complementary partial action model and list of potential ambiguities and missing grounding details that could affect planning"
+            "goal": "Contribute models and constraints for truck driving actions so the global goal can be achieved: crate0 on crate1 and crate1 on pallet1."
         },
-        "auditor": {
+        "logistics_auditor": {
             "private_information": [
-                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
-                "I identify and resolve bookkeeping or shorthand constructs so the model is causal and temporally explicit"
+                "I audit temporal and causal consistency of multi-agent plans.",
+                "I remove bookkeeping shortcuts (quota tokens, post-hoc penalties) and produce corrected invariants and ordering constraints.",
+                "I check for implicit assumptions (e.g., uniqueness of places, surfaces) and request explicit invariants."
             ],
-            "goal": "Audit combined partial models for causal and temporal consistency, expand or remove bookkeeping shortcuts, and produce a consolidated, clean model report"
+            "goal": "Audit the models from hoist_operator and truck_driver for temporal/causal consistency, produce corrections, and emit invariants that the orchestrator must integrate."
         },
         "orchestrator": {
-            "private_information": [
-                "I integrate partial models into a single PDDL domain and problem targeting FastDownward",
-                "I ensure multi-agent actions are kept distinct and produce the final domain and problem files"
-            ],
-            "goal": "Integrate analyses from the other agents and produce a final PDDL domain and problem suitable for FastDownward"
+            "private_information": [],
+            "goal": "Integrate models and audit corrections and produce a final PDDL domain and problem suitable for the FastDownwards planner that achieves: crate0 on crate1 and crate1 on pallet1."
         }
     },
     "environment": {
         "init": {
-            "num_objects": 12,
-            "objects": [
-                "object_0",
-                "object_1",
-                "object_2",
-                "object_3",
-                "object_4",
-                "object_5",
-                "object_6",
-                "object_7",
-                "object_8",
-                "object_9",
-                "object_10",
-                "object_11"
-            ],
-            "visibility": 2
+            "grid_size": 6,
+            "visibility": 2,
+            "places": 4,
+            "depots": 3,
+            "distributors": 1,
+            "pallets": 4,
+            "crates": 3,
+            "hoists": 4,
+            "trucks": 3
         },
         "public_information": [
-            "Available predicates include hand, cats, texture, vase, next, collect, sneeze, spring, stupendous",
-            "Available actions described informally are paltry, sip, clip, wretched, memory, tightfisted",
-            "Actions change 'next' and 'vase' relations and depend on predicates like hand, cats, sneeze, texture, spring, stupendous, collect",
-            "Some informal plans refer to specific object instances and there are potential name or role mismatches across descriptions"
+            "There are places of two types: depots and distributors.",
+            "Depots: depot0, depot1, depot2. Distributors: distributor0.",
+            "Surfaces: pallets and crates (pallets: pallet0..pallet3; crates: crate0..crate2).",
+            "Hoists: hoist0..hoist3. Trucks: truck0..truck2.",
+            "Roads connect every pair of places (trucks can drive between any two places).",
+            "Action types available in the domain: drive(truck, from, to), hoist-lift(hoist, crate, surface, place), hoist-drop(hoist, crate, surface, place), hoist-load(hoist, crate, truck, place), hoist-unload(hoist, crate, truck, place).",
+            "Action restrictions summary (to be expanded by agents): a truck can be driven only if it is at the origin place; lifting requires hoist and crate at same place, hoist available and crate clear; dropping requires hoist lifting the crate and target surface clear; loading requires hoist lifting the crate and truck at same place; unloading requires hoist available at place and crate in truck.",
+            "Initial state (explicit): crate0 at depot0; crate1 at depot0; crate2 at depot2; hoist0 at depot0; hoist1 at depot1; hoist2 at depot2; hoist3 at distributor0; pallet0 at depot0; pallet1 at depot1; pallet2 at depot2; pallet3 at distributor0; truck0 at depot0; truck1 at depot2; truck2 at distributor0; hoist0 available; hoist1 available; hoist2 available; hoist3 available; crate1 clear; crate2 clear; pallet1 clear; pallet3 clear; crate0 on pallet0; crate1 on crate0; crate2 on pallet2.",
+            "Explicit goal: crate0 on crate1 and crate1 on pallet1."
         ]
     },
     "workflow": {
-        "planner_1": {
-            "model": {
+        "hoist_operator": {
+            "modeling": {
                 "input": [],
-                "output": "model_planner_1",
-                "system_prompt": "You are an expert analyst of action descriptions and partial domain models. Produce a structured partial action model, not full PDDL. Focus on canonicalizing action names, listing required predicates as preconditions, and listing positive and negative effects. Use object variables where appropriate. Do not emit full PDDL domain or problem here.",
-                "prompt": "You are planner_1. You have access to the public information about predicates and actions. Your task is to read the informal action descriptions and produce a machine friendly partial model. For each action produce the action name, a parameter list, a list of required preconditions, a list of positive effects, and a list of negative effects. Identify any implicit assumptions and mark missing bindings or ambiguities. Output the model in a clear JSON-like structure or bullet list that can be consumed by an integrator."
+                "output": "hoist_model",
+                "system_prompt": "You are the hoist operator domain expert. Produce a clear, structured, non-PDDL specification of hoist-related actions (lift, drop, load, unload). For each action list: parameters, preconditions, effects (explicit positive and negative facts), and any typing information (which parameters are places, surfaces, hoists, trucks, crates). Do not emit PDDL. Use plain structured lists or JSON-like entries. Identify any ambiguities or missing invariants the orchestrator should be aware of.",
+                "prompt": "You are hoist_operator. Use the environment public information: {environment->public_information} and your private knowledge: {agents->hoist_operator->private_information}. Produce a structured model of hoist-related actions that includes parameters, preconditions, effects, and typing for surfaces and places. Explicitly state assumptions you make."
             }
         },
-        "planner_2": {
-            "model": {
+        "truck_driver": {
+            "modeling": {
                 "input": [],
-                "output": "model_planner_2",
-                "system_prompt": "You are a complementary model extractor that maps concrete plan steps to predicate changes. Produce a structured mapping from example grounded steps to the predicates they require and modify. Highlight mismatches in object naming and potential conflicts between action variants. Do not emit full PDDL domain or problem here.",
-                "prompt": "You are planner_2. Analyze the example plans and grounded steps provided in the use case. For each grounded step, list the concrete objects used, the predicates that must hold before the step, and the predicates that become true or false after the step. Suggest canonical parameter names and point out where different steps refer to the same real-world relation with different names."
+                "output": "truck_model",
+                "system_prompt": "You are the truck-driving domain expert. Produce a clear, structured, non-PDDL specification of driving-related actions. For each action list: parameters, preconditions, effects, and typing. Enumerate invariants about place connectivity and truck location updates. Do not emit PDDL.",
+                "prompt": "You are truck_driver. Use the environment public information: {environment->public_information} and your private knowledge: {agents->truck_driver->private_information}. Produce a structured model for drive actions including exact preconditions and effects and any required typing or mutual exclusions. State any assumptions."
             }
         },
-        "auditor": {
+        "logistics_auditor": {
             "audit": {
                 "input": [
-                    "model_planner_1",
-                    "model_planner_2"
+                    "hoist_model",
+                    "truck_model"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are an expert auditor of temporal and causal consistency. Your role is to remove bookkeeping shortcuts such as quota tokens, counters implemented as adhoc predicates, or post-hoc penalties, and to expand those constructs into explicit causal mechanisms or explicit resources. Produce a consolidated report that resolves contradictions and that is ready for formalization into PDDL.",
-                "prompt": "You are the auditor. Receive the partial models from the planners. Verify causal chains for each effect and check temporal dependencies on 'next' relations. Where planners used bookkeeping shorthands or implicit counters, replace them with explicit predicates or resource constraints and explain the transformation. Highlight any cycles or ordering issues and provide a corrected, temporally explicit model summary suitable for integration."
+                "system_prompt": "You are the logistics auditor. Analyze the hoist_model and truck_model for temporal and causal consistency, remove bookkeeping shortcuts (e.g., tokens or implicit 'after-the-fact' repairs), and produce a corrected set of invariants and ordering constraints. Provide explicit suggestions for required predicates/axioms (e.g., available/ lifting/ in-truck) and highlight any conflicts or missing mutual exclusion constraints. Output a machine-friendly report (structured text or JSON) but not PDDL.",
+                "prompt": "You are logistics_auditor. Receive: {hoist_model} and {truck_model}. Audit them with respect to the public initial state: {environment->public_information} and your private knowledge: {agents->logistics_auditor->private_information}. Produce an audit_report that enumerates: (1) required invariants and typing, (2) causal/temporal ordering constraints between hoist and truck actions, (3) corrections to models to avoid bookkeeping shortcuts, and (4) any additional predicates needed for sound planning."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "model_planner_1",
-                    "model_planner_2",
+                    "hoist_model",
+                    "truck_model",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownward solver. Integrate the provided partial models and the auditor report, keep multi-agent or multi-actor actions distinct by prefixing or scoping their action names, resolve name mismatches, and produce a single PDDL domain and a single PDDL problem. Ensure compatibility with FastDownward's supported fragments. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final output must be a complete domain and problem ready for FastDownward.",
-                "prompt": "You are the orchestrator. Integrate the two planners' models and the auditor report to create a coherent PDDL domain and PDDL problem. Ensure that actions paltry, sip, clip, wretched, memory, and tightfisted are represented, that preconditions and effects reflect the audited causal model, and that actions that conceptually belong to different roles remain distinct. Produce the PDDL domain then the PDDL problem, each enclosed in the required tags. Target FastDownward compatibility and do not include shorthand bookkeeping constructs. If required information is missing, produce comments in PDDL as explanatory remarks and keep assumptions explicit."
+                "system_prompt": "You are the orchestrator responsible for producing a final PDDL domain and problem targeting the FastDownwards planner. Integrate the structured models and the audit_report into a single coherent PDDL domain and PDDL problem. Use explicit typing (places, depots, distributors, hoists, trucks, pallets, crates). Keep each agent's actions distinct by prefixing action names with agent identifiers when appropriate. Ensure preconditions and effects reflect the audit corrections (no bookkeeping shortcuts), include necessary invariants, and ensure the problem encodes the given initial state and goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility: include :requirements (at least :typing, :negative-preconditions, :strips, :conditional-effects if used), and avoid constructs unsupported by FastDownwards. Produce only the PDDL domain and problem enclosed in the tags.",
+                "prompt": "You are orchestrator. Integrate these inputs: \n- hoist_model: {hoist_model}\n- truck_model: {truck_model}\n- audit_report: {audit_report}\nUse the public information and initial state: {environment->public_information}\nGlobal goal: {agents->orchestrator->goal}\nThink step by step, resolve naming ambiguities, ensure actions remain distinct across agents, apply audit corrections, and output a final PDDL domain and problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
             }
         },
         "constraints": [
-            "planner_1.model->orchestrator.pddl",
-            "planner_2.model->orchestrator.pddl",
-            "auditor.audit->orchestrator.pddl"
+            "hoist_operator.modeling->orchestrator.pddl",
+            "truck_driver.modeling->orchestrator.pddl",
+            "logistics_auditor.audit->orchestrator.pddl"
         ]
-    }
+    },
+    "constraints": [
+        "hoist_operator.modeling->orchestrator.pddl",
+        "truck_driver.modeling->orchestrator.pddl",
+        "logistics_auditor.audit->orchestrator.pddl"
+    ]
 }

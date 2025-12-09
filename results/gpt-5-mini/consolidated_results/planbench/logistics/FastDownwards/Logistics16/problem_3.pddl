@@ -1,71 +1,59 @@
-(define (problem example_A)
-  (:domain corrected_neutral_model)
-
+(define (problem logistics16)
+  (:domain logistics-with-phases)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7
-    object_8 object_9 object_10 object_11 object_12 object_13 - object
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
 
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9
-    stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19
-    stage_20 stage_21 stage_22 stage_23 stage_24 stage_25 stage_26 stage_27 stage_28 stage_29
-    stage_30 stage_31 stage_32 stage_33 stage_34 stage_35 stage_36 stage_37 stage_38 stage_39
-    stage_40 - stage
+    package_0 package_1 package_2 package_3 - package
+
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    city_0 city_1 - city
+
+    p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15 p16 p17 p18 p19 p20 p21 p22 p23 p24 p25 p26 p27 p28 p29 p_done - phase
   )
 
   (:init
-    (cats object_0)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
+    (loc-in location_0_0 city_0)
+    (loc-in location_0_1 city_0)
+    (loc-in location_1_0 city_1)
+    (loc-in location_1_1 city_1)
 
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-    (hand object_9)
+    (at-plane airplane_0 location_0_0)
+    (at-plane airplane_1 location_0_0)
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_1)
 
-    (next object_0 object_5 stage_0)
-    (next object_10 object_7 stage_0)
-    (next object_11 object_8 stage_0)
-    (next object_12 object_5 stage_0)
-    (next object_3 object_6 stage_0)
-    (next object_4 object_8 stage_0)
-    (next object_9 object_8 stage_0)
+    (at-pkg package_0 location_1_1)
+    (at-pkg package_1 location_1_0)
+    (at-pkg package_2 location_1_1)
+    (at-pkg package_3 location_0_0)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    (current-phase p0)
+    (phase-next p0 p1)  (phase-next p1 p2)  (phase-next p2 p3)  (phase-next p3 p4)
+    (phase-next p4 p5)  (phase-next p5 p6)  (phase-next p6 p7)  (phase-next p7 p8)
+    (phase-next p8 p9)  (phase-next p9 p10) (phase-next p10 p11) (phase-next p11 p12)
+    (phase-next p12 p13) (phase-next p13 p14) (phase-next p14 p15) (phase-next p15 p16)
+    (phase-next p16 p17) (phase-next p17 p18) (phase-next p18 p19) (phase-next p19 p20)
+    (phase-next p20 p21) (phase-next p21 p22) (phase-next p22 p23) (phase-next p23 p24)
+    (phase-next p24 p25) (phase-next p25 p26) (phase-next p26 p27) (phase-next p27 p28)
+    (phase-next p28 p29) (phase-next p29 p_done)
 
-    (spring object_5)
-    (spring object_7)
-
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-
-    (succ stage_0 stage_1) (succ stage_1 stage_2) (succ stage_2 stage_3) (succ stage_3 stage_4)
-    (succ stage_4 stage_5) (succ stage_5 stage_6) (succ stage_6 stage_7) (succ stage_7 stage_8)
-    (succ stage_8 stage_9) (succ stage_9 stage_10) (succ stage_10 stage_11) (succ stage_11 stage_12)
-    (succ stage_12 stage_13) (succ stage_13 stage_14) (succ stage_14 stage_15) (succ stage_15 stage_16)
-    (succ stage_16 stage_17) (succ stage_17 stage_18) (succ stage_18 stage_19) (succ stage_19 stage_20)
-    (succ stage_20 stage_21) (succ stage_21 stage_22) (succ stage_22 stage_23) (succ stage_23 stage_24)
-    (succ stage_24 stage_25) (succ stage_25 stage_26) (succ stage_26 stage_27) (succ stage_27 stage_28)
-    (succ stage_28 stage_29) (succ stage_29 stage_30) (succ stage_30 stage_31) (succ stage_31 stage_32)
-    (succ stage_32 stage_33) (succ stage_33 stage_34) (succ stage_34 stage_35) (succ stage_35 stage_36)
-    (succ stage_36 stage_37) (succ stage_37 stage_38) (succ stage_38 stage_39) (succ stage_39 stage_40)
-
-    (current_stage stage_0)
+    (phase-act p0) (phase-act p1) (phase-act p2) (phase-act p3) (phase-act p4)
+    (phase-act p5) (phase-act p6) (phase-act p7) (phase-act p8) (phase-act p9)
+    (phase-act p10) (phase-act p11) (phase-act p12) (phase-act p13) (phase-act p14)
+    (phase-act p15) (phase-act p16) (phase-act p17) (phase-act p18) (phase-act p19)
+    (phase-act p20) (phase-act p21) (phase-act p22) (phase-act p23) (phase-act p24)
+    (phase-act p25) (phase-act p26) (phase-act p27) (phase-act p28) (phase-act p29)
   )
 
   (:goal (and
-    (next object_10 object_8 stage_40)
-    (next object_11 object_6 stage_40)
-    (next object_12 object_8 stage_40)
-    (next object_9 object_5 stage_40)
-    (current_stage stage_40)
+    (at-pkg package_0 location_0_0)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_0_1)
+    (at-pkg package_3 location_1_1)
   ))
 )

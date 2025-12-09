@@ -1,46 +1,39 @@
-(define (problem scenarioA) (:domain mysteryblocksworld25)
+(define (problem mystery-instance)
+  (:domain MysteryBlocksworld25)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    a b c d - object
+    s1 s2 s3 s4 s5 s6 s7 s8 s9 - step
   )
+
   (:init
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ;; Initial cravings
+    (craves b d)
+    (craves c a)
 
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    ;; Global harmony present initially
+    (harmony)
 
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_6)
-    (next object_13 object_9)
-    (next object_3 object_7)
-    (next object_4 object_10)
+    ;; Initial planets and provinces
+    (planet a)
+    (planet d)
+    (province b)
+    (province c)
 
-    (sneeze object_3)
-    (sneeze object_4)
-
-    (spring object_5)
-    (spring object_8)
-
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Step ordering and initial current step
+    (current s1)
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
+    (next s5 s6)
+    (next s6 s7)
+    (next s7 s8)
+    (next s8 s9)
   )
+
   (:goal (and
-    (next object_11 object_8)
-    (next object_12 object_8)
-    (next object_13 object_10)
+    (craves a c)
+    (craves d a)
+    (current s9)
   ))
 )

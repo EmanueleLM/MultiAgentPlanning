@@ -1,0 +1,111 @@
+{
+    "name": "HanoiScaling26",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "modeler",
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "modeler": {
+            "private_information": [
+                "There are five disks named A (smallest), B, C, D, and E (largest).",
+                "There are three pegs named left, middle, and right."
+            ],
+            "goal": "Produce a clear formal description of objects, predicates, and abstract action schemas for the Tower of Hanoi instance; do not emit PDDL, only supply a neutral modeling fragment."
+        },
+        "mover": {
+            "private_information": [
+                "Allowed primitive action: move the top disk from one peg to another peg.",
+                "Rules to obey: only one disk moved at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk; once moved a disk preserves size ordering relative to others."
+            ],
+            "goal": "Propose high-level move-generation logic or a concrete sequence of legal moves from the initial state to the goal, expressed in human-readable step form and not as PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Specialize in temporal and causal consistency checks and in removing bookkeeping shortcuts such as quota tokens, post-hoc penalties, or other non-physical encodings."
+            ],
+            "goal": "Audit the model fragments and proposed move sequences for causal correctness and temporal feasibility, and produce corrections or commentary that eliminate bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate model fragments, move proposals, and audit corrections to produce a final PDDL domain and problem targeting the FastDownwards solver, keeping actions of different agents distinct where appropriate."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 5,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+            ],
+            "pegs": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "initial_state": "middle peg holds from top to bottom: A, B, C, D, E; left and right pegs are empty",
+            "goal_state": "left peg holds from top to bottom: A, B, C, D, E; middle and right pegs are empty"
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with five disks named A (smallest) to E (largest).",
+            "Initial condition: middle peg holds A, B, C, D, E from top to bottom; left and right pegs are empty.",
+            "Goal condition: left peg must hold A, B, C, D, E from top to bottom and both middle and right pegs must be empty.",
+            "Legal move: move the top disk from one peg to another peg.",
+            "Constraints: only one disk moved at a time; only the top disk of a peg may be moved; larger disks may never be placed on smaller disks; the right peg can be used as an intermediate parking spot but must end up empty."
+        ]
+    },
+    "workflow": {
+        "modeler": {
+            "analysis": {
+                "input": [],
+                "output": "model_fragment",
+                "system_prompt": "You are a modeling agent. Produce a deterministic, structured description of the domain elements: object types, predicate candidates, and abstract action schemas (preconditions and effects) expressing the Tower of Hanoi rules. Do not produce PDDL. Provide only the neutral model fragment and any assumptions that must be explicit for later encoding.",
+                "prompt": "Agent name: modeler. Use the public information about the puzzle and your private information to create a neutral modeling fragment that clarifies objects, predicates, and action schemas needed by planners. Explicitly state any naming conventions and assumptions to avoid ambiguity."
+            }
+        },
+        "mover": {
+            "plan": {
+                "input": [],
+                "output": "move_sequence",
+                "system_prompt": "You are a move-generation agent. Produce a high-level, human-readable move plan or move-generation rules that respect the puzzle constraints. Do not produce PDDL. If you provide a concrete sequence, ensure each move is legal in context and state why each move is legal.",
+                "prompt": "Agent name: mover. Using the public information and your private information, propose either a deterministic sequence of moves or move-generation logic that transforms the initial configuration into the goal configuration while respecting all rules. Explain legality of moves and note any assumptions."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_fragment",
+                    "move_sequence"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in temporal and causal consistency. Inspect modeling fragments and move proposals for hidden bookkeeping shortcuts, temporal inconsistencies, or causal violations. Remove or call out any use of quota tokens, post-hoc penalties, or non-physical encodings and produce corrected recommendations.",
+                "prompt": "Agent name: auditor. You receive the model fragment and the move sequence. Verify that the move sequence is causally feasible given the model fragment, that no illegal moves are present, and that no bookkeeping shortcuts were used. Provide a clear report of issues and corrected model or move suggestions."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_fragment",
+                    "move_sequence",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL generation. Integrate the validated model fragment, move proposals, and auditor corrections to produce a final PDDL domain and a PDDL problem file tailored to be compatible with the FastDownwards solver. Keep agent-specific actions distinct by prefixing or otherwise namespacing actions if needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent name: orchestrator. Using the public information and the inputs from other agents, generate a complete PDDL domain and problem that encode the Tower of Hanoi instance for FastDownwards. Ensure predicates, types, initial state, goal, and action definitions precisely reflect the validated model and that legal move constraints are enforced. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "modeler.analysis->auditor.audit",
+            "mover.plan->auditor.audit",
+            "modeler.analysis->orchestrator.pddl",
+            "mover.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

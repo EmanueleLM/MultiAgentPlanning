@@ -1,127 +1,99 @@
 (define (domain MysteryBlocksworld14)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types entity stage)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
+    (province ?e - entity)                     ; entity holds a province
+    (planet ?e - entity)                       ; entity holds a planet
+    (harmony)                                  ; global harmony flag
+    (pain)                                     ; global pain flag
+    (craves ?x - entity ?y - entity)           ; x craves y
+    (at-stage ?s - stage)                      ; current stage marker (single true stage)
+    (succ ?s1 - stage ?s2 - stage)             ; successor relation between stages (static)
   )
 
-  ;; paltry ?a ?b ?c
-  ;; Pre: hand(?a), cats(?b), texture(?c), vase(?a,?b), next(?b,?c)
-  ;; Effects: add next(?a,?c), del vase(?a,?b)
-  (:action paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ;; Attack: consumes a specific entity's province and planet and global harmony, produces global pain.
+  ;; Requires being at a stage s with a defined successor s2; consumes at-stage s and moves to s2.
+  (:action attack
+    :parameters (?o - entity ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (at-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
+      (pain)
+      (not (province ?o))
+      (not (planet ?o))
+      (not (harmony))
+      (not (at-stage ?s))
+      (at-stage ?s2)
     )
   )
 
-  ;; sip ?a ?b ?c
-  ;; Pre: hand(?a), cats(?b), texture(?c), next(?a,?c), next(?b,?c)
-  ;; Effects: add vase(?a,?b), del next(?a,?c)
-  (:action sip
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ;; Succumb: when global pain holds, an entity can succumb restoring its province, planet, and harmony.
+  ;; Consumes pain. Advances the global stage.
+  (:action succumb
+    :parameters (?o - entity ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
+      (pain)
+      (at-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (not (pain))
+      (not (at-stage ?s))
+      (at-stage ?s2)
     )
   )
 
-  ;; clip ?a ?b ?c
-  ;; Pre: hand(?a), sneeze(?b), texture(?c), next(?b,?c), next(?a,?c)
-  ;; Effects: add vase(?a,?b), del next(?a,?c)
-  (:action clip
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ;; Overcome: x overcomes y if y currently holds a province and global pain is true.
+  ;; Result: harmony true, x gains a province, x craves y. Removes y's province and clears pain.
+  ;; Advances the global stage.
+  (:action overcome
+    :parameters (?x - entity ?y - entity ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
+      (province ?y)
+      (pain)
+      (at-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
+      (harmony)
+      (province ?x)
+      (craves ?x ?y)
+      (not (province ?y))
+      (not (pain))
+      (not (at-stage ?s))
+      (at-stage ?s2)
     )
   )
 
-  ;; wretched ?s ?from ?to ?owner
-  ;; Pre: sneeze(?s), texture(?from), texture(?to), stupendous(?owner),
-  ;;      next(?s,?from), collect(?from,?owner), collect(?to,?owner)
-  ;; Effects: add next(?s,?to), del next(?s,?from)
-  (:action wretched
-    :parameters (?s - obj ?from - obj ?to - obj ?owner - obj)
+  ;; Feast: x feasts on y when x craves y, x holds a province, and harmony is true.
+  ;; Result: global pain true and y receives a province. Removes the craves relation, x's province, and harmony.
+  ;; Advances the global stage.
+  (:action feast
+    :parameters (?x - entity ?y - entity ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?s)
-      (texture ?from)
-      (texture ?to)
-      (stupendous ?owner)
-      (next ?s ?from)
-      (collect ?from ?owner)
-      (collect ?to ?owner)
+      (craves ?x ?y)
+      (province ?x)
+      (harmony)
+      (at-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?s ?to)
-      (not (next ?s ?from))
+      (pain)
+      (province ?y)
+      (not (craves ?x ?y))
+      (not (province ?x))
+      (not (harmony))
+      (not (at-stage ?s))
+      (at-stage ?s2)
     )
   )
-
-  ;; memory ?s ?from ?to
-  ;; Pre: cats(?s), spring(?from), spring(?to), next(?s,?from)
-  ;; Effects: add next(?s,?to), del next(?s,?from)
-  (:action memory
-    :parameters (?s - obj ?from - obj ?to - obj)
-    :precondition (and
-      (cats ?s)
-      (spring ?from)
-      (spring ?to)
-      (next ?s ?from)
-    )
-    :effect (and
-      (next ?s ?to)
-      (not (next ?s ?from))
-    )
-  )
-
-  ;; tightfisted ?a ?b ?c
-  ;; Pre: hand(?a), sneeze(?b), texture(?c), next(?b,?c), vase(?a,?b)
-  ;; Effects: add next(?a,?c), del vase(?a,?b)
-  (:action tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
-  )
-
 )

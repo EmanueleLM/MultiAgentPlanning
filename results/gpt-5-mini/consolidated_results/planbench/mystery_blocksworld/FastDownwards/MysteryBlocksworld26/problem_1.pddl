@@ -1,44 +1,43 @@
-(define (problem MysteryBlocksworld26_scenario_A)
-  (:domain MysteryBlocksworld26)
+(define (problem provinces-problem)
+  (:domain provinces)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - object
+    a b c d - obj
+    s0 s1 s2 s3 s4 s5 - stage
   )
-
   (:init
-    ;; Statement set A initial facts
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_7)
-    (next object_13 object_7)
-    (next object_3 object_6)
-    (next object_4 object_9)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; initial craving relations
+    (craves a b)
+    (craves b d)
+
+    ; initial global booleans
+    (harmony)
+
+    ; initial planets
+    (planet c)
+    (planet d)
+
+    ; initial provinces
+    (province a)
+    (province c)
+
+    ; initial stage: start at s0
+    (current s0)
+    (next s0 s1)
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
+
+    ; explicit distinctness facts for all unequal ordered pairs
+    (distinct a b) (distinct a c) (distinct a d)
+    (distinct b a) (distinct b c) (distinct b d)
+    (distinct c a) (distinct c b) (distinct c d)
+    (distinct d a) (distinct d b) (distinct d c)
   )
 
   (:goal (and
-    (next object_11 object_5)
-    (next object_12 object_9)
-    (next object_13 object_10)
+    (craves b d)
+    (craves c a)
+    (craves d c)
   ))
 )

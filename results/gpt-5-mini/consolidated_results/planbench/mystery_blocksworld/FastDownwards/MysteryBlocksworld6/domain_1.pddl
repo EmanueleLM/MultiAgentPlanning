@@ -1,65 +1,66 @@
-(define (domain MysteryBlocksworld6)
+(define (domain cravings-domain)
   (:requirements :strips :typing :negative-preconditions)
   (:types obj)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?o - obj)
+    (craves ?from - obj ?to - obj)
+    (province ?x - obj)
+    (planet ?x - obj)
+    (pain ?x - obj)
+    (harmony)
   )
 
-  ;; paltry: requires hand ?x, cats ?y, texture ?z, vase ?x ?y, next ?y ?z
-  ;; effects: add next ?x ?z, del vase ?x ?y
-  (:action act_paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (vase ?x ?y) (next ?y ?z))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; Attack: requires the same object to be both a province and a planet and global harmony.
+  ;; Effects: produces pain for that object and removes its province and planet status and global harmony.
+  (:action attacker_attack
+    :parameters (?x - obj)
+    :precondition (and (province ?x) (planet ?x) (harmony))
+    :effect (and
+      (pain ?x)
+      (not (province ?x))
+      (not (planet ?x))
+      (not (harmony))
+    )
   )
 
-  ;; sip: requires hand ?x, cats ?y, texture ?z, next ?x ?z, next ?y ?z
-  ;; effects: add vase ?x ?y, del next ?x ?z
-  (:action act_sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (cats ?y) (texture ?z) (next ?x ?z) (next ?y ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  ;; Succumb: requires pain on an object; restores province, planet and global harmony for that object,
+  ;; and removes its pain.
+  (:action succumb_succumb
+    :parameters (?x - obj)
+    :precondition (pain ?x)
+    :effect (and
+      (province ?x)
+      (planet ?x)
+      (harmony)
+      (not (pain ?x))
+    )
   )
 
-  ;; clip: requires hand ?x, sneeze ?y, texture ?z, next ?y ?z, next ?x ?z
-  ;; effects: add vase ?x ?y, del next ?x ?z
-  (:action act_clip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (next ?x ?z))
-    :effect (and (vase ?x ?y) (not (next ?x ?z)))
+  ;; Overcome: an object ?x that is in pain can overcome another object ?y that currently has province.
+  ;; Effects: grants harmony, grants province to ?x, establishes craves ?x ?y; it removes province from ?y and removes pain from ?x.
+  (:action overcomer_overcome
+    :parameters (?x - obj ?y - obj)
+    :precondition (and (province ?y) (pain ?x))
+    :effect (and
+      (harmony)
+      (province ?x)
+      (craves ?x ?y)
+      (not (province ?y))
+      (not (pain ?x))
+    )
   )
 
-  ;; wretched: requires sneeze ?x, texture ?y, texture ?z, stupendous ?w, next ?x ?y,
-  ;;            collect ?y ?w, collect ?z ?w
-  ;; effects: add next ?x ?z, del next ?x ?y
-  (:action act_wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj)
-    :precondition (and (sneeze ?x) (texture ?y) (texture ?z) (stupendous ?w) (next ?x ?y) (collect ?y ?w) (collect ?z ?w))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
-  )
-
-  ;; memory: requires cats ?x, spring ?y, spring ?z, next ?x ?y
-  ;; effects: add next ?x ?z, del next ?x ?y
-  (:action act_memory
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (cats ?x) (spring ?y) (spring ?z) (next ?x ?y))
-    :effect (and (next ?x ?z) (not (next ?x ?y)))
-  )
-
-  ;; tightfisted: requires hand ?x, sneeze ?y, texture ?z, next ?y ?z, vase ?x ?y
-  ;; effects: add next ?x ?z, del vase ?x ?y
-  (:action act_tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and (hand ?x) (sneeze ?y) (texture ?z) (next ?y ?z) (vase ?x ?y))
-    :effect (and (next ?x ?z) (not (vase ?x ?y)))
+  ;; Feast: an object ?x that craves ?y, and currently holds province while harmony holds,
+  ;; will feast on ?y: this produces pain for ?x and transfers province to ?y; it also consumes the craving and global harmony.
+  (:action feaster_feast
+    :parameters (?x - obj ?y - obj)
+    :precondition (and (craves ?x ?y) (province ?x) (harmony))
+    :effect (and
+      (pain ?x)
+      (province ?y)
+      (not (craves ?x ?y))
+      (not (province ?x))
+      (not (harmony))
+    )
   )
 )

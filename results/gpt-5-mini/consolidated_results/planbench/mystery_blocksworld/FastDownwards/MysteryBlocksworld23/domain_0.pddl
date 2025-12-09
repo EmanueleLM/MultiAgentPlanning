@@ -1,201 +1,63 @@
-(define (domain multi_observers)
+; Domain: Orchestration for consumer cravings
+; Agent analyses:
+; - Roles present: orchestrator, consumer.
+; - Only the orchestrator may issue an instruction that enables a consumer to form a craving.
+; - Only a consumer may perform the action that establishes (craves ?agent ?item).
+; - Items must be explicitly available before instructions or craving expressions occur.
+;
+; Auditor checklist (integrated):
+; - Actions are distinct per agent role: orchestrator actions vs. consumer actions.
+; - All preferences from natural language are treated as hard constraints (no soft/penalty constructs).
+; - No post-hoc penalty or token mechanisms are used; constraints are enforced in preconditions.
+; - No invented connectivity or resources beyond the declared objects and predicates.
+; - When order is implied (instruction before expressing craving), the ordering is enforced by predicates (instructed).
+; - :requirements limited to solver-supported flags.
+; - All predicates, preconditions, and effects are fully expanded (no placeholders).
+; - Negative preconditions are used to avoid re-applying effects redundantly.
+;
+; Notes: The planner must reach (craves b d). Orchestrator must first instruct the consumer b about item d (if not already instructed),
+; then consumer b may express the craving for d. This ordering is enforced by the instructed predicate.
+
+(define (domain orchestration-crave)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types agent item role)
 
   (:predicates
-    (cats ?o - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (hand ?o - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (texture ?o - obj)
-    (vase ?h - obj ?c - obj)
+    (role ?a - agent ?r - role)          ; agent a has role r
+    (available ?i - item)               ; item i is available in the environment
+    (instructed ?a - agent ?i - item)   ; agent a has been instructed by an orchestrator about item i
+    (craves ?a - agent ?i - item)       ; agent a currently craves item i
   )
 
-  ;; Actions from observer_A (namespaced as observer_A_*)
-  (:action observer_A_paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ; Orchestrator action: only agents with role 'orchestrator' may instruct consumers about an available item.
+  (:action orchestrator-instruct
+    :parameters (?orc - agent ?ag - agent ?it - item ?r-orc - role ?r-cons - role)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
+                    (role ?orc ?r-orc)
+                    (role ?ag ?r-cons)
+                    (role ?r-orc orchestrator)
+                    (role ?r-cons consumer)
+                    (available ?it)
+                    (not (instructed ?ag ?it))
+                  )
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+              (instructed ?ag ?it)
+            )
   )
 
-  (:action observer_A_sip
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ; Consumer action: only agents with role 'consumer' may express a craving for an item,
+  ; and only after they have been instructed about that item; avoids re-asserting an existing craving.
+  (:action consumer-express-crave
+    :parameters (?ag - agent ?it - item ?r-cons - role)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
+                    (role ?ag ?r-cons)
+                    (role ?r-cons consumer)
+                    (instructed ?ag ?it)
+                    (available ?it)
+                    (not (craves ?ag ?it))
+                  )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+              (craves ?ag ?it)
+            )
   )
-
-  (:action observer_A_clip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
-    :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
-  )
-
-  (:action observer_A_wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action observer_A_memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action observer_A_tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
-  )
-
-  ;; Actions from observer_B (namespaced as observer_B_*)
-  (:action observer_B_paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  (:action observer_B_sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
-    )
-  )
-
-  (:action observer_B_clip
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
-    )
-    :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
-    )
-  )
-
-  (:action observer_B_wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
-    :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
-    )
-    :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
-    )
-  )
-
-  (:action observer_B_memory
-    :parameters (?c - obj ?sp1 - obj ?sp2 - obj)
-    :precondition (and
-      (cats ?c)
-      (spring ?sp1)
-      (spring ?sp2)
-      (next ?c ?sp1)
-    )
-    :effect (and
-      (next ?c ?sp2)
-      (not (next ?c ?sp1))
-    )
-  )
-
-  (:action observer_B_tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
-    )
-  )
-
 )

@@ -1,41 +1,49 @@
-(define (problem Logistics13-problem)
-  (:domain Logistics13)
+(define (problem transport_problem)
+  (:domain multi_transport)
+
   (:objects
-    object_10 object_11 object_12 - hand
-    object_0 object_1 - cat
-    object_4 object_5 - sneeze
-    object_2 object_3 - stupendous
-    object_6 object_7 object_8 object_9 - obj
+    ;; cities
+    city_0 city_1 - city
+
+    ;; locations: two per city as specified
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; vehicles: exactly one truck per city and two airplanes
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+
+    ;; packages
+    package_0 package_1 package_2 - package
   )
+
   (:init
-    ;; collect relations (kept minimal - those required by wretched uses)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ;; Vehicles initial positions
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_1)
+    (at-plane airplane_0 location_1_0)
+    (at-plane airplane_1 location_0_0)
 
-    ;; next relations (initial statement - second variant)
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_8)
-    (next object_11 object_9)
-    (next object_12 object_6)
-    (next object_4 object_6)
-    (next object_5 object_9)
+    ;; Packages initial locations
+    (at-pkg package_0 location_1_0)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_0_0)
 
-    ;; textures (only where needed)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; City membership for each location (necessary to constrain driving)
+    (loc-in-city location_0_0 city_0)
+    (loc-in-city location_0_1 city_0)
+    (loc-in-city location_1_0 city_1)
+    (loc-in-city location_1_1 city_1)
 
-    ;; springs (only where needed)
-    (spring object_6)
-    (spring object_8)
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
   )
-  (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_7)
-    (next object_12 object_7)
-  ))
+
+  (:goal
+    (and
+      (at-pkg package_0 location_0_1)
+      (at-pkg package_1 location_0_1)
+      (at-pkg package_2 location_0_1)
+    )
+  )
 )

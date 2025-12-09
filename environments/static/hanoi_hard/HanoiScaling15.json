@@ -1,0 +1,99 @@
+{
+    "name": "HanoiScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "mover",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from one peg to another.",
+                "I can move only one disk at a time.",
+                "I may only move a disk that is on top of a peg.",
+                "I can never place a larger disk on top of a smaller disk.",
+                "There are six disks named A (smallest) through F (largest).",
+                "Initial configuration: right peg holds (top to bottom) A, B, C, D, E, F; left and middle pegs are empty.",
+                "Left peg is available as intermediate but must end empty at goal."
+            ],
+            "goal": "Describe concrete objects, predicates, and action schemas for moving disks in the Tower of Hanoi instance with 6 disks. Produce a clear, structured model fragment (not the final PDDL) that records objects, peg names, disk ordering relations, permitted move action schema (parameters, precise preconditions and effects), and the initial and desired goal facts."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing temporal and causal consistency of proposed model fragments.",
+                "I must remove bookkeeping shortcuts (quota tokens, post-hoc penalties, artificial counters) and insist on explicit causal preconditions/effects.",
+                "I must ensure constraints enforce that only top disks move, only one disk moves at a time, and that larger disks never sit on smaller ones."
+            ],
+            "goal": "Examine the mover's model fragment, identify and remove any bookkeeping shortcuts or ambiguities, and emit a corrected set of mandatory constraints and model adjustments that preserve causal/temporal consistency for conversion into PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the mover's model fragment and the auditor's corrections and produce a final PDDL domain and PDDL problem file compatible with the Fast Downward solver to solve the 6-disk Tower of Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 6,
+            "pegs": 3,
+            "peg_names": [
+                "peg_left",
+                "peg_mid",
+                "peg_right"
+            ],
+            "disk_names": [
+                "disk_A",
+                "disk_B",
+                "disk_C",
+                "disk_D",
+                "disk_E",
+                "disk_F"
+            ]
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with 6 disks, disks named from smallest to largest: disk_A, disk_B, disk_C, disk_D, disk_E, disk_F.",
+            "There are three pegs: peg_left, peg_mid, peg_right.",
+            "Initial state: peg_right holds (top to bottom) disk_A, disk_B, disk_C, disk_D, disk_E, disk_F. peg_left and peg_mid are empty.",
+            "Goal state: peg_mid must hold (top to bottom) disk_A, disk_B, disk_C, disk_D, disk_E, disk_F; peg_left and peg_right must be empty at the end.",
+            "Rules: move only one disk at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk; left peg may be used as intermediate but must end empty.",
+            "Allowed action concept: Move(top_disk, from_peg, to_peg)."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_mover",
+                "system_prompt": "You are an expert at formally describing action models for deterministic puzzles. Provide a structured model fragment describing objects, pegs, disks, and action schemas for moving the top disk from one peg to another. Do NOT produce the final PDDL domain/problem. Instead emit a precise, machine-readable fragment that includes: (1) a complete object list, (2) predicates that will be needed (for example: on-top-of, on-peg, smaller-than, clear/top-of-peg), (3) one or more action schema descriptions with explicit parameter lists, preconditions and effects, (4) the initial facts and the intended goal facts. Be explicit about how disk ordering is represented and how the 'top disk' condition is enforced. Keep agent actions distinct by naming the move action with an agent prefix if helpful (e.g. mover/move). The orchestrator will consume this fragment to assemble final PDDL.",
+                "prompt": "Your name is mover. You are given the following public information about the environment:\n{environment->public_information}\nYou have the following private knowledge:\n{agents->mover->private_information}\nYour task: Produce the structured model fragment described in the system prompt. Focus on completeness and unambiguous causal preconditions/effects for the Move action. Do not emit the final PDDL domain or problem; instead produce the fragment that the orchestrator will convert."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [
+                    "pddl_mover"
+                ],
+                "output": "pddl_auditor",
+                "system_prompt": "You are an auditor specialized in temporal and causal model consistency. Your job is to inspect model fragments from other agents and to remove any bookkeeping shortcuts (for example: abstract tokens, counters, or post-hoc penalties) and to replace them with explicit causal preconditions and effects that preserve soundness for planning. Produce a list of corrections, required additional predicates, explicit invariants, and any strengthened preconditions/effects necessary to guarantee that: (a) only top disks can be moved, (b) only one disk is moved at a time, (c) larger disks never end up on smaller disks, and (d) disk size ordering is preserved across moves. Output should be structured and machine-readable so the orchestrator can apply the corrections.",
+                "prompt": "Your name is auditor. Here is the mover's model fragment you must review:\n{pddl_mover}\nAlso consider the public information about the puzzle:\n{environment->public_information}\nYou have the following private knowledge about auditing responsibilities:\n{agents->auditor->private_information}\nTask: Identify ambiguities, temporal/causal weaknesses, and any bookkeeping shortcuts in the mover's fragment. Provide a corrected, explicit set of constraints, predicate additions (if any), and exact modifications to action preconditions/effects so the model becomes fully causal and temporally consistent for conversion to PDDL. Do not invent new shortcuts. Deliver the corrections in a structured form the orchestrator can consume."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_mover",
+                    "pddl_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL assembly and in producing final PDDL domain/problem files compatible with the Fast Downward planner. You will receive: (1) a model fragment from an agent that described objects, predicates and action schemas, and (2) an auditor's corrections that enforce causal/temporal consistency and remove bookkeeping shortcuts. Your responsibility is to integrate these inputs, keep the original agents' actions distinct (prefix action names or comment which agent they belong to), resolve naming ambiguities, and produce a complete PDDL domain and a PDDL problem file suitable for Fast Downward (PDDL 2.2/ADL-compatible). Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the domain uses explicit predicates to enforce that only top disks move and that larger disks may not be placed on smaller disks. The final PDDL should be immediately usable by Fast Downward without additional bookkeeping constructs.",
+                "prompt": "You are the orchestrator for the task:\n{agents->orchestrator->goal}\nInputs available to you:\n- mover fragment: {pddl_mover}\n- auditor corrections: {pddl_auditor}\nIntegrate the fragments, apply corrections, resolve any naming mismatches, and output a final PDDL domain and PDDL problem pair targeted to Fast Downward. Keep agent actions distinct, and make sure the initial and goal states reflect the exact stack ordering given in the environment public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.pddl->auditor.pddl",
+            "mover.pddl->orchestrator.pddl",
+            "auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

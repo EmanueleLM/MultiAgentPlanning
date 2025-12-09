@@ -1,117 +1,80 @@
-(define (domain mystery-blocks-18)
-  (:requirements :strips :negative-preconditions)
+(define (domain craving-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types object)
+
   (:predicates
-    (hand ?x)
-    (cats ?x)
-    (texture ?x)
-    (vase ?x ?y)
-    (next ?x ?y)
-    (sneeze ?x)
-    (collect ?x ?y)
-    (spring ?x)
-    (stupendous ?x)
+    (craves ?x - object ?y - object)   ; ?x craves ?y
+    (province ?x - object)             ; province holds for object
+    (planet ?x - object)               ; planet holds for object
+    (pain)                             ; global pain flag
+    (harmony)                          ; global harmony flag
   )
 
-  ;; paltry(hand H, cats C, texture T, vase H C, next C T)
-  ;; Effects: add next H T, delete vase H C
-  (:action paltry
-    :parameters (?h ?c ?t)
+  ;; Attack: requires that the target has province and planet and global harmony.
+  ;; Effects: global pain becomes true; province, planet and harmony are removed for the target.
+  (:action attack
+    :parameters (?o - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (province ?o)
+      (planet ?o)
+      (harmony)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
+      (pain)
+      (not (province ?o))
+      (not (planet ?o))
+      (not (harmony))
     )
   )
 
-  ;; sip(hand H, cats C, texture T, next H T, next C T)
-  ;; Effects: add vase H C, delete next H T
-  (:action sip
-    :parameters (?h ?c ?t)
+  ;; Succumb: requires global pain.
+  ;; Effects: restores province and planet for the chosen object and restores harmony; clears pain.
+  (:action succumb
+    :parameters (?o - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (pain)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (not (pain))
     )
   )
 
-  ;; clip(hand H, sneeze S, texture T, next S T, next H T)
-  ;; Effects: add vase H S, delete next H T
-  (:action clip
-    :parameters (?h ?s ?t)
+  ;; Overcome: requires that "other" currently has province and that global pain is true.
+  ;; Effects: sets harmony, grants province to actor object, makes actor crave other;
+  ;;          removes province from other and clears pain.
+  (:action overcome
+    :parameters (?actor - object ?other - object)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (province ?other)
+      (pain)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (harmony)
+      (province ?actor)
+      (craves ?actor ?other)
+      (not (province ?other))
+      (not (pain))
     )
   )
 
-  ;; wretched(sneeze A, texture B, texture C, stupendous D, next A B, collect B D, collect C D)
-  ;; Effects: add next A C, delete next A B
-  (:action wretched
-    :parameters (?a ?b ?c ?d)
+  ;; Feast: requires that actor craves other, actor has province, and global harmony.
+  ;; Effects: sets global pain, grants province to other, and removes the craving, actor's province, and harmony.
+  (:action feast
+    :parameters (?actor - object ?other - object)
     :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
+      (craves ?actor ?other)
+      (province ?actor)
+      (harmony)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  ;; memory(cats C, spring Y, spring Z, next C Y)
-  ;; Effects: add next C Z, delete next C Y
-  (:action memory
-    :parameters (?c ?y ?z)
-    :precondition (and
-      (cats ?c)
-      (spring ?y)
-      (spring ?z)
-      (next ?c ?y)
-    )
-    :effect (and
-      (next ?c ?z)
-      (not (next ?c ?y))
-    )
-  )
-
-  ;; tightfisted(hand H, sneeze S, texture T, next S T, vase H S)
-  ;; Effects: add next H T, delete vase H S
-  (:action tightfisted
-    :parameters (?h ?s ?t)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (pain)
+      (province ?other)
+      (not (craves ?actor ?other))
+      (not (province ?actor))
+      (not (harmony))
     )
   )
 )

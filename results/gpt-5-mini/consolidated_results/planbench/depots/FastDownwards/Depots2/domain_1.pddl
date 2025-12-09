@@ -1,134 +1,218 @@
-(define (domain object-relations)
-  ; Domain encoding of the action schemas provided in the specification.
-  ; Requirements chosen to be compatible with Fast Downward.
+(define (domain depots_orchestration)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types
+    place depot distributor - place
+    truck hoist - object
+    pallet crate - object
+    stage
+  )
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (next ?a - obj ?b - obj)
-    (vase ?a - obj ?b - obj)
-    (collect ?a - obj ?b - obj)
+    ;; locations
+    (truck-at ?t - truck ?p - place)
+    (hoist-at ?h - hoist ?p - place)
+    (pallet-at ?p - pallet ?pl - place)
+    (crate-at ?c - crate ?pl - place)
+
+    ;; stacking relations (explicit for pallets and crates)
+    (on-pallet ?c - crate ?p - pallet)
+    (on-crate ?c - crate ?c2 - crate)
+
+    ;; clearance of surfaces
+    (clear-pallet ?p - pallet)
+    (clear-crate ?c - crate)
+
+    ;; hoist and truck load state
+    (hoist-free ?h - hoist)
+    (hoist-attached ?h - hoist ?c - crate)
+    (in-truck ?c - crate ?t - truck)
+
+    ;; global discrete stage token and successor relation (linear time)
+    (stage-ready ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ; paltry(object_0,object_1,object_2)
-  ; pre: hand(object_0), cats(object_1), texture(object_2), vase(object_0,object_1), next(object_1,object_2)
-  ; add: next(object_0,object_2)
-  ; del: vase(object_0,object_1)
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; DRIVER: drive a truck from one place to another, consuming a stage token
+  (:action driver_drive
+    :parameters (?driver - object ?t - truck ?from - place ?to - place ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (truck-at ?t ?from)
+      (stage-ready ?s)
+      (succ ?s ?s2)
+      ;; forbid no-op drive (requires that truck is not already asserted at destination)
+      (not (truck-at ?t ?to))
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ; sip(object_0,object_1,object_2)
-  ; pre: hand(object_0), cats(object_1), texture(object_2), next(object_0,object_2), next(object_1,object_2)
-  ; add: vase(object_0,object_1)
-  ; del: next(object_0,object_2)
-  (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (truck-at ?t ?from))
+      (truck-at ?t ?to)
+      ;; advance global stage token
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
     )
   )
 
-  ; clip(object_0,object_1,object_2)
-  ; pre: hand(object_0), sneeze(object_1), texture(object_2), next(object_1,object_2), next(object_0,object_2)
-  ; add: vase(object_0,object_1)
-  ; del: next(object_0,object_2)
-  (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; HOIST: move hoist between places (can move whether free or attached)
+  (:action hoist_move
+    :parameters (?h - hoist ?from - place ?to - place ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (hoist-at ?h ?from)
+      (stage-ready ?s)
+      (succ ?s ?s2)
+      (not (hoist-at ?h ?to))
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (hoist-at ?h ?from))
+      (hoist-at ?h ?to)
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
     )
   )
 
-  ; wretched(object_0,object_1,object_2,object_3)
-  ; pre: sneeze(object_0), texture(object_1), texture(object_2), stupendous(object_3),
-  ;      next(object_0,object_1), collect(object_1,object_3), collect(object_2,object_3)
-  ; add: next(object_0,object_2)
-  ; del: next(object_0,object_1)
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+  ;; HOIST LIFT from a pallet
+  (:action hoist_lift_from_pallet
+    :parameters (?h - hoist ?c - crate ?p - pallet ?loc - place ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (hoist-at ?h ?loc)
+      (pallet-at ?p ?loc)
+      (on-pallet ?c ?p)
+      (clear-crate ?c)
+      (hoist-free ?h)
+      (stage-ready ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      ;; crate is removed from the surface and from place while hoist holds it
+      (not (on-pallet ?c ?p))
+      (not (crate-at ?c ?loc))
+      ;; hoist now attached and not free
+      (hoist-attached ?h ?c)
+      (not (hoist-free ?h))
+      ;; the pallet becomes clear
+      (clear-pallet ?p)
+      ;; crate remains clear (precondition asserted it is)
+      (clear-crate ?c)
+      ;; advance stage
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
     )
   )
 
-  ; memory(object_0,object_1,object_2)
-  ; pre: cats(object_0), spring(object_1), spring(object_2), next(object_0,object_1)
-  ; add: next(object_0,object_2)
-  ; del: next(object_0,object_1)
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; HOIST LIFT from a crate (stacked on another crate)
+  (:action hoist_lift_from_crate
+    :parameters (?h - hoist ?c - crate ?below - crate ?loc - place ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (hoist-at ?h ?loc)
+      (on-crate ?c ?below)
+      (clear-crate ?c)
+      (hoist-free ?h)
+      (stage-ready ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (on-crate ?c ?below))
+      (not (crate-at ?c ?loc))
+      (hoist-attached ?h ?c)
+      (not (hoist-free ?h))
+      ;; the below crate becomes clear
+      (clear-crate ?below)
+      (clear-crate ?c)
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
     )
   )
 
-  ; tightfisted(object_0,object_1,object_2)
-  ; pre: hand(object_0), sneeze(object_1), texture(object_2), next(object_1,object_2), vase(object_0,object_1)
-  ; add: next(object_0,object_2)
-  ; del: vase(object_0,object_1)
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; HOIST DROP to a pallet
+  (:action hoist_drop_to_pallet
+    :parameters (?h - hoist ?c - crate ?p - pallet ?loc - place ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (hoist-attached ?h ?c)
+      (hoist-at ?h ?loc)
+      (pallet-at ?p ?loc)
+      (clear-pallet ?p)
+      (stage-ready ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (hoist-attached ?h ?c))
+      (hoist-free ?h)
+      (on-pallet ?c ?p)
+      (crate-at ?c ?loc)
+      (not (clear-pallet ?p))
+      ;; after drop crate is clear (nothing on top)
+      (clear-crate ?c)
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
+    )
+  )
+
+  ;; HOIST DROP to a crate
+  (:action hoist_drop_to_crate
+    :parameters (?h - hoist ?c - crate ?below - crate ?loc - place ?s - stage ?s2 - stage)
+    :precondition (and
+      (hoist-attached ?h ?c)
+      (hoist-at ?h ?loc)
+      (crate-at ?below ?loc)
+      (clear-crate ?below)
+      (stage-ready ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (hoist-attached ?h ?c))
+      (hoist-free ?h)
+      (on-crate ?c ?below)
+      (crate-at ?c ?loc)
+      ;; new top crate is clear
+      (clear-crate ?c)
+      ;; below crate no longer clear
+      (not (clear-crate ?below))
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
+    )
+  )
+
+  ;; HOIST LOAD into truck: hoist currently holding crate places crate into truck
+  (:action hoist_load_into_truck
+    :parameters (?h - hoist ?c - crate ?t - truck ?loc - place ?s - stage ?s2 - stage)
+    :precondition (and
+      (hoist-attached ?h ?c)
+      (hoist-at ?h ?loc)
+      (truck-at ?t ?loc)
+      (stage-ready ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      ;; crate becomes in truck; remove any place assertions (crate is in truck, not at place)
+      (not (hoist-attached ?h ?c))
+      (in-truck ?c ?t)
+      (not (crate-at ?c ?loc))
+      (hoist-free ?h)
+      ;; ensure crate is not on any surface (clear of surface relations)
+      (not (on-pallet ?c ?p)) ;; safe negative effect (will be ignored if not present)
+      (not (on-crate ?c ?c2))
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
+    )
+  )
+
+  ;; HOIST UNLOAD from truck: hoist not free and picks crate from truck (crate remains not at place until possibly dropped)
+  (:action hoist_unload_from_truck
+    :parameters (?h - hoist ?c - crate ?t - truck ?loc - place ?s - stage ?s2 - stage)
+    :precondition (and
+      (hoist-at ?h ?loc)
+      (truck-at ?t ?loc)
+      (hoist-free ?h)
+      (in-truck ?c ?t)
+      (stage-ready ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (in-truck ?c ?t))
+      (hoist-attached ?h ?c)
+      (not (hoist-free ?h))
+      ;; crate is no longer asserted at the place until dropped by hoist
+      (not (crate-at ?c ?loc))
+      (not (stage-ready ?s))
+      (stage-ready ?s2)
     )
   )
 )

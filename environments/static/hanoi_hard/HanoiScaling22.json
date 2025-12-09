@@ -1,0 +1,95 @@
+{
+    "name": "HanoiScaling22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "mover",
+            "validator",
+            "auditor",
+            "orchestrator"
+        ],
+        "mover": {
+            "private_information": [
+                "I can move the top disk from any peg to any other peg provided the move respects the size ordering constraints.",
+                "I reason about single-step atomic moves and their direct preconditions and effects."
+            ],
+            "goal": "Transfer the full tower of six disks from the middle peg to the left peg while obeying Hanoi rules."
+        },
+        "validator": {
+            "private_information": [
+                "I check causal and temporal consistency of move sequences and detect illegal placements or multi-disk transfers.",
+                "I ensure that every move moves exactly one top disk and that larger disks are never placed on smaller ones."
+            ],
+            "goal": "Validate that a proposed move sequence obeys the puzzle rules and leads to the stated goal."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit plans for bookkeeping shortcuts such as tokens, quotas, or post-hoc penalties and remove them.",
+                "I ensure the plan uses only real game state transitions and does not rely on external artifacts or hidden counters."
+            ],
+            "goal": "Eliminate any bookkeeping shortcuts from proposed plans and confirm temporal and causal purity."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent analyses and produce a complete PDDL domain and problem for FastDownwards that solves the Hanoi instance."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "Disks from smallest to largest are disk A, disk B, disk C, disk D, disk E, disk F.",
+            "Initial state: middle peg holds from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. Left and right pegs are empty.",
+            "Goal state: left peg must hold from top to bottom disk A, disk B, disk C, disk D, disk E, disk F. Middle and right pegs must be empty.",
+            "Rules: move one top disk at a time, only move top disk of a peg, never place a larger disk on a smaller disk, right peg may be used as intermediate but must end empty."
+        ]
+    },
+    "workflow": {
+        "mover": {
+            "analysis": {
+                "input": [],
+                "output": "mover_analysis",
+                "system_prompt": "You are an expert in describing atomic operations for Tower of Hanoi. Provide a concise catalog of allowed atomic moves with explicit preconditions and effects in plain text. Do not emit full PDDL here.",
+                "prompt": "Your name is mover. You see the public environment facts {environment->public_information}. You know {agents->mover->private_information}. Your objective is {agents->mover->goal}. Provide a stepwise enumeration of move types, state variables to track peg top disks, and clear preconditions and effects for each atomic move. Highlight any assumptions explicitly."
+            }
+        },
+        "validator": {
+            "analysis": {
+                "input": [],
+                "output": "validator_report",
+                "system_prompt": "You are an expert validator for plan correctness. Inspect sequences or move specifications for causal and temporal consistency and identify illegal operations. Do not emit full PDDL here.",
+                "prompt": "Your name is validator. You see the public environment facts {environment->public_information}. You know {agents->validator->private_information}. Your objective is {agents->validator->goal}. Given a candidate move model or sequence, report possible causal or temporal violations, required ordering constraints between moves, and any missing state predicates needed to guarantee correctness."
+            }
+        },
+        "auditor": {
+            "analysis": {
+                "input": [],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor focused on removing bookkeeping shortcuts and ensuring that plans reflect only legitimate state transitions. Produce recommendations to remove tokens, quotas, or artificial penalties. Do not emit full PDDL here.",
+                "prompt": "Your name is auditor. You see the public environment facts {environment->public_information}. You know {agents->auditor->private_information}. Your objective is {agents->auditor->goal}. Analyze proposed modeling shortcuts or convenience devices and produce a cleaned specification that uses only explicit peg and disk relations and real transitions. Provide any constraints necessary to avoid hidden state."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "mover_analysis",
+                    "validator_report",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in preparing PDDL for the FastDownwards planner. Integrate the agents' analyses to produce a complete PDDL domain and problem for the Tower of Hanoi instance with six disks. The final output must be compatible with FastDownwards and must enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions for distinct agents conceptually separated in comments or action naming where appropriate.",
+                "prompt": "You are orchestrator. Your role is to integrate the following artifacts and produce a final PDDL domain and problem targeted at FastDownwards. Here is the public information: {environment->public_information}. Here is mover analysis: {mover_analysis}. Here is validator report: {validator_report}. Here is auditor report: {auditor_report}. The global goal to achieve is {agents->orchestrator->goal}. Think step by step, resolve naming mismatches, ensure no bookkeeping shortcuts remain, enforce single-disk moves and size ordering, and provide a domain and problem that FastDownwards can solve. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "mover.analysis->orchestrator.pddl",
+            "validator.analysis->orchestrator.pddl",
+            "auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

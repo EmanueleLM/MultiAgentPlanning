@@ -1,116 +1,46 @@
-(define (domain repoint-domain)
-  (:requirements :strips :typing)
-  (:types item)
-
-  (:predicates
-    (hand ?o - item)
-    (cats ?o - item)
-    (texture ?o - item)
-    (vase ?a ?b - item)
-    (next ?a ?b - item)
-    (collect ?a ?b - item)
-    (sneeze ?o - item)
-    (stupendous ?o - item)
-    (spring ?o - item)
+(define (domain transport_combined)
+  :requirements :strips :typing :negative-preconditions
+  :types
+    obj
+    package - obj
+    vehicle - obj
+    truck - vehicle
+    airplane - vehicle
+    location
+  :predicates
+    (at ?o - obj ?l - location)          ; object (package or vehicle) is at location
+    (in ?p - package ?v - vehicle)       ; package is loaded in vehicle
+    (free ?p - package)                  ; package is not currently inside any vehicle
+  ;; Truck actions (prefixed with 'truck_')
+  (:action truck_load
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and (at ?t ?l) (at ?p ?l) (free ?p) (not (in ?p ?t)))
+    :effect (and (in ?p ?t) (not (at ?p ?l)) (not (free ?p)))
   )
-
-  ;; paltry: use a vase relation and an adjacency to create a new adjacency from the vase-holder
-  (:action paltry
-    :parameters (?x - item ?y - item ?z - item)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
+  (:action truck_unload
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and (at ?t ?l) (in ?p ?t))
+    :effect (and (not (in ?p ?t)) (at ?p ?l) (free ?p))
   )
-
-  ;; sip: move a vase forward and rewire next accordingly
-  (:action sip
-    :parameters (?p - item ?q - item ?r - item)
-    :precondition (and
-      (vase ?p ?q)
-      (next ?q ?r)
-    )
-    :effect (and
-      (vase ?q ?r)
-      (next ?p ?r)
-      (not (vase ?p ?q))
-      (not (next ?q ?r))
-    )
+  (:action truck_drive
+    :parameters (?t - truck ?from - location ?to - location)
+    :precondition (and (at ?t ?from))
+    :effect (and (at ?t ?to) (not (at ?t ?from)))
   )
-
-  ;; clip: using a hand, move a vase relation and rewire adjacency
-  (:action clip
-    :parameters (?a - item ?b - item ?c - item)
-    :precondition (and
-      (hand ?a)
-      (vase ?a ?b)
-      (next ?a ?c)
-    )
-    :effect (and
-      (vase ?c ?b)
-      (next ?b ?c)
-      (not (vase ?a ?b))
-      (not (next ?a ?c))
-    )
+  ;; Airplane actions (prefixed with 'airplane_')
+  (:action airplane_load
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and (at ?a ?l) (at ?p ?l) (free ?p) (not (in ?p ?a)))
+    :effect (and (in ?p ?a) (not (at ?p ?l)) (not (free ?p)))
   )
-
-  ;; tightfisted: toggle vase/next by anchoring vase at the predecessor
-  (:action tightfisted
-    :parameters (?u - item ?v - item ?w - item)
-    :precondition (and
-      (cats ?u)
-      (vase ?v ?w)
-      (next ?u ?v)
-    )
-    :effect (and
-      (vase ?u ?w)
-      (next ?u ?w)
-      (not (vase ?v ?w))
-      (not (next ?u ?v))
-    )
+  (:action airplane_unload
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and (at ?a ?l) (in ?p ?a))
+    :effect (and (not (in ?p ?a)) (at ?p ?l) (free ?p))
   )
-
-  ;; wretched: repoint a predecessor that currently points to ?from so it points to ?to,
-  ;; requires collect on the from object, a stupendous marker on a related item, a sneeze fact,
-  ;; and some spring fact (bound to any existing spring object). This keeps the operator
-  ;; signature flexible so concrete bindings can be chosen from the initial state.
-  (:action wretched
-    :parameters (?pred - item ?from - item ?to - item ?mid - item ?sneeze - item ?springobj - item)
-    :precondition (and
-      (collect ?from ?mid)
-      (stupendous ?mid)
-      (sneeze ?sneeze)
-      (spring ?springobj)
-      (next ?pred ?from)
-    )
-    :effect (and
-      (next ?pred ?to)
-      (not (next ?pred ?from))
-    )
+  (:action airplane_fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at ?a ?from))
+    :effect (and (at ?a ?to) (not (at ?a ?from)))
   )
-
-  ;; memory: repoint a predecessor that currently points to ?from so it points to ?to,
-  ;; requires a collect relation on ?from referencing ?mid, a stupendous mark on that mid,
-  ;; and that ?from carries a spring property.
-  (:action memory
-    :parameters (?pred - item ?from - item ?to - item ?mid - item)
-    :precondition (and
-      (collect ?from ?mid)
-      (stupendous ?mid)
-      (spring ?from)
-      (next ?pred ?from)
-    )
-    :effect (and
-      (next ?pred ?to)
-      (not (next ?pred ?from))
-    )
-  )
-
 )

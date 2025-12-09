@@ -2,116 +2,159 @@
     "name": "Depots11",
     "author": "Human",
     "agents": {
-        "number": 4,
+        "number": 5,
         "names": [
-            "planner",
-            "simulator",
+            "depot_manager",
+            "hoist_operator",
+            "truck_driver",
             "auditor",
             "orchestrator"
         ],
-        "planner": {
+        "depot_manager": {
             "private_information": [
-                "Available actions and their schemas: paltry(hand,objA,catsObj,textureObj,vaseA,B,nextA,B) preconditions: hand objA, cats objB, texture objC, vase objA objB, next objB objC; effects: add next objA objC, del vase objA objB",
-                "sip(hand,objA,catsObj,textureObj,nextA,C,nextB,C) preconditions: hand objA, cats objB, texture objC, next objA objC, next objB objC; effects: add vase objA objB, del next objA objC",
-                "clip(hand,objA,sneezeObj,textureObj,nextB,C,nextA,C) preconditions: hand objA, sneeze objB, texture objC, next objB objC, next objA objC; effects: add vase objA objB, del next objA objC",
-                "wretched(sneezeA,textureB,textureC,stupendousD,nextA,B,collectB,D,collectC,D) preconditions: sneeze objA, texture objB, texture objC, stupendous objD, next objA objB, collect objB objD, collect objC objD; effects: add next objA objC, del next objA objB",
-                "memory(catsA,springB,springC,nextA,B) preconditions: cats objA, spring objB, spring objC, next objA objB; effects: add next objA objC, del next objA objB",
-                "tightfisted(handA,sneezeB,textureC,nextB,C,vaseA,B) preconditions: hand objA, sneeze objB, texture objC, next objB objC, vase objA objB; effects: add next objA objC, del vase objA objB"
+                "Knowledge about place layout and initial placement of crates and pallets at depots and distributors.",
+                "Depots and distributors are both specializations of place.",
+                "Pallets and crates are surfaces used to stack crates."
             ],
-            "goal": "Construct a stepwise, grounded partial plan consistent with known action schemas that attempts to reach the declared goal states. Provide the plan as a sequence of grounded action applications with their parameter bindings."
+            "goal": "Extract and report the ground facts (objects, their initial locations and stacking relations) in a clear structured form to feed the orchestrator."
         },
-        "simulator": {
+        "hoist_operator": {
             "private_information": [
-                "I know how to apply the action schemas deterministically to an explicit initial state and compute resulting facts. I track addition and deletion of predicates and can detect missing preconditions.",
-                "Two declared initial-state variants exist in the problem statement. I can run a candidate plan on either initial state and produce a simulation trace of facts after each step."
+                "Semantic and precondition/effect description of hoist operations: lift, drop, load-into-truck, unload-from-truck.",
+                "Hoists are devices located at places and may be available or busy; they can lift clear crates if co-located."
             ],
-            "goal": "Validate a proposed partial plan by simulating it on the given initial facts and produce a step-by-step trace of facts and any precondition violations or unsupported assumptions."
+            "goal": "Formalize hoist-related action schemas, preconditions and effects in a structured, implementation-neutral specification for the orchestrator."
+        },
+        "truck_driver": {
+            "private_information": [
+                "Semantic and precondition/effect description of driving actions for trucks between places.",
+                "Trucks move between places and carry crates when loaded; driving requires the truck to be at the origin."
+            ],
+            "goal": "Formalize truck-driving action schemas, movement constraints and state updates in a structured, implementation-neutral specification for the orchestrator."
         },
         "auditor": {
             "private_information": [
-                "My role is to audit temporal and causal consistency. I look for implicit bookkeeping shortcuts such as quota tokens, post-hoc penalties, or hidden counters. I will flag and remove such shortcuts and rewrite steps to be causally explicit.",
-                "I check for name mismatches, repeated use of transient facts without justification, and I normalize object references and ensure each effect that is used later is actually produced by a prior action."
+                "Role: audit temporal and causal consistency of the collected action schemas and initial facts.",
+                "Role: identify and recommend removal of bookkeeping shortcuts (e.g., quota tokens or ad-hoc post-hoc penalties) and insist on explicit causal bookkeeping in the model."
             ],
-            "goal": "Produce an audit report that verifies causal links between actions, removes bookkeeping shortcuts, and suggests explicit corrective steps where needed so that the plan is executable from the initial state."
+            "goal": "Produce an audit report that ensures the action specifications and initial facts are temporally and causally consistent and free of bookkeeping shortcuts, and provide corrections or annotations for the orchestrator."
         },
         "orchestrator": {
-            "private_information": [
-                "I must take the planner's partial plan, the simulator's simulation trace, and the auditor's audit report and integrate them into a single coherent PDDL domain and PDDL problem suitable for FastDownwards.",
-                "FastDownwards compatibility requirements: use STRIPS-like action definitions where possible, keep all actions typed as 'action-name' with clear precondition and effect lists, avoid extensions not supported by FastDownwards, enumerate all objects, initial facts, and the goal conjunctive literals."
-            ],
-            "goal": "Produce the final PDDL domain and PDDL problem that encode the environment, initial state, and the planning goal in a format compatible with the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            "private_information": [],
+            "goal": "Integrate the structured facts, action schemas and the audit report to produce a single coherent PDDL domain and PDDL problem targeting the FastDownward solver that achieves the stated stacking goal."
         }
     },
     "environment": {
         "init": {
-            "objects_count": 12,
-            "objects": [
-                "object_0",
-                "object_1",
-                "object_2",
-                "object_3",
-                "object_4",
-                "object_5",
-                "object_6",
-                "object_7",
-                "object_8",
-                "object_9",
-                "object_10",
-                "object_11"
-            ]
+            "grid_size": 6,
+            "visibility": 2
         },
         "public_information": [
-            "Predicates used: hand(X), cats(X), texture(X), vase(X,Y), next(X,Y), sneeze(X), spring(X), stupendous(X), collect(X,Y).",
-            "Available grounded actions: paltry, sip, clip, wretched, memory, tightfisted with preconditions and effects as described in agent planner private information.",
-            "Two scenario variants of initial facts and two corresponding goals are present in the statement. The environment presents these as distinct initial-state instances to be considered by planning and validation."
+            "There are two types of places: depots and distributors. Both are places and trucks and hoists operate at places.",
+            "Surfaces exist such as pallets and crates; crates may be stacked on surfaces or on other crates.",
+            "Roads fully connect all depots and distributors: trucks can drive between any two places.",
+            "Actions available in the domain include: drive(truck, from, to), hoist_lift(hoist, crate, surface, place), hoist_drop(hoist, crate, surface, place), hoist_load(hoist, crate, truck, place), hoist_unload(hoist, crate, truck, place).",
+            "Restrictions summary: driving requires truck at origin; hoist lift requires hoist and crate co-located, hoist available, crate clear; lift makes hoist busy and crate no longer on surface; drop requires hoist lifting crate and surface clear; load requires hoist lifting crate and truck co-located; unload requires hoist available and crate in truck.",
+            "Modeling note: the auditor will remove bookkeeping shortcuts and insist on explicit predicates for availability, lifting, clear, on, in-truck and at."
+        ],
+        "initial_state": [
+            "crate0 is at depot0",
+            "crate1 is at depot0",
+            "crate2 is at depot0",
+            "hoist0 is at depot0",
+            "hoist1 is at depot1",
+            "hoist2 is at depot2",
+            "hoist3 is at distributor0",
+            "pallet0 is at depot0",
+            "pallet1 is at depot1",
+            "pallet2 is at depot2",
+            "pallet3 is at distributor0",
+            "truck0 is at distributor0",
+            "truck1 is at depot0",
+            "truck2 is at depot0",
+            "hoist0 is available",
+            "hoist1 is available",
+            "hoist2 is available",
+            "hoist3 is available",
+            "crate2 is clear",
+            "pallet1 is clear",
+            "pallet2 is clear",
+            "pallet3 is clear",
+            "crate0 is on pallet0",
+            "crate1 is on crate0",
+            "crate2 is on crate1"
+        ],
+        "goal": [
+            "crate0 is on pallet1",
+            "crate1 is on crate2",
+            "crate2 is on pallet0"
+        ],
+        "domain_notes": [
+            "All agents should keep action names and object names consistent so the orchestrator can integrate them.",
+            "The final PDDL must be compatible with the FastDownward planner."
         ]
     },
     "workflow": {
-        "planner": {
-            "partial_plan": {
+        "depot_manager": {
+            "analyze": {
                 "input": [],
-                "output": "partial_plan",
-                "system_prompt": "You are a planning analyst. Using the public predicates and your private action schemas, produce a grounded sequence of actions as a partial plan. Provide each step as action_name followed by ordered object arguments. If information is missing, produce the sequence consistent with known facts and mark assumptions explicitly.",
-                "prompt": "Agent planner. Public information: {environment->public_information}. Your knowledge: {agents->planner->private_information}. Global objective: produce a grounded step sequence that attempts to achieve the stated goal. Return the plan as a list of grounded actions and any explicit assumptions."
+                "output": "facts_depot_manager",
+                "system_prompt": "You are the depot manager analyst. Your job is to read the public information and the initial_state and produce a structured JSON facts file listing all objects (places, depots, distributors, pallets, crates, trucks, hoists), their types, all 'at' relations, and stacking relations (on). Do not emit PDDL. Provide no assumptions beyond the given initial facts. The output should be a compact structured representation suitable for consumption by an orchestrator.",
+                "prompt": "As depot_manager, extract objects and ground facts from the environment public information and initial_state: {environment->initial_state}. Produce the facts as a structured JSON-like object containing lists of objects by type and explicit predicates (at, on)."
             }
         },
-        "simulator": {
-            "simulation_trace": {
-                "input": [
-                    "partial_plan"
-                ],
-                "output": "simulation_trace",
-                "system_prompt": "You are a deterministic simulator. Apply each grounded action from the input plan to the declared initial facts for the chosen scenario variant. For each action, list whether preconditions were satisfied, the facts added, and the facts deleted. If a precondition is missing, mark the step as failing and note the missing facts.",
-                "prompt": "Agent simulator. Public information: {environment->public_information}. Your knowledge: {agents->simulator->private_information}. Given a partial plan, simulate it on the provided initial facts and produce a step-by-step trace of resulting facts and any violations or unmet preconditions."
+        "hoist_operator": {
+            "analyze": {
+                "input": [],
+                "output": "spec_hoist_operator",
+                "system_prompt": "You are the hoist operator specialist. Your job is to produce structured action schema specifications for hoist actions: lift, drop, load, unload. For each action provide: name, parameters with types, precise preconditions and effects expressed as lists of positive and negative literals over predicates (e.g., at, available, lifting, clear, on, in-truck). Do not produce PDDL. Keep the specifications explicit so they can be translated mechanically to PDDL by the orchestrator.",
+                "prompt": "As hoist_operator, formalize hoist action schemas and their preconditions and effects in a structured form that the orchestrator can use to assemble a PDDL domain."
+            }
+        },
+        "truck_driver": {
+            "analyze": {
+                "input": [],
+                "output": "spec_truck_driver",
+                "system_prompt": "You are the truck driving specialist. Your job is to describe the drive action as a structured action schema: name, parameters (truck, from, to), preconditions and effects (including location updates for the truck and implications for crates in-truck). Do not produce PDDL. Make clear any assumptions about trucks carrying crates and how 'in-truck' is modeled so the orchestrator can integrate it.",
+                "prompt": "As truck_driver, provide a precise structured specification of drive(truck,from,to) including preconditions and effects."
             }
         },
         "auditor": {
-            "audit_report": {
+            "audit": {
                 "input": [
-                    "partial_plan",
-                    "simulation_trace"
+                    "facts_depot_manager",
+                    "spec_hoist_operator",
+                    "spec_truck_driver"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are an auditor of causal and temporal correctness. Inspect the plan and simulation trace, detect hidden bookkeeping shortcuts or post-hoc fixes and propose explicit corrective actions or rewrites to guarantee causal soundness. Produce a normalized, causally explicit report listing flagged issues and recommended changes.",
-                "prompt": "Agent auditor. Public information: {environment->public_information}. Your knowledge: {agents->auditor->private_information}. Given the partial plan and the simulation trace, produce an audit report that ensures causal links are explicit and removes bookkeeping shortcuts. Recommend concrete changes if needed."
+                "system_prompt": "You are the temporal and causal auditor. Your task is to inspect the structured facts and action specifications and produce an audit_report that (1) detects causal or temporal inconsistencies, (2) identifies and removes bookkeeping shortcuts (for example ad-hoc tokens, quotas, implicit post-hoc penalties), and (3) proposes explicit predicates and modifications to action preconditions/effects to preserve causal correctness. Provide corrective annotations in a structured form so the orchestrator can apply them. Do not produce PDDL.",
+                "prompt": "As auditor, analyze the inputs: {workflow->depot_manager->analyze->output}, {workflow->hoist_operator->analyze->output}, {workflow->truck_driver->analyze->output}. Emit a structured audit_report with corrections and explicit recommended predicates and constraints."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "partial_plan",
-                    "simulation_trace",
+                    "facts_depot_manager",
+                    "spec_hoist_operator",
+                    "spec_truck_driver",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an orchestrator that must integrate planner, simulator, and auditor outputs and produce a final PDDL domain and PDDL problem suitable for the FastDownwards solver. Ensure action names remain distinct and grounded actions are represented as STRIPS-style operators. Enumerate all objects and include the chosen initial-state variant and the corresponding conjunctive goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility and avoid language constructs not supported by FastDownwards.",
-                "prompt": "Agent orchestrator. Inputs: planner partial plan {partial_plan}, simulator trace {simulation_trace}, auditor report {audit_report}. Task: integrate inputs, resolve naming mismatches, ensure causal consistency, and emit a PDDL domain and a PDDL problem file compatible with FastDownwards. Keep agent actions distinct and include comments or annotations only if they do not break PDDL syntax."
+                "system_prompt": "You are the orchestrator responsible for producing the final PDDL domain and problem targeted to the FastDownward planner. Integrate the structured facts, action schemas and the auditor's corrections to produce a single coherent PDDL domain and PDDL problem. Ensure typing, consistent predicate naming, and include :requirements that are supported by FastDownward (for example :strips :typing :negative-preconditions only if justified). Keep agent actions distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The output must be a complete PDDL domain and problem ready for FastDownward.",
+                "prompt": "You receive the following inputs from other agents and the auditor:\n{pddl_inputs}\nIntegrate them to produce a final PDDL domain and PDDL problem that achieves the goal: {environment->goal} from the initial facts {environment->initial_state}. Enclose domain between <domain></domain> and problem between <problem></problem>. Target FastDownward."
             }
         },
         "constraints": [
-            "planner.partial_plan->orchestrator.pddl",
-            "simulator.simulation_trace->orchestrator.pddl",
-            "auditor.audit_report->orchestrator.pddl"
+            "depot_manager.analyze->orchestrator.pddl",
+            "hoist_operator.analyze->orchestrator.pddl",
+            "truck_driver.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
         ]
-    }
+    },
+    "constraints": [
+        "depot_manager.analyze->orchestrator.pddl",
+        "hoist_operator.analyze->orchestrator.pddl",
+        "truck_driver.analyze->orchestrator.pddl",
+        "auditor.audit->orchestrator.pddl"
+    ]
 }

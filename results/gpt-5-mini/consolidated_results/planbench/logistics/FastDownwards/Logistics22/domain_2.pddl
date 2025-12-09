@@ -1,136 +1,74 @@
-(define (domain logistics22)
+(define (domain multi_modal_transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane - vehicle package location city)
+
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (spring ?o - object)
-    (succ ?s1 - stage ?s2 - stage)    ; ordered stage successor relation (static)
-    (cur ?s - stage)                 ; current active stage (unique)
+    ;; package at a location
+    (at-package ?p - package ?l - location)
+    ;; any vehicle (truck or airplane) at a location
+    (at ?v - vehicle ?l - location)
+    ;; package inside any vehicle
+    (in ?p - package ?v - vehicle)
+    ;; location -> city membership and airport marker
+    (in-city ?l - location ?c - city)
+    (airport ?l - location)
   )
 
-  ;; Each action requires the current stage and the successor stage,
-  ;; consumes the current stage and advances to the successor stage.
-  ;; This enforces sequential execution and contiguous stage occupancy.
-
-  (:action paltry
-    :parameters (?h - object ?c - object ?t - object ?st - stage ?st2 - stage)
+  ;; Generic load into a vehicle (truck or airplane)
+  (:action load
+    :parameters (?v - vehicle ?p - package ?l - location)
     :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-    )
+                    (at ?v ?l)
+                    (at-package ?p ?l)
+                    (not (in ?p ?v))
+                  )
     :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
+              (not (at-package ?p ?l))
+              (in ?p ?v)
+            )
   )
 
-  (:action sip
-    :parameters (?h - object ?c - object ?t - object ?st - stage ?st2 - stage)
+  ;; Generic unload from a vehicle (truck or airplane)
+  (:action unload
+    :parameters (?v - vehicle ?p - package ?l - location)
     :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
+                    (at ?v ?l)
+                    (in ?p ?v)
+                  )
     :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (vase ?h ?c)
-      (not (next ?h ?t))
-    )
+              (not (in ?p ?v))
+              (at-package ?p ?l)
+            )
   )
 
-  (:action clip
-    :parameters (?h - object ?s - object ?t - object ?st - stage ?st2 - stage)
+  ;; Drive a truck within its city
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
-    )
+                    (at ?t ?from)
+                    (in-city ?from ?c)
+                    (in-city ?to ?c)
+                  )
     :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (vase ?h ?s)
-      (not (next ?h ?t))
-    )
+              (not (at ?t ?from))
+              (at ?t ?to)
+            )
   )
 
-  (:action wretched
-    :parameters (?s - object ?t1 - object ?t2 - object ?sp - object ?st - stage ?st2 - stage)
+  ;; Fly an airplane between different cities (airports only)
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location ?c1 - city ?c2 - city)
     :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?sp)
-      (next ?s ?t1)
-      (collect ?t1 ?sp)
-      (collect ?t2 ?sp)
-    )
+                    (at ?a ?from)
+                    (airport ?from)
+                    (airport ?to)
+                    (in-city ?from ?c1)
+                    (in-city ?to ?c2)
+                    (not (= ?c1 ?c2))
+                  )
     :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (next ?s ?t2)
-      (not (next ?s ?t1))
-    )
-  )
-
-  (:action memory
-    :parameters (?c - object ?s1 - object ?s2 - object ?st - stage ?st2 - stage)
-    :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
-    )
-    :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (next ?c ?s2)
-      (not (next ?c ?s1))
-    )
-  )
-
-  (:action tightfisted
-    :parameters (?h - object ?s - object ?t - object ?st - stage ?st2 - stage)
-    :precondition (and
-      (cur ?st)
-      (succ ?st ?st2)
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
-    )
-    :effect (and
-      (not (cur ?st))
-      (cur ?st2)
-      (next ?h ?t)
-      (not (vase ?h ?s))
-    )
+              (not (at ?a ?from))
+              (at ?a ?to)
+            )
   )
 )

@@ -1,0 +1,87 @@
+{
+    "name": "HanoiScaling0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "disk_modeler",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_modeler": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "There are 5 disks named A (smallest), B, C, D, E (largest)",
+                "There are three pegs: left, middle, right",
+                "Initial stack: middle peg holds from top to bottom A, B, C, D, E; left and right pegs are empty"
+            ],
+            "goal": "Provide a precise formal action model and state representation for the Tower of Hanoi instance with 5 disks suitable for later PDDL encoding"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency",
+                "I remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I verify invariants like single-disk-move, top-only moves, and size ordering constraints"
+            ],
+            "goal": "Inspect the proposed model, identify missing or unsafe assumptions, and produce a corrected, fully consistent set of invariants and operator preconditions/effects"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the model and audit outputs and produce a final PDDL domain and PDDL problem targeting the FastDownwards planner that solves the 5-disk Tower of Hanoi instance"
+        }
+    },
+    "environment": {
+        "init": {
+            "num_pegs": 3,
+            "num_disks": 5
+        },
+        "public_information": [
+            "There are three pegs named left, middle, and right",
+            "There are five disks from smallest to largest named A, B, C, D, E",
+            "Initial condition: middle peg holds from top to bottom A, B, C, D, E; left and right pegs are empty",
+            "Goal condition: right peg should hold from top to bottom A, B, C, D, E; left and middle pegs should be empty",
+            "Action: move the top disk from one peg to another peg",
+            "Rules: only one disk may be moved at a time",
+            "Rules: only the top disk of a peg may be moved",
+            "Rules: a larger disk may never be placed on top of a smaller disk",
+            "The left peg may be used as intermediate storage but must be empty in the final state",
+            "Once a disk is moved it preserves its relative size ordering with the others"
+        ]
+    },
+    "workflow": {
+        "disk_modeler": {
+            "spec": {
+                "input": [],
+                "output": "disk_model_spec",
+                "system_prompt": "You are an expert in formalizing action models for classical planning. Your task is to produce a compact and precise formal description of the Tower of Hanoi domain. Do not emit PDDL. Instead, describe the types, objects, predicates, and operator schemas with clear names and exact preconditions and effects. Explicitly state any assumptions and enumerated objects for the 5-disk instance.",
+                "prompt": "Your name is disk_modeler. You see the public environment facts: {environment->public_information}. You know: {agents->disk_modeler->private_information}. Your goal is: {agents->disk_modeler->goal}. Provide a formal model description listing types, object names, predicate definitions with argument types, and operator schemas for the move action. Do not produce PDDL. Be explicit about invariants required to prevent larger-on-smaller placements and to enforce top-only moves. Enumerate the five disk objects and three peg objects."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "disk_model_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of planning models. Your role is to find causal or temporal flaws and to eliminate modeling shortcuts like tokens or artificial counters that bypass true causal structure. You must ensure the model enforces Hanoi constraints without bookkeeping hacks. Produce corrections and a verified set of invariants. Do not produce PDDL.",
+                "prompt": "Your name is auditor. You receive the model description: {disk_model_spec}. You see the public facts: {environment->public_information}. You know: {agents->auditor->private_information}. Your goal is: {agents->auditor->goal}. Analyze the model, point out missing or weak preconditions, unsafe effects, or implicit assumptions. Provide corrected operator preconditions and effects, a minimal complete set of invariants, and a short justification for each correction. Explicitly state that no quota tokens or shortcuts are allowed and show how the corrected model enforces the one-disk-at-a-time, top-only, and size-ordering rules."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_model_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in generating PDDL suitable for the FastDownwards planner. Your job is to integrate modeler and auditor outputs and emit a correct PDDL domain and a PDDL problem for the 5-disk Tower of Hanoi instance. You must include requirements compatible with FastDownwards, use clear typing and predicate names, and ensure initial and goal states match the public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions are atomic and reflect the auditor-corrected preconditions and effects. Keep action and predicate names consistent and unambiguous.",
+                "prompt": "Your name is orchestrator. You receive the following inputs: model description {disk_model_spec} and audit corrections {audit_report}. You see public facts: {environment->public_information}. Your goal is: {agents->orchestrator->goal}. Integrate the inputs and produce a final PDDL domain and PDDL problem targeting the FastDownwards solver, enclosed between <domain></domain> and <problem></problem> tags. Ensure the domain declares :requirements that FastDownwards supports and that the problem enumerates the five disk objects and three peg objects, sets the initial stacking on the middle peg from top to bottom A B C D E, and sets the goal stacking on the right peg from top to bottom A B C D E. Make sure the domain enforces that only top disks can be moved and a larger disk cannot be placed on a smaller disk."
+            }
+        },
+        "constraints": [
+            "disk_modeler.spec->auditor.audit",
+            "disk_modeler.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

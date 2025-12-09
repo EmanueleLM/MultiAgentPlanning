@@ -1,94 +1,173 @@
-(define (domain logistics28)
+(define (domain multi_agent_transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj step)
+  (:types city location truck airplane package phase)
+
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 - obj ?o2 - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (succ ?s1 - step ?s2 - step)
-    (current-step ?s - step)
+    (in-city ?l - location ?c - city)
+    (airport ?l - location)
+
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (at-package ?p - package ?l - location)
+
+    (in-truck ?p - package ?t - truck)
+    (in-airplane ?p - package ?a - airplane)
+
+    (current-phase ?ph - phase)
   )
 
-  ;; Every action consumes one step and advances current-step to its successor.
-  ;; This enforces an explicit discrete stage progression and prevents
-  ;; oscillation or out-of-order application of actions.
-
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - step ?t2 - step)
+  ;; Truck actions for phase0 (initial ground preparation)
+  (:action truck-drive-phase0
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (current-phase phase0)
     )
     :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (next ?o0 ?o2) (not (vase ?o0 ?o1))
-    )
-  )
-
-  (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - step ?t2 - step)
-    :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2)
-    )
-    :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (vase ?o0 ?o1) (not (next ?o0 ?o2))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
     )
   )
 
-  (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - step ?t2 - step)
+  (:action truck-load-phase0
+    :parameters (?p - package ?t - truck ?loc - location ?c - city)
     :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2)
+      (at-truck ?t ?loc)
+      (at-package ?p ?loc)
+      (in-city ?loc ?c)
+      (current-phase phase0)
     )
     :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (vase ?o0 ?o1) (not (next ?o0 ?o2))
+      (not (at-package ?p ?loc))
+      (in-truck ?p ?t)
     )
   )
 
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj ?t - step ?t2 - step)
+  (:action truck-unload-phase0
+    :parameters (?p - package ?t - truck ?loc - location)
     :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3)
-      (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3)
+      (at-truck ?t ?loc)
+      (in-truck ?p ?t)
+      (current-phase phase0)
     )
     :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (next ?o0 ?o2) (not (next ?o0 ?o1))
+      (not (in-truck ?p ?t))
+      (at-package ?p ?loc)
     )
   )
 
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - step ?t2 - step)
+  ;; Truck actions for phase2 (final local deliveries after flights)
+  (:action truck-drive-phase2
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1)
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (current-phase phase2)
     )
     :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (next ?o0 ?o2) (not (next ?o0 ?o1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
     )
   )
 
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - step ?t2 - step)
+  (:action truck-load-phase2
+    :parameters (?p - package ?t - truck ?loc - location ?c - city)
     :precondition (and
-      (current-step ?t) (succ ?t ?t2)
-      (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1)
+      (at-truck ?t ?loc)
+      (at-package ?p ?loc)
+      (in-city ?loc ?c)
+      (current-phase phase2)
     )
     :effect (and
-      (not (current-step ?t)) (current-step ?t2)
-      (next ?o0 ?o2) (not (vase ?o0 ?o1))
+      (not (at-package ?p ?loc))
+      (in-truck ?p ?t)
+    )
+  )
+
+  (:action truck-unload-phase2
+    :parameters (?p - package ?t - truck ?loc - location)
+    :precondition (and
+      (at-truck ?t ?loc)
+      (in-truck ?p ?t)
+      (current-phase phase2)
+    )
+    :effect (and
+      (not (in-truck ?p ?t))
+      (at-package ?p ?loc)
+    )
+  )
+
+  ;; Airplane actions for phase1 (inter-city movement)
+  (:action airplane-load-phase1
+    :parameters (?p - package ?a - airplane ?loc - location)
+    :precondition (and
+      (at-airplane ?a ?loc)
+      (at-package ?p ?loc)
+      (airport ?loc)
+      (current-phase phase1)
+    )
+    :effect (and
+      (not (at-package ?p ?loc))
+      (in-airplane ?p ?a)
+    )
+  )
+
+  (:action airplane-fly-phase1
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and
+      (at-airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (current-phase phase1)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+    )
+  )
+
+  (:action airplane-unload-phase1
+    :parameters (?p - package ?a - airplane ?loc - location)
+    :precondition (and
+      (at-airplane ?a ?loc)
+      (in-airplane ?p ?a)
+      (airport ?loc)
+      (current-phase phase1)
+    )
+    :effect (and
+      (not (in-airplane ?p ?a))
+      (at-package ?p ?loc)
+    )
+  )
+
+  ;; Explicit phase advancement actions that enforce the required temporal ordering.
+  ;; Advance from phase0 to phase1 only when the packages that must be flown are present at their origin airports.
+  ;; (This domain references the instance package/location constants for the readiness test.)
+  (:action advance-to-phase1
+    :precondition (and
+      (current-phase phase0)
+      (at-package package_1 location_0_0)
+      (at-package package_3 location_1_0)
+    )
+    :effect (and
+      (not (current-phase phase0))
+      (current-phase phase1)
+    )
+  )
+
+  ;; Advance from phase1 to phase2 only when the flown packages have been placed at their destination airports.
+  (:action advance-to-phase2
+    :precondition (and
+      (current-phase phase1)
+      (at-package package_1 location_1_0)
+      (at-package package_3 location_0_0)
+    )
+    :effect (and
+      (not (current-phase phase1))
+      (current-phase phase2)
     )
   )
 )

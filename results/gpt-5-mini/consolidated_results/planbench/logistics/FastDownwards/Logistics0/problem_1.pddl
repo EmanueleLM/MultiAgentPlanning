@@ -1,49 +1,54 @@
-(define (problem make-next-object_8-object_6)
-  (:domain orchestrator-next-link)
+(define (problem transport-problem)
+  (:domain transport-domain)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
-    s0 s1 s2 s3 s4 - stage
-    paltry sip clip wretched memory tightfisted - act
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 - package
+    location_0_0 location_1_0 - location
+    city_0 city_1 - city
+    stage_0 stage_1 stage_2 stage_3 - stage
   )
 
   (:init
-    ; world facts (from the first provided statement block)
-    (cats object_0)
-    (cats object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_3)
-    (hand object_8)
-    (next object_0 object_6)
-    (next object_1 object_6)
-    (next object_4 object_6)
-    (next object_5 object_7)
-    (next object_8 object_7)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_7)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_6)
-    (texture object_7)
+    ; airports and city membership (public information)
+    (airport location_0_0)
+    (airport location_1_0)
+    (location-in-city location_0_0 city_0)
+    (location-in-city location_1_0 city_1)
 
-    ; stage topology and current stage
-    (succ-stage s0 s1)
-    (succ-stage s1 s2)
-    (succ-stage s2 s3)
-    (succ-stage s3 s4)
-    (current-stage s0)
+    ; initial agent and package positions (public information)
+    (at-airplane airplane_0 location_1_0)
+    (at-airplane airplane_1 location_1_0)
+    (at-package package_0 location_1_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
 
-    ; allowed action slots encode the required ordering
-    ; This encodes the intended ordering: memory @ s0 -> sip @ s1 -> memory @ s2 -> paltry @ s3
-    (allowed-at memory s0)
-    (allowed-at sip s1)
-    (allowed-at memory s2)
-    (allowed-at paltry s3)
+    ; air routes: airplanes operate between city airports (bidirectional)
+    (air-route location_1_0 location_0_0)
+    (air-route location_0_0 location_1_0)
+
+    ; road connectivity: locations within the same city are connected.
+    ; With one location per city in this instance no inter-location roads are necessary.
+    ; (No road-connected facts added because no intra-city pair of distinct locations exists here.)
+
+    ; explicit stage ordering (discrete steps). The plan must advance current-stage
+    ; from stage_0 to stage_3 through successive actions. This encodes ordered stages
+    ; as hard constraints (no bookkeeping tokens or post-hoc penalties).
+    (successor stage_0 stage_1)
+    (successor stage_1 stage_2)
+    (successor stage_2 stage_3)
+
+    ; initial current stage
+    (current-stage stage_0)
   )
 
-  (:goal (and
-    (next object_8 object_6)
-  ))
+  (:goal
+    (and
+      ;; Terminal condition required by the specification:
+      (at-package package_0 location_0_0)
+      ;; Enforce that the plan reaches stage_3 (i.e., ordered progression of actions).
+      (current-stage stage_3)
+    )
+  )
 )

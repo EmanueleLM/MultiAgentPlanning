@@ -1,54 +1,50 @@
-(define (problem logistics28-problem)
-  (:domain logistics28)
+(define (problem multi_agent_transport_problem)
+  (:domain multi_agent_transport)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 - step
+    city_0 city_1 - city
+
+    location_0_0 location_0_1 location_0_2 location_1_0 location_1_1 location_1_2 - location
+
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    package_0 package_1 package_2 package_3 - package
+
+    phase0 phase1 phase2 - phase
   )
+
   (:init
-    ;; explicit current step and successor chain (discrete forward progression)
-    (current-step s0)
-    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5)
-    (succ s5 s6) (succ s6 s7) (succ s7 s8) (succ s8 s9) (succ s9 s10)
-    (succ s10 s11) (succ s11 s12) (succ s12 s13) (succ s13 s14) (succ s14 s15)
-    (succ s15 s16) (succ s16 s17) (succ s17 s18) (succ s18 s19)
+    ;; location -> city mapping
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
 
-    ;; unary predicates (union of provided initial statements)
-    (cats object_0) (cats object_1)
+    ;; airports
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (hand object_11) (hand object_12) (hand object_13) (hand object_14)
+    ;; initial positions of vehicles
+    (at-airplane airplane_0 location_1_0)
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_1)
 
-    (texture object_5) (texture object_6) (texture object_7) (texture object_8) (texture object_9) (texture object_10) (texture object_11)
+    ;; initial package positions
+    (at-package package_0 location_1_2)
+    (at-package package_1 location_0_0)
+    (at-package package_2 location_0_2)
+    (at-package package_3 location_1_1)
 
-    (sneeze object_3) (sneeze object_4) (sneeze object_5)
-
-    (spring object_5) (spring object_6) (spring object_8) (spring object_9)
-
-    (stupendous object_1) (stupendous object_2) (stupendous object_3)
-
-    ;; collect relations (unique union)
-    (collect object_10 object_3) (collect object_11 object_3)
-    (collect object_6 object_2) (collect object_7 object_2) (collect object_8 object_2) (collect object_9 object_3)
-    (collect object_10 object_2) (collect object_5 object_1) (collect object_6 object_1) (collect object_7 object_1) (collect object_9 object_2)
-
-    ;; next relations (unique union)
-    (next object_0 object_6) (next object_0 object_8)
-    (next object_1 object_9)
-    (next object_3 object_6)
-    (next object_4 object_7) (next object_4 object_9)
-    (next object_5 object_10)
-    (next object_11 object_10)
-    (next object_12 object_11) (next object_12 object_5)
-    (next object_13 object_6) (next object_13 object_7)
-    (next object_14 object_8) (next object_14 object_9)
+    ;; start in phase0 (ground preparation)
+    (current-phase phase0)
   )
+
   (:goal (and
-    ;; union of both observers' goals
-    (next object_12 object_10)
-    (next object_13 object_10)
-    (next object_14 object_9)
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
-    (next object_14 object_7)
+    (at-package package_0 location_1_1)
+    (at-package package_1 location_1_0)
+    (at-package package_2 location_0_0)
+    (at-package package_3 location_0_2)
   ))
-)

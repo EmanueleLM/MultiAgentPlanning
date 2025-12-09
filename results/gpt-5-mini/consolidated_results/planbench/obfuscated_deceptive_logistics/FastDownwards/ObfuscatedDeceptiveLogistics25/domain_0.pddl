@@ -1,118 +1,93 @@
-(define (domain orchestrator_normalized)
+(define (domain orchestration-domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types agent task phase)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (texture ?o - obj)
-    (collect ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
+    ; Phases and phase progression
+    (current-phase ?p - phase)
+    (next ?p1 - phase ?p2 - phase)
+
+    ; Task assignments and capabilities
+    (assigned ?t - task ?a - agent)
+    (can-perform ?a - agent ?t - task)
+
+    ; Task lifecycle predicates
+    (task-phase ?t - task ?from - phase ?to - phase) ; performing ?t moves from ?from to ?to
+    (completed ?t - task)
+    (reviewed ?t - task)
+
+    ; Finalization marker
+    (finalized)
   )
 
-  ;; paltry(object_0 object_1 object_2)
-  ;; Normalized: moves next(object_0,object_1) -> next(object_0,object_2)
-  (:action paltry
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ; Analyst A performs assigned preparation tasks, advancing the global phase according to the task-phase mapping.
+  (:action analystA_perform
+    :parameters (?a - agent ?t - task ?from - phase ?to - phase)
     :precondition (and
-      (hand ?object_0)
-      (cats ?object_1)
-      (texture ?object_2)
-      (next ?object_0 ?object_1)    ;; require current pointer from subject to 'link'
-      (next ?object_1 ?object_2)    ;; require link -> target
+      (assigned ?t ?a)
+      (can-perform ?a ?t)
+      (task-phase ?t ?from ?to)
+      (current-phase ?from)
+      (next ?from ?to)
+      (not (completed ?t))
+      (not (finalized))
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
-    )
-  )
-
-  ;; sip(object_0 object_1 object_2)
-  ;; Normalized: swaps next(object_0,object_2) -> next(object_0,object_1)
-  (:action sip
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
-    :precondition (and
-      (hand ?object_0)
-      (cats ?object_1)
-      (texture ?object_2)
-      (next ?object_0 ?object_2)    ;; require subject currently pointing to target
-      (next ?object_1 ?object_2)    ;; require link (cats) also points to that target
-    )
-    :effect (and
-      (next ?object_0 ?object_1)
-      (not (next ?object_0 ?object_2))
+      (completed ?t)
+      (not (current-phase ?from))
+      (current-phase ?to)
     )
   )
 
-  ;; clip(object_0 object_1 object_2)
-  ;; Normalized: swap next(object_0,object_2) -> next(object_0,object_1) where object_1 is a sneeze
-  (:action clip
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ; Analyst B performs assigned analysis tasks, advancing the global phase according to the task-phase mapping.
+  (:action analystB_perform
+    :parameters (?a - agent ?t - task ?from - phase ?to - phase)
     :precondition (and
-      (hand ?object_0)
-      (sneeze ?object_1)
-      (texture ?object_2)
-      (next ?object_1 ?object_2)    ;; sneeze -> texture
-      (next ?object_0 ?object_2)    ;; subject -> same texture
+      (assigned ?t ?a)
+      (can-perform ?a ?t)
+      (task-phase ?t ?from ?to)
+      (current-phase ?from)
+      (next ?from ?to)
+      (not (completed ?t))
+      (not (finalized))
     )
     :effect (and
-      (next ?object_0 ?object_1)
-      (not (next ?object_0 ?object_2))
+      (completed ?t)
+      (not (current-phase ?from))
+      (current-phase ?to)
     )
   )
 
-  ;; wretched(object_0 object_1 object_2 object_3)
-  ;; Normalized: moves next(object_0,object_1) -> next(object_0,object_2), requiring collect-group coherence
-  (:action wretched
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?object_3 - obj)
+  ; Auditor reviews an analysis result. Review must occur when the global phase equals the 'to' phase of the analyzed task.
+  (:action auditor_review
+    :parameters (?a - agent ?t - task ?from - phase ?to - phase)
     :precondition (and
-      (sneeze ?object_0)
-      (texture ?object_1)
-      (texture ?object_2)
-      (stupendous ?object_3)
-      (next ?object_0 ?object_1)        ;; require current pointer subject->from
-      (collect ?object_1 ?object_3)     ;; both from and to must collect to same collector
-      (collect ?object_2 ?object_3)
+      (can-perform ?a ?t)
+      (task-phase ?t ?from ?to)
+      (current-phase ?to)
+      (not (reviewed ?t))
+      (not (finalized))
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
+      (reviewed ?t)
     )
   )
 
-  ;; memory(object_0 object_1 object_2)
-  ;; Normalized: moves next(object_0,object_1) -> next(object_0,object_2) where both are springs
-  (:action memory
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ; Orchestrator finalizes the process: requires both tasks completed and the analysis task reviewed, and advances the final phase.
+  (:action orchestrator_finalize
+    :parameters (?o - agent ?t1 - task ?t2 - task ?pfrom - phase ?pto - phase)
     :precondition (and
-      (cats ?object_0)
-      (spring ?object_1)
-      (spring ?object_2)
-      (next ?object_0 ?object_1)    ;; require current pointer cats->from
+      (current-phase ?pfrom)
+      (next ?pfrom ?pto)
+      (completed ?t1)
+      (completed ?t2)
+      (reviewed ?t2)
+      (not (finalized))
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
-    )
-  )
-
-  ;; tightfisted(object_0 object_1 object_2)
-  ;; Normalized: moves next(object_0,object_1) -> next(object_0,object_2) where object_1 is a sneeze
-  (:action tightfisted
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
-    :precondition (and
-      (hand ?object_0)
-      (sneeze ?object_1)
-      (texture ?object_2)
-      (next ?object_1 ?object_2)    ;; sneeze -> texture
-      (next ?object_0 ?object_1)    ;; subject -> sneeze
-    )
-    :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
+      (finalized)
+      (not (current-phase ?pfrom))
+      (current-phase ?pto)
     )
   )
 )

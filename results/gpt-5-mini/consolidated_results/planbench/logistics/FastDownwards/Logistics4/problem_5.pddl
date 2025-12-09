@@ -1,35 +1,45 @@
-(define (problem scenario1)
-  (:domain orchestrated-collection)
+(define (problem move-package-0-to-location_1_1)
+  (:domain multi-transport)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9
+    city_0 city_1 - city
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 - package
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 - stage
   )
 
   (:init
-    (cats object_0)
-    (cats object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_3)
-    (hand object_8)
-    (hand object_9)
-    (next object_0 object_6)
-    (next object_1 object_6)
-    (next object_4 object_6)
-    (next object_5 object_7)
-    (next object_8 object_7)
-    (next object_9 object_7)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_7)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_6)
-    (texture object_7)
+    ;; Vehicle and package locations
+    (at-airplane airplane_0 location_1_0)
+    (at-pkg package_0 location_1_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
+
+    ;; Airports (one per city as given)
+    (airport location_0_0)
+    (airport location_1_0)
+
+    ;; Location-to-city membership (explicit and used by truck-drive)
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+
+    ;; Discrete linear stages to enforce explicit temporal ordering. Actions must advance current stage along succ.
+    (succ stage_0 stage_1)
+    (succ stage_1 stage_2)
+    (succ stage_2 stage_3)
+    (succ stage_3 stage_4)
+    (succ stage_4 stage_5)
+
+    (current stage_0)
   )
 
-  (:goal (and
-    (next object_8 object_7)
-    (next object_9 object_6)
-  ))
+  (:goal
+    (and
+      (at-pkg package_0 location_1_1)
+    )
+  )
 )

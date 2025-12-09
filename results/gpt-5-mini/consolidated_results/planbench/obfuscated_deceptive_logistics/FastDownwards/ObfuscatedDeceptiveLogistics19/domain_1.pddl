@@ -3,64 +3,130 @@
   (:types obj)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
+    (hand ?x - obj)
+    (cats ?x - obj)
+    (texture ?x - obj)
+    (vase ?x - obj ?y - obj)
+    (next ?x - obj ?y - obj)
+    (sneeze ?x - obj)
+    (collect ?x - obj ?y - obj)
+    (spring ?x - obj)
+    (stupendous ?x - obj)
   )
 
-  ;; paltry: preconds: hand ?h, cats ?c, texture ?t, vase ?h ?c, next ?c ?t
-  ;; effects: add next ?h ?t, del vase ?h ?c
+  ;; paltry object_0 object_1 object_2.
+  ;; pre: hand object_0, cats object_1, texture object_2, vase object_0 object_1, next object_1 object_2
+  ;; add: next object_0 object_2
+  ;; del: vase object_0 object_1
   (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (vase ?h ?c) (next ?c ?t))
-    :effect (and (next ?h ?t) (not (vase ?h ?c)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :precondition (and
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (vase ?o0 ?o1)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+    )
   )
 
-  ;; sip: preconds: hand ?h, cats ?c, texture ?t, next ?h ?t, next ?c ?t
-  ;; effects: add vase ?h ?c, del next ?h ?t
+  ;; sip object_0 object_1 object_2.
+  ;; pre: hand object_0, cats object_1, texture object_2, next object_0 object_2, next object_1 object_2
+  ;; add: vase object_0 object_1
+  ;; del: next object_0 object_2
   (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and (hand ?h) (cats ?c) (texture ?t) (next ?h ?t) (next ?c ?t))
-    :effect (and (vase ?h ?c) (not (next ?h ?t)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :precondition (and
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (next ?o0 ?o2)
+      (next ?o1 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+    )
   )
 
-  ;; clip: preconds: hand ?h, sneeze ?s, texture ?t, next ?s ?t, next ?h ?t
-  ;; effects: add vase ?h ?s, del next ?h ?t
+  ;; clip object_0 object_1 object_2.
+  ;; pre: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, next object_0 object_2
+  ;; add: vase object_0 object_1
+  ;; del: next object_0 object_2
   (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (next ?h ?t))
-    :effect (and (vase ?h ?s) (not (next ?h ?t)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :precondition (and
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (next ?o0 ?o2)
+    )
+    :effect (and
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
+    )
   )
 
-  ;; wretched: preconds: sneeze ?a, texture ?b, texture ?c, stupendous ?d,
-  ;;            next ?a ?b, collect ?b ?d, collect ?c ?d
-  ;; effects: add next ?a ?c, del next ?a ?b
+  ;; wretched object_0 object_1 object_2 object_3.
+  ;; pre: sneeze object_0, texture object_1, texture object_2, stupendous object_3, next object_0 object_1, collect object_1 object_3, collect object_2 object_3
+  ;; add: next object_0 object_2
+  ;; del: next object_0 object_1
   (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and (sneeze ?a) (texture ?b) (texture ?c) (stupendous ?d)
-                       (next ?a ?b) (collect ?b ?d) (collect ?c ?d))
-    :effect (and (next ?a ?c) (not (next ?a ?b)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+    :precondition (and
+      (sneeze ?o0)
+      (texture ?o1)
+      (texture ?o2)
+      (stupendous ?o3)
+      (next ?o0 ?o1)
+      (collect ?o1 ?o3)
+      (collect ?o2 ?o3)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+    )
   )
 
-  ;; memory: preconds: cats ?c, spring ?s1, spring ?s2, next ?c ?s1
-  ;; effects: add next ?c ?s2, del next ?c ?s1
+  ;; memory object_0 object_1 object_2.
+  ;; pre: cats object_0, spring object_1, spring object_2, next object_0 object_1
+  ;; add: next object_0 object_2
+  ;; del: next object_0 object_1
   (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
-    :precondition (and (cats ?c) (spring ?s1) (spring ?s2) (next ?c ?s1))
-    :effect (and (next ?c ?s2) (not (next ?c ?s1)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :precondition (and
+      (cats ?o0)
+      (spring ?o1)
+      (spring ?o2)
+      (next ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
+    )
   )
 
-  ;; tightfisted: preconds: hand ?h, sneeze ?s, texture ?t, next ?s ?t, vase ?h ?s
-  ;; effects: add next ?h ?t, del vase ?h ?s
+  ;; tightfisted object_0 object_1 object_2.
+  ;; pre: hand object_0, sneeze object_1, texture object_2, next object_1 object_2, vase object_0 object_1
+  ;; add: next object_0 object_2
+  ;; del: vase object_0 object_1
   (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and (hand ?h) (sneeze ?s) (texture ?t) (next ?s ?t) (vase ?h ?s))
-    :effect (and (next ?h ?t) (not (vase ?h ?s)))
+    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+    :precondition (and
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (vase ?o0 ?o1)
+    )
+    :effect (and
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
+    )
   )
+
 )

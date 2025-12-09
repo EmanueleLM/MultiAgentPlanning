@@ -1,92 +1,80 @@
-(define (domain orchestrator-domain)
+(define (domain orchestrator)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent item location)
+  (:types agent day task)
 
-  ;; Predicates
   (:predicates
-    (at ?a - agent ?l - location)            ; agent a is at location l
-    (item-at ?i - item ?l - location)        ; item i is at location l
-    (holding ?a - agent ?i - item)           ; agent a is holding item i
-    (free ?a - agent)                        ; agent a's hands are free (not holding any item)
-    (picked ?i - item)                       ; item i has been picked up at least once
-    (transported ?i - item)                  ; item i has been placed at a transport/assembly location
-    (assembled ?i - item)                    ; item i has been assembled (terminal done condition)
+    (current-day ?d - day)
+    (successor ?d1 ?d2 - day)
+    (done ?t - task)
+    (performed-by ?t ?a - agent)
   )
 
-  ;; Actions belonging to loader-type agents (prefix: loader_)
-  ;; Loader picks up an item at its current location. Requires the agent to be free.
-  (:action loader_pick
-    :parameters (?a - agent ?i - item ?l - location)
+  ;; Observer fragment action: must be executed on day1 and only once
+  (:action obs_collect
+    :parameters ()
     :precondition (and
-                    (at ?a ?l)
-                    (item-at ?i ?l)
-                    (free ?a)
-                    (not (picked ?i))
+                    (current-day day1)
+                    (not (done collect))
                   )
     :effect (and
-              (not (item-at ?i ?l))
-              (holding ?a ?i)
-              (not (free ?a))
-              (picked ?i)
+              (done collect)
+              (performed-by collect observer)
             )
   )
 
-  ;; Loader moves between locations. Movement is allowed whether free or holding an item (explicit).
-  (:action loader_move
-    :parameters (?a - agent ?from - location ?to - location)
+  ;; Advance day from day1 to day2: contiguous progression and only allowed after collect completed
+  (:action advance_day_d1_d2
+    :parameters ()
     :precondition (and
-                    (at ?a ?from)
+                    (current-day day1)
+                    (done collect)
+                    (not (current-day day2))
                   )
     :effect (and
-              (not (at ?a ?from))
-              (at ?a ?to)
+              (not (current-day day1))
+              (current-day day2)
             )
   )
 
-  ;; Loader places the item at the current location, marking it transported.
-  ;; This action requires the loader to be holding the specific item.
-  (:action loader_place
-    :parameters (?a - agent ?i - item ?l - location)
+  ;; Reasoner fragment action: analyze must occur on day2 and only after collect
+  (:action rsn_analyze
+    :parameters ()
     :precondition (and
-                    (at ?a ?l)
-                    (holding ?a ?i)
-                    (not (transported ?i))
+                    (current-day day2)
+                    (done collect)
+                    (not (done analyze))
                   )
     :effect (and
-              (not (holding ?a ?i))
-              (free ?a)
-              (item-at ?i ?l)
-              (transported ?i)
+              (done analyze)
+              (performed-by analyze reasoner)
             )
   )
 
-  ;; Actions belonging to assembler-type agents (prefix: assembler_)
-  ;; Assembler moves between locations.
-  (:action assembler_move
-    :parameters (?a - agent ?from - location ?to - location)
+  ;; Advance day from day2 to day3: contiguous progression and only allowed after analyze completed
+  (:action advance_day_d2_d3
+    :parameters ()
     :precondition (and
-                    (at ?a ?from)
+                    (current-day day2)
+                    (done analyze)
+                    (not (current-day day3))
                   )
     :effect (and
-              (not (at ?a ?from))
-              (at ?a ?to)
+              (not (current-day day2))
+              (current-day day3)
             )
   )
 
-  ;; Assembler performs assembly on an item. Requires the item to be transported to
-  ;; the assembler's current location and not already assembled.
-  ;; This enforces the strict order: picked -> transported -> assembled.
-  (:action assembler_assemble
-    :parameters (?a - agent ?i - item ?l - location)
+  ;; Auditor fragment action: remediate must occur on day3 and only after analyze
+  (:action aud_remediate
+    :parameters ()
     :precondition (and
-                    (at ?a ?l)
-                    (item-at ?i ?l)
-                    (transported ?i)
-                    (not (assembled ?i))
+                    (current-day day3)
+                    (done analyze)
+                    (not (done remediate))
                   )
     :effect (and
-              (assembled ?i)
+              (done remediate)
+              (performed-by remediate auditor)
             )
   )
-
 )

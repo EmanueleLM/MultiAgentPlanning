@@ -1,69 +1,67 @@
-(define (domain social_actions)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types
-    agent
-    object
-    container - object
-    consumable - container
-    item target - object
-    entity
-    info
-  )
+(define (domain craving-domain)
+  (:requirements :strips :typing)
+  (:types creature)
 
   (:predicates
-    (holds ?a - agent ?o - object)
-    (attachable ?it - item ?tgt - target)
-    (attached ?it - item ?tgt - target)
-    (low_value ?o - object)
-    (consumable ?c - consumable)
-    (empty ?c - container)
-    (sipped ?a - agent ?c - consumable)
-    (wretched ?e - entity)
-    (remembered ?a - agent ?m - info)
-    (tightfisted ?a - agent)
-    (next ?o1 - object ?o2 - object)
+    (alive ?c - creature)
+    (can-attack ?a - creature ?b - creature)
+    (attacked ?a - creature ?b - creature)
+    (succumbed ?c - creature)
+    (feasted ?x - creature ?y - creature)
+    (craves ?x - creature ?y - creature)
   )
 
-  (:action paltry
-    :parameters (?a - agent ?x - object)
-    :precondition (and (holds ?a ?x) (not (low_value ?x)))
-    :effect (and (low_value ?x))
+  ;; An agent attacks a target to place the target in an "attacked" state.
+  (:action Attack
+    :parameters (?attacker - creature ?target - creature)
+    :precondition (and
+      (alive ?attacker)
+      (alive ?target)
+      (can-attack ?attacker ?target)
+    )
+    :effect (and
+      (attacked ?attacker ?target)
+    )
   )
 
-  (:action sip
-    :parameters (?a - agent ?d - consumable)
-    :precondition (and (holds ?a ?d) (consumable ?d) (not (empty ?d)))
-    :effect (and (sipped ?a ?d))
+  ;; Overcome is a distinct action that also results in the target being "attacked".
+  (:action Overcome
+    :parameters (?agent - creature ?opponent - creature)
+    :precondition (and
+      (alive ?agent)
+      (alive ?opponent)
+      (can-attack ?agent ?opponent)
+    )
+    :effect (and
+      (attacked ?agent ?opponent)
+    )
   )
 
-  (:action clip
-    :parameters (?a - agent ?it - item ?tgt - target)
-    :precondition (and (holds ?a ?it) (attachable ?it ?tgt) (not (attached ?it ?tgt)))
-    :effect (and (attached ?it ?tgt) (not (holds ?a ?it)))
+  ;; A target succumbs only if it was attacked. Succumbing removes the attacked mark.
+  (:action Succumb
+    :parameters (?target - creature ?attacker - creature)
+    :precondition (and
+      (alive ?target)
+      (attacked ?attacker ?target)
+    )
+    :effect (and
+      (succumbed ?target)
+      (not (attacked ?attacker ?target))
+    )
   )
 
-  (:action wretched
-    :parameters (?x - entity)
-    :precondition (not (wretched ?x))
-    :effect (wretched ?x)
-  )
-
-  (:action memory
-    :parameters (?a - agent ?m - info)
-    :precondition (not (remembered ?a ?m))
-    :effect (remembered ?a ?m)
-  )
-
-  (:action tightfisted
-    :parameters (?a - agent)
-    :precondition (not (tightfisted ?a))
-    :effect (tightfisted ?a)
-  )
-
-  ; Explicit operator to establish a next relation between two objects.
-  (:action make-next
-    :parameters (?x - object ?y - object)
-    :precondition (not (next ?x ?y))
-    :effect (next ?x ?y)
+  ;; Feast requires the prey to have succumbed. Feast creates a craving relation.
+  ;; Feast does not remove the prey's aliveness (the model enforces that feasting does not consume the prey).
+  (:action Feast
+    :parameters (?feaster - creature ?prey - creature)
+    :precondition (and
+      (alive ?feaster)
+      (alive ?prey)
+      (succumbed ?prey)
+    )
+    :effect (and
+      (feasted ?feaster ?prey)
+      (craves ?feaster ?prey)
+    )
   )
 )

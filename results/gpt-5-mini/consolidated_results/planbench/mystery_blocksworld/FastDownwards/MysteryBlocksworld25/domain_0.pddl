@@ -1,109 +1,123 @@
-(define (domain multiagent_vases)
-  (:requirements :strips :typing)
-  (:types obj)
+(define (domain craving-conflict)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent step province planet)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 - obj ?o2 - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
+    (agent ?x - agent)
+    (step ?s - step)
+    (current ?s - step)
+    (next ?s1 - step ?s2 - step)
+    (attacked ?att - agent ?tgt - agent)
+    (pain ?x - agent)
+    (craves ?x - agent ?y - agent)
+    (harmony ?x - agent)
+    (province ?p - province)
+    (planet ?pl - planet)
   )
 
-  ;; Actions as provided by the player's analysis.
-  (:action paltry
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; Attack: an agent attacks another agent during a specific step.
+  ;; Preconditions:
+  ;;   - the plan is at the given current step
+  ;;   - the step has a defined successor
+  ;;   - this exact attack has not already been recorded
+  ;; Effects:
+  ;;   - record the attack (attacked ?att ?tgt)
+  ;;   - inflict pain on the target (pain ?tgt)
+  ;;   - advance the current step to the successor
+  (:action Attack
+    :parameters (?att - agent ?tgt - agent ?s - step ?s2 - step)
     :precondition (and
-      (hand ?obj0)
-      (cats ?obj1)
-      (texture ?obj2)
-      (vase ?obj0 ?obj1)
-      (next ?obj1 ?obj2)
+      (agent ?att)
+      (agent ?tgt)
+      (current ?s)
+      (next ?s ?s2)
+      (not (attacked ?att ?tgt))
     )
     :effect (and
-      (next ?obj0 ?obj2)
-      (not (vase ?obj0 ?obj1))
+      (attacked ?att ?tgt)
+      (pain ?tgt)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action sip
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; Succumb: a target succumbs to an attacker previously recorded.
+  ;; Preconditions:
+  ;;   - current step and its successor
+  ;;   - there is an outstanding attack from ?att against ?tgt
+  ;;   - the target is in pain
+  ;;   - the target is not already in harmony (cannot succumb if harmony established)
+  ;;   - the craving does not already hold
+  ;; Effects:
+  ;;   - produce the craving (craves ?tgt ?att)
+  ;;   - remove pain and the outstanding attacked record
+  ;;   - advance the current step
+  (:action Succumb
+    :parameters (?tgt - agent ?att - agent ?s - step ?s2 - step)
     :precondition (and
-      (hand ?obj0)
-      (cats ?obj1)
-      (texture ?obj2)
-      (next ?obj0 ?obj2)
-      (next ?obj1 ?obj2)
+      (agent ?att)
+      (agent ?tgt)
+      (current ?s)
+      (next ?s ?s2)
+      (attacked ?att ?tgt)
+      (pain ?tgt)
+      (not (harmony ?tgt))
+      (not (craves ?tgt ?att))
     )
     :effect (and
-      (vase ?obj0 ?obj1)
-      (not (next ?obj0 ?obj2))
+      (craves ?tgt ?att)
+      (not (pain ?tgt))
+      (not (attacked ?att ?tgt))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
+  ;; Overcome: an agent overcomes pain and moves into harmony.
+  ;; Preconditions:
+  ;;   - current step and its successor
+  ;;   - the agent is in pain
+  ;;   - agent is not already in harmony
+  ;; Effects:
+  ;;   - remove pain and set harmony
+  ;;   - advance the current step
+  (:action Overcome
+    :parameters (?x - agent ?s - step ?s2 - step)
     :precondition (and
-      (hand ?obj0)
-      (sneeze ?obj1)
-      (texture ?obj2)
-      (next ?obj1 ?obj2)
-      (next ?obj0 ?obj2)
+      (agent ?x)
+      (current ?s)
+      (next ?s ?s2)
+      (pain ?x)
+      (not (harmony ?x))
     )
     :effect (and
-      (vase ?obj0 ?obj1)
-      (not (next ?obj0 ?obj2))
+      (harmony ?x)
+      (not (pain ?x))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj ?obj3 - obj)
+  ;; Feast: an agent feasts and thereby forms a craving toward a victim.
+  ;; Preconditions:
+  ;;   - current step and its successor
+  ;;   - the victim is not currently in pain (feast does not require prior pain)
+  ;; Effects:
+  ;;   - create a craving from eater to victim
+  ;;   - advance the current step
+  (:action Feast
+    :parameters (?e - agent ?v - agent ?s - step ?s2 - step)
     :precondition (and
-      (sneeze ?obj0)
-      (texture ?obj1)
-      (texture ?obj2)
-      (stupendous ?obj3)
-      (next ?obj0 ?obj1)
-      (collect ?obj1 ?obj3)
-      (collect ?obj2 ?obj3)
+      (agent ?e)
+      (agent ?v)
+      (current ?s)
+      (next ?s ?s2)
+      (not (pain ?v))
     )
     :effect (and
-      (next ?obj0 ?obj2)
-      (not (next ?obj0 ?obj1))
+      (craves ?e ?v)
+      (not (current ?s))
+      (current ?s2)
     )
   )
-
-  (:action memory
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
-    :precondition (and
-      (cats ?obj0)
-      (spring ?obj1)
-      (spring ?obj2)
-      (next ?obj0 ?obj1)
-    )
-    :effect (and
-      (next ?obj0 ?obj2)
-      (not (next ?obj0 ?obj1))
-    )
-  )
-
-  (:action tightfisted
-    :parameters (?obj0 - obj ?obj1 - obj ?obj2 - obj)
-    :precondition (and
-      (hand ?obj0)
-      (sneeze ?obj1)
-      (texture ?obj2)
-      (next ?obj1 ?obj2)
-      (vase ?obj0 ?obj1)
-    )
-    :effect (and
-      (next ?obj0 ?obj2)
-      (not (vase ?obj0 ?obj1))
-    )
-  )
-
 )

@@ -1,31 +1,59 @@
-(define (problem audited_scenario)
-  (:domain multiagent-orchestration)
+(define (problem orchestrator-problem)
+  (:domain orchestrator-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    orch1 - orchestrator
+    w1 w2 - worker
+
+    ;; Phases
+    p1 p2 - phase
+
+    ;; Tasks
+    t1 t2 t3 - task
   )
 
-  ;; Explicit initial facts required by the audited plan (inferred and made explicit).
-  ;; These are the minimal atoms the plan needs, provided in the initial state.
   (:init
-    ;; Required static capabilities/attributes
-    (cats object_0)
-    (hand object_8)
-    (hand object_7)
-    (texture object_6)
-    (texture object_5)
-    (spring object_6)
-    (spring object_5)
+    ;; Orchestrator and worker availability
+    (available-orch orch1)
+    (available-worker w1)
+    (available-worker w2)
 
-    ;; Seed 'next' relations required by the action schemas so that actions can causally produce the inferred final nexts.
-    (next object_8 object_6)
-    (next object_7 object_6)
-    (next object_0 object_6)
+    ;; Phase sequencing: p1 -> p2, and p2 is final
+    (phase-next p1 p2)
+    (phase-final p2)
+
+    ;; Tasks assigned to phases
+    (task-in-phase t1 p1)
+    (task-in-phase t2 p1)
+    (task-in-phase t3 p2)
+
+    ;; In-phase task ordering:
+    ;; Phase p1: t1 then t2 (t1 is first, t2 has predecessor t1 and is last for p1)
+    (task-first t1)
+    (task-predecessor t1 t2)
+    (phase-last-task p1 t2)
+
+    ;; Phase p2: single task t3 (first and last)
+    (task-first t3)
+    (phase-last-task p2 t3)
+
+    ;; Active phase initially is p1
+    (phase-active p1)
   )
 
-  ;; Goals (the auditor's inferred / reconciled terminal conditions).
-  ;; These must hold in the final state; the domain contains only actions that can produce them causally.
   (:goal (and
-    (next object_8 object_5)
-    (next object_7 object_5)
+    ;; All tasks completed
+    (task-done t1)
+    (task-done t2)
+    (task-done t3)
+
+    ;; All phases completed
+    (phase-done p1)
+    (phase-done p2)
+
+    ;; Agents end available
+    (available-worker w1)
+    (available-worker w2)
+    (available-orch orch1)
   ))
 )

@@ -1,133 +1,160 @@
-(define (domain repoint-domain)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types item step)
+(define (domain transport_combined)
+  :requirements :strips :typing :negative-preconditions
+  :types
+    object
+    package - object
+    vehicle - object
+    truck - vehicle
+    airplane - vehicle
+    location - object
+    city - object
+    stage - object
 
-  (:predicates
-    (hand ?o - item)
-    (cats ?o - item)
-    (texture ?o - item)
-    (vase ?a ?b - item)
-    (next ?a ?b - item)
-    (collect ?a ?b - item)
-    (sneeze ?o - item)
-    (stupendous ?o - item)
-    (spring ?o - item)
-    (at-step ?s - step)
-    (succ ?s1 ?s2 - step)
+  :predicates
+    ;; Location of objects (packages and vehicles)
+    (at ?o - object ?l - location)
+
+    ;; Package is inside a vehicle
+    (in ?p - package ?v - vehicle)
+
+    ;; Package currently not in any vehicle (explicit, maintained by actions)
+    (free ?p - package)
+
+    ;; Location to city mapping
+    (in-city ?l - location ?c - city)
+
+    ;; Airport marker for locations
+    (airport ?l - location)
+
+    ;; Discrete staged time objects and global current stage
+    (stage ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
+    (current ?s - stage)
   )
 
-  (:action paltry
-    :parameters (?x - item ?y - item ?z - item ?s - step ?s2 - step)
+  ;; Truck actions (prefixed with 'truck-'): require and advance the global current stage.
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (at-step ?s)
+      (current ?s)
       (succ ?s ?s2)
+      (at ?t ?l)
+      (at ?p ?l)
+      (free ?p)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
-  )
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
 
-  (:action sip
-    :parameters (?p - item ?q - item ?r - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?p)
-      (cats ?q)
-      (texture ?r)
-      (next ?p ?r)
-      (next ?q ?r)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (vase ?p ?q)
-      (not (next ?p ?r))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
-  )
-
-  (:action clip
-    :parameters (?a - item ?b - item ?c - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-      (not (at-step ?s))
-      (at-step ?s2)
+      ;; package moves into truck
+      (in ?p ?t)
+      (not (at ?p ?l))
+      (not (free ?p))
     )
   )
 
-  (:action wretched
-    :parameters (?p - item ?from - item ?to - item ?m - item ?s - step ?s2 - step)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?p)
-      (texture ?from)
-      (texture ?to)
-      (stupendous ?m)
-      (next ?p ?from)
-      (collect ?from ?m)
-      (collect ?to ?m)
-      (at-step ?s)
+      (current ?s)
       (succ ?s ?s2)
+      (at ?t ?l)
+      (in ?p ?t)
     )
     :effect (and
-      (next ?p ?to)
-      (not (next ?p ?from))
-      (not (at-step ?s))
-      (at-step ?s2)
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
+
+      ;; package removed from truck and placed at truck location
+      (not (in ?p ?t))
+      (at ?p ?l)
+      (free ?p)
     )
   )
 
-  (:action memory
-    :parameters (?a - item ?b - item ?c - item ?s - step ?s2 - step)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-      (at-step ?s)
+      (current ?s)
       (succ ?s ?s2)
+      (at ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
     )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-      (not (at-step ?s))
-      (at-step ?s2)
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
+
+      ;; truck moves between locations within same city
+      (not (at ?t ?from))
+      (at ?t ?to)
     )
   )
 
-  (:action tightfisted
-    :parameters (?x - item ?y - item ?z - item ?s - step ?s2 - step)
+  ;; Airplane actions (prefixed with 'plane-'): require and advance the global current stage.
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (at-step ?s)
+      (current ?s)
       (succ ?s ?s2)
+      (at ?a ?l)
+      (at ?p ?l)
+      (airport ?l)
+      (free ?p)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (at-step ?s))
-      (at-step ?s2)
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
+
+      ;; package moves into airplane
+      (in ?p ?a)
+      (not (at ?p ?l))
+      (not (free ?p))
+    )
+  )
+
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?l - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (at ?a ?l)
+      (in ?p ?a)
+      (airport ?l)
+    )
+    :effect (and
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
+
+      ;; package removed from airplane and placed at airport location
+      (not (in ?p ?a))
+      (at ?p ?l)
+      (free ?p)
+    )
+  )
+
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (at ?a ?from)
+      (airport ?from)
+      (airport ?to)
+    )
+    :effect (and
+      ;; advance global stage
+      (not (current ?s))
+      (current ?s2)
+
+      ;; airplane moves between airports of possibly different cities
+      (not (at ?a ?from))
+      (at ?a ?to)
     )
   )
 )

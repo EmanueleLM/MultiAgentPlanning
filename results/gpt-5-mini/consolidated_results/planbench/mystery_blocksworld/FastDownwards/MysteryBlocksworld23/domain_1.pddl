@@ -1,210 +1,84 @@
-(define (domain MysteryBlocksworld23)
+(define (domain mysteryblocksworld23)
   (:requirements :strips :typing :negative-preconditions)
   (:types obj)
 
   (:predicates
-    (cats ?o - obj)
-    (collect ?o1 - obj ?o2 - obj)
-    (hand ?o - obj)
-    (next ?o1 - obj ?o2 - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (texture ?o - obj)
-    (vase ?h - obj ?c - obj)
+    (craves ?o - obj ?p - obj)    ; ?o craves ?p
+    (harmony)                     ; global harmony phase
+    (pain)                        ; global pain phase
+    (planet ?o - obj)             ; ?o is a planet
+    (province ?o - obj)           ; ?o is a province
+    (attacked ?o - obj)           ; bookkeeping: ?o was attacked and awaits possible succumb
   )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ; Actions originating from observer_A (namespaced observer_A_*)
-  ; Each action exactly encodes the preconditions and effects reported.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (:action observer_A_paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ; Attack action: requires a target that is both province and planet, and global harmony.
+  ; Effects: enter pain phase, remove province & planet & harmony for that object, mark attacked.
+  (:action attack
+    :parameters (?x - obj)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
+                    (province ?x)
+                    (planet ?x)
+                    (harmony)
+                   )
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+              (pain)
+              (not (province ?x))
+              (not (planet ?x))
+              (not (harmony))
+              (attacked ?x)
+            )
   )
 
-  (:action observer_A_sip
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ; Succumb action: resolves a specific attacked object under pain, restoring that object's province & planet and harmony.
+  ; Removes the global pain and the attacked marker.
+  (:action succumb
+    :parameters (?x - obj)
     :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
+                    (pain)
+                    (attacked ?x)
+                   )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+              (province ?x)
+              (planet ?x)
+              (harmony)
+              (not (pain))
+              (not (attacked ?x))
+            )
   )
 
-  (:action observer_A_clip
-    :parameters (?a - obj ?b - obj ?c - obj)
+  ; Overcome action: given a province held by ?y during pain, transfer province to ?x, create craving (craves ?x ?y),
+  ; restore harmony, and consume the province ?y and the pain marker.
+  (:action overcome
+    :parameters (?x - obj ?y - obj)
     :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
+                    (province ?y)
+                    (pain)
+                   )
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+              (harmony)
+              (province ?x)
+              (craves ?x ?y)
+              (not (province ?y))
+              (not (pain))
+            )
   )
 
-  (:action observer_A_wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
+  ; Feast action: when an object ?x currently craves ?y and holds a province during harmony,
+  ; consume the craving, transfer the province back to ?y, enter pain, and remove harmony.
+  (:action feast
+    :parameters (?x - obj ?y - obj)
     :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
+                    (craves ?x ?y)
+                    (province ?x)
+                    (harmony)
+                   )
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action observer_A_memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action observer_A_tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
-  )
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ; Actions originating from observer_B (namespaced observer_B_*)
-  ; These are the same schemas reported by observer_B, kept distinct to
-  ; preserve provenance.
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (:action observer_B_paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  (:action observer_B_sip
-    :parameters (?h - obj ?c - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
-    )
-  )
-
-  (:action observer_B_clip
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
-    )
-    :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
-    )
-  )
-
-  (:action observer_B_wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
-    :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
-    )
-    :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
-    )
-  )
-
-  (:action observer_B_memory
-    :parameters (?c - obj ?sp1 - obj ?sp2 - obj)
-    :precondition (and
-      (cats ?c)
-      (spring ?sp1)
-      (spring ?sp2)
-      (next ?c ?sp1)
-    )
-    :effect (and
-      (next ?c ?sp2)
-      (not (next ?c ?sp1))
-    )
-  )
-
-  (:action observer_B_tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
-    )
-    :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
-    )
+              (pain)
+              (province ?y)
+              (not (craves ?x ?y))
+              (not (province ?x))
+              (not (harmony))
+            )
   )
 
 )

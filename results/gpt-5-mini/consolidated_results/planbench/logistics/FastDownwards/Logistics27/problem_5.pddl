@@ -1,54 +1,64 @@
-(define (problem logistics27-problem)
-  (:domain logistics27)
-  (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - object
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 - stage
-  )
-  (:init
-    ;; chosen initial statement variant (second variant)
-    (cats object_0)
-    (cats object_1)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
-    (hand object_12)
-    (hand object_13)
-    (hand object_14)
-    (next object_0 object_6)
-    (next object_1 object_9)
-    (next object_12 object_11)
-    (next object_13 object_6)
-    (next object_14 object_8)
-    (next object_4 object_7)
-    (next object_5 object_10)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_9)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_10)
-    (texture object_11)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+(define (problem transport_problem)
+  (:domain transport_domain)
 
-    ;; discrete stage ordering and single current stage marker to enforce contiguous, stepwise progression
-    (succ s0 s1) (succ s1 s2) (succ s2 s3) (succ s3 s4) (succ s4 s5)
-    (succ s5 s6) (succ s6 s7) (succ s7 s8) (succ s8 s9) (succ s9 s10)
-    (succ s10 s11) (succ s11 s12) (succ s12 s13) (succ s13 s14) (succ s14 s15)
-    (succ s15 s16) (succ s16 s17) (succ s17 s18) (succ s18 s19) (succ s19 s20)
-    (succ s20 s21) (succ s21 s22) (succ s22 s23) (succ s23 s24) (succ s24 s25)
-    (succ s25 s26) (succ s26 s27) (succ s27 s28) (succ s28 s29) (succ s29 s30)
-    (current s0)
+  (:objects
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 package_1 package_2 - package
+    location_0_0 location_0_1 location_0_2 location_1_0 location_1_1 location_1_2 - location
+    city_0 city_1 - city
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9
+    stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19 - stage
   )
+
+  (:init
+    (next stage_0 stage_1)
+    (next stage_1 stage_2)
+    (next stage_2 stage_3)
+    (next stage_3 stage_4)
+    (next stage_4 stage_5)
+    (next stage_5 stage_6)
+    (next stage_6 stage_7)
+    (next stage_7 stage_8)
+    (next stage_8 stage_9)
+    (next stage_9 stage_10)
+    (next stage_10 stage_11)
+    (next stage_11 stage_12)
+    (next stage_12 stage_13)
+    (next stage_13 stage_14)
+    (next stage_14 stage_15)
+    (next stage_15 stage_16)
+    (next stage_16 stage_17)
+    (next stage_17 stage_18)
+    (next stage_18 stage_19)
+    (at-stage stage_0)
+
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
+
+    (is-airport location_0_0)
+    (is-airport location_1_0)
+
+    (air-route location_0_0 location_1_0)
+    (air-route location_1_0 location_0_0)
+
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_1)
+    (at-plane airplane_0 location_0_0)
+    (at-plane airplane_1 location_1_0)
+
+    (at-package package_0 location_1_2)
+    (at-package package_1 location_0_0)
+    (at-package package_2 location_0_2)
+  )
+
   (:goal (and
-    (next object_12 object_10)
-    (next object_13 object_10)
-    (next object_14 object_9)
+    (at-package package_0 location_1_1)
+    (at-package package_1 location_1_1)
+    (at-package package_2 location_1_0)
   ))
 )

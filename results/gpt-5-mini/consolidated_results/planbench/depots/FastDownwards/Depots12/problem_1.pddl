@@ -1,78 +1,92 @@
-(define (problem orchestrated-problem)
-  (:domain orchestrated)
+(define (problem depots12-instance)
+  (:domain depots-logistics)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; pallets (surfaces)
+    pallet0 pallet1 pallet2 pallet3 - pallet
+
+    ;; crates
+    crate0 crate1 crate2 - crate
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    ;; time stages
+    step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 step11 step12 - time
   )
 
   (:init
-    ;-- Facts originating from Problem A (agent_a)
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_10)
-    (hand object_11)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_11 object_5)
-    (next object_3 object_6)
-    (next object_4 object_7)
-    (next object_9 object_8)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; initial locations (places and surfaces)
+    (pile)
+    ;; trucks
+    (truck-at truck0 depot1)
+    (truck-at truck1 depot0)
+    (truck-at truck2 depot1)
 
-    ;-- Facts originating from Problem B (agent_b)
-    (cats object_1)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-    (hand object_12)
-    (hand object_11) ; already listed, included for clarity
-    (hand object_10)
-    (next object_0 object_6)
-    (next object_1 object_8)
-    (next object_10 object_9)
-    (next object_11 object_6)
-    (next object_12 object_6)
-    (next object_4 object_7)
-    (next object_5 object_8)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_8)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; hoists
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
 
-    ;-- Note: combined initial facts are the union of the two problem statements.
+    ;; pallets at places
+    (surface-at pallet0 depot0)
+    (surface-at pallet1 depot1)
+    (surface-at pallet2 depot2)
+    (surface-at pallet3 distributor0)
+
+    ;; crates initially stacked and located
+    ;; crate0 is on pallet2 at depot2
+    (on crate0 pallet2)
+    (crate-at crate0 depot2)
+    ;; crate1 is on pallet3 at distributor0
+    (on crate1 pallet3)
+    (crate-at crate1 distributor0)
+    ;; crate2 is on crate1 (so crate2 is at distributor0 as well)
+    (on-crate crate2 crate1)
+    (crate-at crate2 distributor0)
+
+    ;; clear predicates
+    (clear-pallet pallet0)
+    (clear-pallet pallet1)
+    ;; pallet2 is not clear (crate0 on it), pallet3 not clear (crate1 on it)
+    (clear-crate crate0)
+    (clear-crate crate2)
+    ;; crate1 is not clear (crate2 on it)
+
+    ;; hoist availability
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
+
+    ;; no crates in trucks initially
+
+    ;; stage progression facts
+    (current step0)
+    (next step0 step1)
+    (next step1 step2)
+    (next step2 step3)
+    (next step3 step4)
+    (next step4 step5)
+    (next step5 step6)
+    (next step6 step7)
+    (next step7 step8)
+    (next step8 step9)
+    (next step9 step10)
+    (next step10 step11)
+    (next step11 step12)
   )
 
-  ;; Combined goals: both Goal A and Goal B must be achieved.
-  (:goal
-    (and
-      ;; Goal A
-      (next object_10 object_8)
-      (next object_11 object_7)
-      (next object_9 object_6)
-
-      ;; Goal B
-      (next object_10 object_7)
-      (next object_11 object_9)
-      (next object_12 object_8)
-    )
-  )
+  (:goal (and
+    ;; final stacking requirements (must hold in the final state produced by sequences of staged actions)
+    (on-crate crate0 crate1)  ;; crate0 on crate1
+    (on crate1 pallet3)       ;; crate1 on pallet3
+    (on crate2 pallet1)       ;; crate2 on pallet1
+  ))
 )

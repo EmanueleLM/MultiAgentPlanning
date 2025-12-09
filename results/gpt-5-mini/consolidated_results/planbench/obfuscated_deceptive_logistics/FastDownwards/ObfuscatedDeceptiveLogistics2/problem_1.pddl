@@ -1,12 +1,12 @@
-(define (problem ObfuscatedDeceptiveLogistics2-prob1)
+(define (problem ObfuscatedDeceptiveLogistics2-prob)
   (:domain ObfuscatedDeceptiveLogistics2)
-
   (:objects
     object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - object
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 - time
   )
 
   (:init
-    ;; From the first statement (variant 1 initial conditions)
+    ;; initial relation facts (grounded)
     (cats object_0)
     (collect object_5 object_1)
     (collect object_6 object_2)
@@ -16,7 +16,7 @@
     (next object_3 object_5)
     (next object_4 object_6)
     (next object_7 object_6)
-    (next object_8 object_5)
+    (next object_8 object_6)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -25,13 +25,20 @@
     (stupendous object_2)
     (texture object_5)
     (texture object_6)
+
+    ;; timepoint control: linear ordered timepoints and current time at t0
+    (succ t0 t1)
+    (succ t1 t2)
+    (succ t2 t3)
+    (succ t3 t4)
+    (succ t4 t5)
+    (succ t5 t6)
+    (succ t6 t7)
+    (succ t7 t8)
+    (current-time t0)
   )
 
-  ;; Goal DOES NOT explicitly state the plan; it only requires the target facts
-  (:goal
-    (and
-      (next object_7 object_6)
-      (next object_8 object_6)
-    )
-  )
-)
+  (:goal (and
+    (next object_7 object_5)
+    (next object_8 object_5)
+  ))

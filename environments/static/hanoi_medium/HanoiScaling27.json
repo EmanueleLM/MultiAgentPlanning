@@ -1,0 +1,87 @@
+{
+    "name": "HanoiScaling27",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "player",
+            "rules_auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "There are five disks named A, B, C, D, E from smallest to largest.",
+                "A legal action is to move the top disk from one peg to another peg."
+            ],
+            "goal": "Move the stack of five disks from the right peg to the left peg while leaving the middle peg empty."
+        },
+        "rules_auditor": {
+            "private_information": [
+                "You must enforce that only one disk moves at a time.",
+                "You must enforce that only the top disk of any peg can be moved.",
+                "You must enforce that a larger disk may never be placed on top of a smaller disk.",
+                "You must detect and remove bookkeeping shortcuts such as token quotas or post-hoc penalties."
+            ],
+            "goal": "Audit and ensure temporal and causal consistency of any proposed plan fragments and remove any shortcuts or assumptions that violate the true puzzle constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You will receive plan fragments and audit reports from other agents and must integrate them."
+            ],
+            "goal": "Produce a complete PDDL domain and problem for the Tower of Hanoi instance with five disks targeting the FastDownwards solver so that the goal is achieved and the middle peg is empty."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 5
+        },
+        "public_information": [
+            "There are three pegs called left peg, middle peg, and right peg.",
+            "There are five disks from smallest to largest: disk A, disk B, disk C, disk D, disk E.",
+            "The only allowed action is to move the top disk from one peg to another peg.",
+            "Only one disk can be moved at a time.",
+            "Only the top disk of a peg can be moved.",
+            "A larger disk may never be placed on top of a smaller disk.",
+            "Once a disk is moved, it preserves its relative size relationship with the others.",
+            "Initial state: the right peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. The middle peg and the left peg are empty.",
+            "Goal state: the left peg holds from top to bottom disk A, disk B, disk C, disk D, disk E. The right peg and the middle peg are empty.",
+            "The middle peg may be used as an intermediate parking spot but must be empty in the final state."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analysis": {
+                "input": [],
+                "output": "player_plan_fragment",
+                "system_prompt": "You are an agent that reasons about legal move sequences for the Tower of Hanoi. Provide explicit step by step plan fragments that obey the puzzle rules and describe state transitions after each move. Do not emit PDDL. Focus on listing concrete moves, preconditions, and postconditions for those moves.",
+                "prompt": "You are named player. Use the public information about the puzzle and your private knowledge to produce a sequence of legal moves or a fragment of a plan that advances the global goal. Describe each move as a triple of source peg, destination peg, and disk moved, and describe the resulting top-of-peg conditions. Keep your reasoning explicit. Do not generate PDDL or assume any bookkeeping shortcuts."
+            }
+        },
+        "rules_auditor": {
+            "audit": {
+                "input": [
+                    "player_plan_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for sequential plans. Your job is to inspect proposed move sequences and to remove or flag any implicit shortcuts, token systems, post-hoc justifications, or assumptions that break the true puzzle constraints. Do not emit PDDL.",
+                "prompt": "You are named rules_auditor. Receive plan fragments from the player and verify that each move obeys the rules of the Tower of Hanoi. Point out any illegal moves or implicit assumptions. Provide corrected move sequences or constraints required to make the fragment valid. Produce a concise audit report suitable for an orchestrator to incorporate."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_plan_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL modeling and must produce a PDDL domain and a PDDL problem file ready for the FastDownwards solver. Keep agent actions distinct and merge the information provided by other agents. The PDDL must faithfully encode the Tower of Hanoi rules with five disks and three pegs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compliance and avoid using any runtime bookkeeping shortcuts in the encoding.",
+                "prompt": "You are named orchestrator. Integrate the player's plan fragments and the auditor's audit report to produce a complete PDDL domain and problem that implements the Tower of Hanoi instance described in the public information. Ensure the domain models the single move action with appropriate preconditions and effects that capture top-of-peg constraints and disk size ordering. Ensure the problem encodes the initial and goal states for disks A through E on the right and left pegs respectively, with the middle peg empty in the goal. Enclose the domain between <domain></domain> and the problem between <problem></problem>. The output must be suitable for FastDownwards."
+            }
+        },
+        "constraints": [
+            "player.analysis->orchestrator.pddl",
+            "rules_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

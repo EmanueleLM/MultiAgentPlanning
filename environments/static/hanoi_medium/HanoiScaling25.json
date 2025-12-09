@@ -1,0 +1,105 @@
+{
+    "name": "HanoiScaling25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_manager",
+            "rule_enforcer",
+            "auditor",
+            "orchestrator"
+        ],
+        "disk_manager": {
+            "private_information": [
+                "There are five disks named A B C D E ordered from smallest to largest where A is smallest and E is largest.",
+                "There are three pegs named left middle right.",
+                "A disk can only be moved if it is the top disk on its peg."
+            ],
+            "goal": "Provide a complete, explicit structural model of the Tower of Hanoi instance, including disks, pegs, initial stacking order and the desired goal stacking order."
+        },
+        "rule_enforcer": {
+            "private_information": [
+                "Legal moves consist of moving the top disk from one peg to another peg.",
+                "A move must never place a larger disk on top of a smaller disk.",
+                "Only one disk may be moved at a time and the relative size ordering among disks must be preserved."
+            ],
+            "goal": "Provide a formal set of invariants, preconditions and abstract effects that encode the legal moves and the puzzle rules without using solver-specific syntax."
+        },
+        "auditor": {
+            "private_information": [
+                "As auditor my role is to analyze temporal and causal constraints and to remove bookkeeping shortcuts.",
+                "Bookkeeping shortcuts include token quotas, post-hoc penalties, or any non-physical artifact that changes causal ordering of moves."
+            ],
+            "goal": "Audit the model and rule set for temporal and causal consistency, eliminate bookkeeping shortcuts, and produce recommendations to ensure a sound planning model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You must integrate the structural model, the rule invariants, and the auditor report into a final PDDL domain and problem.",
+                "The final PDDL must be compatible with the FastDownwards planner."
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem that fully models the 5-disk Tower of Hanoi instance and that is ready to be solved by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 1,
+            "disks": 5
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with five disks labeled A B C D E from smallest to largest.",
+            "Action available: move the top disk from one peg to another peg.",
+            "Initial condition: left peg holds from top to bottom A B C D E. Middle peg is empty. Right peg is empty.",
+            "Goal condition: middle peg must hold from top to bottom A B C D E while left peg and right peg are empty.",
+            "Rules: only one disk can be moved at a time. Only the top disk of any peg may be moved. A larger disk may never be placed on top of a smaller disk.",
+            "The right peg may be used as an intermediate parking spot but must end up empty in the final state.",
+            "Once moved, a disk retains its relative size ordering with the other disks."
+        ]
+    },
+    "workflow": {
+        "disk_manager": {
+            "model": {
+                "input": [],
+                "output": "hanoi_model",
+                "system_prompt": "You are the Disk Manager. Your job is to create a precise structural description of the Tower of Hanoi instance. Do not produce PDDL. Produce a clear machine-readable model that lists disks, their sizes, pegs, and the stacking relations that define the initial state and the goal state.",
+                "prompt": "You are named disk_manager. Use the public information and your private information to produce the following structured outputs: a list of objects with types, an ordering relation between disks expressing sizes, a representation of each peg as a stack with top-to-bottom contents for the initial state, and a representation of the desired goal stacking. Use explicit names for objects and relations. Keep the representation solver-agnostic and avoid PDDL syntax. If you detect missing information, state what is missing rather than making assumptions."
+            }
+        },
+        "rule_enforcer": {
+            "rules": {
+                "input": [],
+                "output": "hanoi_rules",
+                "system_prompt": "You are the Rule Enforcer. Your job is to formalize the allowed transitions and the invariants of the puzzle. Do not emit PDDL. Provide invariant formulas, precondition templates, and effect templates that precisely capture legal moves and the prohibition of placing larger disks on smaller ones.",
+                "prompt": "You are named rule_enforcer. Using the public information and your private information, produce a set of formal constraints and move templates. For the move action, specify required preconditions in terms of top-of-peg and size relations, and specify the abstract effects on stacks. Also list any global invariants that must hold after every action. Highlight any assumptions you need to make."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "hanoi_model",
+                    "hanoi_rules"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are the Auditor for temporal and causal consistency. Your task is to analyze the provided model and rules to detect and remove bookkeeping shortcuts and to ensure that the model enforces causal and temporal correctness. Produce a concise audit report. Do not produce PDDL.",
+                "prompt": "You are named auditor. You will receive a model and a set of rules. Check for temporal inconsistencies, hidden shortcuts such as token quotas, aggregated moves, or post-hoc penalties that would change the causal structure. Verify that all move actions are atomic, that only top disks are moved, and that size constraints are enforced. If you find shortcuts, provide corrected constraints or additional invariants that remove them. Provide a final statement of whether the model is causally and temporally sound."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "hanoi_model",
+                    "hanoi_rules",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the Orchestrator and an expert in producing PDDL models targeted to the FastDownwards planner. Integrate the provided model, rules, and audit report into a single PDDL domain and a single PDDL problem. The final output must be solver-ready for FastDownwards. Always enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use requirements compatible with FastDownwards and avoid nonstandard extensions. Keep agent actions distinct in naming if multiple agent perspectives appear.",
+                "prompt": "You are named orchestrator. You have received a structural model, a set of formal rules, and an auditor report. Integrate them into a complete PDDL domain and a PDDL problem that represent the 5-disk Tower of Hanoi instance described in the public information. The domain must include an action for moving the top disk from one peg to another with correct preconditions and effects. Model disk sizes, peg top relations, and the initial and goal states exactly as specified. Ensure the PDDL is compatible with FastDownwards, include an appropriate :requirements line, and avoid solver-specific extensions that FastDownwards does not support. Enclose the domain in <domain></domain> and the problem in <problem></problem>. If the inputs conflict or lack necessary details, resolve them conservatively in line with the auditor's recommendations and document any resolutions in comments within the PDDL."
+            }
+        },
+        "constraints": [
+            "disk_manager.model->orchestrator.pddl",
+            "rule_enforcer.rules->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

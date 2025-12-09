@@ -1,120 +1,133 @@
-(define (domain logistics5)
+(define (domain logistics_multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types city location truck airplane package stage)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o - object ?p - object)
-    (next ?o - object ?p - object)
-    (sneeze ?o - object)
-    (collect ?o - object ?p - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    ;; Static predicates
+    (location_in_city ?loc - location ?c - city)
+    (truck_assigned_to ?t - truck ?c - city)
+    (airport ?loc - location)
+    (next ?s1 - stage ?s2 - stage)
+
+    ;; Stage predicate to enforce discrete, ordered progression
+    (at_stage ?s - stage)
+
+    ;; Dynamic predicates
+    (at_truck ?t - truck ?loc - location)
+    (at_airplane ?a - airplane ?loc - location)
+    (at_pkg ?p - package ?loc - location)
+    (in_truck ?p - package ?t - truck)
+    (in_plane ?p - package ?a - airplane)
   )
 
-  ;; paltry: requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;; effects: add next o0 o2, remove vase o0 o1
-  (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Truck operator actions (prefix: truck_operator_)
+  ;; All actions advance the global stage: consume current stage and produce next stage.
+  (:action truck_operator_drive
+    :parameters (?s - stage ?s2 - stage ?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_truck ?t ?from)
+      (location_in_city ?from ?c)
+      (location_in_city ?to ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  ;; sip: requires hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;; effects: add vase o0 o1, remove next o0 o2
-  (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (at_truck ?t ?from))
+      (at_truck ?t ?to)
     )
   )
 
-  ;; clip: requires hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;; effects: add vase o0 o1, remove next o0 o2
-  (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action truck_operator_load
+    :parameters (?s - stage ?s2 - stage ?t - truck ?p - package ?loc - location ?c - city)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_truck ?t ?loc)
+      (at_pkg ?p ?loc)
+      (location_in_city ?loc ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (at_pkg ?p ?loc))
+      (in_truck ?p ?t)
     )
   )
 
-  ;; wretched: requires sneeze o0, texture o1, texture o2, stupendous o3,
-  ;; next o0 o1, collect o1 o3, collect o2 o3
-  ;; effects: add next o0 o2, remove next o0 o1
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
+  (:action truck_operator_unload
+    :parameters (?s - stage ?s2 - stage ?t - truck ?p - package ?loc - location ?c - city)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_truck ?t ?loc)
+      (in_truck ?p ?t)
+      (location_in_city ?loc ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (in_truck ?p ?t))
+      (at_pkg ?p ?loc)
     )
   )
 
-  ;; memory: requires cats o0, spring o1, spring o2, next o0 o1
-  ;; effects: add next o0 o2, remove next o0 o1
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; Airplane operator actions (prefix: plane_operator_)
+  (:action plane_operator_load
+    :parameters (?s - stage ?s2 - stage ?a - airplane ?p - package ?loc - location)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_airplane ?a ?loc)
+      (at_pkg ?p ?loc)
+      (airport ?loc)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (at_pkg ?p ?loc))
+      (in_plane ?p ?a)
     )
   )
 
-  ;; tightfisted: requires hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;; effects: add next o0 o2, remove vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action plane_operator_unload
+    :parameters (?s - stage ?s2 - stage ?a - airplane ?p - package ?loc - location)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_airplane ?a ?loc)
+      (in_plane ?p ?a)
+      (airport ?loc)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (in_plane ?p ?a))
+      (at_pkg ?p ?loc)
+    )
+  )
+
+  (:action plane_operator_fly
+    :parameters (?s - stage ?s2 - stage ?a - airplane ?from - location ?to - location ?c1 - city ?c2 - city)
+    :precondition (and
+      (at_stage ?s)
+      (next ?s ?s2)
+      (at_airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (location_in_city ?from ?c1)
+      (location_in_city ?to ?c2)
+      (not (= ?c1 ?c2))
+    )
+    :effect (and
+      (not (at_stage ?s))
+      (at_stage ?s2)
+      (not (at_airplane ?a ?from))
+      (at_airplane ?a ?to)
     )
   )
 )

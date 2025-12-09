@@ -1,0 +1,138 @@
+{
+    "name": "HanoiScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "disk_manager",
+            "strategy_advisor",
+            "rules_auditor",
+            "orchestrator"
+        ],
+        "disk_manager": {
+            "private_information": [
+                "There are six disks named A (smallest) through F (largest).",
+                "Initial configuration: middle peg holds A, B, C, D, E, F from top to bottom.",
+                "Left and right pegs start empty.",
+                "Legal move: move the top disk of one peg to the top of another peg if it is smaller than the disk there or the destination peg is empty."
+            ],
+            "goal": "Provide an exact, machine-readable description of objects, pegs, initial state and desired goal state for the 6-disk Tower of Hanoi instance."
+        },
+        "strategy_advisor": {
+            "private_information": [
+                "Classic optimal solution for N disks uses a recursive pattern that moves N-1 disks to the auxiliary peg, moves the largest disk, then moves the N-1 stack onto it.",
+                "With 6 disks, the minimal number of moves is 2^6 - 1 = 63."
+            ],
+            "goal": "Produce a high-level decomposition of the task into subproblems and a compressed move-generation strategy that is consistent with Tower of Hanoi rules, without emitting PDDL."
+        },
+        "rules_auditor": {
+            "private_information": [
+                "Responsible for verifying temporal and causal consistency and removing bookkeeping shortcuts such as tokens, quotas, or post-hoc penalties.",
+                "Must ensure every proposed move sequence respects: one disk at a time, moving only top disks, never placing larger on smaller, and preserved relative ordering."
+            ],
+            "goal": "Audit the provided specification and strategy for causal and temporal consistency, and output corrections or confirmations as a clean report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Will integrate the machine-readable specification, the strategy decomposition, and the audit report to produce a final PDDL domain and problem targeting the FastDownwards solver.",
+                "Must keep actions and intentions of other agents distinct and reflect them in the final problem specification when relevant."
+            ],
+            "goal": "Produce a PDDL domain and a PDDL problem suitable for the FastDownwards planner that represents the 6-disk Tower of Hanoi instance with the given initial and goal configurations."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "initial_stacks": {
+                "left": [],
+                "middle": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ],
+                "right": []
+            },
+            "goal_stacks": {
+                "left": [],
+                "middle": [],
+                "right": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F"
+                ]
+            }
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with 3 pegs and 6 disks.",
+            "Rules: move only one top disk at a time, may only move the top disk of a peg, never place a larger disk on a smaller disk.",
+            "Objective: move entire stack from middle peg to right peg preserving order, left peg must end empty and may be used as intermediate storage.",
+            "No bookkeeping shortcuts like tokens or post-hoc penalties are allowed."
+        ]
+    },
+    "workflow": {
+        "disk_manager": {
+            "spec": {
+                "input": [],
+                "output": "disk_spec",
+                "system_prompt": "You are an expert at producing concise machine-readable puzzle specifications. Provide a JSON-like fragment listing objects, pegs, disk sizes, initial facts and goal facts for the 6-disk Tower of Hanoi instance. Do not emit PDDL.",
+                "prompt": "You are disk_manager. Use the environment public information and your private knowledge to produce a precise machine-readable specification of objects, pegs, the initial stack configuration, and the goal configuration for the Tower of Hanoi instance. Output only structured facts suitable for downstream planners and auditors."
+            }
+        },
+        "strategy_advisor": {
+            "strategy": {
+                "input": [
+                    "disk_spec"
+                ],
+                "output": "strategy_report",
+                "system_prompt": "You are a strategy expert for recursive and iterative decompositions of puzzles. Provide a clear decomposition of the 6-disk problem into subgoals and a compact move-generation pattern or algorithm that could be used by a planner, without emitting PDDL.",
+                "prompt": "You are strategy_advisor. Given the machine-readable disk specification, produce a high-level strategy and subgoal decomposition explaining dependencies between moves and subproblems, and produce a compact representation of the move-generation logic for 6 disks suitable for translation into PDDL by an integrator."
+            }
+        },
+        "rules_auditor": {
+            "audit": {
+                "input": [
+                    "disk_spec",
+                    "strategy_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal constraints. Verify that the provided specification and strategy strictly respect the Tower of Hanoi rules, and remove or flag any bookkeeping shortcuts or implicit assumptions. Provide corrections or confirmations in a clear structured report.",
+                "prompt": "You are rules_auditor. Inspect the specification and the strategy for violations of single-move constraints, top-disk movement requirements, size ordering constraints, and any use of bookkeeping shortcuts. Produce a structured audit report listing confirmed constraints, discovered issues, and precise corrective recommendations."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "disk_spec",
+                    "strategy_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an integrator that must produce a PDDL domain and a PDDL problem file formatted for the FastDownwards planner. Integrate the machine-readable specification, the strategy decomposition, and the audit report. Keep agent-level intentions distinct in comments or action naming where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are orchestrator. Use the disk specification, the strategy decomposition and the auditor report to produce a complete PDDL domain and a PDDL problem for the 6-disk Tower of Hanoi instance targeting the FastDownwards solver. Ensure the resulting PDDL encodes the rules: move one top disk at a time, only top disks can move, and larger disks cannot be placed on smaller disks. Keep actions clearly named and, if helpful, prefix or qualify actions that correspond to different agents' roles. Output only the PDDL domain and problem enclosed in <domain></domain> and <problem></problem> respectively."
+            }
+        },
+        "constraints": [
+            "disk_manager.spec->strategy_advisor.strategy",
+            "disk_manager.spec->rules_auditor.audit",
+            "strategy_advisor.strategy->rules_auditor.audit",
+            "disk_manager.spec->orchestrator.pddl",
+            "strategy_advisor.strategy->orchestrator.pddl",
+            "rules_auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

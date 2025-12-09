@@ -1,134 +1,89 @@
-(define (domain orchestrator-domain)
+(define (domain manipulator-domain)
+  ; Comments / modeling choices:
+  ; - Three distinct agents are modeled explicitly: a manipulator, an inspector, and an auditor.
+  ; - Locations are explicitly typed as loc objects (source, assembly, inspection, storage).
+  ; - Parts must follow a strict, enforced sequence: assemble -> inspect -> store -> audit.
+  ;   This is enforced by action preconditions: inspection requires assembled; placing into storage
+  ;   requires inspected; auditing requires assembled+inspected+part located in storage.
+  ; - The manipulator holds at most one part at a time using handempty / holding predicates.
+  ; - No penalty or bookkeeping actions are used. All preferences from the specification are encoded
+  ;   as hard preconditions so violating plans are impossible.
+  ; - Negative preconditions are used only to distinguish storage vs non-storage placement.
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent player recorder auditor item place phase)
+  (:types agent part loc)
 
-  ; Predicates
   (:predicates
-    (at ?a - agent ?p - place)
-    (item-at ?i - item ?p - place)
-    (holding ?a - agent ?i - item)
-    (processed ?i - item)
-    (recorded ?i - item)
-    (archived ?i - item)
-    (verified ?i - item)
-    (phase-active ?ph - phase)
-    (phase-next ?ph1 - phase ?ph2 - phase)
-    (phase-complete ?ph - phase)
-    (finalized)
+    ; agent role tags
+    (manipulator ?a - agent)
+    (inspector ?a - agent)
+    (auditor ?a - agent)
+
+    ; agent and part locations
+    (at ?a - agent ?l - loc)
+    (at-part ?p - part ?l - loc)
+
+    ; manipulator holding state
+    (holding ?a - agent ?p - part)
+    (handempty ?a - agent)
+
+    ; processing state of parts
+    (assembled ?p - part)
+    (inspected ?p - part)
+    (audited ?p - part)
+
+    ; station classification predicates for locations
+    (source ?l - loc)
+    (assembly-station ?l - loc)
+    (inspection-station ?l - loc)
+    (storage ?l - loc)
   )
 
-  ; Generic movement for any agent (player, recorder, auditor)
+  ; Move any agent between locations
   (:action move
-    :parameters (?a - agent ?from - place ?to - place)
-    :precondition (and (at ?a ?from) (not (at ?a ?to)))
-    :effect (and (at ?a ?to) (not (at ?a ?from)))
+    :parameters (?a - agent ?from - loc ?to - loc)
+    :precondition (and (at ?a ?from))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
   )
 
-  ; paltry: player_agent picks up an item during the first phase; activates next phase.
-  (:action paltry
-    :parameters (?p - player ?it - item ?loc - place ?ph - phase ?next - phase)
-    :precondition
-      (and
-        (at ?p ?loc)
-        (item-at ?it ?loc)
-        (phase-active ?ph)
-        (phase-next ?ph ?next)
-        (not (holding ?p ?it))
-      )
-    :effect
-      (and
-        (holding ?p ?it)
-        (not (item-at ?it ?loc))
-        (not (phase-active ?ph))
-        (phase-complete ?ph)
-        (phase-active ?next)
-      )
+  ; Manipulator picks a part from a location into its hand (only manipulator can pick)
+  (:action pick
+    :parameters (?a - agent ?p - part ?loc - loc)
+    :precondition (and (manipulator ?a) (at ?a ?loc) (at-part ?p ?loc) (handempty ?a))
+    :effect (and (not (at-part ?p ?loc)) (holding ?a ?p) (not (handempty ?a)))
   )
 
-  ; sip: player_agent processes the held item during the second phase; places it at the processing place and advances phase.
-  (:action sip
-    :parameters (?p - player ?it - item ?loc - place ?ph - phase ?next - phase)
-    :precondition
-      (and
-        (at ?p ?loc)
-        (holding ?p ?it)
-        (phase-active ?ph)
-        (phase-next ?ph ?next)
-      )
-    :effect
-      (and
-        (not (holding ?p ?it))
-        (item-at ?it ?loc)
-        (processed ?it)
-        (not (phase-active ?ph))
-        (phase-complete ?ph)
-        (phase-active ?next)
-      )
+  ; Manipulator places a held part at a non-storage location (e.g., assembly, inspection)
+  (:action place-non-storage
+    :parameters (?a - agent ?p - part ?loc - loc)
+    :precondition (and (manipulator ?a) (at ?a ?loc) (holding ?a ?p) (not (storage ?loc)))
+    :effect (and (at-part ?p ?loc) (not (holding ?a ?p)) (handempty ?a))
   )
 
-  ; clip: recorder_agent creates a record of a processed item while the final phase is active (no phase transition here).
-  (:action clip
-    :parameters (?r - recorder ?it - item ?loc - place ?ph - phase)
-    :precondition
-      (and
-        (at ?r ?loc)
-        (item-at ?it ?loc)
-        (processed ?it)
-        (phase-active ?ph)
-      )
-    :effect
-      (and
-        (recorded ?it)
-      )
+  ; Manipulator places a held part into storage (only allowed if the part was inspected)
+  (:action place-storage
+    :parameters (?a - agent ?p - part ?loc - loc)
+    :precondition (and (manipulator ?a) (at ?a ?loc) (holding ?a ?p) (storage ?loc) (inspected ?p))
+    :effect (and (at-part ?p ?loc) (not (holding ?a ?p)) (handempty ?a))
   )
 
-  ; wretched: recorder_agent archives a previously recorded item; requires recorder at archive location.
-  (:action wretched
-    :parameters (?r - recorder ?it - item ?loc - place)
-    :precondition
-      (and
-        (at ?r ?loc)
-        (recorded ?it)
-        (not (archived ?it))
-      )
-    :effect
-      (and
-        (archived ?it)
-      )
+  ; Manipulator assembles a held part at an assembly station (adds assembled flag)
+  (:action assemble
+    :parameters (?a - agent ?p - part ?loc - loc)
+    :precondition (and (manipulator ?a) (at ?a ?loc) (holding ?a ?p) (assembly-station ?loc) (not (assembled ?p)))
+    :effect (and (assembled ?p))
   )
 
-  ; memory: auditor_agent verifies that an archived item is correctly archived.
-  (:action memory
-    :parameters (?o - auditor ?it - item ?loc - place)
-    :precondition
-      (and
-        (at ?o ?loc)
-        (archived ?it)
-        (not (verified ?it))
-      )
-    :effect
-      (and
-        (verified ?it)
-      )
+  ; Inspector inspects a part that is located at an inspection station; requires assembly first
+  (:action inspect
+    :parameters (?insp - agent ?p - part ?loc - loc)
+    :precondition (and (inspector ?insp) (at ?insp ?loc) (at-part ?p ?loc) (inspection-station ?loc) (assembled ?p) (not (inspected ?p)))
+    :effect (and (inspected ?p))
   )
 
-  ; tightfisted: auditor_agent finalizes the workflow once all terminal conditions hold and agents are in their final positions.
-  ; This action enforces the finalization as an explicit step and therefore encodes ordering (it must be the last step).
-  (:action tightfisted
-    :parameters (?o - auditor ?p - player ?r - recorder ?locP - place ?locR - place ?locO - place ?it - item)
-    :precondition
-      (and
-        (verified ?it)
-        (processed ?it)
-        (archived ?it)
-        (at ?p ?locP)
-        (at ?r ?locR)
-        (at ?o ?locO)
-        (not (finalized))
-      )
-    :effect
-      (and
-        (finalized)
-      )
+  ; Auditor performs final audit on a part that is in storage and has been assembled+inspected
+  (:action audit
+    :parameters (?aud - agent ?p - part ?loc - loc)
+    :precondition (and (auditor ?aud) (at ?aud ?loc) (at-part ?p ?loc) (storage ?loc) (assembled ?p) (inspected ?p) (not (audited ?p)))
+    :effect (and (audited ?p))
   )
 )

@@ -1,35 +1,45 @@
-; Assumptions:
-; - Two agents (agent1, agent2), three locations (locA, locB, locC) and two packages (pkg1, pkg2).
-; - Connections are bidirectional and explicitly listed as ground (connected) facts.
-; - No agent holds any package in the initial state.
-; - All natural-language preferences from analyses were treated as hard constraints (e.g., required handovers are encoded as actions if needed).
-; - If any additional constraints were implied by the analyses (timing, earliest, or soft preferences), they have been represented as strict precondition/effect constraints where applicable.
-(define (problem deliver-packages)
-  (:domain multiagent-delivery)
+; Problem: place three crates onto three specific pallets using the hoist
+; Assumptions (see also separate assumptions note after the problem):
+; - There is one location "dock" where all agents and pallets are located.
+; - All crates (crate0, crate1, crate2) initially reside in truck0.
+; - Pallets pallet0, pallet2, pallet3 are initially empty and located at dock.
+; - Single hoist agent hoist0 and single truck agent truck0 are co-located at dock.
+(define (problem place-crates-on-pallets)
+  (:domain hoist-truck-pallet)
   (:objects
-    agent1 agent2 - agent
-    pkg1 pkg2 - package
-    locA locB locC - location
+    hoist0 - hoist
+    truck0 - truck
+    crate0 crate1 crate2 - crate
+    pallet0 pallet2 pallet3 - pallet
+    dock - location
   )
   (:init
-    ;; agent locations
-    (at agent1 locA)
-    (at agent2 locC)
+    ; locations
+    (at-hoist hoist0 dock)
+    (at-truck truck0 dock)
 
-    ;; package locations (not held)
-    (at_obj pkg1 locA)
-    (at_obj pkg2 locB)
+    ; pallets at dock and free initially
+    (pallet-at pallet0 dock)
+    (pallet-free pallet0)
+    (pallet-at pallet2 dock)
+    (pallet-free pallet2)
+    (pallet-at pallet3 dock)
+    (pallet-free pallet3)
 
-    ;; connectivity (bidirectional)
-    (connected locA locB)
-    (connected locB locA)
-    (connected locB locC)
-    (connected locC locB)
+    ; all crates initially in the truck (assumption)
+    (in-truck crate0 truck0)
+    (in-truck crate1 truck0)
+    (in-truck crate2 truck0)
+
+    ; hoist is initially empty
+    (hoist-empty hoist0)
   )
 
-  (:goal (and
-    ;; delivery goals: pkg1 must be at locC, pkg2 must be at locA
-    (at_obj pkg1 locC)
-    (at_obj pkg2 locA)
-  ))
+  (:goal
+    (and
+      (crate-on-pallet crate0 pallet0)
+      (crate-on-pallet crate1 pallet2)
+      (crate-on-pallet crate2 pallet3)
+    )
+  )
 )

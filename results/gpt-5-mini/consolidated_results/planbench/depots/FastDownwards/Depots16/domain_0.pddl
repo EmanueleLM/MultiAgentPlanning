@@ -1,78 +1,110 @@
-(define (domain integrated-domain)
+(define (domain hoist_truck_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent location item tool)
+  (:types obj place)
 
   (:predicates
-    (at ?a - agent ?l - location)
-    (item-at ?it - item ?l - location)
-    (holding ?a - agent ?it - item)
-    (assembled ?it - item)
-    (inspected ?it - item)
-    (powered ?it - item)
-    (tool-at ?t - tool ?l - location)
+    ;; general location for trucks, hoists, crates, pallets (all are objects of type obj)
+    (at ?o - obj ?p - place)
+
+    ;; stacking and containment
+    (on ?c - obj ?s - obj)       ;; crate c is on surface s (pallet or crate)
+    (in ?c - obj ?t - obj)       ;; crate c is inside truck t
+
+    ;; hoist state
+    (hoist_available ?h - obj)           ;; hoist free to start an operation
+    (hoist_lifting ?h - obj ?c - obj)    ;; hoist h is currently lifting crate c
+
+    ;; top-of-surface / top-of-crate clearance
+    (clear ?x - obj)
+
+    ;; place typing (place type encoded as an object token: kind_depot / kind_distributor)
+    (place_type ?p - place ?t - obj)
+
+    ;; connectivity among places (complete connectivity among depots/distributors)
+    (connected ?p1 - place ?p2 - place)
   )
 
-  ;; Public movement action (unprefixed public schema)
-  (:action move
-    :parameters (?a - agent ?from - location ?to - location)
-    :precondition (and (at ?a ?from) (not (= ?from ?to)))
-    :effect (and (at ?a ?to) (not (at ?a ?from)))
-  )
-
-  ;; Actions from Analyzer A
-  (:action analyzerA_pick
-    :parameters (?a - agent ?it - item ?l - location)
-    :precondition (and (at ?a ?l) (item-at ?it ?l))
-    :effect (and (holding ?a ?it) (not (item-at ?it ?l)))
-  )
-
-  (:action analyzerA_place
-    :parameters (?a - agent ?it - item ?l - location)
-    :precondition (and (at ?a ?l) (holding ?a ?it))
-    :effect (and (item-at ?it ?l) (not (holding ?a ?it)))
-  )
-
-  (:action analyzerA_assemble
-    :parameters (?a - agent ?p1 - item ?p2 - item ?t - tool ?l - location ?out - item)
+  ;; ACTION: hoist lifts a crate off a surface at a place
+  (:action hoist_lift
+    :parameters (?h - obj ?c - obj ?s - obj ?p - place)
     :precondition (and
-                    (at ?a ?l)
-                    (holding ?a ?p1)
-                    (holding ?a ?p2)
-                    (tool-at ?t ?l)
-                    (not (assembled ?out))
-                  )
+      (at ?h ?p)
+      (at ?c ?p)
+      (at ?s ?p)
+      (on ?c ?s)
+      (clear ?c)
+      (hoist_available ?h)
+    )
     :effect (and
-              (assembled ?out)
-              (item-at ?out ?l)
-              (not (holding ?a ?p1))
-              (not (holding ?a ?p2))
-            )
+      (hoist_lifting ?h ?c)
+      (clear ?s)
+      (not (on ?c ?s))
+      (not (at ?c ?p))
+      (not (hoist_available ?h))
+    )
   )
 
-  ;; Actions from Analyzer B
-  (:action analyzerB_inspect
-    :parameters (?a - agent ?d - item ?t - tool ?l - location)
+  ;; ACTION: hoist drops a lifting crate onto a clear surface at the same place
+  (:action hoist_drop
+    :parameters (?h - obj ?c - obj ?s - obj ?p - place)
     :precondition (and
-                    (at ?a ?l)
-                    (assembled ?d)
-                    (item-at ?d ?l)
-                    (tool-at ?t ?l)
-                    (not (inspected ?d))
-                  )
-    :effect (and (inspected ?d))
+      (at ?h ?p)
+      (at ?s ?p)
+      (clear ?s)
+      (hoist_lifting ?h ?c)
+    )
+    :effect (and
+      (at ?c ?p)
+      (on ?c ?s)
+      (clear ?c)
+      (hoist_available ?h)
+      (not (hoist_lifting ?h ?c))
+      (not (clear ?s))
+    )
   )
 
-  (:action analyzerB_activate
-    :parameters (?a - agent ?d - item ?pu - item ?t - tool ?l - location)
+  ;; ACTION: hoist places a lifting crate into a co-located truck
+  (:action hoist_load_into_truck
+    :parameters (?h - obj ?c - obj ?t - obj ?p - place)
     :precondition (and
-                    (at ?a ?l)
-                    (inspected ?d)
-                    (assembled ?d)
-                    (item-at ?d ?l)
-                    (item-at ?pu ?l)
-                    (tool-at ?t ?l)
-                    (not (powered ?pu))
-                  )
-    :effect (and (powered ?pu))
+      (at ?h ?p)
+      (at ?t ?p)
+      (hoist_lifting ?h ?c)
+    )
+    :effect (and
+      (in ?c ?t)
+      (hoist_available ?h)
+      (not (hoist_lifting ?h ?c))
+      (not (at ?c ?p))
+    )
+  )
+
+  ;; ACTION: hoist unloads a crate from a co-located truck and starts lifting it
+  (:action hoist_unload_from_truck
+    :parameters (?h - obj ?c - obj ?t - obj ?p - place)
+    :precondition (and
+      (at ?h ?p)
+      (at ?t ?p)
+      (hoist_available ?h)
+      (in ?c ?t)
+    )
+    :effect (and
+      (hoist_lifting ?h ?c)
+      (not (in ?c ?t))
+      (not (hoist_available ?h))
+    )
+  )
+
+  ;; ACTION: drive a truck from one place to another (connectivity and place-type must be in initial state)
+  (:action DRIVE
+    :parameters (?tr - obj ?from - place ?to - place)
+    :precondition (and
+      (at ?tr ?from)
+      (connected ?from ?to)
+    )
+    :effect (and
+      (at ?tr ?to)
+      (not (at ?tr ?from))
+    )
   )
 )

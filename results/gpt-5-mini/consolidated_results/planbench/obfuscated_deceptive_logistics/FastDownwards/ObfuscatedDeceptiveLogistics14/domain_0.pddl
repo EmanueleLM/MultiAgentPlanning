@@ -1,131 +1,131 @@
-(define (domain orchestration)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types agent phase thing cup clipper item memorytag)
+(define (domain orchestrator-domain)
+  (:requirements :typing :negative-preconditions :strips)
+  (:types agent doc phase task)
+
+  (:constants
+    orchestrator analyst auditor - agent
+    analysis audit_report public_info private_info integrated_report - doc
+    phase1 phase2 phase3 phase4 phase5 - phase
+    paltry_task sip_task clip_task wretched_task memory_task tightfisted_task objects_task - task
+  )
 
   (:predicates
-    (at-phase ?p - phase)
-    (succ ?p1 - phase ?p2 - phase)
-    (holding ?a - agent ?t - thing)
-    (cup-full ?c - cup)
-    (cup-empty ?c - cup)
-    (sipped ?c - cup)
-    (clipper-available ?cl - clipper)
-    (clipped ?it - item)
-    (done-paltry)
-    (done-sip)
-    (done-clip)
-    (done-wretched)
-    (done-memory)
-    (done-tightfisted)
-    (wretched-state)
-    (memorized ?m - memorytag)
-    (tightfisted ?a - agent)
+    (phase-active ?p - phase)
+    (next ?p1 - phase ?p2 - phase)              ; explicit successor links for contiguity
+    (has ?a - agent ?d - doc)                   ; agent possesses document
+    (reviewed ?d - doc)                         ; document reviewed by orchestrator
+    (integrated ?d - doc)                       ; integrated document produced
+    (contains ?d - doc ?sub - doc)              ; d contains sub-document
+    (corrected ?d - doc)                        ; corrections applied
+    (archived ?d - doc)                         ; document archived
+    (sealed ?d - doc)                           ; document sealed for confidentiality
+    (confidential ?d - doc)                     ; document is confidential (private)
+    (published ?d - doc)                        ; document published to public
+    (global-goal ?g - task)                     ; global goal marker (informational)
   )
 
-  ;; The "paltry" action consumes a held thing and advances the phase.
+  ;; Review analysis (paltry) - orchestrator reviews the analyst's analysis in phase1
   (:action paltry
-    :parameters (?a - agent ?p - phase ?pnext - phase ?t - thing)
     :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (holding ?a ?t)
-      (not (done-paltry))
+      (phase-active phase1)
+      (has orchestrator analysis)
+      (not (reviewed analysis))
     )
     :effect (and
-      (done-paltry)
-      (not (holding ?a ?t))
-      (not (at-phase ?p))
-      (at-phase ?pnext)
+      (reviewed analysis)
     )
   )
 
-  ;; The "sip" action consumes a full cup, produces a sipped and empty cup, advances the phase.
+  ;; Review audit report (sip) - orchestrator reviews the auditor's report in phase1
   (:action sip
-    :parameters (?p - phase ?pnext - phase ?c - cup)
     :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (cup-full ?c)
-      (not (done-sip))
+      (phase-active phase1)
+      (has orchestrator audit_report)
+      (not (reviewed audit_report))
     )
     :effect (and
-      (done-sip)
-      (sipped ?c)
-      (cup-empty ?c)
-      (not (cup-full ?c))
-      (not (at-phase ?p))
-      (at-phase ?pnext)
+      (reviewed audit_report)
     )
   )
 
-  ;; The "clip" action requires a sipped cup and an available clipper, produces a clipped item, advances the phase.
+  ;; Move from intake (phase1) to integration (phase2); requires both reviews completed
+  ;; (clip acts as the phase-advance action enforcing the ordered sequence)
   (:action clip
-    :parameters (?p - phase ?pnext - phase ?c - cup ?cl - clipper ?it - item)
     :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (sipped ?c)
-      (clipper-available ?cl)
-      (not (done-clip))
+      (phase-active phase1)
+      (reviewed analysis)
+      (reviewed audit_report)
     )
     :effect (and
-      (done-clip)
-      (clipped ?it)
-      (not (clipper-available ?cl))
-      (not (at-phase ?p))
-      (at-phase ?pnext)
+      (not (phase-active phase1))
+      (phase-active phase2)
     )
   )
 
-  ;; The "wretched" action requires paltry and clip to be completed and advances the phase.
+  ;; Integrate reviewed documents into the integrated_report in phase2, then advance to phase3
+  ;; (wretched performs integration; it explicitly includes analysis, audit_report, and public_info;
+  ;; it must not include private_info because no action ever adds that containment)
   (:action wretched
-    :parameters (?p - phase ?pnext - phase)
     :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (done-paltry)
-      (done-clip)
-      (not (done-wretched))
+      (phase-active phase2)
+      (reviewed analysis)
+      (reviewed audit_report)
+      (not (integrated integrated_report))
     )
     :effect (and
-      (done-wretched)
-      (wretched-state)
-      (not (at-phase ?p))
-      (at-phase ?pnext)
+      (integrated integrated_report)
+      (contains integrated_report analysis)
+      (contains integrated_report audit_report)
+      (contains integrated_report public_info)
+      (not (phase-active phase2))
+      (phase-active phase3)
     )
   )
 
-  ;; The "memory" action produces a memorized tag and advances the phase.
-  (:action memory
-    :parameters (?p - phase ?pnext - phase ?m - memorytag)
-    :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (not (done-memory))
-    )
-    :effect (and
-      (done-memory)
-      (memorized ?m)
-      (not (at-phase ?p))
-      (at-phase ?pnext)
-    )
-  )
-
-  ;; The "tightfisted" action requires a memorized tag and advances to final phase, producing a tightfisted state.
+  ;; Seal private information to enforce confidentiality before archive/publish; advance to phase4.
+  ;; This action requires that the integrated report does not contain the private_info (hard constraint
+  ;; encoded by forbidding containment by precondition). Only orchestrator may seal its private info.
   (:action tightfisted
-    :parameters (?a - agent ?p - phase ?pnext - phase ?m - memorytag)
     :precondition (and
-      (at-phase ?p)
-      (succ ?p ?pnext)
-      (memorized ?m)
-      (not (done-tightfisted))
+      (phase-active phase3)
+      (has orchestrator private_info)
+      (confidential private_info)
+      (not (sealed private_info))
+      (not (contains integrated_report private_info))
     )
     :effect (and
-      (done-tightfisted)
-      (tightfisted ?a)
-      (not (at-phase ?p))
-      (at-phase ?pnext)
+      (sealed private_info)
+      (not (phase-active phase3))
+      (phase-active phase4)
     )
   )
 
+  ;; Archive the integrated report in phase4 and advance to publish phase5 (memory action)
+  (:action memory
+    :precondition (and
+      (phase-active phase4)
+      (integrated integrated_report)
+      (sealed private_info)
+      (not (archived integrated_report))
+    )
+    :effect (and
+      (archived integrated_report)
+      (not (phase-active phase4))
+      (phase-active phase5)
+    )
+  )
+
+  ;; Publish the archived, sealed integrated report in phase5 (objects action).
+  ;; Publishing is disallowed unless the private_info has been sealed and the report archived.
+  (:action objects
+    :precondition (and
+      (phase-active phase5)
+      (archived integrated_report)
+      (sealed private_info)
+      (not (published integrated_report))
+    )
+    :effect (and
+      (published integrated_report)
+    )
+  )
 )

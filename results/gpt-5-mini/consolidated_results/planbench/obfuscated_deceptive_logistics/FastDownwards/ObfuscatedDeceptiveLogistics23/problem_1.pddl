@@ -1,80 +1,89 @@
-(define (problem ObfuscatedDeceptiveLogistics23-instance)
-  (:domain ObfuscatedDeceptiveLogistics23)
+(define (problem orchestrator-problem)
+  (:domain orchestrator-domain)
+
+  ;; Objects
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 o11 o12 o13 - obj
+    st0 st1 st2 st3 st4 st5 st6 st7 st8 st9 st10 st11 st12 - stage
   )
 
-  ; Initial facts: union of the two statements' initial facts (as given in the specification)
+  ;; Initial facts
   (:init
-    ; cats
-    (cats object_0)
-    (cats object_1)
+    ;; unary predicates
+    (cat o0)
+    (cat o1)
 
-    ; collect facts (union)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
+    (stupendous o2)
+    (stupendous o3)
 
-    ; hand facts
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    (sneeze o4)
+    (sneeze o5)
 
-    ; next facts (union)
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_12 object_10)
-    (next object_3 object_7)
-    (next object_4 object_10)
-    (next object_0 object_9)
-    (next object_1 object_9)
-    (next object_12 object_11)
-    (next object_13 object_7)
-    (next object_4 object_8)
-    (next object_5 object_11)
+    (spring o6)
+    (spring o9)
 
-    ; sneeze
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    (hand o12)
+    (hand o13)
 
-    ; spring
-    (spring object_5)
-    (spring object_8)
-    (spring object_6)
-    (spring object_9)
+    (texture o6)
+    (texture o7)
+    (texture o8)
+    (texture o9)
+    (texture o10)
+    (texture o11)
 
-    ; stupendous
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; collect relations
+    (collect o10 o3)
+    (collect o11 o3)
+    (collect o9  o3)
+    (collect o6  o2)
+    (collect o7  o2)
+    (collect o8  o2)
 
-    ; texture
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-    (texture object_11)
+    ;; next relations
+    (next o0 o9)
+    (next o1 o9)
+
+    (next o12 o11)
+    (next o13 o7)
+
+    (next o4 o8)
+    (next o5 o11)
+
+    ;; stage chain (linear, contiguous stages)
+    (succ-stage st0 st1)
+    (succ-stage st1 st2)
+    (succ-stage st2 st3)
+    (succ-stage st3 st4)
+    (succ-stage st4 st5)
+    (succ-stage st5 st6)
+    (succ-stage st6 st7)
+    (succ-stage st7 st8)
+    (succ-stage st8 st9)
+    (succ-stage st9 st10)
+    (succ-stage st10 st11)
+    (succ-stage st11 st12)
+
+    ;; initial at-stage: every object starts at st0 to enforce monotonic progression
+    (at-stage o0 st0)
+    (at-stage o1 st0)
+    (at-stage o2 st0)
+    (at-stage o3 st0)
+    (at-stage o4 st0)
+    (at-stage o5 st0)
+    (at-stage o6 st0)
+    (at-stage o7 st0)
+    (at-stage o8 st0)
+    (at-stage o9 st0)
+    (at-stage o10 st0)
+    (at-stage o11 st0)
+    (at-stage o12 st0)
+    (at-stage o13 st0)
   )
 
-  ; Goals: union of required next relations from both statements
-  (:goal
-    (and
-      (next object_11 object_7)
-      (next object_12 object_8)
-      (next object_12 object_10)
-      (next object_13 object_9)
-    )
-  )
+  ;; Goal: exact terminal next links required
+  (:goal (and
+    (next o12 o10)
+    (next o13 o9)
+  ))
 )

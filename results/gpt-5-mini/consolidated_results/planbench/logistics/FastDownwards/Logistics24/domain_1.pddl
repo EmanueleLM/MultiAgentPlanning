@@ -1,109 +1,129 @@
-(define (domain Logistics24)
+(define (domain logistics_orchestrated)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types package truck airplane location city stage)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o1 ?o2 - obj)
-    (next ?o1 ?o2 - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?o1 ?o2 - obj)
-    (spring ?o - obj)
+    ; Positions
+    (at-truck ?tr - truck ?loc - location)
+    (at-airplane ?ap - airplane ?loc - location)
+    (at-package ?p - package ?loc - location)
+
+    ; Containment (on-board)
+    (in-package-truck ?p - package ?tr - truck)
+    (in-package-airplane ?p - package ?ap - airplane)
+
+    ; Geography / facilities
+    (airport ?loc - location)
+    (loc-in-city ?loc - location ?c - city)
+
+    ; Discrete global time / stages: a single current-stage token moves forward
+    (current-stage ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; Actions authored by manipulator_A
-  (:action paltry_manipA
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ; Load package into truck: must be co-located; consumes one stage and advances to successor stage
+  (:action load-truck
+    :parameters (?p - package ?tr - truck ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (at-package ?p ?loc)
+      (at-truck ?tr ?loc)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
-
-  (:action sip_manipA
-    :parameters (?o0 ?o1 ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (at-package ?p ?loc))
+      (in-package-truck ?p ?tr)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action clip_manipA
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ; Unload package from truck: truck must be at location and package aboard; advances stage
+  (:action unload-truck
+    :parameters (?p - package ?tr - truck ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (in-package-truck ?p ?tr)
+      (at-truck ?tr ?loc)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (at-package ?p ?loc)
+      (not (in-package-truck ?p ?tr))
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; Actions authored by manipulator_B
-  (:action wretched_manipB
-    :parameters (?o0 ?o1 ?o2 ?o3 - obj)
+  ; Drive truck within same city (from and to must be in same city). Advances stage.
+  (:action drive-truck
+    :parameters (?tr - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (at-truck ?tr ?from)
+      (loc-in-city ?from ?c)
+      (loc-in-city ?to ?c)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action memory_manipB
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ; Load package into airplane at an airport location. Advances stage.
+  (:action load-airplane
+    :parameters (?p - package ?ap - airplane ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (at-package ?p ?loc)
+      (at-airplane ?ap ?loc)
+      (airport ?loc)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (at-package ?p ?loc))
+      (in-package-airplane ?p ?ap)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action tightfisted_manipB
-    :parameters (?o0 ?o1 ?o2 - obj)
+  ; Unload package from airplane at an airport location. Advances stage.
+  (:action unload-airplane
+    :parameters (?p - package ?ap - airplane ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (in-package-airplane ?p ?ap)
+      (at-airplane ?ap ?loc)
+      (airport ?loc)
+      (current-stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (at-package ?p ?loc)
+      (not (in-package-airplane ?p ?ap))
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
+  )
+
+  ; Fly airplane between airport locations. Both endpoints must be airports. Advances stage.
+  (:action fly-airplane
+    :parameters (?ap - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (at-airplane ?ap ?from)
+      (airport ?from)
+      (airport ?to)
+      (current-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (at-airplane ?ap ?from))
+      (at-airplane ?ap ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

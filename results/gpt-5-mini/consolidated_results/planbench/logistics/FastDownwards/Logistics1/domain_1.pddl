@@ -1,106 +1,90 @@
 (define (domain Logistics1)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types package truck airplane location city)
+
   (:predicates
-    (cats ?x - obj)
-    (hand ?x - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (texture ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (vase ?x - obj ?y - obj)
+    (package-at ?p - package ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-airplane ?p - package ?a - airplane)
+    (truck-at ?t - truck ?l - location)
+    (airplane-at ?a - airplane ?l - location)
+    (located-in-city ?l - location ?c - city)
+    (airport ?l - location)
   )
 
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (truck-at ?t ?l)
+      (package-at ?p ?l)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
+      (in-truck ?p ?t)
+      (not (package-at ?p ?l))
     )
   )
 
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (truck-at ?t ?l)
+      (in-truck ?p ?t)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (package-at ?p ?l)
+      (not (in-truck ?p ?t))
     )
   )
 
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (truck-at ?t ?from)
+      (located-in-city ?from ?c)
+      (located-in-city ?to ?c)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (truck-at ?t ?to)
+      (not (truck-at ?t ?from))
     )
   )
 
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?st - obj)
+  (:action airplane-load
+    :parameters (?a - airplane ?p - package ?l - location)
     :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (airplane-at ?a ?l)
+      (airport ?l)
+      (package-at ?p ?l)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (in-airplane ?p ?a)
+      (not (package-at ?p ?l))
     )
   )
 
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+  (:action airplane-unload
+    :parameters (?a - airplane ?p - package ?l - location)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (airplane-at ?a ?l)
+      (airport ?l)
+      (in-airplane ?p ?a)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (package-at ?p ?l)
+      (not (in-airplane ?p ?a))
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
+  (:action airplane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
+      (airplane-at ?a ?from)
+      (airport ?from)
+      (airport ?to)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (airplane-at ?a ?to)
+      (not (airplane-at ?a ?from))
     )
   )
 )

@@ -1,52 +1,79 @@
-(define (problem Depots29_scenario1)
-  (:domain Depots29)
+(define (problem depots29-problem)
+  (:domain depots-hoist)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - obj
+    depot0 depot1 depot2 distributor0 - place
+
+    truck0 truck1 truck2 - truck
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    s_on_surface s_lifted s_in_truck s_lifted_from_truck s_placed - stage
   )
+
   (:init
-    ;; initial facts (first scenario)
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ; places of pallets (surfaces)
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
 
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
-    (hand object_14)
+    ; initial crate placements (on surfaces) and place-location facts
+    (on crate0 pallet3)
+    (at crate0 distributor0)
 
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_5)
-    (next object_13 object_7)
-    (next object_14 object_9)
-    (next object_3 object_6)
-    (next object_4 object_9)
+    (on crate1 pallet0)
+    (at crate1 depot0)
 
-    (sneeze object_3)
-    (sneeze object_4)
+    (on crate2 crate1)
+    (at crate2 depot0)
 
-    (spring object_5)
-    (spring object_8)
+    ; hoists at places
+    (at hoist0 depot0)
+    (at hoist1 depot1)
+    (at hoist2 depot2)
+    (at hoist3 distributor0)
 
-    (stupendous object_1)
-    (stupendous object_2)
+    ; trucks at depots
+    (at truck0 depot0)
+    (at truck1 depot1)
+    (at truck2 depot2)
 
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; hoist availability
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+
+    ; clear surfaces/crates where stated
+    (clear crate0)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet2)
+
+    ; stage assignments initial
+    (stage crate0 s_placed)
+    (stage crate1 s_on_surface)
+    (stage crate2 s_on_surface)
+
+    ; allowed stage transitions (successor relation for permitted moves)
+    (next s_on_surface s_lifted)
+    (next s_lifted s_on_surface)
+    (next s_lifted s_in_truck)
+    (next s_in_truck s_lifted_from_truck)
+    (next s_lifted_from_truck s_placed)
+    (next s_lifted s_placed)
+
+    ; target pallet assignments (goal destinations)
+    (target-pallet crate1 pallet1)
+    (target-pallet crate2 pallet2)
   )
 
   (:goal (and
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_5)
-    (next object_14 object_7)
+    (on crate1 pallet1)
+    (stage crate1 s_placed)
+    (on crate2 pallet2)
+    (stage crate2 s_placed)
   ))
 )

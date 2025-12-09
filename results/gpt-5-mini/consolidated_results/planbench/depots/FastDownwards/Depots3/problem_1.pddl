@@ -1,58 +1,64 @@
-(define (problem depots3-combined)
-  (:domain depots3-multiagent)
+(define (problem depot-hoist-truck-problem)
+  (:domain depot-hoist-truck)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - obj
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; surfaces / pallets
+    pallet0 pallet1 pallet2 pallet3 - surface
+
+    ;; crates
+    crate0 crate1 crate2 - crate
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
   )
 
   (:init
-    ;; From Player1 initial facts
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (hand object_7)
-    (hand object_8)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_6)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
+    ;; surfaces fixed at places
+    (at-surface pallet0 depot0)
+    (at-surface pallet1 depot1)
+    (at-surface pallet2 depot2)
+    (at-surface pallet3 distributor0)
 
-    ;; From Player2 initial facts (merged)
-    (cats object_1)
-    (collect object_7 object_3)
-    ;; collect object_6 object_2 already added (duplicate)
-    (hand object_9)
-    ;; hand object_8 already added (duplicate)
-    ;; next object_0 object_6 already added
-    (next object_1 object_6)
-    ;; next object_4 object_6 already added
-    (next object_5 object_7)
-    (next object_8 object_7)
-    (next object_9 object_7)
-    (sneeze object_5)
-    ;; sneeze object_4 already added
-    (spring object_7)
-    ;; spring object_6 already added
-    (stupendous object_3)
-    ;; stupendous object_2 already added
-    (texture object_7)
+    ;; crates initially on surfaces and clear
+    (on crate0 pallet2)
+    (on crate1 pallet3)
+    (on crate2 pallet1)
+
+    (clear-crate crate0)
+    (clear-crate crate1)
+    (clear-crate crate2)
+
+    ;; surface occupancy: only pallet0 is empty initially
+    (clear-surface pallet0)
+
+    ;; trucks at places
+    (at-truck truck0 depot1)
+    (at-truck truck1 depot1)
+    (at-truck truck2 depot1)
+
+    ;; hoists at places and available
+    (at-hoist hoist0 depot0)
+    (available hoist0)
+
+    (at-hoist hoist1 depot1)
+    (available hoist1)
+
+    (at-hoist hoist2 depot2)
+    (available hoist2)
+
+    (at-hoist hoist3 distributor0)
+    (available hoist3)
   )
 
   (:goal (and
-    ;; Player1's goals
-    (next object_7 object_5)
-    (next object_8 object_5)
-    ;; Player2's goals
-    (next object_8 object_7)
-    (next object_9 object_6)
+    (on crate0 pallet0)
+    (on crate1 pallet1)
+    (on crate2 pallet3)
   ))
 )

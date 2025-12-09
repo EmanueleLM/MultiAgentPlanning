@@ -1,16 +1,39 @@
-(define (problem orchestrate-problem)
-  (:domain orchestrated)
+(define (problem craving-goal)
+  (:domain craving-management)
   (:objects
-    object_6 object_7 object_8 object_9 object_10 object_11 - thing
-    planner_one planner_two - agent
+    a b d - obj
+    auditor1 operator1 - agent
   )
+
   (:init
-    ;; no initial 'next' relations; agents exist as objects (agents not used as preconditions here)
+    ; Capabilities: auditor1 can authorize/audit, operator1 can induce cravings.
+    (can_authorize auditor1)
+    (can_induce operator1)
+
+    ; No identities, audits, authorizations, or cravings are present initially.
+    ; Agents are present and ready to act by virtue of capability predicates above.
   )
+
+  ; Goal: enforce final craving facts plus the auditor-mandated artifacts (audits, authorizations, identity verification).
+  ; All natural-language preferences (audit before authorization before inducing craving, identity verification first)
+  ; are encoded here as hard terminal conditions as required.
   (:goal (and
-    (next object_10 object_6)
-    (next object_9 object_6)
-    (next object_10 object_7)
-    (next object_11 object_8)
+    ; required final craving relations
+    (craves b d)
+    (craves d a)
+
+    ; auditor report constraints encoded as hard terminal conditions:
+    ; both audited pairs must be completed
+    (audited b d)
+    (audited d a)
+
+    ; both authorizations for the inducing agent must be present
+    (authorized operator1 b d)
+    (authorized operator1 d a)
+
+    ; identities must have been verified for all objects involved
+    (id_verified a)
+    (id_verified b)
+    (id_verified d)
   ))
 )

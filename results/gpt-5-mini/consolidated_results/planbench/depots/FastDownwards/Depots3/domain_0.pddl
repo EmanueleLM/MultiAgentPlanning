@@ -1,107 +1,102 @@
-(define (domain multiagent-delivery)
+(define (domain depot-hoist-truck)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent location object)
+  (:types place hoist truck crate surface)
 
-  ;; Predicates
   (:predicates
-    (at-agent ?ag - agent ?loc - location)
-    (at-obj ?o - object ?loc - location)
-    (holding ?ag - agent ?o - object)
-    (adj ?l1 - location ?l2 - location)
-    (blocked ?l1 - location ?l2 - location)
+    ;; location predicates
+    (at-hoist ?h - hoist ?p - place)
+    (at-truck ?t - truck ?p - place)
+    (at-surface ?s - surface ?p - place)
+
+    ;; object placement and containment
+    (on ?c - crate ?s - surface)        ; crate is on a surface/pallet
+    (in-truck ?c - crate ?t - truck)   ; crate is inside truck
+    (holding ?h - hoist ?c - crate)     ; hoist holds crate
+
+    ;; resource availability and clear predicates
+    (available ?h - hoist)              ; hoist free (not holding)
+    (clear-surface ?s - surface)        ; surface has no crate on it
+    (clear-crate ?c - crate)            ; crate has nothing on top
+    (connected ?p1 - place ?p2 - place) ; road connectivity (directed)
   )
 
-  ;; Player1 actions (prefixed with p1-)
-  (:action p1-move
-    :parameters (?from - location ?to - location)
+  ;; hoist lifts a crate off a surface (all at same place P)
+  (:action hoist-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (at-agent p1 ?from)
-      (adj ?from ?to)
-      (not (blocked ?from ?to))
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (on ?c ?s)
+      (clear-crate ?c)
+      (available ?h)
     )
     :effect (and
-      (not (at-agent p1 ?from))
-      (at-agent p1 ?to)
-    )
-  )
-
-  (:action p1-pick
-    :parameters (?obj - object ?loc - location)
-    :precondition (and
-      (at-agent p1 ?loc)
-      (at-obj ?obj ?loc)
-      (not (holding p1 ?obj))
-      (not (holding p2 ?obj))
-    )
-    :effect (and
-      (not (at-obj ?obj ?loc))
-      (holding p1 ?obj)
-    )
-  )
-
-  (:action p1-drop
-    :parameters (?obj - object ?loc - location)
-    :precondition (and
-      (at-agent p1 ?loc)
-      (holding p1 ?obj)
-    )
-    :effect (and
-      (not (holding p1 ?obj))
-      (at-obj ?obj ?loc)
+      (holding ?h ?c)
+      (clear-surface ?s)
+      (not (on ?c ?s))
+      (not (available ?h))
     )
   )
 
-  ;; Player2 actions (prefixed with p2-)
-  (:action p2-move
-    :parameters (?from - location ?to - location)
+  ;; hoist drops its held crate onto a surface (all at same place P)
+  (:action hoist-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (at-agent p2 ?from)
-      (adj ?from ?to)
-      (not (blocked ?from ?to))
+      (at-hoist ?h ?p)
+      (at-surface ?s ?p)
+      (holding ?h ?c)
+      (clear-surface ?s)
     )
     :effect (and
-      (not (at-agent p2 ?from))
-      (at-agent p2 ?to)
+      (on ?c ?s)
+      (available ?h)
+      (clear-crate ?c)
+      (not (holding ?h ?c))
+      (not (clear-surface ?s))
     )
   )
 
-  (:action p2-pick
-    :parameters (?obj - object ?loc - location)
+  ;; hoist places a held crate into a co-located truck (all at P)
+  (:action hoist-load
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (at-agent p2 ?loc)
-      (at-obj ?obj ?loc)
-      (not (holding p2 ?obj))
-      (not (holding p1 ?obj))
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (holding ?h ?c)
     )
     :effect (and
-      (not (at-obj ?obj ?loc))
-      (holding p2 ?obj)
+      (in-truck ?c ?t)
+      (available ?h)
+      (not (holding ?h ?c))
     )
   )
 
-  (:action p2-drop
-    :parameters (?obj - object ?loc - location)
+  ;; hoist removes a crate from a co-located truck and holds it (all at P)
+  (:action hoist-unload
+    :parameters (?h - hoist ?c - crate ?t - truck ?p - place)
     :precondition (and
-      (at-agent p2 ?loc)
-      (holding p2 ?obj)
+      (at-hoist ?h ?p)
+      (at-truck ?t ?p)
+      (available ?h)
+      (in-truck ?c ?t)
     )
     :effect (and
-      (not (holding p2 ?obj))
-      (at-obj ?obj ?loc)
+      (holding ?h ?c)
+      (not (in-truck ?c ?t))
+      (not (available ?h))
     )
   )
 
-  ;; Only player2 may unlock the blocked passage (preference treated as constraint)
-  (:action p2-unlock
-    :parameters (?loc1 - location ?loc2 - location ?key - object)
+  ;; drive truck between places (requires direct connectivity). Containers in-truck remain in-truck.
+  (:action drive
+    :parameters (?t - truck ?from - place ?to - place)
     :precondition (and
-      (at-agent p2 ?loc1)
-      (holding p2 ?key)
-      (blocked ?loc1 ?loc2)
+      (at-truck ?t ?from)
+      (connected ?from ?to)
     )
     :effect (and
-      (not (blocked ?loc1 ?loc2))
-      (not (blocked ?loc2 ?loc1))
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
     )
   )
 )

@@ -1,132 +1,70 @@
-(define (domain MysteryBlocksworld17)
+(define (domain struggle)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types obj stage)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (collect ?a - obj ?b - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
+    (province ?o - obj)
+    (planet ?o - obj)
+    (craves ?o - obj ?other - obj)
+    (harmony)
+    (pain)
+    ;; explicit discrete stage progression to enforce ordering
+    (at-stage ?s - stage)
+    (next ?s - stage ?s2 - stage)
   )
 
-  ;; paltry(A,B,C):
-  ;; pre: hand A, cats B, texture C, vase A B, next B C
-  ;; add: next A C
-  ;; del: vase A B
-  (:action paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
+  ;; Each action must be executed at a current stage ?s and advances the unique global
+  ;; "at-stage" marker to the successor stage ?s2. This enforces total ordering of actions
+  ;; and makes stage progression an explicit hard requirement (no soft tokens).
+  ;; Actions implement the human-specified preconditions and effects exactly.
+
+  (:action attack
+    :parameters (?p - obj ?pl - obj ?s - stage ?s2 - stage)
+    :precondition (and (at-stage ?s) (next ?s ?s2) (province ?p) (planet ?pl) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+              (not (province ?p))
+              (not (planet ?pl))
+              (not (harmony))
+              (pain)
+              (not (at-stage ?s))
+              (at-stage ?s2))
   )
 
-  ;; sip(A,B,C):
-  ;; pre: hand A, cats B, texture C, next A C, next B C
-  ;; add: vase A B
-  ;; del: next A C
-  (:action sip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
+  (:action succumb
+    :parameters (?p - obj ?pl - obj ?s - stage ?s2 - stage)
+    :precondition (and (at-stage ?s) (next ?s ?s2) (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+              (not (pain))
+              (harmony)
+              (province ?p)
+              (planet ?pl)
+              (not (at-stage ?s))
+              (at-stage ?s2))
   )
 
-  ;; clip(A,B,C):
-  ;; pre: hand A, sneeze B, texture C, next B C, next A C
-  ;; add: vase A B
-  ;; del: next A C
-  (:action clip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
+  (:action overcome
+    :parameters (?obj - obj ?other - obj ?s - stage ?s2 - stage)
+    :precondition (and (at-stage ?s) (next ?s ?s2) (province ?other) (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+              (harmony)
+              (province ?obj)
+              (craves ?obj ?other)
+              (not (province ?other))
+              (not (pain))
+              (not (at-stage ?s))
+              (at-stage ?s2))
   )
 
-  ;; wretched(A,B,C,D):
-  ;; pre: sneeze A, texture B, texture C, stupendous D, next A B, collect B D, collect C D
-  ;; add: next A C
-  ;; del: next A B
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
+  (:action feast
+    :parameters (?a - obj ?b - obj ?s - stage ?s2 - stage)
+    :precondition (and (at-stage ?s) (next ?s ?s2) (craves ?a ?b) (province ?a) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
+              (pain)
+              (province ?b)
+              (not (craves ?a ?b))
+              (not (province ?a))
+              (not (harmony))
+              (not (at-stage ?s))
+              (at-stage ?s2))
   )
-
-  ;; memory(A,B,C):
-  ;; pre: cats A, spring B, spring C, next A B
-  ;; add: next A C
-  ;; del: next A B
-  (:action memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  ;; tightfisted(A,B,C):
-  ;; pre: hand A, sneeze B, texture C, next B C, vase A B
-  ;; add: next A C
-  ;; del: vase A B
-  (:action tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
-  )
-
 )

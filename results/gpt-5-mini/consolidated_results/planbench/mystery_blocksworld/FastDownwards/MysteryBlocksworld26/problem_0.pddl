@@ -1,43 +1,34 @@
-(define (problem orchestrated_problem_A)
-  (:domain orchestrated_domain)
+(define (problem provinces-problem)
+  (:domain provinces)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 object_14 - object
+    a b c d - obj
   )
-
   (:init
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_7)
-    (next object_13 object_7)
-    (next object_3 object_6)
-    (next object_4 object_9)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; initial craving relations
+    (craves a b)
+    (craves b d)
+
+    ; initial global booleans
+    (harmony)
+
+    ; initial planets
+    (planet c)
+    (planet d)
+
+    ; initial provinces (note: this encoding allows multiple provinces simultaneously)
+    (province a)
+    (province c)
+
+    ; explicit distinctness facts for all ordered unequal pairs (used to enforce inequality constraints)
+    (different a b) (different a c) (different a d)
+    (different b a) (different b c) (different b d)
+    (different c a) (different c b) (different c d)
+    (different d a) (different d b) (different d c)
   )
 
   (:goal (and
-    (next object_11 object_5)
-    (next object_12 object_9)
-    (next object_13 object_10)
+    (craves b d)
+    (craves c a)
+    (craves d c)
   ))
 )

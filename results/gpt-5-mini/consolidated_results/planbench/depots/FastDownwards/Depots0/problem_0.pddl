@@ -1,21 +1,34 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator-domain)
+(define (problem move-crates-to-pallets)
+  (:domain multiagent-transport)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    crate1 crate2 - crate
+    pallet1 pallet3 - pallet
+    truck1 - vehicle
+    driver1 - driver
+    hoist1 - hoist
+    locA locB locC - location
   )
+
   (:init
-    ;; All objects start free (available to participate in actions)
-    (free object_0)
-    (free object_1)
-    (free object_2)
-    (free object_3)
-    (free object_4)
-    (free object_5)
-    (free object_6)
-    (free object_7)
-    (free object_8)
+    ;; initial locations
+    (at crate1 locA)
+    (at crate2 locB)
+
+    (at pallet1 locB)
+    (at pallet3 locC)
+
+    (at truck1 locA)
+    (at driver1 locA)
+
+    ;; hoist is attached to truck and initially free
+    (hoist-attached hoist1 truck1)
+    (hoist-free hoist1)
   )
+
   (:goal (and
-    (next object_8 object_6)
+    ;; mandated terminal conditions
+    (on crate1 pallet1)
+    (on crate2 pallet3)
   ))
 )

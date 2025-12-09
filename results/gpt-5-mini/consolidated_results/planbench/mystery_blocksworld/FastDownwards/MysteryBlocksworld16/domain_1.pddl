@@ -1,112 +1,143 @@
 (define (domain MysteryBlocksworld16)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types obj phase)
+
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?a - obj ?b - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-    (spring ?o - obj)
+    ;; World state
+    (province ?o - obj)
+    (planet ?o - obj)
+    (harmony)
+
+    (pain ?o - obj)
+    (craves ?x - obj ?y - obj)
+
+    ;; Bookkeeping fact created by Attack and consumed by Succumb so Succumb
+    ;; restores exactly the province/planet pair that Attack removed.
+    (attacked ?x - obj ?y - obj)
+
+    ;; Discrete, ordered stages to enforce contiguous progression and forbid
+    ;; oscillation. Exactly one current-phase holds at any time; actions
+    ;; advance from a phase to its successor.
+    (current-phase ?p - phase)
+    (successor ?p1 - phase ?p2 - phase)
   )
 
-  ;; paltry object_0 object_1 object_2.
-  (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-    )
-  )
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Actions
+  ;;
+  ;; All actions require the current-phase ?ph and a successor ?phn and
+  ;; have the effect of advancing the single current-phase to ?phn.
+  ;; This enforces contiguity (no action can be taken "out of time")
+  ;; and makes phase progression a hard requirement rather than a
+  ;; bookkeeping token that can be violated later.
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  ;; sip object_0 object_1 object_2.
-  (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; attacker: Attack action
+  ;; Assumption (explicit): Attack takes two objects (?o and ?p).
+  ;; Preconditions: province ?o, planet ?p, harmony, and current phase.
+  ;; Effects: produces pain on ?o, records (attacked ?o ?p), removes
+  ;; province ?o, planet ?p, and harmony. Advances phase.
+  (:action attacker-attack
+    :parameters (?o - obj ?p - obj ?ph - phase ?phn - phase)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (province ?o)
+      (planet ?p)
+      (harmony)
+      (current-phase ?ph)
+      (successor ?ph ?phn)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
-  )
+      (pain ?o)
+      (attacked ?o ?p)
 
-  ;; clip object_0 object_1 object_2.
-  (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-    )
-    :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-    )
-  )
+      (not (province ?o))
+      (not (planet ?p))
+      (not (harmony))
 
-  ;; wretched object_0 object_1 object_2 object_3.
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
-    :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
-    :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      ;; advance phase
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  ;; memory object_0 object_1 object_2.
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; succumber: Succumb action
+  ;; Preconditions: a pain fact and the attacked pairing that created it.
+  ;; Effects: restores the exact province and planet removed by the Attack,
+  ;; restores harmony, removes pain and the attacked record. Advances phase.
+  (:action succumber-succumb
+    :parameters (?o - obj ?p - obj ?ph - phase ?phn - phase)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (pain ?o)
+      (attacked ?o ?p)
+      (current-phase ?ph)
+      (successor ?ph ?phn)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (province ?o)
+      (planet ?p)
+      (harmony)
+
+      (not (pain ?o))
+      (not (attacked ?o ?p))
+
+      ;; advance phase
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  ;; tightfisted object_0 object_1 object_2.
-  (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; overcomer: Overcome action
+  ;; Preconditions: province of the "other" object and pain on the primary.
+  ;; Effects: produces harmony, grants province to the primary object,
+  ;; creates craves(primary, other), removes province from other and the pain.
+  ;; Advances phase.
+  (:action overcomer-overcome
+    :parameters (?x - obj ?other - obj ?ph - phase ?phn - phase)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (province ?other)
+      (pain ?x)
+      (current-phase ?ph)
+      (successor ?ph ?phn)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (harmony)
+      (province ?x)
+      (craves ?x ?other)
+
+      (not (province ?other))
+      (not (pain ?x))
+
+      ;; advance phase
+      (not (current-phase ?ph))
+      (current-phase ?phn)
+    )
+  )
+
+  ;; feaster: Feast action
+  ;; Preconditions: craves(primary, other), province(primary), harmony.
+  ;; Effects: produces pain on primary and transfers province to other;
+  ;; removes the craves relation, removes province from primary and harmony.
+  ;; Advances phase.
+  (:action feaster-feast
+    :parameters (?x - obj ?other - obj ?ph - phase ?phn - phase)
+    :precondition (and
+      (craves ?x ?other)
+      (province ?x)
+      (harmony)
+      (current-phase ?ph)
+      (successor ?ph ?phn)
+    )
+    :effect (and
+      (pain ?x)
+      (province ?other)
+
+      (not (craves ?x ?other))
+      (not (province ?x))
+      (not (harmony))
+
+      ;; advance phase
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 )

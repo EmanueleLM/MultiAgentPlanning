@@ -1,47 +1,37 @@
-(define (problem scenarioA) (:domain multiagent_vases)
+(define (problem craving-instance)
+  (:domain craving-conflict)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    a b c d - agent
+    s1 s2 s3 s4 s5 - step
+    p1 - province
+    pl1 - planet
   )
+
   (:init
-    ;; static / initial predicates (Scenario A) from player analysis
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    ;; Agents and steps declared
+    (agent a) (agent b) (agent c) (agent d)
+    (step s1) (step s2) (step s3) (step s4) (step s5)
 
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    ;; Province and planet existence (typed objects)
+    (province p1)
+    (planet pl1)
 
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_6)
-    (next object_13 object_9)
-    (next object_3 object_7)
-    (next object_4 object_10)
-    
-    (sneeze object_3)
-    (sneeze object_4)
+    ;; Initial current step is s1
+    (current s1)
 
-    (spring object_5)
-    (spring object_8)
+    ;; Explicit successor links enforce a strict order of four actions
+    (next s1 s2)
+    (next s2 s3)
+    (next s3 s4)
+    (next s4 s5)
 
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; No initial attacks, pains, harmony, or cravings
+    ;; (These facts are omitted because their absence is the intended initial state.)
   )
+
+  ;; Goal requires the two specified cravings and that the plan has advanced to the terminal step s5.
   (:goal (and
-    (next object_11 object_8)
-    (next object_12 object_8)
-    (next object_13 object_10)
+    (craves a c)
+    (craves d a)
+    (current s5)
   ))
-)

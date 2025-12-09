@@ -2,120 +2,98 @@
     "name": "MysteryBlocksworld29",
     "author": "Human",
     "agents": {
-        "number": 5,
+        "number": 4,
         "names": [
             "player",
-            "mapper",
-            "simulator",
+            "analyst",
             "auditor",
             "orchestrator"
         ],
         "player": {
             "private_information": [
-                "I am the human player who specified two initial statements, two goals, and two candidate plans.",
-                "I provided the complete list of actions: paltry, sip, clip, wretched, memory, tightfisted and the object arguments used in the plans and statements."
+                "I can perform the actions: Attack, Feast, Succumb, Overcome on named objects.",
+                "I reason about concrete objects a, b, c, d and their roles as province or planet as observed."
             ],
-            "goal": "Provide an accurate human-readable summary of the provided problem instance including initial facts, goals, and the candidate plan fragments."
+            "goal": "Achieve that object a craves object c and object b craves object a."
         },
-        "mapper": {
+        "analyst": {
             "private_information": [
-                "I specialize in extracting action schemas and their parameter roles from textual descriptions.",
-                "I interpret preconditions and effects of each action as relational predicates over objects."
+                "I must convert informal action descriptions into precise action schemas with parameters, preconditions, add effects and delete effects.",
+                "I should not emit final PDDL but provide a structured action specification artifact."
             ],
-            "goal": "Produce a canonical, unambiguous action model for each operator in the domain using the vocabulary from the statements, listing preconditions, add effects and delete effects without generating full PDDL."
-        },
-        "simulator": {
-            "private_information": [
-                "I can step through a sequence of grounded actions and track the resulting state changes according to provided preconditions and effects.",
-                "I will not assume implicit bookkeeping tokens unless explicitly present in the facts."
-            ],
-            "goal": "Execute the candidate plan fragments on the initial states and report the resulting traces and any action failures or unmet preconditions."
+            "goal": "Produce a consistent, explicit formalization of each action's parameters, preconditions, add effects, and delete effects."
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as implicit quota tokens, post-hoc penalties, or ad-hoc assumptions.",
-                "I flag any reliance on ephemeral bookkeeping that would make a plan invalid under strict STRIPS semantics."
+                "My role is to audit temporal and causal consistency, remove bookkeeping shortcuts, and ensure no implicit tokens or post-hoc penalties are used.",
+                "I will point out implicit assumptions and propose minimal bookkeeping to make causal chains explicit."
             ],
-            "goal": "Produce a consistency report that identifies causal gaps, temporal ordering problems, and bookkeeping shortcuts and propose concrete corrections for the mapper and simulator to adopt."
+            "goal": "Produce an audit report that identifies causal gaps and prescribes corrections to action specifications so they are temporally and causally consistent."
         },
         "orchestrator": {
             "private_information": [
-                "I integrate analyses from other agents and produce a final PDDL domain and problem tailored for the FastDownwards solver.",
-                "I must keep agent actions distinct when modelling who performs which grounded action."
+                "I must integrate outputs from other agents and produce a final PDDL domain and problem suitable for the FastDownwards solver.",
+                "I must keep agents' actions distinct and reflect any auditor-prescribed bookkeeping explicitly in the final model."
             ],
-            "goal": "Consume summaries, action models, simulation traces, and the auditor report and output a validated PDDL domain and problem ready to be solved by FastDownwards."
+            "goal": "Assemble the formalized and audited action specifications into a single PDDL domain and generate a PDDL problem encoding the initial state and the goal for FastDownwards."
         }
     },
     "environment": {
         "init": {
-            "grid_size": 0,
-            "visibility": 0
+            "grid_size": 4,
+            "visibility": 1
         },
         "public_information": [
-            "Available operators: paltry, sip, clip, wretched, memory, tightfisted.",
-            "Predicates used include hand, cats, texture, vase, next, sneeze, collect, spring, stupendous.",
-            "Operator descriptions include explicit preconditions and effects on next and vase relations as provided by the human.",
-            "Two separate problem statements were provided with initial facts and respective goals and candidate plans."
+            "There are four named objects: a, b, c, d.",
+            "Actions available: Attack, Feast, Succumb, Overcome.",
+            "Attack requires Province(object), Planet(object), and Harmony. Attack adds Pain(object) and removes Province(object), Planet(object), and Harmony.",
+            "Succumb requires Pain(object). Succumb adds Province(object), Planet(object), and Harmony and removes Pain(object).",
+            "Overcome requires Province(other_object) and Pain(object). Overcome adds Harmony, Province(object), and Craves(object, other_object) and removes Province(other_object) and Pain(object).",
+            "Feast requires Craves(object, other_object), Province(object), and Harmony. Feast adds Pain(object) and Province(other_object) and removes Craves(object, other_object), Province(object), and Harmony.",
+            "Initial facts: craves(a,c), craves(b,d), harmony true, planet(c), planet(d), province(a), province(b).",
+            "Global goal: craves(a,c) and craves(b,a)."
         ]
     },
     "workflow": {
         "player": {
             "analyze": {
                 "input": [],
-                "output": "player_summary",
-                "system_prompt": "You are an expert human summarizer. Read the public information and the private information you possess. Produce a concise human-readable summary that enumerates the initial facts, the stated goals, and the candidate plan fragments provided. Do not emit PDDL. Focus on clarity and exact reproduction of object identifiers and relationships."
+                "output": "spec_player",
+                "system_prompt": "You are an actor describing a concrete plan over the named objects a b c d. Do not emit PDDL. Provide a stepwise plan listing actions, parameters, observations that you rely on, and which public facts are consumed and produced by each step.",
+                "prompt": "Your identity is player. Use the public information and your private information to propose a concrete step by step plan that uses Attack Feast Succumb and Overcome to make the goal true. If information is missing, describe the missing facts and keep actions concrete on objects a b c d."
             }
         },
-        "mapper": {
-            "model": {
-                "input": [
-                    "player_summary"
-                ],
-                "output": "action_models",
-                "system_prompt": "You are an expert knowledge engineer who extracts formal action schemas. Given the public information and the player_summary, produce for each operator a canonical model that lists parameters, required preconditions, add effects and delete effects in an unambiguous relational form. Do not output full PDDL; output structured schemas that the orchestrator can convert to PDDL."
-            }
-        },
-        "simulator": {
-            "simulate": {
-                "input": [
-                    "player_summary",
-                    "action_models"
-                ],
-                "output": "state_trace",
-                "system_prompt": "You are a deterministic simulator capable of applying grounded actions to an initial state using the provided action_models. Step through each candidate plan and report for each step whether preconditions are satisfied, which facts are added and deleted, and the final state. Report action failures if any preconditions are unmet. Do not generate PDDL."
+        "analyst": {
+            "formalize": {
+                "input": [],
+                "output": "spec_analyst",
+                "system_prompt": "You are an expert modeler converting informal action text into precise structured action schemas. Do not output PDDL. For each action produce: name, parameter list, preconditions as a list of atomic predicates, add effects list, delete effects list, and any typing or object-role constraints.",
+                "prompt": "Your identity is analyst. Using the public information and your private information, formalize the four actions Attack Feast Succumb and Overcome into explicit action schemas with parameters, preconditions, add effects and delete effects. Make explicit any implicit role bindings such as which argument is a province or a planet. Avoid making unverifiable assumptions; if an assumption is required, state it clearly."
             }
         },
         "auditor": {
             "audit": {
-                "input": [
-                    "player_summary",
-                    "action_models",
-                    "state_trace"
-                ],
-                "output": "consistency_report",
-                "system_prompt": "You are a domain auditor focused on temporal and causal consistency. Analyze the action_models and state_trace to identify any reliance on bookkeeping shortcuts, implicit tokens, or post-hoc assumptions. For each issue, propose a concrete remediation such as additional predicates, stronger preconditions, resource accounting, or explicit ordering constraints. Produce a clear list of fixes that the orchestrator must enforce when generating PDDL."
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of temporal and causal models. Do not emit PDDL. Inspect action schemas and proposed plan fragments for implicit bookkeeping shortcuts. Identify causal gaps and propose minimal explicit state propositions or tokens (for example 'owner' or 'pending' flags) and revisions to preconditions/effects to restore causal transparency.",
+                "prompt": "Your identity is auditor. Using the public information and your private information, produce an audit report that highlights temporal or causal inconsistencies in the action descriptions and the player's plan. Recommend explicit predicates or changes to action preconditions and effects to remove shortcuts and make the model sound for planning."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "player_summary",
-                    "action_models",
-                    "state_trace",
-                    "consistency_report"
+                    "spec_player",
+                    "spec_analyst",
+                    "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert PDDL engineer tasked with producing a domain and a problem file compatible with the FastDownwards planner. Integrate the action_models and apply the fixes from the consistency_report. Keep actions attributable to actors distinct where relevant. Produce a STRIPS-compatible PDDL domain and a PDDL problem for each of the two provided problem statements if necessary. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the result is suitable for FastDownwards and avoids relying on bookkeeping shortcuts."
+                "system_prompt": "You are an expert integrating agent artifacts into a final multi-agent PDDL domain and problem targeting the FastDownwards planner. Produce a PDDL domain and a PDDL problem file and enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Use STRIPS-compatible encodings where possible, make any auditor-prescribed bookkeeping explicit, and keep actions originating from different agents distinct by prefixing action names with agent identifiers if helpful. Ensure the produced PDDL is ready for FastDownwards.",
+                "prompt": "Your identity is orchestrator. Integrate the analyst's formalized schemas, the player's concrete plan observations, and the auditor's corrections to produce a final PDDL domain and problem encoding the initial state and the goal craves(a,c) and craves(b,a). Keep agent actions distinct and document any assumptions you introduce. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards."
             }
         },
         "constraints": [
-            "player.analyze->mapper.model",
-            "mapper.model->simulator.simulate",
-            "mapper.model->auditor.audit",
-            "simulator.simulate->auditor.audit",
             "player.analyze->orchestrator.pddl",
-            "mapper.model->orchestrator.pddl",
-            "simulator.simulate->orchestrator.pddl",
+            "analyst.formalize->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
     }

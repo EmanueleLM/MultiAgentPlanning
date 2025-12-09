@@ -1,47 +1,56 @@
-(define (problem scenarioA)
-  (:domain Logistics6)
+(define (problem transport_problem)
+  (:domain transport_domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
-    s1 s2 s3 s4 s5 s6 s7 s8 - step
+    package_0 - package
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+    city_0 city_1 - city
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 - stage
   )
 
   (:init
-    ;; Scenario A initial facts
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; airport designations
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ;; Discrete stage ordering (must be followed exactly; each action advances the current-step)
-    (step-succ s1 s2)
-    (step-succ s2 s3)
-    (step-succ s3 s4)
-    (step-succ s4 s5)
-    (step-succ s5 s6)
-    (step-succ s6 s7)
-    (step-succ s7 s8)
+    ;; airplane initial positions (airports)
+    (plane-at airplane_0 location_1_0)
+    (plane-at airplane_1 location_0_0)
 
-    ;; start at s1
-    (current-step s1)
+    ;; truck initial positions
+    (truck-at truck_0 location_0_0)
+    (truck-at truck_1 location_1_1)
+
+    ;; package initial location
+    (pkg-at package_0 location_1_1)
+
+    ;; location membership to cities
+    (loc-in-city location_0_0 city_0)
+    (loc-in-city location_0_1 city_0)
+    (loc-in-city location_1_0 city_1)
+    (loc-in-city location_1_1 city_1)
+
+    ;; explicit identity markers binding domain namespaced actions to specific vehicles
+    (is-truck0 truck_0)
+    (is-truck1 truck_1)
+    (is-plane0 airplane_0)
+    (is-plane1 airplane_1)
+
+    ;; discrete stage ordering (enforces contiguous progression)
+    (succ stage_0 stage_1)
+    (succ stage_1 stage_2)
+    (succ stage_2 stage_3)
+    (succ stage_3 stage_4)
+    (succ stage_4 stage_5)
+    (succ stage_5 stage_6)
+
+    ;; initial active stage
+    (current stage_0)
   )
 
-  (:goal
-    (next object_9 object_7)
-  )
+  (:goal (and
+    (pkg-at package_0 location_0_0)
+  ))
 )

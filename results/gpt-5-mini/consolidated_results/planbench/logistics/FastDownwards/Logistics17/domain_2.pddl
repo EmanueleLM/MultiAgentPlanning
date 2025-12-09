@@ -1,89 +1,141 @@
-(define (domain Logistics17)
+(define (domain logistics17)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj cat hand sneeze_t stup_t spring_t)
+  (:types
+    package truck airplane location
+    loc0 loc1 - location
+    airport0 - loc0
+    airport1 - loc1
+  )
 
   (:predicates
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (collect ?x - obj ?y - obj)
+    (at-package ?p - package ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
   )
 
-  (:action paltry
-    :parameters (?h - hand ?c - cat ?t - obj)
+  ;; Load/unload to/from trucks (same for all locations)
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (at-package ?p ?l)
+      (at-truck ?t ?l)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  (:action sip
-    :parameters (?h - hand ?c - cat ?t - obj)
-    :precondition (and
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (at-package ?p ?l))
+      (in-truck ?p ?t)
     )
   )
 
-  (:action clip
-    :parameters (?h - hand ?s - sneeze_t ?t - obj)
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (not (in-truck ?p ?t))
+      (at-package ?p ?l)
     )
   )
 
-  (:action wretched
-    :parameters (?s - sneeze_t ?t1 - obj ?t2 - obj ?st - stup_t)
+  ;; Driving is permitted only within the same city.
+  ;; We encode city-membership via location subtypes (loc0 / loc1),
+  ;; so separate drive actions per city subtype avoid listing in-city facts.
+  (:action drive-loc0
+    :parameters (?t - truck ?from - loc0 ?to - loc0)
     :precondition (and
-      (texture ?t1)
-      (texture ?t2)
-      (next ?s ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (at-truck ?t ?from)
     )
     :effect (and
-      (next ?s ?t2)
-      (not (next ?s ?t1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
     )
   )
 
-  (:action memory
-    :parameters (?c - cat ?s1 - spring_t ?s2 - spring_t)
+  (:action drive-loc1
+    :parameters (?t - truck ?from - loc1 ?to - loc1)
     :precondition (and
-      (next ?c ?s1)
+      (at-truck ?t ?from)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - hand ?s - sneeze_t ?t - obj)
+  ;; Loading/unloading airplanes at airport locations encoded by airport0/airport1 types.
+  (:action load-plane-0
+    :parameters (?p - package ?a - airplane ?l - airport0)
     :precondition (and
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (not (at-package ?p ?l))
+      (in-plane ?p ?a)
+    )
+  )
+
+  (:action load-plane-1
+    :parameters (?p - package ?a - airplane ?l - airport1)
+    :precondition (and
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
+    )
+    :effect (and
+      (not (at-package ?p ?l))
+      (in-plane ?p ?a)
+    )
+  )
+
+  (:action unload-plane-0
+    :parameters (?p - package ?a - airplane ?l - airport0)
+    :precondition (and
+      (in-plane ?p ?a)
+      (at-airplane ?a ?l)
+    )
+    :effect (and
+      (not (in-plane ?p ?a))
+      (at-package ?p ?l)
+    )
+  )
+
+  (:action unload-plane-1
+    :parameters (?p - package ?a - airplane ?l - airport1)
+    :precondition (and
+      (in-plane ?p ?a)
+      (at-airplane ?a ?l)
+    )
+    :effect (and
+      (not (in-plane ?p ?a))
+      (at-package ?p ?l)
+    )
+  )
+
+  ;; Flights between the two city airports are encoded explicitly as actions
+  ;; between the corresponding airport subtypes. This avoids listing airport
+  ;; or in-city facts in the initial state.
+  (:action fly-0-to-1
+    :parameters (?a - airplane ?from - airport0 ?to - airport1)
+    :precondition (and
+      (at-airplane ?a ?from)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+    )
+  )
+
+  (:action fly-1-to-0
+    :parameters (?a - airplane ?from - airport1 ?to - airport0)
+    :precondition (and
+      (at-airplane ?a ?from)
+    )
+    :effect (and
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
     )
   )
 )

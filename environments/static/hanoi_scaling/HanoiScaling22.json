@@ -4,74 +4,79 @@
     "agents": {
         "number": 3,
         "names": [
-            "disk_expert",
-            "consistency_auditor",
+            "decomposer",
+            "auditor",
             "orchestrator"
         ],
-        "disk_expert": {
+        "decomposer": {
             "private_information": [
-                "There are five disks labeled from smallest to largest: diskA, diskB, diskC, diskD, diskE",
-                "Allowed action: move the top disk from one peg to another",
-                "Rules: move only one disk at a time, only move a disk if it is on top of its peg, never place a larger disk on top of a smaller disk"
+                "I can move the top disk from one peg to another peg.",
+                "I must obey the rules: move only one disk at a time, move only a top disk, never place a larger disk on top of a smaller disk, and a disk keeps its relative size ordering once moved.",
+                "I know the disk identity ordering from smallest to largest: disk A, disk B, disk C, disk D, disk E, disk F, disk G."
             ],
-            "goal": "Provide a clear, unambiguous specification of objects, predicates, and action schemas plus a high-level plan sketch for the Tower of Hanoi instance with 5 disks and 3 pegs. Do not emit PDDL domain or problem files directly."
+            "goal": "Produce a complete ordered move sequence that moves all seven disks from the middle peg to the left peg using the right peg as an intermediate, while obeying the rules."
         },
-        "consistency_auditor": {
+        "auditor": {
             "private_information": [
-                "Role: detect temporal and causal inconsistencies and remove modeling shortcuts or bookkeeping tokens",
-                "Ensure invariants and causal links are explicit so a forward planner will not rely on implicit assumptions"
+                "I am an auditor of temporal and causal plan consistency.",
+                "I detect and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, or any plan annotations that are not physically realizable by the allowed actions.",
+                "I validate that every move is applicable at its scheduled time given previous moves and that the plan preserves disk size ordering constraints throughout."
             ],
-            "goal": "Audit the disk_expert specification for temporal and causal consistency and return corrections, required invariants, and modeling adjustments to make the instance robust for an optimal planner. Do not emit PDDL directly."
+            "goal": "Audit and clean the move sequence produced by the decomposer so it is temporally and causally consistent and free of bookkeeping shortcuts."
         },
         "orchestrator": {
-            "private_information": [],
-            "goal": "Integrate inputs from other agents and produce a complete PDDL domain and problem pair ready for the FastDownwards solver. The PDDL must model three pegs (left middle right) and five disks (a b c d e) with the specified initial and goal states."
+            "private_information": [
+                "I coordinate inputs from other agents and produce the final PDDL domain and problem targeting the FastDownwards solver.",
+                "I must keep the semantics of actions explicit and suitable for an automated planner and ensure the final artifacts are consistent with the validated move sequence."
+            ],
+            "goal": "Integrate the decomposer's move sequence and the auditor's consistency report and produce a complete PDDL domain and PDDL problem for FastDownwards that solves the Tower of Hanoi instance with seven disks."
         }
     },
     "environment": {
         "init": {
             "pegs": 3,
-            "disks": 5
+            "disks": 7
         },
         "public_information": [
-            "Classic Tower of Hanoi with three pegs: left, middle, right.",
-            "Disks from smallest to largest: diskA, diskB, diskC, diskD, diskE.",
-            "Initial state: middle peg holds from top to bottom diskA, diskB, diskC, diskD, diskE; left and right pegs are empty.",
-            "Goal state: left peg holds from top to bottom diskA, diskB, diskC, diskD, diskE; middle and right pegs are empty.",
-            "Allowed action: move the top disk from one peg to another, obeying the single-disk and size-ordering constraints."
+            "There are three pegs: left, middle, right.",
+            "There are seven disks ordered from smallest to largest as: disk A, disk B, disk C, disk D, disk E, disk F, disk G.",
+            "Initial state: the middle peg holds, from top to bottom, disk A, disk B, disk C, disk D, disk E, disk F, disk G. The left peg and the right peg are empty.",
+            "Goal state: the left peg must hold, from top to bottom, disk A, disk B, disk C, disk D, disk E, disk F, disk G. Both the middle peg and the right peg must be empty at the end.",
+            "Allowed action: move the top disk from one peg to another peg.",
+            "Rules to obey: move only one disk at a time; only move a disk that is on top of a peg; never place a larger disk on top of a smaller disk; once a disk is moved it keeps its relative size ordering with others.",
+            "The right peg may be used as an intermediate parking spot but must end empty."
         ]
     },
     "workflow": {
-        "disk_expert": {
-            "analysis": {
+        "decomposer": {
+            "decompose": {
                 "input": [],
-                "output": "disk_spec",
-                "system_prompt": "You are an expert modeler of planning problems. Provide an explicit list of objects, predicates, action schemas with clear preconditions and effects, and a concise high-level plan sketch for the 5-disk Tower of Hanoi instance. Use unambiguous names suitable for direct translation to PDDL. Do not output PDDL files."
+                "output": "move_sequence",
+                "system_prompt": "You are the decomposer agent. Using the environment public information and your private knowledge, produce a complete and ordered sequence of concrete moves that transfers all seven disks from the middle peg to the left peg while obeying all rules. Represent each step as a simple triple or sentence such as 'move disk A from middle to left'. Do not emit PDDL. Provide the full ordered list of moves as the output named move_sequence. If some information is missing, provide the best explicit sequence you can given the known configuration."
             }
         },
-        "consistency_auditor": {
+        "auditor": {
             "audit": {
                 "input": [
-                    "disk_spec"
+                    "move_sequence"
                 ],
                 "output": "consistency_report",
-                "system_prompt": "You are an expert in temporal and causal consistency for planning models. Analyze the disk_spec input and report any causal flaws, hidden bookkeeping shortcuts, or temporal assumptions. Provide concrete corrections, required invariants, and modeling recommendations so the resulting PDDL will be sound for a forward optimal planner. Do not emit PDDL."
+                "system_prompt": "You are the auditor. Receive the move sequence and verify temporal and causal applicability of every move in order. Detect and remove any bookkeeping shortcuts, such as counters, tokens, or annotations that are not realizable by allowed moves. Ensure that at each step the moved disk is on top of its source peg and that no larger disk is ever placed on a smaller disk. Provide a cleaned move sequence and a brief report describing any corrections or detected issues. Do not emit PDDL. The output must be named consistency_report."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "disk_spec",
+                    "move_sequence",
                     "consistency_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert with multi-agent PDDL problems. Integrate the disk_spec and consistency_report and produce a complete PDDL domain and problem pair targeting the FastDownwards solver. Keep agent actions distinct, name pegs left middle right and disks a b c d e. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the PDDL uses constructs supported by FastDownwards and is immediately usable by that solver."
+                "system_prompt": "You are the orchestrator. Your job is to integrate the decomposer's move sequence and the auditor's consistency report and produce a final PDDL domain and a PDDL problem file suitable for the FastDownwards solver. The PDDL must model disks and pegs explicitly, enforce the Tower of Hanoi constraints, and include an action for moving the top disk from one peg to another. Keep the action definitions unambiguous, use STRIPS or a FastDownwards-compatible ADL subset, and ensure the initial state and goal match the validated sequence and the public information. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. If input sequences contain differing object names, reconcile them consistently. Keep agents and their roles documented but ensure the produced PDDL is a single-agent planning instance suitable for FastDownwards."
             }
         },
         "constraints": [
-            "disk_expert.analysis->consistency_auditor.audit",
-            "disk_expert.analysis->orchestrator.pddl",
-            "consistency_auditor.audit->orchestrator.pddl"
+            "decomposer.decompose->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
         ]
     }
 }

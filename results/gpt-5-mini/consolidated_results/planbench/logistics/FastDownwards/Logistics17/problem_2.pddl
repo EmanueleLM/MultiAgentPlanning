@@ -1,50 +1,38 @@
-(define (problem logistics17-problemA)
-  (:domain Logistics17)
+(define (problem logistics17-prob)
+  (:domain logistics17)
   (:objects
-    object_0 - cat
-    object_1 - cat
-    object_2 - stup_t
-    object_3 - stup_t
-    object_4 - sneeze_t
-    object_5 - sneeze_t
-    object_6 - spring_t
-    object_7 - obj
-    object_8 - spring_t
-    object_9 - obj
-    object_10 - hand
-    object_11 - hand
-    object_12 - hand
-    object_13 - hand
+    ; packages
+    package_0 package_1 package_2 package_3 - package
+    ; trucks (one per city)
+    truck_0 truck_1 - truck
+    ; airplanes (only the single airplane required)
+    airplane_0 - airplane
+    ; locations (typed to encode city-membership and airports)
+    location_0_0 - airport0
+    location_0_1 - loc0
+    location_1_0 - airport1
+    location_1_1 - loc1
   )
 
   (:init
-    ;; collect relations (kept as required by wretched preconditions)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ; airplane initial location
+    (at-airplane airplane_0 location_1_0)
 
-    ;; next relations (initial variant A)
-    (next object_0 object_6)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_11 object_8)
-    (next object_12 object_9)
-    (next object_13 object_6)
-    (next object_4 object_7)
-    (next object_5 object_9)
+    ; package initial locations
+    (at-package package_0 location_0_1)
+    (at-package package_1 location_1_1)
+    (at-package package_2 location_1_0)
+    (at-package package_3 location_1_1)
 
-    ;; texture markers (required by actions that take a texture parameter)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ; truck initial locations
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_1)
   )
 
   (:goal (and
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_12 object_7)
-    (next object_13 object_9)
+    (at-package package_0 location_0_0)
+    (at-package package_1 location_1_0)
+    (at-package package_2 location_0_1)
+    (at-package package_3 location_1_1)
   ))
 )

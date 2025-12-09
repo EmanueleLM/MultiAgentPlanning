@@ -1,101 +1,139 @@
-(define (domain ObfuscatedDeceptiveLogistics29)
+(define (domain obfuscated-deceptive-logistics-29)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj stage)
+  (:types node stage)
+
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    ;; temporal progression predicates
-    (now ?t - stage)
-    (succ ?t - stage ?t2 - stage)
+    (next ?a - node ?b - node)
+    (hand ?x - node)
+    (cats ?x - node)
+    (texture ?x - node)
+    (vase ?a - node ?b - node)
+    (sneeze ?x - node)
+    (stupendous ?x - node)
+    (collect ?a - node ?b - node)
+    (spring ?x - node)
+    (current ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  ;; All actions require the current stage ?t and advance to its successor ?t2.
-  ;; Explicitly enforcing discrete-time progression prevents reordering or oscillation
-  ;; that would violate contiguous occupancy of "now".
-
-  ;; paltry: pre: hand x0, cats x1, texture x2, vase x0 x1, next x1 x2
-  ;; effects: add next x0 x2, del vase x0 x1, advance time
+  ;; paltry: requires vase between ?a and ?b and an existing next ?b->?c; creates next ?a->?c and removes the vase.
   (:action paltry
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (hand ?x0) (cats ?x1) (texture ?x2) (vase ?x0 ?x1) (next ?x1 ?x2))
+    :parameters (?a - node ?b - node ?c - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?a)
+      (cats ?b)
+      (texture ?c)
+      (vase ?a ?b)
+      (next ?b ?c)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (next ?x0 ?x2)
-             (not (vase ?x0 ?x1))
-            )
+      (next ?a ?c)
+      (not (vase ?a ?b))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 
-  ;; sip: pre: hand x0, cats x1, texture x2, next x0 x2, next x1 x2
-  ;; effects: add vase x0 x1, del next x0 x2, advance time
+  ;; sip: requires next ?a->?c and ?b->?c, produces vase ?a ?b and deletes next ?a->?c.
   (:action sip
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (hand ?x0) (cats ?x1) (texture ?x2) (next ?x0 ?x2) (next ?x1 ?x2))
+    :parameters (?a - node ?b - node ?c - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?a)
+      (cats ?b)
+      (texture ?c)
+      (next ?a ?c)
+      (next ?b ?c)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (vase ?x0 ?x1)
-             (not (next ?x0 ?x2))
-            )
+      (vase ?a ?b)
+      (not (next ?a ?c))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 
-  ;; clip: pre: hand x0, sneeze x1, texture x2, next x1 x2, next x0 x2
-  ;; effects: add vase x0 x1, del next x0 x2, advance time
+  ;; clip: requires next ?b->?c and next ?a->?c and sneeze on ?b; produces vase ?a ?b and deletes next ?a->?c.
   (:action clip
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (hand ?x0) (sneeze ?x1) (texture ?x2) (next ?x1 ?x2) (next ?x0 ?x2))
+    :parameters (?a - node ?b - node ?c - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?a)
+      (sneeze ?b)
+      (texture ?c)
+      (next ?b ?c)
+      (next ?a ?c)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (vase ?x0 ?x1)
-             (not (next ?x0 ?x2))
-            )
+      (vase ?a ?b)
+      (not (next ?a ?c))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 
-  ;; wretched: pre: sneeze x0, texture x1, texture x2, stupendous x3, next x0 x1, collect x1 x3, collect x2 x3
-  ;; effects: add next x0 x2, del next x0 x1, advance time
+  ;; wretched: moves next of ?a from ?b to ?c if sneeze on ?a, textures on ?b and ?c, stupendous ?d, and collect relations for both ?b and ?c with ?d.
   (:action wretched
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?x3 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (sneeze ?x0) (texture ?x1) (texture ?x2) (stupendous ?x3)
-                       (next ?x0 ?x1) (collect ?x1 ?x3) (collect ?x2 ?x3))
+    :parameters (?a - node ?b - node ?c - node ?d - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (sneeze ?a)
+      (texture ?b)
+      (texture ?c)
+      (stupendous ?d)
+      (next ?a ?b)
+      (collect ?b ?d)
+      (collect ?c ?d)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (next ?x0 ?x2)
-             (not (next ?x0 ?x1))
-            )
+      (next ?a ?c)
+      (not (next ?a ?b))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 
-  ;; memory: pre: cats x0, spring x1, spring x2, next x0 x1
-  ;; effects: add next x0 x2, del next x0 x1, advance time
+  ;; memory: moves next of ?a from ?b to ?c if cats on ?a and springs on ?b and ?c.
   (:action memory
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (cats ?x0) (spring ?x1) (spring ?x2) (next ?x0 ?x1))
+    :parameters (?a - node ?b - node ?c - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (cats ?a)
+      (spring ?b)
+      (spring ?c)
+      (next ?a ?b)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (next ?x0 ?x2)
-             (not (next ?x0 ?x1))
-            )
+      (next ?a ?c)
+      (not (next ?a ?b))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 
-  ;; tightfisted: pre: hand x0, sneeze x1, texture x2, next x1 x2, vase x0 x1
-  ;; effects: add next x0 x2, del vase x0 x1, advance time
+  ;; tightfisted: requires vase between ?a and ?b and next ?b->?c; creates next ?a->?c and removes the vase.
   (:action tightfisted
-    :parameters (?x0 - obj ?x1 - obj ?x2 - obj ?t - stage ?t2 - stage)
-    :precondition (and (now ?t) (succ ?t ?t2)
-                       (hand ?x0) (sneeze ?x1) (texture ?x2) (next ?x1 ?x2) (vase ?x0 ?x1))
+    :parameters (?a - node ?b - node ?c - node ?t - stage ?t2 - stage)
+    :precondition (and
+      (hand ?a)
+      (sneeze ?b)
+      (texture ?c)
+      (next ?b ?c)
+      (vase ?a ?b)
+      (current ?t)
+      (succ ?t ?t2)
+    )
     :effect (and
-             (not (now ?t)) (now ?t2)
-             (next ?x0 ?x2)
-             (not (vase ?x0 ?x1))
-            )
+      (next ?a ?c)
+      (not (vase ?a ?b))
+      (not (current ?t))
+      (current ?t2)
+    )
   )
 )

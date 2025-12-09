@@ -1,117 +1,31 @@
-(define (domain orchestrator)
-  :requirements :strips :typing
-  :types object
-  :predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (stupendous ?o - object)
-    (collect ?o - object)
-    (spring ?o - object)
+; Domain: craving-domain
+; Orchestrator notes / assumptions:
+; - There are two agents named a and b (objects of type agent) and one item c (object of type item).
+; - The goal predicates requested are (craves a c) and (craves b a).
+; - We treat both agents and items as entities: agent and item are subtypes of entity so agents can be the target of a "crave".
+; - Actions that create cravings are explicitly provided for each agent and are named with agent prefixes to keep provenance distinct.
+; - No resources, availability, or other capabilities beyond the ability to perform the specified "crave" actions are invented.
+; - All natural-language preferences are treated as hard constraints; none are introduced here beyond the requested goals.
+; - No bookkeeping shortcuts (tokens/penalty actions) are present; once an action adds a craving it is not retractable by any action in the domain.
+(define (domain craving-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent item - entity)
 
-  ;; The actions below implement the parametric pattern provided.
-  ;; For all actions we resolve the ambiguous placeholders consistently:
-  ;;   UNSPECIFIED_UNARY_1  -> cats
-  ;;   UNSPECIFIED_UNARY_2  -> texture
-  ;;   UNSPECIFIED_BINARY_A -> vase
-  ;;   UNSPECIFIED_BINARY_B -> next
-  ;; Each action requires:
-  ;;   (hand ?object_0) (cats ?object_1) (texture ?object_2) (vase ?object_0 ?object_1) (next ?object_1 ?object_2)
-  ;; Effects:
-  ;;   delete (vase ?object_0 ?object_1)
-  ;;   add    (next ?object_0 ?object_2)
-
-  (:action paltry
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
+  (:predicates
+    (craves ?who - agent ?what - entity)
   )
 
-  (:action sip
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
+  ; Action: agent a establishes a craving toward a target entity
+  (:action a-crave
+    :parameters (?target - entity)
+    :precondition (not (craves a ?target))
+    :effect (craves a ?target)
   )
 
-  (:action clip
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
+  ; Action: agent b establishes a craving toward a target entity
+  (:action b-crave
+    :parameters (?target - entity)
+    :precondition (not (craves b ?target))
+    :effect (craves b ?target)
   )
-
-  (:action wretched
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
-  )
-
-  (:action memory
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
-  )
-
-  (:action tightfisted
-    :parameters (?object_0 - object ?object_1 - object ?object_2 - object)
-    :precondition (and
-                    (hand ?object_0)
-                    (cats ?object_1)
-                    (texture ?object_2)
-                    (vase ?object_0 ?object_1)
-                    (next ?object_1 ?object_2)
-                  )
-    :effect (and
-              (not (vase ?object_0 ?object_1))
-              (next ?object_0 ?object_2)
-            )
-  )
-
 )

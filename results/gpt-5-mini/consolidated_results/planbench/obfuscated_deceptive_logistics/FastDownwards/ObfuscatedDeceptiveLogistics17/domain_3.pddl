@@ -1,135 +1,122 @@
-(define (domain obfuscated-deceptive-logistics17)
+(define (domain obfuscated-deceptive-logistics-17)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj time)
-
-  (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-
-    (time-point ?t - time)
-    (succ ?t1 - time ?t2 - time)
-    (current ?t - time)
+  (:types
+    obj
+    stage
+    texture - obj
+    spring - texture
+    hand - obj
+    cat - obj
+    sneeze - obj
+    stupendous - obj
   )
 
+  (:predicates
+    (vase ?h - hand ?c - cat)
+    (next ?o - obj ?t - texture)
+    (collect ?t - texture ?st - stupendous)
+    (succ ?s - stage ?s2 - stage)
+    (current_stage ?s - stage)
+  )
+
+  ;; Each action consumes the current stage and advances to its successor.
+  ;; This enforces a strict ordered progression of steps and prevents
+  ;; oscillating state changes because every operator moves the global
+  ;; current_stage forward to the next stage.
+
   (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?c - cat ?t - texture ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (vase ?h ?c)
+      (next ?c ?t)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?h ?t)
+      (not (vase ?h ?c))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
   (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?c - cat ?t - texture ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?h ?t)
+      (next ?c ?t)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (current ?t))
-      (current ?t2)
+      (vase ?h ?c)
+      (not (next ?h ?t))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
   (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?sneeze - sneeze ?t - texture ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?sneeze ?t)
+      (next ?h ?t)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (current ?t))
-      (current ?t2)
+      (vase ?h ?sneeze)
+      (not (next ?h ?t))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
   (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj ?t - time ?t2 - time)
+    :parameters (?sneeze - sneeze ?t1 - texture ?t2 - texture ?st - stupendous ?stage - stage ?stage2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?sneeze ?t1)
+      (collect ?t1 ?st)
+      (collect ?t2 ?st)
+      (current_stage ?stage)
+      (succ ?stage ?stage2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?sneeze ?t2)
+      (not (next ?sneeze ?t1))
+      (not (current_stage ?stage))
+      (current_stage ?stage2)
     )
   )
 
   (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?c - cat ?sp1 - spring ?sp2 - spring ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?c ?sp1)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?c ?sp2)
+      (not (next ?c ?sp1))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 
   (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?sneeze - sneeze ?t - texture ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?sneeze ?t)
+      (vase ?h ?sneeze)
+      (current_stage ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?h ?t)
+      (not (vase ?h ?sneeze))
+      (not (current_stage ?s))
+      (current_stage ?s2)
     )
   )
 )

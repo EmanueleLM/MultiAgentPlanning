@@ -1,0 +1,99 @@
+{
+    "name": "HanoiScaling28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "operator",
+            "auditor",
+            "observer",
+            "orchestrator"
+        ],
+        "operator": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I can move only one disk at a time",
+                "I may only move a disk that is currently on top of a peg"
+            ],
+            "goal": "Transfer the full stack of five disks from the right peg to the middle peg following Tower of Hanoi rules"
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency of plans",
+                "I remove bookkeeping shortcuts such as quota tokens and post-hoc penalties"
+            ],
+            "goal": "Ensure that any proposed plan is temporally and causally consistent and contains no artificial bookkeeping shortcuts"
+        },
+        "observer": {
+            "private_information": [
+                "I track exact disk ordering on each peg as states change",
+                "I maintain a clear formal representation of state predicates such as on, clear, and top"
+            ],
+            "goal": "Provide a formal state model that precisely captures the initial configuration and allowed transitions"
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inputs and produce a final PDDL domain and problem targeting the FastDownwards solver that achieves the global goal"
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 2
+        },
+        "public_information": [
+            "This is a Tower of Hanoi puzzle with three pegs: left, middle, and right.",
+            "There are five disks named A (smallest), B, C, D, and E (largest).",
+            "Valid action: move the top disk from one peg to another peg.",
+            "Rules: only one disk moved at a time; only the top disk of a peg may be moved; a larger disk may never be placed on top of a smaller disk.",
+            "Initial condition: right peg holds from top to bottom A, B, C, D, E; left and middle pegs are empty.",
+            "Goal condition: middle peg holds from top to bottom A, B, C, D, E and both left and right pegs are empty.",
+            "The left peg can be used as an intermediate parking spot but must be empty at the end."
+        ]
+    },
+    "workflow": {
+        "operator": {
+            "plan": {
+                "input": [],
+                "output": "operator_plan",
+                "system_prompt": "You are an expert in generating concrete move sequences for discrete puzzles. Provide a detailed explicit sequence of moves to achieve the goal along with for each move a concise description of the preconditions and effects expressed in plain logical terms. Do not emit PDDL domain or problem files here.",
+                "prompt": "Your role name is operator. You have access to the public information: {environment->public_information} and your private information: {agents->operator->private_information}. Produce a step-by-step move sequence and annotate each step with the required preconditions and the expected effects on peg stacks. If information is missing, restrict the plan to what you know."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "operator_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of plans with a focus on temporal and causal consistency. Identify temporal or causal conflicts in the provided plan, remove or flag any bookkeeping shortcuts (for example tokens, quotas, or penalties that simulate constraints post-hoc), and produce corrected constraints or annotations that make the plan formally valid. Do not emit PDDL domain or problem files here.",
+                "prompt": "Your role name is auditor. You see the public information: {environment->public_information}, your private information: {agents->auditor->private_information}, and the operator's plan: {operator_plan}. Produce a formal audit report listing detected issues, proposed corrections or strengthened constraints, and a clear statement that the resulting plan meets temporal and causal consistency criteria."
+            }
+        },
+        "observer": {
+            "model": {
+                "input": [],
+                "output": "state_model",
+                "system_prompt": "You are an expert in formal state modeling for classical planning. Produce a compact formal model of the state vocabulary and initial and goal states using predicates and typed objects (for example predicates like (on ?x ?y), (clear ?x), (peg ?p)). Do not produce PDDL files here; instead produce the predicate schema, object list, and explicit initial and goal predicate lists.",
+                "prompt": "Your role name is observer. You have the public information: {environment->public_information} and your private information: {agents->observer->private_information}. Provide a detailed state model including object declarations, predicate definitions, and concrete initial and goal predicate sets consistent with the described puzzle."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "operator_plan",
+                    "audit_report",
+                    "state_model"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent integration and PDDL authoring targeted to the FastDownwards solver. Integrate the operator's move sequence, the auditor's corrections, and the observer's state model into a single coherent PDDL domain and PDDL problem suitable for FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure axioms, typing, predicates, and action definitions reflect causality and do not rely on bookkeeping shortcuts.",
+                "prompt": "Your role name is orchestrator. You will receive an operator plan, an audit report, and a state model in the given inputs. Your task is to integrate these inputs and produce a final PDDL domain and problem that encode the Tower of Hanoi instance for FastDownwards. Keep agent actions distinct where relevant, ensure all constraints from the audit are enforced explicitly in the domain or problem, and target solver compatibility with FastDownwards. Output the domain and problem enclosed in tags as requested."
+            }
+        },
+        "constraints": [
+            "operator.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl",
+            "observer.model->orchestrator.pddl"
+        ]
+    }
+}

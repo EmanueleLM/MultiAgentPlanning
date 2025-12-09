@@ -1,46 +1,48 @@
-(define (problem scenarioA)
-  (:domain assembly)
+(define (problem transport_problem)
+  (:domain transport_domain)
+
   (:objects
-    object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - object
-    operator1 - operator
-    assistant1 - assistant
-    loc_storage loc_workbench - location
-    s1 s2 s3 s4 s5 s6 s7 - step
+    ;; packages
+    package_0 - package
+
+    ;; trucks
+    truck_0 truck_1 - truck
+
+    ;; airplanes
+    airplane_0 airplane_1 - airplane
+
+    ;; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; cities
+    city_0 city_1 - city
   )
 
   (:init
-    ;; initial object placements
-    (at object_9 loc_storage)
-    (at object_7 loc_storage)
-    ;; other objects can be present but not needed for this scenario; they are left unspecified intentionally.
+    ;; Airports (static)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ;; agent starting locations and availability
-    (at-agent operator1 loc_storage)
-    (at-agent assistant1 loc_storage)
-    (free operator1)
-    (free assistant1)
+    ;; Initial airplane positions (public facts)
+    (plane-at airplane_0 location_1_0)
+    (plane-at airplane_1 location_0_0)
 
-    ;; step sequencing (explicit ordered phases required by auditor remediation)
-    (step-succ s1 s2)
-    (step-succ s2 s3)
-    (step-succ s3 s4)
-    (step-succ s4 s5)
-    (step-succ s5 s6)
-    (step-succ s6 s7)
+    ;; Initial truck positions (public facts)
+    (truck-at truck_0 location_0_0)
+    (truck-at truck_1 location_1_1)
 
-    ;; begin at the first step; all actions must follow the step-succ chain and update current-step
-    (current-step s1)
+    ;; Package initial location (on ground)
+    (pkg-at package_0 location_1_1)
+
+    ;; Location membership in cities (static facts)
+    (loc-in-city location_0_0 city_0)
+    (loc-in-city location_0_1 city_0)
+    (loc-in-city location_1_0 city_1)
+    (loc-in-city location_1_1 city_1)
   )
 
-  (:goal
-    (and
-      ;; Primary scenario A target relation to be achieved
-      (next object_9 object_7)
-      ;; terminal conditions mandated by the auditor: objects must be at the final assembly location
-      (at object_9 loc_workbench)
-      (at object_7 loc_workbench)
-      ;; enforce that plan reached the final required phase
-      (current-step s7)
-    )
-  )
+  (:goal (and
+    ;; Global goal: package_0 must be on the ground at location_0_0
+    (pkg-at package_0 location_0_0)
+  ))
 )

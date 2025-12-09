@@ -1,115 +1,121 @@
-(define (domain orchestrated-collection)
-  (:requirements :strips :negative-preconditions)
+(define (domain multi-transport)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    vehicle
+    truck airplane - vehicle
+    package
+    city
+    location
+    stage
+  )
 
   (:predicates
-    (hand ?o)
-    (cats ?o)
-    (texture ?o)
-    (vase ?o1 ?o2)
-    (next ?o1 ?o2)
-    (sneeze ?o)
-    (stupendous ?o)
-    (collect ?o1 ?o2)
-    (spring ?o)
-    (has-next ?o)
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (at-pkg ?p - package ?l - location)
+    (in ?p - package ?v - vehicle)
+    (airport ?l - location)
+    (same-city ?l1 - location ?l2 - location)
+    (current ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
   )
 
-  (:action paltry
-    :parameters (?o0 ?o1 ?o2)
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-      (not (has-next ?o0))
+      (at-truck ?t ?l)
+      (at-pkg ?p ?l)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (has-next ?o0)
-      (not (vase ?o0 ?o1))
+      (in ?p ?t)
+      (not (at-pkg ?p ?l))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action sip
-    :parameters (?o0 ?o1 ?o2)
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (at-truck ?t ?l)
+      (in ?p ?t)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (has-next ?o0))
+      (at-pkg ?p ?l)
+      (not (in ?p ?t))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?o0 ?o1 ?o2)
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (at-truck ?t ?from)
+      (same-city ?from ?to)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (has-next ?o0))
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?o0 ?o1 ?o2 ?o3)
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (airport ?l)
+      (at-airplane ?a ?l)
+      (at-pkg ?p ?l)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (has-next ?o0)
+      (in ?p ?a)
+      (not (at-pkg ?p ?l))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?o0 ?o1 ?o2)
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?l - location ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (airport ?l)
+      (at-airplane ?a ?l)
+      (in ?p ?a)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (has-next ?o0)
+      (at-pkg ?p ?l)
+      (not (in ?p ?a))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?o0 ?o1 ?o2)
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-      (not (has-next ?o0))
+      (at-airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (current ?s)
+      (succ ?s ?s2)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (has-next ?o0)
-      (not (vase ?o0 ?o1))
+      (at-airplane ?a ?to)
+      (not (at-airplane ?a ?from))
+      (not (current ?s))
+      (current ?s2)
     )
   )
 )

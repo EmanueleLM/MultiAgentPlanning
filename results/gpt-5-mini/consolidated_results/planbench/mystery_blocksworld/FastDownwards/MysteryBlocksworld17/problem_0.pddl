@@ -1,23 +1,19 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator-domain)
-
-  (:objects
-    alice - agent
-    cup biscuit clipper token - item
-  )
-
+(define (problem scenario1)
+  (:domain struggle)
+  (:objects a b c d)
   (:init
-    (at cup kitchen)
-    (at biscuit kitchen)
-    (at clipper kitchen)
-    (at token kitchen)
-    (at-agent alice kitchen)
-    (holding alice token)
+    ;; initial craving facts
+    (craves a d)
+    (craves c a)
+    ;; initial harmony and absence of pain
+    (harmony)
+    ;; initial planets and provinces (per-object)
+    (planet b)
+    (planet d)
+    (province b)
+    (province c)
   )
-
-  (:goal (and
-    (cleaned cup)
-    (remembers alice biscuit)
-    (hoarded biscuit)
-  ))
+  ;; Goal: demonstrate a reachable Overcome outcome:
+  ;; produce province on 'a', create the craving (a -> b), and have harmony restored.
+  (:goal (and (province a) (craves a b) (harmony)))
 )

@@ -1,70 +1,52 @@
-(define (domain orchestrator-domain)
+(define (domain multi_transport)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent phase artifact)
+  (:types truck airplane - vehicle package location)
 
   (:predicates
-    ; phase completion status
-    (phase-completed ?p - phase)
-    ; successor relation to enforce ordered sequence of phases
-    (phase-next ?p1 - phase ?p2 - phase)
-    ; artifacts produced by phases
-    (artifact-produced ?a - artifact)
+    (at-veh ?v - vehicle ?l - location)
+    (at-pkg ?p - package ?l - location)
+    (in ?p - package ?v - vehicle)
+    (free ?p - package)
+    (road-connected ?l1 - location ?l2 - location)
+    (air-connected ?l1 - location ?l2 - location)
+    (airport ?l - location)
   )
 
-  ; Action performed by the analysis player: produce the analysis artifact and complete the analysis phase.
-  (:action analysis_player_generate_analysis
-    :precondition (and
-      (phase-next analysis plan) ; static contingency: analysis must precede plan (enforces explicit order relation)
-      (not (phase-completed analysis))
-      (not (artifact-produced analysis_doc))
-    )
-    :effect (and
-      (phase-completed analysis)
-      (artifact-produced analysis_doc)
-    )
+  ;; Truck actions (distinct from airplane actions)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location)
+    :precondition (and (at-veh ?t ?from) (road-connected ?from ?to))
+    :effect (and (not (at-veh ?t ?from)) (at-veh ?t ?to))
   )
 
-  ; Action performed by the local plan assistant: create plan artifact, requires analysis completed.
-  (:action local_plan_assistant_create_plan
-    :precondition (and
-      (phase-next analysis plan) ; enforces contiguity relation exists
-      (phase-completed analysis)
-      (not (phase-completed plan))
-      (not (artifact-produced plan_doc))
-    )
-    :effect (and
-      (phase-completed plan)
-      (artifact-produced plan_doc)
-    )
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (at-pkg ?p ?l) (at-veh ?t ?l) (free ?p) (not (airport ?l)))
+    :effect (and (not (at-pkg ?p ?l)) (not (free ?p)) (in ?p ?t))
   )
 
-  ; Action performed by the audit/report agent: apply audit corrections, requires plan completed.
-  (:action audit_report_apply_corrections
-    :precondition (and
-      (phase-next plan audit) ; enforces contiguity relation exists
-      (phase-completed plan)
-      (artifact-produced plan_doc)
-      (not (phase-completed audit))
-      (not (artifact-produced audited_doc))
-    )
-    :effect (and
-      (phase-completed audit)
-      (artifact-produced audited_doc)
-    )
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (in ?p ?t) (at-veh ?t ?l))
+    :effect (and (at-pkg ?p ?l) (free ?p) (not (in ?p ?t)))
   )
 
-  ; Finalization action (orchestrator): finalize the product, requires audited artifact.
-  (:action orchestrator_finalize
-    :precondition (and
-      (phase-next audit finalize) ; enforces contiguity relation exists
-      (phase-completed audit)
-      (artifact-produced audited_doc)
-      (not (phase-completed finalize))
-      (not (artifact-produced final_doc))
-    )
-    :effect (and
-      (phase-completed finalize)
-      (artifact-produced final_doc)
-    )
+  ;; Airplane actions (distinct)
+  (:action fly-plane
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at-veh ?a ?from) (air-connected ?from ?to))
+    :effect (and (not (at-veh ?a ?from)) (at-veh ?a ?to))
+  )
+
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (at-pkg ?p ?l) (at-veh ?a ?l) (free ?p) (airport ?l))
+    :effect (and (not (at-pkg ?p ?l)) (not (free ?p)) (in ?p ?a))
+  )
+
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (in ?p ?a) (at-veh ?a ?l) (airport ?l))
+    :effect (and (at-pkg ?p ?l) (free ?p) (not (in ?p ?a)))
   )
 )

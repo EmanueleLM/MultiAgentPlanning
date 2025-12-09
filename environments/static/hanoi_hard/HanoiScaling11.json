@@ -1,0 +1,116 @@
+{
+    "name": "HanoiScaling11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "player",
+            "spec_writer",
+            "auditor",
+            "orchestrator"
+        ],
+        "player": {
+            "private_information": [
+                "I am a planner analyst that can propose move sequences and heuristics for solving the Tower of Hanoi puzzle.",
+                "I reason about legal single-disk moves, top-of-peg constraints and size ordering, but I will not emit PDDL directly."
+            ],
+            "goal": "Help produce a correct sequence of moves and high-level plan fragments that achieve the global goal while respecting all Tower of Hanoi rules."
+        },
+        "spec_writer": {
+            "private_information": [
+                "I produce a formal, planner-agnostic specification consisting of types, predicates, and action schemas with preconditions and effects.",
+                "I will not produce PDDL, but I will provide a rigorous description that can be translated into PDDL by the orchestrator."
+            ],
+            "goal": "Provide a precise formal model of the state space, allowed actions, invariants and constraints for the Tower of Hanoi instance described in the environment."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I check that action schemas and planned fragments obey single-disk move rules, top-disk-only constraints and size ordering invariants."
+            ],
+            "goal": "Produce an audit report that identifies and corrects any modeling shortcuts or causal inconsistencies so that the final PDDL is clean and sound."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from the other agents and produce the final PDDL domain and problem formatted for FastDownwards.",
+                "I must keep different contributing agents actions and intentions distinct in the final integration to preserve accountability."
+            ],
+            "goal": "Integrate analyses, the formal specification and the audit report to produce a complete PDDL domain and problem suitable for the FastDownwards solver that achieves the global goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "pegs_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "disks": 6,
+            "disk_names": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "start_peg": "middle",
+            "goal_peg": "right",
+            "visibility": 1
+        },
+        "public_information": [
+            "Puzzle: Tower of Hanoi with 6 disks labeled from smallest to largest as A, B, C, D, E, F.",
+            "Initial state: middle peg holds from top to bottom A, B, C, D, E, F. Left peg is empty. Right peg is empty.",
+            "Goal state: right peg must hold from top to bottom A, B, C, D, E, F, and both middle and left pegs must be empty.",
+            "Allowed primitive action: move the top disk from one peg to another peg.",
+            "Rules: only one disk may be moved at a time. A move may only move a disk that is on top of a peg. A larger disk may never be placed on top of a smaller disk. Disk relative sizes remain fixed."
+        ]
+    },
+    "workflow": {
+        "player": {
+            "analyze": {
+                "input": [],
+                "output": "player_analysis",
+                "system_prompt": "You are an expert planner analyst for combinatorial puzzles. Provide high-level move sequences, recurrence patterns, and heuristics for the Tower of Hanoi instance. Do not emit PDDL directly.",
+                "prompt": "Your name is player. You are given the public environment description {environment->public_information} and your private information {agents->player->private_information}. Produce a clear analysis of solution strategies, a compact high-level sequence of moves or recursive decomposition that achieves the goal {agents->player->goal}. Identify any assumptions you need to make about naming or representation, and mark them explicitly."
+            }
+        },
+        "spec_writer": {
+            "spec": {
+                "input": [],
+                "output": "spec_formal",
+                "system_prompt": "You are an expert formal modeler. Provide a precise formal specification including types, predicates, and action schemas with parameters, preconditions and effects. Do not output PDDL; present a planner-agnostic formal description that can be translated to PDDL by the orchestrator.",
+                "prompt": "Your name is spec_writer. Given the public environment description {environment->public_information} and your private information {agents->spec_writer->private_information}, produce a formal specification for the problem. Include object types, a complete predicate list, formal action schemas for moving a top disk between pegs with explicit preconditions and effects, and invariants that must hold. Explicitly state how disk sizes are represented and compared in the model."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "player_analysis",
+                    "spec_formal"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of temporal and causal consistency for planning models. Your job is to find and remove modeling shortcuts like quota tokens or post-hoc penalties and to ensure causal soundness and determinism.",
+                "prompt": "Your name is auditor. You receive the player analysis {player_analysis} and the formal specification {spec_formal}. Check for temporal or causal inconsistencies, hidden bookkeeping shortcuts, or anything that would permit illegal moves such as moving more than one disk at a time or placing a larger disk on a smaller one. Produce a concise audit report listing detected issues and recommended corrections or stricter invariants to ensure the final PDDL is both sound and FastDownwards-compatible."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "player_analysis",
+                    "spec_formal",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator that must integrate agent inputs and produce a final PDDL domain and PDDL problem targeted to the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and intentions attributable to each contributing agent distinct where relevant.",
+                "prompt": "Your name is orchestrator. Integrate the player analysis {player_analysis}, the formal specification {spec_formal} and the auditor report {audit_report} to produce a complete PDDL domain and a PDDL problem for the instance described in {environment->public_information}. The PDDL must be compatible with FastDownwards conventions and explicitly encode the rules: single-disk moves, top-disk-only, and no larger-on-smaller placements. If any agent inputs use different object names or conventions, reconcile them consistently and document the mapping. Output only the domain enclosed by <domain></domain> and the problem enclosed by <problem></problem>."
+            }
+        },
+        "constraints": [
+            "player.analyze->orchestrator.pddl",
+            "spec_writer.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

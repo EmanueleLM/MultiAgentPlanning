@@ -1,65 +1,96 @@
-(define (problem Logistics13-problem)
-  (:domain Logistics13)
+(define (problem transport_problem)
+  (:domain multi_transport)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 - obj
-    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 - stage
+    ;; cities
+    city_0 city_1 - city
+
+    ;; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; vehicles
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+
+    ;; packages
+    package_0 package_1 package_2 - package
+
+    ;; ordered stages (discrete time steps). There are 15 actions in the validated plan, so we provide 16 stages.
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 - stage
   )
+
   (:init
-    (cats object_0)
-    (cats object_1)
+    ;; Vehicles initial positions
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_1)
+    (at-plane airplane_0 location_1_0)
+    (at-plane airplane_1 location_0_0)
 
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
+    ;; Packages initial locations
+    (at-pkg package_0 location_1_0)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_0_0)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; City membership for each location
+    (loc-in-city location_0_0 city_0)
+    (loc-in-city location_0_1 city_0)
+    (loc-in-city location_1_0 city_1)
+    (loc-in-city location_1_1 city_1)
 
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; Each city has a designated airport location (explicit mapping)
+    (city-airport city_0 location_0_0)
+    (city-airport city_1 location_1_0)
 
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; Exactly one truck per city: assign trucks to their city (static)
+    (truck-assigned truck_0 city_0)
+    (truck-assigned truck_1 city_1)
 
-    (spring object_6)
-    (spring object_8)
+    ;; Distinctness facts for locations (ordered pairs where locations differ)
+    (distinct-loc location_0_0 location_0_1)
+    (distinct-loc location_0_0 location_1_0)
+    (distinct-loc location_0_0 location_1_1)
+    (distinct-loc location_0_1 location_0_0)
+    (distinct-loc location_0_1 location_1_0)
+    (distinct-loc location_0_1 location_1_1)
+    (distinct-loc location_1_0 location_0_0)
+    (distinct-loc location_1_0 location_0_1)
+    (distinct-loc location_1_0 location_1_1)
+    (distinct-loc location_1_1 location_0_0)
+    (distinct-loc location_1_1 location_0_1)
+    (distinct-loc location_1_1 location_1_0)
 
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ;; Distinctness facts for cities (ordered pairs where cities differ)
+    (distinct-city city_0 city_1)
+    (distinct-city city_1 city_0)
 
-    (next object_0 object_8)
-    (next object_1 object_6)
-    (next object_10 object_8)
-    (next object_11 object_9)
-    (next object_12 object_6)
-    (next object_4 object_6)
-    (next object_5 object_9)
+    ;; Stage progression facts: linear chain stage_0 -> stage_1 -> ... -> stage_15
+    (next stage_0 stage_1)
+    (next stage_1 stage_2)
+    (next stage_2 stage_3)
+    (next stage_3 stage_4)
+    (next stage_4 stage_5)
+    (next stage_5 stage_6)
+    (next stage_6 stage_7)
+    (next stage_7 stage_8)
+    (next stage_8 stage_9)
+    (next stage_9 stage_10)
+    (next stage_10 stage_11)
+    (next stage_11 stage_12)
+    (next stage_12 stage_13)
+    (next stage_13 stage_14)
+    (next stage_14 stage_15)
 
-    (succ s0 s1)
-    (succ s1 s2)
-    (succ s2 s3)
-    (succ s3 s4)
-    (succ s4 s5)
-    (succ s5 s6)
-    (succ s6 s7)
-    (succ s7 s8)
-    (succ s8 s9)
-    (succ s9 s10)
-    (succ s10 s11)
-    (succ s11 s12)
-    (succ s12 s13)
-    (succ s13 s14)
-    (succ s14 s15)
-
-    (current s0)
+    ;; Initial current stage
+    (stage-now stage_0)
   )
-  (:goal (and
-    (next object_10 object_7)
-    (next object_11 object_7)
-    (next object_12 object_7)
-  ))
+
+  (:goal
+    (and
+      (at-pkg package_0 location_0_1)
+      (at-pkg package_1 location_0_1)
+      (at-pkg package_2 location_0_1)
+      ;; Require reaching the terminal stage to enforce ordered progression and completion.
+      (stage-now stage_15)
+    )
+  )
 )

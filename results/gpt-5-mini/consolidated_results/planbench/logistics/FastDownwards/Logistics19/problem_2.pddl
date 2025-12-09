@@ -1,66 +1,74 @@
-(define (problem scenario-combined)
-  (:domain linking)
+(define (problem transport_problem)
+  (:domain transport_domain)
+
+  ;; Assumptions (listed here as comments and encoded concretely in :init):
+  ;;  - A bounded discrete stage horizon is provided to enforce action ordering. We include
+  ;;    stage_0 .. stage_4 which is sufficient for the plan that moves package_0 to location_1_1.
+  ;;  - Airports are objects of type 'airport' (a subtype of location).
+  ;;  - same_city and different_city are provided extensionally in :init (symmetric as needed).
+  ;;  - No numeric capacities or durations beyond the step ordering are modeled; every action
+  ;;    consumes exactly one stage transition (s -> s_successor).
+  ;;  - All initial facts are encoded exactly as given in the human specification.
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - object
-    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9 stage_10 stage_11 - stage
+    ;; trucks
+    truck_0 truck_1 - truck
+    ;; airplane
+    airplane_0 - airplane
+    ;; package
+    package_0 - package
+    ;; cities (kept as named objects though not used in predicates here)
+    city_0 city_1 - city
+    ;; airports (typed as airport, a subtype of location)
+    location_0_0 location_1_0 - airport
+    ;; other locations (regular locations)
+    location_0_1 location_0_2 location_1_1 location_1_2 - location
+
+    ;; explicit discrete stages to enforce ordering (horizon)
+    stage_0 stage_1 stage_2 stage_3 stage_4 - stage
   )
+
   (:init
-    ;; stage ordering and initial current stage
+    ;; Initial vehicle & package locations (from human specification)
+    (truck_at truck_0 location_0_0)
+    (truck_at truck_1 location_1_2)
+    (airplane_at airplane_0 location_0_0)
+    (package_at package_0 location_1_0)
+
+    ;; City membership encoded via same_city relation (symmetric entries)
+    ;; city_0: location_0_0, location_0_1, location_0_2
+    (same_city location_0_0 location_0_1)
+    (same_city location_0_1 location_0_0)
+    (same_city location_0_0 location_0_2)
+    (same_city location_0_2 location_0_0)
+    (same_city location_0_1 location_0_2)
+    (same_city location_0_2 location_0_1)
+
+    ;; city_1: location_1_0, location_1_1, location_1_2
+    (same_city location_1_0 location_1_1)
+    (same_city location_1_1 location_1_0)
+    (same_city location_1_0 location_1_2)
+    (same_city location_1_2 location_1_0)
+    (same_city location_1_1 location_1_2)
+    (same_city location_1_2 location_1_1)
+
+    ;; different_city entries for airport-to-airport flights (symmetric)
+    (different_city location_0_0 location_1_0)
+    (different_city location_1_0 location_0_0)
+
+    ;; Stage successor (strict ordering). Each action must consume one successor step.
     (succ stage_0 stage_1)
     (succ stage_1 stage_2)
     (succ stage_2 stage_3)
     (succ stage_3 stage_4)
-    (succ stage_4 stage_5)
-    (succ stage_5 stage_6)
-    (succ stage_6 stage_7)
-    (succ stage_7 stage_8)
-    (succ stage_8 stage_9)
-    (succ stage_9 stage_10)
-    (succ stage_10 stage_11)
-    (current-stage stage_0)
 
-    ;; persistent facts (union of provided initial statements)
-    (cats object_0)
-
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-
-    (hand object_11)
-
-    ;; next facts (consistent union chosen to avoid duplicate identical next entries)
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_3 object_7)
-    (next object_4 object_8)
-
-    (next object_0 object_5)
-    (next object_11 object_8)
-    (next object_3 object_5)
-    (next object_4 object_10)
-
-    ;; sneeze, spring, stupendous, texture facts (union)
-    (sneeze object_3)
-    (sneeze object_4)
-
-    (spring object_5)
-    (spring object_8)
-
-    (stupendous object_1)
-    (stupendous object_2)
-
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; starting stage
+    (current_stage stage_0)
   )
-  (:goal (and
-    (next object_11 object_10)
-    (next object_11 object_9)
-  ))
+
+  (:goal
+    (and
+      (package_at package_0 location_1_1)
+    )
+  )
 )

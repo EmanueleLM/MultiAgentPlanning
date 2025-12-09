@@ -1,0 +1,117 @@
+(define (domain hanoi)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types disk peg stage)
+
+  (:predicates
+    (on-peg ?d - disk ?p - peg)
+    (on-disk ?d - disk ?d2 - disk)
+    (top ?p - peg ?d - disk)
+    (empty ?p - peg)
+    (smaller ?x - disk ?y - disk)
+    (succ ?a - stage ?b - stage)
+    (at-stage ?s - stage)
+    (different ?p1 - peg ?p2 - peg)
+  )
+
+  (:action move-peg-to-peg-empty
+    :parameters (?d - disk ?from - peg ?to - peg ?s - stage ?s2 - stage)
+    :precondition (and
+      (different ?from ?to)
+      (top ?from ?d)
+      (on-peg ?d ?from)
+      (empty ?to)
+      (at-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-peg ?d ?to)
+
+      (not (top ?from ?d))
+      (empty ?from)
+
+      (not (empty ?to))
+      (top ?to ?d)
+
+      (not (at-stage ?s))
+      (at-stage ?s2)
+    )
+  )
+
+  (:action move-peg-to-disk
+    :parameters (?d - disk ?from - peg ?to - peg ?desttop - disk ?s - stage ?s2 - stage)
+    :precondition (and
+      (different ?from ?to)
+      (top ?from ?d)
+      (on-peg ?d ?from)
+      (top ?to ?desttop)
+      (smaller ?d ?desttop)
+      (at-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (on-peg ?d ?from))
+      (on-disk ?d ?desttop)
+
+      (not (top ?from ?d))
+      (empty ?from)
+
+      (not (top ?to ?desttop))
+      (top ?to ?d)
+
+      (not (at-stage ?s))
+      (at-stage ?s2)
+    )
+  )
+
+  (:action move-disk-to-peg-empty
+    :parameters (?d - disk ?from - peg ?to - peg ?below - disk ?s - stage ?s2 - stage)
+    :precondition (and
+      (different ?from ?to)
+      (top ?from ?d)
+      (on-disk ?d ?below)
+      (empty ?to)
+      (at-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (on-disk ?d ?below))
+      (on-peg ?d ?to)
+
+      (not (top ?from ?d))
+      (top ?from ?below)
+
+      (not (empty ?to))
+      (top ?to ?d)
+
+      (not (at-stage ?s))
+      (at-stage ?s2)
+    )
+  )
+
+  (:action move-disk-to-disk
+    :parameters (?d - disk ?from - peg ?to - peg ?below - disk ?desttop - disk ?s - stage ?s2 - stage)
+    :precondition (and
+      (different ?from ?to)
+      (top ?from ?d)
+      (on-disk ?d ?below)
+      (top ?to ?desttop)
+      (smaller ?d ?desttop)
+      (at-stage ?s)
+      (succ ?s ?s2)
+    )
+    :effect (and
+      (not (on-disk ?d ?below))
+      (on-disk ?d ?desttop)
+
+      (not (top ?from ?d))
+      (top ?from ?below)
+
+      (not (top ?to ?desttop))
+      (top ?to ?d)
+
+      (not (at-stage ?s))
+      (at-stage ?s2)
+    )
+  )
+)

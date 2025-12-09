@@ -1,142 +1,55 @@
-(define (domain repoint-domain)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types item step)
+(define (domain transport_combined)
+  :requirements :strips :typing :negative-preconditions
+  :types
+    object
+    package - object
+    vehicle - object
+    truck - vehicle
+    airplane - vehicle
+    location - object
+    city - object
+  :predicates
+    (at ?o - object ?l - location)
+    (in ?p - package ?v - vehicle)
+    (free ?p - package)
+    (in-city ?l - location ?c - city)
+    (airport ?l - location)
 
-  (:predicates
-    (hand ?o - item)
-    (cats ?o - item)
-    (texture ?o - item)
-    (vase ?a ?b - item)
-    (next ?a ?b - item)
-    (collect ?a ?b - item)
-    (sneeze ?o - item)
-    (stupendous ?o - item)
-    (spring ?o - item)
-
-    ;; explicit discrete-stage control to enforce serial, contiguous progression
-    (at-step ?s - step)
-    (succ ?s1 ?s2 - step)
+  ;; Truck actions (prefixed with 'truck-')
+  (:action truck-load
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and (at ?t ?l) (at ?p ?l) (free ?p))
+    :effect (and (in ?p ?t) (not (at ?p ?l)) (not (free ?p)))
   )
 
-  ;; paltry
-  (:action paltry
-    :parameters (?x - item ?y - item ?z - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
+  (:action truck-unload
+    :parameters (?t - truck ?p - package ?l - location)
+    :precondition (and (at ?t ?l) (in ?p ?t))
+    :effect (and (not (in ?p ?t)) (at ?p ?l) (free ?p))
   )
 
-  ;; sip
-  (:action sip
-    :parameters (?p - item ?q - item ?r - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?p)
-      (cats ?q)
-      (texture ?r)
-      (next ?p ?r)
-      (next ?q ?r)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (vase ?p ?q)
-      (not (next ?p ?r))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and (at ?t ?from) (in-city ?from ?c) (in-city ?to ?c))
+    :effect (and (not (at ?t ?from)) (at ?t ?to))
   )
 
-  ;; clip
-  (:action clip
-    :parameters (?a - item ?b - item ?c - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
+  ;; Airplane actions (prefixed with 'plane-')
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and (at ?a ?l) (at ?p ?l) (free ?p))
+    :effect (and (in ?p ?a) (not (at ?p ?l)) (not (free ?p)))
   )
 
-  ;; wretched
-  (:action wretched
-    :parameters (?p - item ?from - item ?to - item ?m - item ?s - step ?s2 - step)
-    :precondition (and
-      (sneeze ?p)
-      (texture ?from)
-      (texture ?to)
-      (stupendous ?m)
-      (next ?p ?from)
-      (collect ?from ?m)
-      (collect ?to ?m)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (next ?p ?to)
-      (not (next ?p ?from))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?l - location)
+    :precondition (and (at ?a ?l) (in ?p ?a))
+    :effect (and (not (in ?p ?a)) (at ?p ?l) (free ?p))
   )
 
-  ;; memory
-  (:action memory
-    :parameters (?a - item ?b - item ?c - item ?s - step ?s2 - step)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at ?a ?from) (airport ?from) (airport ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
   )
-
-  ;; tightfisted
-  (:action tightfisted
-    :parameters (?x - item ?y - item ?z - item ?s - step ?s2 - step)
-    :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
-      (at-step ?s)
-      (succ ?s ?s2)
-    )
-    :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-      (not (at-step ?s))
-      (at-step ?s2)
-    )
-  )
-
 )

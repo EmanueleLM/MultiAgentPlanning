@@ -1,0 +1,55 @@
+(define (domain hanoi-integrated)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg stage - object)
+
+  (:predicates
+    (on ?d - disk ?s - object)
+    (clear ?x - object)
+    (smaller ?d1 - disk ?d2 - disk)
+    (next ?t1 - stage ?t2 - stage)
+    (at ?t - stage)
+  )
+
+  (:action move-to-peg
+    :parameters (?d - disk ?from - object ?to - peg ?t - stage ?t2 - stage)
+    :precondition (and
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (at ?t)
+      (next ?t ?t2)
+      (not (on ?d ?to))
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (clear ?to))
+      (clear ?from)
+      (clear ?d)
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+
+  (:action move-to-disk
+    :parameters (?d - disk ?from - object ?to - disk ?t - stage ?t2 - stage)
+    :precondition (and
+      (on ?d ?from)
+      (clear ?d)
+      (clear ?to)
+      (smaller ?d ?to)
+      (at ?t)
+      (next ?t ?t2)
+      (not (on ?d ?to))
+    )
+    :effect (and
+      (not (on ?d ?from))
+      (on ?d ?to)
+      (not (clear ?to))
+      (clear ?from)
+      (clear ?d)
+      (not (at ?t))
+      (at ?t2)
+    )
+  )
+)

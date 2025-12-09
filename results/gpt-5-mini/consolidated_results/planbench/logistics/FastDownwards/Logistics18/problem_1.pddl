@@ -1,49 +1,41 @@
-(define (problem task-instance-1)
-  (:domain objects-manipulation)
+(define (problem deliver_package_0)
+  (:domain cargo_orchestrator)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    city_0 city_1 - city
+
+    location_0_0 location_0_1 location_0_2
+    location_1_0 location_1_1 location_1_2 - location
+
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 - package
   )
+
   (:init
-    (cats object_0)
-    (cats object_1)
+    (location-in-city location_0_0 city_0)
+    (location-in-city location_0_1 city_0)
+    (location-in-city location_0_2 city_0)
 
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    (location-in-city location_1_0 city_1)
+    (location-in-city location_1_1 city_1)
+    (location-in-city location_1_2 city_1)
 
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    (next object_0 object_8)
-    (next object_1 object_8)
-    (next object_10 object_7)
-    (next object_11 object_9)
-    (next object_12 object_8)
-    (next object_13 object_9)
-    (next object_4 object_7)
-    (next object_5 object_9)
+    (truck-of-city truck_0 city_0)
+    (truck-of-city truck_1 city_1)
 
-    (sneeze object_4)
-    (sneeze object_5)
+    (truck-at truck_0 location_0_2)
+    (truck-at truck_1 location_1_0)
 
-    (spring object_6)
-    (spring object_8)
+    (airplane-at airplane_0 location_1_0)
 
-    (stupendous object_2)
-    (stupendous object_3)
-
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    (pkg-at package_0 location_0_1)
   )
+
   (:goal (and
-    (next object_10 object_6)
-    (next object_11 object_8)
-    (next object_12 object_7)
-    (next object_13 object_9)
+    (pkg-at package_0 location_1_2)
   ))
 )

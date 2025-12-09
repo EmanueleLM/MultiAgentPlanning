@@ -1,82 +1,58 @@
-(define (problem ObfuscatedDeceptiveLogistics23-instance)
-  (:domain ObfuscatedDeceptiveLogistics23)
+(define (problem orchestrator-problem)
+  (:domain orchestrator-domain)
 
+  ;; Objects actually used
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7
-    object_8 object_9 object_10 object_11 object_12 object_13 - obj
-
-    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 - time
+    o0 o1 o2 o3 o4 o5 o6 o7 o8 o9 o10 o11 o12 o13 - obj
   )
 
+  ;; Initial facts (trimmed: removed stage bookkeeping; kept only facts needed to preserve reachability)
   (:init
-    ; --- time ordering (discrete time horizon)
-    (succ t0 t1) (succ t1 t2) (succ t2 t3) (succ t3 t4) (succ t4 t5)
-    (succ t5 t6) (succ t6 t7) (succ t7 t8) (succ t8 t9) (succ t9 t10)
-    (succ t10 t11) (succ t11 t12)
+    ;; unary predicates
+    (cats o0)
+    (cats o1)
 
-    ; --- static facts (union of the two provided statements)
-    (cats object_0)
-    (cats object_1)
+    (stupendous o2)
+    (stupendous o3)
 
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
+    (sneeze o4)
+    (sneeze o5)
 
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
+    (spring o6)
+    (spring o9)
 
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    (hand o12)
+    (hand o13)
 
-    (spring object_5)
-    (spring object_8)
-    (spring object_6)
-    (spring object_9)
+    (texture o6)
+    (texture o7)
+    (texture o8)
+    (texture o9)
+    (texture o10)
+    (texture o11)
 
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    ;; collect relations (as in the original specification)
+    (collect o10 o3)
+    (collect o11 o3)
+    (collect o9  o3)
+    (collect o6  o2)
+    (collect o7  o2)
+    (collect o8  o2)
 
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-    (texture object_11)
+    ;; next relations (kept those provided originally)
+    (next o0 o9)
+    (next o1 o9)
 
-    ; --- time-indexed fluents at initial time t0 (union of both statements' next facts)
-    (next object_0 object_8 t0)
-    (next object_11 object_6 t0)
-    (next object_12 object_10 t0)
-    (next object_3 object_7 t0)
-    (next object_4 object_10 t0)
-    (next object_0 object_9 t0)
-    (next object_1 object_9 t0)
-    (next object_12 object_11 t0)
-    (next object_13 object_7 t0)
-    (next object_4 object_8 t0)
-    (next object_5 object_11 t0)
+    (next o12 o11)
+    (next o13 o7)
+
+    (next o4 o8)
+    (next o5 o11)
   )
 
-  ; Goals: explicit required next relations must hold at the final time t12.
-  (:goal
-    (and
-      (next object_11 object_7 t12)
-      (next object_12 object_8 t12)
-      (next object_12 object_10 t12)
-      (next object_13 object_9 t12)
-    )
-  )
+  ;; Goal
+  (:goal (and
+    (next o12 o10)
+    (next o13 o9)
+  ))
 )

@@ -1,91 +1,79 @@
-(define (problem depots28_problem)
-  (:domain depots28_domain)
+(define (problem crate-hoist-problem)
+  (:domain crate-hoist-orchestration)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5
-    object_6 object_7 object_8 object_9 object_10 object_11
-    object_12 object_13 object_14 - obj
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
+
+    ;; surfaces: pallets and crates (crate/pallet are subtypes of surface)
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+
+    ;; discrete stages to enforce action ordering (s0 -> s1 -> ... -> s10)
+    s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 - step
   )
 
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; trucks initial locations
+    (at-truck truck0 depot1)
+    (at-truck truck1 depot1)
+    (at-truck truck2 depot0)
 
-    ;; hand
-    (hand object_11)
-    (hand object_12)
-    (hand object_13)
-    (hand object_14)
+    ;; hoist locations and availability
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
+    (hoist-available hoist0)
+    (hoist-available hoist1)
+    (hoist-available hoist2)
+    (hoist-available hoist3)
 
-    ;; sneeze (union of both initial sets)
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    ;; surfaces located at places (pallets)
+    (surface-at pallet0 depot0)
+    (surface-at pallet1 depot1)
+    (surface-at pallet2 depot2)
+    (surface-at pallet3 distributor0)
 
-    ;; spring
-    (spring object_5)
-    (spring object_6)
-    (spring object_8)
-    (spring object_9)
+    ;; crates initial stacking and locations (crate is also a surface)
+    (on crate0 pallet3)
+    (surface-at crate0 distributor0)
 
-    ;; stupendous
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    (on crate1 crate0)
+    (surface-at crate1 distributor0)
 
-    ;; texture (union)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
-    (texture object_10)
-    (texture object_11)
+    (on crate2 pallet1)
+    (surface-at crate2 depot1)
 
-    ;; collect facts (union)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_9 object_2)
+    ;; clear flags for surfaces that have nothing on them
+    (clear crate1)
+    (clear crate2)
+    (clear pallet0)
 
-    ;; next facts (union of both planners' initials)
-    (next object_0 object_6)
-    (next object_1 object_9)
-    (next object_12 object_11)
-    (next object_13 object_6)
-    (next object_14 object_8)
-    (next object_4 object_7)
-    (next object_5 object_10)
-
-    (next object_0 object_8)
-    (next object_11 object_10)
-    (next object_12 object_5)
-    (next object_13 object_7)
-    (next object_14 object_9)
-    (next object_3 object_6)
-    (next object_4 object_9)
+    ;; explicit stage progression facts
+    (current-stage s0)
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (succ s4 s5)
+    (succ s5 s6)
+    (succ s6 s7)
+    (succ s7 s8)
+    (succ s8 s9)
+    (succ s9 s10)
   )
 
-  ;; Combined goals from planner_a and planner_b (conjunction)
-  (:goal
-    (and
-      ;; planner_a goals
-      (next object_12 object_10)
-      (next object_13 object_10)
-      (next object_14 object_9)
-      ;; planner_b goals
-      (next object_11 object_9)
-      (next object_12 object_8)
-      (next object_13 object_5)
-      (next object_14 object_7)
-    )
-  )
+  ;; Goal: final stacking arrangement required by the specification
+  (:goal (and
+    (on crate2 pallet0)
+    (on crate0 crate2)
+    (on crate1 crate0)
+  ))
 )

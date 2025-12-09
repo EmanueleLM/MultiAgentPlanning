@@ -4,97 +4,111 @@
     "agents": {
         "number": 4,
         "names": [
-            "planner_a",
-            "planner_b",
+            "player",
+            "annotator",
             "auditor",
             "orchestrator"
         ],
-        "planner_a": {
+        "player": {
             "private_information": [
-                "Focus on actions that reference hand, cats, texture, vase and next relations for objects with indices up to 12.",
-                "I have partial view of the first PLAN and the first STATEMENT from the use-case."
+                "I am controlling actions applied to objects a, b, c, d.",
+                "Initial facts I observe: object d craves object c; harmony is true; planet a, planet b, planet c are present; province a, province b, province d are present.",
+                "Available actions I can perform: Attack object, Feast object from another object, Succumb object, Overcome object from another object."
             ],
-            "goal": "Analyze and formalize a consistent symbolic specification of the action preconditions and effects relevant to my assigned plan segment without emitting final PDDL."
+            "goal": "Reach a state where object c craves object b and object d craves object a."
         },
-        "planner_b": {
+        "annotator": {
             "private_information": [
-                "Focus on actions that reference sneeze, stupendous, collect, spring and next relations for objects with indices beyond 4.",
-                "I have partial view of the second PLAN and the second STATEMENT from the use-case."
+                "I am responsible for formalizing action schemata (preconditions and effects) based on the informal rules provided.",
+                "Action semantics to formalize: Attack requires Province object, Planet object, Harmony; Attack yields Pain and removes Province, Planet, Harmony. Succumb requires Pain; Succumb yields Province, Planet, Harmony and removes Pain. Overcome requires Province other object and Pain; Overcome yields Harmony, Province object, Object Craves other object and removes Province other object and Pain. Feast requires Object Craves other object, Province object, Harmony; Feast yields Pain, Province other object and removes Object Craves other object, Province object, Harmony."
             ],
-            "goal": "Analyze and formalize a consistent symbolic specification of the action preconditions and effects relevant to my assigned plan segment without emitting final PDDL."
+            "goal": "Produce clear, unambiguous symbolic action specifications (preconditions and add/delete effects) for each action using the object set {a,b,c,d}."
         },
         "auditor": {
             "private_information": [
-                "My role is to check temporal and causal consistency across the planner outputs and to remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
-                "I must detect cycles, impossible preconditions, and inconsistent use of the same relation with different intended semantics."
+                "I audit temporal and causal consistency between action specifications and remove bookkeeping shortcuts.",
+                "I identify and eliminate artifacts such as quota tokens, post-hoc penalties, or temporary flags that are not required by true causal dynamics.",
+                "I verify mutual exclusivity, frame axioms, and that effects do not implicitly rely on unstated assumptions."
             ],
-            "goal": "Produce an audit report that identifies temporal and causal inconsistencies and recommends concrete fixes to produce a clean causal model that can be translated into PDDL."
+            "goal": "Produce an audit report listing required corrections to the action specifications so the model is temporally and causally consistent without bookkeeping shortcuts."
         },
         "orchestrator": {
             "private_information": [
-                "I will receive analyzed symbolic specifications from planners and the auditor report and must produce the final PDDL domain and problem targeted to the FastDownward solver.",
-                "Keep agent actions distinct and preserve causality and temporal ordering from the validated model."
+                "I integrate the annotated action schemata and the auditor's corrections to produce a final planning model.",
+                "My final output must be a PDDL domain and a PDDL problem tailored for the FastDownward solver."
             ],
-            "goal": "Integrate planner analyses and the auditor report to produce a complete PDDL domain and PDDL problem compatible with the FastDownward solver that encodes the stated goals."
+            "goal": "Combine the outputs of the other agents and generate a complete PDDL domain and problem that achieves the goal: object c craves object b and object d craves object a, given the initial facts."
         }
     },
     "environment": {
         "init": {
-            "objects_count": 13,
-            "visibility": 2
+            "objects": [
+                "a",
+                "b",
+                "c",
+                "d"
+            ],
+            "types": [
+                "planet",
+                "province",
+                "object"
+            ]
         },
         "public_information": [
-            "Available actions: paltry, sip, clip, wretched, memory, tightfisted each acting on object arguments.",
-            "Action preconditions and effects are specified in the use-case: paltry requires hand, cats, texture, vase and next relations and makes next and deletes vase; sip requires hand, cats, texture and next patterns and makes vase while deleting a next; clip requires hand, sneeze, texture and next patterns and makes vase while deleting a next; wretched requires sneeze, texture, stupendous, next and collect relations and flips next relations; memory requires cats and spring relations and flips next relations; tightfisted requires hand, sneeze, texture and vase and flips next while deleting vase.",
-            "Two different STATEMENT blocks provide different initial conditions and goals and two corresponding PLAN sequences are proposed in the use-case.",
-            "The final goal variants include next relations such as next object_10 object_7, next object_11 object_7, next object_12 object_7 and alternative goals like next object_10 object_6, next object_11 object_7, next object_12 object_7, next object_9 object_6."
+            "World contains objects a, b, c, d.",
+            "Actions available: Attack object; Feast object from another object; Succumb object; Overcome object from another object.",
+            "Action semantics (informal): To perform Attack action, the following facts need to be true: Province object, Planet object, Harmony. Once Attack action is performed the following facts will be true: Pain. Once Attack action is performed the following facts will be false: Province object, Planet object, Harmony.",
+            "To perform Succumb action, the following facts need to be true: Pain. Once Succumb action is performed the following facts will be true: Province object, Planet object, Harmony. Once Succumb action is performed the following facts will be false: Pain.",
+            "To perform Overcome action, the following needs to be true: Province other object, Pain. Once Overcome action is performed the following will be true: Harmony, Province object, Object Craves other object. Once Overcome action is performed the following will be false: Province other object, Pain.",
+            "To perform Feast action, the following needs to be true: Object Craves other object, Province object, Harmony. Once Feast action is performed the following will be true: Pain, Province other object. Once Feast action is performed the following will be false: Object Craves other object, Province object, Harmony.",
+            "Initial facts: object d craves object c; harmony is true; planet a, planet b, planet c hold; province a, province b, province d hold.",
+            "Goal: object c craves object b and object d craves object a."
         ]
     },
     "workflow": {
-        "planner_a": {
-            "analyze_segment": {
+        "player": {
+            "describe": {
                 "input": [],
-                "output": "segment_report_a",
-                "system_prompt": "You are Planner A. You must analyze a provided subset of the use-case focused on actions involving hand cats texture vase and next relations and produce a precise symbolic specification of action names, parameter roles, preconditions and effects and enumerate any ambiguities you detect. Do not emit PDDL. Provide structured symbolic output suitable for later translation.",
-                "prompt": "Planner A receives public information and its private information and must inspect the first STATEMENT and the first PLAN segment. Provide a structured symbolic report listing action schemas, their typed parameters, required preconditions, add effects, delete effects, and note any missing or ambiguous references or assumed name equivalences."
+                "output": "plan_player",
+                "system_prompt": "You are the player: describe the intended sequence of actions and the reasoning behind them without emitting PDDL. Provide concrete steps referencing objects a, b, c, d and cite which informal preconditions you believe each step requires.",
+                "prompt": "Your name is player. Use the public information and your private observations to produce a clear, stepwise description of the plan you intend to try. If information is missing, note the missing pieces rather than making unstated assumptions."
             }
         },
-        "planner_b": {
-            "analyze_segment": {
-                "input": [],
-                "output": "segment_report_b",
-                "system_prompt": "You are Planner B. You must analyze a provided subset of the use-case focused on actions involving sneeze stupendous collect spring and next relations and produce a precise symbolic specification of action names, parameter roles, preconditions and effects and enumerate any ambiguities you detect. Do not emit PDDL. Provide structured symbolic output suitable for later translation.",
-                "prompt": "Planner B receives public information and its private information and must inspect the second STATEMENT and the second PLAN segment. Provide a structured symbolic report listing action schemas, their typed parameters, required preconditions, add effects, delete effects, and note any missing or ambiguous references or assumed name equivalences."
+        "annotator": {
+            "specs": {
+                "input": [
+                    "plan_player"
+                ],
+                "output": "specs_annotator",
+                "system_prompt": "You are the annotator: convert the informal action descriptions into precise symbolic schemata. Specify parameter lists, preconditions, add effects, and delete effects for each action. Do not produce a full PDDL domain yet; produce clear JSON-like action specifications.",
+                "prompt": "Your name is annotator. Use the public information and the player's plan to produce formal action schemata for Attack, Succumb, Overcome, and Feast. Keep object identities explicit and avoid shorthand bookkeeping tokens. List any assumptions you make."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "segment_report_a",
-                    "segment_report_b"
+                    "specs_annotator"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-agent planning models. Your task is to detect cycles, impossible preconditions, inconsistent use of predicates, bookkeeping shortcuts, and post-hoc fixes in the combined planner outputs and to produce a clean, corrected causal model and a list of concrete fixes for translation. Do not emit PDDL. Focus on causal ordering and temporal feasibility and remove bookkeeping artifacts.",
-                "prompt": "You receive segment_report_a and segment_report_b. Cross-check them to find causal inconsistencies, duplicated or conflicting predicate meanings, implicit tokens or quotas, and any temporal cycles. Produce an audit_report that lists inconsistencies, recommended renamings or merges, suggested precondition/effect corrections, and a final validated causal ordering of actions."
+                "system_prompt": "You are the auditor: check the provided action schemata for temporal and causal consistency and remove bookkeeping shortcuts. Produce a report describing required fixes, clarifications, and any additional frame axioms needed to make the model robust for classical planning.",
+                "prompt": "Your name is auditor. Evaluate the annotator's schemata for cycles of effects that would permit impossible state changes, hidden assumptions, or temporary tokens. Provide a corrected set of action schemata or instructions for modification."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "segment_report_a",
-                    "segment_report_b",
-                    "audit_report"
+                    "specs_annotator",
+                    "audit_report",
+                    "plan_player"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are the Orchestrator. Integrate planner reports and the auditor report and produce a complete PDDL domain and a PDDL problem file suitable for the FastDownward solver. Keep agent actions distinct by prefixing action names with agent identifiers when needed. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, objects, initial state and goals are consistent and compatible with FastDownward.",
-                "prompt": "Using the validated causal model and the combined information from planners and auditor, generate a PDDL domain and a PDDL problem that encode the environment described in public_information and the initial STATEMENTs and goals provided. Target FastDownward compatibility. Preserve distinct agent action identities and ensure no bookkeeping shortcuts remain. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+                "system_prompt": "You are the orchestrator: integrate the annotated action schemata and the auditor's corrections to produce a final, consistent PDDL domain and a PDDL problem suitable for the FastDownward solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use explicit predicate names and keep all agent-related or action-specific names distinct. The domain should be STRIPS-compatible and avoid any nonstandard extensions. The problem should define objects a, b, c, d, set the initial facts as provided, and state the goal: (craves c b) and (craves d a).",
+                "prompt": "There are multiple inputs: the player's described plan, the annotator's action schemata, and the auditor's report. Integrate them to emit a single PDDL domain and a single PDDL problem file targeted at FastDownward. If any information is ambiguous, include brief, explicit comments in PDDL as ;comments and resolve ambiguities conservatively. Keep the action names attack, succumb, overcome, feast and ensure parameter and predicate names are consistent across domain and problem."
             }
         },
         "constraints": [
-            "planner_a.analyze_segment->auditor.audit",
-            "planner_b.analyze_segment->auditor.audit",
-            "planner_a.analyze_segment->orchestrator.pddl",
-            "planner_b.analyze_segment->orchestrator.pddl",
+            "player.describe->annotator.specs",
+            "annotator.specs->auditor.audit",
             "auditor.audit->orchestrator.pddl"
         ]
     }

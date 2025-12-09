@@ -1,82 +1,77 @@
-(define (problem integrated-depots16-problem)
-  (:domain integrated-depots16)
+(define (problem move_crates_problem)
+  (:domain hoist_truck_domain)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    ;; typed objects
+    truck0 truck1 truck2 - truck
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    crate0 crate1 crate2 - crate
+    pallet0 pallet1 pallet2 pallet3 - pallet
+
+    depot0 depot1 depot2 distributor0 - place
   )
 
   (:init
-    ;; cats
-    (cats object_0)
-    (cats object_1)
+    ;; connectivity (roads fully connect all depots and distributors) -- include both directions
+    (connected depot0 depot1) (connected depot1 depot0)
+    (connected depot0 depot2) (connected depot2 depot0)
+    (connected depot0 distributor0) (connected distributor0 depot0)
+    (connected depot1 depot2) (connected depot2 depot1)
+    (connected depot1 distributor0) (connected distributor0 depot1)
+    (connected depot2 distributor0) (connected distributor0 depot2)
 
-    ;; collect facts (union of both analyzers)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
+    ;; initial locations: trucks
+    (at truck0 depot0)
+    (at truck1 depot1)
+    (at truck2 depot2)
 
-    ;; hand facts (union)
-    (hand object_10)
-    (hand object_11)
-    (hand object_12)
-    (hand object_9)
-    (hand object_13)
+    ;; initial locations: hoists (hoists are not mobile by drive action)
+    (at hoist0 depot0)
+    (at hoist1 depot1)
+    (at hoist2 depot2)
+    (at hoist3 distributor0)
 
-    ;; next facts (union of both analyzer initial statements)
-    (next object_0 object_5)
-    (next object_10 object_7)
-    (next object_11 object_8)
-    (next object_12 object_5)
-    (next object_3 object_6)
-    (next object_4 object_8)
-    (next object_9 object_8)
-    (next object_0 object_6)
-    (next object_1 object_6)
-    (next object_10 object_9)
-    (next object_12 object_9)
-    (next object_13 object_6)
-    (next object_4 object_7)
-    (next object_5 object_9)
+    ;; initial locations: pallets and crates (we include at facts so hoist preconditions that require at(X,P) hold)
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
 
-    ;; sneeze facts
-    (sneeze object_3)
-    (sneeze object_4)
-    (sneeze object_5)
+    (on crate0 pallet0)
+    (at crate0 depot0)
 
-    ;; spring facts
-    (spring object_5)
-    (spring object_7)
-    (spring object_6)
-    (spring object_8)
+    (on crate1 pallet2)
+    (at crate1 depot2)
 
-    ;; stupendous
-    (stupendous object_1)
-    (stupendous object_2)
-    (stupendous object_3)
+    (on crate2 crate0)
+    (at crate2 depot0)
 
-    ;; textures (union)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; declare which objects are valid surfaces (only crates and pallets)
+    (is_surface pallet0) (is_surface pallet1) (is_surface pallet2) (is_surface pallet3)
+    (is_surface crate0) (is_surface crate1) (is_surface crate2)
 
-    ;; Note: no initial vase facts (will be created by sip/clip)
+    ;; initial hoist availability
+    (hoist_available hoist0)
+    (hoist_available hoist1)
+    (hoist_available hoist2)
+    (hoist_available hoist3)
+
+    ;; initial clear facts (only top-most objects or empty pallets declared clear)
+    ;; From the specification: crate1 is clear, crate2 is clear, pallet1 is clear, pallet3 is clear.
+    (clear crate1)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet3)
+    ;; Note: pallet0 is not clear (crate0 is on it); pallet2 is not clear (crate1 is on it); crate0 is not clear (crate2 on it)
+
+    ;; no crates are in trucks at start
+    ;; (no explicit negations needed; absence of (in ...) suffices)
   )
 
   (:goal (and
-    (next object_10 object_8)
-    (next object_11 object_6)
-    (next object_12 object_8)
-    (next object_9 object_5)
-    (next object_10 object_6)
-    (next object_11 object_9)
-    (next object_12 object_7)
-    (next object_13 object_9)
+    ;; final required stackings
+    (on crate0 crate1)
+    (on crate1 pallet0)
+    (on crate2 pallet2)
   ))
 )

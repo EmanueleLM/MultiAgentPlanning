@@ -1,103 +1,188 @@
-(define (domain orchestration-domain)
+(define (domain object-sequencing)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent item location phase)
+  (:types agent object pos)
 
+  ;; Predicates
   (:predicates
-    (current-phase ?p - phase)
-    (next ?p - phase ?q - phase)
-    (is-describe-phase ?p - phase)
-    (is-move-phase ?p - phase)
-    (is-audit-phase ?p - phase)
-    (is-repair-phase ?p - phase)
-
-    (role-describer ?a - agent)
-    (role-manipulator ?a - agent)
-    (role-auditor ?a - agent)
-
-    (at ?i - item ?l - location)
-    (described ?i - item)
-    (audited ?i - item)
-    (needs-repair ?i - item)
-    (repaired ?i - item)
-
-    (is-final-location ?l - location)
+    (agent-at ?a - agent ?p - pos)       ; agent located at position
+    (at ?o - object ?p - pos)           ; object located at position
+    (free ?p - pos)                     ; position is empty
+    (holding ?a - agent ?o - object)    ; agent is holding object
+    (empty-hand ?a - agent)             ; agent has empty hand
+    (succ ?p1 - pos ?p2 - pos)          ; p2 is immediate successor (right) of p1
+    (next ?o1 - object ?o2 - object)    ; o1 is immediate successor (right) of o2
   )
 
-  ;; Describer action: must be performed by an agent with describer role
-  ;; and only during a phase marked as the describe phase and when that phase is current.
-  (:action describer_describe
-    :parameters (?d - agent ?it - item ?p - phase)
-    :precondition (and
-                    (role-describer ?d)
-                    (is-describe-phase ?p)
-                    (current-phase ?p)
-                    (not (described ?it))
-                  )
-    :effect (and
-              (described ?it)
-            )
+  ;; Agent movement: move right along successor, move left using successor reversed.
+  (:action move-agent-right
+    :parameters (?a - agent ?from - pos ?to - pos)
+    :precondition (and (agent-at ?a ?from) (succ ?from ?to))
+    :effect (and (not (agent-at ?a ?from)) (agent-at ?a ?to))
   )
 
-  ;; Manipulator moves an item between two locations during the move phase.
-  (:action manipulator_move
-    :parameters (?m - agent ?it - item ?from - location ?to - location ?p - phase)
-    :precondition (and
-                    (role-manipulator ?m)
-                    (is-move-phase ?p)
-                    (current-phase ?p)
-                    (described ?it)               ;; item must be described before moving
-                    (at ?it ?from)
-                    (not (= ?from ?to))
-                  )
-    :effect (and
-              (not (at ?it ?from))
-              (at ?it ?to)
-            )
+  (:action move-agent-left
+    :parameters (?a - agent ?from - pos ?to - pos)
+    :precondition (and (agent-at ?a ?from) (succ ?to ?from))
+    :effect (and (not (agent-at ?a ?from)) (agent-at ?a ?to))
   )
 
-  ;; Auditor inspects an item during the audit phase; item must be at a final location to be audited.
-  (:action auditor_audit
-    :parameters (?a - agent ?it - item ?l - location ?p - phase)
+  ;; Pick up object when it has both left and right neighbors.
+  (:action pick-up-both
+    :parameters (?a - agent ?o - object ?p - pos ?l - object ?lp - pos ?r - object ?rp - pos)
     :precondition (and
-                    (role-auditor ?a)
-                    (is-audit-phase ?p)
-                    (current-phase ?p)
-                    (at ?it ?l)
-                    (is-final-location ?l)
-                    (not (audited ?it))
-                  )
+      (agent-at ?a ?p)
+      (at ?o ?p)
+      (empty-hand ?a)
+      (at ?l ?lp) (succ ?lp ?p)    ; left neighbor exists at predecessor position
+      (at ?r ?rp) (succ ?p ?rp)    ; right neighbor exists at successor position
+    )
     :effect (and
-              (audited ?it)
-            )
+      (not (at ?o ?p))
+      (holding ?a ?o)
+      (not (empty-hand ?a))
+      (free ?p)
+
+      ;; Remove the two next relations that previously involved the picked object.
+      (not (next ?o ?l))   ; object no longer successor of left neighbor
+      (not (next ?r ?o))   ; right neighbor no longer successor of object
+    )
   )
 
-  ;; Auditor performs repair when a repair phase is current; requires that the item was audited and needs repair.
-  (:action auditor_repair
-    :parameters (?a - agent ?it - item ?p - phase)
+  ;; Pick up object when it has only left neighbor (right position is free).
+  (:action pick-up-left
+    :parameters (?a - agent ?o - object ?p - pos ?l - object ?lp - pos ?rp - pos)
     :precondition (and
-                    (role-auditor ?a)
-                    (is-repair-phase ?p)
-                    (current-phase ?p)
-                    (audited ?it)
-                    (needs-repair ?it)
-                    (not (repaired ?it))
-                  )
+      (agent-at ?a ?p)
+      (at ?o ?p)
+      (empty-hand ?a)
+      (at ?l ?lp) (succ ?lp ?p)
+      (succ ?p ?rp) (free ?rp)    ; right position exists and is free
+    )
     :effect (and
-              (repaired ?it)
-              (not (needs-repair ?it))
-            )
+      (not (at ?o ?p))
+      (holding ?a ?o)
+      (not (empty-hand ?a))
+      (free ?p)
+
+      (not (next ?o ?l))   ; remove relation between object and its left neighbor
+    )
   )
 
-  ;; Advance the current phase to the next phase; enforces the given ordering and contiguity.
-  (:action advance_phase
-    :parameters (?from - phase ?to - phase)
+  ;; Pick up object when it has only right neighbor (left position is free).
+  (:action pick-up-right
+    :parameters (?a - agent ?o - object ?p - pos ?lp - pos ?r - object ?rp - pos)
     :precondition (and
-                    (current-phase ?from)
-                    (next ?from ?to)
-                  )
+      (agent-at ?a ?p)
+      (at ?o ?p)
+      (empty-hand ?a)
+      (succ ?lp ?p) (free ?lp)    ; left position exists and is free
+      (at ?r ?rp) (succ ?p ?rp)
+    )
     :effect (and
-              (not (current-phase ?from))
-              (current-phase ?to)
-            )
+      (not (at ?o ?p))
+      (holding ?a ?o)
+      (not (empty-hand ?a))
+      (free ?p)
+
+      (not (next ?r ?o))   ; remove relation between right neighbor and object
+    )
+  )
+
+  ;; Pick up object when both neighboring positions are free (isolated).
+  (:action pick-up-none
+    :parameters (?a - agent ?o - object ?p - pos ?lp - pos ?rp - pos)
+    :precondition (and
+      (agent-at ?a ?p)
+      (at ?o ?p)
+      (empty-hand ?a)
+      (succ ?lp ?p) (free ?lp)
+      (succ ?p ?rp) (free ?rp)
+    )
+    :effect (and
+      (not (at ?o ?p))
+      (holding ?a ?o)
+      (not (empty-hand ?a))
+      (free ?p)
+    )
+  )
+
+  ;; Put down object when there are both left and right neighbors present at the placement position.
+  (:action put-down-both
+    :parameters (?a - agent ?o - object ?p - pos ?l - object ?lp - pos ?r - object ?rp - pos)
+    :precondition (and
+      (agent-at ?a ?p)
+      (holding ?a ?o)
+      (free ?p)
+      (at ?l ?lp) (succ ?lp ?p)
+      (at ?r ?rp) (succ ?p ?rp)
+    )
+    :effect (and
+      (at ?o ?p)
+      (not (free ?p))
+      (not (holding ?a ?o))
+      (empty-hand ?a)
+
+      ;; Create the two next relations produced by this placement.
+      (next ?o ?l)   ; placed object is successor of left neighbor
+      (next ?r ?o)   ; right neighbor becomes successor of placed object
+    )
+  )
+
+  ;; Put down object when only left neighbor exists (right position is free or boundary).
+  (:action put-down-left
+    :parameters (?a - agent ?o - object ?p - pos ?l - object ?lp - pos ?rp - pos)
+    :precondition (and
+      (agent-at ?a ?p)
+      (holding ?a ?o)
+      (free ?p)
+      (at ?l ?lp) (succ ?lp ?p)
+      (succ ?p ?rp) (free ?rp)
+    )
+    :effect (and
+      (at ?o ?p)
+      (not (free ?p))
+      (not (holding ?a ?o))
+      (empty-hand ?a)
+
+      (next ?o ?l)
+    )
+  )
+
+  ;; Put down object when only right neighbor exists (left position free or boundary).
+  (:action put-down-right
+    :parameters (?a - agent ?o - object ?p - pos ?lp - pos ?r - object ?rp - pos)
+    :precondition (and
+      (agent-at ?a ?p)
+      (holding ?a ?o)
+      (free ?p)
+      (succ ?lp ?p) (free ?lp)
+      (at ?r ?rp) (succ ?p ?rp)
+    )
+    :effect (and
+      (at ?o ?p)
+      (not (free ?p))
+      (not (holding ?a ?o))
+      (empty-hand ?a)
+
+      (next ?r ?o)
+    )
+  )
+
+  ;; Put down object when both adjacent positions are free (isolated placement).
+  (:action put-down-none
+    :parameters (?a - agent ?o - object ?p - pos ?lp - pos ?rp - pos)
+    :precondition (and
+      (agent-at ?a ?p)
+      (holding ?a ?o)
+      (free ?p)
+      (succ ?lp ?p) (free ?lp)
+      (succ ?p ?rp) (free ?rp)
+    )
+    :effect (and
+      (at ?o ?p)
+      (not (free ?p))
+      (not (holding ?a ?o))
+      (empty-hand ?a)
+    )
   )
 )

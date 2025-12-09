@@ -1,137 +1,137 @@
-(define (domain obfuscated-deceptive-logistics27)
+(define (domain orchestrated)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj step)
+  (:types obj stage)
 
   (:predicates
-    ;; static or long-lived world properties (object-level)
-    (hand ?h - obj)
-    (cats ?o - obj)
-    (sneeze ?o - obj)
-    (texture ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-
-    ;; time-indexed (step) dynamic predicates
-    (vase_at ?a - obj ?b - obj ?t - step)
-    (next_at ?a - obj ?b - obj ?t - step)
-
-    ;; explicit successor relation over discrete steps (ordered stages)
-    (succ ?t1 - step ?t2 - step)
+    (hand ?x - obj)
+    (cats ?x - obj)
+    (texture ?x - obj)
+    (vase ?x - obj ?y - obj)
+    (next ?x - obj ?y - obj)
+    (sneeze ?x - obj)
+    (stupendous ?x - obj)
+    (collect ?x - obj ?y - obj)
+    (spring ?x - obj)
+    (time ?s - stage)
+    (succ ?s - stage ?t - stage)
   )
 
-  ;; All actions take a current step and the immediately succeeding step as parameters.
-  ;; Each action requires that the two steps are consecutive via (succ ?t ?t2).
-  ;; Preconditions reference predicates at the current step (?t) and effects write results at the next step (?t2).
-  ;; This enforces explicit ordered progression and prevents post-hoc oscillation without consuming successive steps.
+  ;; All actions advance the global time token from a stage to its successor.
+  ;; This enforces explicit discrete-stage progression and prevents oscillation
+  ;; by requiring every action to consume the current time and produce the next.
 
-  ;; paltry(h,a,b,t,t2): requires hand h, cats a, texture b, vase_at h a at t, next_at a b at t
-  ;; effects: add next_at h b at t2, remove vase_at h a at t
-  (:action paltry
-    :parameters (?h - obj ?a - obj ?b - obj ?t - step ?t2 - step)
+  (:action orchestrator-paltry
+    :parameters (?a - obj ?b - obj ?c - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
+      (time ?s)
+      (succ ?s ?s2)
+      (hand ?a)
+      (cats ?b)
+      (texture ?c)
+      (vase ?a ?b)
+      (next ?b ?c)
+    )
+    :effect (and
+      (not (time ?s))
+      (time ?s2)
+      (next ?a ?c)
+      (not (vase ?a ?b))
+    )
+  )
+
+  (:action orchestrator-sip
+    :parameters (?a - obj ?b - obj ?c - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (time ?s)
+      (succ ?s ?s2)
+      (hand ?a)
+      (cats ?b)
+      (texture ?c)
+      (next ?a ?c)
+      (next ?b ?c)
+    )
+    :effect (and
+      (not (time ?s))
+      (time ?s2)
+      (vase ?a ?b)
+      (not (next ?a ?c))
+    )
+  )
+
+  (:action orchestrator-clip
+    :parameters (?a - obj ?b - obj ?c - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (time ?s)
+      (succ ?s ?s2)
+      (hand ?a)
+      (sneeze ?b)
+      (texture ?c)
+      (next ?b ?c)
+      (next ?a ?c)
+    )
+    :effect (and
+      (not (time ?s))
+      (time ?s2)
+      (vase ?a ?b)
+      (not (next ?a ?c))
+    )
+  )
+
+  (:action orchestrator-wretched
+    :parameters (?sneeze - obj ?tfrom - obj ?tto - obj ?collector - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (time ?s)
+      (succ ?s ?s2)
+      (sneeze ?sneeze)
+      (texture ?tfrom)
+      (texture ?tto)
+      (stupendous ?collector)
+      (next ?sneeze ?tfrom)
+      (collect ?tfrom ?collector)
+      (collect ?tto ?collector)
+    )
+    :effect (and
+      (not (time ?s))
+      (time ?s2)
+      (next ?sneeze ?tto)
+      (not (next ?sneeze ?tfrom))
+    )
+  )
+
+  (:action orchestrator-memory
+    :parameters (?a - obj ?b - obj ?c - obj ?s - stage ?s2 - stage)
+    :precondition (and
+      (time ?s)
+      (succ ?s ?s2)
       (cats ?a)
-      (texture ?b)
-      (vase_at ?h ?a ?t)
-      (next_at ?a ?b ?t)
-      (succ ?t ?t2)
+      (spring ?b)
+      (spring ?c)
+      (next ?a ?b)
     )
     :effect (and
-      (next_at ?h ?b ?t2)
-      (not (vase_at ?h ?a ?t))
+      (not (time ?s))
+      (time ?s2)
+      (next ?a ?c)
+      (not (next ?a ?b))
     )
   )
 
-  ;; sip(h,a,b,t,t2): requires hand h, cats a, texture b, next_at h b at t, next_at a b at t
-  ;; effects: add vase_at h a at t2, remove next_at h b at t
-  (:action sip
-    :parameters (?h - obj ?a - obj ?b - obj ?t - step ?t2 - step)
+  (:action orchestrator-tightfisted
+    :parameters (?a - obj ?b - obj ?c - obj ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?h)
-      (cats ?a)
-      (texture ?b)
-      (next_at ?h ?b ?t)
-      (next_at ?a ?b ?t)
-      (succ ?t ?t2)
+      (time ?s)
+      (succ ?s ?s2)
+      (hand ?a)
+      (sneeze ?b)
+      (texture ?c)
+      (next ?b ?c)
+      (vase ?a ?b)
     )
     :effect (and
-      (vase_at ?h ?a ?t2)
-      (not (next_at ?h ?b ?t))
-    )
-  )
-
-  ;; clip(h,s,t,tstep,tstep2): requires hand h, sneeze s, texture t, next_at s t at tstep, next_at h t at tstep
-  ;; effects: add vase_at h s at tstep2, remove next_at h t at tstep
-  (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj ?tstep - step ?tstep2 - step)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next_at ?s ?t ?tstep)
-      (next_at ?h ?t ?tstep)
-      (succ ?tstep ?tstep2)
-    )
-    :effect (and
-      (vase_at ?h ?s ?tstep2)
-      (not (next_at ?h ?t ?tstep))
-    )
-  )
-
-  ;; wretched(s, t1, t2, u, tstep, tstep2): requires sneeze s, texture t1, texture t2, stupendous u,
-  ;;                                       next_at s t1 at tstep, collect t1 u, collect t2 u
-  ;; effects: add next_at s t2 at tstep2, remove next_at s t1 at tstep
-  (:action wretched
-    :parameters (?s - obj ?t1 - obj ?t2 - obj ?u - obj ?tstep - step ?tstep2 - step)
-    :precondition (and
-      (sneeze ?s)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?u)
-      (next_at ?s ?t1 ?tstep)
-      (collect ?t1 ?u)
-      (collect ?t2 ?u)
-      (succ ?tstep ?tstep2)
-    )
-    :effect (and
-      (next_at ?s ?t2 ?tstep2)
-      (not (next_at ?s ?t1 ?tstep))
-    )
-  )
-
-  ;; memory(c, s1, s2, t, t2): requires cats c, spring s1, spring s2, next_at c s1 at t
-  ;; effects: add next_at c s2 at t2, remove next_at c s1 at t
-  (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj ?t - step ?t2 - step)
-    :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next_at ?c ?s1 ?t)
-      (succ ?t ?t2)
-    )
-    :effect (and
-      (next_at ?c ?s2 ?t2)
-      (not (next_at ?c ?s1 ?t))
-    )
-  )
-
-  ;; tightfisted(h, s, t, tstep, tstep2): requires hand h, sneeze s, texture t, next_at s t at tstep, vase_at h s at tstep
-  ;; effects: add next_at h t at tstep2, remove vase_at h s at tstep
-  (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj ?tstep - step ?tstep2 - step)
-    :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next_at ?s ?t ?tstep)
-      (vase_at ?h ?s ?tstep)
-      (succ ?tstep ?tstep2)
-    )
-    :effect (and
-      (next_at ?h ?t ?tstep2)
-      (not (vase_at ?h ?s ?tstep))
+      (not (time ?s))
+      (time ?s2)
+      (next ?a ?c)
+      (not (vase ?a ?b))
     )
   )
 

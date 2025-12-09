@@ -1,80 +1,75 @@
-(define (problem Depots23-orchestrator-problem)
-  (:domain Depots23-orchestrator)
+(define (problem depots23-instance)
+  (:domain depots23)
 
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7
-    object_8 object_9 object_10 object_11 object_12 object_13 - obj
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+    ;; surfaces
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2 - crate
+    ;; hoists and trucks
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2 - truck
+    ;; phases (cycle: lift -> load -> drive -> unload -> drop -> lift)
+    ph_lift ph_load ph_drive ph_unload ph_drop - phase
   )
 
   (:init
-    ;; --- facts from scenario 1 initial statement ---
-    (cats object_0)
-    (collect object_10 object_2)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_1)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
-    (hand object_11)
-    (hand object_12)
-    (next object_0 object_8)
-    (next object_11 object_6)
-    (next object_12 object_10)
-    (next object_3 object_7)
-    (next object_4 object_10)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_8)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_10)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; phase cycle
+    (next ph_lift ph_load)
+    (next ph_load ph_drive)
+    (next ph_drive ph_unload)
+    (next ph_unload ph_drop)
+    (next ph_drop ph_lift)
+    ;; start in lift phase
+    (current-phase ph_lift)
 
-    ;; --- facts from scenario 2 initial statement (merged) ---
-    (cats object_1)
-    (collect object_10 object_3)
-    (collect object_11 object_3)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_3)
-    (hand object_12)
-    (hand object_13)
-    (next object_0 object_9)
-    (next object_1 object_9)
-    (next object_12 object_11)
-    (next object_13 object_7)
-    (next object_4 object_8)
-    (next object_5 object_11)
-    (sneeze object_4)
-    (sneeze object_5)
-    (spring object_6)
-    (spring object_9)
-    (stupendous object_2)
-    (stupendous object_3)
-    (texture object_10)
-    (texture object_11)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
-    (texture object_9)
+    ;; initial positions: pallets at places
+    (surface-at pallet0 depot0)
+    (surface-at pallet1 depot1)
+    (surface-at pallet2 depot2)
+    (surface-at pallet3 distributor0)
 
-    ;; Note: duplicated facts across the two scenario initial sets are listed (duplicates are harmless)
+    ;; initial stacking: crates on surfaces as stated and crates have surface-at place as well
+    (on crate0 pallet0)
+    (surface-at crate0 depot0)
+
+    (on crate1 crate0)
+    (surface-at crate1 depot0)
+
+    (on crate2 pallet3)
+    (surface-at crate2 distributor0)
+
+    ;; initial clear facts (explicit)
+    (clear crate1)
+    (clear crate2)
+    (clear pallet1)
+    (clear pallet2)
+    ;; surfaces that have something on them are not clear (implicitly false since not listed)
+    ;; crate0 is not clear (crate1 on it), pallet0 not clear (crate0 on it), pallet3 not clear (crate2 on it)
+
+    ;; hoist locations and availability
+    (hoist-at hoist0 depot0)
+    (hoist-at hoist1 depot1)
+    (hoist-at hoist2 depot2)
+    (hoist-at hoist3 distributor0)
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+
+    ;; truck initial locations
+    (truck-at truck0 distributor0)
+    (truck-at truck1 depot1)
+    (truck-at truck2 distributor0)
+
+    ;; trucks initially empty: represented implicitly by absence of in-truck facts
+    ;; no hoist is lifting initially: represented implicitly by absence of lifting facts
   )
 
-  (:goal
-    (and
-      ;; scenario 1 goals
-      (next object_11 object_7)
-      (next object_12 object_8)
-      ;; scenario 2 goals
-      (next object_12 object_10)
-      (next object_13 object_9)
-    )
-  )
+  (:goal (and
+    (on crate0 pallet2)
+    (on crate1 crate0)
+    (on crate2 pallet0)
+  ))
 )

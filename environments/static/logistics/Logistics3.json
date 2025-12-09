@@ -4,97 +4,106 @@
     "agents": {
         "number": 4,
         "names": [
-            "manipulator_A",
-            "manipulator_B",
+            "city_modeler",
+            "vehicle_modeler",
             "auditor",
             "orchestrator"
         ],
-        "manipulator_A": {
+        "city_modeler": {
             "private_information": [
-                "I work with a subset of objects and prefer concrete action sequences",
-                "I understand the action schemas and their parameter orders"
+                "There are two cities: city_0 and city_1.",
+                "Each city contains exactly one location: location_0_0 in city_0 and location_1_0 in city_1.",
+                "location_0_0 and location_1_0 are airports."
             ],
-            "goal": "Propose an executable action sequence that progresses toward the supplied next relations goals while respecting action preconditions and effects"
+            "goal": "Provide a clear, unambiguous declarative model of the geographic and location topology used by planners."
         },
-        "manipulator_B": {
+        "vehicle_modeler": {
             "private_information": [
-                "I work with a different subset of objects and may propose alternative orders",
-                "I can exploit actions that set or reset vase and next predicates"
+                "There are two trucks, one per city: truck_0 in city_0 and truck_1 in city_1.",
+                "There are two airplanes: airplane_0 and airplane_1, both initially at location_0_0.",
+                "Packages: package_0 and package_1 with initial locations as stated in the environment."
             ],
-            "goal": "Propose an executable action sequence that progresses toward the supplied next relations goals while respecting action preconditions and effects"
+            "goal": "Specify vehicle and cargo capabilities, action preconditions and effects in a structured form suitable for conversion to PDDL."
         },
         "auditor": {
             "private_information": [
-                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens and post-hoc penalties",
-                "I flag race conditions and ambiguous object aliases and propose deterministic fixes"
+                "Responsible for checking temporal and causal consistency and removing bookkeeping shortcuts and informal assumptions.",
+                "Will flag implicit assumptions such as instantaneous load/unload or hidden capacity tokens."
             ],
-            "goal": "Produce an audit report that finds causal or temporal conflicts in proposed plans, eliminates bookkeeping shortcuts, and suggests corrected stepwise plans"
+            "goal": "Audit the models produced by other agents for causal completeness and temporal consistency and produce a correction report."
         },
         "orchestrator": {
-            "private_information": [
-                "I integrate plans and audits and must output a final PDDL domain and problem targeting the FastDownward solver"
-            ],
-            "goal": "Integrate agent analyses and the auditor report to produce a final PDDL domain and problem compatible with FastDownward that achieves the stated goals"
+            "private_information": [],
+            "goal": "Integrate the models and the auditor report and produce a complete PDDL domain and problem targeted to the FastDownwards planner that achieves the global goal."
         }
     },
     "environment": {
         "init": {
-            "grid_size": 10,
-            "visibility": 2
+            "cities": 2,
+            "locations_per_city": 1,
+            "airports_per_city": 1
         },
         "public_information": [
-            "Action schemas available: paltry, sip, clip, wretched, memory, tightfisted each with specific parameter lists and preconditions and effects",
-            "Predicates include hand, cats, texture, vase, next, sneeze, spring, collect, stupendous",
-            "Typical precondition patterns: paltry requires hand, cats, texture, vase, next; sip requires hand, cats, texture, next; clip requires hand, sneeze, texture, next; wretched requires sneeze, texture, stupendous, next, collect; memory requires cats, spring, next; tightfisted requires hand, sneeze, texture, next, vase",
-            "Typical effect patterns: many actions toggle next relations or vase relations as specified by their schema",
-            "Goals in instances are conjunctions of next relations between objects",
-            "Plans must maintain explicit naming of objects and avoid implicit bookkeeping tokens or hidden counters"
+            "There are two cities connected by air routes: city_0 and city_1.",
+            "Each city has locations that are directly connected within the city for trucks.",
+            "Each city has exactly one truck assigned to it.",
+            "Each city has exactly one airport location.",
+            "Trucks move between locations within a city, airplanes fly between airports of different cities.",
+            "Load and unload actions move packages between vehicles and locations according to vehicle presence and location equality.",
+            "Initial facts: location_0_0 is an airport, location_1_0 is an airport, airplane_0 is at location_0_0, airplane_1 is at location_0_0, package_0 is at location_1_0, package_1 is at location_1_0, truck_0 is at location_0_0, truck_1 is at location_1_0, location_0_0 is in city_0 and location_1_0 is in city_1.",
+            "Goal: package_0 at location_1_0 and package_1 at location_0_0."
         ]
     },
     "workflow": {
-        "manipulator_A": {
-            "analysis": {
+        "city_modeler": {
+            "model": {
                 "input": [],
-                "output": "plan_A",
-                "system_prompt": "You are a domain analyst. Your role is to read the public information and your private information and produce a clear step by step plan. Do not emit PDDL. When you list steps, include the action name, the object parameters, the required preconditions present at that step, and the expected effects after the step. If information is missing or ambiguous, state the missing facts explicitly and do not invent world facts.",
-                "prompt": "Your name is manipulator_A. You have these public facts: {environment->public_information} You have these private facts: {agents->manipulator_A->private_information} Your goal is: {agents->manipulator_A->goal} Provide a stepwise plan with justification for each step and explicit preconditions and effects."
+                "output": "model_city",
+                "system_prompt": "You are an expert modeller of static geographic and topological information. Produce a precise structured description of objects (cities, locations, airports), their membership relations (location in city), and connectivity relations that are required by planners. Do not output PDDL, instead output clear lists of objects, predicates, and any naming conventions to be used by downstream agents.",
+                "prompt": "Your name is city_modeler. Use the public information {environment->public_information} and your private information {agents->city_modeler->private_information} to produce a structured model describing objects, predicates, and connectivity relevant for logistics planning. Focus on clarity, no PDDL, and enumerate any assumptions you make."
             }
         },
-        "manipulator_B": {
-            "analysis": {
-                "input": [],
-                "output": "plan_B",
-                "system_prompt": "You are a domain analyst offering alternative action sequences. Do not emit PDDL. Provide a step by step plan with action names and parameters, explain why each precondition will hold when the action is applied, and show resulting predicate changes. Do not use bookkeeping shortcuts such as quota tokens.",
-                "prompt": "Your name is manipulator_B. You have these public facts: {environment->public_information} You have these private facts: {agents->manipulator_B->private_information} Your goal is: {agents->manipulator_B->goal} Provide a stepwise plan with justification for each step and explicit preconditions and effects."
+        "vehicle_modeler": {
+            "model": {
+                "input": [
+                    "model_city"
+                ],
+                "output": "model_vehicle",
+                "system_prompt": "You are an expert in vehicle and cargo action specification. Produce structured action schemas for load, unload, drive, and fly with explicit preconditions and effects expressed in a declarative structured format. Describe object types, fluent predicates, and action parameterization. Do not produce PDDL here, only a structured machine-friendly specification.",
+                "prompt": "Your name is vehicle_modeler. Given the city model {model_city} and public information {environment->public_information} and your private information {agents->vehicle_modeler->private_information}, produce detailed action schemas for load into truck, unload from truck, load into airplane, unload from airplane, drive truck, and fly airplane. Explicitly state preconditions and effects and any constraints like co-location or airport requirements. Enumerate any assumptions about capacities or instantaneous actions."
             }
         },
         "auditor": {
             "audit": {
                 "input": [
-                    "plan_A",
-                    "plan_B"
+                    "model_city",
+                    "model_vehicle"
                 ],
                 "output": "audit_report",
-                "system_prompt": "You are an expert auditor specialized in temporal and causal consistency. Your task is to inspect submitted plans and identify causal conflicts, temporal ordering issues, and any reliance on bookkeeping shortcuts or post-hoc penalties. Provide corrected sequences or ordering constraints that remove such shortcuts and ensure determinism. Do not emit PDDL. Provide concrete remediation steps and a final consistent plan fragment when possible.",
-                "prompt": "Your name is auditor. You receive the candidate plans {plan_A} and {plan_B}. Use public information {environment->public_information} and your private information {agents->auditor->private_information}. Your objective is {agents->auditor->goal} Produce an audit report listing detected issues, justification, and corrected stepwise plans or ordering constraints that fix the issues."
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Inspect structured models for hidden bookkeeping shortcuts, implicit temporal assumptions, missing causal links, and ambiguous naming. Produce a corrective report that lists each issue and precise recommended fixes in the structured modelling language used by the other agents.",
+                "prompt": "Your name is auditor. Given the city model {model_city} and the vehicle model {model_vehicle}, check for temporal inconsistencies (for example missing effects that would make actions possible), causal gaps (for example loading without co-location), and any bookkeeping shortcuts (tokens or implicit counters). Output a concise list of issues and suggested corrections or clarifications that the orchestrator can apply."
             }
         },
         "orchestrator": {
             "pddl": {
                 "input": [
-                    "plan_A",
-                    "plan_B",
+                    "model_city",
+                    "model_vehicle",
                     "audit_report"
                 ],
                 "output": "pddl_orchestrator",
-                "system_prompt": "You are an expert with multi-agent PDDL problems and you must produce a PDDL domain and a PDDL problem file compatible with the FastDownward planner. Produce a single domain and one or more problem files as needed for the final integrated instance. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Include explicit :requirements supported by FastDownward, define types and predicates, and declare actions with preconditions and effects. Keep actions originating from different agents distinct by prefixing action names with agent identifiers when appropriate. Resolve naming ambiguities by unifying identical world objects and state the unification choices in comments or as metadata inside the problem description. The final PDDL must be solvable by FastDownward given the integrated initial state and goal.",
-                "prompt": "You are the orchestrator. Public information: {environment->public_information}. Inputs to integrate: {plan_A} {plan_B} {audit_report}. Your private information: {agents->orchestrator->private_information}. Global objective: {agents->orchestrator->goal} Think step by step. Integrate the plans and audit corrections, resolve name mismatches and causal ordering, and output a PDDL domain and a PDDL problem file targeted for FastDownward. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in producing final PDDL suitable for the FastDownwards planner. Integrate the structured models and the auditor report, resolve naming mismatches, keep actions of different agents distinct, and output a complete PDDL domain and PDDL problem that FastDownwards can solve. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure types, predicates, actions, initial state, and goal are fully specified and consistent with the provided initial facts and goal.",
+                "prompt": "You are the orchestrator. Receive the city model {model_city}, the vehicle model {model_vehicle}, and the auditor report {audit_report}. Integrate them into a complete PDDL domain and problem aimed at FastDownwards. Keep agent actions namespaced or distinct where appropriate, ensure airports and intra-city connections are modeled, ensure load/unload drive/fly semantics reflect the constraints in the public information, and ensure the initial state and goals match the environment public information. Output the PDDL domain and problem, with the domain enclosed in <domain></domain> and the problem enclosed in <problem></problem>."
             }
         },
         "constraints": [
-            "manipulator_A.analysis->orchestrator.pddl",
-            "manipulator_B.analysis->orchestrator.pddl",
+            "city_modeler.model->vehicle_modeler.model",
+            "city_modeler.model->auditor.audit",
+            "vehicle_modeler.model->auditor.audit",
+            "city_modeler.model->orchestrator.pddl",
+            "vehicle_modeler.model->orchestrator.pddl",
             "auditor.audit->orchestrator.pddl"
         ]
-    }
+    },
+    "constraints": []
 }

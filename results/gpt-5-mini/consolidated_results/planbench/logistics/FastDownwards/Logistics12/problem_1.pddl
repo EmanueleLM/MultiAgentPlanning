@@ -1,80 +1,47 @@
-(define (problem logistics_objects-problem)
-  (:domain logistics_objects)
-  (:objects
-    ;; Scenario 1 objects (suffix _s1)
-    object_0_s1 object_1_s1 object_2_s1 object_3_s1 object_4_s1 object_5_s1 object_6_s1 object_7_s1 object_8_s1 object_9_s1 object_10_s1 object_11_s1 - obj
+(define (problem logistics_multiagent_problem)
+  (:domain logistics_multiagent)
 
-    ;; Scenario 2 objects (suffix _s2)
-    object_0_s2 object_1_s2 object_2_s2 object_3_s2 object_4_s2 object_5_s2 object_6_s2 object_7_s2 object_8_s2 object_9_s2 object_10_s2 object_11_s2 object_12_s2 - obj
+  (:objects
+    ; cities
+    city_0 city_1 - city
+
+    ; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ; vehicles: one truck and one airplane per city (names from specification)
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - plane
+
+    ; packages
+    package_0 package_1 package_2 - package
   )
 
   (:init
-    ;; -------- Scenario 1 initial facts (from statement 1) --------
-    (cats object_0_s1)
-    (collect object_5_s1 object_1_s1)
-    (collect object_6_s1 object_1_s1)
-    (collect object_7_s1 object_2_s1)
-    (collect object_8_s1 object_2_s1)
-    (hand object_10_s1)
-    (hand object_11_s1)
-    (hand object_9_s1)
-    (next object_0_s1 object_5_s1)
-    (next object_10_s1 object_5_s1)
-    (next object_11_s1 object_5_s1)
-    (next object_3_s1 object_6_s1)
-    (next object_4_s1 object_7_s1)
-    (next object_9_s1 object_8_s1)
-    (sneeze object_3_s1)
-    (sneeze object_4_s1)
-    (spring object_5_s1)
-    (spring object_7_s1)
-    (stupendous object_1_s1)
-    (stupendous object_2_s1)
-    (texture object_5_s1)
-    (texture object_6_s1)
-    (texture object_7_s1)
-    (texture object_8_s1)
+    ; location -> city membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
 
-    ;; -------- Scenario 2 initial facts (from statement 2) --------
-    (cats object_0_s2)
-    (cats object_1_s2)
-    (collect object_6_s2 object_2_s2)
-    (collect object_7_s2 object_2_s2)
-    (collect object_8_s2 object_3_s2)
-    (collect object_9_s2 object_3_s2)
-    (hand object_10_s2)
-    (hand object_11_s2)
-    (hand object_12_s2)
-    (next object_0_s2 object_6_s2)
-    (next object_1_s2 object_8_s2)
-    (next object_10_s2 object_9_s2)
-    (next object_11_s2 object_6_s2)
-    (next object_12_s2 object_6_s2)
-    (next object_4_s2 object_7_s2)
-    (next object_5_s2 object_8_s2)
-    (sneeze object_4_s2)
-    (sneeze object_5_s2)
-    (spring object_6_s2)
-    (spring object_8_s2)
-    (stupendous object_2_s2)
-    (stupendous object_3_s2)
-    (texture object_6_s2)
-    (texture object_7_s2)
-    (texture object_8_s2)
-    (texture object_9_s2)
+    ; airports
+    (is-airport location_0_0)
+    (is-airport location_1_0)
+
+    ; initial vehicle positions (as given)
+    (at airplane_0 location_0_0)
+    (at airplane_1 location_1_0)
+    (at truck_0 location_0_1)
+    (at truck_1 location_1_0)
+
+    ; initial package positions (as given)
+    (at-pkg package_0 location_1_1)
+    (at-pkg package_1 location_0_0)
+    (at-pkg package_2 location_0_0)
   )
 
-  (:goal
-    (and
-      ;; Goals for scenario 1
-      (next object_10_s1 object_8_s1)
-      (next object_11_s1 object_7_s1)
-      (next object_9_s1 object_6_s1)
-
-      ;; Goals for scenario 2
-      (next object_10_s2 object_7_s2)
-      (next object_11_s2 object_9_s2)
-      (next object_12_s2 object_8_s2)
-    )
-  )
+  (:goal (and
+    (at-pkg package_0 location_0_1)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_1_0)
+  ))
 )

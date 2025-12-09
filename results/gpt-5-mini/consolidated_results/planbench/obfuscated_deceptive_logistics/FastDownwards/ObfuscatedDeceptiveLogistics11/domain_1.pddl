@@ -1,119 +1,150 @@
-(define (domain obfuscated-deceptive-logistics11)
+(define (domain object-ordering-explicit-stages)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types object stage)
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
+    ;; core relations
+    (next ?x - object ?y - object)        ;; x is immediately before y
+    (vase ?x - object ?y - object)
+    (collect ?x - object ?y - object)
+
+    ;; unary properties
+    (hand ?o - object)
+    (cats ?o - object)
+    (texture ?o - object)
+    (sneeze ?o - object)
+    (spring ?o - object)
+    (stupendous ?o - object)
+
+    ;; explicit discrete stage bookkeeping (hard temporal ordering)
+    (next-stage ?s1 - stage ?s2 - stage) ;; stage ordering relation (s1 immediately before s2)
+    (used-stage ?s - stage)              ;; this stage has already been consumed by an action
+    (free-stage ?s - stage)              ;; this stage is currently free to be consumed
   )
 
-  ;; paltry: requires hand ?o0, cats ?o1, texture ?o2, vase ?o0 ?o1, next ?o1 ?o2
-  ;; effects: add next ?o0 ?o2 ; delete vase ?o0 ?o1
+  ;; Helper: every action consumes exactly one free stage and requires that the immediate previous
+  ;; stage is already used. This enforces strictly increasing, contiguous stage usage.
+  ;; Each action has explicit object parameters as per the original specification.
+
   (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (vase ?o0 ?o1)
+      (next ?o1 ?o2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
     )
   )
 
-  ;; sip: requires hand ?o0, cats ?o1, texture ?o2, next ?o0 ?o2, next ?o1 ?o2
-  ;; effects: add vase ?o0 ?o1 ; delete next ?o0 ?o2
   (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 - object)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (hand ?o0)
+      (cats ?o1)
+      (texture ?o2)
+      (next ?o0 ?o2)
+      (next ?o1 ?o2)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
     )
   )
 
-  ;; clip: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, next ?o0 ?o2
-  ;; effects: add vase ?o0 ?o1 ; delete next ?o0 ?o2
   (:action clip
-    :parameters (?h - obj ?s - obj ?t - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 - object)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (next ?h ?t)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (next ?o0 ?o2)
     )
     :effect (and
-      (vase ?h ?s)
-      (not (next ?h ?t))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (vase ?o0 ?o1)
+      (not (next ?o0 ?o2))
     )
   )
 
-  ;; wretched: requires sneeze ?o0, texture ?o1, texture ?o2, stupendous ?o3, next ?o0 ?o1, collect ?o1 ?o3, collect ?o2 ?o3
-  ;; effects: add next ?o0 ?o2 ; delete next ?o0 ?o1
   (:action wretched
-    :parameters (?sneezer - obj ?t1 - obj ?t2 - obj ?st - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 ?o3 - object)
     :precondition (and
-      (sneeze ?sneezer)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?sneezer ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (sneeze ?o0)
+      (texture ?o1)
+      (texture ?o2)
+      (stupendous ?o3)
+      (next ?o0 ?o1)
+      (collect ?o1 ?o3)
+      (collect ?o2 ?o3)
     )
     :effect (and
-      (next ?sneezer ?t2)
-      (not (next ?sneezer ?t1))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
     )
   )
 
-  ;; memory: requires cats ?o0, spring ?o1, spring ?o2, next ?o0 ?o1
-  ;; effects: add next ?o0 ?o2 ; delete next ?o0 ?o1
   (:action memory
-    :parameters (?c - obj ?s1 - obj ?s2 - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 - object)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (cats ?o0)
+      (spring ?o1)
+      (spring ?o2)
+      (next ?o0 ?o1)
     )
     :effect (and
-      (next ?c ?s2)
-      (not (next ?c ?s1))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (next ?o0 ?o2)
+      (not (next ?o0 ?o1))
     )
   )
 
-  ;; tightfisted: requires hand ?o0, sneeze ?o1, texture ?o2, next ?o1 ?o2, vase ?o0 ?o1
-  ;; effects: add next ?o0 ?o2 ; delete vase ?o0 ?o1
   (:action tightfisted
-    :parameters (?h - obj ?s - obj ?t - obj)
+    :parameters (?prev ?t - stage ?o0 ?o1 ?o2 - object)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?t)
-      (next ?s ?t)
-      (vase ?h ?s)
+      (next-stage ?prev ?t)
+      (used-stage ?prev)
+      (free-stage ?t)
+      (hand ?o0)
+      (sneeze ?o1)
+      (texture ?o2)
+      (next ?o1 ?o2)
+      (vase ?o0 ?o1)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?s))
+      (not (free-stage ?t))
+      (used-stage ?t)
+      (next ?o0 ?o2)
+      (not (vase ?o0 ?o1))
     )
   )
+
 )

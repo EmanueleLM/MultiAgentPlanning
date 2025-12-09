@@ -1,154 +1,90 @@
-(define (domain obfuscated-deceptive-logistics17)
+(define (domain obfuscated-deceptive-logistics-17)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj time)
+  (:types
+    obj
+    texture - obj
+    spring - texture
+    hand - obj
+    cat - obj
+    sneeze - obj
+    stupendous - obj
+  )
 
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
     (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (collect ?x - obj ?y - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-
-    ;; explicit discrete time/stage modeling
-    (time-point ?t - time)
-    (succ ?t1 - time ?t2 - time)  ;; successor relation between time points (static)
-    (current ?t - time)           ;; single current time token enforces strict ordering
+    (next ?x - obj ?y - texture)
+    (collect ?x - texture ?y - stupendous)
   )
 
-  ;; paltry object_0 object_1 object_2.
-  ;; Preconditions: hand O0, cats O1, texture O2, vase O0 O1, next O1 O2, current ?t, succ ?t ?t2
-  ;; Effects: add next O0 O2, del vase O0 O1, advance time token
   (:action paltry
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?c - cat ?t - texture)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (vase ?h ?c)
+      (next ?c ?t)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?h ?t)
+      (not (vase ?h ?c))
     )
   )
 
-  ;; sip object_0 object_1 object_2.
-  ;; Preconditions: hand O0, cats O1, texture O2, next O0 O2, next O1 O2, current ?t, succ ?t ?t2
-  ;; Effects: add vase O0 O1, del next O0 O2, advance time token
   (:action sip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?c - cat ?t - texture)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?h ?t)
+      (next ?c ?t)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (current ?t))
-      (current ?t2)
+      (vase ?h ?c)
+      (not (next ?h ?t))
     )
   )
 
-  ;; clip object_0 object_1 object_2.
-  ;; Preconditions: hand O0, sneeze O1, texture O2, next O1 O2, next O0 O2, current ?t, succ ?t ?t2
-  ;; Effects: add vase O0 O1, del next O0 O2, advance time token
   (:action clip
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?s - sneeze ?t - texture)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?s ?t)
+      (next ?h ?t)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
-      (not (current ?t))
-      (current ?t2)
+      (vase ?h ?s)
+      (not (next ?h ?t))
     )
   )
 
-  ;; wretched object_0 object_1 object_2 object_3.
-  ;; Preconditions: sneeze O0, texture O1, texture O2, stupendous O3, next O0 O1, collect O1 O3, collect O2 O3, current ?t, succ ?t ?t2
-  ;; Effects: add next O0 O2, del next O0 O1, advance time token
   (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj ?t - time ?t2 - time)
+    :parameters (?s - sneeze ?t1 - texture ?t2 - texture ?st - stupendous)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?s ?t1)
+      (collect ?t1 ?st)
+      (collect ?t2 ?st)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?s ?t2)
+      (not (next ?s ?t1))
     )
   )
 
-  ;; memory object_0 object_1 object_2.
-  ;; Preconditions: cats O0, spring O1, spring O2, next O0 O1, current ?t, succ ?t ?t2
-  ;; Effects: add next O0 O2, del next O0 O1, advance time token
   (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?c - cat ?sp1 - spring ?sp2 - spring)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?c ?sp1)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?c ?sp2)
+      (not (next ?c ?sp1))
     )
   )
 
-  ;; tightfisted object_0 object_1 object_2.
-  ;; Preconditions: hand O0, sneeze O1, texture O2, next O1 O2, vase O0 O1, current ?t, succ ?t ?t2
-  ;; Effects: add next O0 O2, del vase O0 O1, advance time token
   (:action tightfisted
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?t - time ?t2 - time)
+    :parameters (?h - hand ?s - sneeze ?t - texture)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
-      (current ?t)
-      (succ ?t ?t2)
+      (next ?s ?t)
+      (vase ?h ?s)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
-      (not (current ?t))
-      (current ?t2)
+      (next ?h ?t)
+      (not (vase ?h ?s))
     )
   )
 )

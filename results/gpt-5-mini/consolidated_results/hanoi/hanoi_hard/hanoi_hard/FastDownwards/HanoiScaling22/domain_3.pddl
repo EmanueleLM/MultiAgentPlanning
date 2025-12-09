@@ -1,0 +1,328 @@
+(define (domain hanoi6)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types disk peg stage)
+
+  (:predicates
+    (pos ?d - disk ?p - peg)
+    (smaller ?d1 - disk ?d2 - disk)
+    (at-stage ?s - stage)
+    (succ ?s1 - stage ?s2 - stage)
+  )
+
+  ;; Actions: move each disk from each peg to each other peg,
+  ;; enforcing that the disk is top on the source (no smaller disk on source)
+  ;; and that destination has no smaller disk (legal placement).
+  ;; Every action advances the explicit stage by following succ links.
+
+  ;; Disk a (smallest) - no smaller disks to check
+  (:action move-a-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a left) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a left)) (pos a middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-a-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a left) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a left)) (pos a right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-a-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a middle) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a middle)) (pos a left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-a-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a middle) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a middle)) (pos a right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-a-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a right) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a right)) (pos a left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-a-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and (pos a right) (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos a right)) (pos a middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+
+  ;; Disk b (smaller: a)
+  (:action move-b-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b left)
+      (not (pos a left))        ;; a not on source => b is top on source
+      (not (pos a middle))      ;; a not on dest => legal placement
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b left)) (pos b middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-b-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b left)
+      (not (pos a left))
+      (not (pos a right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b left)) (pos b right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-b-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b middle)
+      (not (pos a middle))
+      (not (pos a left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b middle)) (pos b left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-b-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b middle)
+      (not (pos a middle))
+      (not (pos a right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b middle)) (pos b right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-b-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b right)
+      (not (pos a right))
+      (not (pos a left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b right)) (pos b left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-b-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos b right)
+      (not (pos a right))
+      (not (pos a middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos b right)) (pos b middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+
+  ;; Disk c (smaller: a, b)
+  (:action move-c-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c left)
+      (not (pos a left)) (not (pos b left))
+      (not (pos a middle)) (not (pos b middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c left)) (pos c middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-c-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c left)
+      (not (pos a left)) (not (pos b left))
+      (not (pos a right)) (not (pos b right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c left)) (pos c right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-c-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c middle)
+      (not (pos a middle)) (not (pos b middle))
+      (not (pos a left)) (not (pos b left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c middle)) (pos c left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-c-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c middle)
+      (not (pos a middle)) (not (pos b middle))
+      (not (pos a right)) (not (pos b right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c middle)) (pos c right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-c-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c right)
+      (not (pos a right)) (not (pos b right))
+      (not (pos a left)) (not (pos b left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c right)) (pos c left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-c-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos c right)
+      (not (pos a right)) (not (pos b right))
+      (not (pos a middle)) (not (pos b middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos c right)) (pos c middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+
+  ;; Disk d (smaller: a, b, c)
+  (:action move-d-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d left)) (pos d middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-d-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left))
+      (not (pos a right)) (not (pos b right)) (not (pos c right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d left)) (pos d right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-d-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle))
+      (not (pos a left)) (not (pos b left)) (not (pos c left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d middle)) (pos d left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-d-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle))
+      (not (pos a right)) (not (pos b right)) (not (pos c right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d middle)) (pos d right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-d-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right))
+      (not (pos a left)) (not (pos b left)) (not (pos c left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d right)) (pos d left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-d-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos d right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos d right)) (pos d middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+
+  ;; Disk e (smaller: a, b, c, d)
+  (:action move-e-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e left)) (pos e middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-e-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left))
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e left)) (pos e right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-e-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle))
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e middle)) (pos e left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-e-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle))
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e middle)) (pos e right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-e-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right))
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e right)) (pos e left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-e-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos e right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos e right)) (pos e middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+
+  ;; Disk f (largest) (smaller: a, b, c, d, e)
+  (:action move-f-left-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left)) (not (pos e left))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle)) (not (pos e middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f left)) (pos f middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-f-left-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f left)
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left)) (not (pos e left))
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right)) (not (pos e right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f left)) (pos f right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-f-middle-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle)) (not (pos e middle))
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left)) (not (pos e left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f middle)) (pos f left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-f-middle-right
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f middle)
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle)) (not (pos e middle))
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right)) (not (pos e right))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f middle)) (pos f right) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-f-right-left
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right)) (not (pos e right))
+      (not (pos a left)) (not (pos b left)) (not (pos c left)) (not (pos d left)) (not (pos e left))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f right)) (pos f left) (not (at-stage ?s)) (at-stage ?s2))
+  )
+  (:action move-f-right-middle
+    :parameters (?s - stage ?s2 - stage)
+    :precondition (and
+      (pos f right)
+      (not (pos a right)) (not (pos b right)) (not (pos c right)) (not (pos d right)) (not (pos e right))
+      (not (pos a middle)) (not (pos b middle)) (not (pos c middle)) (not (pos d middle)) (not (pos e middle))
+      (at-stage ?s) (succ ?s ?s2))
+    :effect (and (not (pos f right)) (pos f middle) (not (at-stage ?s)) (at-stage ?s2))
+  )
+)

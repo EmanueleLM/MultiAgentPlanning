@@ -1,106 +1,64 @@
-(define (domain MysteryBlocksworld27)
-  (:requirements :typing :negative-preconditions)
-  (:types obj)
+(define (domain mystery-blocksworld)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types planet obj)
+
   (:predicates
-    (hand ?x - obj)
-    (cats ?x - obj)
-    (texture ?x - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (collect ?x - obj ?y - obj)
+    (province ?o - obj)
+    (craves ?o - obj ?t - obj)
+    (harmony)
+    (pain)
   )
 
-  (:action paltry
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (vase ?a ?b)
-      (next ?b ?c)
-    )
+  ;; Attack: consumes province and harmony on a planet-typed object and produces global pain.
+  ;; Modeling choice: planets are represented via typing (objects of type planet).
+  (:action attack
+    :parameters (?o - planet)
+    :precondition (and (province ?o) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+             (pain)
+             (not (province ?o))
+             (not (harmony))
+            )
   )
 
-  (:action sip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (cats ?b)
-      (texture ?c)
-      (next ?a ?c)
-      (next ?b ?c)
-    )
+  ;; Succumb: consumes global pain and restores province and harmony for a chosen object.
+  (:action succumb
+    :parameters (?o - obj)
+    :precondition (and (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+             (province ?o)
+             (harmony)
+             (not (pain))
+            )
   )
 
-  (:action clip
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (next ?a ?c)
-    )
+  ;; Overcome: requires province on the "other" object and global pain. Produces harmony,
+  ;; grants province to the primary object and creates a craves relation from primary->other.
+  ;; It removes the province on the "other" object and clears pain as specified.
+  (:action overcome
+    :parameters (?p - obj ?other - obj)
+    :precondition (and (province ?other) (pain))
     :effect (and
-      (vase ?a ?b)
-      (not (next ?a ?c))
-    )
+             (harmony)
+             (province ?p)
+             (craves ?p ?other)
+             (not (province ?other))
+             (not (pain))
+            )
   )
 
-  (:action wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and
-      (sneeze ?a)
-      (texture ?b)
-      (texture ?c)
-      (stupendous ?d)
-      (next ?a ?b)
-      (collect ?b ?d)
-      (collect ?c ?d)
-    )
+  ;; Feast: requires an existing craves relation (primary craves other), province on primary, and harmony.
+  ;; It produces global pain and grants province to the other; it removes the craves relation,
+  ;; the province on the primary, and harmony as specified.
+  (:action feast
+    :parameters (?p - obj ?other - obj)
+    :precondition (and (craves ?p ?other) (province ?p) (harmony))
     :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action memory
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (cats ?a)
-      (spring ?b)
-      (spring ?c)
-      (next ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (next ?a ?b))
-    )
-  )
-
-  (:action tightfisted
-    :parameters (?a - obj ?b - obj ?c - obj)
-    :precondition (and
-      (hand ?a)
-      (sneeze ?b)
-      (texture ?c)
-      (next ?b ?c)
-      (vase ?a ?b)
-    )
-    :effect (and
-      (next ?a ?c)
-      (not (vase ?a ?b))
-    )
+             (pain)
+             (province ?other)
+             (not (craves ?p ?other))
+             (not (province ?p))
+             (not (harmony))
+            )
   )
 )

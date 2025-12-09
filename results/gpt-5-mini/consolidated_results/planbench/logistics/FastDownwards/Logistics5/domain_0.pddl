@@ -1,99 +1,103 @@
-(define (domain orchestrator-domain)
+(define (domain logistics_multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types agent task step)
+  (:types city location truck airplane package)
 
   (:predicates
-    ;; Roles
-    (role-orchestrator ?a - agent)
-    (role-planner ?a - agent)
-    (role-worker ?a - agent)
-    (role-auditor ?a - agent)
-
-    ;; Capabilities: which agent can perform which task
-    (agent-capable ?a - agent ?t - task)
-
-    ;; Task-step linkage and step ordering
-    (task-step ?t - task ?s - step)
-    (step-next ?s - step ?next - step)
-
-    ;; Step and task status
-    (step-ready ?s - step)
-    (step-done ?s - step)
-    (task-assigned ?t - task ?a - agent)
-    (task-done ?t - task)
-
-    ;; Final audit outcome
-    (audit-done)
+    ;; Static predicates
+    (location_in_city ?loc - location ?c - city)
+    (truck_assigned_to ?t - truck ?c - city)
+    (airport ?loc - location)
+    ;; Dynamic predicates
+    (at_truck ?t - truck ?loc - location)
+    (at_airplane ?a - airplane ?loc - location)
+    (at_pkg ?p - package ?loc - location)
+    (in_truck ?p - package ?t - truck)
+    (in_plane ?p - package ?a - airplane)
   )
 
-  ;; The orchestrator assigns a ready task's agent. Assignment is permanent.
-  (:action assign-by-orchestrator
-    :parameters (?orch - agent ?task - task ?ag - agent ?step - step)
+  ;; Truck operator actions (prefix: truck_operator_)
+  (:action truck_operator_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-      (role-orchestrator ?orch)
-      (task-step ?task ?step)
-      (step-ready ?step)
-      (agent-capable ?ag ?task)
-      (not (task-assigned ?task ?ag))
+      (at_truck ?t ?from)
+      (location_in_city ?from ?c)
+      (location_in_city ?to ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (task-assigned ?task ?ag)
+      (not (at_truck ?t ?from))
+      (at_truck ?t ?to)
     )
   )
 
-  ;; Planner performs a task assigned to them when the task's step is ready.
-  ;; This action marks the task and its step done and makes the next step ready.
-  (:action perform-by-planner
-    :parameters (?planner - agent ?task - task ?step - step ?next - step)
+  (:action truck_operator_load
+    :parameters (?t - truck ?p - package ?loc - location ?c - city)
     :precondition (and
-      (role-planner ?planner)
-      (task-step ?task ?step)
-      (step-ready ?step)
-      (task-assigned ?task ?planner)
-      (step-next ?step ?next)
-      (not (step-done ?step))
-      (not (task-done ?task))
+      (at_truck ?t ?loc)
+      (at_pkg ?p ?loc)
+      (location_in_city ?loc ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (task-done ?task)
-      (step-done ?step)
-      (not (step-ready ?step))
-      (step-ready ?next)
+      (not (at_pkg ?p ?loc))
+      (in_truck ?p ?t)
     )
   )
 
-  ;; Worker performs a task assigned to them when the task's step is ready.
-  ;; Behavioral semantics identical to planner's perform action but distinct schema.
-  (:action perform-by-worker
-    :parameters (?worker - agent ?task - task ?step - step ?next - step)
+  (:action truck_operator_unload
+    :parameters (?t - truck ?p - package ?loc - location ?c - city)
     :precondition (and
-      (role-worker ?worker)
-      (task-step ?task ?step)
-      (step-ready ?step)
-      (task-assigned ?task ?worker)
-      (step-next ?step ?next)
-      (not (step-done ?step))
-      (not (task-done ?task))
+      (at_truck ?t ?loc)
+      (in_truck ?p ?t)
+      (location_in_city ?loc ?c)
+      (truck_assigned_to ?t ?c)
     )
     :effect (and
-      (task-done ?task)
-      (step-done ?step)
-      (not (step-ready ?step))
-      (step-ready ?next)
+      (not (in_truck ?p ?t))
+      (at_pkg ?p ?loc)
     )
   )
 
-  ;; Auditor performs the audit once the ordered sequence of steps reaches the terminal sentinel.
-  ;; Requiring step-ready on the terminal sentinel enforces that all prior steps (and thus tasks) were completed in order.
-  (:action audit-by-auditor
-    :parameters (?aud - agent ?terminal - step)
+  ;; Airplane operator actions (prefix: plane_operator_)
+  (:action plane_operator_load
+    :parameters (?a - airplane ?p - package ?loc - location)
     :precondition (and
-      (role-auditor ?aud)
-      (step-ready ?terminal)
-      (not (audit-done))
+      (at_airplane ?a ?loc)
+      (at_pkg ?p ?loc)
+      (airport ?loc)
     )
     :effect (and
-      (audit-done)
+      (not (at_pkg ?p ?loc))
+      (in_plane ?p ?a)
+    )
+  )
+
+  (:action plane_operator_unload
+    :parameters (?a - airplane ?p - package ?loc - location)
+    :precondition (and
+      (at_airplane ?a ?loc)
+      (in_plane ?p ?a)
+      (airport ?loc)
+    )
+    :effect (and
+      (not (in_plane ?p ?a))
+      (at_pkg ?p ?loc)
+    )
+  )
+
+  (:action plane_operator_fly
+    :parameters (?a - airplane ?from - location ?to - location ?c1 - city ?c2 - city)
+    :precondition (and
+      (at_airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (location_in_city ?from ?c1)
+      (location_in_city ?to ?c2)
+      (not (= ?c1 ?c2))
+    )
+    :effect (and
+      (not (at_airplane ?a ?from))
+      (at_airplane ?a ?to)
     )
   )
 )

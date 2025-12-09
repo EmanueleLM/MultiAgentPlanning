@@ -1,133 +1,135 @@
-(define (domain corrected_neutral_model)
+(define (domain logistics-with-phases)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types
+    truck
+    airplane
+    package
+    location
+    city
+    phase
+  )
 
   (:predicates
-    (hand ?x - object)
-    (cats ?x - object)
-    (texture ?x - object)
-    (sneeze ?x - object)
-    (collect ?x - object ?y - object)
-    (spring ?x - object)
-    (stupendous ?x - object)
-    (next ?a - object ?b - object ?t - stage)
-    (vase ?a - object ?b - object ?t - stage)
-    (succ ?t1 - stage ?t2 - stage)
-    (current_stage ?t - stage)
+    (at-truck ?t - truck ?l - location)
+    (at-plane ?a - airplane ?l - location)
+    (at-pkg ?p - package ?l - location)
+
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    (airport ?l - location)
+    (loc-in ?l - location ?c - city)
+
+    (current-phase ?ph - phase)
+    (phase-next ?ph - phase ?phn - phase)
+    (phase-act ?ph - phase)
   )
 
-  (:action paltry
-    :parameters (?h - object ?c - object ?tx - object ?t - stage ?t_succ - stage)
+  (:action load-truck
+    :parameters (?t - truck ?p - package ?l - location ?ph - phase ?phn - phase)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?tx)
-      (vase ?h ?c ?t)
-      (next ?c ?tx ?t)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-truck ?t ?l)
+      (at-pkg ?p ?l)
     )
     :effect (and
-      (next ?h ?tx ?t_succ)
-      (not (vase ?h ?c ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
-    )
-  )
-
-  (:action sip
-    :parameters (?h - object ?c - object ?tx - object ?t - stage ?t_succ - stage)
-    :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?tx)
-      (next ?h ?tx ?t)
-      (next ?c ?tx ?t)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
-    )
-    :effect (and
-      (vase ?h ?c ?t_succ)
-      (not (next ?h ?tx ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
+      (in-truck ?p ?t)
+      (not (at-pkg ?p ?l))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  (:action clip
-    :parameters (?h - object ?s - object ?tx - object ?t - stage ?t_succ - stage)
+  (:action unload-truck
+    :parameters (?t - truck ?p - package ?l - location ?ph - phase ?phn - phase)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?tx)
-      (next ?s ?tx ?t)
-      (next ?h ?tx ?t)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-truck ?t ?l)
+      (in-truck ?p ?t)
     )
     :effect (and
-      (vase ?h ?s ?t_succ)
-      (not (next ?h ?tx ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
+      (at-pkg ?p ?l)
+      (not (in-truck ?p ?t))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  (:action wretched
-    :parameters (?s - object ?tx1 - object ?tx2 - object ?collector - object ?t - stage ?t_succ - stage)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?ph - phase ?phn - phase)
     :precondition (and
-      (sneeze ?s)
-      (texture ?tx1)
-      (texture ?tx2)
-      (stupendous ?collector)
-      (next ?s ?tx1 ?t)
-      (collect ?tx1 ?collector)
-      (collect ?tx2 ?collector)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-truck ?t ?from)
+      (loc-in ?from ?c)
+      (loc-in ?to ?c)
+      (not (= ?from ?to))
     )
     :effect (and
-      (next ?s ?tx2 ?t_succ)
-      (not (next ?s ?tx1 ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
+      (at-truck ?t ?to)
+      (not (at-truck ?t ?from))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  (:action memory
-    :parameters (?c - object ?s1 - object ?s2 - object ?t - stage ?t_succ - stage)
+  (:action load-plane
+    :parameters (?a - airplane ?p - package ?l - location ?ph - phase ?phn - phase)
     :precondition (and
-      (cats ?c)
-      (spring ?s1)
-      (spring ?s2)
-      (next ?c ?s1 ?t)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-plane ?a ?l)
+      (at-pkg ?p ?l)
+      (airport ?l)
     )
     :effect (and
-      (next ?c ?s2 ?t_succ)
-      (not (next ?c ?s1 ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
+      (in-plane ?p ?a)
+      (not (at-pkg ?p ?l))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - object ?s - object ?tx - object ?t - stage ?t_succ - stage)
+  (:action unload-plane
+    :parameters (?a - airplane ?p - package ?l - location ?ph - phase ?phn - phase)
     :precondition (and
-      (hand ?h)
-      (sneeze ?s)
-      (texture ?tx)
-      (next ?s ?tx ?t)
-      (vase ?h ?s ?t)
-      (succ ?t ?t_succ)
-      (current_stage ?t)
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-plane ?a ?l)
+      (in-plane ?p ?a)
+      (airport ?l)
     )
     :effect (and
-      (next ?h ?tx ?t_succ)
-      (not (vase ?h ?s ?t_succ))
-      (not (current_stage ?t))
-      (current_stage ?t_succ)
+      (at-pkg ?p ?l)
+      (not (in-plane ?p ?a))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
+    )
+  )
+
+  (:action fly-plane
+    :parameters (?a - airplane ?from - location ?to - location ?ph - phase ?phn - phase)
+    :precondition (and
+      (current-phase ?ph)
+      (phase-next ?ph ?phn)
+      (phase-act ?ph)
+      (at-plane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (not (= ?from ?to))
+    )
+    :effect (and
+      (at-plane ?a ?to)
+      (not (at-plane ?a ?from))
+      (not (current-phase ?ph))
+      (current-phase ?phn)
     )
   )
 )

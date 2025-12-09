@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Project bootstrap utility.
+"""Linux bootstrap utility.
 
 This script prepares a development environment by:
 - creating a Python virtual environment in ``.venv`` and installing ``requirements.txt``
-- downloading/building the Fast Downward 2.1 and POPF2 solvers
-- downloading/building the VAL and uVAL validators
-- updating ``src/llm_plan/config.json`` with the discovered toolchain paths
+- installing the Fast Downward release, POPF2, uVAL, and VAL artifacts
+- updating ``config.json`` with the discovered toolchain paths
 
-The script supports macOS and Linux (tested with Ubuntu). It assumes that the host
-has ``git``, ``cmake``, ``make``/``ninja`` and a modern C++ toolchain available.
+Only Linux is targeted (mirroring README instructions). Ensure required build
+tooling (git, cmake, compilers, etc.) is already installed on the host OS.
 """
 
 from __future__ import annotations
@@ -16,10 +15,13 @@ from __future__ import annotations
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
+from urllib.request import urlopen
 
 # ---------------------------------------------------------------------------
 # Paths & constants
@@ -30,14 +32,16 @@ SOLVERS_DIR = PROJECT_ROOT / "solvers"
 CONFIG_FILE = PROJECT_ROOT / "config.json"
 VENV_DIR = PROJECT_ROOT / ".venv"
 
-# Repositories / releases
-FAST_DOWNWARD_REPO = "https://github.com/aibasel/downward.git"
-FAST_DOWNWARD_BRANCH = "release-24.06.1"  # closest public release to Fast Downward 2.1
+# Fast Downward release artefact (matches README manual instructions)
+FAST_DOWNWARD_RELEASE = "fast-downward-24.06.1"
+FAST_DOWNWARD_ARCHIVE = f"{FAST_DOWNWARD_RELEASE}.tar.gz"
+FAST_DOWNWARD_URL = (
+    "https://www.fast-downward.org/latest/files/release24.06/fast-downward-24.06.1.tar.gz"
+)
 
-POPF2_REPO = "https://github.com/popf-tif/popf.git"
-
+POPF2_REPO = "https://github.com/Minstoll/popf2.git"
 VAL_REPO = "https://github.com/KCL-Planning/VAL.git"
-UVAL_REPO = "https://github.com/AI-Planning/uval.git"
+UVAL_REPO = "https://github.com/aig-upf/universal-planning-validator.git"
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +63,8 @@ def ensure_directory(path: Path) -> Path:
 
 
 def venv_python() -> Path:
-    if platform.system() == "Windows":
-        raise RuntimeError("This bootstrap script currently targets Linux and macOS only.")
+    if platform.system() != "Linux":
+        raise RuntimeError("bootstrap.py currently supports Linux only (per README instructions).")
     return VENV_DIR / "bin" / "python3"
 
 
@@ -106,48 +110,93 @@ def clone_or_update(repo_url: str, dest: Path, branch: Optional[str] = None) -> 
         run(clone_cmd)
 
 
+def download_file(url: str, dest: Path) -> Path:
+    """Download ``url`` into ``dest``."""
+
+    ensure_directory(dest.parent)
+    print(f"Downloading {url} -> {dest}")
+    with urlopen(url) as response, dest.open("wb") as fh:  # type: ignore[arg-type]
+        shutil.copyfileobj(response, fh)
+    return dest
+
+
+def extract_tarball(archive: Path, destination: Path) -> None:
+    """Extract a .tar.gz archive into ``destination``."""
+
+    print(f"Extracting {archive} into {destination}")
+    with tarfile.open(archive, "r:gz") as tar:
+        tar.extractall(path=destination)
+
+
 def build_fast_downward() -> Path:
-    """Download and build Fast Downward, returning the solver entry point."""
+    """Download and build the Fast Downward release referenced in the README."""
 
-    target_dir = SOLVERS_DIR / "fast-downward"
-    clone_or_update(FAST_DOWNWARD_REPO, target_dir, FAST_DOWNWARD_BRANCH)
+    target_dir = SOLVERS_DIR / FAST_DOWNWARD_RELEASE
+    archive_path = SOLVERS_DIR / FAST_DOWNWARD_ARCHIVE
 
-    print("Building Fast Downward (release configuration)...")
-    run([str(sys.executable), "build.py", "release"], cwd=target_dir)
+    if not target_dir.exists():
+        download_file(FAST_DOWNWARD_URL, archive_path)
+        extract_tarball(archive_path, SOLVERS_DIR)
+        archive_path.unlink(missing_ok=True)
+    else:
+        print(f"Fast Downward release already present at {target_dir}, skipping download.")
 
-    expected = list((target_dir / "builds" / "release" / "bin").glob("*downward*"))
-    if not expected:
-        raise FileNotFoundError("Fast Downward binary not found after build.")
-    solver_path = expected[0]
+    build_script = target_dir / "build.py"
+    if not build_script.exists():
+        raise FileNotFoundError(f"Fast Downward build script not found in {target_dir}")
+
+    print("Building Fast Downward ...")
+    run([str(sys.executable), "build.py"], cwd=target_dir)
+
+    solver_path = target_dir / "fast-downward.py"
+    if not solver_path.exists():
+        raise FileNotFoundError(f"{solver_path} missing after Fast Downward build.")
     solver_path.chmod(solver_path.stat().st_mode | 0o111)
     return solver_path
 
 
+def detect_compiler(*candidates: str, default: str) -> str:
+    """Return the first compiler available on PATH from ``candidates`` (or ``default``)."""
+
+    for candidate in candidates:
+        if shutil.which(candidate):
+            return candidate
+    return default
+
+
 def build_popf2() -> Path:
-    """Download and build POPF2, returning the primary binary path."""
+    """Download and build POPF2 from the Minstoll fork."""
 
     target_dir = SOLVERS_DIR / "popf2"
     clone_or_update(POPF2_REPO, target_dir)
 
-    build_dir = target_dir / "build"
-    ensure_directory(build_dir)
+    build_script = target_dir / "build"
+    if not build_script.exists():
+        raise FileNotFoundError(f"POPF2 build script not found in {target_dir}")
+    build_script.chmod(build_script.stat().st_mode | 0o111)
 
-    print("Configuring POPF2 (Release build)...")
-    run(["cmake", "-S", str(target_dir), "-B", str(build_dir), "-DCMAKE_BUILD_TYPE=Release"])
-    print("Compiling POPF2...")
-    run(["cmake", "--build", str(build_dir), "--config", "Release"])
+    env = os.environ.copy()
+    env.setdefault("CC", detect_compiler("gcc-11", "gcc-12", default="gcc"))
+    env.setdefault("CXX", detect_compiler("g++-11", "g++-12", default="g++"))
 
-    binaries = [p for p in build_dir.rglob("*popf*" ) if p.is_file() and os.access(p, os.X_OK)]
-    if not binaries:
+    print("Building POPF2 ...")
+    run([str(build_script)], cwd=target_dir, env=env)
+
+    binary = target_dir / "compile" / "popf2" / "popf3-clp"
+    if not binary.exists():
         raise FileNotFoundError("POPF2 binary not found after build.")
-    binaries.sort(key=lambda p: len(str(p)))
-    solver_path = binaries[0]
-    solver_path.chmod(solver_path.stat().st_mode | 0o111)
-    return solver_path
+    binary.chmod(binary.stat().st_mode | 0o111)
+    return binary
 
 
-def build_val() -> Path:
-    """Download and build the VAL validator."""
+def prepare_val() -> Tuple[Path, Path]:
+    """Return the directory + Validate binary for VAL (use manual install if present)."""
+
+    manual_dir = SOLVERS_DIR / "Val-20211204.1-Linux" / "bin"
+    manual_validate = manual_dir / "Validate"
+    if manual_validate.exists():
+        manual_validate.chmod(manual_validate.stat().st_mode | 0o111)
+        return manual_dir, manual_validate
 
     target_dir = SOLVERS_DIR / "val"
     clone_or_update(VAL_REPO, target_dir)
@@ -164,58 +213,39 @@ def build_val() -> Path:
     if not validate_bin:
         raise FileNotFoundError("VAL 'Validate' binary not found after build.")
     validate_bin.chmod(validate_bin.stat().st_mode | 0o111)
-    return validate_bin
+    return build_dir, validate_bin
 
 
-def build_uval() -> Path:
-    """Download and build uVAL validator (universal validator)."""
+def build_uval() -> Tuple[Path, Path]:
+    """Download and build the universal planning validator."""
 
-    target_dir = SOLVERS_DIR / "uval"
+    target_dir = SOLVERS_DIR / "universal-planning-validator"
     clone_or_update(UVAL_REPO, target_dir)
 
-    build_dir = target_dir / "build"
-    ensure_directory(build_dir)
+    build_script = target_dir / "build.sh"
+    if not build_script.exists():
+        raise FileNotFoundError(f"build.sh not found in {target_dir}")
+    build_script.chmod(build_script.stat().st_mode | 0o111)
 
-    print("Configuring uVAL...")
-    run(["cmake", "-S", str(target_dir), "-B", str(build_dir), "-DCMAKE_BUILD_TYPE=Release"])
-    print("Building uVAL...")
-    run(["cmake", "--build", str(build_dir), "--config", "Release"])
+    print("Building Universal Planning Validator ...")
+    run([str(build_script)], cwd=target_dir)
 
-    candidates = [
-        p for p in build_dir.rglob("validate*") if p.is_file() and os.access(p, os.X_OK)
-    ]
-    if not candidates:
+    validator_bin = target_dir / "validator" / "validate.bin"
+    if not validator_bin.exists():
         raise FileNotFoundError("uVAL validator binary not found after build.")
 
-    validator_bin = candidates[0]
-
     validator_bin.chmod(validator_bin.stat().st_mode | 0o111)
-    return validator_bin
+    return target_dir, validator_bin
 
 
-def update_config(
-    fast_downward_path: Path,
-    popf_path: Path,
-    val_path: Path,
-    uval_path: Path,
-) -> None:
+def update_config(path_map: dict[str, str]) -> None:
     """Inject solver / validator paths into config.json."""
 
     config: dict[str, object] = {}
     if CONFIG_FILE.exists():
         config = json.loads(CONFIG_FILE.read_text())
 
-    config.update(
-        {
-            "project_root": str(PROJECT_ROOT),
-            "package_folder": str(SRC_DIR),
-            "solver_fd_binary": str(fast_downward_path),
-            "solver_popf2_binary": str(popf_path),
-            "validator_bin": str(val_path),
-            "universal_validator_bin": str(uval_path),
-            "python_venv": str(VENV_DIR),
-        }
-    )
+    config.update(path_map)
 
     CONFIG_FILE.write_text(json.dumps(config, indent=4))
     print(f"Configuration updated at {CONFIG_FILE}")
@@ -230,10 +260,22 @@ def bootstrap() -> None:
 
     fast_downward = build_fast_downward()
     popf2 = build_popf2()
-    val = build_val()
-    uval = build_uval()
+    val_dir, val_bin = prepare_val()
+    uval_dir, uval_bin = build_uval()
 
-    update_config(fast_downward, popf2, val, uval)
+    update_config(
+        {
+            "project_root": str(PROJECT_ROOT),
+            "package_folder": str(SRC_DIR),
+            "solver_fd_binary": str(fast_downward),
+            "solver_popf2_binary": str(popf2),
+            "validator": str(val_dir),
+            "validator_bin": str(val_bin),
+            "universal_validator": str(uval_dir),
+            "universal_validator_bin": str(uval_bin),
+            "python_venv": str(VENV_DIR),
+        }
+    )
     print("✅ Setup complete")
 
 

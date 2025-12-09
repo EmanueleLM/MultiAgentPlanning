@@ -1,21 +1,49 @@
-(define (problem make-next-object_8-object_6)
-  (:domain orchestrator-next-link)
+(define (problem transport-problem)
+  (:domain transport-domain)
 
   (:objects
-    object_1 object_6 object_7 object_8 - obj
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+    package_0 - package
+    location_0_0 location_1_0 - location
+    city_0 city_1 - city
+    stage_0 stage_1 stage_2 stage_3 - stage
   )
 
   (:init
-    ;; Only the facts required to support the provided plan and reach the goal
-    (cats object_1)
-    (spring object_6)
-    (spring object_7)
-    (hand object_8)
-    (texture object_6)
-    (texture object_7)
-    (next object_1 object_6)   ; needed by first memory action
-    (next object_8 object_7)   ; needed by sip action
+    ; airports and city membership (public information)
+    (airport location_0_0)
+    (airport location_1_0)
+    (location-in-city location_0_0 city_0)
+    (location-in-city location_1_0 city_1)
+
+    ; initial agent and package positions (public information)
+    (at-airplane airplane_0 location_1_0)
+    (at-airplane airplane_1 location_1_0)
+    (at-package package_0 location_1_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
+
+    ; air routes: airplanes operate between city airports (bidirectional)
+    (air-route location_1_0 location_0_0)
+    (air-route location_0_0 location_1_0)
+
+    ; explicit stage ordering (discrete steps). The plan must advance current-stage
+    ; from stage_0 to stage_3 through successive actions.
+    (successor stage_0 stage_1)
+    (successor stage_1 stage_2)
+    (successor stage_2 stage_3)
+
+    ; initial current stage
+    (current-stage stage_0)
   )
 
-  (:goal (next object_8 object_6))
+  (:goal
+    (and
+      ;; Terminal condition required by the specification:
+      (at-package package_0 location_0_0)
+      ;; Enforce completion by requiring the final stage marker reached.
+      (current-stage stage_3)
+    )
+  )
 )

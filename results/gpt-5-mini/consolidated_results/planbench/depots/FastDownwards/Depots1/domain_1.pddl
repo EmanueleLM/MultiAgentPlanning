@@ -1,107 +1,111 @@
-(define (domain orchestrator_domain)
-  (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
-
+(define (domain Depots1)
+  (:requirements :typing :negative-preconditions :strips)
+  (:types
+    place depot distributor
+    surface pallet crate
+    hoist truck
+  )
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (collect ?x - obj ?y - obj)
-    (stupendous ?o - obj)
+    ;; Locations
+    (truck-at ?tr - truck ?p - place)
+    (hoist-at ?h - hoist ?p - place)
+    (surface-at ?s - surface ?p - place)
+    (at ?c - crate ?p - place)
+
+    ;; Support relations
+    (on ?c - crate ?s - surface)    ;; crate c is on surface s
+    (clear ?s - surface)            ;; top of surface s is clear (no crate on it)
+
+    ;; Hoist state
+    (hoist-available ?h - hoist)
+    (hoist-lifting ?h - hoist ?c - crate)
+
+    ;; Truck content
+    (in-truck ?c - crate ?tr - truck)
   )
 
-  (:action paltry
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Driving action (driver agent)
+  (:action driver-drive
+    :parameters (?tr - truck ?from - place ?to - place)
     :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (vase ?x ?y)
-      (next ?y ?z)
+      (truck-at ?tr ?from)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
-    )
-  )
-
-  (:action sip
-    :parameters (?x - obj ?y - obj ?z - obj)
-    :precondition (and
-      (hand ?x)
-      (cats ?y)
-      (texture ?z)
-      (next ?x ?z)
-      (next ?y ?z)
-    )
-    :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (truck-at ?tr ?from))
+      (truck-at ?tr ?to)
     )
   )
 
-  (:action clip
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Hoist lifts a crate from a surface at a place (loader agent)
+  (:action loader-lift
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (next ?x ?z)
+      (hoist-at ?h ?p)
+      (surface-at ?s ?p)
+      (on ?c ?s)
+      (clear ?c)
+      (hoist-available ?h)
     )
     :effect (and
-      (vase ?x ?y)
-      (not (next ?x ?z))
+      (not (on ?c ?s))
+      (not (at ?c ?p))
+      (not (surface-at ?c ?p))
+      (hoist-lifting ?h ?c)
+      (not (hoist-available ?h))
+      (clear ?s)
     )
   )
 
-  (:action wretched
-    :parameters (?x - obj ?y - obj ?z - obj ?w - obj)
+  ;; Hoist drops a crate onto a surface at a place (loader agent)
+  (:action loader-drop
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
     :precondition (and
-      (sneeze ?x)
-      (texture ?y)
-      (texture ?z)
-      (stupendous ?w)
-      (next ?x ?y)
-      (collect ?y ?w)
-      (collect ?z ?w)
+      (hoist-lifting ?h ?c)
+      (hoist-at ?h ?p)
+      (surface-at ?s ?p)
+      (clear ?s)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (not (hoist-lifting ?h ?c))
+      (hoist-available ?h)
+      (on ?c ?s)
+      (at ?c ?p)
+      (surface-at ?c ?p)
+      (not (clear ?s))
+      (clear ?c)
     )
   )
 
-  (:action memory
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Hoist loads a crate that it is lifting into a co-located truck (loader agent)
+  (:action loader-load
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
     :precondition (and
-      (cats ?x)
-      (spring ?y)
-      (spring ?z)
-      (next ?x ?y)
+      (hoist-lifting ?h ?c)
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
     )
     :effect (and
-      (next ?x ?z)
-      (not (next ?x ?y))
+      (in-truck ?c ?tr)
+      (not (hoist-lifting ?h ?c))
+      (hoist-available ?h)
+      (not (at ?c ?p))
+      (not (surface-at ?c ?p))
     )
   )
 
-  (:action tightfisted
-    :parameters (?x - obj ?y - obj ?z - obj)
+  ;; Hoist unloads a crate from a co-located truck and begins lifting it (loader agent)
+  (:action loader-unload
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
     :precondition (and
-      (hand ?x)
-      (sneeze ?y)
-      (texture ?z)
-      (next ?y ?z)
-      (vase ?x ?y)
+      (hoist-available ?h)
+      (hoist-at ?h ?p)
+      (truck-at ?tr ?p)
+      (in-truck ?c ?tr)
     )
     :effect (and
-      (next ?x ?z)
-      (not (vase ?x ?y))
+      (not (in-truck ?c ?tr))
+      (hoist-lifting ?h ?c)
+      (not (hoist-available ?h))
     )
   )
 )

@@ -1,61 +1,138 @@
-(define (domain orchestrator)
+(define (domain port-transfer)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj)
+  (:types agent driver hoist-operator lift-operator truck container location phase)
 
+  ;; Predicates
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (vase ?o - obj)
-    (next ?a - obj ?b - obj)
-    (sneeze ?o - obj)
-    (stupendous ?o - obj)
-    (collect ?a - obj ?b - obj)
-    (spring ?o - obj)
+    ;; locations
+    (at-agent ?a - agent ?l - location)
+    (at-truck ?t - truck ?l - location)
+    (container-at ?c - container ?l - location)
+    (in-truck ?c - container ?t - truck)
+    ;; operator holding state
+    (holding ?op - agent ?c - container)
+    (operator-free ?op - agent)
+    ;; truck capacity indicator (simple boolean: empty or not)
+    (truck-empty ?t - truck)
+    ;; phase control to enforce sequence
+    (current-phase ?p - phase)
   )
 
-  ;; Actions coming from planner_a (prefix: planner_a_)
-  ;; clip: copy a "next" relationship from an object to a hand-holder
-  (:action planner_a_clip
-    :parameters (?h - obj ?x - obj ?y - obj)
-    :precondition (and (hand ?h) (next ?x ?y))
-    :effect (and (next ?h ?y))
+  ;; ACTIONS
+  ;; 1) hoist: hoist-operator picks a container from a location (phase1)
+  (:action hoist
+    :parameters (?hop - hoist-operator ?c - container ?loc - location)
+    :precondition (and
+      (current-phase phase1_load)
+      (at-agent ?hop ?loc)
+      (container-at ?c ?loc)
+      (operator-free ?hop)
+    )
+    :effect (and
+      (not (container-at ?c ?loc))
+      (holding ?hop ?c)
+      (not (operator-free ?hop))
+    )
   )
 
-  ;; wretched: rewire a "next" from a source to a different target,
-  ;; requires that the intermediate/current target has texture and some stupendous marker
-  (:action planner_a_wretched
-    :parameters (?a - obj ?b - obj ?c - obj ?d - obj)
-    :precondition (and (next ?a ?b) (texture ?b) (stupendous ?d))
-    :effect (and (next ?a ?c) (not (next ?a ?b)))
+  ;; 2) load: hoist-operator loads held container into a co-located truck (ends phase1, begins phase2)
+  (:action load
+    :parameters (?hop - hoist-operator ?t - truck ?c - container ?loc - location)
+    :precondition (and
+      (current-phase phase1_load)
+      (at-agent ?hop ?loc)
+      (at-truck ?t ?loc)
+      (holding ?hop ?c)
+      (truck-empty ?t)
+    )
+    :effect (and
+      ;; place container into truck and free operator; truck now non-empty
+      (in-truck ?c ?t)
+      (not (holding ?hop ?c))
+      (operator-free ?hop)
+      (not (truck-empty ?t))
+      ;; advance phase: phase1 -> phase2
+      (not (current-phase phase1_load))
+      (current-phase phase2_drive)
+    )
   )
 
-  ;; tightfisted: attach a hand to an object's target (copy next from object to hand)
-  (:action planner_a_tightfisted
-    :parameters (?h - obj ?x - obj ?z - obj)
-    :precondition (and (hand ?h) (next ?x ?z))
-    :effect (and (next ?h ?z))
+  ;; 3) drive: driver moves the truck (and driver) from one location to another (ends phase2, begins phase3)
+  (:action drive
+    :parameters (?drv - driver ?t - truck ?from - location ?to - location)
+    :precondition (and
+      (current-phase phase2_drive)
+      (at-agent ?drv ?from)
+      (at-truck ?t ?from)
+      (not (= ?from ?to))
+    )
+    :effect (and
+      ;; move driver and truck
+      (not (at-agent ?drv ?from))
+      (at-agent ?drv ?to)
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+      ;; advance phase: phase2 -> phase3
+      (not (current-phase phase2_drive))
+      (current-phase phase3_lift)
+    )
   )
 
-  ;; Actions coming from planner_b (prefix: planner_b_)
-  ;; paltry: create a collection link if the object is a cat
-  (:action planner_b_paltry
-    :parameters (?x - obj ?y - obj)
-    :precondition (and (cats ?x))
-    :effect (and (collect ?x ?y))
+  ;; 4) lift: lift-operator picks container out of a co-located truck (requires phase3)
+  (:action lift
+    :parameters (?lft - lift-operator ?t - truck ?c - container ?loc - location)
+    :precondition (and
+      (current-phase phase3_lift)
+      (at-agent ?lft ?loc)
+      (at-truck ?t ?loc)
+      (in-truck ?c ?t)
+      (operator-free ?lft)
+    )
+    :effect (and
+      ;; remove container from truck, mark operator holding, mark truck empty
+      (not (in-truck ?c ?t))
+      (holding ?lft ?c)
+      (not (operator-free ?lft))
+      (truck-empty ?t)
+    )
   )
 
-  ;; sip: use a hand and a textured item to create a next relation between the hand and that item
-  (:action planner_b_sip
-    :parameters (?h - obj ?t - obj)
-    :precondition (and (hand ?h) (texture ?t))
-    :effect (and (next ?h ?t))
+  ;; 5) drop: lift-operator drops a held container at the current location (ends phase3, begins final)
+  (:action drop
+    :parameters (?lft - lift-operator ?c - container ?loc - location)
+    :precondition (and
+      (current-phase phase3_lift)
+      (at-agent ?lft ?loc)
+      (holding ?lft ?c)
+    )
+    :effect (and
+      (not (holding ?lft ?c))
+      (operator-free ?lft)
+      (container-at ?c ?loc)
+      ;; advance phase: phase3 -> complete
+      (not (current-phase phase3_lift))
+      (current-phase phase4_complete)
+    )
   )
 
-  ;; memory: if an object collected another, mark that object as associated with a vase
-  (:action planner_b_memory
-    :parameters (?a - obj ?b - obj)
-    :precondition (and (collect ?a ?b))
-    :effect (and (vase ?a))
+  ;; 6) unload: hoist-operator unloads a container from a co-located truck onto the ground.
+  ;;    This action is intentionally constrained so it cannot be used to bypass the required sequence.
+  (:action unload
+    :parameters (?hop - hoist-operator ?t - truck ?c - container ?loc - location)
+    :precondition (and
+      ;; Only allowed before drive begins if still in load phase (symmetric counterpart to load)
+      (current-phase phase1_load)
+      (at-agent ?hop ?loc)
+      (at-truck ?t ?loc)
+      (in-truck ?c ?t)
+      (operator-free ?hop)
+    )
+    :effect (and
+      (not (in-truck ?c ?t))
+      (container-at ?c ?loc)
+      (operator-free ?hop) ; remains free (operator did not take it into hand)
+      (truck-empty ?t)
+      ;; remain in phase1 (this is a no-phase-advance variant that returns container to ground)
+    )
   )
 )

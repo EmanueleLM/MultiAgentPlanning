@@ -1,27 +1,56 @@
-(define (problem scenario_1)
-  (:domain next-vase-domain)
+(define (problem deliver_packages)
+  (:domain logistics_integrated)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 - obj
+    ;; cities and locations
+    city_0 city_1 - city
+    location_0_0 location_1_0 - location
+
+    ;; vehicles and packages
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 package_1 - package
+
+    ;; discrete ordered stages (planner must progress contiguously)
+    stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 - stage
   )
+
   (:init
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (hand object_7)
-    (hand object_8)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_6)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
+    ;; Airports (static)
+    (is_airport location_0_0)
+    (is_airport location_1_0)
+
+    ;; Location to city membership (static)
+    (location_in_city location_0_0 city_0)
+    (location_in_city location_1_0 city_1)
+
+    ;; Initial positions
+    (at-airplane airplane_0 location_1_0)
+    (at-truck truck_0 location_0_0)
+    (at-truck truck_1 location_1_0)
+
+    (at-package package_0 location_1_0)
+    (at-package package_1 location_1_0)
+
+    ;; Truck-to-city static assignment (one truck per city as given by initial facts)
+    (truck_belongs_to_city truck_0 city_0)
+    (truck_belongs_to_city truck_1 city_1)
+
+    ;; Stage succession chain (hard ordered progression)
+    (stage_succ stage_0 stage_1)
+    (stage_succ stage_1 stage_2)
+    (stage_succ stage_2 stage_3)
+    (stage_succ stage_3 stage_4)
+    (stage_succ stage_4 stage_5)
+
+    ;; Start stage
+    (current-stage stage_0)
   )
-  (:goal (and (next object_7 object_6) (next object_8 object_6)))
+
+  ;; Goal: both packages at location_0_0 and final stage reached exactly
+  (:goal (and
+    (at-package package_0 location_0_0)
+    (at-package package_1 location_0_0)
+    (current-stage stage_5)
+  ))
 )

@@ -1,16 +1,19 @@
-(define (problem scenario_1)
-  (:domain ObfuscatedDeceptiveLogistics8)
-
-  ; Objects: domain objects and explicit stages enforcing linear progression
+(define (problem obfuscated_deceptive_logistics_problem)
+  (:domain obfuscated_deceptive_logistics)
   (:objects
     object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 - obj
-    stage_1 stage_2 stage_3 stage_4 - stage
+    s0 s1 s2 s3 s4 s5 - stage
   )
-
-  ; Initial facts directly from scenario_1.
-  ; Assumption (documented): we enforce a linear action ordering by providing a chain of stages.
-  ; Exactly one stage token is available at a time (stage_1 initially).
   (:init
+    ;; time progression seed and explicit successor chain (discrete stages)
+    (at_time s0)
+    (succ s0 s1)
+    (succ s1 s2)
+    (succ s2 s3)
+    (succ s3 s4)
+    (succ s4 s5)
+
+    ;; initial facts (normalized from the statement)
     (cats object_0)
     (collect object_5 object_1)
     (collect object_6 object_1)
@@ -18,11 +21,11 @@
     (collect object_8 object_2)
     (hand object_10)
     (hand object_9)
-    (next object_0 object_7)
+    (next object_0 object_5)
     (next object_10 object_5)
     (next object_3 object_5)
     (next object_4 object_8)
-    (next object_9 object_8)
+    (next object_9 object_5)
     (sneeze object_3)
     (sneeze object_4)
     (spring object_5)
@@ -33,19 +36,11 @@
     (texture object_6)
     (texture object_7)
     (texture object_8)
-
-    ; stage succession chain for a contiguous sequence of up to 3 actions (4 stages)
-    (succ stage_1 stage_2)
-    (succ stage_2 stage_3)
-    (succ stage_3 stage_4)
-
-    ; only the first stage token is initially available
-    (available stage_1)
   )
-
-  ; Goal: required next relations for scenario_1.
-  (:goal (and
-    (next object_10 object_5)
-    (next object_9 object_7)
-  ))
+  (:goal
+    (and
+      (next object_10 object_6)
+      (next object_9 object_6)
+    )
+  )
 )

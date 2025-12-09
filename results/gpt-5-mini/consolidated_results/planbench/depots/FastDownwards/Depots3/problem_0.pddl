@@ -1,41 +1,80 @@
-(define (problem combined-scenario)
-  (:domain multiagent-delivery)
+(define (problem depot-hoist-truck-problem)
+  (:domain depot-hoist-truck)
+
   (:objects
-    p1 p2 - agent
-    locA locB locC locD - location
-    key1 pkg1 box1 - object
+    ;; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ;; surfaces / pallets (fixed to places)
+    pallet0 pallet1 pallet2 pallet3 - surface
+
+    ;; crates
+    crate0 crate1 crate2 - crate
+
+    ;; trucks
+    truck0 truck1 truck2 - truck
+
+    ;; hoists
+    hoist0 hoist1 hoist2 hoist3 - hoist
   )
 
   (:init
-    ;; Agent locations
-    (at-agent p1 locA)
-    (at-agent p2 locB)
+    ;; surfaces fixed at places
+    (at-surface pallet0 depot0)
+    (at-surface pallet1 depot1)
+    (at-surface pallet2 depot2)
+    (at-surface pallet3 distributor0)
 
-    ;; Object locations
-    (at-obj key1 locA)
-    (at-obj pkg1 locA)
-    (at-obj box1 locC)
+    ;; crates on surfaces and crates clear
+    (on crate0 pallet2)
+    (at-surface pallet2 depot2) ; redundant with above but explicit
+    (clear-crate crate0)
 
-    ;; No one is holding any object initially (omitted because holding facts are false by default)
+    (on crate1 pallet3)
+    (at-surface pallet3 distributor0)
+    (clear-crate crate1)
 
-    ;; Adjacency (bidirectional)
-    (adj locA locB)
-    (adj locB locA)
-    (adj locB locC)
-    (adj locC locB)
-    (adj locC locD)
-    (adj locD locC)
+    (on crate2 pallet1)
+    (at-surface pallet1 depot1)
+    (clear-crate crate2)
 
-    ;; Blocked passage between locB and locC initially (locked door)
-    (blocked locB locC)
-    (blocked locC locB)
+    ;; surfaces clear semantics: a surface is clear iff no crate on it.
+    ;; pallet0 currently empty
+    (clear-surface pallet0)
+    ;; pallets with crates are not clear (we represent that by omitting clear-surface for them)
+    ;; thus pallet1, pallet2, pallet3 are not clear in init
+
+    ;; trucks at places
+    (at-truck truck0 depot1)
+    (at-truck truck1 depot1)
+    (at-truck truck2 depot1)
+
+    ;; hoists at places and available
+    (at-hoist hoist0 depot0)
+    (available hoist0)
+
+    (at-hoist hoist1 depot1)
+    (available hoist1)
+
+    (at-hoist hoist2 depot2)
+    (available hoist2)
+
+    (at-hoist hoist3 distributor0)
+    (available hoist3)
+
+    ;; connectivity: fully connected (directed) road network between all distinct places
+    (connected depot0 depot1) (connected depot1 depot0)
+    (connected depot0 depot2) (connected depot2 depot0)
+    (connected depot0 distributor0) (connected distributor0 depot0)
+    (connected depot1 depot2) (connected depot2 depot1)
+    (connected depot1 distributor0) (connected distributor0 depot1)
+    (connected depot2 distributor0) (connected distributor0 depot2)
   )
 
   (:goal (and
-    ;; Player1's/Player2's combined goals:
-    ;; - deliver pkg1 to locD
-    ;; - bring box1 to locB
-    (at-obj pkg1 locD)
-    (at-obj box1 locB)
+    ;; final placement requirements: crates on target pallets
+    (on crate0 pallet0)
+    (on crate1 pallet1)
+    (on crate2 pallet3)
   ))
 )

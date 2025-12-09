@@ -1,142 +1,98 @@
-(define (domain Logistics25)
+(define (domain logistics25)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types truck airplane package location city)
 
   (:predicates
-    (cats ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (hand ?o - object)
-    (next ?o1 - object ?o2 - object) ; object relation as in specification
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (stage ?s - stage)
-    (succ ?s1 - stage ?s2 - stage) ; stage successor relation
-    (current ?s - stage)           ; which stage is currently active
+    ;; locations of vehicles and packages
+    (at-truck ?t - truck ?l - location)
+    (at-airplane ?a - airplane ?l - location)
+    (at-package ?p - package ?l - location)
+
+    ;; package-in-vehicle relations
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    ;; static map facts
+    (in-city ?l - location ?c - city)
+    (airport ?l - location)
   )
 
-  ;; Paltry: requires hand, cats, texture, vase(h,c), next(c,t). Produces next(h,t) and removes vase(h,c).
-  (:action paltry
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  ;; Truck actions
+  (:action load-truck
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-                    (hand ?h)
-                    (cats ?c)
-                    (texture ?t)
-                    (vase ?h ?c)
-                    (next ?c ?t)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (at-package ?p ?l)
+      (at-truck ?t ?l)
+      ;; loading occurs only when package is physically at the location
+    )
     :effect (and
-              (next ?h ?t)
-              (not (vase ?h ?c))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (at-package ?p ?l))
+      (in-truck ?p ?t)
+    )
   )
 
-  ;; Sip: requires hand, cats, texture, next(h,t), next(c,t). Produces vase(h,c) and removes next(h,t).
-  (:action sip
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  (:action unload-truck
+    :parameters (?p - package ?t - truck ?l - location)
     :precondition (and
-                    (hand ?h)
-                    (cats ?c)
-                    (texture ?t)
-                    (next ?h ?t)
-                    (next ?c ?t)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (in-truck ?p ?t)
+      (at-truck ?t ?l)
+    )
     :effect (and
-              (vase ?h ?c)
-              (not (next ?h ?t))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (in-truck ?p ?t))
+      (at-package ?p ?l)
+    )
   )
 
-  ;; Clip: requires hand, sneeze, texture, next(sneeze,t), next(hand,t). Produces vase(hand,sneeze) and removes next(hand,t).
-  (:action clip
-    :parameters (?h - object ?sneeze - object ?t - object ?s - stage ?s2 - stage)
+  (:action drive-truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
     :precondition (and
-                    (hand ?h)
-                    (sneeze ?sneeze)
-                    (texture ?t)
-                    (next ?sneeze ?t)
-                    (next ?h ?t)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (at-truck ?t ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+    )
     :effect (and
-              (vase ?h ?sneeze)
-              (not (next ?h ?t))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (at-truck ?t ?from))
+      (at-truck ?t ?to)
+    )
   )
 
-  ;; Wretched: requires sneeze(a), texture(b), texture(c), stupendous(d), next(a,b), collect(b,d), collect(c,d).
-  ;; Produces next(a,c) and removes next(a,b).
-  (:action wretched
-    :parameters (?a - object ?b - object ?c - object ?d - object ?s - stage ?s2 - stage)
+  ;; Airplane actions
+  (:action load-plane
+    :parameters (?p - package ?a - airplane ?l - location)
     :precondition (and
-                    (sneeze ?a)
-                    (texture ?b)
-                    (texture ?c)
-                    (stupendous ?d)
-                    (next ?a ?b)
-                    (collect ?b ?d)
-                    (collect ?c ?d)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (at-package ?p ?l)
+      (at-airplane ?a ?l)
+      (airport ?l)
+    )
     :effect (and
-              (next ?a ?c)
-              (not (next ?a ?b))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (at-package ?p ?l))
+      (in-plane ?p ?a)
+    )
   )
 
-  ;; Memory: requires cats(a), spring(b), spring(c), next(a,b). Produces next(a,c) and removes next(a,b).
-  (:action memory
-    :parameters (?a - object ?b - object ?c - object ?s - stage ?s2 - stage)
+  (:action unload-plane
+    :parameters (?p - package ?a - airplane ?l - location)
     :precondition (and
-                    (cats ?a)
-                    (spring ?b)
-                    (spring ?c)
-                    (next ?a ?b)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (in-plane ?p ?a)
+      (at-airplane ?a ?l)
+      (airport ?l)
+    )
     :effect (and
-              (next ?a ?c)
-              (not (next ?a ?b))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (in-plane ?p ?a))
+      (at-package ?p ?l)
+    )
   )
 
-  ;; Tightfisted: requires hand(h), sneeze(s), texture(t), next(s,t), vase(h,s). Produces next(h,t) and removes vase(h,s).
-  (:action tightfisted
-    :parameters (?h - object ?sneeze - object ?t - object ?s - stage ?s2 - stage)
+  (:action fly-plane
+    :parameters (?a - airplane ?from - location ?to - location)
     :precondition (and
-                    (hand ?h)
-                    (sneeze ?sneeze)
-                    (texture ?t)
-                    (next ?sneeze ?t)
-                    (vase ?h ?sneeze)
-                    (current ?s)
-                    (succ ?s ?s2)
-                  )
+      (at-airplane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+    )
     :effect (and
-              (next ?h ?t)
-              (not (vase ?h ?sneeze))
-              (not (current ?s))
-              (current ?s2)
-            )
+      (not (at-airplane ?a ?from))
+      (at-airplane ?a ?to)
+    )
   )
-
 )

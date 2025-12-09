@@ -1,35 +1,62 @@
-(define (problem instanceA)
-  (:domain Depots9)
+(define (problem hoist-truck-problem)
+  (:domain hoist-truck-domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 - obj
+    ; places
+    depot0 depot1 depot2 distributor0 - place
+
+    ; hoists and trucks
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2           - truck
+
+    ; surfaces: pallets and crates
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    crate0 crate1 crate2            - crate
   )
+
   (:init
-    ;; predicates from instance A initial facts
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_10)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_5)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ; hoist locations
+    (at hoist0 depot0)
+    (at hoist1 depot1)
+    (at hoist2 depot2)
+    (at hoist3 distributor0)
+
+    ; pallet locations
+    (at pallet0 depot0)
+    (at pallet1 depot1)
+    (at pallet2 depot2)
+    (at pallet3 distributor0)
+
+    ; truck locations
+    (at truck0 distributor0)
+    (at truck1 depot2)
+    (at truck2 depot0)
+
+    ; crate initial placements (on pallets and at places)
+    (on crate0 pallet1)
+    (on crate1 pallet2)
+    (on crate2 pallet3)
+
+    (at crate0 depot1)
+    (at crate1 depot2)
+    (at crate2 distributor0)
+
+    ; hoist availabilities
+    (available hoist0)
+    (available hoist1)
+    (available hoist2)
+    (available hoist3)
+
+    ; clear predicates: crates are top-clear; pallet0 is clear, others occupied by crates
+    (clear crate0)
+    (clear crate1)
+    (clear crate2)
+    (clear pallet0)
   )
+
   (:goal (and
-    (next object_10 object_6)
-    (next object_9 object_6)
-  ))
+           (on crate0 pallet1)
+           (on crate1 pallet2)
+           (on crate2 pallet0)
+         ))
 )

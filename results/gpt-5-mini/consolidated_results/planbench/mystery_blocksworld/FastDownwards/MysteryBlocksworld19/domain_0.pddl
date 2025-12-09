@@ -1,113 +1,89 @@
-(define (domain orchestrator)
-  (:requirements :strips :typing)
-  (:types obj)
+(define (domain orchestrator-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types entity)
 
+  ;; Canonical predicates (consistent with auditor recommendations)
   (:predicates
-    ;; unary static predicates describing object properties
-    (cats ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (hand ?o - obj)
-    (texture ?o - obj)
-
-    ;; binary relation predicates manipulated by actions
-    (collect ?o - obj ?p - obj)  ;; collect relation (static)
-    (next ?a - obj ?b - obj)     ;; mutable relation (goal target)
-    (vase ?h - obj ?o - obj)     ;; ephemeral resource produced/consumed
+    (has-province ?e - entity)     ;; formerly Province(?x)
+    (at-planet   ?e - entity)      ;; formerly Planet(?x)
+    (in-pain     ?e - entity)      ;; formerly Pain(?x)
+    (harmony)                       ;; global Harmony (0-ary predicate)
+    (craves      ?s - entity ?t - entity)  ;; craves(subject,target)
+    (distinct    ?x - entity ?y - entity)  ;; explicit inequality relation between distinct objects
   )
 
-  ;; Action schemas derived from the analyst reports.
-  ;; Effects follow the described add/delete behaviour.
-
-  (:action wretched
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
+  ;; Action: Attack
+  ;; Preconditions: target has province, is at planet, and global harmony is true.
+  ;; Effects: target becomes in-pain; target loses province and planet; global harmony is removed.
+  (:action attack-action
+    :parameters (?target - entity)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
-    )
+                    (has-province ?target)
+                    (at-planet ?target)
+                    (harmony)
+                  )
     :effect (and
-      (not (next ?o0 ?o1))
-      (next ?o0 ?o2)
-    )
+              (in-pain ?target)
+              (not (has-province ?target))
+              (not (at-planet ?target))
+              (not (harmony))
+            )
   )
 
-  (:action clip
-    :parameters (?h - obj ?o1 - obj ?o2 - obj)
+  ;; Action: Succumb
+  ;; Preconditions: subject is in pain.
+  ;; Effects: consumes pain on subject, reinstates province and planet on subject, restores global harmony.
+  (:action succumb-action
+    :parameters (?subject - entity)
     :precondition (and
-      (hand ?h)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?h ?o2)
-    )
+                    (in-pain ?subject)
+                  )
     :effect (and
-      (vase ?h ?o1)
-      (not (next ?h ?o2))
-    )
+              (not (in-pain ?subject))
+              (has-province ?subject)
+              (at-planet ?subject)
+              (harmony)
+            )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?o1 - obj ?o2 - obj)
+  ;; Action: Overcome
+  ;; Preconditions: object is in pain, other currently has province, and they must be distinct.
+  ;; Effects: moves province from other to object (atomic delete/add), consumes pain on object,
+  ;;          creates craves(object, other), and establishes global harmony.
+  (:action overcome-action
+    :parameters (?obj - entity ?other - entity)
     :precondition (and
-      (hand ?h)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?h ?o1)
-    )
+                    (in-pain ?obj)
+                    (has-province ?other)
+                    (distinct ?obj ?other)
+                  )
     :effect (and
-      (next ?h ?o2)
-      (not (vase ?h ?o1))
-    )
+              (not (in-pain ?obj))
+              (not (has-province ?other))
+              (has-province ?obj)
+              (craves ?obj ?other)
+              (harmony)
+            )
   )
 
-  (:action memory
-    :parameters (?o0 - obj ?o1 - obj ?o2 - obj)
+  ;; Action: Feast
+  ;; Preconditions: subject craves target, subject holds province, global harmony is true, and distinctness.
+  ;; Effects: consumes the craves relation, subject loses province, subject acquires pain,
+  ;;          target gains province, and global harmony is removed.
+  (:action feast-action
+    :parameters (?subject - entity ?target - entity)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
-    )
+                    (craves ?subject ?target)
+                    (has-province ?subject)
+                    (harmony)
+                    (distinct ?subject ?target)
+                  )
     :effect (and
-      (not (next ?o0 ?o1))
-      (next ?o0 ?o2)
-    )
-  )
-
-  (:action sip
-    :parameters (?h - obj ?o0 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?o0)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?h ?o2)
-    )
-    :effect (and
-      (vase ?h ?o0)
-      (not (next ?h ?o2))
-    )
-  )
-
-  (:action paltry
-    :parameters (?h - obj ?o0 - obj ?o2 - obj)
-    :precondition (and
-      (hand ?h)
-      (cats ?o0)
-      (texture ?o2)
-      (vase ?h ?o0)
-      (next ?o0 ?o2)
-    )
-    :effect (and
-      (next ?h ?o2)
-      (not (vase ?h ?o0))
-    )
+              (not (craves ?subject ?target))
+              (not (has-province ?subject))
+              (has-province ?target)
+              (in-pain ?subject)
+              (not (harmony))
+            )
   )
 )

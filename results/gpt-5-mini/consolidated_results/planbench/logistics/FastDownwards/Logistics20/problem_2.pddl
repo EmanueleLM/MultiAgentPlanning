@@ -1,43 +1,59 @@
-(define (problem objects-play-problem)
-  (:domain objects-play)
+(define (problem deliver-package-0)
+  (:domain logistics-multiagent)
 
   (:objects
-    object_2 object_4 object_8 object_9 object_10 object_11 object_12 - object
-    stage0 stage1 stage2 stage3 stage4 stage5 - stage
+    city_0 city_1 - city
+
+    location_0_0 location_0_1 location_0_2
+    location_1_0 location_1_1 location_1_2 - location
+
+    truck_0 truck_1 - truck
+    airplane_0 airplane_1 - airplane
+
+    package_0 - package
+
+    time_0 time_1 time_2 time_3 time_4 time_5 time_6 time_7 time_8 time_9 - time
   )
 
   (:init
-    ;; minimal stage chain (enough steps for the provided plan fragments)
-    (succ stage0 stage1)
-    (succ stage1 stage2)
-    (succ stage2 stage3)
-    (succ stage3 stage4)
-    (succ stage4 stage5)
-    (succ stage5 stage5)
-    (current stage0)
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_0_2 city_0)
 
-    ;; Scenario 1: only the facts actually required by the provided plan
-    (sneeze object_4)
-    (hand object_11)
-    (texture object_10)
-    (texture object_8)
-    (texture object_9)
-    (stupendous object_2)
-    (next object_4 object_10)   ; enables first wretched -> next(object_4,object_8)
-    (next object_11 object_8)   ; required by clip step
-    (collect object_10 object_2)
-    (collect object_8 object_2)
-    (collect object_9 object_2)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
+    (in-city location_1_2 city_1)
 
-    ;; Scenario 2: minimal facts to enable memory yielding next object_12 object_11
-    (cats object_12)
-    (spring object_10)
-    (spring object_11)
-    (next object_12 object_10)
+    (airport location_0_0)
+    (airport location_1_0)
+
+    (at-truck truck_0 location_0_1)
+    (at-truck truck_1 location_1_0)
+
+    (at-plane airplane_0 location_0_0)
+    (at-plane airplane_1 location_1_0)
+
+    (at-pkg package_0 location_1_1)
+
+    (stage time_0) (stage time_1) (stage time_2) (stage time_3) (stage time_4)
+    (stage time_5) (stage time_6) (stage time_7) (stage time_8) (stage time_9)
+
+    (succ time_0 time_1)
+    (succ time_1 time_2)
+    (succ time_2 time_3)
+    (succ time_3 time_4)
+    (succ time_4 time_5)
+    (succ time_5 time_6)
+    (succ time_6 time_7)
+    (succ time_7 time_8)
+    (succ time_8 time_9)
+
+    (current-stage time_0)
   )
 
-  (:goal (and
-    (next object_11 object_9)
-    (next object_12 object_11)
-  ))
+  (:goal
+    (and
+      (at-pkg package_0 location_1_2)
+    )
+  )
 )

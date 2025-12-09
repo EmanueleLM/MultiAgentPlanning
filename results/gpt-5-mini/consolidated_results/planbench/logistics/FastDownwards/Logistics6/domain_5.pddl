@@ -1,121 +1,247 @@
-(define (domain Logistics6)
+(define (domain transport_domain)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types package truck airplane location city stage)
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (collect ?o1 - object ?o2 - object)
-    (stupendous ?o - object)
-    (spring ?o - object)
+    (pkg-at ?p - package ?l - location)
+    (in-truck ?p - package ?t - truck)
+    (in-plane ?p - package ?pl - airplane)
+    (truck-at ?t - truck ?l - location)
+    (plane-at ?pl - airplane ?l - location)
+    (airport ?l - location)
+    (loc-in-city ?l - location ?c - city)
+    (truck-in-city ?t - truck ?c - city)
+    (succ ?s1 - stage ?s2 - stage)
+    (current ?s - stage)
+    (is-truck0 ?t - truck)
+    (is-truck1 ?t - truck)
+    (is-plane0 ?pl - airplane)
+    (is-plane1 ?pl - airplane)
   )
 
-  ;; paltry: requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ;; effects: add next o0 o2, delete vase o0 o1
-  (:action paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  ;; driver_0 actions: operate truck_0 (intra-city moves constrained by truck-in-city mapping)
+  (:action drive_truck_0
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (vase ?o0 ?o1)
-      (next ?o1 ?o2)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck0 ?t)
+      (truck-at ?t ?from)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?from ?c)
+      (loc-in-city ?to ?c)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (truck-at ?t ?from))
+      (truck-at ?t ?to)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; sip: requires hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ;; effects: add vase o0 o1, delete next o0 o2
-  (:action sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action load_truck_0
+    :parameters (?p - package ?t - truck ?loc - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (cats ?o1)
-      (texture ?o2)
-      (next ?o0 ?o2)
-      (next ?o1 ?o2)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck0 ?t)
+      (truck-at ?t ?loc)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?loc ?c)
+      (pkg-at ?p ?loc)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (pkg-at ?p ?loc))
+      (in-truck ?p ?t)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; clip: requires hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ;; effects: add vase o0 o1, delete next o0 o2
-  (:action clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action unload_truck_0
+    :parameters (?p - package ?t - truck ?loc - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (next ?o0 ?o2)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck0 ?t)
+      (truck-at ?t ?loc)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?loc ?c)
+      (in-truck ?p ?t)
     )
     :effect (and
-      (vase ?o0 ?o1)
-      (not (next ?o0 ?o2))
+      (not (in-truck ?p ?t))
+      (pkg-at ?p ?loc)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; wretched: requires sneeze o0, texture o1, texture o2, stupendous o3,
-  ;;           next o0 o1, collect o1 o3, collect o2 o3
-  ;; effects: add next o0 o2, delete next o0 o1
-  (:action wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
+  ;; driver_1 actions: operate truck_1
+  (:action drive_truck_1
+    :parameters (?t - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (sneeze ?o0)
-      (texture ?o1)
-      (texture ?o2)
-      (stupendous ?o3)
-      (next ?o0 ?o1)
-      (collect ?o1 ?o3)
-      (collect ?o2 ?o3)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck1 ?t)
+      (truck-at ?t ?from)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?from ?c)
+      (loc-in-city ?to ?c)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (truck-at ?t ?from))
+      (truck-at ?t ?to)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; memory: requires cats o0, spring o1, spring o2, next o0 o1
-  ;; effects: add next o0 o2, delete next o0 o1
-  (:action memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action load_truck_1
+    :parameters (?p - package ?t - truck ?loc - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (cats ?o0)
-      (spring ?o1)
-      (spring ?o2)
-      (next ?o0 ?o1)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck1 ?t)
+      (truck-at ?t ?loc)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?loc ?c)
+      (pkg-at ?p ?loc)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (next ?o0 ?o1))
+      (not (pkg-at ?p ?loc))
+      (in-truck ?p ?t)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
-  ;; tightfisted: requires hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ;; effects: add next o0 o2, delete vase o0 o1
-  (:action tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
+  (:action unload_truck_1
+    :parameters (?p - package ?t - truck ?loc - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (hand ?o0)
-      (sneeze ?o1)
-      (texture ?o2)
-      (next ?o1 ?o2)
-      (vase ?o0 ?o1)
+      (current ?s)
+      (succ ?s ?s2)
+      (is-truck1 ?t)
+      (truck-at ?t ?loc)
+      (truck-in-city ?t ?c)
+      (loc-in-city ?loc ?c)
+      (in-truck ?p ?t)
     )
     :effect (and
-      (next ?o0 ?o2)
-      (not (vase ?o0 ?o1))
+      (not (in-truck ?p ?t))
+      (pkg-at ?p ?loc)
+      (not (current ?s))
+      (current ?s2)
     )
   )
 
+  ;; pilot_0 actions: operate airplane_0 between airports
+  (:action fly_airplane_0
+    :parameters (?pl - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane0 ?pl)
+      (plane-at ?pl ?from)
+      (airport ?from)
+      (airport ?to)
+    )
+    :effect (and
+      (not (plane-at ?pl ?from))
+      (plane-at ?pl ?to)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  (:action load_airplane_0
+    :parameters (?p - package ?pl - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane0 ?pl)
+      (plane-at ?pl ?loc)
+      (airport ?loc)
+      (pkg-at ?p ?loc)
+    )
+    :effect (and
+      (not (pkg-at ?p ?loc))
+      (in-plane ?p ?pl)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  (:action unload_airplane_0
+    :parameters (?p - package ?pl - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane0 ?pl)
+      (plane-at ?pl ?loc)
+      (airport ?loc)
+      (in-plane ?p ?pl)
+    )
+    :effect (and
+      (not (in-plane ?p ?pl))
+      (pkg-at ?p ?loc)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  ;; pilot_1 actions: operate airplane_1 between airports
+  (:action fly_airplane_1
+    :parameters (?pl - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane1 ?pl)
+      (plane-at ?pl ?from)
+      (airport ?from)
+      (airport ?to)
+    )
+    :effect (and
+      (not (plane-at ?pl ?from))
+      (plane-at ?pl ?to)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  (:action load_airplane_1
+    :parameters (?p - package ?pl - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane1 ?pl)
+      (plane-at ?pl ?loc)
+      (airport ?loc)
+      (pkg-at ?p ?loc)
+    )
+    :effect (and
+      (not (pkg-at ?p ?loc))
+      (in-plane ?p ?pl)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
+
+  (:action unload_airplane_1
+    :parameters (?p - package ?pl - airplane ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current ?s)
+      (succ ?s ?s2)
+      (is-plane1 ?pl)
+      (plane-at ?pl ?loc)
+      (airport ?loc)
+      (in-plane ?p ?pl)
+    )
+    :effect (and
+      (not (in-plane ?p ?pl))
+      (pkg-at ?p ?loc)
+      (not (current ?s))
+      (current ?s2)
+    )
+  )
 )

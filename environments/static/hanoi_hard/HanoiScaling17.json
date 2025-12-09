@@ -1,0 +1,110 @@
+{
+    "name": "HanoiScaling17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "human_player",
+            "simulator",
+            "auditor",
+            "orchestrator"
+        ],
+        "human_player": {
+            "private_information": [
+                "I can move the top disk from one peg to another peg",
+                "I must move only one disk at a time and only the top disk of a peg",
+                "I must never place a larger disk on top of a smaller disk",
+                "Disks are ordered from smallest to largest as A, B, C, D, E, F"
+            ],
+            "goal": "Propose a concrete, stepwise move sequence that relocates all six disks from the right peg to the middle peg while obeying the Hanoi rules and leaving the left peg empty at the end."
+        },
+        "simulator": {
+            "private_information": [
+                "I can execute a proposed move sequence step by step and check legality at each step",
+                "I can report violations such as moving a non-top disk or placing a larger disk on a smaller disk"
+            ],
+            "goal": "Validate any proposed move sequence for causal and rule compliance and produce a deterministic execution log indicating state after each move."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and will remove bookkeeping shortcuts and post-hoc corrections",
+                "I will check for implicit assumptions such as 'teleporting' disks, aggregated moves, or tokens that hide illegal intermediate states"
+            ],
+            "goal": "Audit proposals and simulation logs to ensure plans are temporally and causally consistent, expose any shortcuts, and produce an audit report that enumerates corrections or confirms full compliance."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the human proposal, the simulation validation, and the auditor's findings to produce a final PDDL domain and problem suitable for the FastDownwards planner that models the Tower of Hanoi instance with six disks and three pegs."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6,
+            "peg_names": [
+                "left",
+                "middle",
+                "right"
+            ],
+            "visibility": 1
+        },
+        "public_information": [
+            "There are three pegs: left, middle, and right.",
+            "There are six disks total named from smallest to largest: A, B, C, D, E, F.",
+            "Initial state: right peg holds from top to bottom A, B, C, D, E, F; left and middle pegs are empty.",
+            "Goal state: middle peg must hold from top to bottom A, B, C, D, E, F; left and right pegs must be empty.",
+            "Allowed action: move the top disk from one peg to another peg.",
+            "Rules: move only one disk at a time; only the top disk of a peg may be moved; never place a larger disk on top of a smaller disk; once moved, disks keep their relative ordering constraints."
+        ]
+    },
+    "workflow": {
+        "human_player": {
+            "model": {
+                "input": [],
+                "output": "model_human_player",
+                "system_prompt": "You are the human player who understands the Tower of Hanoi rules and the instance details. Provide a clear, ordered move sequence or a compact, unambiguous model of intended moves. Do not emit PDDL. Focus on explicit moves, assumptions, and any unresolved naming or indexing choices that downstream components must know.",
+                "prompt": "You are human_player. Use the public information to propose a stepwise move sequence or an explicit model of intended moves for the goal: move all disks from the right peg to the middle peg while leaving the left peg empty. List any assumptions or ambiguities so they can be checked by the simulator and auditor."
+            }
+        },
+        "simulator": {
+            "simulate": {
+                "input": [
+                    "model_human_player"
+                ],
+                "output": "simulator_log",
+                "system_prompt": "You are a deterministic simulator for Tower of Hanoi move sequences. Given an explicit move sequence or model, execute moves step by step, check legality at each step, and produce a detailed execution log showing peg contents after each move and any detected violations. Do not emit PDDL.",
+                "prompt": "You are simulator. Receive the proposed moves or model from the human_player and simulate each move under the public rules. Report the full execution trace, indicate whether each move was legal, and summarize final state and any violations."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "model_human_player",
+                    "simulator_log"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency. Your role is to detect and remove bookkeeping shortcuts, aggregated or implicit moves, token-based shortcuts, or any post-hoc fixes that would hide illegal intermediate states. Produce a concise audit report describing any inconsistencies, required corrections, and whether the provided plan and its simulation are causally and temporally sound. Do not emit PDDL.",
+                "prompt": "You are auditor. Using the human_player model and the simulator_log, check for causal and temporal integrity, list any shortcuts or assumptions that violate pure move semantics, and recommend concrete corrections or confirm full compliance."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "model_human_player",
+                    "simulator_log",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert at producing multi-agent-consistent PDDL for use with the FastDownwards planner. Integrate the human model, the simulator execution trace, and the auditor report to produce a complete PDDL domain and a PDDL problem encoding the Tower of Hanoi instance with six disks and three pegs. Ensure the domain models disks, pegs, top-of-peg constraints, legal move preconditions, and the invariant preventing larger-on-smaller placement. Keep actions of contributing agents conceptually distinct when mapping to action names. Emit a PDDL domain and a PDDL problem and ensure compatibility with FastDownwards requirements. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are orchestrator. You will receive the human_player model, the simulator_log, and the audit_report. Reconcile any differences or corrections and produce a final PDDL domain and problem targeting FastDownwards that models the six-disk Tower of Hanoi instance and the stated goal. Keep agent actions distinct in naming and ensure no reliance on bookkeeping shortcuts. Enclose the domain in <domain></domain> and the problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "human_player.model->simulator.simulate",
+            "human_player.model->auditor.audit",
+            "human_player.model->orchestrator.pddl",
+            "simulator.simulate->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

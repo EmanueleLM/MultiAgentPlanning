@@ -1,146 +1,147 @@
-(define (domain objects-play)
+(define (domain logistics-multiagent)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object stage)
+  (:types
+    city location time package truck airplane
+  )
 
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o1 - object ?o2 - object)
-    (next ?o1 - object ?o2 - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
-    (collect ?o1 - object ?o2 - object)
+    ; vehicle locations
+    (at-truck ?tr - truck ?loc - location)
+    (at-plane ?a - airplane ?loc - location)
 
-    ;; explicit discrete time / stage bookkeeping
-    (current ?s - stage)
-    (succ ?s1 - stage ?s2 - stage)
+    ; package location modes (mutually exclusive by action effects)
+    (at-pkg ?p - package ?loc - location)
+    (in-truck ?p - package ?tr - truck)
+    (in-plane ?p - package ?a - airplane)
+
+    ; topology and attributes
+    (airport ?loc - location)
+    (in-city ?loc - location ?c - city)
+
+    ; explicit discrete time / stages: ordering and current stage
+    (stage ?s - time)
+    (succ ?s1 - time ?s2 - time)
+    (current-stage ?s - time)
   )
 
-  ;; paltry: requires hand,having a vase with a cat, and a next linking the cat->texture.
-  ;; effect: create next(hand,texture) and delete the vase relation.
-  (:action paltry
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  ; -------------------------
+  ; Truck actions — all actions consume the single current-stage and produce its successor,
+  ; enforcing a strict, contiguous stage progression (one action per stage globally).
+  ; -------------------------
+  (:action truck-load
+    :parameters (?tr - truck ?p - package ?loc - location ?s - time ?s2 - time)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
-      (current ?s)
+      (at-truck ?tr ?loc)
+      (at-pkg ?p ?loc)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?c))
-      (not (current ?s))
-      (current ?s2)
+      ; package moves into truck (no longer at location)
+      (not (at-pkg ?p ?loc))
+      (in-truck ?p ?tr)
+      ; advance stage (enforces contiguous single-step duration)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; sip: requires hand, cats, texture and that both hand->texture and cats->texture hold.
-  ;; effect: create vase(hand,cats) and delete next(hand,texture).
-  (:action sip
-    :parameters (?h - object ?c - object ?t - object ?s - stage ?s2 - stage)
+  (:action truck-unload
+    :parameters (?tr - truck ?p - package ?loc - location ?s - time ?s2 - time)
     :precondition (and
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-      (current ?s)
+      (at-truck ?tr ?loc)
+      (in-truck ?p ?tr)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (vase ?h ?c)
-      (not (next ?h ?t))
-      (not (current ?s))
-      (current ?s2)
+      ; package leaves truck and becomes at the truck's current location
+      (not (in-truck ?p ?tr))
+      (at-pkg ?p ?loc)
+      ; advance stage
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; clip: requires hand, sneeze, texture and that both sneeze->texture and hand->texture hold.
-  ;; effect: create vase(hand,sneeze) and delete next(hand,texture).
-  (:action clip
-    :parameters (?h - object ?sn - object ?t - object ?s - stage ?s2 - stage)
+  (:action truck-drive
+    :parameters (?tr - truck ?from - location ?to - location ?c - city ?s - time ?s2 - time)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (next ?h ?t)
-      (current ?s)
+      (at-truck ?tr ?from)
+      ; both locations must belong to the same city (enforces intra-city driving)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (vase ?h ?sn)
-      (not (next ?h ?t))
-      (not (current ?s))
-      (current ?s2)
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+      ; packages inside the truck remain in-truck (no effect on in-truck)
+      ; advance stage
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; wretched: requires sneeze, two textures, stupendous, next(sneeze,texture1), and two collect facts.
-  ;; effect: move next from texture1 to texture2 for the sneeze object.
-  (:action wretched
-    :parameters (?sn - object ?t1 - object ?t2 - object ?st - object ?s - stage ?s2 - stage)
+  ; -------------------------
+  ; Airplane actions — loading/unloading only at airports; flying between airports.
+  ; Each action consumes current-stage and produces its successor (one-stage duration).
+  ; -------------------------
+  (:action plane-load
+    :parameters (?a - airplane ?p - package ?loc - location ?s - time ?s2 - time)
     :precondition (and
-      (sneeze ?sn)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?sn ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
-      (current ?s)
+      (at-plane ?a ?loc)
+      (at-pkg ?p ?loc)
+      (airport ?loc)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (next ?sn ?t2)
-      (not (next ?sn ?t1))
-      (not (current ?s))
-      (current ?s2)
+      ; package moves into airplane (no longer at airport location)
+      (not (at-pkg ?p ?loc))
+      (in-plane ?p ?a)
+      ; advance stage
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; memory: requires cats, two springs and next(cat,spring1). Moves next from spring1 to spring2.
-  (:action memory
-    :parameters (?c - object ?sp1 - object ?sp2 - object ?s - stage ?s2 - stage)
+  (:action plane-unload
+    :parameters (?a - airplane ?p - package ?loc - location ?s - time ?s2 - time)
     :precondition (and
-      (cats ?c)
-      (spring ?sp1)
-      (spring ?sp2)
-      (next ?c ?sp1)
-      (current ?s)
+      (at-plane ?a ?loc)
+      (in-plane ?p ?a)
+      (airport ?loc)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (next ?c ?sp2)
-      (not (next ?c ?sp1))
-      (not (current ?s))
-      (current ?s2)
+      ; package leaves airplane and is at the airplane's current airport location
+      (not (in-plane ?p ?a))
+      (at-pkg ?p ?loc)
+      ; advance stage
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  ;; tightfisted: requires hand, sneeze, texture, next(sneeze,texture), and vase(hand,sneeze).
-  ;; effect: create next(hand,texture) and delete vase(hand,sneeze).
-  (:action tightfisted
-    :parameters (?h - object ?sn - object ?t - object ?s - stage ?s2 - stage)
+  (:action plane-fly
+    :parameters (?a - airplane ?from - location ?to - location ?s - time ?s2 - time)
     :precondition (and
-      (hand ?h)
-      (sneeze ?sn)
-      (texture ?t)
-      (next ?sn ?t)
-      (vase ?h ?sn)
-      (current ?s)
+      (at-plane ?a ?from)
+      (airport ?from)
+      (airport ?to)
+      (current-stage ?s)
       (succ ?s ?s2)
     )
     :effect (and
-      (next ?h ?t)
-      (not (vase ?h ?sn))
-      (not (current ?s))
-      (current ?s2)
+      (not (at-plane ?a ?from))
+      (at-plane ?a ?to)
+      ; packages inside the airplane remain in-plane (no effect on in-plane)
+      ; advance stage
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

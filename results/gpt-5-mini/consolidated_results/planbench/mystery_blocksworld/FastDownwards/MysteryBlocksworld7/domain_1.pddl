@@ -1,89 +1,121 @@
-(define (domain mysteryblocksworld7)
+(define (domain cravings)
   (:requirements :strips :typing :negative-preconditions)
-  (:types object)
+  (:types object step)
+
+  ;; Predicates
   (:predicates
-    (hand ?o - object)
-    (cats ?o - object)
-    (texture ?o - object)
-    (vase ?o0 - object ?o1 - object)
-    (next ?o0 - object ?o1 - object)
-    (collect ?o0 - object ?o1 - object)
-    (sneeze ?o - object)
-    (spring ?o - object)
-    (stupendous ?o - object)
+    (planet ?o - object)
+    (province ?o - object)
+    (harmony)
+    (pain ?o - object)
+    (craves ?x - object ?y - object)
+
+    ;; Discrete stage progression to enforce ordered, contiguous occupancy.
+    (step ?s - step)
+    (step-next ?s1 - step ?s2 - step)
+    (step-current ?s - step)
+    (step-done ?s - step)
   )
 
-  ;--- Actions for scenarioA (prefixed scenarioA-) ---
-  (:action scenarioA-paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
+  ;; Attack: requires province and planet on the same object and global harmony.
+  ;; Produces pain on the object and removes province, planet and harmony.
+  ;; Consumes one step (advances current step).
+  (:action attack
+    :parameters (?x - object ?s - step ?snext - step)
+    :precondition (and
+                    (province ?x)
+                    (planet ?x)
+                    (harmony)
+                    (step-current ?s)
+                    (step-next ?s ?snext)
+                  )
+    :effect (and
+              (pain ?x)
+              (not (province ?x))
+              (not (planet ?x))
+              (not (harmony))
+
+              ;; advance step
+              (not (step-current ?s))
+              (step-current ?snext)
+              (step-done ?s)
+            )
   )
 
-  (:action scenarioA-sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; Succumb: requires pain on an object; restores province, planet and harmony; removes pain.
+  ;; Consumes one step.
+  (:action succumb
+    :parameters (?x - object ?s - step ?snext - step)
+    :precondition (and
+                    (pain ?x)
+                    (step-current ?s)
+                    (step-next ?s ?snext)
+                  )
+    :effect (and
+              (province ?x)
+              (planet ?x)
+              (harmony)
+              (not (pain ?x))
+
+              ;; advance step
+              (not (step-current ?s))
+              (step-current ?snext)
+              (step-done ?s)
+            )
   )
 
-  (:action scenarioA-clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; Overcome: subject ?x overcomes toward other ?y.
+  ;; Preconditions: subject has pain, the other object has a province.
+  ;; Effects: adds harmony, gives province to subject, creates (craves ?x ?y);
+  ;;          removes the other's province and removes the subject's pain.
+  ;; Consumes one step.
+  (:action overcome
+    :parameters (?x - object ?y - object ?s - step ?snext - step)
+    :precondition (and
+                    (pain ?x)
+                    (province ?y)
+                    (step-current ?s)
+                    (step-next ?s ?snext)
+                  )
+    :effect (and
+              (harmony)
+              (province ?x)
+              (craves ?x ?y)
+              (not (province ?y))
+              (not (pain ?x))
+
+              ;; advance step
+              (not (step-current ?s))
+              (step-current ?snext)
+              (step-done ?s)
+            )
   )
 
-  (:action scenarioA-wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3) (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
+  ;; Feast: subject ?x feasts on other ?y.
+  ;; Preconditions: (craves ?x ?y), subject has a province and harmony holds.
+  ;; Effects: produces pain on subject, gives province to other, consumes craves, removes
+  ;;          the subject's province and harmony.
+  ;; Consumes one step.
+  (:action feast
+    :parameters (?x - object ?y - object ?s - step ?snext - step)
+    :precondition (and
+                    (craves ?x ?y)
+                    (province ?x)
+                    (harmony)
+                    (step-current ?s)
+                    (step-next ?s ?snext)
+                  )
+    :effect (and
+              (pain ?x)
+              (province ?y)
+              (not (craves ?x ?y))
+              (not (province ?x))
+              (not (harmony))
 
-  (:action scenarioA-memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  (:action scenarioA-tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
-
-  ;--- Actions for scenarioB (prefixed scenarioB-) ---
-  (:action scenarioB-paltry
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
-
-  (:action scenarioB-sip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
-  )
-
-  (:action scenarioB-clip
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
-  )
-
-  (:action scenarioB-wretched
-    :parameters (?o0 - object ?o1 - object ?o2 - object ?o3 - object)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3) (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  (:action scenarioB-memory
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  (:action scenarioB-tightfisted
-    :parameters (?o0 - object ?o1 - object ?o2 - object)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
+              ;; advance step
+              (not (step-current ?s))
+              (step-current ?snext)
+              (step-done ?s)
+            )
   )
 )

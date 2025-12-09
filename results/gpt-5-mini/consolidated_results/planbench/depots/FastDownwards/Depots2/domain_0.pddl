@@ -1,137 +1,111 @@
-(define (domain object-relations)
-  ; Domain created from the agent analyses. Types and predicates mirror the provided predicate names.
-  ; Note: The analyses did not supply any concrete initial-state facts or explicit goals. The problem file
-  ; included separately lists objects only; initial facts and goals are set there. No semantic typing beyond
-  ; the single type 'obj' is assumed because the original inputs did not define separate types.
-  (:requirements :strips :typing)
-  (:types obj)
+(define (domain depot_orchestration)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types crate pallet truck location driver hoist auditor)
 
   (:predicates
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
-    (next ?a - obj ?b - obj)
-    (vase ?a - obj ?b - obj)
-    (collect ?a - obj ?b - obj)
+    ;; Positions
+    (crate-at ?c - crate ?l - location)
+    (truck-at ?t - truck ?l - location)
+    (hoist-at ?h - hoist ?l - location)
+    (pallet-at ?p - pallet ?l - location)
+
+    ;; Load / carry / stack
+    (in-truck ?c - crate ?t - truck)
+    (hoist-attached ?h - hoist ?c - crate)
+    (on-pallet ?c - crate ?p - pallet)
+
+    ;; Resource / capacity / availability flags
+    (truck-empty ?t - truck)
+    (pallet-empty ?p - pallet)
+    (hoist-free ?h - hoist)
+
+    ;; Auditor inspection mark (optional outcome)
+    (inspected ?a - auditor)
   )
 
-  ; Action paltry(object_0, object_1, object_2)
-  ; Preconditions:
-  ;   hand(object_0), cats(object_1), texture(object_2), vase(object_0,object_1), next(object_1,object_2)
-  ; Effects: add next(object_0,object_2), delete vase(object_0,object_1)
-  (:action paltry
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ;; Driver actions (namespaced driver_)
+  (:action driver_load
+    :parameters (?d - driver ?t - truck ?c - crate ?loc - location)
     :precondition (and
-      (hand ?object_0)
-      (cats ?object_1)
-      (texture ?object_2)
-      (vase ?object_0 ?object_1)
-      (next ?object_1 ?object_2)
+      (truck-at ?t ?loc)
+      (crate-at ?c ?loc)
+      (truck-empty ?t)
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (vase ?object_0 ?object_1))
+      (not (crate-at ?c ?loc))
+      (in-truck ?c ?t)
+      (not (truck-empty ?t))
     )
   )
 
-  ; Action sip(object_0, object_1, object_2)
-  ; Preconditions:
-  ;   hand(object_0), cats(object_1), texture(object_2), next(object_0,object_2), next(object_1,object_2)
-  ; Effects: add vase(object_0,object_1), delete next(object_0,object_2)
-  (:action sip
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  (:action driver_drive
+    :parameters (?d - driver ?t - truck ?from - location ?to - location)
     :precondition (and
-      (hand ?object_0)
-      (cats ?object_1)
-      (texture ?object_2)
-      (next ?object_0 ?object_2)
-      (next ?object_1 ?object_2)
+      (truck-at ?t ?from)
+      ;; forbid no-op moves; require distinct locations
+      (not (= ?from ?to))
     )
     :effect (and
-      (vase ?object_0 ?object_1)
-      (not (next ?object_0 ?object_2))
+      (not (truck-at ?t ?from))
+      (truck-at ?t ?to)
     )
   )
 
-  ; Action clip(object_0, object_1, object_2)
-  ; Preconditions:
-  ;   hand(object_0), sneeze(object_1), texture(object_2), next(object_1,object_2), next(object_0,object_2)
-  ; Effects: add vase(object_0,object_1), delete next(object_0,object_2)
-  (:action clip
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ;; Hoist operator actions (namespaced hoistop_)
+  (:action hoistop_attach
+    :parameters (?h - hoist ?t - truck ?c - crate ?loc - location)
     :precondition (and
-      (hand ?object_0)
-      (sneeze ?object_1)
-      (texture ?object_2)
-      (next ?object_1 ?object_2)
-      (next ?object_0 ?object_2)
+      (hoist-at ?h ?loc)
+      (truck-at ?t ?loc)
+      (in-truck ?c ?t)
+      (hoist-free ?h)
     )
     :effect (and
-      (vase ?object_0 ?object_1)
-      (not (next ?object_0 ?object_2))
+      (not (in-truck ?c ?t))
+      (hoist-attached ?h ?c)
+      (not (hoist-free ?h))
+      ;; crate removed from truck; truck becomes empty again
+      (truck-empty ?t)
     )
   )
 
-  ; Action wretched(object_0, object_1, object_2, object_3)
-  ; Preconditions:
-  ;   sneeze(object_0), texture(object_1), texture(object_2), stupendous(object_3),
-  ;   next(object_0,object_1), collect(object_1,object_3), collect(object_2,object_3)
-  ; Effects: add next(object_0,object_2), delete next(object_0,object_1)
-  (:action wretched
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj ?object_3 - obj)
+  (:action hoistop_move
+    :parameters (?h - hoist ?from - location ?to - location)
     :precondition (and
-      (sneeze ?object_0)
-      (texture ?object_1)
-      (texture ?object_2)
-      (stupendous ?object_3)
-      (next ?object_0 ?object_1)
-      (collect ?object_1 ?object_3)
-      (collect ?object_2 ?object_3)
+      (hoist-at ?h ?from)
+      (not (= ?from ?to))
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
+      (not (hoist-at ?h ?from))
+      (hoist-at ?h ?to)
     )
   )
 
-  ; Action memory(object_0, object_1, object_2)
-  ; Preconditions:
-  ;   cats(object_0), spring(object_1), spring(object_2), next(object_0,object_1)
-  ; Effects: add next(object_0,object_2), delete next(object_0,object_1)
-  (:action memory
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  (:action hoistop_detach_to_pallet
+    :parameters (?h - hoist ?c - crate ?p - pallet ?ploc - location)
     :precondition (and
-      (cats ?object_0)
-      (spring ?object_1)
-      (spring ?object_2)
-      (next ?object_0 ?object_1)
+      (hoist-attached ?h ?c)
+      (hoist-at ?h ?ploc)
+      (pallet-at ?p ?ploc)
+      (pallet-empty ?p)
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (next ?object_0 ?object_1))
+      (not (hoist-attached ?h ?c))
+      (on-pallet ?c ?p)
+      (not (pallet-empty ?p))
+      (hoist-free ?h)
     )
   )
 
-  ; Action tightfisted(object_0, object_1, object_2)
-  ; Preconditions:
-  ;   hand(object_0), sneeze(object_1), texture(object_2), next(object_1,object_2), vase(object_0,object_1)
-  ; Effects: add next(object_0,object_2), delete vase(object_0,object_1)
-  (:action tightfisted
-    :parameters (?object_0 - obj ?object_1 - obj ?object_2 - obj)
+  ;; Auditor action (namespaced auditor_)
+  (:action auditor_inspect
+    :parameters (?a - auditor ?c1 - crate ?p1 - pallet ?c2 - crate ?p2 - pallet)
     :precondition (and
-      (hand ?object_0)
-      (sneeze ?object_1)
-      (texture ?object_2)
-      (next ?object_1 ?object_2)
-      (vase ?object_0 ?object_1)
+      (on-pallet ?c1 ?p1)
+      (on-pallet ?c2 ?p2)
     )
     :effect (and
-      (next ?object_0 ?object_2)
-      (not (vase ?object_0 ?object_1))
+      (inspected ?a)
     )
   )
-
 )

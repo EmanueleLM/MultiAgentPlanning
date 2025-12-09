@@ -1,72 +1,92 @@
-; Domain: MysteryBlocksworld21
-; Brief notes:
-; - I model objects as type obj and agents as type agent. Every action accepts an agent parameter ?ag - agent
-;   to indicate who performs it (this preserves multi-agent distinction while not changing public preconditions).
-; - Predicates and actions exactly mirror the provided public specifications (preconditions and add/delete effects).
-; - This domain is Fast-Downward compatible: it uses :strips, :typing and :negative-preconditions only.
-
-(define (domain MysteryBlocksworld21)
+(define (domain orchestrator)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj agent)
+  (:types object stage)
   (:predicates
-    (cats ?x - obj)
-    (hand ?x - obj)
-    (texture ?x - obj)
-    (sneeze ?x - obj)
-    (spring ?x - obj)
-    (stupendous ?x - obj)
-    (vase ?x ?y - obj)
-    (collect ?x ?y - obj)
-    (next ?x ?y - obj)
+    (province ?x - object)
+    (planet ?x - object)
+    (craves ?x - object ?y - object)
+    (pain ?x - object)
+    (harmony)
+    (current ?t - stage)
+    (next ?t1 - stage ?t2 - stage)
   )
 
-  ; paltry: requires hand o0, cats o1, texture o2, vase o0 o1, next o1 o2
-  ; effects: add next o0 o2, delete vase o0 o1
-  (:action paltry
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
+  ;; ATTACK
+  (:action attack
+    :parameters (?o - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (pain ?o)
+      (not (province ?o))
+      (not (planet ?o))
+      (not (harmony))
+      (not (current ?s))
+      (current ?s2)
+    )
   )
 
-  ; sip: requires hand o0, cats o1, texture o2, next o0 o2, next o1 o2
-  ; effects: add vase o0 o1, delete next o0 o2
-  (:action sip
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; SUCCUMB
+  (:action succumb
+    :parameters (?o - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (pain ?o)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (province ?o)
+      (planet ?o)
+      (harmony)
+      (not (pain ?o))
+      (not (current ?s))
+      (current ?s2)
+    )
   )
 
-  ; clip: requires hand o0, sneeze o1, texture o2, next o1 o2, next o0 o2
-  ; effects: add vase o0 o1, delete next o0 o2
-  (:action clip
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
-    :effect (and (vase ?o0 ?o1) (not (next ?o0 ?o2)))
+  ;; OVERCOME
+  (:action overcome
+    :parameters (?actor - object ?other - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (pain ?actor)
+      (province ?other)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (harmony)
+      (province ?actor)
+      (craves ?actor ?other)
+      (not (pain ?actor))
+      (not (province ?other))
+      (not (current ?s))
+      (current ?s2)
+    )
   )
 
-  ; wretched: requires sneeze o0, texture o1, texture o2, stupendous o3, next o0 o1, collect o1 o3, collect o2 o3
-  ; effects: add next o0 o2, delete next o0 o1
-  (:action wretched
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj ?o3 - obj)
-    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3)
-                       (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
+  ;; FEAST
+  (:action feast
+    :parameters (?actor - object ?other - object ?s - stage ?s2 - stage)
+    :precondition (and
+      (craves ?actor ?other)
+      (province ?actor)
+      (harmony)
+      (current ?s)
+      (next ?s ?s2)
+    )
+    :effect (and
+      (pain ?other)
+      (province ?other)
+      (not (craves ?actor ?other))
+      (not (province ?actor))
+      (not (harmony))
+      (not (current ?s))
+      (current ?s2)
+    )
   )
-
-  ; memory: requires cats o0, spring o1, spring o2, next o0 o1
-  ; effects: add next o0 o2, delete next o0 o1
-  (:action memory
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (next ?o0 ?o1)))
-  )
-
-  ; tightfisted: requires hand o0, sneeze o1, texture o2, next o1 o2, vase o0 o1
-  ; effects: add next o0 o2, delete vase o0 o1
-  (:action tightfisted
-    :parameters (?ag - agent ?o0 - obj ?o1 - obj ?o2 - obj)
-    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
-    :effect (and (next ?o0 ?o2) (not (vase ?o0 ?o1)))
-  )
-
 )

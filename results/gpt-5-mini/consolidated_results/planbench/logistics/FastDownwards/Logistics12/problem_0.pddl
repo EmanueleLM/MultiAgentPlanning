@@ -1,96 +1,47 @@
-(define (problem orchestrator-problem)
-  (:domain orchestrator)
+(define (problem logistics_multiagent_problem)
+  (:domain logistics_multiagent)
+
   (:objects
-    ;; agents
-    alpha beta - agent
+    ; cities
+    city_0 city_1 - city
 
-    ;; parts: two parts for scenario A, one part for scenario B
-    a_p1 a_p2 b_p1 - part
+    ; locations (two locations per city)
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
 
-    ;; stations (alpha workbench and beta inspection bench)
-    s_alpha_wb s_beta_ib - station
+    ; vehicles
+    truck_0 truck_1 - truck
+    plane_0 - plane
 
-    ;; phases for scenario A
-    A_phase1 A_phase2 A_phase3 - phase
-
-    ;; phases for scenario B
-    B_phase1 B_phase2 B_phase3 - phase
+    ; packages
+    package_0 package_1 package_2 - package
   )
 
   (:init
-    ;; Agents and capabilities
-    (agent alpha)
-    (agent beta)
-    (alpha-capable alpha)
-    (beta-capable beta)
+    ; location -> city membership
+    (in-city location_0_0 city_0)
+    (in-city location_0_1 city_0)
+    (in-city location_1_0 city_1)
+    (in-city location_1_1 city_1)
 
-    ;; Stations and initial agent locations
-    (station s_alpha_wb)
-    (station s_beta_ib)
-    (at alpha s_alpha_wb)
-    (at beta s_beta_ib)
+    ; airports (one airport in each city, placed at the first location)
+    (is-airport location_0_0)
+    (is-airport location_1_0)
 
-    ;; Parts and their initial locations (all start at alpha workbench)
-    (part a_p1)
-    (part a_p2)
-    (part b_p1)
-    (part-at a_p1 s_alpha_wb)
-    (part-at a_p2 s_alpha_wb)
-    (part-at b_p1 s_alpha_wb)
+    ; initial vehicle positions
+    (at truck_0 location_0_0)
+    (at truck_1 location_1_0)
+    (at plane_0 location_0_0)
 
-    ;; Phases defined
-    (phase A_phase1)
-    (phase A_phase2)
-    (phase A_phase3)
-    (phase B_phase1)
-    (phase B_phase2)
-    (phase B_phase3)
-
-    ;; Phase ordering for scenario A: place -> assemble -> inspect
-    (phase-next A_phase1 A_phase2)
-    (phase-next A_phase2 A_phase3)
-
-    ;; Phase ordering for scenario B: place -> assemble -> inspect
-    (phase-next B_phase1 B_phase2)
-    (phase-next B_phase2 B_phase3)
-
-    ;; Map parts to phases (a part participates in all three phases of its scenario)
-    (part-phase a_p1 A_phase1)
-    (part-phase a_p1 A_phase2)
-    (part-phase a_p1 A_phase3)
-
-    (part-phase a_p2 A_phase1)
-    (part-phase a_p2 A_phase2)
-    (part-phase a_p2 A_phase3)
-
-    (part-phase b_p1 B_phase1)
-    (part-phase b_p1 B_phase2)
-    (part-phase b_p1 B_phase3)
-
-    ;; Initially the first phase of each scenario is active; later phases will only
-    ;; become active via explicit completion actions to enforce ordering and contiguity.
-    (phase-active A_phase1)
-    (phase-active B_phase1)
+    ; initial package positions (public environment info)
+    (at-pkg package_0 location_0_0)
+    (at-pkg package_1 location_0_1)
+    (at-pkg package_2 location_1_1)
   )
 
-  (:goal
-    (and
-      ;; All parts must be assembled and inspected (terminal conditions required)
-      (assembled a_p1)
-      (assembled a_p2)
-      (assembled b_p1)
-
-      (inspected a_p1)
-      (inspected a_p2)
-      (inspected b_p1)
-
-      ;; Final phases must be completed for both scenarios
-      (phase-complete A_phase3)
-      (phase-complete B_phase3)
-
-      ;; Enforce final agent locations as mandated terminal conditions
-      (at alpha s_alpha_wb)
-      (at beta s_beta_ib)
-    )
-  )
+  (:goal (and
+    ; mandated terminal conditions:
+    (at-pkg package_0 location_0_1)
+    (at-pkg package_1 location_1_1)
+    (at-pkg package_2 location_1_0)
+  ))
 )

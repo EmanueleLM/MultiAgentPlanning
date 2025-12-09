@@ -1,71 +1,34 @@
-(define (problem orchestrated-problem)
-  (:domain orchestrated)
+(define (problem move-container-instance)
+  (:domain multiagent-logistics)
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 object_10 object_11 object_12
+    truck1 - truck
+    hoist1 - hoist
+    container1 - container
+    load - location
+    unload - location
   )
 
   (:init
-    ;-- Facts originating from Problem A (agent_a)
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_10)
-    (hand object_11)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_10 object_5)
-    (next object_11 object_5)
-    (next object_3 object_6)
-    (next object_4 object_7)
-    (next object_9 object_8)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; initial positions
+    (truck-at truck1 load)
+    (hoist-at hoist1 load)
+    (container-at container1 load)
 
-    ;-- Facts originating from Problem B (agent_b)
-    (cats object_1)
-    (hand object_12)
-    (next object_0 object_6)
-    (next object_1 object_8)
-    (next object_5 object_8)
-    (next object_10 object_9)
-    (next object_11 object_6)
-    (next object_12 object_6)
-    (collect object_6 object_2)
-    (collect object_7 object_2)
-    (collect object_8 object_3)
-    (collect object_9 object_3)
-    (texture object_9)
-    (spring object_6)
-    (spring object_8)
-    (sneeze object_5)
-    (stupendous object_3)
-
-    ;-- Note: some predicates (e.g., texture, collect, next) appear in both problem instances;
-    ;-- all listed facts are included in the combined initial state (closed-world assumption).
+    ;; No initial safety checks, engagements, locks, or secured flags are asserted.
+    ;; (Absence of a predicate denotes false in the initial state.)
   )
 
-  ;; Combined goals: Goal A and Goal B must both be achieved (conjunctive goal).
+  ;; Goal: container moved to unload location, on ground (not on truck/hoist),
+  ;; truck and hoist at unload location, and all safety-critical devices disengaged/ unlocked.
   (:goal
     (and
-      ;; Goal A (from agent_a / Problem A)
-      (next object_10 object_8)
-      (next object_11 object_7)
-      (next object_9 object_6)
-
-      ;; Goal B (from agent_b / Problem B)
-      (next object_10 object_7)
-      (next object_11 object_9)
-      (next object_12 object_8)
+      (container-at container1 unload)
+      (truck-at truck1 unload)
+      (hoist-at hoist1 unload)
+      (not (container-on-truck container1 truck1))
+      (not (container-on-hoist container1 hoist1))
+      (not (hoist-engaged hoist1))
+      (not (truck-locked truck1))
     )
   )
 )

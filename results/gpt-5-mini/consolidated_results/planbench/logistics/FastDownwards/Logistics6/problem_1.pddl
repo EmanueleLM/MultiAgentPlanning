@@ -1,45 +1,48 @@
-(define (problem scenarioA)
-  (:domain Logistics6)
+(define (problem transport_problem)
+  (:domain transport_domain)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
-    s1 s2 s3 s4 s5 s6 s7 s8 - step
+    ;; packages
+    package_0 - package
+
+    ;; trucks
+    truck_0 truck_1 - truck
+
+    ;; airplanes
+    airplane_0 airplane_1 - airplane
+
+    ;; locations
+    location_0_0 location_0_1 location_1_0 location_1_1 - location
+
+    ;; cities
+    city_0 city_1 - city
   )
 
   (:init
-    ;; Scenario A initial facts (grounded)
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_1)
-    (collect object_7 object_2)
-    (collect object_8 object_2)
-    (hand object_9)
-    (next object_0 object_5)
-    (next object_3 object_5)
-    (next object_4 object_8)
-    (next object_9 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_7)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
-    (texture object_7)
-    (texture object_8)
+    ;; Airports (static)
+    (airport location_0_0)
+    (airport location_1_0)
 
-    ;; ordered discrete stages: sufficient length to execute up to seven actions
-    (step-succ s1 s2)
-    (step-succ s2 s3)
-    (step-succ s3 s4)
-    (step-succ s4 s5)
-    (step-succ s5 s6)
-    (step-succ s6 s7)
-    (step-succ s7 s8)
-    (current-step s1)
+    ;; Initial airplane positions (public facts)
+    (plane-at airplane_0 location_1_0)
+    (plane-at airplane_1 location_0_0)
+
+    ;; Initial truck positions (public facts)
+    (truck-at truck_0 location_0_0)
+    (truck-at truck_1 location_1_1)
+
+    ;; Package initial location (on ground)
+    (pkg-at package_0 location_1_1)
+
+    ;; Location membership in cities (static facts)
+    (loc-in-city location_0_0 city_0)
+    (loc-in-city location_0_1 city_0)
+    (loc-in-city location_1_0 city_1)
+    (loc-in-city location_1_1 city_1)
   )
 
-  (:goal
-    (next object_9 object_7)
-  )
+  (:goal (and
+    ;; Global goal: package_0 must be on the ground at location_0_0
+    (pkg-at package_0 location_0_0)
+  ))
 )

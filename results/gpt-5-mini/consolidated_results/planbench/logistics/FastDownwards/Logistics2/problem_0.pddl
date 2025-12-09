@@ -1,42 +1,52 @@
-; PROBLEM: scenario_1
-; Comment: Auditor findings and fixes:
-; - The original player plan used two memory actions and a sip with t=object_5,
-;   which made sip require next(object_8,object_5) that never exists.
-; - Auditor's preferred correction (Option 2) was to remove both memory
-;   bookkeeping steps and change sip's texture parameter to object_6 so that
-;   sip(object_8,object_0,object_6) is applicable in the initial state.
-; - The domain is unchanged; the recommended valid minimal plan for this
-;   problem (informative only) is:
-;     1) sip object_8 object_0 object_6
-;     2) paltry object_8 object_0 object_6
-;   That plan creates vase(object_8,object_0) then consumes it to re-add
-;   next(object_8,object_6). However, the stated goal for scenario_1 is
-;   already satisfied in the initial state. This problem encodes the
-;   validated initial facts and the goal as strict requirements.
-(define (problem scenario_1)
-  (:domain next-vase-domain)
+; Problem preface / modeling choices (hard constraints encoded above):
+;  - Packages package_0 and package_1 start at location_1_0 (city_1) and must end at location_0_0 (city_0).
+;  - Trucks cannot cross cities; trucks are usable only within their assigned city.
+;  - Airplane can transport packages between airports in different cities.
+;  - Loading/unloading requires co-location and preserves package exclusivity using (unloaded ?p).
+;  - Vehicles have unlimited capacity (explicit choice due to no capacity info).
+;  - Actions are instantaneous; model targets sequential planning (FastDownwards).
+(define (problem deliver_packages)
+  (:domain logistics_integrated)
+
   (:objects
-    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8
+    city_0 city_1 - city
+
+    location_0_0 location_1_0 - location
+
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    package_0 package_1 - package
   )
+
   (:init
-    (cats object_0)
-    (collect object_5 object_1)
-    (collect object_6 object_2)
-    (hand object_7)
-    (hand object_8)
-    (next object_0 object_6)
-    (next object_3 object_5)
-    (next object_4 object_6)
-    (next object_7 object_6)
-    (next object_8 object_6)
-    (sneeze object_3)
-    (sneeze object_4)
-    (spring object_5)
-    (spring object_6)
-    (stupendous object_1)
-    (stupendous object_2)
-    (texture object_5)
-    (texture object_6)
+    ;; Airports
+    (is_airport location_0_0)
+    (is_airport location_1_0)
+
+    ;; Location-city membership
+    (location_in_city location_0_0 city_0)
+    (location_in_city location_1_0 city_1)
+
+    ;; Initial positions of vehicles and packages
+    (at airplane_0 location_1_0)
+    (at truck_0 location_0_0)
+    (at truck_1 location_1_0)
+
+    (at package_0 location_1_0)
+    (at package_1 location_1_0)
+
+    ;; Trucks static assignment to their cities (one truck per city, satisfied here)
+    (truck_belongs_to_city truck_0 city_0)
+    (truck_belongs_to_city truck_1 city_1)
+
+    ;; Package exclusivity helper fluent: packages are initially unloaded (at locations)
+    (unloaded package_0)
+    (unloaded package_1)
   )
-  (:goal (and (next object_7 object_6) (next object_8 object_6)))
+
+  (:goal (and
+    (at package_0 location_0_0)
+    (at package_1 location_0_0)
+  ))
 )

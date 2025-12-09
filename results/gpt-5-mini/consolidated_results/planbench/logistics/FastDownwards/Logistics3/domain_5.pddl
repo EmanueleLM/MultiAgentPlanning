@@ -1,148 +1,128 @@
-(define (domain multiagent-staged)
+(define (domain city-logistics)
   (:requirements :strips :typing :negative-preconditions)
-  (:types obj stage)
+  (:types
+    city
+    location
+    vehicle
+    truck - vehicle
+    airplane - vehicle
+    package
+    stage
+  )
 
   (:predicates
-    ; static/unary properties
-    (hand ?o - obj)
-    (cats ?o - obj)
-    (texture ?o - obj)
-    (sneeze ?o - obj)
-    (spring ?o - obj)
-    (stupendous ?o - obj)
+    (in-city ?loc - location ?c - city)
+    (airport ?loc - location)
+    (air-route ?l1 - location ?l2 - location)
 
-    ; binary relations
-    (collect ?x - obj ?y - obj)
-    (next ?x - obj ?y - obj)
-    (vase ?x - obj ?y - obj)
-
-    ; staging/time bookkeeping
-    (now ?s - stage)
     (succ ?s1 - stage ?s2 - stage)
+    (current-stage ?s - stage)
+
+    (at-truck ?tr - truck ?loc - location)
+    (at-airplane ?ap - airplane ?loc - location)
+    (at-package ?p - package ?loc - location)
+
+    (in-vehicle ?p - package ?v - vehicle)
   )
 
-  ;; Actions advance the explicit stage marker (now) along succ links.
-  ;; This enforces discrete, contiguous stage progression and prevents
-  ;; oscillation or implicit bookkeeping tokens.
-
-  (:action paltry
-    :parameters (?h - obj ?c - obj ?t - obj ?s - stage ?s2 - stage)
+  (:action drive-truck
+    :parameters (?tr - truck ?from - location ?to - location ?c - city ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (vase ?h ?c)
-      (next ?c ?t)
+      (at-truck ?tr ?from)
+      (in-city ?from ?c)
+      (in-city ?to ?c)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      (next ?h ?t)
-      (not (vase ?h ?c))
-    )
-  )
-
-  (:action sip
-    :parameters (?h - obj ?c - obj ?t - obj ?s - stage ?s2 - stage)
-    :precondition (and
-      (now ?s)
-      (succ ?s ?s2)
-      (hand ?h)
-      (cats ?c)
-      (texture ?t)
-      (next ?h ?t)
-      (next ?c ?t)
-    )
-    :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      (vase ?h ?c)
-      (not (next ?h ?t))
+      (not (at-truck ?tr ?from))
+      (at-truck ?tr ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action clip
-    :parameters (?h - obj ?snee - obj ?t - obj ?y - obj ?s - stage ?s2 - stage)
+  (:action fly-airplane
+    :parameters (?ap - airplane ?from - location ?to - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?t)
-      (next ?snee ?y)
-      (next ?h ?y)
+      (at-airplane ?ap ?from)
+      (airport ?from)
+      (airport ?to)
+      (air-route ?from ?to)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      (vase ?h ?snee)
-      (not (next ?h ?y))
+      (not (at-airplane ?ap ?from))
+      (at-airplane ?ap ?to)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action wretched
-    :parameters (?snee - obj ?t1 - obj ?t2 - obj ?st - obj ?s - stage ?s2 - stage)
+  (:action truck-load
+    :parameters (?tr - truck ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (sneeze ?snee)
-      (texture ?t1)
-      (texture ?t2)
-      (stupendous ?st)
-      (next ?snee ?t1)
-      (collect ?t1 ?st)
-      (collect ?t2 ?st)
+      (at-truck ?tr ?loc)
+      (at-package ?pkg ?loc)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      (next ?snee ?t2)
-      (not (next ?snee ?t1))
+      (not (at-package ?pkg ?loc))
+      (in-vehicle ?pkg ?tr)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action memory
-    :parameters (?c - obj ?sp1 - obj ?sp2 - obj ?s - stage ?s2 - stage)
+  (:action truck-unload
+    :parameters (?tr - truck ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (cats ?c)
-      (spring ?sp1)
-      (spring ?sp2)
-      (next ?c ?sp1)
+      (at-truck ?tr ?loc)
+      (in-vehicle ?pkg ?tr)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
-
-      (next ?c ?sp2)
-      (not (next ?c ?sp1))
+      (not (in-vehicle ?pkg ?tr))
+      (at-package ?pkg ?loc)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 
-  (:action tightfisted
-    :parameters (?h - obj ?snee - obj ?t - obj ?s - stage ?s2 - stage)
+  (:action airplane-load
+    :parameters (?ap - airplane ?pkg - package ?loc - location ?s - stage ?s2 - stage)
     :precondition (and
-      (now ?s)
+      (current-stage ?s)
       (succ ?s ?s2)
-      (hand ?h)
-      (sneeze ?snee)
-      (texture ?t)
-      (next ?snee ?t)
-      (vase ?h ?snee)
+      (at-airplane ?ap ?loc)
+      (airport ?loc)
+      (at-package ?pkg ?loc)
     )
     :effect (and
-      (not (now ?s))
-      (now ?s2)
+      (not (at-package ?pkg ?loc))
+      (in-vehicle ?pkg ?ap)
+      (not (current-stage ?s))
+      (current-stage ?s2)
+    )
+  )
 
-      (next ?h ?t)
-      (not (vase ?h ?snee))
+  (:action airplane-unload
+    :parameters (?ap - airplane ?pkg - package ?loc - location ?s - stage ?s2 - stage)
+    :precondition (and
+      (current-stage ?s)
+      (succ ?s ?s2)
+      (at-airplane ?ap ?loc)
+      (airport ?loc)
+      (in-vehicle ?pkg ?ap)
+    )
+    :effect (and
+      (not (in-vehicle ?pkg ?ap))
+      (at-package ?pkg ?loc)
+      (not (current-stage ?s))
+      (current-stage ?s2)
     )
   )
 )

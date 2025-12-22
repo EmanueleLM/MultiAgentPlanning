@@ -1,0 +1,125 @@
+(define (domain floor-tile)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types robot tile color)
+
+  (:predicates
+    (robot-at ?r - robot ?t - tile)
+    (robot-has ?r - robot ?c - color)
+    (available-color ?c - color)
+    (clear ?t - tile)
+    (painted ?t - tile ?c - color)
+    (up ?from - tile ?to - tile)    ; directional relation: ?to is above ?from
+    (right ?from - tile ?to - tile) ; directional relation: ?to is right of ?from
+  )
+
+  (:functions
+    (total-cost)
+  )
+
+  (:action change-color
+    :parameters (?r - robot ?c - color ?c2 - color)
+    :precondition (and
+                    (robot-has ?r ?c)
+                    (available-color ?c2)
+                   )
+    :effect (and
+              (not (robot-has ?r ?c))
+              (robot-has ?r ?c2)
+              (increase (total-cost) 5)
+            )
+  )
+
+  (:action paint-up
+    :parameters (?r - robot ?y - tile ?x - tile ?c - color)
+    :precondition (and
+                    (robot-at ?r ?y)
+                    (up ?y ?x)           ; ?x is above ?y
+                    (clear ?x)
+                    (robot-has ?r ?c)
+                   )
+    :effect (and
+              (painted ?x ?c)
+              (not (clear ?x))
+              (increase (total-cost) 2)
+            )
+  )
+
+  (:action paint-down
+    :parameters (?r - robot ?y - tile ?x - tile ?c - color)
+    :precondition (and
+                    (robot-at ?r ?y)
+                    (up ?x ?y)           ; use up relation inversely: ?x is below ?y
+                    (clear ?x)
+                    (robot-has ?r ?c)
+                   )
+    :effect (and
+              (painted ?x ?c)
+              (not (clear ?x))
+              (increase (total-cost) 2)
+            )
+  )
+
+  (:action up
+    :parameters (?r - robot ?x - tile ?y - tile)
+    :precondition (and
+                    (robot-at ?r ?x)
+                    (up ?x ?y)         ; move to the tile above
+                    (clear ?y)
+                   )
+    :effect (and
+              (not (robot-at ?r ?x))
+              (robot-at ?r ?y)
+              (clear ?x)
+              (not (clear ?y))
+              (increase (total-cost) 3)
+            )
+  )
+
+  (:action down
+    :parameters (?r - robot ?x - tile ?y - tile)
+    :precondition (and
+                    (robot-at ?r ?x)
+                    (up ?y ?x)         ; move to the tile below using up inverse
+                    (clear ?y)
+                   )
+    :effect (and
+              (not (robot-at ?r ?x))
+              (robot-at ?r ?y)
+              (clear ?x)
+              (not (clear ?y))
+              (increase (total-cost) 1)
+            )
+  )
+
+  (:action right
+    :parameters (?r - robot ?x - tile ?y - tile)
+    :precondition (and
+                    (robot-at ?r ?x)
+                    (right ?x ?y)
+                    (clear ?y)
+                   )
+    :effect (and
+              (not (robot-at ?r ?x))
+              (robot-at ?r ?y)
+              (clear ?x)
+              (not (clear ?y))
+              (increase (total-cost) 1)
+            )
+  )
+
+  (:action left
+    :parameters (?r - robot ?x - tile ?y - tile)
+    :precondition (and
+                    (robot-at ?r ?x)
+                    (right ?y ?x)      ; move left using right inverse
+                    (clear ?y)
+                   )
+    :effect (and
+              (not (robot-at ?r ?x))
+              (robot-at ?r ?y)
+              (clear ?x)
+              (not (clear ?y))
+              (increase (total-cost) 1)
+            )
+  )
+)

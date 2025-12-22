@@ -1,0 +1,86 @@
+{
+    "name": "FloortileExample3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "robot_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot_planner": {
+            "private_information": [
+                "There are two robots: robot1 and robot2.",
+                "robot1 is at tile_0-3 and initially has the white spray gun.",
+                "robot2 is at tile_3-4 and initially has the black spray gun.",
+                "Robots can move in four cardinal directions (up, down, left, right).",
+                "Robots can paint only the tile in front (up) or behind (down) relative to their current tile.",
+                "Once a tile is painted no robot may stand on that tile (painted tiles are not clear).",
+                "Available colors: white and black.",
+                "Action costs differ by action (movement and painting have costs; changing color has higher cost)."
+            ],
+            "goal": "Produce a clear, structured (non-PDDL) specification listing objects, initial facts, adjacency relations, and precise action semantics with their costs. Do NOT output PDDL directly; produce a specification that an orchestrator can convert into a FastDownwards-compatible PDDL domain and problem."
+        },
+        "auditor": {
+            "private_information": [
+                "You are an expert in temporal and causal consistency for planning domains.",
+                "You are responsible for removing bookkeeping shortcuts such as post-hoc penalties, quota tokens, or any artifact that undermines causal clarity of effects and preconditions.",
+                "Prefer explicit causal predicates and proper use of numeric fluents for true costs."
+            ],
+            "goal": "Audit the robot_planner specification for temporal/causal consistency, detect and propose fixes for any implicit shortcuts, ensure costs are explicit and additive, and ensure predicates disallow illegal states (e.g., standing on painted tiles). Produce an actionable audit_report describing required corrections and rationale."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the robot_planner specification and the auditor report to produce the final PDDL domain and PDDL problem files suitable for the FastDownwards solver. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure actions remain distinct, types and predicates are consistent, and the metric minimize (total-cost) is present."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: floor-tile. Robots paint floor tiles on a 4x4 grid with two colors (white, black).",
+            "Each robot can change color, move in four directions, and paint adjacent tiles (up/down relative to robot).",
+            "Actions consume resources expressed as additive numeric costs (total-cost).",
+            "There are 16 tiles named tile_0-1 .. tile_4-4 arranged in rows and columns.",
+            "Initial occupancy: robot1 at tile_0-3, robot2 at tile_3-4. Those tiles are not clear.",
+            "All other tiles are clear initially.",
+            "Robots cannot stand on tiles that are painted; painting a tile makes it non-clear.",
+            "Goal: paint a checkerboard pattern with specific colors on tiles tile_1-1..tile_4-4 as provided in the task description, while minimizing total-cost."
+        ]
+    },
+    "workflow": {
+        "robot_planner": {
+            "analysis": {
+                "input": [],
+                "output": "robot_spec",
+                "system_prompt": "You are an expert planner whose job is to produce a structured specification (NOT PDDL) that an engineer can systematically convert into PDDL for FastDownwards. Provide a machine-readable but human-oriented spec that lists: types, all objects, initial boolean predicates, numeric fluents (if any), adjacency relations (up/down/left/right), action schemas with clear preconditions and effects, and explicit action costs. Do NOT emit PDDL. Keep names consistent with 'robot1', 'robot2', 'tile_0-1'..'tile_4-4', 'white', 'black'.",
+                "prompt": "You are the robot_planner. Use the environment public information and your private knowledge to produce a structured specification. Include:\n- Objects and types\n- Initial facts (robot positions, robot-held colors, available colors, clear tiles, adjacency relations)\n- For each action (change-color, paint-up, paint-down, up, down, right, left):\n  - parameters\n  - exact preconditions (boolean and numeric)\n  - exact effects (add/delete and numeric effects)\n  - explicit action cost\n- Any domain invariants (e.g., robots cannot occupy painted tiles)\nMake the specification precise and unambiguous so an orchestrator can translate it to a FastDownwards-compatible PDDL domain and problem."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor focused on temporal and causal consistency. Inspect specifications for hidden bookkeeping (e.g., quotas, post-hoc penalties, global tokens used to simulate ordering) and eliminate them by recommending explicit causal predicates or numeric fluents. Verify action costs are additive and that no effect is represented as a 'penalty' that could produce non-monotonic or inconsistent cost accounting. Ensure preconditions prevent illegal states (robots standing on painted tiles).",
+                "prompt": "You are the auditor. Given the robot planner's specification (when available) and the environment public information, produce an audit_report that:\n- Identifies any implicit assumptions or shortcuts that break causal clarity\n- Proposes concrete fixes (predicate changes, additional preconditions/effects, or numeric fluent refactors)\n- Validates action cost assignments and suggests corrections to make them compatible with additive total-cost minimization\n- Ensures concurrency/ordering issues are addressed (e.g., two robots painting the same tile should be impossible)\nReturn a clear list of corrections and rationale that the orchestrator must apply when generating PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "robot_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in PDDL and the FastDownwards solver. Using the robot_spec and audit_report inputs, produce a final PDDL domain and a PDDL problem that are directly usable by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Use :typing and :action-costs requirements, declare types and predicates explicitly, implement numeric function (total-cost), ensure all action costs are added via numeric effects, and ensure predicates prevent robots from standing on painted tiles. Keep actions distinct and preserve parameter names consistently.",
+                "prompt": "You are the orchestrator. Integrate the following inputs to build a FastDownwards-compatible PDDL domain and problem that achieves the painting goal while minimizing total-cost.\nHere is the robot planner's specification:\n{robot_spec}\n\nHere is the auditor's report with corrections and constraints:\n{audit_report}\n\nGlobal goal: Paint the tiles tile_1-1 .. tile_4-4 with the specified colors (checkerboard pattern as in the task), and minimize total-cost using (total-cost).\n\nConstraints to respect: robots cannot stand on painted tiles; painting marks a tile as painted with a specific color and removes 'clear'; costs must be integrated as additive numeric effects. Keep actions and their costs consistent with the domain description:\n- change-color cost 5\n- paint-up cost 2\n- paint-down cost 2\n- up cost 3\n- down cost 1\n- right cost 1\n- left cost 1\n\nProduce the final PDDL: a domain named 'floor-tile' and a problem named 'p04-442'. Enclose domain and problem in <domain></domain> and <problem></problem> respectively."
+            }
+        },
+        "constraints": [
+            "robot_planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

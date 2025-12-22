@@ -2,7 +2,7 @@
 
 # LLMs planning
 NUM_EXPERIMENTS_PER_FILE=30
-MODEL=gpt-5-mini
+MODEL=gemini-2.5-flash
 BUDGET=5
 
 # === PDDL based approaches ===
@@ -11,17 +11,19 @@ datasets=(
 "calendar_scheduling"
 "meeting_planning"
 "trip_planning"
-"depots"
-"logistics"
-"mystery_blocksworld"
-"obfuscated_deceptive_logistics"
-"blocksworld_easy"
-"blocksworld_medium"
-"blocksworld_hard"
-"hanoi_easy"
-"hanoi_medium"
-"hanoi_hard"
-"hanoi_extreme"
+# "depots"
+# "logistics"
+# "mystery_blocksworld"
+# "obfuscated_deceptive_logistics"
+# "blocksworld_easy"
+# "blocksworld_medium"
+# "blocksworld_hard"
+# "hanoi_easy"
+# "hanoi_medium"
+# "hanoi_hard"
+# "hanoi_extreme"
+# "childsnack"
+# "floortile"
 )
 for data in "${datasets[@]}"; do
     echo "Running plan_benchmark.py with $data"

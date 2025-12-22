@@ -1,0 +1,102 @@
+{
+    "name": "FloortileExample7",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "robot1_agent",
+            "robot2_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot1_agent": {
+            "private_information": [
+                "I am Robot1",
+                "I start at tile_4-2",
+                "I currently have the white spray gun",
+                "I can move up down left right and paint the tile in front (up) or behind (down)",
+                "My movement costs: up=3 down=1 left=1 right=1, painting costs=2, change-color costs=5"
+            ],
+            "goal": "Contribute to painting the specified tiles to match the goal pattern while minimizing total cost."
+        },
+        "robot2_agent": {
+            "private_information": [
+                "I am Robot2",
+                "I start at tile_5-3",
+                "I currently have the black spray gun",
+                "I can move up down left right and paint the tile in front (up) or behind (down)",
+                "My movement costs: up=3 down=1 left=1 right=1, painting costs=2, change-color costs=5"
+            ],
+            "goal": "Contribute to painting the specified tiles to match the goal pattern while minimizing total cost."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency",
+                "I detect and remove bookkeeping shortcuts such as artificial quota tokens or post-hoc penalties",
+                "I ensure action costs and precondition/effect structure are explicit and compatible with cost-based planners like FastDownwards"
+            ],
+            "goal": "Produce a clear audit report enumerating necessary predicates, action preconditions/effects, and cost attributions to ensure the final PDDL is realistic and solver-compatible."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate agent contexts and the auditor report to produce a complete PDDL domain and problem targeting the FastDownwards solver that achieves the painting goal while minimizing total cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size_columns": 6,
+            "grid_size_rows": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain summary: Robots paint floor tiles with two colors. Robots can move up down left right, change paint color, and paint adjacent tiles. Actions have explicit costs and a total-cost function is minimized.",
+            "Problem summary: A 6 by 3 arrangement of tiles from tile_0-1 to tile_5-3. Robot1 at tile_4-2 with white. Robot2 at tile_5-3 with black. All tiles initially clear and unpainted. Colors white and black available. Goal is to paint specific tiles with specified colors and minimize total cost.",
+            "Planning requirement: Output must be compatible with FastDownwards. Costs must be encoded using action-costs and the total-cost function.",
+            "PDDL domain template: provide explicit predicates for robot-at robot-has available-color clear painted, directional relations up down left right, and the total-cost function. Actions: change-color, paint-up, paint-down, up, down, left, right with the costs described.",
+            "PDDL problem template: objects include all tiles, robots and colors. Initial atoms list robot positions and colors, clear tiles and directional relations. Goal lists painted tile color pairs and metric minimize total-cost."
+        ]
+    },
+    "workflow": {
+        "robot1_agent": {
+            "spec": {
+                "input": [],
+                "output": "spec_robot1",
+                "system_prompt": "You are the specialist for Robot1 capabilities and initial facts. Provide a concise, structured context describing exactly which predicates this agent can assert at init, which action schemas it can perform, parameter constraints, and the exact costs associated with each action. Do NOT emit PDDL domain or problem files. Focus on factual atoms, capabilities, and any uncertainties that the orchestrator must resolve.",
+                "prompt": "You are robot1_agent. Use the environment public information and your private information to produce a context report for the orchestrator. List initial ground atoms this agent knows (for example robot-at robot-has), list the action templates this agent can execute with parameters and concrete numeric costs, and note any ambiguous or missing information that should not be assumed. Do not output PDDL."
+            }
+        },
+        "robot2_agent": {
+            "spec": {
+                "input": [],
+                "output": "spec_robot2",
+                "system_prompt": "You are the specialist for Robot2 capabilities and initial facts. Provide a concise, structured context describing exactly which predicates this agent can assert at init, which action schemas it can perform, parameter constraints, and the exact costs associated with each action. Do NOT emit PDDL domain or problem files. Focus on factual atoms, capabilities, and any uncertainties that the orchestrator must resolve.",
+                "prompt": "You are robot2_agent. Use the environment public information and your private information to produce a context report for the orchestrator. List initial ground atoms this agent knows (for example robot-at robot-has), list the action templates this agent can execute with parameters and concrete numeric costs, and note any ambiguous or missing information that should not be assumed. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "spec": {
+                "input": [],
+                "output": "spec_auditor",
+                "system_prompt": "You are an auditor that evaluates temporal and causal consistency. Your job is to remove bookkeeping shortcuts, recommend explicit predicates instead of tokens, verify that action costs match realistic estimations, and ensure compatibility with cost-minimizing planners. Do NOT emit PDDL domain or problem files. Provide a report that the orchestrator will use to modify the domain template.",
+                "prompt": "You are auditor. Using the environment public information and your private information, produce a report that lists required real predicates, points out any shortcuts or tokens to remove, prescribes concrete preconditions and effects to avoid ambiguous bookkeeping, and confirms appropriate numeric costs for each action so the FastDownwards solver can handle metric minimization. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "spec_robot1",
+                    "spec_robot2",
+                    "spec_auditor"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert integrator and PDDL author targeting the FastDownwards solver. You must produce a complete PDDL domain and a complete PDDL problem compatible with FastDownwards, keeping multi-agent actions distinct by prefixing action names with agent identifiers where appropriate. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure costs are encoded via :action-costs and the total-cost function. Make the domain fully explicit so the planner needs no external assumptions.",
+                "prompt": "You are the orchestrator. You will receive the context reports from two robot agents and an auditor. Integrate their reports to produce a final PDDL domain and PDDL problem that implements the floor-tile scenario and is directly solvable by FastDownwards. Keep actions for Robot1 and Robot2 distinct where necessary. Ensure predicates include robot-at robot-has available-color clear painted up down left right and an explicit (total-cost) function. Verify preconditions forbid standing on painted tiles and that painting makes tiles non-clear and adds a painted color atom. Respect the action costs: change-color costs 5, paint costs 2, move up costs 3, move down costs 1, move left and right cost 1. Use the provided problem specification for initial state and goal and produce the final PDDL domain and problem. Enclose domain in <domain></domain> and problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "robot1_agent.spec->orchestrator.pddl",
+            "robot2_agent.spec->orchestrator.pddl",
+            "auditor.spec->orchestrator.pddl"
+        ]
+    }
+}

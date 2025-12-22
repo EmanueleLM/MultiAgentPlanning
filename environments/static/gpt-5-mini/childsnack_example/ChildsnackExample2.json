@@ -1,0 +1,107 @@
+{
+    "name": "ChildsnackExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "problem_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "I have the natural language domain description of the child-snack domain.",
+                "I have a PDDL domain template with action names and parameter lists."
+            ],
+            "goal": "Analyze the domain description and produce a clear, structured specification of types, predicates, and each action's parameters, preconditions, and effects in an abstract form suitable for later PDDL generation. Do not emit PDDL directly."
+        },
+        "problem_expert": {
+            "private_information": [
+                "I have the natural language problem description with seven children, breads, contents, trays, places, and initial facts.",
+                "I have a PDDL problem template enumerating objects and a goal."
+            ],
+            "goal": "Translate the natural language problem into an explicit, unambiguous object list, initial facts, and goal facts, including which bread/content are gluten-free and which children are allergic. Provide the explicit facts and any resource accounting needed. Do not emit PDDL directly."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in auditing temporal and causal consistency and removing bookkeeping shortcuts that can mask feasibility issues.",
+                "I will check for resource accounting errors, hidden quotas, and post-hoc penalties."
+            ],
+            "goal": "Audit the domain and problem specifications for temporal and causal consistency, ensure no bookkeeping shortcuts (such as implicit quotas or penalty tokens) are required to achieve the goal, and produce an audit report with corrections or required clarifications. Do not emit PDDL directly."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate the structured outputs from the other agents and produce the final PDDL domain and problem.",
+                "The final PDDL must be suitable to solve with the FastDownwards planner."
+            ],
+            "goal": "Integrate the domain specification, the problem specification, and the auditor report and produce a final PDDL domain file and a final PDDL problem file that are consistent, complete, and targeted for FastDownwards. Emit the PDDL domain and problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "places": [
+                "kitchen",
+                "table1",
+                "table2",
+                "table3"
+            ],
+            "trays_count": 2
+        },
+        "public_information": [
+            "Domain: child-snack planning for preparing and serving sandwiches with gluten constraints.",
+            "There are seven children and ten potential sandwiches.",
+            "Two trays start in the kitchen.",
+            "Some bread and content portions are gluten-free and some children are allergic.",
+            "Available actions conceptually include making sandwiches (gluten or not), placing sandwiches on trays, moving trays, and serving to waiting children."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "pddl": {
+                "input": [],
+                "output": "domain_spec",
+                "system_prompt": "You are an expert in analyzing planning domains. Read the provided natural language domain description and the domain template. Produce an explicit, machine-friendly specification that lists types, predicates with intended meanings, and for each action in the template provide parameter lists, clear precondition formulas as sets of predicates, and effect formulas as sets of add and delete predicates. Do not produce PDDL; produce a structured abstract specification that the orchestrator can convert into PDDL.",
+                "prompt": "You are domain_expert. Here is the domain natural language description: {domain_nl} Here is the domain template: {domain_template} Provide a step-by-step structured specification of the domain elements you can extract. If some details are ambiguous, explicitly list assumptions instead of inventing facts."
+            }
+        },
+        "problem_expert": {
+            "pddl": {
+                "input": [],
+                "output": "problem_spec",
+                "system_prompt": "You are an expert in formalizing planning problems. Read the natural language problem description and the problem template. Produce an explicit object inventory, explicit initial-state predicates as a flat list, clear typing of each object, and the goal facts. Do not produce PDDL; produce a structured problem specification for the orchestrator.",
+                "prompt": "You are problem_expert. Here is the problem natural language description: {problem_nl} Here is the problem PDDL template: {problem_pddl} Produce an explicit list of objects with types, initial facts, and the goal facts. Highlight any resource constraints or potential shortages that could affect plan feasibility."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [
+                    "domain_spec",
+                    "problem_spec"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor of planning specifications. Given a structured domain specification and a structured problem specification, check temporal and causal consistency, resource accounting, and remove or flag bookkeeping shortcuts such as implicit quotas, invisible tokens, or arbitrary post-hoc penalties. Produce an audit report listing detected issues, suggested corrections, required disambiguations, and minimal changes to guarantee the problem is realistically solvable without non-transparent bookkeeping. Do not produce PDDL.",
+                "prompt": "You are auditor. Here is the domain spec: {domain_spec} Here is the problem spec: {problem_spec} Analyze for causal cycles, missing resource consumption/production, ambiguous object identities, and any bookkeeping shortcuts. Provide concrete corrections or clarifications and a confidence level for the resulting feasibility."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_spec",
+                    "problem_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-source integration and PDDL generation targeted at the FastDownwards solver. Integrate the domain specification, the problem specification, and the auditor report, resolve ambiguities using only stated assumptions or auditor-approved corrections, and produce a complete PDDL domain file and a complete PDDL problem file that FastDownwards can ingest. Ensure :requirements include at least :typing and :equality, define all predicates used by preconditions and effects, keep actions distinct, and make sure resources are correctly consumed and produced. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The final PDDL should not rely on bookkeeping shortcuts.",
+                "prompt": "You are orchestrator. Integrate the inputs: {domain_spec}, {problem_spec}, and {audit_report}. Produce a final PDDL domain and a final PDDL problem suitable for FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem>. If you must make assumptions to complete the PDDL, list them clearly in a short note before the PDDL output."
+            }
+        },
+        "constraints": [
+            "domain_expert.pddl->auditor.pddl",
+            "problem_expert.pddl->auditor.pddl",
+            "auditor.pddl->orchestrator.pddl",
+            "domain_expert.pddl->orchestrator.pddl",
+            "problem_expert.pddl->orchestrator.pddl"
+        ]
+    }
+}

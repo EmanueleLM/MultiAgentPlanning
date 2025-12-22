@@ -1,0 +1,130 @@
+(define (problem p07-532)
+ (:domain floor-tile)
+ (:objects
+   tile_0-1 tile_0-2 tile_0-3
+   tile_1-1 tile_1-2 tile_1-3
+   tile_2-1 tile_2-2 tile_2-3
+   tile_3-1 tile_3-2 tile_3-3
+   tile_4-1 tile_4-2 tile_4-3
+   tile_5-1 tile_5-2 tile_5-3 - tile
+   robot1 robot2 - robot
+   white black - color
+   stage_0 stage_1 stage_2 stage_3 stage_4 stage_5 stage_6 stage_7 stage_8 stage_9
+   stage_10 stage_11 stage_12 stage_13 stage_14 stage_15 stage_16 stage_17 stage_18 stage_19
+   stage_20 stage_21 stage_22 stage_23 stage_24 stage_25 stage_26 stage_27 stage_28 stage_29
+   stage_30 stage_31 stage_32 stage_33 stage_34 stage_35 stage_36 stage_37 stage_38 stage_39
+   stage_40 stage_41 stage_42 stage_43 stage_44 stage_45 stage_46 stage_47 stage_48 stage_49
+   stage_50 stage_51 stage_52 stage_53 stage_54 stage_55 stage_56 stage_57 stage_58 stage_59
+   stage_60 - stage
+ )
+ (:init
+   (= (total-cost) 0)
+   ;; Robot initial positions and held colors
+   (robot-at robot1 tile_3-3)
+   (robot-has robot1 white)
+   (robot-at robot2 tile_4-1)
+   (robot-has robot2 black)
+   (available-color white)
+   (available-color black)
+
+   ;; Clear tiles: all except those initially occupied by robots
+   (clear tile_0-1)
+   (clear tile_0-2)
+   (clear tile_0-3)
+   (clear tile_1-1)
+   (clear tile_1-2)
+   (clear tile_1-3)
+   (clear tile_2-1)
+   (clear tile_2-2)
+   (clear tile_2-3)
+   (clear tile_3-1)
+   (clear tile_3-2)
+   (clear tile_4-2)
+   (clear tile_4-3)
+   (clear tile_5-1)
+   (clear tile_5-2)
+   (clear tile_5-3)
+
+   ;; Adjacency relations (explicit in both directions)
+   ;; vertical adjacency (up/down)
+   (up tile_1-1 tile_0-1) (down tile_0-1 tile_1-1)
+   (up tile_1-2 tile_0-2) (down tile_0-2 tile_1-2)
+   (up tile_1-3 tile_0-3) (down tile_0-3 tile_1-3)
+
+   (up tile_2-1 tile_1-1) (down tile_1-1 tile_2-1)
+   (up tile_2-2 tile_1-2) (down tile_1-2 tile_2-2)
+   (up tile_2-3 tile_1-3) (down tile_1-3 tile_2-3)
+
+   (up tile_3-1 tile_2-1) (down tile_2-1 tile_3-1)
+   (up tile_3-2 tile_2-2) (down tile_2-2 tile_3-2)
+   (up tile_3-3 tile_2-3) (down tile_2-3 tile_3-3)
+
+   (up tile_4-1 tile_3-1) (down tile_3-1 tile_4-1)
+   (up tile_4-2 tile_3-2) (down tile_3-2 tile_4-2)
+   (up tile_4-3 tile_3-3) (down tile_3-3 tile_4-3)
+
+   (up tile_5-1 tile_4-1) (down tile_4-1 tile_5-1)
+   (up tile_5-2 tile_4-2) (down tile_4-2 tile_5-2)
+   (up tile_5-3 tile_4-3) (down tile_4-3 tile_5-3)
+
+   ;; horizontal adjacency (right/left)
+   (right tile_0-2 tile_0-1) (left tile_0-1 tile_0-2)
+   (right tile_0-3 tile_0-2) (left tile_0-2 tile_0-3)
+
+   (right tile_1-2 tile_1-1) (left tile_1-1 tile_1-2)
+   (right tile_1-3 tile_1-2) (left tile_1-2 tile_1-3)
+
+   (right tile_2-2 tile_2-1) (left tile_2-1 tile_2-2)
+   (right tile_2-3 tile_2-2) (left tile_2-2 tile_2-3)
+
+   (right tile_3-2 tile_3-1) (left tile_3-1 tile_3-2)
+   (right tile_3-3 tile_3-2) (left tile_3-2 tile_3-3)
+
+   (right tile_4-2 tile_4-1) (left tile_4-1 tile_4-2)
+   (right tile_4-3 tile_4-2) (left tile_4-2 tile_4-3)
+
+   (right tile_5-2 tile_5-1) (left tile_5-1 tile_5-2)
+   (right tile_5-3 tile_5-2) (left tile_5-2 tile_5-3)
+
+   ;; Stage/time progression: discrete ordered stages (planner must respect ordering)
+   (current-stage stage_0)
+   (next stage_0 stage_1) (next stage_1 stage_2) (next stage_2 stage_3)
+   (next stage_3 stage_4) (next stage_4 stage_5) (next stage_5 stage_6)
+   (next stage_6 stage_7) (next stage_7 stage_8) (next stage_8 stage_9)
+   (next stage_9 stage_10) (next stage_10 stage_11) (next stage_11 stage_12)
+   (next stage_12 stage_13) (next stage_13 stage_14) (next stage_14 stage_15)
+   (next stage_15 stage_16) (next stage_16 stage_17) (next stage_17 stage_18)
+   (next stage_18 stage_19) (next stage_19 stage_20) (next stage_20 stage_21)
+   (next stage_21 stage_22) (next stage_22 stage_23) (next stage_23 stage_24)
+   (next stage_24 stage_25) (next stage_25 stage_26) (next stage_26 stage_27)
+   (next stage_27 stage_28) (next stage_28 stage_29) (next stage_29 stage_30)
+   (next stage_30 stage_31) (next stage_31 stage_32) (next stage_32 stage_33)
+   (next stage_33 stage_34) (next stage_34 stage_35) (next stage_35 stage_36)
+   (next stage_36 stage_37) (next stage_37 stage_38) (next stage_38 stage_39)
+   (next stage_39 stage_40) (next stage_40 stage_41) (next stage_41 stage_42)
+   (next stage_42 stage_43) (next stage_43 stage_44) (next stage_44 stage_45)
+   (next stage_45 stage_46) (next stage_46 stage_47) (next stage_47 stage_48)
+   (next stage_48 stage_49) (next stage_49 stage_50) (next stage_50 stage_51)
+   (next stage_51 stage_52) (next stage_52 stage_53) (next stage_53 stage_54)
+   (next stage_54 stage_55) (next stage_55 stage_56) (next stage_56 stage_57)
+   (next stage_57 stage_58) (next stage_58 stage_59) (next stage_59 stage_60)
+ )
+ (:goal (and
+    (painted tile_1-1 white)
+    (painted tile_1-2 black)
+    (painted tile_1-3 white)
+    (painted tile_2-1 black)
+    (painted tile_2-2 white)
+    (painted tile_2-3 black)
+    (painted tile_3-1 white)
+    (painted tile_3-2 black)
+    (painted tile_3-3 white)
+    (painted tile_4-1 black)
+    (painted tile_4-2 white)
+    (painted tile_4-3 black)
+    (painted tile_5-1 white)
+    (painted tile_5-2 black)
+    (painted tile_5-3 white)
+ ))
+ (:metric minimize (total-cost))
+)

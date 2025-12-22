@@ -1,0 +1,117 @@
+{
+    "name": "ChildsnackExample6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "chef",
+            "server",
+            "auditor",
+            "orchestrator"
+        ],
+        "chef": {
+            "private_information": [
+                "Expert in preparing sandwiches and tracking ingredient consumption.",
+                "Knows which bread and content portions are gluten-free and which are not.",
+                "Can pair a bread portion with a content portion to create a sandwich."
+            ],
+            "goal": "Prepare the required sandwiches in the kitchen and place them on trays ready for transport."
+        },
+        "server": {
+            "private_information": [
+                "Expert in moving trays between places and serving children at tables.",
+                "Knows the initial locations of trays and tables and how to move trays safely."
+            ],
+            "goal": "Move trays from the kitchen to the children's tables and serve sandwiches to waiting children."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency auditing.",
+                "Removes bookkeeping shortcuts such as quota tokens, post-hoc penalties and other hacks.",
+                "Verifies that preconditions and effects are temporally and causally consistent and that no invalid shortcuts remain."
+            ],
+            "goal": "Audit the plan fragments and domain fragments for causal and temporal consistency and produce an audit report recommending fixes to ensure compatibility with a standard planner."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Coordinator that integrates action fragments, plans, and audit recommendations into a single coherent PDDL domain and problem suitable for FastDownwards."
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem that encode the child-snack task, integrating inputs from chef, server, and auditor, and target the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "places": [
+                "kitchen",
+                "table1",
+                "table2",
+                "table3"
+            ],
+            "trays_count": 3,
+            "sandwich_slots": 12
+        },
+        "public_information": [
+            "Domain: prepare and serve sandwiches to children with possible gluten allergies.",
+            "Actions available: make_sandwich_no_gluten, make_sandwich, put_on_tray, move_tray, serve_sandwich_no_gluten, serve_sandwich.",
+            "There are three trays named tray1, tray2, tray3, all initially in the kitchen.",
+            "There are nine bread portions bread1 through bread9 all initially in the kitchen.",
+            "There are nine content portions content1 through content9 all initially in the kitchen.",
+            "Bread portions bread6, bread2, and bread7 are gluten-free.",
+            "Content portions content9, content4, and content5 are gluten-free.",
+            "Children child9, child2, and child3 are allergic to gluten.",
+            "Children child1, child4, child5, child6, child7, and child8 are not allergic to gluten.",
+            "Child1 is waiting at table3.",
+            "Child2, child4, child5, and child6 are waiting at table1.",
+            "Child3 and child7 are waiting at table3.",
+            "Child8 and child9 are waiting at table2.",
+            "There are twelve sandwich placeholders sandw1 through sandw12 initially not existing.",
+            "Goal: all nine children child1 through child9 must be served sandwiches they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "chef": {
+            "analysis": {
+                "input": [],
+                "output": "chef_fragment",
+                "system_prompt": "You are an expert on food preparation and resource accounting. Given the public information and your private knowledge, provide a structured summary of concrete sandwich creation capabilities and resource consumption patterns. Do not emit PDDL. Instead produce a concise machine-readable fragment listing which bread and content pairings are gluten-free, which sandwich identifiers could be generated from which bread and content pairs, and the resource consumption effects in terms of which bread and content portions become unavailable when used. Provide no PDDL, only a labeled fragment describing preconditions and effects in plain structured text using short keys.",
+                "prompt": "Agent chef context: environment public information {environment->public_information} and your private information {agents->chef->private_information}. Your goal is {agents->chef->goal}. Provide the chef_fragment describing createable sandwiches, bread-content compatibility, and exact resource consumption effects. Keep output structured and avoid producing full PDDL."
+            }
+        },
+        "server": {
+            "plan": {
+                "input": [],
+                "output": "server_fragment",
+                "system_prompt": "You are an expert in logistics and serving. Given the public information and your private knowledge, produce a structured sequence of movement and serving constraints suitable for composition. Do not output PDDL. Instead produce a labeled fragment that declares tray locations, acceptable tray-to-place moves, and serving preconditions that tie a sandwich-on-tray at a place to a served predicate for a child waiting at that place.",
+                "prompt": "Agent server context: environment public information {environment->public_information} and your private information {agents->server->private_information}. Your goal is {agents->server->goal}. Provide the server_fragment describing tray movement templates, required co-location constraints for serving, and the mapping from trays to table destinations. Keep output structured and avoid producing full PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "chef_fragment",
+                    "server_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. You will receive fragments describing creation and serving behavior. Inspect them for implicit bookkeeping shortcuts, quota tokens, post-hoc workarounds, or temporal oversights. Produce an audit_report with explicit recommendations to remove shortcuts, to make preconditions and effects explicit and acyclic, and to ensure all actions can be represented in STRIPS-style PDDL suitable for forward planners. Do not emit PDDL; emit a clear checklist of fixes and a minimal set of additional predicates or constraints needed to ensure causal correctness.",
+                "prompt": "Agent auditor context: inputs {chef_fragment} and {server_fragment} and your private information {agents->auditor->private_information}. Your goal is {agents->auditor->goal}. Produce audit_report listing causal/temporal inconsistencies and concrete fixes to make the fragments planner-ready. Keep output structured and avoid producing full PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "chef_fragment",
+                    "server_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent PDDL integration and in authoring domains and problems for the FastDownwards solver. You will be given structured fragments from other agents and an audit report. Integrate these inputs into a single coherent PDDL domain and a single PDDL problem. Ensure types, predicates, and action schemas are STRIPS-compatible and that all preconditions and effects match the audit recommendations. Preserve distinct action names for the chef and server roles. Target FastDownwards conventions and ensure the resulting PDDL uses only features supported by FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent orchestrator context: the global public information is {environment->public_information}. You receive the following inputs from the other agents: chef_fragment: {chef_fragment}, server_fragment: {server_fragment}, audit_report: {audit_report}. Your goal is {agents->orchestrator->goal}. Produce a complete PDDL domain and a complete PDDL problem that implements the child-snack scenario and is compatible with FastDownwards. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "chef.analysis->orchestrator.pddl",
+            "server.plan->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

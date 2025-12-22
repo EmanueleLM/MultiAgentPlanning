@@ -1,0 +1,102 @@
+{
+    "name": "ChildsnackExample14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "chef",
+            "server",
+            "auditor",
+            "orchestrator"
+        ],
+        "chef": {
+            "private_information": [
+                "I am responsible for composing sandwiches in the kitchen.",
+                "I know how to combine a bread-portion with a content-portion to produce a sandwich.",
+                "I must respect gluten constraints: some bread and content portions are marked gluten-free."
+            ],
+            "goal": "Describe the resource constraints, action schemas (parameters, preconditions, effects) for making gluten and non-gluten sandwiches and placing them ready for transfer to trays."
+        },
+        "server": {
+            "private_information": [
+                "I manage trays: placing sandwiches onto trays, moving trays between places, and serving children at tables.",
+                "I know the initial locations of trays and where each child is waiting.",
+                "I must ensure that sandwiches move to the same place where the child is waiting before serving."
+            ],
+            "goal": "Describe the resource and location constraints, action schemas for put_on_tray, move_tray and serving actions including place/agent relationships."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and identify shortcuts or bookkeeping tokens that might invalidate realistic execution (e.g., using quota tokens, post-hoc penalties, or making multiple sandwiches consume the same resource twice).",
+                "I check that action preconditions/effects form a causally consistent model and flag any shorthand that would break sound planning for a real execution."
+            ],
+            "goal": "Produce an audit report that identifies potential causal/temporal inconsistencies in the described actions and propose precise fixes (remove bookkeeping shortcuts, add necessary intermediate facts, or refine effects/preconditions)."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate knowledge from the other agents to produce a complete PDDL domain and problem ready for FastDownwards.",
+                "I must keep actions conceptually distinct by agent origin (e.g., chef:make_sandwich*, server:move/serve*), and incorporate auditor corrections."
+            ],
+            "goal": "Generate a final PDDL domain and a PDDL problem that encode the full scenario and are compatible with the FastDownwards planner. The output must include a domain and a problem and keep agent action names distinct where relevant."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: prepare and serve sandwiches to children, some of whom are allergic to gluten.",
+            "There are three trays: tray1, tray2, tray3 initially in the kitchen.",
+            "There are thirteen bread portions (bread1..bread13) and thirteen content portions (content1..content13) initially in the kitchen.",
+            "Some bread and content portions are gluten-free and must be used for allergic children.",
+            "There are thirteen children (child1..child13) waiting at various tables (table1..table3).",
+            "There are seventeen sandwiches sandw1..sandw17 that do not exist initially and can be created by composing bread+content.",
+            "Actions include making sandwiches (gluten or not), putting sandwiches on trays, moving trays between places, and serving sandwiches to children.",
+            "Goal: all children child1..child13 must be served a sandwich they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "chef": {
+            "analysis": {
+                "input": [],
+                "output": "chef_knowledge",
+                "system_prompt": "You are an expert on modelling action schemas and resource constraints in planning domains. Provide structured descriptions (not raw PDDL) of the actions related to producing sandwiches in the kitchen. Describe parameters, clear preconditions and effects, and resource consumption behavior. Do NOT emit a full PDDL domain/problem \u2014 produce precise, machine-friendly descriptions of the schemas and resource usage.",
+                "prompt": "Your name is chef. Use the environment public information:\n{environment->public_information}\nAnd your private information:\n{agents->chef->private_information}\nYour goal:\n{agents->chef->goal}\nProduce a structured description of the sandwich-production actions. For each action, list: name, parameters with types, required preconditions (groundable predicates), and deterministic effects. Explicitly state resource consumption semantics (which bread/content are consumed) and mark which sandwiches are gluten-free when created. Keep the description precise so an orchestrator can translate it into PDDL. If some details are ambiguous, describe multiple valid variants and note the assumptions needed."
+            }
+        },
+        "server": {
+            "analysis": {
+                "input": [],
+                "output": "server_knowledge",
+                "system_prompt": "You are an expert modeller of movement, object placement and serving actions in planning domains. Provide structured descriptions (not raw PDDL) of tray operations, movement, and serving, including parameters, preconditions, effects, and location consistency rules.",
+                "prompt": "Your name is server. Use the environment public information:\n{environment->public_information}\nAnd your private information:\n{agents->server->private_information}\nYour goal:\n{agents->server->goal}\nDescribe in a precise, structured way the schemas for: put_on_tray, move_tray, serve_sandwich_no_gluten, serve_sandwich. For each schema give parameters, required predicates (e.g., sandwich-at-place, tray-at-place, child-waiting-at-place), and deterministic effects. Specify any constraints about tray capacity or ordering if relevant, or explicitly state that trays have unbounded capacity. Do NOT produce PDDL directly \u2014 produce descriptions an orchestrator can convert to PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "auditor_report",
+                "system_prompt": "You are an expert auditor of planning models. Inspect action schemas and resource models for temporal and causal consistency. Identify bookkeeping shortcuts (quota tokens, aggregate counters, unrealistic reuse of resources) and propose concrete modifications so the final PDDL is causally correct and solvable by a standard planner. Do NOT emit PDDL; emit corrections and rationale.",
+                "prompt": "Your name is auditor. Use the environment public information:\n{environment->public_information}\nAnd your private information:\n{agents->auditor->private_information}\nYour goal:\n{agents->auditor->goal}\nProduce a report that lists: (1) potential causal/temporal inconsistencies in naive action schemas for this domain, (2) concrete fixes (e.g., add intermediate predicates like at_kitchen_bread, consume effects, unique ownership of resources, prevent double-consumption), and (3) recommended changes to ensure the orchestrator generates a PDDL model without bookkeeping shortcuts. The output should be structured so it is directly usable by the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "chef_knowledge",
+                    "server_knowledge",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL author who must produce a complete domain and problem ready to run with the FastDownwards solver. Integrate the structured descriptions from the chef and server, apply auditor corrections, and produce a single coherent PDDL domain and a PDDL problem. Keep action names and responsibilities identifiable (e.g., make_sandwich_* from chef, move/serve from server). Ensure typing, preconditions, and effects are fully specified and that there are no bookkeeping shortcuts.",
+                "prompt": "You are the orchestrator. You will receive structured descriptions from the chef and server and an auditor report. Inputs:\n{chef_knowledge}\n{server_knowledge}\n{auditor_report}\nYour task is to produce a PDDL domain and a PDDL problem that implement the child-snack scenario so that FastDownwards can solve it. Requirements:\n- Use types and predicates that reflect resources and locations (e.g., at_kitchen_bread, at_kitchen_content, at tray place, on-tray, served, notexist/exists or equivalent creation model).\n- Clearly encode gluten-free logic so allergic children only accept gluten-free sandwiches.\n- Ensure resource consumption is explicit (bread/content consumed when sandwich is made) and that sandwiches created are uniquely tracked (no double-use of same bread/content).\n- Keep actions distinct by origin where appropriate but produce one consistent domain.\n- Emit the final domain and problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility (typing, :requirements)."
+            }
+        },
+        "constraints": [
+            "chef.analysis->orchestrator.pddl",
+            "server.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

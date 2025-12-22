@@ -1,0 +1,106 @@
+{
+    "name": "ChildsnackExample5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "chef",
+            "tray_manager",
+            "auditor",
+            "orchestrator"
+        ],
+        "chef": {
+            "private_information": [
+                "Expert in recipe modeling and ingredient bookkeeping.",
+                "Knows the distinction between gluten and gluten-free bread and content portions.",
+                "Can describe action schemas for producing sandwiches (parameters, preconditions, effects) but will not emit final PDDL."
+            ],
+            "goal": "Provide a clear, structured fragment describing sandwich-making actions, required predicates, and typing information relevant to preparing both gluten and non-gluten sandwiches."
+        },
+        "tray_manager": {
+            "private_information": [
+                "Expert in logistics and movement of trays and placing items on trays.",
+                "Understands place locations (kitchen, table1, table2, table3) and how trays carry sandwiches between them.",
+                "Will provide structured descriptions of tray actions and placement constraints, not PDDL."
+            ],
+            "goal": "Provide a structured fragment describing tray-related actions (put_on_tray, move_tray), relevant predicates, and constraints relating trays, places, and sandwiches."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: audit temporal and causal consistency across model fragments.",
+                "Tasked to remove bookkeeping shortcuts (quota tokens, post-hoc penalties) and to flag missing causal links or implicit assumptions.",
+                "Will output an audit report of inconsistencies, missing predicates, or required adjustments to make the model complete and FastDownwards-compatible."
+            ],
+            "goal": "Analyze the model fragments from chef and tray_manager, ensure causal/temporal consistency, eliminate bookkeeping shortcuts, and produce concrete corrections/recommendations as a structured audit report."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Responsible for integrating fragments and the auditor report into a complete PDDL domain and problem suitable for FastDownwards.",
+                "Must keep action schemas and agent roles distinct and preserve typing and predicate consistency."
+            ],
+            "goal": "Produce the final PDDL domain and PDDL problem files targeting the FastDownwards solver, integrating inputs from the other agents and the auditor."
+        }
+    },
+    "environment": {
+        "init": {
+            "domain": "child-snack",
+            "problem_size": "9-children, 3-trays, 9-breads, 9-contents, 12-sandwich-slots"
+        },
+        "public_information": [
+            "Domain: prepare and serve sandwiches to children, with gluten and gluten-free variants.",
+            "Actions required: make_sandwich_no_gluten, make_sandwich, put_on_tray, move_tray, serve_sandwich_no_gluten, serve_sandwich.",
+            "Initial facts include three trays at the kitchen, nine bread portions, nine content portions, and twelve sandwich identifiers which do not exist yet.",
+            "Bread portions bread2, bread3, bread8 are gluten-free; content portions content1, content5, content6 are gluten-free.",
+            "Children child2, child5, child7 are allergic to gluten; others are not allergic. Waiting locations: child1&4 at table2, child2/3/5/6 at table1, child7 at table2, child8/9 at table3.",
+            "Goal: all nine children (child1..child9) must be served a sandwich they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "chef": {
+            "model": {
+                "input": [],
+                "output": "chef_fragment",
+                "system_prompt": "You are an expert domain modeler for kitchen tasks. Produce a structured JSON fragment that defines the action schemas, parameters, required predicates, and type uses for sandwich production (both gluten and gluten-free variants). Do not emit PDDL; instead provide clear lists for 'predicates', 'action_schemas' where each action has 'name', 'parameters', 'preconditions', and 'effects'. Focus on typing and causal links so that another component can render PDDL.",
+                "prompt": "Agent: chef. Use the public information: {environment->public_information} and your private knowledge: {agents->chef->private_information}. Your goal: {agents->chef->goal}. Provide a JSON fragment describing predicates and action schemas for making sandwiches (make_sandwich_no_gluten and make_sandwich) and any related predicates for 'at_kitchen', 'has_bread', 'has_content', and 'exists_sandwich'. Do not output PDDL."
+            }
+        },
+        "tray_manager": {
+            "model": {
+                "input": [],
+                "output": "tray_fragment",
+                "system_prompt": "You are an expert in logistics modeling. Produce a structured JSON fragment that defines predicates and action schemas for tray operations and placing sandwiches on trays. Do not emit PDDL; provide 'predicates' and 'action_schemas' entries with precise preconditions and effects suitable for later conversion to PDDL.",
+                "prompt": "Agent: tray_manager. Use the public information: {environment->public_information} and your private knowledge: {agents->tray_manager->private_information}. Your goal: {agents->tray_manager->goal}. Provide a JSON fragment describing predicates and action schemas for put_on_tray, move_tray and any location relations (at tray place, on tray sandwich at place). Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "chef_fragment",
+                    "tray_fragment"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor for temporal and causal consistency. Receive model fragments and produce a structured audit that points out missing predicates, causal gaps, typing mismatches, or 'bookkeeping shortcuts' (e.g., tokens, counters, or implicit global flags). Provide concrete corrections or additions (predicate names, pre/postconditions) to make the combined model coherent and FastDownwards-compatible.",
+                "prompt": "Agent: auditor. Use the fragments: {chef_fragment} and {tray_fragment} together with public information: {environment->public_information} and your private knowledge: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Produce a structured audit indicating necessary fixes, additions, or clarifications. Output should be a JSON object with keys 'issues' (list), 'fixes' (list of concrete predicate/action edits), and 'notes' (if any)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "chef_fragment",
+                    "tray_fragment",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL integration and FastDownwards usage. Integrate the provided structured fragments and the auditor report to produce a complete PDDL domain and a PDDL problem file suitable for the FastDownwards planner. Keep all actions distinct, include typing, requirements, predicates, action definitions, object declarations, init facts, and the goal. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Agent: orchestrator. Inputs available: {chef_fragment}, {tray_fragment}, {audit_report}. Your goal: {agents->orchestrator->goal}. Produce a final PDDL domain and a final PDDL problem that implement the child-snack scenario for nine children as described in the public information. The domain should include :requirements compatible with FastDownwards (typing and equality), explicit predicates, and full action definitions for make_sandwich_no_gluten, make_sandwich, put_on_tray, move_tray, serve_sandwich_no_gluten, and serve_sandwich. The problem should declare all objects (children, bread portions, content portions, trays, tables, sandwich slots), initial state facts, and the goal that all children are served. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "chef.model->auditor.audit",
+            "tray_manager.model->auditor.audit",
+            "chef.model->orchestrator.pddl",
+            "tray_manager.model->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

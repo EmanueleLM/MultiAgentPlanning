@@ -1,0 +1,83 @@
+{
+    "name": "ChildsnackExample13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am an expert planner familiar with PDDL and the FastDownwards solver.",
+                "I can translate natural language domain and problem descriptions into PDDL modelling choices.",
+                "I pay attention to types, predicates, action signatures, preconditions, and effects."
+            ],
+            "goal": "Analyze the natural language domain and problem and produce a structured specification of types, predicates, actions with parameters, and resource counts necessary to build a correct PDDL domain and problem."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I check resource conservation, causal links, and whether preconditions and effects are sound and implementable.",
+                "I provide corrective recommendations and point out implicit assumptions that need to be made explicit."
+            ],
+            "goal": "Audit the planner analysis for causal consistency, resource accounting, and temporal constraints, and provide corrections and recommendations to ensure a sound and solvable PDDL model."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate inputs from other agents to produce the final PDDL domain and problem.",
+                "I target the FastDownwards planner, so the resulting PDDL must be compatible with that solver."
+            ],
+            "goal": "Integrate the planner and auditor outputs to produce a complete, consistent PDDL domain and a PDDL problem that encodes the child-snack scenario for 13 children and that is solvable with FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "places": 3,
+            "kitchen": "kitchen"
+        },
+        "public_information": [
+            "Domain: child-snack. Actions include making sandwiches with and without gluten, placing sandwiches on trays, moving trays between places, and serving sandwiches to children.",
+            "Problem: 13 children, three trays, 13 bread portions, 13 content portions, some bread and content portions are gluten-free, some children are allergic to gluten, children are waiting at three tables, and 17 sandwich placeholders are initially non-existent.",
+            "Goal: All 13 children must be served a sandwich they are not allergic to.",
+            "Constraints: Gluten-free sandwiches must use both gluten-free bread and gluten-free content. Serving must occur when tray and child share the same place."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert planner and analyst. Produce a detailed structured analysis of the domain and the problem. Do not emit the final PDDL domain or problem. Instead produce: a list of types, a list of predicates with short descriptions, a list of actions each with parameters, preconditions and effects, and a mapping of resources and counts. Identify any implicit assumptions that must be made explicit for a correct formalization.",
+                "prompt": "Agent name: planner. Use the environment public information and your private knowledge to produce the requested structured analysis. Environment public information: {environment->public_information}. Your private information: {agents->planner->private_information}. Your goal: {agents->planner->goal}. Provide step by step reasoning and then a clear machine-friendly structured output that the orchestrator can consume."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "auditor_audit",
+                "system_prompt": "You are an auditor focusing on temporal and causal consistency. Do not emit PDDL. Verify the planner analysis for resource accounting, causality, possible concurrency issues, and shortcuts such as quota tokens or implicit resource creation. Provide corrections, explicit constraints, and recommendations for changes to predicates or action effects to ensure a sound, executable model.",
+                "prompt": "Agent name: auditor. Review the planner analysis: {planner_analysis}. Use your private information: {agents->auditor->private_information}. Your goal: {agents->auditor->goal}. Provide a list of identified issues and precise corrective edits or additions that the orchestrator can apply to produce a consistent PDDL domain and problem."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "auditor_audit"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Integrate the planner analysis and the auditor audit to produce a complete PDDL domain and a PDDL problem tailored for the FastDownwards solver. Emit the PDDL domain enclosed in <domain></domain> tags and the PDDL problem enclosed in <problem></problem> tags. Ensure types, predicates, action definitions, and the init and goal sections are consistent, complete, and compatible with FastDownwards. Keep actions atomic and deterministic and ensure resource conservation and explicitness.",
+                "prompt": "Agent name: orchestrator. Your inputs are the planner analysis {planner_analysis} and the auditor audit {auditor_audit}. Your private information: {agents->orchestrator->private_information}. Your goal: {agents->orchestrator->goal}. Produce the final PDDL domain and problem for the child-snack scenario with 13 children. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Make no unstated assumptions; if some modeling choice was recommended, prefer the auditor-corrected choice. Aim for FastDownwards compatibility."
+            }
+        },
+        "constraints": [
+            "planner.analysis->auditor.audit",
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,86 @@
+{
+    "name": "ChildsnackExample10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "You are an expert classical planner familiar with PDDL modeling and FastDownwards compatibility.",
+                "You have access to the natural-language domain and problem descriptions for the child-snack scenario.",
+                "Focus on clearly identifying types, predicates, and action schemas with realistic preconditions and effects."
+            ],
+            "goal": "Analyze the provided natural-language domain and problem and produce a structured modeling proposal that lists types, predicates, and action schemas (parameters, preconditions, effects) sufficient for constructing a FastDownwards-compatible PDDL domain and problem."
+        },
+        "auditor": {
+            "private_information": [
+                "You are an expert in temporal and causal consistency and in eliminating bookkeeping shortcuts from planner outputs.",
+                "You should look for implicit assumptions, tokens, quotas, and any post-hoc penalties or shortcuts that would make the model unrealistic or incompatible with standard planners.",
+                "Ensure that resource consumption and mutual exclusion are modeled with explicit predicates rather than hidden counters when possible."
+            ],
+            "goal": "Audit the planner's modeling proposal for causal consistency, temporal coherence, and remove or point out bookkeeping shortcuts; produce explicit recommendations and corrections so the final PDDL will be semantically clear and solver-friendly."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You are the integrator that must combine planner analysis and auditor findings into a final PDDL domain and problem usable with FastDownwards.",
+                "You must produce a concrete PDDL domain and PDDL problem file that implement the child-snack task for 11 children and the specified initial conditions, matching the given problem template semantics."
+            ],
+            "goal": "Integrate inputs and produce the final PDDL domain and PDDL problem, enclosed between <domain>...</domain> and <problem>...</problem> tags, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Domain: child-snack. Prepare and serve sandwiches to children, some allergic to gluten.",
+            "Actions needed: make gluten-free sandwiches, make regular sandwiches, put sandwiches on trays, move trays between places, serve sandwiches to children with appropriate allergy checks.",
+            "Initial resources: 3 trays (tray1, tray2, tray3) at kitchen; 11 bread portions bread1..bread11 at kitchen; 11 content portions content1..content11 at kitchen; 15 sandwich placeholders sandw1..sandw15 not existing yet.",
+            "Gluten-free bread portions: bread2 bread7 bread8 bread9.",
+            "Gluten-free content portions: content2 content6 content7 content9.",
+            "Allergic children: child2 child4 child7 child8. Non-allergic: others.",
+            "Children waiting at places: table1, table2, table3 as described in the problem template.",
+            "Goal: All eleven children child1..child11 must be served sandwiches they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert classical planner and PDDL modeler. Given the domain and problem natural-language descriptions, produce a structured modeling proposal: list concrete types, predicates (with intended meaning), and action schemas for make_sandwich_no_gluten, make_sandwich, put_on_tray, move_tray, serve_sandwich_no_gluten, serve_sandwich. For each action provide parameters, clear preconditions and effects. Prefer explicit predicates for resource usage and locations (for example at_kitchen_bread, at_kitchen_content, on_tray, at, served). Ensure the proposed model is adequate to build a FastDownwards-compatible PDDL domain and corresponding problem.",
+                "prompt": "You are planner. Use the public information: {environment->public_information} and your private information: {agents->planner->private_information}. Produce a concise structured modeling proposal suitable for conversion into PDDL: list types, predicates, and for each action provide parameters, preconditions, and effects. Focus on clarity and solver compatibility. Output only the structured proposal (no PDDL files here)."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an expert auditor of causal and temporal consistency in planning models. Examine the planner's modeling proposal and identify implicit assumptions, potential concurrency conflicts, resource bookkeeping shortcuts, and any constructs that would hinder a correct translation to PDDL for FastDownwards. Provide explicit corrections and recommend concrete predicate-based encodings for resources and mutual exclusion, avoiding hidden counters or post-hoc penalties.",
+                "prompt": "You are auditor. Review the planner's modeling proposal: {planner_analysis}. Use your private info: {agents->auditor->private_information}. Produce an audit report listing issues, suggested fixes, and explicit encodings to replace shortcuts. The output should be machine-actionable corrections that the orchestrator can integrate."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "auditor_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for producing a final PDDL domain and problem for FastDownwards. Integrate the planner's modeling proposal and the auditor's corrections. Produce a PDDL domain and a PDDL problem that implement the child-snack scenario exactly as specified in the public information and the provided problem template semantics. Ensure types, predicates, and action definitions follow FastDownwards-compatible PDDL (STRIPS with typing and equality). Keep agent-specific conceptual actions distinct only in naming when necessary and avoid any bookkeeping shortcuts. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are orchestrator. Integrate inputs: {planner_analysis} and {auditor_report}. Your task: produce the final PDDL domain and the final PDDL problem matching the child-snack scenario and the provided problem template semantics, targeting the FastDownwards solver. Enclose the domain in <domain></domain> and the problem in <problem></problem>. Make sure all referenced predicates and objects are declared, resource consumption is modeled explicitly, and the goal that all children are served is represented."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

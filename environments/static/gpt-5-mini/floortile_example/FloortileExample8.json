@@ -1,0 +1,101 @@
+{
+    "name": "FloortileExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "problem_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "I am an expert in modeling planning domains for multi-robot tile painting tasks.",
+                "I have the domain natural language description and the domain template for the floor-tile domain.",
+                "FastDownwards supports typing and action-costs and requires well-formed predicate and function definitions."
+            ],
+            "goal": "Analyze the natural language domain and the provided domain template and produce a precise structured summary of types, predicates, functions, and intended action semantics and costs to be used to synthesize a FastDownwards-compatible PDDL domain."
+        },
+        "problem_expert": {
+            "private_information": [
+                "I am an expert in converting natural language problem descriptions into structured initial states, objects, and goals.",
+                "I have the problem natural language description and the PDDL problem template for the 6x3 grid instance with two robots and two colors."
+            ],
+            "goal": "Analyze the natural language problem and the provided problem template and produce a precise structured summary of objects, initial facts, adjacency relations, initial robot locations and colors, and the goal painting specification and objective to minimize total cost."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit models for temporal and causal consistency and remove or flag bookkeeping shortcuts that would break soundness for a classical planner.",
+                "I check for implicit assumptions such as allowing robots to stand on painted tiles, or relying on ad-hoc tokens or post-hoc penalties that are not supported by a classical sequential planner."
+            ],
+            "goal": "Review the domain and problem structured summaries, identify and remove bookkeeping shortcuts, ensure causal constraints are explicit, and produce an audit report with concrete, minimal corrections needed for a correct FastDownwards run."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I combine the analyses and the audit corrections to produce the final PDDL domain and problem targeted for the FastDownwards solver.",
+                "I will produce a domain and a problem file enclosed between <domain></domain> and <problem></problem> tags respectively."
+            ],
+            "goal": "Synthesize a complete FastDownwards-compatible PDDL domain and a PDDL problem instantiation that implements the floor-tile scenario, reflects auditor corrections, encodes action costs exactly as specified, and minimizes total-cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_width": 6,
+            "grid_height": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: floor-tile robots paint floor tiles with two colors. Robots move up down left right, change paint color, and paint adjacent tiles. Actions have explicit costs.",
+            "Problem: a 6 by 3 grid with tiles tile_0-1 to tile_5-3, two robots, colors white and black, specific initial positions and painting goals for many tiles.",
+            "Goal: achieve the listed painted colors while minimizing total-cost.",
+            "Constraint: robots cannot stand on painted tiles; painting makes a tile non-clear."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "analyze": {
+                "input": [],
+                "output": "domain_facts",
+                "system_prompt": "You are a domain modeling expert. Produce a structured summary that lists types, predicates and their meanings, function signatures, and the intended preconditions effects and numeric costs for each action in the domain template. Do not emit a full PDDL domain here. Focus on exact names, arities, and cost numbers so the orchestrator can synthesize a FastDownwards-compatible domain.",
+                "prompt": "Given the public information and the domain template, extract and return a structured JSON-like summary containing: types array, predicates with brief semantics, functions with signatures, and for each action name its parameters, preconditions list, effects list and numeric cost. Keep names consistent with the template. Do not produce the final PDDL domain."
+            }
+        },
+        "problem_expert": {
+            "analyze": {
+                "input": [],
+                "output": "problem_facts",
+                "system_prompt": "You are a problem modeling expert. Produce a structured summary that lists objects, initial facts, adjacency relations, which tiles are clear or not, robot initial locations and colors, and the goal painting predicates. Do not emit a full PDDL problem here. Provide precise object lists and boolean facts and a concise representation of the goal set.",
+                "prompt": "Given the public information and the problem template, extract and return a structured JSON-like summary containing: objects with their types, initial predicates including robot-at, robot-has, available-color, clear and adjacency relations up/down/left/right, and the goal painting list. Include the metric to minimize total-cost. Do not produce the final PDDL problem."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "domain_facts",
+                    "problem_facts"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in causal and temporal consistency for classical planning models. Inspect the provided structured summaries and produce an audit report that lists any implicit assumptions, forbidden shortcuts and how to eliminate them, and recommended small but explicit changes so that a standard planner such as FastDownwards can solve the instance soundly. Focus on removing bookkeeping shortcuts and ensuring causal constraints like 'painted tiles cannot be occupied' are enforced.",
+                "prompt": "Check domain_facts and problem_facts for issues that would break causal or temporal soundness when run with FastDownwards. Provide a concise report listing each issue and a concrete fix, for example: add predicates, strengthen preconditions or effects, avoid transient bookkeeping tokens, and ensure total-cost is modeled as a numeric function with add effects. Output only corrective actions and rationale."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_facts",
+                    "problem_facts",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator. Using the domain facts, problem facts, and the auditor report, synthesize a complete PDDL domain and a PDDL problem that are compatible with FastDownwards. Ensure typing, predicates, functions, and action cost expressions match FastDownwards expectations. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions distinct and preserve the given cost values.",
+                "prompt": "Combine domain_facts, problem_facts and audit_report and produce the final PDDL domain and PDDL problem targeting FastDownwards. The domain must implement exactly these action costs: change-color cost 5, paint-up cost 2, paint-down cost 2, up cost 3, down cost 1, right cost 1, left cost 1. Ensure painting makes a tile non-clear and prevents robots from occupying painted tiles. Enclose the domain between <domain></domain> and the problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "domain_expert.analyze->orchestrator.pddl",
+            "problem_expert.analyze->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

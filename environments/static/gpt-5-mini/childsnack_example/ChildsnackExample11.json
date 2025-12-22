@@ -1,0 +1,107 @@
+{
+    "name": "ChildsnackExample11",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "problem_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "You have the natural language domain description for the child-snack domain including actions for making sandwiches with and without gluten, placing sandwiches on trays, moving trays, and serving children.",
+                "You have a PDDL domain template that defines types and action skeletons but missing predicates and concrete preconditions and effects."
+            ],
+            "goal": "Analyze the domain description and produce a precise, structured specification of types, predicates, and each action's intended preconditions and effects without emitting a full PDDL domain file."
+        },
+        "problem_expert": {
+            "private_information": [
+                "You have the natural language problem description describing 12 children with specific allergy and waiting locations, 3 trays in the kitchen, 12 bread portions, 12 content portions, and 16 not-yet-created sandwiches.",
+                "You have a PDDL problem template with objects and an initial list of atoms but you must ensure consistency of facts and object typing."
+            ],
+            "goal": "Produce a structured inventory of objects, initial facts, and explicit mapping of which breads and contents are gluten-free, and which child is allergic or not, without emitting the final PDDL problem file."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to audit temporal and causal consistency and to remove bookkeeping shortcuts such as tokens, quotas, or implicit assumptions that make planning trivial but incorrect.",
+                "You must ensure that actions' preconditions and effects are causally consistent and that resource consumption is explicit and sound for automated planning with FastDownwards."
+            ],
+            "goal": "Review the domain and problem structured outputs and produce an audit report that highlights missing causal links, required additional predicates, and any corrections to make the model temporally and causally sound."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You receive the structured domain specification, the structured problem facts, and the auditor report.",
+                "Your job is to integrate these inputs and produce the final PDDL domain and problem that is valid and solvable by the FastDownwards planner."
+            ],
+            "goal": "Synthesize and emit a complete PDDL domain and a PDDL problem targeting FastDownwards, keeping agent actions distinct and ensuring typing, requirements, and predicates are consistent."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Task: prepare and serve sandwiches to twelve children with some gluten allergies using kitchens, trays, and tables.",
+            "There are three trays named tray1 tray2 tray3 initially at the kitchen.",
+            "There are twelve bread portions bread1 through bread12 initially in the kitchen.",
+            "There are twelve content portions content1 through content12 initially in the kitchen.",
+            "Bread portions bread3 bread4 bread5 and bread11 are gluten-free.",
+            "Content portions content2 content5 content9 and content12 are gluten-free.",
+            "Children allergic to gluten: child1 child3 child5 child12.",
+            "Children not allergic: child2 child4 child6 child7 child8 child9 child10 child11.",
+            "Waiting assignments: child1 and child4 at table2, child2 child3 child9 child11 child12 at table1, child5 child6 child7 child10 at table3, child8 at table2.",
+            "There are sixteen sandwiches sandw1 through sandw16 that do not exist yet and must be created when making sandwiches."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "analyze": {
+                "input": [],
+                "output": "domain_partial",
+                "system_prompt": "You are an expert in modeling planning domains. Provide a structured specification of types predicates and for each action describe parameter roles preconditions and effects in a machine-friendly bullet form. Do not emit the final PDDL domain file.",
+                "prompt": "Agent domain_expert. Use the public information {environment->public_information} and your private information {agents->domain_expert->private_information} to produce a clear structured specification that lists all required predicates types and the intended preconditions and effects for make_sandwich_no_gluten make_sandwich put_on_tray serve_sandwich_no_gluten serve_sandwich and move_tray. Focus on explicit resource consumption and location fluents. Output as a structured conceptual representation labeled domain_partial."
+            }
+        },
+        "problem_expert": {
+            "analyze": {
+                "input": [],
+                "output": "problem_partial",
+                "system_prompt": "You are an expert in encoding planning problems. Provide a structured object inventory and an explicit initial state listing all ground facts required by the domain specification. Do not emit the final PDDL problem file.",
+                "prompt": "Agent problem_expert. Use the public information {environment->public_information} and your private information {agents->problem_expert->private_information} to produce a structured object list and initial facts including locations of trays which breads and contents are gluten-free which children are allergic or not waiting relations and the notexist markers for sandwiches. Output as a structured representation labeled problem_partial."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "domain_partial",
+                    "problem_partial"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a reliability auditor for planning models. Check causal and temporal consistency and remove bookkeeping shortcuts. Produce a concise list of identified issues and the minimal corrections required to make the model sound for search-based planners.",
+                "prompt": "Agent auditor. Receive domain_partial and problem_partial. Check for missing resource consumption or production inconsistencies ambiguous predicates implicit tokens or quotas and temporal shortcuts. Recommend explicit predicates or constraints to fix problems and confirm that serving actions properly consume sandwiches and that making actions consume bread and content. Output as audit_report listing corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "domain_partial",
+                    "problem_partial",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL synthesis for FastDownwards. Integrate partial domain and problem specifications plus auditor corrections and produce a complete PDDL domain and problem. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure :requirements include :typing and :equality and the encoding is compatible with FastDownwards.",
+                "prompt": "Agent orchestrator. Integrate the inputs {domain_partial} {problem_partial} and {audit_report} to produce the final PDDL domain and PDDL problem that represent the child-snack task for 12 children. Keep actions distinct and ensure typing predicates preconditions and effects are explicit and consistent. Emit the final PDDL domain and problem ready for FastDownwards enclosed between <domain></domain> and <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "domain_expert.analyze->auditor.audit",
+            "problem_expert.analyze->auditor.audit",
+            "domain_expert.analyze->orchestrator.pddl",
+            "problem_expert.analyze->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

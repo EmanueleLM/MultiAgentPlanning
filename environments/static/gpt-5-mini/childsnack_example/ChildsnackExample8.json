@@ -1,0 +1,102 @@
+{
+    "name": "ChildsnackExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "chef",
+            "server",
+            "auditor",
+            "orchestrator"
+        ],
+        "chef": {
+            "private_information": [
+                "Expert in food preparation steps and resource accounting.",
+                "Knows that making a sandwich consumes one bread portion and one content portion and produces a sandwich in the kitchen.",
+                "Can distinguish gluten and gluten-free ingredients."
+            ],
+            "goal": "Analyze sandwich production actions and produce a clear resource and action specification that the orchestrator can use to generate PDDL."
+        },
+        "server": {
+            "private_information": [
+                "Expert in logistics for placing sandwiches on trays, moving trays between places, and serving children at tables.",
+                "Understands that trays are moved between places and a tray can hold multiple sandwiches."
+            ],
+            "goal": "Analyze serving, tray placement and movement, and produce a clear specification of place relationships, tray state transitions, and serving preconditions for the orchestrator."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in temporal and causal consistency auditing and in removing bookkeeping shortcuts.",
+                "Avoids shortcuts like abstract 'notexist' predicates or implicit quotas without explicit tokens and prefers explicit resource modeling."
+            ],
+            "goal": "Audit the other agents' analyses for causal consistency and explicit bookkeeping and produce recommendations and corrections for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Integrator that receives structured analyses and produces the final PDDL domain and problem tuned for the FastDownwards planner.",
+                "Responsible for keeping agent actions distinct and for producing a clean domain and problem that are solvable by FastDownwards."
+            ],
+            "goal": "Integrate analyses from chef, server, and auditor and produce a complete PDDL domain and a PDDL problem executable with FastDownwards that achieves the goal of serving all children appropriate sandwiches."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: preparing and serving sandwiches to children, some with gluten allergies.",
+            "Actions of interest: make gluten-free sandwiches, make regular sandwiches, put sandwiches on trays, move trays between places, serve sandwiches to children.",
+            "Initial resources: three trays in the kitchen, ten bread portions in the kitchen, ten content portions in the kitchen, thirteen sandwich placeholders that do not yet exist.",
+            "Some bread and content portions are gluten-free and some children are allergic to gluten.",
+            "Children are waiting at table locations as described in the problem specification.",
+            "Goal: every child child1 through child10 must be served a sandwich they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "chef": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_chef",
+                "system_prompt": "You are an expert in modeling food preparation processes for planners. Do not emit PDDL. Produce a structured analysis that lists the concrete actions, required predicates for preconditions and effects, and explicit resource accounting rules for sandwich creation including gluten distinctions.",
+                "prompt": "Your agent name is chef. You are given the following public information: {environment->public_information} You have these private facts: {agents->chef->private_information} Your task is: {agents->chef->goal} Provide a structured output that includes: a) the canonical action signatures for preparing sandwiches with parameter names, b) precise preconditions and effects in plain structured form, c) resource consumption rules that explicitly remove used bread and content from the kitchen and produce a named sandwich in the kitchen, d) an explicit naming scheme for how to bind bread and content portions to sandwich objects. Do not produce PDDL code. Keep the output machine-friendly so the orchestrator can integrate it."
+            }
+        },
+        "server": {
+            "analysis": {
+                "input": [],
+                "output": "analysis_server",
+                "system_prompt": "You are an expert in modeling logistics and serving actions for planners. Do not emit PDDL. Produce a structured analysis describing tray capacity assumptions, place relations, movement and serving preconditions and effects, and how sandwiches move from kitchen to trays to children.",
+                "prompt": "Your agent name is server. You are given the following public information: {environment->public_information} You have these private facts: {agents->server->private_information} Your task is: {agents->server->goal} Provide a structured output that includes: a) action signatures for put_on_tray, move_tray, and serve actions with parameter names, b) preconditions and effects specified in plain structured form, c) an explicit model for where trays can be and how sandwiches are located on trays, d) mapping of waiting children to their tables and the requirement that the tray and child be co-located to serve. Do not produce PDDL code. Make the output machine-friendly for integration."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "analysis_chef",
+                    "analysis_server"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of causal and temporal models. Do not emit PDDL. Your job is to validate, correct, and remove bookkeeping shortcuts from analyses and to produce explicit recommendations. Focus on causal chains, resource accounting and temporal feasibility.",
+                "prompt": "Your agent name is auditor. You will receive the chef analysis and the server analysis. Your private facts: {agents->auditor->private_information} Your task is: {agents->auditor->goal} Check for issues such as implicit 'notexist' bookkeeping, missing consumption effects, ambiguous object aliases, insufficient constraints for simultaneous use of a single resource, and unclear tray capacity. Produce an explicit audit report that lists detected issues, proposed corrections to action preconditions and effects, and any additional bookkeeping predicates needed to make the model explicit and FastDownwards-friendly. Do not emit PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "analysis_chef",
+                    "analysis_server",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL engineer and integrator. Produce a PDDL domain and a PDDL problem tailored for the FastDownwards solver. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure that actions remain agent-distinct where relevant and that the model is consistent with the audit corrections. Use explicit predicates for resource accounting and avoid implicit bookkeeping shortcuts. Ensure types and predicates are compatible with FastDownwards requirements.",
+                "prompt": "You are the orchestrator. Your input consists of the chef analysis, the server analysis, and the auditor audit report: {analysis_chef} {analysis_server} {audit_report} Your job is to integrate these into a coherent PDDL domain and a PDDL problem that exactly captures the natural language problem specification and is solvable by FastDownwards for the goal that all ten children are served appropriate sandwiches. Keep the domain and the problem consistent with the following public information: {environment->public_information} and with agent private constraints: {agents->orchestrator->private_information} Produce a final PDDL domain and PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Target FastDownwards compatibility by including typing, explicit equality where needed, and clear effect and precondition clauses."
+            }
+        },
+        "constraints": [
+            "chef.analysis->orchestrator.pddl",
+            "server.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

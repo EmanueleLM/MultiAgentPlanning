@@ -1,0 +1,105 @@
+{
+    "name": "ChildsnackExample15",
+    "author": "Human Planner",
+    "agents": {
+        "number": 4,
+        "names": [
+            "chef",
+            "server",
+            "auditor",
+            "orchestrator"
+        ],
+        "chef": {
+            "private_information": [
+                "I operate in the kitchen and compose sandwiches from bread portions and content portions.",
+                "I know which bread and content portions are marked as gluten-free.",
+                "I can create either gluten-free sandwiches or regular sandwiches provided ingredients are available and the sandwich identifier does not yet exist."
+            ],
+            "goal": "Provide clear, structured domain knowledge about sandwich creation and kitchen inventory that the orchestrator can use to build a PDDL domain and problem."
+        },
+        "server": {
+            "private_information": [
+                "I handle placing sandwiches on trays, moving trays between places, and serving children at tables.",
+                "I know the initial positions of trays and where each child is waiting.",
+                "I ensure that gluten-allergic children only receive gluten-free sandwiches."
+            ],
+            "goal": "Provide structured information about tray placement, movement, serving preconditions and effects to the orchestrator."
+        },
+        "auditor": {
+            "private_information": [
+                "I audit temporal and causal consistency and identify bookkeeping shortcuts and hidden assumptions.",
+                "I check that actions preserve invariants such as not serving a sandwich twice and respecting allergy restrictions.",
+                "I will flag any use of quotas, tokens, or other shortcuts so the orchestrator removes them or replaces them with explicit causal constraints."
+            ],
+            "goal": "Produce an audit report listing necessary causal constraints, invariants, and corrections so the final PDDL is temporally and causally consistent."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate partial specifications and audit findings to synthesize a complete PDDL domain and problem.",
+                "The final output must be suitable for the FastDownwards planner and keep agents actions distinct conceptually."
+            ],
+            "goal": "Synthesize a complete PDDL domain and a PDDL problem that accurately model the child-snack scenario and are solvable by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "places": [
+                "kitchen",
+                "table1",
+                "table2",
+                "table3"
+            ],
+            "trays": 3,
+            "sandwich_pool": 19
+        },
+        "public_information": [
+            "Domain: prepare and serve sandwiches to children, with gluten allergies considered.",
+            "Actions include making gluten-free sandwiches, making regular sandwiches, putting sandwiches on trays, moving trays, and serving sandwiches to children.",
+            "Initial facts include three trays in the kitchen, fourteen bread portions, fourteen content portions, markings for gluten-free portions, and children waiting at tables.",
+            "Goal: serve all fourteen children with sandwiches that respect their allergy status."
+        ]
+    },
+    "workflow": {
+        "chef": {
+            "spec": {
+                "input": [],
+                "output": "chef_spec",
+                "system_prompt": "You are the kitchen specialist. Your task is to read the public scenario and your private knowledge and produce a structured specification describing types, candidate predicates, and the semantics of sandwich creation actions. Do not emit the final PDDL domain or problem. Instead produce a JSON-like structured description with lists: required types, predicates with informal semantics, actions related to making sandwiches with their parameters preconditions and effects described in clear natural language, and any notes about mutual exclusion or resource consumption. Focus on sound causal descriptions and do not assume any bookkeeping tokens.",
+                "prompt": "Agent chef context: use environment public information and your private information and the global goal. Provide a structured specification for sandwich creation, including which predicates are needed to represent bread and content availability in the kitchen, the meaning of a sandwich existence predicate, and precise descriptions of make_sandwich_no_gluten and make_sandwich. Include notes on resource consumption, uniqueness of sandwich identifiers, and any constraints the orchestrator should enforce."
+            }
+        },
+        "server": {
+            "spec": {
+                "input": [],
+                "output": "server_spec",
+                "system_prompt": "You are the serving specialist. Your task is to read the public scenario and your private knowledge and produce a structured specification describing predicates and the semantics of tray operations and serving actions. Do not emit the final PDDL domain or problem. Instead produce a JSON-like structured description with lists: required predicates for tray location, sandwich-on-tray, waiting relation, served status, and detailed natural language descriptions of put_on_tray, move_tray, serve_sandwich_no_gluten, and serve_sandwich with parameters, preconditions, and effects. Explicitly state place alignment requirements between trays and children and any necessary checks for allergies.",
+                "prompt": "Agent server context: use environment public information and your private information and the global goal. Provide a structured specification for tray handling and serving operations, include required predicates and clear action semantics for moving trays and serving children. Note any ordering constraints and resource interactions the orchestrator must enforce."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are the auditor. Your task is to examine the partial specifications the other agents will produce and provide a report that finds temporal and causal inconsistencies, removes or replaces bookkeeping shortcuts, and prescribes explicit invariants. Do not generate PDDL. Produce a structured audit containing identified risks, recommended integrity constraints, and explicit corrections to ensure no bookkeeping tokens or implicit quotas are required. Recommend explicit mutexes, uniqueness constraints, and specifications to prevent double-serving and to ensure allergy constraints are enforced at serving time.",
+                "prompt": "Agent auditor context: use environment public information and your private information and the global goal. Produce an audit with a checklist of invariants, causal corrections, and explicit recommendations the orchestrator must apply when synthesizing the final PDDL domain and problem. Example entries: ensure sandwich identifiers remain unique, serving consumes a sandwich on a tray, trays must be co-located with the child to serve, allergy checks are hard preconditions, and there are no abstract quota tokens."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "chef_spec",
+                    "server_spec",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator responsible for synthesizing a complete PDDL domain and a PDDL problem for the FastDownwards planner. Use only the structured specifications and the audit report provided by the other agents. Integrate their information, resolve ambiguities, ensure causal and temporal consistency, and remove any bookkeeping shortcuts by encoding explicit preconditions and effects. Keep actions and their semantics distinct and annotated by role. Produce two artifacts: a PDDL domain enclosed between <domain> and </domain> tags and a PDDL problem enclosed between <problem> and </problem> tags. The PDDL must include types, predicates, a domain section with fully specified action preconditions and effects, and a problem section with the initial state and goal matching the scenario. Target FastDownwards compatibility: use STRIPS-style constructs, avoid constructs unsupported by classical FastDownwards, and ensure typing and equality use standard PDDL constructs. Make sure allergy rules are encoded so allergic children can only be served gluten-free sandwiches. Ensure that serving consumes a sandwich from a tray and marks the child as served. Ensure sandwich creation removes ingredients from kitchen availability. Ensure tray movement updates tray location.",
+                "prompt": "Orchestrator context: integrate chef_spec, server_spec, and audit_report, and the public scenario. Produce a coherent PDDL domain and PDDL problem that model fourteen children, the given bread and content portions with gluten-free markings, three trays, table locations, and the goal to have all children served with suitable sandwiches. Enclose the domain between <domain> and </domain> tags and the problem between <problem> and </problem> tags. Ensure the output is usable by FastDownwards."
+            }
+        },
+        "constraints": [
+            "chef.spec->orchestrator.pddl",
+            "server.spec->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

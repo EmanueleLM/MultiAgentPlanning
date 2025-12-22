@@ -1,0 +1,81 @@
+{
+    "name": "ChildsnackExample4",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Role: Expert domain modeler and classical planner. Your job is to translate the natural language domain and problem descriptions into a precise, structured specification that a PDDL author can consume.",
+                "Deliverable: Do NOT emit final PDDL. Instead produce a clear, unambiguous structured mapping that includes the following elements: types and their hierarchy, a complete list of predicates and their intended meanings, for each action in the domain produce parameters, a precise list of preconditions, a precise list of add and delete effects, and any invariants or framing assumptions. Also provide a mapping from the natural-language initial state to concrete predicates and identify which sandwich objects will be created by which actions.",
+                "Constraints: Do not invent additional object names beyond those in the problem unless you mark them as 'suggested' and justify their necessity. Flag any ambiguities or missing information that prevent a complete specification."
+            ],
+            "goal": "Produce a structured, unambiguous action semantics and initial-state mapping for the child-snack scenario so another agent can generate PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: Temporal and causal consistency auditor. Your job is to inspect structured specifications produced by the planner and the original natural-language descriptions and to identify and remove bookkeeping shortcuts such as quota tokens, post-hoc penalties, and other non-causal artifacts. You should ensure causal chains are explicit and that actions preserve necessary frame axioms or explicitly state effects.",
+                "Deliverable: A prioritized list of detected temporal or causal inconsistencies, proposed concrete fixes to preconditions and effects, suggestions to remove bookkeeping shortcuts, and any recommended predicate renamings or splits to avoid ambiguity. Provide rationale for each change."
+            ],
+            "goal": "Audit the planner output for temporal and causal consistency, remove bookkeeping shortcuts, and produce concrete fixes so the final PDDL is correct and solvable by FastDownwards."
+        },
+        "orchestrator": {
+            "private_information": [
+                "Role: Integrator and final PDDL author. You receive the planner's structured specification and the auditor's fixes. Your task is to synthesize a single coherent PDDL domain and a single coherent PDDL problem file compatible with the FastDownwards planner.",
+                "Deliverable: Emit the final PDDL domain and problem enclosed between <domain></domain> and <problem></problem> tags. Ensure the domain includes correct :requirements, types, predicates, and all actions with explicit preconditions and add/delete effects. Ensure the problem defines objects, initial facts, and the goal. The output must be directly usable with FastDownwards."
+            ],
+            "goal": "Produce the final PDDL domain and problem for the child-snack task, integrating planner analysis and auditor fixes, targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0
+        },
+        "public_information": [
+            "Domain natural language: The child-snack domain plans preparation and serving of sandwiches to children, some of whom have gluten allergies. Actions include making gluten-free sandwiches, making regular sandwiches, placing sandwiches on trays, moving trays between places, and serving sandwiches to children with appropriate allergy checks.",
+            "Problem natural language: Prepare and serve sandwiches to eight children with given initial resources. Two trays are in the kitchen. There are bread1..bread8 and content1..content8 in the kitchen. Bread portions bread2, bread5, bread6 are gluten-free. Content portions content4, content7, content8 are gluten-free. Child2, child7, child8 are allergic to gluten. Children are waiting at tables as specified. Eleven sandwich objects sandw1..sandw11 are available as potential sandwich instances but do not exist yet. Goal: all eight children child1..child8 must be served a sandwich they are not allergic to.",
+            "PDDL domain template: A skeletal domain defines actions make_sandwich_no_gluten, make_sandwich, put_on_tray, serve_sandwich_no_gluten, serve_sandwich, and move_tray with empty preconditions and effects in the template. Types include child, bread-portion, content-portion, sandwich, tray, place and a constant kitchen.",
+            "PDDL problem template: Specifies objects child1..child8, bread1..bread8, content1..content8, tray1 tray2, table1 table2 table3, and sandw1..sandw11. The initial state marks trays at kitchen, bread and content at kitchen, notexist for sandwiches, gluten-free markers for some breads and contents, allergy markers for children, waiting relations for children at tables, and goal that all eight children are served."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert planner and domain modeler. Use the public information about the domain and the problem to produce a structured, unambiguous specification suitable for translation into PDDL by another agent. Do NOT emit final PDDL. Provide: 1) types and any subtype relations, 2) a list of predicates with explicit argument types and natural-language meaning, 3) for each domain action produce parameter list, preconditions, add effects and delete effects, 4) explain how initial state facts map to predicates in step 3, 5) list any invariants or frame axioms, 6) flag ambiguities or missing information and propose conservative resolutions.",
+                "prompt": "Agent planner. Here is the public information: {environment->public_information}. Use the domain and problem descriptions to produce the structured specification described in the system prompt. Map all initial elements (bread, content, trays, children, tables, sandwich placeholders) to predicates you propose. Do not emit final PDDL domain or problem. If you require choices (for example which bread/content pairs to use to create gluten-free sandwiches), list options and a recommended deterministic choice."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "auditor_review",
+                "system_prompt": "You are an expert in temporal and causal consistency for planning domains. Receive the planner's structured specification and the public problem description. Your job is to detect and remove bookkeeping shortcuts, to ensure causal chains are explicit, to add necessary frame axioms or to recommend predicate splits, and to provide concrete edits. Avoid introducing non-causal artifacts such as quotas or tokens. Produce a prioritized list of fixes and an annotated version of any modified action semantics.",
+                "prompt": "Agent auditor. Use the planner's output: {planner_analysis} and the environment public information: {environment->public_information}. Identify temporal, causal, and modeling shortcuts and propose concrete fixes that make the model solvable by a classical planner. For each proposed fix, show the before and after preconditions and effects and explain why the change is necessary. Make minimal changes to preserve the planner's intent."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "auditor_review"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and with FastDownwards compatibility. You will receive a structured domain specification from the planner and a set of auditor fixes. Your job is to synthesize a single coherent PDDL domain and a single coherent PDDL problem file. The domain must include explicit types, predicates, and action definitions with complete preconditions and add/delete effects. The problem must include all objects, the initial state, and the goal. Ensure the PDDL uses constructs supported by FastDownwards and state any :requirements you use. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions and their names unambiguous and consistent. Preserve distinct roles of modeled actions.",
+                "prompt": "Agent orchestrator. Integrate the planner analysis: {planner_analysis} and the auditor's recommendations: {auditor_review} to produce final PDDL for the child-snack task described in the public information: {environment->public_information}. Output exactly two tagged sections. First the domain enclosed in <domain> and </domain>. Then the problem enclosed in <problem> and </problem>. Target the FastDownwards solver and include any necessary :requirements. Make the domain ready to solve the goal that all eight children are served sandwiches they are not allergic to."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

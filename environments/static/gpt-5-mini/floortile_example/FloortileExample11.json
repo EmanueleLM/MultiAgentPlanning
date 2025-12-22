@@ -1,0 +1,94 @@
+{
+    "name": "FloortileExample11",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "You have the domain natural-language description and the PDDL domain template.",
+                "You have the problem natural-language description and the PDDL problem template.",
+                "Robots can move up, down, left, right, change spray color, and paint adjacent tiles.",
+                "Action costs: change-color +5, paint-up +2, paint-down +2, up +3, down +1, right +1, left +1."
+            ],
+            "goal": "Analyze the domain and problem descriptions and produce a detailed specification of predicates, action schemas, parameter types, preconditions, effects, and cost annotations mapped to the provided domain and problem templates. Identify any missing or ambiguous details and propose precise, implementable formalizations, but do not emit the final PDDL domain or problem file."
+        },
+        "auditor": {
+            "private_information": [
+                "You are responsible for temporal and causal consistency and for removing bookkeeping shortcuts such as ad hoc quota tokens or post-hoc penalties.",
+                "You check that action costs and state invariants are coherent and that effects do not introduce impossible states (for example, robots standing on painted tiles).",
+                "You should ensure compatibility with planners that respect STRIPS-like semantics with numeric fluents (FastDownwards)."
+            ],
+            "goal": "Review the planner's specification for causal and temporal consistency, flag and correct bookkeeping shortcuts, validate cost accounting, and produce an audit report describing required fixes and confirmed invariants for the orchestrator to incorporate."
+        },
+        "orchestrator": {
+            "private_information": [
+                "You must integrate the planner's specification and the auditor's report and produce a finalized PDDL domain and PDDL problem that is compatible with the FastDownwards solver.",
+                "The final PDDL must declare needed requirements, types, predicates, functions, action definitions with concrete preconditions and effects, initial state, goal, and the metric minimize (total-cost).",
+                "Enclose the produced PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags."
+            ],
+            "goal": "Combine inputs from the planner and the auditor and output a complete, FastDownwards-compatible PDDL domain and PDDL problem that implements the floortile scenario and minimizes total-cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_width": 6,
+            "grid_height": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: robots paint floor tiles in two colors. Robots move up, down, left, right, change paint color, and paint adjacent tiles.",
+            "There are 24 tiles arranged as a 6x4 grid named tile_0-1 through tile_5-4.",
+            "Two robots: robot1 starts at tile_1-4 with white, robot2 starts at tile_2-3 with black.",
+            "Available colors: white and black.",
+            "All tiles initially clear and unpainted and robots cannot stand on painted tiles.",
+            "Directional adjacency relations (up, down, left, right) exist between neighboring tiles.",
+            "Goals specify each target tile must be painted with a particular color as listed in the problem template.",
+            "Action costs must be tracked using the (total-cost) function and minimized by the metric."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [
+                    "domain_nl",
+                    "problem_nl",
+                    "domain_template",
+                    "problem_pddl"
+                ],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert planning engineer. Your job is to convert natural-language domain and problem descriptions into a precise PDDL specification blueprint. Provide clear predicate schemas, action parameter lists, exact preconditions and effects in logical form, and numeric cost updates for each action. Do not output the final PDDL files; instead produce the structured fragments, naming conventions, and any assumptions you needed to make.",
+                "prompt": "You are the planner agent named planner. You have the following public information: {environment->public_information}. You also have the provided PDDL domain template and PDDL problem template. Analyze both descriptions and the templates and produce: 1) a list of predicates with argument types and semantics, 2) concrete action schemas for change-color, paint-up, paint-down, up, down, right, left including parameter lists, preconditions, effects, and the numeric cost increment for each action, 3) mapping of initial facts and goals from the problem natural-language to PDDL atoms, and 4) any clarification questions or assumptions required for a complete PDDL encoding. Output a machine-friendly structured analysis labeled planner_analysis."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor of planning models focusing on causal and temporal consistency. Check the planner's structured analysis for invalid effects, hidden bookkeeping shortcuts, inconsistent use of predicates, and cost-accounting errors. Recommend concrete corrections and confirm invariants that must hold in the final domain and problem.",
+                "prompt": "You are the auditor agent named auditor. You receive the planner's analysis: {planner_analysis}. Verify that actions do not allow robots to occupy painted tiles, that numeric cost updates are monotonic and consistent, and that preconditions prevent invalid moves. Identify any 'quick fixes' or bookkeeping tokens used by the planner and provide replacements that preserve semantics without ad hoc shortcuts. Produce an audit_report describing confirmed invariants and required modifications."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL and FastDownwards. You will synthesize the final PDDL domain and PDDL problem files. The domain must include correct :requirements, :types, :predicates, :functions, and complete action definitions with costs compatible with numeric fluents and action-costs. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Ensure the files are ready to be solved by FastDownwards with the metric minimize (total-cost).",
+                "prompt": "You are the orchestrator. Integrate the planner_analysis and the auditor's audit_report. Produce a finalized PDDL domain and a finalized PDDL problem that implement the floortile scenario as described in the public information and the provided templates. Ensure actions update (total-cost) appropriately, disallow robots to stand on painted tiles, represent available colors and robot-held color, and include all adjacency relations and initial/goal facts exactly as required. Output the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

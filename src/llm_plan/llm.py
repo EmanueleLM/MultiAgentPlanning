@@ -200,26 +200,19 @@ class ChatGPT(LLM):
 
 class Gemini(LLM):
     def __init__(self, model_name: str = "gemini-2.5-lite"):
-        """Load a Gemini model.
-
-        Args:
-            model_name (str, optional): The model as it appears on the Gemini APIs. Defaults to "gemini-2.5-lite".
-        """
         super().__init__(model_name=model_name)
-
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
 
         try:
             # Sync client
             self.client = genai.Client(api_key=api_key)
-            # Async client
-            self.async_client = genai.AsyncClient(api_key=api_key)
+            # Async client: use the aio property on the same client
+            self.async_client = self.client.aio
         except Exception as e:
             print(f"Something went wrong with {model_name} initialization:\n{e}")
 
     def generate_sync(self, system_prompt: str, prompt: str) -> str:
-        """Synchronous Gemini call."""
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
@@ -230,8 +223,8 @@ class Gemini(LLM):
             return f"Error while generating a response: {e}"
 
     async def generate_async(self, system_prompt: str, prompt: str) -> str:
-        """Asynchronous Gemini call."""
         try:
+            # await the async client's method
             response = await self.async_client.models.generate_content(
                 model=self.model_name,
                 contents=f"{system_prompt}\n\nUser: {prompt}\nAssistant:",

@@ -87,6 +87,7 @@ class Planner:
             - Include an "orchestrator" agent that coordinates the other agents (use the exact name "orchestrator").
             - Provide context for each agent without requesting them to emit PDDL directly.
             - Add at least one agent whose role is to audit temporal/causal consistency and remove bookkeeping shortcuts (quota tokens, post-hoc penalties, etc.).
+            - If the task is a single agent task (i.e., any task that can be solved by one agent), keep it single agent!
             - Ensure the orchestrator action produces the final PDDL domain and problem targeting the {target_solver} solver.
             - Avoid inserting escape sequences such as \n inside string literals.
             - Present clean indentation and do not wrap the output in quotes.

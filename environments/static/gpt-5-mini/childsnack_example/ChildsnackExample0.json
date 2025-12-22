@@ -1,0 +1,132 @@
+{
+    "name": "ChildsnackExample0",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "ingredient_manager",
+            "tray_manager",
+            "server",
+            "auditor",
+            "orchestrator"
+        ],
+        "ingredient_manager": {
+            "private_information": [
+                "There are six bread portions bread1..bread6 located in the kitchen.",
+                "There are six content portions content1..content6 located in the kitchen.",
+                "bread1 and bread4 are gluten free.",
+                "content5 and content6 are gluten free.",
+                "Sandwiches sandw1..sandw8 do not exist yet."
+            ],
+            "goal": "Provide an accurate inventory and propose assignments of bread and content to sandwich ids ensuring gluten-free assignments for allergic children."
+        },
+        "tray_manager": {
+            "private_information": [
+                "There are two trays tray1 and tray2 and both are initially at the kitchen.",
+                "Trays can hold at least one sandwich and can be moved between places."
+            ],
+            "goal": "Plan placement of prepared sandwiches onto trays and movement of trays to tables to enable serving."
+        },
+        "server": {
+            "private_information": [
+                "Children child1..child6 are present.",
+                "child3 and child4 are allergic to gluten.",
+                "child1, child2, child5 wait at table1.",
+                "child3 and child6 wait at table3.",
+                "child4 waits at table3 as well.",
+                "Children must be served sandwiches compatible with their allergies."
+            ],
+            "goal": "Specify serving requirements and constraints so that all children are served sandwiches they are not allergic to."
+        },
+        "auditor": {
+            "private_information": [
+                "Expert in causal and temporal consistency analysis for plans.",
+                "Removes bookkeeping shortcuts such as implicit quota tokens or post-hoc penalties and enforces explicit preconditions and effects."
+            ],
+            "goal": "Audit combined reports for causal and temporal consistency and produce corrected, explicit constraints for planning, eliminating implicit bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate inventory, tray, serving and audit inputs and produce a complete PDDL domain and PDDL problem targeted for the FastDownward solver that models the child-snack scenario."
+        }
+    },
+    "environment": {
+        "init": {
+            "domain_name": "child-snack",
+            "planner_target": "FastDownward",
+            "random_seed": 101,
+            "constants": {
+                "kitchen": "place"
+            }
+        },
+        "public_information": [
+            "Domain describes making sandwiches, placing them on trays, moving trays between places, and serving children, with gluten-sensitive constraints.",
+            "Actions include making gluten free sandwiches, making regular sandwiches, putting sandwiches on trays, moving trays, and serving sandwiches with allergy checks.",
+            "Initial setup: two trays tray1 and tray2 at kitchen, breads bread1..bread6 at kitchen, contents content1..content6 at kitchen, sandw1..sandw8 do not exist yet.",
+            "Bread bread1 and bread4 are gluten free. Content content5 and content6 are gluten free.",
+            "Children child3 and child4 are allergic to gluten. child1, child2, child5, child6 are not allergic.",
+            "Waiting positions: child1 child2 child5 at table1. child3 child4 child6 at table3.",
+            "Goal: all children child1..child6 are served with a sandwich they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "ingredient_manager": {
+            "context": {
+                "input": [],
+                "output": "inventory_report",
+                "system_prompt": "You are an expert in kitchen inventory and resource allocation for sandwich preparation. Produce a structured inventory with explicit availability predicates for bread and content portions and propose which sandwich ids can be produced as gluten or regular given the available items. Do not output PDDL, output a clear structured report that includes explicit resource consumptions and item assignments.",
+                "prompt": "Agent ingredient_manager. Use the public information and your private knowledge to produce an inventory report and candidate assignments of bread and content to sandwich identifiers. Highlight which sandwich ids can be gluten-free and which must be regular. Make resource consumption explicit so that another agent can convert this to PDDL facts."
+            }
+        },
+        "tray_manager": {
+            "context": {
+                "input": [],
+                "output": "tray_report",
+                "system_prompt": "You are an expert in logistics for tray handling. Produce an operational report that specifies how sandwiches can be placed on trays and how trays can be moved to places. Describe preconditions and effects in plain structured form but do not emit PDDL syntax.",
+                "prompt": "Agent tray_manager. Use public information and your private knowledge to describe feasible actions for putting sandwiches on trays and moving trays between places. Provide explicit constraints such as 'tray must be at kitchen to receive sandwich' and 'move_tray changes tray location'."
+            }
+        },
+        "server": {
+            "context": {
+                "input": [],
+                "output": "serving_report",
+                "system_prompt": "You are an expert in serving constraints and recipient requirements. Produce a serving requirements report mapping children to acceptable sandwich types and places for delivery. Do not output PDDL directly.",
+                "prompt": "Agent server. Using public information and your private data, produce a clear mapping from each child to the sandwich type they can accept, and state the place where they are waiting. Indicate any ordering constraints or preferred groupings for serving if relevant."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "inventory_report",
+                    "tray_report",
+                    "serving_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor in temporal and causal consistency for planning domains. Your job is to inspect incoming structured reports and eliminate implicit bookkeeping shortcuts, ensure all causal links are explicit, ensure preconditions and effects are consistent and temporally coherent, and produce a corrected structured specification that is ready to be translated to PDDL. Do not output PDDL directly.",
+                "prompt": "Agent auditor. Receive the inventory, tray, and serving reports. Identify and remove any implicit shortcuts such as quota tokens, aggregate counters, or post-hoc penalties. Convert those to explicit preconditions and effects at the action level. Ensure resource consumption, mutual exclusions, and temporal orderings are explicit and unambiguous. Produce an audit_report that lists corrected predicates, required preconditions, and effects."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "inventory_report",
+                    "tray_report",
+                    "serving_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in multi-agent planning and PDDL authoring targeted for the FastDownward solver. Integrate structured reports and the audit corrections to produce a complete, consistent PDDL domain and PDDL problem for the child-snack scenario. The domain must include types, predicates, and fully specified actions with explicit preconditions and effects. The problem must list all objects, initial facts, and the goal that all children are served. Enclose the PDDL domain between <domain> and </domain> tags and the PDDL problem between <problem> and </problem> tags.",
+                "prompt": "Agent orchestrator. Use the inventory_report, tray_report, serving_report, and audit_report to synthesize a complete PDDL domain and a PDDL problem compatible with FastDownward that models making gluten and regular sandwiches, placing them on trays, moving trays, and serving children with allergy checks. Ensure actions include make_sandwich_no_gluten, make_sandwich, put_on_tray, move_tray, serve_sandwich_no_gluten, serve_sandwich with explicit preconditions and effects, and that the problem encodes the initial state and goal as described in the public information."
+            }
+        },
+        "constraints": [
+            "ingredient_manager.context->auditor.audit",
+            "tray_manager.context->auditor.audit",
+            "server.context->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "ingredient_manager.context->orchestrator.pddl",
+            "tray_manager.context->orchestrator.pddl",
+            "server.context->orchestrator.pddl"
+        ]
+    }
+}

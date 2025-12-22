@@ -1,0 +1,108 @@
+{
+    "name": "FloortileExample1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "robot1_planner",
+            "robot2_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot1_planner": {
+            "private_information": [
+                "I correspond to robot1 in the scenario called robot1 and start at tile_3-2.",
+                "I initially hold the white color in my spray gun.",
+                "I can move up, down, left and right when adjacent tiles are clear and can paint the tile in front (up) or behind (down) relative to my position.",
+                "My action cost profile from the domain: change-color cost 5, paint cost 2, moves cost vary (up 3, down 1, right 1, left 1)."
+            ],
+            "goal": "Provide an accurate local description of robot1's initial state, capabilities, reachable tiles and suggested local constraints that the orchestrator can use to build the global PDDL."
+        },
+        "robot2_planner": {
+            "private_information": [
+                "I correspond to robot2 and start at tile_4-1.",
+                "I initially hold the black color in my spray gun.",
+                "I have the same motion and painting capabilities as robot1 and share the same action costs.",
+                "I cannot stand on a tile once it is painted; painted tiles are not clear for occupation."
+            ],
+            "goal": "Provide an accurate local description of robot2's initial state, capabilities, reachable tiles and suggested local constraints that the orchestrator can use to build the global PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency and to remove or flag bookkeeping shortcuts such as ad-hoc tokens, post-hoc penalties, or inconsistent total-cost manipulations.",
+                "I will check for consistent tile adjacency relations, mutually exclusive occupancy and painting effects, and correct accumulation of total-cost for FastDownwards."
+            ],
+            "goal": "Produce an audit report that highlights any temporal or causal inconsistencies, suggests corrections to effects or preconditions that would break solver correctness, and ensure the final PDDL uses standard accounting for total-cost compatible with FastDownwards."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must combine the local perspectives, the auditor report, and the domain/problem templates to produce a single coherent PDDL domain and PDDL problem suitable for FastDownwards.",
+                "I should keep agent actions distinct in the domain when relevant and ensure predicates, types and functions match the problem file."
+            ],
+            "goal": "Integrate inputs from robot planners and the auditor and emit the final PDDL domain and problem files. The output must be ready to solve with FastDownwards and must be enclosed with <domain></domain> and <problem></problem> tags."
+        }
+    },
+    "environment": {
+        "init": {
+            "width": 5,
+            "height": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: floor-tile where robots paint tiles with colors and moving or painting increases total-cost.",
+            "There are 15 tiles arranged as a 5 by 3 grid named tile_0-1 to tile_4-3.",
+            "Two robots exist: robot1 and robot2. robot1 at tile_3-2 with white. robot2 at tile_4-1 with black.",
+            "Available colors are white and black.",
+            "All tiles except tile_3-2 and tile_4-1 are initially clear and unpainted.",
+            "Robots can move up, down, left and right when adjacent tiles are clear. They can paint the tile in front (up) or behind (down).",
+            "Painted tiles cannot be occupied by any robot after being painted.",
+            "Goal: paint a specified subset of tiles with specified colors as in the problem description and minimize total-cost."
+        ]
+    },
+    "workflow": {
+        "robot1_planner": {
+            "observe": {
+                "input": [],
+                "output": "robot1_knowledge",
+                "system_prompt": "You are an expert local planner for robot1. Provide a precise structured summary of the local initial state and constraints from robot1's perspective. Do not produce the final PDDL domain or problem. Focus on: current location, held color, reachable neighbor tiles (up, down, left, right), which tiles are clear or occupied locally, what tiles you can paint (front/up and back/down), and the action cost profile as you understand it. If any information is missing, state the missing items explicitly.",
+                "prompt": "Your name is robot1_planner. Use the public environment information to create robot1's local knowledge package. Provide a bullet-style enumerated description of preconditions and effects for your local actions, and list any ambiguities or assumptions you require the orchestrator to resolve. Output this as a concise knowledge artifact for the orchestrator."
+            }
+        },
+        "robot2_planner": {
+            "observe": {
+                "input": [],
+                "output": "robot2_knowledge",
+                "system_prompt": "You are an expert local planner for robot2. Provide a precise structured summary of the local initial state and constraints from robot2's perspective. Do not produce the final PDDL domain or problem. Focus on: current location, held color, reachable neighbor tiles (up, down, left, right), which tiles are clear or occupied locally, what tiles you can paint (front/up and back/down), and the action cost profile as you understand it. If any information is missing, state the missing items explicitly.",
+                "prompt": "Your name is robot2_planner. Use the public environment information to create robot2's local knowledge package. Provide a bullet-style enumerated description of preconditions and effects for your local actions, and list any ambiguities or assumptions you require the orchestrator to resolve. Output this as a concise knowledge artifact for the orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "robot1_knowledge",
+                    "robot2_knowledge"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that checks temporal and causal consistency of planning descriptions and flags or corrects bookkeeping shortcuts. Do not emit the final PDDL. Instead produce an audit report describing any inconsistent or nonstandard uses of cost accounting, occupancy and painting interaction, or ambiguous naming. Recommend concrete corrections or stricter preconditions/effects so the orchestrator can produce a solver-compatible PDDL for FastDownwards.",
+                "prompt": "Your name is auditor. Receive the local knowledge artifacts for robot1 and robot2. Verify that adjacency relations are consistent and symmetric, that painting effects prevent occupancy thereafter, and that total-cost increments are explicit and additive. Identify any tokens or shorthand that would be unsound for a planner and provide corrected precondition/effect templates to fix them."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "robot1_knowledge",
+                    "robot2_knowledge",
+                    "audit_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert in multi-agent PDDL planning targeted at FastDownwards. Integrate the local knowledge artifacts and the auditor report to produce a complete PDDL domain and a PDDL problem that encode the floor-tile scenario. Keep actions of different robots distinct when necessary, ensure predicates, types and functions match between domain and problem, enforce that painted tiles are not clear for occupancy, and express action costs using :action-costs and the total-cost function in a way compatible with FastDownwards. Enclose the domain between <domain></domain> and the problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You will receive the robot local knowledge and the auditor report. Use the provided PDDL domain template and the PDDL problem template from the environment to produce final, solver-ready PDDL files. Resolve any ambiguities reported by the auditor. Make sure to: name types and predicates exactly, include a function total-cost initialized to 0, include explicit numeric increases in action effects consistent with the described costs, ensure mutual exclusion for occupancy of tiles, ensure painted tiles are represented as painted and not clear, and include the metric minimize (total-cost). Return the concatenated PDDL domain and problem with <domain></domain> and <problem></problem> tags so they can be parsed by downstream systems and by FastDownwards."
+            }
+        },
+        "constraints": [
+            "robot1_planner.observe->orchestrator.pddl",
+            "robot2_planner.observe->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

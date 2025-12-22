@@ -1,0 +1,104 @@
+{
+    "name": "FloortileExample4",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "robot1",
+            "robot2",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot1": {
+            "private_information": [
+                "I am robot1 and I can move up down left right and paint tiles that are in front of (up) or behind (down) me.",
+                "I start at tile_4-1 and I currently have a white spray gun.",
+                "Changing my paint color is possible but has a cost.",
+                "I cannot stand on tiles that are painted."
+            ],
+            "goal": "Contribute to painting the specified tiles using minimal total cost while respecting movement and painting constraints."
+        },
+        "robot2": {
+            "private_information": [
+                "I am robot2 and I can move up down left right and paint tiles that are in front of (up) or behind (down) me.",
+                "I start at tile_2-4 and I currently have a black spray gun.",
+                "Changing my paint color is possible but has a cost.",
+                "I cannot stand on tiles that are painted."
+            ],
+            "goal": "Contribute to painting the specified tiles using minimal total cost while respecting movement and painting constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "My role is to audit temporal and causal consistency of proposed modeling choices and to remove or flag bookkeeping shortcuts such as quota tokens, post-hoc penalties, or implicit penalty counters.",
+                "I check that action preconditions and effects are causally sound and that cost bookkeeping is explicit and compatible with planners like FastDownwards."
+            ],
+            "goal": "Produce an audit report identifying inconsistencies, hidden shortcuts, or missing causal constraints and recommend concrete edits to the PDDL domain template so the planning model is clean and solver-compatible."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I will integrate the observations from the robots and the auditor's audit report.",
+                "I must produce a complete PDDL domain and PDDL problem targeting the FastDownwards solver, keeping actions distinct per robot and ensuring correct typing and action-costs."
+            ],
+            "goal": "Generate the final PDDL domain and problem that encode the floor-tile scenario and minimize total-cost for FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "The domain is the floor-tile domain where robots paint floor tiles with colors and moving and color-change actions incur action costs.",
+            "There is a 4x4 grid of tiles named tile_0-1 through tile_4-4.",
+            "Robots can move up down left right between adjacent tiles using directional relations, paint only the tile in front (up) or behind (down) relative to themselves, and cannot stand on painted tiles.",
+            "Initial facts: robot1 at tile_4-1 with white, robot2 at tile_2-4 with black, colors white and black are available, all tiles except tile_2-4 are clear and unpainted.",
+            "Goal: paint each indicated tile with the specified color and minimize the total cost of actions."
+        ]
+    },
+    "workflow": {
+        "robot1": {
+            "observe": {
+                "input": [],
+                "output": "obs_robot1",
+                "system_prompt": "You are robot1's reporting module. Provide a concise list of the facts you perceive about your initial state, your capabilities, and any local constraints you observe, expressed as solver-neutral statements or predicates. Do not emit PDDL domain or problem files.",
+                "prompt": "State robot1's known facts: location, current paint color, available actions and their local constraints, tiles you see as clear or blocked, and any implicit assumptions you make about movement or painting. Keep the output as explicit, structured facts that can be consumed by an orchestrator."
+            }
+        },
+        "robot2": {
+            "observe": {
+                "input": [],
+                "output": "obs_robot2",
+                "system_prompt": "You are robot2's reporting module. Provide a concise list of the facts you perceive about your initial state, your capabilities, and any local constraints you observe, expressed as solver-neutral statements or predicates. Do not emit PDDL domain or problem files.",
+                "prompt": "State robot2's known facts: location, current paint color, available actions and their local constraints, tiles you see as clear or blocked, and any implicit assumptions you make about movement or painting. Keep the output as explicit, structured facts that can be consumed by an orchestrator."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "obs_robot1",
+                    "obs_robot2"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an independent auditor of planning models. Examine the robot observations and the domain description and produce a short audit report that identifies temporal or causal inconsistencies, unsafe modeling shortcuts (for example implicit quota tokens, post-hoc penalties, or hidden counters), unclear preconditions or effects, and concrete recommended fixes to the domain template so that costs and causal effects are explicit and compatible with FastDownwards.",
+                "prompt": "Given the robots' observations, check for missing causal links (for example 'painting makes a tile un-clear so no robot can stand on it'), assess that action costs are explicit per action and non-ambiguous, flag any modeling shortcuts and recommend precise edits to predicates, preconditions, and effects to remove those shortcuts, and produce a brief list of concrete changes for the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "obs_robot1",
+                    "obs_robot2",
+                    "audit_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert PDDL engineer targeting the FastDownwards planner. Integrate robot observations and the auditor report to produce a complete PDDL domain and a complete PDDL problem. Ensure the domain uses :typing and :action-costs, defines types robot tile color, predicates for robot-at robot-has available-color clear painted up down left right, and the function total-cost, and make all preconditions and effects explicit and causally consistent. Keep actions distinct if needed per agent. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Do not include any other text.",
+                "prompt": "Produce a final PDDL domain and a final PDDL problem that implement the floor-tile domain and the given problem instance so FastDownwards can solve it. Follow the provided domain template and problem template semantics: implement change-color with cost 5, paint-up and paint-down with cost 2 and effects that mark tiles painted and not clear and forbid standing on painted tiles, movement actions with their specified costs (up cost 3, down cost 1, right cost 1, left cost 1), and include the metric to minimize total-cost. Integrate any auditor recommendations to remove bookkeeping shortcuts and ensure causal consistency. Enclose domain in <domain></domain> and problem in <problem></problem>."
+            }
+        },
+        "constraints": [
+            "robot1.observe->orchestrator.pddl",
+            "robot2.observe->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

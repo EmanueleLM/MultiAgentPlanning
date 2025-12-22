@@ -1,0 +1,109 @@
+{
+    "name": "FloortileExample0",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "robot1",
+            "robot2",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot1": {
+            "private_information": [
+                "I am robot1",
+                "I start at tile_4-1",
+                "I currently hold color white",
+                "I can move up down left right and paint up and down"
+            ],
+            "goal": "Provide an accurate local state report about my position, held color, and reachable neighboring tiles. Do not produce PDDL."
+        },
+        "robot2": {
+            "private_information": [
+                "I am robot2",
+                "I start at tile_4-3",
+                "I currently hold color black",
+                "I can move up down left right and paint up and down"
+            ],
+            "goal": "Provide an accurate local state report about my position, held color, and reachable neighboring tiles. Do not produce PDDL."
+        },
+        "auditor": {
+            "private_information": [
+                "I check temporal and causal consistency across reports",
+                "I detect and remove bookkeeping shortcuts such as quota tokens or post-hoc penalties",
+                "I validate that action costs and ordering are coherent with domain semantics"
+            ],
+            "goal": "Audit the robot reports for causal and temporal consistency, identify missing or unsafe assumptions, and produce a concise audit report listing corrections and explicit assumptions. Do not emit PDDL."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate robot reports and the auditor audit to produce a final complete PDDL domain and a PDDL problem compatible with the FastDownwards solver. The PDDL must use typing and action-costs, include predicates, functions, action preconditions and effects, and minimize total-cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_width": 5,
+            "grid_height": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: floor-tile where robots paint floor tiles with two colors and incur action costs",
+            "There are 15 tiles arranged as a 5 by 3 grid named tile_0-1 through tile_4-3",
+            "Robots can move up down left right and paint only the tile in front (up) or behind (down) relative to their position",
+            "Once a tile is painted no robot can stand on it",
+            "Two colors are available: white and black",
+            "Initial clear tiles: all except tile_4-1 and tile_4-3 which are occupied by robots",
+            "Initial robot states: robot1 at tile_4-1 holding white, robot2 at tile_4-3 holding black",
+            "Costs: change-color costs 5, paint actions cost 2, up action costs 3, down cost 1, left/right cost 1",
+            "Movement relations connect adjacent tiles via up/down/left/right predicates"
+        ]
+    },
+    "workflow": {
+        "robot1": {
+            "report": {
+                "input": [],
+                "output": "robot1_report",
+                "system_prompt": "You are Robot1's local reporting module. Provide a concise machine-readable local state containing your position, carried color, which adjacent tiles are clear or occupied, and which paint actions you can perform. Do not produce PDDL. Report only facts and any uncertainties.",
+                "prompt": "Your name is robot1. Use the environment public information and your private information to emit a local-state report describing position, held color, reachable neighbors and which neighbor tiles are clear or occupied. Keep the report factual and compact. Do not invent global facts you do not know."
+            }
+        },
+        "robot2": {
+            "report": {
+                "input": [],
+                "output": "robot2_report",
+                "system_prompt": "You are Robot2's local reporting module. Provide a concise machine-readable local state containing your position, carried color, which adjacent tiles are clear or occupied, and which paint actions you can perform. Do not produce PDDL. Report only facts and any uncertainties.",
+                "prompt": "Your name is robot2. Use the environment public information and your private information to emit a local-state report describing position, held color, reachable neighbors and which neighbor tiles are clear or occupied. Keep the report factual and compact. Do not invent global facts you do not know."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "robot1_report",
+                    "robot2_report"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor that enforces temporal and causal consistency and removes bookkeeping shortcuts. Inspect the robot reports for contradictions, missing causal links, and any attempts to shortcut cost accounting (for example by introducing implicit tokens or post-hoc penalties). Produce a compact audit report describing inconsistencies, required corrections, and explicit assumptions to enable sound planning. Do not output PDDL.",
+                "prompt": "You are auditor. Receive the local-state reports from robot1 and robot2. Check for causal and temporal inconsistencies and for any bookkeeping shortcuts. Produce a concise audit report listing corrections, explicit assumptions, and any missing facts that the orchestrator will need to build a correct PDDL model."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "robot1_report",
+                    "robot2_report",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems and the FastDownwards solver. Integrate the robot reports and the auditor report to produce a complete PDDL domain and a PDDL problem that are ready for FastDownwards. Use :typing and :action-costs, define predicates and the total-cost function, fill action preconditions and effects for change-color, paint-up, paint-down, up, down, left, right, and assign the costs given by the domain description. Keep actions semantically distinct where relevant. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. The domain and problem must be self-contained and solvable by FastDownwards.",
+                "prompt": "You are the orchestrator. Use the environment public information, the local-state reports robot1_report and robot2_report, and the audit_report to produce a complete PDDL domain and a PDDL problem that implement the floor-tile scenario and minimize total-cost. Ensure predicates reflect robot positions, carried colors, painted tiles and clear tiles. Set costs consistent with the domain natural language and the provided PDDL templates. Enclose the domain inside <domain> tags and the problem inside <problem> tags."
+            }
+        },
+        "constraints": [
+            "robot1.report->auditor.audit",
+            "robot2.report->auditor.audit",
+            "robot1.report->orchestrator.pddl",
+            "robot2.report->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

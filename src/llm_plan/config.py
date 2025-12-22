@@ -107,6 +107,14 @@ DATASET = {
     "hanoi_extreme": {
         "data": DATA_PATH / "hanoi/hanoi_extreme.json",
         "results": RESULTS_FOLDER / "hanoi" / "hanoi_extreme",
+    },
+    "childsnack": {
+        "data": DATA_PATH / "./borealis/childsnack.json",
+        "results": RESULTS_FOLDER / "borealis" / "childsnack",
+    },
+    "floortile": {
+        "data": DATA_PATH / "./borealis/floortile.json",
+        "results": RESULTS_FOLDER / "borealis" / "floortile",
     }
 }
 
@@ -165,7 +173,21 @@ PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
     "hanoi_extreme": [
         "For this problem, check first whether the sas plan is present: if present, that is the candidate plan. Otherwise, the candidate plan is the natural language plan. Your task is to check whether the candidate plan matches the golden plan.",
         "Check that the actions executed in the candidate plan and in the golden plan are the same, i.e., if the candidate plan is correct and optimal. Ignore if the candidate plan uses a different syntax or action order, as long as it is feasible, optimal, and produces the same final outcome.",
-    ]
+    ],
+    "childsnack": [
+        "For this problem, check first whether the sas plan is present: if not present, then consider the answer wrong.",
+        "Otherwise, if the sas plan is present, that is the candidate plan.",
+        "You *must ignore* the golden plan: that is either a plan or it reports 'UNSOLVABLE': do not use that.",
+        "You must also ignore the natural_plan: we are not using that.",
+        "Your task is to check whether the candidate plan uses valid actions and produces a solution that is correct, i.e., it leads, with valid actions, to a state of the environment that is the one described in the last part of the prompt_0shot. Ignore if some actions are redundant or repeated, as long as they are valid.",
+        ],
+    "floortile": [
+        "For this problem, check first whether the sas plan is present: if not present, then consider the answer wrong.",
+        "Otherwise, if the sas plan is present, that is the candidate plan.",
+        "You *must ignore* the golden plan: that is either a plan or it reports 'UNSOLVABLE': do not use that.",
+        "You must also ignore the natural_plan: we are not using that.",
+        "Your task is to check whether the candidate plan uses valid actions and produces a solution that is correct, i.e., it leads, with valid actions, to a state of the environment that is the one described in the last part of the prompt_0shot. Ignore if some actions are redundant or repeated, as long as they are valid.",
+        ],
 }
 
 # Solvers configuration
@@ -189,7 +211,7 @@ MODELS = {
     "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
     "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
     "gemini-2.5-flash": {
-        "model": Gemini("gemini-2.5-flash"),
+        "model": Gemini("gemini-2.5-flash-preview-09-2025"),
         "persistent": False,
         "sleep": 10,
     },

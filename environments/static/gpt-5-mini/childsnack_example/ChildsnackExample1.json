@@ -1,0 +1,85 @@
+{
+    "name": "ChildsnackExample1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am an expert PDDL planner skilled at translating natural language domains and problems into formal PDDL elements.",
+                "I have access to a domain description, a problem description, a domain template, and a problem template for the child-snack scenario.",
+                "My role is to identify objects, types, predicates, action schemas, preconditions and effects, and produce a clear mapping and a draft specification outline to be consumed by an integrator."
+            ],
+            "goal": "Analyze the natural language domain and problem and produce a detailed mapping and draft specification outline that identifies types, objects, predicates, and action parameterizations without emitting the final PDDL domain or problem."
+        },
+        "auditor": {
+            "private_information": [
+                "I specialize in temporal and causal consistency and in removing bookkeeping shortcuts such as quota tokens or post-hoc penalties.",
+                "I will inspect the planner draft for overlooked causal links, implicit resource accounting, and unrealistic shortcuts, and produce corrective recommendations."
+            ],
+            "goal": "Audit the planner's draft for causal and temporal consistency, remove bookkeeping shortcuts, and produce an audit report with precise corrections and clarifications for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate the planner analysis and the auditor report and generate a final PDDL domain and problem suitable for the FastDownwards solver.",
+                "I ensure the final PDDL preserves distinct agent actions, respects typing and equality requirements, and follows the domain and problem templates where applicable."
+            ],
+            "goal": "Synthesize a complete PDDL domain and a PDDL problem that accurately model the child-snack scenario and that can be solved with FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "Domain: child-snack planning for preparing and serving sandwiches to children with some gluten allergies.",
+            "Actions include: make_sandwich_no_gluten, make_sandwich, put_on_tray, serve_sandwich_no_gluten, serve_sandwich, move_tray.",
+            "Problem: 7 children, 2 trays, 7 bread portions, 7 content portions, specific portions are gluten-free, children are located at tables and some are allergic, 10 sandwich identities exist initially marked as not-existent.",
+            "Initial facts include tray locations in kitchen, breads and contents in kitchen, which portions are gluten-free, which children are allergic or not, waiting locations per child, and the notexist facts for 10 sandwiches.",
+            "Goal: all seven children child1 through child7 must be served sandwiches they are not allergic to."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "analysis": {
+                "input": [
+                    "environment->public_information"
+                ],
+                "output": "planner_analysis",
+                "system_prompt": "You are an expert planner whose task is to analyze a natural language domain and problem and produce a rigorous mapping to PDDL constructs. Do not emit final PDDL domain or problem files. Instead produce a structured analysis that lists types, objects, predicates with intended semantics, action schemas with parameter lists and annotated preconditions and effects, and notes about resource accounting and potential name collisions.",
+                "prompt": "Your name is planner. You have access to the environment public information referenced as {environment->public_information}. Analyze the child-snack domain and the problem description and produce a detailed mapping document. The mapping must include: 1) type hierarchy and object lists needed for the problem, 2) a complete set of predicates with short semantics, 3) each action schema with parameters and explicit preconditions and effects in natural language and in a concise formal placeholder notation, 4) identification of which bread and content portions are gluten-free and how that constrains make_sandwich_no_gluten and serve_sandwich_no_gluten, 5) a proposed naming convention for sandwiches and tray locations to avoid ambiguity, 6) notes on resources and bookkeeping (for example consumption of bread/content and consumption of sandwiches when served). Do not output the final PDDL domain or problem. Output a machine-friendly JSON-like analysis labeled as planner_analysis."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "planner_analysis"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an auditor specializing in causal and temporal consistency and in removing bookkeeping shortcuts. Your task is to review a planner analysis and produce corrections that ensure correct causality, temporal ordering, and explicit resource consumption. Highlight any implicit shortcuts such as quota tokens or post-hoc penalties and propose concrete modeling fixes.",
+                "prompt": "Your name is auditor. You receive the planner analysis as {planner_analysis}. Inspect the action schemas and resource accounting in the planner analysis. Produce an audit_report that lists identified issues and concrete fixes. For each issue provide the precise predicate-level change or additional predicate or mutex constraint needed and explain why this change removes an unrealistic bookkeeping shortcut. Ensure all serve and make actions have clear consumption and production effects and that trays and places are modeled so move_tray preserves locations correctly. The auditor should not produce final PDDL files but must make recommendations explicit enough for the orchestrator to implement them."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_analysis",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the orchestrator whose role is to integrate the planner analysis and the auditor report and produce a final PDDL domain and problem file pair that is executable by the FastDownwards solver. You must produce a complete PDDL domain and a complete PDDL problem. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep agent actions distinct and follow typing and equality requirements suitable for FastDownwards. Incorporate auditor corrections to eliminate bookkeeping shortcuts.",
+                "prompt": "Your name is orchestrator. You receive the planner_analysis as {planner_analysis} and the audit_report as {audit_report}. Using those inputs and the provided domain and problem templates available in the environment public information, produce a final PDDL domain and a PDDL problem for the child-snack task that satisfies the goal of serving all seven children valid sandwiches and that is compatible with FastDownwards. Enclose the domain between <domain></domain> tags and the problem between <problem></problem> tags. Ensure predicates, action names, parameters, preconditions, and effects are explicit and unambiguous. Ensure resource consumption for bread and content, tray movement, putting sandwiches on trays, and serving actions are modeled so there are no implicit shortcuts. Output the final PDDL domain and problem."
+            }
+        },
+        "constraints": [
+            "planner.analysis->auditor.audit",
+            "planner.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,7 @@
+(define (problem p01-432)
+    (:domain floor-tile)
+    (:objects white - color robot1 - robot tile_0-1 tile_0-2 tile_0-3 tile_1-1 tile_1-2 tile_1-3 tile_2-1 tile_2-2 tile_2-3 tile_3-1 tile_3-2 tile_3-3 - tile)
+    (:init )
+    (:goal (and ))
+    (:metric minimize (total-cost))
+)

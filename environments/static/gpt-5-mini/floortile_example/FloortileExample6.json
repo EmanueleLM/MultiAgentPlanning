@@ -1,0 +1,104 @@
+{
+    "name": "FloortileExample6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "robot1",
+            "robot2",
+            "auditor",
+            "orchestrator"
+        ],
+        "robot1": {
+            "private_information": [
+                "I am robot1",
+                "I start at tile_3-3",
+                "I initially have the white spray gun"
+            ],
+            "goal": "Contribute to painting the target tiles while minimizing total cost and avoiding painted tiles as standing locations."
+        },
+        "robot2": {
+            "private_information": [
+                "I am robot2",
+                "I start at tile_4-1",
+                "I initially have the black spray gun"
+            ],
+            "goal": "Contribute to painting the target tiles while minimizing total cost and avoiding painted tiles as standing locations."
+        },
+        "auditor": {
+            "private_information": [
+                "I monitor temporal and causal consistency",
+                "I remove bookkeeping shortcuts such as post-hoc penalties or quota tokens",
+                "I validate cost attributions and that painted tiles cannot be occupied"
+            ],
+            "goal": "Audit plans and representations from robots to ensure they are temporally and causally consistent and free of bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate observations and audit reports to produce a single PDDL domain and a PDDL problem suitable for FastDownwards that solves the painting task while minimizing total cost."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 6,
+            "visibility": 2
+        },
+        "public_information": [
+            "Domain: floor-tile where robots paint tiles using two colors and movement actions have costs.",
+            "There is a 6 by 3 grid of tiles named tile_0-1 to tile_5-3 laid out columns 0..5 and rows 1..3.",
+            "Robots can move up, down, left, right between adjacent tiles when the target tile is clear.",
+            "Robots can paint the tile in front (up) or behind (down) relative to their current tile. Once a tile is painted no robot can stand on it.",
+            "Actions have costs and the objective is to minimize total-cost.",
+            "Initial facts: robot1 at tile_3-3 with white, robot2 at tile_4-1 with black, both colors white and black are available, all tiles except tile_3-3 and tile_4-1 are clear and unpainted.",
+            "Movement and adjacency relations exist for up, down, left, right between specified tiles."
+        ]
+    },
+    "workflow": {
+        "robot1": {
+            "analysis": {
+                "input": [],
+                "output": "robot1_obs",
+                "system_prompt": "You are an expert on local robot operations and reachability analysis. Produce a concise structured observation describing your starting location, carried color, reachable tiles, which target tiles you can paint from reachable positions, estimated local costs for sequences of moves and paints, and any constraints you foresee (e.g., cannot stand on painted tiles). Do not emit PDDL. Provide your output as a short structured text artifact named robot1_obs.",
+                "prompt": "Your name is robot1. You have the following public information: {environment->public_information} You have the following private information: {agents->robot1->private_information} Your local objective is: {agents->robot1->goal} Produce robot1_obs describing: current state, reachable tiles, candidate actions to paint required targets, estimated costs for these actions, and any assumptions you require to be explicit. Do not output PDDL."
+            }
+        },
+        "robot2": {
+            "analysis": {
+                "input": [],
+                "output": "robot2_obs",
+                "system_prompt": "You are an expert on local robot operations and reachability analysis. Produce a concise structured observation describing your starting location, carried color, reachable tiles, which target tiles you can paint from reachable positions, estimated local costs for sequences of moves and paints, and any constraints you foresee (e.g., cannot stand on painted tiles). Do not emit PDDL. Provide your output as a short structured text artifact named robot2_obs.",
+                "prompt": "Your name is robot2. You have the following public information: {environment->public_information} You have the following private information: {agents->robot2->private_information} Your local objective is: {agents->robot2->goal} Produce robot2_obs describing: current state, reachable tiles, candidate actions to paint required targets, estimated costs for these actions, and any assumptions you require to be explicit. Do not output PDDL."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "robot1_obs",
+                    "robot2_obs"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are an auditor specialized in temporal and causal consistency for multi-agent planning and in removing bookkeeping shortcuts. Given agents' observations, validate that all causal dependencies, timing constraints, and cost accounting are explicit and realistic. Detect and remove any shortcuts such as implicit post-hoc penalties, quota tokens, or artifical aggregations that would mislead a classical planner. Provide a short structured audit report named auditor_report that lists inconsistencies, required clarifications, and normalized cost attributions. Do not emit PDDL.",
+                "prompt": "You are auditor. You will receive observations from other agents: {robot1_obs} and {robot2_obs}. Your role is: {agents->auditor->goal} Use the public information: {environment->public_information} and the agents' observations to produce auditor_report that: (1) points out temporal or causal conflicts, (2) normalizes any bookkeeping so costs are explicit per action, (3) ensures painted tiles are marked as unstandable, and (4) lists minimal changes or assumptions the orchestrator must enforce to obtain a sound PDDL model. Do not output PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "robot1_obs",
+                    "robot2_obs",
+                    "auditor_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in constructing multi-agent PDDL problems for FastDownwards. You must integrate agents' observations and the auditor report to produce a single consistent PDDL domain and a single PDDL problem that FastDownwards can parse and solve. Enclose the PDDL domain between <domain></domain> tags and the PDDL problem between <problem></problem> tags. Keep actions of different robots distinct by prefixing or scoping action names or parameters to preserve agent identity. Make all costs explicit as action-costs and ensure the metric is minimize (total-cost).",
+                "prompt": "You are the orchestrator. Your objective is: {agents->orchestrator->goal} Use the environment public information: {environment->public_information} and integrate the following artifacts: {robot1_obs} {robot2_obs} {auditor_report} Produce a final PDDL domain and PDDL problem suitable for FastDownwards that captures: two robots, tile objects tile_0-1 to tile_5-3, colors white and black, movement actions up/down/left/right with the given costs, paint-up and paint-down actions with the given costs, change-color action with cost, correct predicates for robot-at, robot-has, clear, painted, adjacency predicates up/down/left/right, and (= (total-cost) 0) in init and (:metric minimize (total-cost)) in the problem. Ensure painted tiles cannot be occupied by robots. Keep actions for robot1 and robot2 distinct while reusing action schemata appropriately. Enclose the PDDL domain between <domain></domain> and the PDDL problem between <problem></problem>."
+            }
+        },
+        "constraints": [
+            "robot1.analysis->auditor.audit",
+            "robot2.analysis->auditor.audit",
+            "robot1.analysis->orchestrator.pddl",
+            "robot2.analysis->orchestrator.pddl",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

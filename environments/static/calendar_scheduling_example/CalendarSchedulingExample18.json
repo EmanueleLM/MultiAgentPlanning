@@ -1,0 +1,106 @@
+{
+    "name": "CalendarSchedulingExample18",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "Brian",
+            "Billy",
+            "Patricia",
+            "auditor",
+            "orchestrator"
+        ],
+        "Brian": {
+            "private_information": [
+                "I have no meetings the whole day (9:00 to 17:00) on Monday."
+            ],
+            "goal": "Identify all 30-minute available slots for the meeting."
+        },
+        "Billy": {
+            "private_information": [
+                "Busy on Monday during 10:00 to 10:30, 11:30 to 12:00, 14:00 to 14:30, 16:30 to 17:00.",
+                "I prefer to avoid meetings after 15:30."
+            ],
+            "goal": "Identify all 30-minute available slots and note preference compliance for the meeting."
+        },
+        "Patricia": {
+            "private_information": [
+                "Busy on Monday during 9:00 to 12:30, 13:30 to 14:00, 14:30 to 16:00, 16:30 to 17:00."
+            ],
+            "goal": "Identify all 30-minute available slots for the meeting."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Verify the consistency of schedules provided by Brian, Billy, and Patricia, and aggregate availability data."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a mutually available 30-minute slot between 9:00 and 17:00 on Monday, prioritizing Billy's preferences, and present the solution as a PDDL plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The meeting must be scheduled on Monday.",
+            "The time window is 9:00 to 17:00.",
+            "The meeting duration is 30 minutes (0.5 hours)."
+        ]
+    },
+    "workflow": {
+        "Brian": {
+            "analysis": {
+                "input": [],
+                "output": "brian_data",
+                "system_prompt": "You are an expert in calendar scheduling and time management. You must strictly output a JSON object detailing your findings enclosed within <schedule_data> tags. The JSON must contain the keys 'available_slots' (a list of [start_time_str, end_time_str] pairs representing 30-minute intervals) and 'preferences' (a list of preference objects). If you have no preferences, the list should be empty.",
+                "prompt": "Your name is Brian. You are analyzing your schedule to find available 30-minute slots between 9:00 and 17:00 based on the following overall constraints:\n{environment->public_information}\nYour schedule information is:\n{agents->Brian->private_information}\nIdentify and list all available 30-minute slots in JSON format."
+            }
+        },
+        "Billy": {
+            "analysis": {
+                "input": [],
+                "output": "billy_data",
+                "system_prompt": "You are an expert in calendar scheduling and time management. You must strictly output a JSON object detailing your findings enclosed within <schedule_data> tags. The JSON must contain the keys 'available_slots' (a list of [start_time_str, end_time_str] pairs representing 30-minute intervals) and 'preferences' (a list of preference objects, describing preferred or avoided times).",
+                "prompt": "Your name is Billy. You are analyzing your schedule to find available 30-minute slots between 9:00 and 17:00 based on the following overall constraints:\n{environment->public_information}\nYour schedule information and preferences are:\n{agents->Billy->private_information}\nIdentify and list all available 30-minute slots, and explicitly list your preference constraint regarding avoiding meetings after 15:30 in JSON format."
+            }
+        },
+        "Patricia": {
+            "analysis": {
+                "input": [],
+                "output": "patricia_data",
+                "system_prompt": "You are an expert in calendar scheduling and time management. You must strictly output a JSON object detailing your findings enclosed within <schedule_data> tags. The JSON must contain the keys 'available_slots' (a list of [start_time_str, end_time_str] pairs representing 30-minute intervals) and 'preferences' (a list of preference objects). If you have no preferences, the list should be empty.",
+                "prompt": "Your name is Patricia. You are analyzing your schedule to find available 30-minute slots between 9:00 and 17:00 based on the following overall constraints:\n{environment->public_information}\nYour schedule information is:\n{agents->Patricia->private_information}\nIdentify and list all available 30-minute slots in JSON format."
+            }
+        },
+        "auditor": {
+            "audit_schedules": {
+                "input": [
+                    "brian_data",
+                    "billy_data",
+                    "patricia_data"
+                ],
+                "output": "verified_data",
+                "system_prompt": "You are an Auditor specialized in temporal consistency checking and multi-agent data aggregation. Your primary task is to receive schedule data from three participants, verify that the reported 30-minute slots are temporally consistent and fall within the 9:00-17:00 window, identify the set of mutually available slots, and aggregate all preference constraints. You must output the aggregated, verified availability data and preference constraints in JSON format enclosed within <verified_schedule> tags.",
+                "prompt": "You have received the analyzed schedules from Brian, Billy, and Patricia. Check for consistency, determine the intersection of available 30-minute slots, and consolidate the preference information (especially Billy's constraint).\nBrian's Data:\n{brian_data}\nBilly's Data:\n{billy_data}\nPatricia's Data:\n{patricia_data}\nOutput the combined schedule and constraints suitable for PDDL conversion."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "verified_data"
+                ],
+                "output": "pddl_final_schedule",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) specialized in temporal scheduling and optimizing resource allocation subject to preferences. You must convert the provided verified schedule data into a single PDDL Domain and PDDL Problem file to find the optimal 30-minute slot that is mutually available and respects the stated preferences, minimizing preference violation costs. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the verified and aggregated schedule data:\n{verified_data}\nGenerate a PDDL domain and problem that models the time slots as objects and the goal as selecting one available slot, penalized if it violates Billy's preference (after 15:30). Ensure the PDDL domain and problem target the FastDownwards optimal planner."
+            }
+        },
+        "constraints": [
+            "Brian.analysis->auditor.audit_schedules",
+            "Billy.analysis->auditor.audit_schedules",
+            "Patricia.analysis->auditor.audit_schedules",
+            "auditor.audit_schedules->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample14",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "DurationPlanner",
+            "RoutePlanner",
+            "AuditorAgent",
+            "orchestrator"
+        ],
+        "DurationPlanner": {
+            "private_information": [
+                "Total trip duration must be 10 days.",
+                "Lyon requires 7 days.",
+                "Krakow requires 3 days (mandatory Days 8-10).",
+                "Frankfurt requires 2 days."
+            ],
+            "goal": "Determine the precise daily schedule (10 days total) for visiting Lyon, Krakow, and Frankfurt, prioritizing required durations and the temporal constraint on Krakow (Days 8-10)."
+        },
+        "RoutePlanner": {
+            "private_information": [
+                "Direct flights exist between Lyon and Frankfurt.",
+                "Direct flights exist between Frankfurt and Krakow.",
+                "No direct flights between Lyon and Krakow."
+            ],
+            "goal": "Determine a feasible sequence of city visits utilizing only direct flights."
+        },
+        "AuditorAgent": {
+            "private_information": [
+                "The total allocated time must not exceed 10 days.",
+                "All planned city visits must be reachable via direct flights in sequence.",
+                "The initial duration requests (7+3+2=12) exceed the limit (10). A consistent resolution is required."
+            ],
+            "goal": "Verify that the proposed schedules and routes are mutually consistent and adhere to the 10-day maximum duration constraint. If necessary, suggest modifications to resolve conflicts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a final, integrated PDDL plan that schedules the 10-day trip, respecting durations, temporal constraints, and flight connectivity."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10,
+            "cities": [
+                "Lyon",
+                "Krakow",
+                "Frankfurt"
+            ]
+        },
+        "public_information": [
+            "The trip must last exactly 10 days.",
+            "Required stays: Lyon (7 days), Krakow (3 days), Frankfurt (2 days). Note: Total requested days (12) exceeds limit (10).",
+            "Krakow attendance is mandatory from Day 8 to Day 10.",
+            "Direct flights: Lyon <-> Frankfurt, Frankfurt <-> Krakow."
+        ]
+    },
+    "workflow": {
+        "DurationPlanner": {
+            "planner_draft": {
+                "input": [],
+                "output": "draft_schedule",
+                "system_prompt": "You are an expert scheduler focused on temporal and resource allocation constraints. Your output must be a precise daily itinerary enclosed within <schedule></schedule> tags.",
+                "prompt": "Your task is to create a 10-day trip schedule for visiting Lyon (7 days), Krakow (3 days, mandatory Days 8-10), and Frankfurt (2 days). Since 7+3+2=12 days are requested but only 10 are allowed, you must determine which city visit duration must be reduced, while respecting the 10-day limit and the mandatory Krakow dates (Days 8-10). Draft the schedule from Day 1 to Day 10.\n\nPublic Information: {environment->public_information}\nPrivate Knowledge: {agents->DurationPlanner->private_information}\nGoal: {agents->DurationPlanner->goal}\n\nEnclose the full 10-day schedule (e.g., Day 1: City X, Day 2: City Y...) between <schedule></schedule> tags."
+            }
+        },
+        "RoutePlanner": {
+            "route_draft": {
+                "input": [],
+                "output": "draft_route",
+                "system_prompt": "You are an expert route finder focused on spatial connectivity constraints. Your output must be a sequence of city visits and the flights taken, enclosed within <route></route> tags.",
+                "prompt": "Your task is to determine a sequence of city visits (Lyon, Krakow, Frankfurt) ensuring movement between cities only uses direct flights. State the initial city, subsequent cities, and the flights required. The sequence must allow for all necessary transitions.\n\nPublic Information: {environment->public_information}\nPrivate Knowledge: {agents->RoutePlanner->private_information}\nGoal: {agents->RoutePlanner->goal}\n\nEnclose the feasible sequence of cities and flights between <route></route> tags."
+            }
+        },
+        "AuditorAgent": {
+            "consistency_check": {
+                "input": [
+                    "draft_schedule",
+                    "draft_route"
+                ],
+                "output": "audited_plan",
+                "system_prompt": "You are a Constraint Auditor. You receive a proposed travel schedule and a proposed travel route. Your primary function is to verify consistency, especially ensuring that travel only occurs between cities listed in the route plan, and that the schedule allows for travel time (assume travel takes 1 day of transition). Importantly, verify the 10-day total limit vs requested durations (12 days). Your output must be a single, conflict-free, reconciled travel plan (start location, sequence of cities, and final day allocation) enclosed within <reconciled_plan></reconciled_plan> tags.",
+                "prompt": "You have received the following scheduling draft:\n{draft_schedule}\n\nAnd the following route draft:\n{draft_route}\n\nAnalyze these inputs based on the constraints:\n1. Total duration must be 10 days.\n2. Krakow must include Days 8, 9, 10.\n3. Travel must use direct flights (L-F, F-K).\n\nReconcile any conflicts, especially the duration conflict (12 days requested vs 10 days available). Provide the definitive 10-day itinerary sequence and duration allocation.\n\nGoal: {agents->AuditorAgent->goal}\n\nEnclose the final, verified, and reconciled 10-day travel plan between <reconciled_plan></reconciled_plan> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl_integration": {
+                "input": [
+                    "audited_plan"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in generating unified PDDL (Planning Domain Definition Language) solutions based on complex temporal and location constraints, optimized for the FastDownwards solver. You must translate the provided reconciled travel plan into a PDDL domain and problem file. The plan must span 10 time steps (days) and accurately model travel actions between cities (locations) using direct flight constraints.",
+                "prompt": "You have received the final, reconciled travel plan:\n{audited_plan}\n\nYour task is to translate this plan into a single PDDL domain and a single PDDL problem file that achieves the goal of completing the 10-day trip according to the defined schedule and routes.\n\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task. Ensure you model time steps (Days 1 to 10) and locations (Cities). \n\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "DurationPlanner.planner_draft->AuditorAgent.consistency_check",
+            "RoutePlanner.route_draft->AuditorAgent.consistency_check",
+            "AuditorAgent.consistency_check->orchestrator.pddl_integration"
+        ]
+    }
+}

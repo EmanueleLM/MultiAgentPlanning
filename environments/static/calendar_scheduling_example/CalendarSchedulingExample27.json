@@ -1,0 +1,109 @@
+{
+    "name": "CalendarSchedulingExample27",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "Jesse",
+            "Kathryn",
+            "Megan",
+            "Auditor",
+            "orchestrator"
+        ],
+        "Jesse": {
+            "private_information": [
+                "I am busy on Monday during 10:00 to 10:30 and 15:30 to 16:00."
+            ],
+            "goal": "Calculate all 30-minute free blocks on Monday between 9:00 and 17:00."
+        },
+        "Kathryn": {
+            "private_information": [
+                "My calendar is wide open the entire day (9:00 to 17:00)."
+            ],
+            "goal": "Calculate all 30-minute free blocks on Monday between 9:00 and 17:00."
+        },
+        "Megan": {
+            "private_information": [
+                "I am busy on Monday during 10:30 to 11:00, 11:30 to 12:30, 13:30 to 14:30, and 15:00 to 16:30."
+            ],
+            "goal": "Calculate all 30-minute free blocks on Monday between 9:00 and 17:00."
+        },
+        "Auditor": {
+            "private_information": [],
+            "goal": "Audit the calculated availability lists for temporal consistency (e.g., overlaps, duration adherence) and prepare the final combined schedule input for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [
+                "The group would like to meet at their earliest availability."
+            ],
+            "goal": "Find the earliest 30-minute time slot on Monday that works for all participants (Jesse, Kathryn, Megan) between 9:00 and 17:00."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "start_time": "9:00",
+            "end_time": "17:00",
+            "meeting_duration": "30 minutes"
+        },
+        "public_information": [
+            "A meeting must be scheduled for Jesse, Kathryn, and Megan.",
+            "The meeting must be 30 minutes long.",
+            "The meeting must occur on Monday between 9:00 and 17:00."
+        ]
+    },
+    "workflow": {
+        "Jesse": {
+            "reasoning": {
+                "input": [],
+                "output": "jesse_slots",
+                "system_prompt": "You are a planning assistant specializing in temporal scheduling. Your output must be a structured list of available intervals, calculated based on the constraints provided.",
+                "prompt": "Based on the environment constraints and your private information, calculate all continuous 30-minute time slots you are available on Monday between {environment->init->start_time} and {environment->init->end_time}. Your private constraint is: {agents->Jesse->private_information}. List your available slots using time format HH:MM."
+            }
+        },
+        "Kathryn": {
+            "reasoning": {
+                "input": [],
+                "output": "kathryn_slots",
+                "system_prompt": "You are a planning assistant specializing in temporal scheduling. Your output must be a structured list of available intervals, calculated based on the constraints provided.",
+                "prompt": "Based on the environment constraints and your private information, calculate all continuous 30-minute time slots you are available on Monday between {environment->init->start_time} and {environment->init->end_time}. Your private constraint is: {agents->Kathryn->private_information}. List your available slots using time format HH:MM."
+            }
+        },
+        "Megan": {
+            "reasoning": {
+                "input": [],
+                "output": "megan_slots",
+                "system_prompt": "You are a planning assistant specializing in temporal scheduling. Your output must be a structured list of available intervals, calculated based on the constraints provided.",
+                "prompt": "Based on the environment constraints and your private information, calculate all continuous 30-minute time slots you are available on Monday between {environment->init->start_time} and {environment->init->end_time}. Your private constraint is: {agents->Megan->private_information}. List your available slots using time format HH:MM."
+            }
+        },
+        "Auditor": {
+            "audit": {
+                "input": [
+                    "jesse_slots",
+                    "kathryn_slots",
+                    "megan_slots"
+                ],
+                "output": "audited_combined_slots",
+                "system_prompt": "You are an expert auditor specializing in temporal and causal consistency checks. You must verify that the input time slot lists adhere to the meeting duration requirement (30 minutes) and the overall boundary (9:00 to 17:00). You must also combine these lists to find the intersection of available time slots for all agents.",
+                "prompt": "You received the calculated availability slots from Jesse: {jesse_slots}, Kathryn: {kathryn_slots}, and Megan: {megan_slots}. Your task is to perform a consistency audit. Verify that all slots are valid 30-minute intervals within the 9:00-17:00 window. Then, calculate the intersection of all three availability lists, representing the mutually available 30-minute slots. Output the final, consistent, intersecting list of available slots."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "audited_combined_slots"
+                ],
+                "output": "pddl_final_schedule",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) specialized in temporal planning. You must integrate the common availability slots into a PDDL problem designed to find the earliest valid meeting time. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the audited and combined available slots for the meeting: {audited_combined_slots}. The goal is to schedule a 30-minute meeting at the earliest possible time slot within this combined availability. Define a PDDL domain and problem where the action is 'schedule_meeting' and the goal condition is finding the earliest starting time T such that T and T+30 minutes are within an available slot. Use the available slots provided as initial facts, prioritizing the earliest time slot. Think step by step and and provide a PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Jesse.reasoning->Auditor.audit",
+            "Kathryn.reasoning->Auditor.audit",
+            "Megan.reasoning->Auditor.audit",
+            "Auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

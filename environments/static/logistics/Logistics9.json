@@ -1,0 +1,95 @@
+{
+    "name": "Logistics9",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TruckPlanner",
+            "AirplanePlanner",
+            "CausalAuditor",
+            "orchestrator"
+        ],
+        "TruckPlanner": {
+            "private_information": [
+                "I specialize in defining and optimizing local truck routes and package handling within individual cities."
+            ],
+            "goal": "Define the PDDL domain and problem focusing solely on intra-city logistics: truck movement, and package loading/unloading from trucks, ensuring all required objects for the initial state are defined."
+        },
+        "AirplanePlanner": {
+            "private_information": [
+                "I specialize in defining and optimizing inter-city flights and package handling at airports."
+            ],
+            "goal": "Define the PDDL domain and problem focusing solely on inter-city logistics: airplane movement, and package loading/unloading from airplanes, ensuring all required objects for the initial state are defined."
+        },
+        "CausalAuditor": {
+            "private_information": [
+                "My role is to ensure that all shared objects (packages, locations) and interconnected actions are defined consistently and without conflicting assumptions across the specialized planning files."
+            ],
+            "goal": "Synthesize a consistent, combined PDDL domain and problem structure from the individual logistics planners, resolving any ambiguities regarding shared resources (locations, packages, initial state definitions), ready for final orchestration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Generate the final, integrated PDDL plan targeting the FastDownwards solver to achieve the global package delivery goal: package_0 at location_0_1 and package_1 at location_1_0."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "The logistics system involves trucks (intra-city) and airplanes (inter-city) transporting packages.",
+            "Locations are grouped into cities. Each city has exactly one truck and one airport location.",
+            "Initial State:",
+            "  - Cities: city_0, city_1.",
+            "  - Locations: location_0_0 (airport, city_0), location_0_1 (city_0), location_1_0 (airport, city_1), location_1_1 (city_1).",
+            "  - Vehicles: truck_0 (city_0, at location_0_0), truck_1 (city_1, at location_1_0), airplane_0 (at location_1_0), airplane_1 (at location_0_0).",
+            "  - Packages: package_0 (at location_0_0), package_1 (at location_1_1).",
+            "Goal: package_0 must be at location_0_1 and package_1 must be at location_1_0."
+        ]
+    },
+    "workflow": {
+        "TruckPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is TruckPlanner. Focus only on defining the domain elements and initial state facts related to trucks, local locations, and the actions: Load a package into a truck, Unload a package from a truck, and Drive a truck. The global goal is detailed in the public information. Use the available public information:\n{environment->public_information}\nYour private focus:\n{agents->TruckPlanner->private_information}\nProvide a PDDL domain and a PDDL problem file reflecting these constraints.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "AirplanePlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_airplane",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is AirplanePlanner. Focus only on defining the domain elements and initial state facts related to airplanes, airport locations, cities, and the actions: Load a package into an airplane, Unload a package from an airplane, and Fly an airplane. The global goal is detailed in the public information. Use the available public information:\n{environment->public_information}\nYour private focus:\n{agents->AirplanePlanner->private_information}\nProvide a PDDL domain and a PDDL problem file reflecting these constraints.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "CausalAuditor": {
+            "pddl": {
+                "input": [
+                    "pddl_truck",
+                    "pddl_airplane"
+                ],
+                "output": "pddl_merged_fragments",
+                "system_prompt": "You are an expert in integrating partial PDDL definitions, focusing on temporal and causal consistency, and ensuring shared object definitions are unique and accurate.",
+                "prompt": "You have received partial PDDL domains and problems focusing on local truck logistics and global airplane logistics, respectively:\nTruck Planner Output:\n{pddl_truck}\nAirplane Planner Output:\n{pddl_airplane}\nYour goal is to merge these fragments into a single, cohesive PDDL domain and problem file that covers all objects, locations, and initial states defined in the public information, resolving any potential naming conflicts or inconsistencies between predicates used for shared entities (like packages or locations). This merged file should be comprehensive but might lack the final goal integration logic, which is the orchestrator's job. Public information:\n{environment->public_information}\nThink step by step and provide the merged PDDL domain and PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_merged_fragments"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with integrated PDDL planning targeting the FastDownwards solver. You receive a fully consistent PDDL domain and initial problem state. Your task is to ensure the final goal condition is correctly set and provide the complete solution PDDL files.",
+                "prompt": "You have received the integrated and audited PDDL domain and problem definition:\n{pddl_merged_fragments}\nYour primary task is to ensure the final goal is met based on the public information:\nGoal: {agents->orchestrator->goal}\nGenerate the final PDDL domain and PDDL problem file necessary to solve the complete logistics task. Focus specifically on defining the final goal condition accurately.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "TruckPlanner.pddl->CausalAuditor.pddl",
+            "AirplanePlanner.pddl->CausalAuditor.pddl",
+            "CausalAuditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

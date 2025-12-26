@@ -1,0 +1,79 @@
+{
+    "name": "MeetingPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "scheduler": {
+            "private_information": [
+                "I specialize in optimizing travel schedules and minimizing idle time.",
+                "I must strictly adhere to the defined arrival and location constraints."
+            ],
+            "goal": "Calculate viable routes and time sequences to meet Betty for 75 minutes, starting at Presidio at 9:00 AM."
+        },
+        "auditor": {
+            "private_information": [
+                "I ensure all temporal and duration constraints are strictly met.",
+                "I look for inconsistencies or violations in the proposed schedule."
+            ],
+            "goal": "Verify the feasibility and consistency of the proposed schedule data against all hard constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a PDDL plan that maximizes friend meetings while satisfying all temporal and duration constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "9:00 AM",
+            "start_location": "Presidio",
+            "meeting_duration_min": 75
+        },
+        "public_information": [
+            "You arrive at Presidio at 9:00AM.",
+            "Betty will be at North Beach from 6:45PM (17:45 in minutes relative to 9:00 AM) to 10:00PM (600 minutes relative to 9:00 AM).",
+            "Meeting Betty requires a minimum duration of 75 minutes.",
+            "Travel distances (in minutes): Presidio to North Beach: 18.",
+            "Travel distances (in minutes): North Beach to Presidio: 17."
+        ]
+    },
+    "workflow": {
+        "scheduler": {
+            "schedule": {
+                "input": [],
+                "output": "schedule_data",
+                "system_prompt": "You are an expert scheduler focused on optimizing time usage and minimizing travel costs. Your output must be a detailed, structured analysis containing calculated feasible time points and duration requirements.",
+                "prompt": "Your name is scheduler. You are planning a day trip in San Francisco. Analyze the following public information:\n{environment->public_information}\nBased on your goal:\n{agents->scheduler->goal}\nCalculate the earliest and latest possible times you must arrive at North Beach and start the meeting with Betty to satisfy the 75-minute minimum meeting duration. Provide a step-by-step calculation and summary of feasible time windows, ensuring you respect the 6:45 PM (375 minutes past 9:00 AM) start availability and 10:00 PM (660 minutes past 9:00 AM) end availability."
+            }
+        },
+        "auditor": {
+            "verify": {
+                "input": [
+                    "schedule_data"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are a Temporal Constraint Auditor. Your sole job is to cross-reference scheduling calculations against strict temporal constraints, ensuring no violation occurs. You must identify any bookkeeping errors or constraint breaches, especially regarding the 75-minute minimum meeting time and Betty's availability window.",
+                "prompt": "Your name is auditor. You have received the following schedule data from the scheduler:\n{schedule_data}\nVerify that the proposed schedule ensures the 75-minute meeting with Betty occurs entirely within her availability window (6:45 PM to 10:00 PM). Check that all travel times (18 min P->NB, 17 min NB->P) and the 9:00 AM start time are respected. Produce a detailed report on consistency and feasibility, focusing on the hard constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_data",
+                    "consistency_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with Metric PDDL problems (Planning Domain Definition Language) designed for the FastDownwards planner. You must integrate scheduling information to optimize meeting time and location transitions. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. The goal is to maximize friend meetings (represented by optimizing time usage or maximizing a generic 'meetings' metric) while ensuring the specific constraints regarding Betty are met. You have analyzed the environment information and received the following analysis and audit:\nSchedule Data:\n{schedule_data}\nConsistency Report:\n{consistency_report}\n\nFormulate a single-agent PDDL domain and problem using metric functions suitable for the FastDownwards planner. The PDDL must model time progression, travel actions between Presidio and North Beach, and the meeting action with Betty, ensuring the meeting duration constraint (75 minutes) and Betty's time window (6:45 PM - 10:00 PM) are satisfied. Use minutes relative to the 9:00 AM start time for temporal representation (0 minutes). Explicitly define locations (Presidio, NorthBeach) and time points relevant to the constraints.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "scheduler.schedule->auditor.verify",
+            "auditor.verify->orchestrator.pddl"
+        ]
+    }
+}

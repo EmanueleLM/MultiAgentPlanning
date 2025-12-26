@@ -213,7 +213,7 @@ MODELS = {
     "gemini-2.5-flash": {
         "model": Gemini("gemini-2.5-flash-preview-09-2025"),
         "persistent": False,
-        "sleep": 10,
+        "sleep": 20,
     },
     "gemini-2.5-pro": {
         "model": Gemini("gemini-2.5-pro"),

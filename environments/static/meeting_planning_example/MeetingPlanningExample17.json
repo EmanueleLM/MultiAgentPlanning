@@ -1,0 +1,81 @@
+{
+    "name": "MeetingPlanningExample17",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "Scheduler_1",
+            "Auditor",
+            "orchestrator"
+        ],
+        "Scheduler_1": {
+            "private_information": [
+                "I prioritize maximizing meeting duration if feasible.",
+                "I must calculate all travel and constraint times precisely."
+            ],
+            "goal": "Generate a detailed and optimized schedule for meeting Matthew based on location and time constraints."
+        },
+        "Auditor": {
+            "private_information": [
+                "I must verify that the proposed schedule respects the minimum 15-minute meeting requirement.",
+                "I must verify that travel times are accurately calculated based on the stated distances."
+            ],
+            "goal": "Audit the proposed schedule for temporal consistency and constraint adherence."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited schedule into a complete, executable PDDL plan targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "9:00 AM",
+            "grid_size": 2,
+            "visibility": 2
+        },
+        "public_information": [
+            "You are visiting San Francisco. The goal is to meet Matthew.",
+            "Starting location: Alamo Square (A). Arrival time: 9:00 AM.",
+            "Target location: Sunset District (S).",
+            "Matthew's availability at S: 1:30 PM (13:30) to 2:30 PM (14:30).",
+            "Minimum meeting duration required: 15 minutes.",
+            "Travel time A to S: 16 minutes.",
+            "Travel time S to A: 17 minutes."
+        ]
+    },
+    "workflow": {
+        "Scheduler_1": {
+            "analysis": {
+                "input": [],
+                "output": "schedule_proposal",
+                "system_prompt": "You are a planning expert focused on optimal scheduling problems. You must generate a precise itinerary detailing arrival times, action timings, and departure times to meet the goal.",
+                "prompt": "Your name is Scheduler_1. You are tasked with generating the optimal schedule. Public information:\n{environment->public_information}\nYour private knowledge:\n{agents->Scheduler_1->private_information}\nGlobal Goal:\n{agents->Scheduler_1->goal}\n\nThink step by step and propose a single, detailed schedule that maximizes free time while satisfying all constraints, especially the 15-minute minimum meeting time within Matthew's availability window. Provide the final schedule as a structured list of steps and timings."
+            }
+        },
+        "Auditor": {
+            "audit": {
+                "input": [
+                    "schedule_proposal"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a logical verification engine. Your task is to audit the consistency and feasibility of a proposed schedule against known environmental constraints. Your final output must state whether the schedule is 'FEASIBLE' or 'INFEASIBLE' and provide clear reasons.",
+                "prompt": "Your name is Auditor. You must verify the proposed schedule based on the following environment rules:\n{environment->public_information}\nYour private knowledge:\n{agents->Auditor->private_information}\nProposed Schedule:\n{schedule_proposal}\n\nReview the proposed schedule step-by-step. Verify all temporal calculations, especially arrival/departure times relative to travel duration and Matthew's window (13:30-14:30). Ensure the meeting lasts at least 15 minutes. Provide a detailed report and conclude with the feasibility status."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_proposal",
+                    "audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) for temporal scheduling tasks, optimizing for execution on the FastDownwards solver. You must translate the validated plan into a PDDL domain and problem. The plan must incorporate time management using numeric fluents.",
+                "prompt": "You are the orchestrator. The goal is to produce the final PDDL plan based on the validated schedule. Global Goal:\n{agents->orchestrator->goal}\n\nPublic Constraints:\n{environment->public_information}\n\nSchedule Proposal:\n{schedule_proposal}\n\nAudit Report (confirming feasibility):\n{audit_report}\n\nIf the Audit Report confirms the plan is FEASIBLE, translate the steps into PDDL actions, ensuring the domain models locations, time, travel, and the meeting goal. If the plan is INFEASIBLE, explain why PDDL cannot be generated.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task. Ensure the domain is tailored for scheduling/temporal planning if necessary (e.g., using PDDL 2.1 features for metric minimization).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Scheduler_1.analysis->Auditor.audit",
+            "Auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

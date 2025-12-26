@@ -1,0 +1,78 @@
+{
+    "name": "MysteryBlocksworld13",
+    "author": "Expert Planner Generator",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner_agent",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [],
+            "goal": "Generate a PDDL domain and problem description that models the given actions, initial state, and goal state for the four objects (a, b, c, d)."
+        },
+        "auditor": {
+            "private_information": [
+                "Your role is to ensure the PDDL structure accurately reflects the problem description, avoiding inconsistencies or logical errors in preconditions and effects."
+            ],
+            "goal": "Audit the generated PDDL for temporal and causal consistency, and prepare findings for the Orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, validated PDDL domain and problem files required to solve the task."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment involves four abstract entities: objects a, b, c, and d.",
+            "Initial State: object b craves object d, object c craves object b, harmony is present, planet object a, planet object d, province object a, province object c.",
+            "Goal State: object a craves object c and object b craves object a.",
+            "Actions and Constraints:",
+            "Attack(X): Pre: Province(X), Planet(X), Harmony. Add: Pain(X). Del: Province(X), Planet(X), Harmony.",
+            "Succumb(X): Pre: Pain(X). Add: Province(X), Planet(X), Harmony. Del: Pain(X).",
+            "Overcome(X, Y): Pre: Province(Y), Pain(X). Add: Harmony, Province(X), Craves(X, Y). Del: Province(Y), Pain(X).",
+            "Feast(X, Y): Pre: Craves(X, Y), Province(X), Harmony. Add: Pain(X), Province(Y). Del: Craves(X, Y), Province(X), Harmony."
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "pddl_generation": {
+                "input": [],
+                "output": "pddl_planner",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your task is to generate PDDL files for a single-agent planning problem based on the following environment and constraints. Your goal is: {agents->planner_agent->goal}\n\nEnvironment Public Information:\n{environment->public_information}\n\nTranslate the provided actions and their restrictions into a valid PDDL domain and problem. Ensure the types, predicates (Province, Planet, Harmony, Pain, Craves), initial state, and goal state are correctly defined."
+            }
+        },
+        "auditor": {
+            "audit_review": {
+                "input": [
+                    "pddl_planner"
+                ],
+                "output": "pddl_audit_review",
+                "system_prompt": "You are a specialized auditor focused on planning problem formalizations. Your primary goal is to ensure temporal and causal consistency in PDDL structures. You must check that preconditions and effects are correctly mapped from the natural language description, and that no planning shortcuts (like unbounded resources or meta-actions) are present. Avoid using PDDL in your response; provide a structured review or critique.",
+                "prompt": "You have received the following PDDL draft from the planner agent:\n{pddl_planner}\n\nYour task is to review this PDDL against the original human specification (available in public information: {environment->public_information}). Pay close attention to the definition of predicates, action signatures (unary/binary), preconditions, and effects. Identify any inconsistencies or potential issues that would prevent a successful, realistic plan. Provide your review and suggested corrections."
+            }
+        },
+        "orchestrator": {
+            "pddl_finalization": {
+                "input": [
+                    "pddl_planner",
+                    "pddl_audit_review"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the final orchestrator. Your job is to take the initial PDDL plan and the auditor's review. You must produce a definitive, single PDDL domain and a single PDDL problem file ready for execution by the FastDownwards planner. If conflicts exist between the planner and the auditor, integrate the auditor's corrections if they improve consistency. Do not output any commentary or analysis, only the final PDDL files.",
+                "prompt": "The planner produced:\n{pddl_planner}\nThe auditor provided this review:\n{pddl_audit_review}\n\nUsing this information, generate the final, consolidated PDDL Domain and PDDL Problem files for the task: {agents->orchestrator->goal}\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_agent.pddl_generation->auditor.audit_review",
+            "planner_agent.pddl_generation->orchestrator.pddl_finalization",
+            "auditor.audit_review->orchestrator.pddl_finalization"
+        ]
+    }
+}

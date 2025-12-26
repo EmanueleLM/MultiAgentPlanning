@@ -1,0 +1,108 @@
+{
+    "name": "CalendarSchedulingExample16",
+    "author": "System",
+    "agents": {
+        "number": 5,
+        "names": [
+            "scott",
+            "gabriel",
+            "christine",
+            "auditor",
+            "orchestrator"
+        ],
+        "scott": {
+            "private_information": [
+                "Busy times on Monday: 9:30-10:30, 13:30-14:00, 14:30-15:00, 15:30-16:00, 16:30-17:00."
+            ],
+            "goal": "Determine all 30-minute slots available between 9:00 and 17:00 and report them in a structured JSON format."
+        },
+        "gabriel": {
+            "private_information": [
+                "Busy times on Monday: None."
+            ],
+            "goal": "Determine all 30-minute slots available between 9:00 and 17:00 and report them in a structured JSON format."
+        },
+        "christine": {
+            "private_information": [
+                "Busy times on Monday: 9:00-10:00, 10:30-12:30, 13:00-17:00."
+            ],
+            "goal": "Determine all 30-minute slots available between 9:00 and 17:00 and report them in a structured JSON format."
+        },
+        "auditor": {
+            "private_information": [
+                "Role: Ensure temporal/causal consistency of schedules and remove bookkeeping shortcuts."
+            ],
+            "goal": "Verify the collected availability data for consistency and format errors, then prepare a consolidated schedule report."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a common 30-minute slot for the meeting and output the solution using a PDDL plan targeting FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "meeting_duration_minutes": 30,
+            "work_hours_start": "9:00",
+            "work_hours_end": "17:00"
+        },
+        "public_information": [
+            "The required meeting duration is 30 minutes.",
+            "The meeting must take place on Monday between 9:00 and 17:00."
+        ]
+    },
+    "workflow": {
+        "scott": {
+            "availability_report": {
+                "input": [],
+                "output": "scott_availability",
+                "system_prompt": "You are Scott, an expert scheduler. You must analyze your busy periods against the constraints and provide a JSON list of all continuous 30-minute time slots you are available on Monday between 9:00 and 17:00. The format should be: [{\"start\": \"HH:MM\", \"end\": \"HH:MM\"}, ...]",
+                "prompt": "Your name is Scott. Meeting constraints are:\n{environment->public_information}\nYour schedule:\n{agents->scott->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "gabriel": {
+            "availability_report": {
+                "input": [],
+                "output": "gabriel_availability",
+                "system_prompt": "You are Gabriel, an expert scheduler. You must analyze your busy periods against the constraints and provide a JSON list of all continuous 30-minute time slots you are available on Monday between 9:00 and 17:00. The format should be: [{\"start\": \"HH:MM\", \"end\": \"HH:MM\"}, ...]",
+                "prompt": "Your name is Gabriel. Meeting constraints are:\n{environment->public_information}\nYour schedule:\n{agents->gabriel->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "christine": {
+            "availability_report": {
+                "input": [],
+                "output": "christine_availability",
+                "system_prompt": "You are Christine, an expert scheduler. You must analyze your busy periods against the constraints and provide a JSON list of all continuous 30-minute time slots you are available on Monday between 9:00 and 17:00. The format should be: [{\"start\": \"HH:MM\", \"end\": \"HH:MM\"}, ...]",
+                "prompt": "Your name is Christine. Meeting constraints are:\n{environment->public_information}\nYour schedule:\n{agents->christine->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "auditor": {
+            "consistency_check": {
+                "input": [
+                    "scott_availability",
+                    "gabriel_availability",
+                    "christine_availability"
+                ],
+                "output": "audited_availability",
+                "system_prompt": "You are an expert temporal consistency auditor. You must verify that all input availability reports adhere strictly to the 9:00-17:00 boundary and that all reported slots are exactly 30 minutes long. Merge the three lists into a single consolidated JSON object keyed by agent name, ensuring temporal validity. If there are inconsistencies, flag them, but assume minor formatting issues can be corrected.",
+                "prompt": "Your goal is: {agents->auditor->goal}\nHere are the availability reports:\nScott's availability:\n{scott_availability}\nGabriel's availability:\n{gabriel_availability}\nChristine's availability:\n{christine_availability}\nConsolidate and audit the data."
+            }
+        },
+        "orchestrator": {
+            "pddl_schedule_generation": {
+                "input": [
+                    "audited_availability"
+                ],
+                "output": "pddl_schedule_result",
+                "system_prompt": "You are an expert multi-agent scheduling PDDL planner targeting the FastDownwards solver. You must determine the first available common 30-minute time slot for all participants based on the input data. You must define a PDDL domain and a PDDL problem file. Always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "The goal is to solve: {agents->orchestrator->goal}\nThe audited and consolidated availability data is:\n{audited_availability}\nTranslate this into a PDDL problem to find the common time slot and generate the corresponding PDDL domain."
+            }
+        },
+        "constraints": [
+            "scott.availability_report->auditor.consistency_check",
+            "gabriel.availability_report->auditor.consistency_check",
+            "christine.availability_report->auditor.consistency_check",
+            "auditor.consistency_check->orchestrator.pddl_schedule_generation"
+        ]
+    }
+}

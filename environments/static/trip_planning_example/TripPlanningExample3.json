@@ -1,0 +1,75 @@
+{
+    "name": "TripPlanningExample3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "travel_planner",
+            "constraint_auditor",
+            "orchestrator"
+        ],
+        "travel_planner": {
+            "private_information": [],
+            "goal": "Determine a viable sequence of 3 cities and their respective durations, respecting flight connectivity, such that the total trip duration is 6 days, prioritizing mandatory constraints."
+        },
+        "constraint_auditor": {
+            "private_information": [],
+            "goal": "Audit the proposed trip plan against all hard temporal and connectivity constraints specified in the public information."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Finalize the travel itinerary and generate an executable PDDL domain and problem file for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Total trip duration must be 6 days (Day 1 to Day 6).",
+            "Cities to visit: Berlin, Warsaw, and Bucharest.",
+            "Travel must only use direct flights.",
+            "Mandatory stay duration for Bucharest: 2 days.",
+            "Desired stay duration for Berlin: 3 days.",
+            "Desired stay duration for Warsaw: 3 days.",
+            "A friend must be met in Bucharest between Day 5 and Day 6 (inclusive of those days).",
+            "Direct flight connectivity: Berlin <-> Warsaw, Warsaw <-> Bucharest. (Note: Berlin and Bucharest are not directly connected)."
+        ]
+    },
+    "workflow": {
+        "travel_planner": {
+            "planning": {
+                "input": [],
+                "output": "plan_proposal",
+                "system_prompt": "You are a travel planning expert. Your goal is to design a travel itinerary based on strict constraints, resolving internal conflicts by prioritizing mandatory requirements over desired durations. You must output a structured text report detailing the city sequence, durations, and day allocation.",
+                "prompt": "Your task is to plan a 6-day trip based on the following public constraints:\n{environment->public_information}\nNote the conflict: the sum of desired durations (3+3+2=8) exceeds the total allowed trip duration (6 days). Bucharest (2 days) is mandatory. You must decide how to cut days from Berlin (3 desired) and Warsaw (3 desired) to meet the 6-day limit, while also ensuring the 'meet friend' temporal constraint in Bucharest is satisfied.\n\nProvide the final sequence of cities, the duration for each city, and the specific day range (Day X to Day Y) for each city visit. Focus on minimizing the deviation from desired durations while respecting all hard limits (6 days total, 2 days Bucharest, flight connectivity, friend meeting time)."
+            }
+        },
+        "constraint_auditor": {
+            "validation": {
+                "input": [
+                    "plan_proposal"
+                ],
+                "output": "validation_report",
+                "system_prompt": "You are a Constraint Auditor. Your sole job is to rigorously check a proposed plan against all defined temporal and connectivity constraints. You must identify any inconsistency or violation.",
+                "prompt": "You have received the following plan proposal from the travel_planner:\n{plan_proposal}\n\nReview the plan strictly against all public constraints:\n1. Total trip duration (must be 6 days).\n2. Bucharest duration (must be 2 days).\n3. Flight connectivity (cities must be connected by direct flights in sequence).\n4. Friend meeting constraint (must occur in Bucharest on Day 5 or Day 6).\n\nProvide a detailed validation report. If the plan is valid, state 'Validation successful. The plan adheres to all constraints.' If there are errors, describe precisely which constraint is violated and suggest a minimal correction."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_proposal",
+                    "validation_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specialized in generating optimal sequential plans using temporal or discrete time representations. You always provide a PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received a travel plan proposal and a validation report. Use the confirmed details to generate a PDDL plan.\nPlan Proposal:\n{plan_proposal}\n\nValidation Report:\n{validation_report}\n\nAssuming the validation report confirms feasibility, create a PDDL domain and problem where the states track the current day (1 through 6) and the agent's location (Berlin, Warsaw, Bucharest).\n\nThe goal is to visit all three cities for the determined number of days, and specifically ensure that the 'meet_friend' action (which can only occur in Bucharest) happens on Day 5 or Day 6. Use actions like (stay_in_city) to advance the day counter and (fly_to_city) to change location.\n\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "travel_planner.planning->constraint_auditor.validation",
+            "constraint_auditor.validation->orchestrator.pddl"
+        ]
+    }
+}

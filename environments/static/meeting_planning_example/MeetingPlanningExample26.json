@@ -1,0 +1,74 @@
+{
+    "name": "MeetingPlanningExample26",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I am the person visiting San Francisco for the day."
+            ],
+            "goal": "Meet as many friends as possible, optimizing the schedule given temporal and travel constraints."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Verify the temporal and causal consistency of the planning proposal, ensuring all constraints (arrival time, duration, location availability) are met."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, optimized PDDL solution for meeting friends while satisfying all temporal and travel constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 2,
+            "visibility": 1
+        },
+        "public_information": [
+            "The traveler arrives at Richmond District at 9:00 AM.",
+            "Sarah will be at Presidio from 1:15 PM to 3:15 PM.",
+            "The traveler must meet Sarah for a minimum of 105 minutes.",
+            "Travel distances (in minutes): Richmond District <-> Presidio is 7 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "planner": {
+                "input": [],
+                "output": "pddl_traveler",
+                "system_prompt": "You are an expert with PDDL problems, especially temporal planning (PDDL 2.1 or similar extensions if needed to handle durations and metric optimization). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is traveler. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->traveler->private_information}\nThis is your goal:\n{agents->traveler->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file to define the scheduling task, ensuring that the hard constraint (meeting Sarah for 105 minutes within her time window) is satisfied, while attempting to optimize for meeting maximum friends (though only Sarah is defined currently, structure your PDDL for future expansion).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "verifier": {
+                "input": [
+                    "pddl_traveler"
+                ],
+                "output": "verification_feedback",
+                "system_prompt": "You are a planning auditor specializing in temporal constraints and feasibility checks. You receive a PDDL plan proposal and verify if the hard temporal constraints of the environment are met. You do not generate PDDL domain or problem files. Instead, you provide a clear text report enclosed in <audit_report></audit_report> tags.",
+                "prompt": "Your name is auditor. You need to verify the feasibility of the plan proposed by the traveler based on the constraints:\n- Traveler arrives at 9:00 AM at Richmond.\n- Sarah is available at Presidio from 1:15 PM to 3:15 PM.\n- Minimum meeting duration with Sarah is 105 minutes.\n- Travel time Richmond <-> Presidio is 7 minutes.\n\nHere is the PDDL output from the traveler:\n{pddl_traveler}\n\nAnalyze the plan: Can the traveler meet Sarah for 105 minutes within her availability window [1:15 PM, 3:15 PM], considering the 7-minute travel time? Provide a detailed verification report, including specific time calculations (e.g., earliest start time, latest end time), and mention any inconsistencies or potential issues found in the PDDL plan. Enclose your findings in <audit_report></audit_report> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_traveler",
+                    "verification_feedback"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator specializing in optimizing and finalizing planning problems for the FastDownwards planner. You integrate initial plans and auditing feedback to produce a single, coherent, and optimized PDDL solution (domain and problem files). You ensure the final PDDL adheres strictly to the confirmed constraints and goals, using recognized PDDL extensions (like temporal PDDL 2.1) if necessary for scheduling tasks. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "The traveler proposed a plan, and the auditor provided feedback regarding its temporal feasibility.\n\nTraveler's PDDL proposal:\n{pddl_traveler}\n\nAuditor's Verification Feedback:\n{verification_feedback}\n\nYour task is to finalize the PDDL domain and problem to achieve the goal:\n{agents->orchestrator->goal}\nEnsure the solution is robust, incorporates all confirmed constraints, and is ready for execution by FastDownwards. If the auditor confirmed the feasibility of the required 105-minute meeting, embed that schedule accurately into the final problem definition. Provide the integrated PDDL domain and problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.planner->auditor.verifier",
+            "traveler.planner->orchestrator.pddl",
+            "auditor.verifier->orchestrator.pddl"
+        ]
+    }
+}

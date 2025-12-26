@@ -1,0 +1,83 @@
+{
+    "name": "TripPlanningExample18",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "PathPlanner",
+            "TimeAllocator",
+            "orchestrator"
+        ],
+        "PathPlanner": {
+            "private_information": [
+                "I focus only on geographic constraints and connectivity.",
+                "The cities are Amsterdam, Vilnius, and Bucharest.",
+                "Direct flights exist: Amsterdam <-> Bucharest, Vilnius <-> Amsterdam."
+            ],
+            "goal": "Determine a valid sequence of cities to visit using only direct flights."
+        },
+        "TimeAllocator": {
+            "private_information": [
+                "I focus on temporal constraints and resource allocation (days).",
+                "Desired stays: Amsterdam (5 days), Vilnius (2 days), Bucharest (6 days). (Total 13 days).",
+                "Total trip duration constraint: 11 days.",
+                "Meeting constraint: Must be in Bucharest at some point between Day 6 and Day 11."
+            ],
+            "goal": "Allocate time slots for travel and stays such that the total trip duration is 11 days, respecting the required stays as closely as possible, and ensuring temporal consistency."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the path and time plans into a cohesive 11-day itinerary, represented by a single PDDL plan targeting the FastDownwards solver, ensuring all constraints (path, duration, meeting) are met."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "Amsterdam",
+                "Vilnius",
+                "Bucharest"
+            ],
+            "total_duration_days": 11,
+            "flight_connections": "Amsterdam-Bucharest (direct), Vilnius-Amsterdam (direct)"
+        },
+        "public_information": [
+            "The trip must last 11 days in total.",
+            "The planned stays are: Amsterdam (5 days), Vilnius (2 days), Bucharest (6 days). Note: These desired stays sum up to 13 days, which exceeds the total trip duration and requires adjustment.",
+            "Travel between cities must use direct flights only.",
+            "There is a friend meeting requirement in Bucharest between Day 6 and Day 11."
+        ]
+    },
+    "workflow": {
+        "PathPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_path",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is PathPlanner. You are responsible for modeling the geographical constraints of the trip. The public information is:\n{environment->public_information}\nYou have the following knowledge:\n{agents->PathPlanner->private_information}\nThis is the goal:\n{agents->PathPlanner->goal}\nFocus only on defining the cities, connections, and finding a sequence that allows visiting all three cities using only direct flights.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "TimeAllocator": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_time",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specialized in temporal planning and consistency checking. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is TimeAllocator. You are responsible for ensuring temporal consistency and allocating days for the trip. The public information is:\n{environment->public_information}\nYou have the following knowledge:\n{agents->TimeAllocator->private_information}\nThis is the goal:\n{agents->TimeAllocator->goal}\nModel the 11-day duration constraint, the minimum/desired stay requirements (5, 2, 6 days), and the meeting constraint in Bucharest (Day 6-11). Given the conflict (13 days desired vs 11 days total), your PDDL must prioritize respecting the 11-day total duration constraint while achieving the core goal of visiting all cities and meeting the friends.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_path",
+                    "pddl_time"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) and integration. You always provide a unified PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You need to integrate the PDDL inputs from the PathPlanner (focusing on connectivity) and the TimeAllocator (focusing on duration and temporal constraints) to create a single, unified plan for the entire 11-day trip.\nThis plan must determine the sequence of cities, the exact allocation of days for travel and stays, and fulfill the meeting constraint in Bucharest (Day 6-11).\nHere's the path planning input:\n{pddl_path}\nHere's the time allocation input:\n{pddl_time}\nYour global goal is:\n{agents->orchestrator->goal}\nIdentify any missing connections or inconsistencies between the two inputs and generate the definitive, consistent plan.\nThink step by step and provide a unified PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "PathPlanner.pddl->orchestrator.pddl",
+            "TimeAllocator.pddl->orchestrator.pddl"
+        ]
+    }
+}

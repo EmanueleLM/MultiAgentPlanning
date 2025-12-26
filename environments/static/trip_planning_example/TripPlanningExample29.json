@@ -1,0 +1,107 @@
+{
+    "name": "TripPlanningExample29",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "flight_planner",
+            "duration_manager",
+            "constraint_auditor",
+            "orchestrator"
+        ],
+        "flight_planner": {
+            "private_information": [
+                "The cities involved are Krakow (K), Dubrovnik (D), and Frankfurt (F).",
+                "Direct flights exist between Frankfurt and Krakow.",
+                "Direct flights exist between Dubrovnik and Frankfurt."
+            ],
+            "goal": "Model the locations and connectivity constraints required for movement in the PDDL domain."
+        },
+        "duration_manager": {
+            "private_information": [
+                "The total trip length must be 10 days (Day 1 to Day 10).",
+                "Requested stays are: 2 days in K, 7 days in D, 3 days in F (Total 12 days requested).",
+                "Presence in Krakow is required between Day 9 and Day 10 for a wedding."
+            ],
+            "goal": "Model the time slots, duration variables, and temporal constraints in the PDDL domain and initial state."
+        },
+        "constraint_auditor": {
+            "private_information": [
+                "I must check that the required stays (12 days) can fit within the total available time (10 days) while respecting the movement constraints."
+            ],
+            "goal": "Analyze the proposed connectivity and temporal constraints, identifying inconsistencies or necessary compromises to achieve a solvable 10-day trip plan."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all information to produce a coherent 10-day trip schedule that maximizes requested duration while respecting connectivity and the wedding deadline, and generate the final comprehensive PDDL plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "Krakow",
+                "Dubrovnik",
+                "Frankfurt"
+            ],
+            "total_trip_days": 10,
+            "flight_connections": [
+                "Frankfurt-Krakow",
+                "Dubrovnik-Frankfurt"
+            ]
+        },
+        "public_information": [
+            "A 10-day trip must be planned.",
+            "Only direct flights can be used for commuting.",
+            "Requested stays are 2 days (Krakow), 7 days (Dubrovnik), and 3 days (Frankfurt). The sum of requested stays is 12 days, exceeding the 10-day limit.",
+            "The wedding in Krakow is scheduled for the period between Day 9 and Day 10 (inclusive)."
+        ]
+    },
+    "workflow": {
+        "flight_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flights",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is flight_planner. Your goal is to model the locations and connectivity constraints for a trip involving Krakow (K), Dubrovnik (D), and Frankfurt (F). Define objects for locations and predicates for connectivity based on direct flights only:\n{agents->flight_planner->private_information}\nThink step by step and provide a PDDL domain defining the locations and transitions, and an associated PDDL problem file defining the initial state of connectivity.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "duration_manager": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_duration",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in temporal planning and metric domains. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is duration_manager. Your goal is to model the temporal requirements for a 10-day trip. Define predicates and numeric fluents to track time spent in each city and the current day. Incorporate the following constraints:\n{agents->duration_manager->private_information}\nThe trip starts on Day 1. Ensure the goal condition enforces the total trip duration limit of 10 days and satisfies the Day 9-10 Krakow requirement, while attempting to maximize the stays requested.\nThink step by step and provide a PDDL domain defining temporal concepts and an associated PDDL problem file defining the initial state of time tracking and target durations.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraint_auditor": {
+            "analysis": {
+                "input": [
+                    "pddl_flights",
+                    "pddl_duration"
+                ],
+                "output": "pddl_audit",
+                "system_prompt": "You are a professional constraint auditor and PDDL integration expert. You analyze separate PDDL definitions to find conflicts, redundancies, or missing links necessary to solve a combined problem. Your output must clearly state the observed conflicts and propose necessary modifications to integrate the domains.",
+                "prompt": "You are auditing two preliminary PDDL models for a 10-day trip plan. The goal is:\n{agents->constraint_auditor->goal}\nHere is the connectivity model:\n{pddl_flights}\nHere is the temporal model:\n{pddl_duration}\nAnalyze these models focusing on the requirement conflict: 12 requested days (7D+3F+2K) vs 10 available days. Given that the total trip must be 10 days (Day 1 to 10), and the agent must be in Krakow on Day 9 and 10, how does this affect the allocation? Write down your analysis and identify the necessary compromises in the durations (Dubrovnik, Frankfurt) to make the plan feasible while ensuring the Krakow constraint (K 9-10) is met. Propose integrated predicates/fluents for the orchestrator to use.\nOutput your analysis and proposed integrated components/adjustments, focusing solely on textual response, NOT PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_flights",
+                    "pddl_duration",
+                    "pddl_audit"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) specialized in integrating separate domain specifications into a comprehensive model targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You must integrate the connectivity, temporal constraints, and audit findings to generate a complete 10-day trip plan PDDL. The task is:\n{agents->orchestrator->goal}\nUse the following inputs:\nConnectivity Model:\n{pddl_flights}\nTemporal Model:\n{pddl_duration}\nAudit Findings (crucial for conflict resolution):\n{pddl_audit}\n\nKey Constraints:\n1. Total duration: 10 days (Day 1 to 10).\n2. Krakow stay on Day 9 and Day 10 is mandatory (2 days).\n3. Movement only via direct flights (Frankfurt<->Krakow, Dubrovnik<->Frankfurt).\n4. Maximize total stay in all cities subject to the 10-day limit.\n\nCalculate the maximum possible days for Dubrovnik and Frankfurt combined (10 days total - 2 days Krakow = 8 days for D and F, plus time for 2 flights). You must model the transitions (flights) as taking one unit of time. Generate the final PDDL plan.\n\nThink step by step and and provide a single, unified PDDL domain and a PDDL problem file that solves the trip planning task for the FastDownwards planner.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "flight_planner.pddl->constraint_auditor.analysis",
+            "duration_manager.pddl->constraint_auditor.analysis",
+            "flight_planner.pddl->orchestrator.pddl",
+            "duration_manager.pddl->orchestrator.pddl",
+            "constraint_auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

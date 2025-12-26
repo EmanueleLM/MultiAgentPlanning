@@ -1,0 +1,108 @@
+{
+    "name": "CalendarSchedulingExample14",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "brandon",
+            "jerry",
+            "bradley",
+            "auditor",
+            "orchestrator"
+        ],
+        "brandon": {
+            "private_information": [
+                "Schedule: Monday 13:00-14:00, 15:30-16:00, 16:30-17:00.",
+                "Preference: Avoid meetings before 14:30."
+            ],
+            "goal": "Identify 30-minute available slots on Monday between 9:00 and 17:00, considering preferences."
+        },
+        "jerry": {
+            "private_information": [
+                "Schedule: No meetings the whole day (Monday 9:00 to 17:00)."
+            ],
+            "goal": "Identify 30-minute available slots on Monday between 9:00 and 17:00."
+        },
+        "bradley": {
+            "private_information": [
+                "Schedule: Monday 9:00-11:30, 12:00-15:00, 16:00-16:30."
+            ],
+            "goal": "Identify 30-minute available slots on Monday between 9:00 and 17:00."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Audit the temporal constraints provided by all participants for completeness and internal consistency."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Schedule a 30-minute meeting for Brandon, Jerry, and Bradley on Monday between 9:00 and 17:00, respecting all constraints and preferences, and output the solution as a PDDL planning problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "duration_minutes": 30,
+            "window": "9:00 to 17:00",
+            "visibility": 1
+        },
+        "public_information": [
+            "A 30-minute meeting needs to be scheduled on Monday.",
+            "The available time window is 9:00 to 17:00.",
+            "Participants are Brandon, Jerry, and Bradley."
+        ]
+    },
+    "workflow": {
+        "brandon": {
+            "availability_check": {
+                "input": [],
+                "output": "brandon_constraints",
+                "system_prompt": "You are an expert scheduler. Analyze the provided schedule and constraints to generate a list of 30-minute time slots (start time) available for a meeting between 9:00 and 17:00 on Monday. Output the list as a JSON array of time strings (HH:MM format), wrapped in <availability></availability> tags.",
+                "prompt": "Your name is Brandon. The meeting details are:\nDuration: {environment->init->duration_minutes} minutes.\nWindow: {environment->init->window}.\nPublic information: {environment->public_information}\nYour knowledge: {agents->brandon->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "jerry": {
+            "availability_check": {
+                "input": [],
+                "output": "jerry_constraints",
+                "system_prompt": "You are an expert scheduler. Analyze the provided schedule and constraints to generate a list of 30-minute time slots (start time) available for a meeting between 9:00 and 17:00 on Monday. Output the list as a JSON array of time strings (HH:MM format), wrapped in <availability></availability> tags.",
+                "prompt": "Your name is Jerry. The meeting details are:\nDuration: {environment->init->duration_minutes} minutes.\nWindow: {environment->init->window}.\nPublic information: {environment->public_information}\nYour knowledge: {agents->jerry->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "bradley": {
+            "availability_check": {
+                "input": [],
+                "output": "bradley_constraints",
+                "system_prompt": "You are an expert scheduler. Analyze the provided schedule and constraints to generate a list of 30-minute time slots (start time) available for a meeting between 9:00 and 17:00 on Monday. Output the list as a JSON array of time strings (HH:MM format), wrapped in <availability></availability> tags.",
+                "prompt": "Your name is Bradley. The meeting details are:\nDuration: {environment->init->duration_minutes} minutes.\nWindow: {environment->init->window}.\nPublic information: {environment->public_information}\nYour knowledge: {agents->bradley->private_information}\nProvide the list of available 30-minute slots."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "brandon_constraints",
+                    "jerry_constraints",
+                    "bradley_constraints"
+                ],
+                "output": "verified_constraints",
+                "system_prompt": "You are a Temporal Consistency Auditor. Your task is to verify that the constraints provided by agents are consistent and ready for multi-agent PDDL integration. Ensure all temporal definitions are unambiguous, aligned with the 9:00 to 17:00 window, and handle preferences. Consolidate the verified schedule data (e.g., a unified list of unavailable blocks or available intersection points) into a clean structure wrapped in <verified_data></verified_data> tags.",
+                "prompt": "Review the following constraints provided by the agents:\nBrandon's Constraints:\n{brandon_constraints}\nJerry's Constraints:\n{jerry_constraints}\nBradley's Constraints:\n{bradley_constraints}\nProvide the verified data structure for the orchestrator, noting any special preferences (like Brandon avoiding slots before 14:30)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "verified_constraints"
+                ],
+                "output": "pddl_schedule",
+                "system_prompt": "You are an expert with PDDL problems, specialized in temporal and scheduling planning (PDDL 2.1). You must integrate the verified constraints to find a 30-minute slot satisfying all participants, prioritizing slots that meet Brandon's preference. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. Use temporal concepts where appropriate.",
+                "prompt": "You need to schedule a 30-minute meeting on Monday between 9:00 and 17:00. Use the following consolidated and verified constraint data:\n{verified_constraints}\nModel the scheduling problem using PDDL. The goal is to identify a single 30-minute time slot that all three agents are available for, ideally after 14:30. If no slots are available after 14:30, find the earliest viable slot.\nThink step by step and provide the PDDL domain and a PDDL problem file to solve the task."
+            }
+        },
+        "constraints": [
+            "brandon.availability_check->auditor.audit",
+            "jerry.availability_check->auditor.audit",
+            "bradley.availability_check->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

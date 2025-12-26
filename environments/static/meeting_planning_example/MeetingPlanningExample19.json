@@ -1,0 +1,78 @@
+{
+    "name": "MeetingPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner_john",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_john": {
+            "private_information": [
+                "I must prioritize meeting John for at least 45 minutes."
+            ],
+            "goal": "Determine a temporally feasible schedule block to meet John."
+        },
+        "auditor": {
+            "private_information": [
+                "I must strictly verify all time constraints and minimum duration requirements."
+            ],
+            "goal": "Verify the temporal consistency of the proposed schedule for meeting John."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, validated PDDL plan targeting the FastDownwards solver to schedule the meeting with John."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "9:00AM",
+            "start_location": "Golden Gate Park",
+            "john_window_start": "7:45PM",
+            "john_window_end": "8:45PM",
+            "min_meeting_duration_minutes": 45
+        },
+        "public_information": [
+            "You are visiting San Francisco. The primary constraint is meeting John.",
+            "Travel from Golden Gate Park (GGP) to Pacific Heights (PH) takes 16 minutes.",
+            "Travel from Pacific Heights (PH) to Golden Gate Park (GGP) takes 15 minutes."
+        ]
+    },
+    "workflow": {
+        "planner_john": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_john_schedule",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specialized in temporal planning (using PDDL 2.1 or later). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is planner_john. You must determine a feasible schedule to meet John for a minimum of {environment->init->min_meeting_duration_minutes} minutes. The trip starts at {environment->init->start_time} from {environment->init->start_location}. John is available at Pacific Heights between {environment->init->john_window_start} and {environment->init->john_window_end}. Use the provided travel times to calculate arrival/departure constraints. Produce a PDDL representation of this planning problem focusing on temporal feasibility."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_john_schedule"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a Temporal Consistency Auditor. Your role is to analyze planning artifacts, specifically PDDL, to ensure all temporal constraints (arrival times, durations, deadlines) are strictly adhered to. You must look for inconsistencies, bookkeeping errors, or missed constraint violations in the provided plan. You must output a structured analysis report detailing any temporal flaws or confirming consistency.",
+                "prompt": "Review the proposed PDDL schedule provided by the planner:\n{pddl_john_schedule}\n\nVerify the following constraints:\n1. Is the start time ({environment->init->start_time}) correctly handled?\n2. Does the planned meeting with John last at least {environment->init->min_meeting_duration_minutes} minutes?\n3. Does the meeting with John occur strictly within the window of {environment->init->john_window_start} and {environment->init->john_window_end}, accounting for the 16 minute travel time from the initial location?\n\nProvide a detailed assessment of the temporal feasibility. If the plan is sound, state 'Temporal Consistency Confirmed'."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_john_schedule",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in integrating planning artifacts and finalizing PDDL for the FastDownwards solver. You must ensure the final plan is sound, optimized, and addresses all constraints validated by the auditor. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "The goal is to produce the final PDDL plan to meet John successfully, respecting all time constraints and optimizing the schedule. \n\nInitial PDDL proposal:\n{pddl_john_schedule}\n\nAudit report on temporal consistency:\n{audit_report}\n\nBased on the initial plan and the auditor's feedback, refine or confirm the domain and problem to create a robust plan ready for solving by FastDownwards. Ensure the final PDDL accurately models the goal: meeting John for a minimum of 45 minutes within the specified time window."
+            }
+        },
+        "constraints": [
+            "planner_john.pddl->auditor.review",
+            "planner_john.pddl->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

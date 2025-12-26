@@ -1,0 +1,93 @@
+{
+    "name": "Logistics25",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "domain_expert",
+            "problem_expert",
+            "auditor",
+            "orchestrator"
+        ],
+        "domain_expert": {
+            "private_information": [
+                "I specialize in defining the generic rules, types, predicates, and actions for logistics planning in PDDL."
+            ],
+            "goal": "Define the PDDL Domain structure for logistics operations involving trucks, airplanes, packages, locations, and cities, reflecting all movement and loading constraints."
+        },
+        "problem_expert": {
+            "private_information": [
+                "I specialize in setting up the specific objects, initial configuration, and target goals based on scenario details."
+            ],
+            "goal": "Define the PDDL Problem structure including objects, initial state, and goal state."
+        },
+        "auditor": {
+            "private_information": [
+                "I ensure strict PDDL syntactic and semantic validity, and temporal/causal consistency, removing non-standard shortcuts."
+            ],
+            "goal": "Audit the generated Domain and Problem definitions for correctness and readiness before final orchestration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited PDDL Domain and PDDL Problem definitions to produce a complete, unified PDDL representation ready for a FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 1
+        },
+        "public_information": [
+            "The task involves transporting packages between cities (via airplanes) and within cities (via trucks).",
+            "Locations within a city are directly connected.",
+            "Each city has one designated airport location.",
+            "Initial State: location_0_0 and location_1_0 are airports. airplane_0 is at location_1_0. package_0 is at location_1_2, package_1 and package_2 are at location_0_2. truck_0 is at location_0_1, truck_1 is at location_1_1.",
+            "City containment: city_0 covers location_0_0, location_0_1, location_0_2. city_1 covers location_1_0, location_1_1, location_1_2.",
+            "Goal State: package_0 must be at location_0_0, package_1 must be at location_1_1, and package_2 must be at location_1_2."
+        ]
+    },
+    "workflow": {
+        "domain_expert": {
+            "pddl_domain": {
+                "input": [],
+                "output": "pddl_domain_raw",
+                "system_prompt": "You are an expert with PDDL Domains. Define the types, predicates, and actions for a logistics environment. Focus only on the domain file structure. Use object types: package, truck, airplane, location, city, vehicle.",
+                "prompt": "Your name is domain_expert. Based on the logistics rules (loading/unloading into/from trucks/airplanes, truck movement within a city, airplane movement between airport locations), generate the PDDL domain structure. Enclose the pddl domain between <domain></domain> tags."
+            }
+        },
+        "problem_expert": {
+            "pddl_problem": {
+                "input": [],
+                "output": "pddl_problem_raw",
+                "system_prompt": "You are an expert with PDDL Problems. Define the objects, initial state (:init), and goal state (:goal) for the logistics scenario. Focus only on the problem file structure.",
+                "prompt": "Your name is problem_expert. Using the initial and goal conditions provided in the environment description, define the PDDL objects, the complete initial state, and the final goal state. Ensure naming conventions align with standard logistics predicates (e.g., at, in-city, airport). Enclose the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "pddl_domain_raw",
+                    "pddl_problem_raw"
+                ],
+                "output": "pddl_audited_components",
+                "system_prompt": "You are a specialized PDDL Auditor responsible for temporal/causal consistency checks and removing non-PDDL bookkeeping shortcuts. Verify that the received domain and problem fragments are structurally sound and ready for final integration.",
+                "prompt": "Review the following PDDL Domain and Problem fragments. Validate their syntax and ensure they contain no extraneous commentary or shortcuts that would confuse a solver. If validated, combine the raw text of both outputs verbatim, ensuring that the original <domain> and <problem> tags are preserved to pass them cleanly to the orchestrator.\nDomain Fragment:\n{pddl_domain_raw}\nProblem Fragment:\n{pddl_problem_raw}\nProvide the cleaned and validated output."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_audited_components"
+                ],
+                "output": "pddl_logistics_solution",
+                "system_prompt": "You are an expert orchestrator of PDDL components. Integrate the audited PDDL Domain and PDDL Problem definitions into a single, cohesive PDDL environment suitable for a FastDownwards planner.",
+                "prompt": "You have received the audited PDDL components:\n{pddl_audited_components}\nExtract the domain and problem definitions and combine them into a complete PDDL domain file and a PDDL problem file. Ensure the problem refers correctly to the domain name derived from the domain definition. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "domain_expert.pddl_domain->auditor.audit",
+            "problem_expert.pddl_problem->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

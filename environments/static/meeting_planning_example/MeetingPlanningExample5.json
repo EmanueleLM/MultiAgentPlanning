@@ -1,0 +1,76 @@
+{
+    "name": "MeetingPlanningExample5",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "schedule_generator",
+            "auditor",
+            "orchestrator"
+        ],
+        "schedule_generator": {
+            "private_information": [
+                "I need to explore various paths to meet friends and calculate precise timings based on travel durations."
+            ],
+            "goal": "Propose multiple optimal schedules considering all constraints (travel time, meeting duration, availability)."
+        },
+        "auditor": {
+            "private_information": [
+                "I must ensure that the meeting with William lasts at least 75 minutes (1 hour 15 minutes)."
+            ],
+            "goal": "Verify all proposed schedules against mandatory temporal and duration constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Select the highest-quality schedule verified by the auditor and present the final plan as a PDDL domain and problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "time_unit": "minutes",
+            "start_time": "9:00 AM",
+            "start_location": "Nob Hill"
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day. You start at Nob Hill at 9:00 AM.",
+            "Goal: meet William (the only defined friend) and maximize meeting duration.",
+            "Travel distances (minutes): Nob Hill to The Castro: 17, The Castro to Nob Hill: 16.",
+            "William's availability (The Castro): 12:15 PM to 10:00 PM.",
+            "Minimum required meeting time with William: 75 minutes."
+        ]
+    },
+    "workflow": {
+        "schedule_generator": {
+            "plan_generation": {
+                "input": [],
+                "output": "proposed_schedules",
+                "system_prompt": "You are a planning expert. Your task is to generate several distinct scheduling options (at least 3 if possible) to meet William, ensuring all travel times and initial constraints are respected. Output a list of schedules in a structured format (e.g., JSON or clear bullet points) detailing arrival time at locations, meeting start/end times, and total meeting duration.",
+                "prompt": "Based on the public information:\n{environment->public_information}\nand your goal:\n{agents->schedule_generator->goal}\nGenerate various possible schedules for the day. Remember to start at {environment->init->start_location} at {environment->init->start_time}."
+            }
+        },
+        "auditor": {
+            "verification": {
+                "input": [
+                    "proposed_schedules"
+                ],
+                "output": "verified_schedule_report",
+                "system_prompt": "You are a Constraint Auditor. Your sole job is to check the validity of proposed schedules against strict temporal constraints, specifically the minimum meeting duration (75 minutes) and William's availability (12:15 PM - 10:00 PM). You must clearly state which schedules are valid and why the others fail. Output a summary report.",
+                "prompt": "Analyze the following proposed schedules:\n{proposed_schedules}\nYour private knowledge includes:\n{agents->auditor->private_information}\nVerify if these schedules satisfy all constraints, especially the 75-minute minimum meeting duration and William's availability."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "verified_schedule_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) focused on optimal scheduling. You must select the best valid schedule from the report (the one that adheres to all constraints). You must provide a PDDL domain and a PDDL problem file that formally solves the selected schedule using time-based actions, suitable for the FastDownwards planner. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Based on the verification report:\n{verified_schedule_report}\nSelect the optimal schedule that successfully satisfies the goal:\n{agents->orchestrator->goal}\nTranslate this successful plan into a PDDL domain and problem. Ensure the PDDL clearly models time, locations (Nob Hill, The Castro), travel actions, and the meeting action, proving that the constraints (especially the 75-minute minimum duration) are met. Note the starting time is 9:00 AM."
+            }
+        },
+        "constraints": [
+            "schedule_generator.plan_generation->auditor.verification",
+            "auditor.verification->orchestrator.pddl"
+        ]
+    }
+}

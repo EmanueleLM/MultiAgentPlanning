@@ -1,0 +1,100 @@
+{
+    "name": "TripPlanningExample20",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "DurationAgent",
+            "FlightAgent",
+            "Auditor",
+            "orchestrator"
+        ],
+        "DurationAgent": {
+            "private_information": [
+                "Required cities: Istanbul, Budapest, Dubrovnik.",
+                "Target visit duration: Istanbul 5 days, Budapest 6 days, Dubrovnik 3 days.",
+                "Total trip duration constraint: 12 days."
+            ],
+            "goal": "Model the city visit duration requirements for a 12-day trip using PDDL."
+        },
+        "FlightAgent": {
+            "private_information": [
+                "Direct flights exist between Istanbul and Budapest (bi-directional).",
+                "A direct flight exists from Dubrovnik to Istanbul (unidirectional)."
+            ],
+            "goal": "Model the travel connectivity constraints using PDDL."
+        },
+        "Auditor": {
+            "private_information": [],
+            "goal": "Audit the input constraints for temporal and causal consistency, specifically checking if the summed target durations (14 days) conflict with the overall trip duration (12 days)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all constraints to produce a final 12-day trip plan using direct flights, resolving any conflicts."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "Istanbul",
+                "Budapest",
+                "Dubrovnik"
+            ],
+            "total_days": 12
+        },
+        "public_information": [
+            "The trip must visit Istanbul, Budapest, and Dubrovnik.",
+            "The total trip duration must be exactly 12 days.",
+            "Travel between cities must use direct flights only.",
+            "Target durations are: Istanbul (5 days), Budapest (6 days), Dubrovnik (3 days)."
+        ]
+    },
+    "workflow": {
+        "DurationAgent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_duration",
+                "system_prompt": "You are an expert with PDDL problems. Provide a PDDL domain and problem focused on defining the cities and their necessary visit durations, keeping the total time constraint (12 days) in mind. Use a numeric fluents approach to track remaining time.",
+                "prompt": "Your name is DurationAgent. You are focusing on city durations and total time constraints. Public information: {environment->public_information}. Your knowledge: {agents->DurationAgent->private_information}. Goal: {agents->DurationAgent->goal}. Provide PDDL files."
+            }
+        },
+        "FlightAgent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flight",
+                "system_prompt": "You are an expert with PDDL problems. Provide a PDDL domain and problem focused on defining the locations and the necessary direct flight connections (Istanbul <-> Budapest, Dubrovnik -> Istanbul).",
+                "prompt": "Your name is FlightAgent. You are focusing on connectivity. Public information: {environment->public_information}. Your knowledge: {agents->FlightAgent->private_information}. Goal: {agents->FlightAgent->goal}. Provide PDDL files."
+            }
+        },
+        "Auditor": {
+            "analysis": {
+                "input": [
+                    "pddl_duration",
+                    "pddl_flight"
+                ],
+                "output": "analysis_report",
+                "system_prompt": "You are a planning auditor. Your role is to check for consistency between planning inputs provided by other agents, specifically looking for contradictions or ambiguities related to temporal and causal constraints. You must provide your findings as a detailed analysis report.",
+                "prompt": "Your name is Auditor. You are auditing the planning inputs for consistency. The DurationAgent suggests individual durations summing to 14 days, but the global constraint is 12 days. Review the PDDL outputs from the DurationAgent and FlightAgent to ensure they can be integrated successfully into a 12-day plan.\nDurationAgent PDDL:\n{pddl_duration}\nFlightAgent PDDL:\n{pddl_flight}\nProvide an analysis of necessary adjustments or integrations required by the orchestrator to resolve the 14 vs 12 day conflict and ensure all cities are visited with valid flight paths. Do not provide PDDL; provide an analysis report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_duration",
+                    "pddl_flight",
+                    "analysis_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) targeting the FastDownwards solver. You integrate planning components from multiple sources to create a unified solution. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You must produce a final PDDL plan for a 12-day trip visiting Istanbul, Budapest, and Dubrovnik, respecting all direct flight connections. You have received initial component PDDLs and an audit analysis.\nDuration Agent PDDL:\n{pddl_duration}\nFlight Agent PDDL:\n{pddl_flight}\nAudit Report:\n{analysis_report}\n\nIntegrate all information. Note the temporal conflict (14 days suggested vs 12 days required) and adjust the required city visit durations proportionally or based on optimization needs to meet the 12-day constraint while visiting all cities. Ensure the final PDDL clearly defines the sequence of visits using the available direct flights (I<->B, D->I). Provide the final PDDL domain and problem file."
+            }
+        },
+        "constraints": [
+            "DurationAgent.pddl->Auditor.analysis",
+            "FlightAgent.pddl->Auditor.analysis",
+            "DurationAgent.pddl->orchestrator.pddl",
+            "FlightAgent.pddl->orchestrator.pddl",
+            "Auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

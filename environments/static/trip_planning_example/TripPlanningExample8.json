@@ -1,0 +1,100 @@
+{
+    "name": "TripPlanningExample8",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "flight_agent",
+            "temporal_agent",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "flight_agent": {
+            "private_information": [
+                "Direct flight connections: Zurich <-> Krakow, Athens <-> Zurich.",
+                "The agent must plan routes ensuring connectivity constraints are met."
+            ],
+            "goal": "Determine a feasible sequence of cities to visit using only direct flights."
+        },
+        "temporal_agent": {
+            "private_information": [
+                "Krakow stay: 6 days.",
+                "Athens stay: 7 days.",
+                "Zurich stay: 5 days.",
+                "Athens stay must occur between Day 1 and Day 7 (inclusive)."
+            ],
+            "goal": "Establish the necessary duration planning and temporal constraints for the 18 days of required stays."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Total required stay duration is 6 + 7 + 5 = 18 days.",
+                "The overall trip duration constraint is 16 days."
+            ],
+            "goal": "Audit the temporal constraints and assess whether the required 18 days of activities can be completed within the requested 16-day trip limit."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a complete trip plan of visiting the cities, respecting connectivity and required durations (18 days total stays), by integrating the partial PDDL plans and audit report."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_trip_days_constraint": 16,
+            "stay_krakow_required": 6,
+            "stay_athens_required": 7,
+            "stay_zurich_required": 5
+        },
+        "public_information": [
+            "The trip has a target maximum duration of 16 days.",
+            "Cities to visit: Krakow (6 days), Athens (7 days), Zurich (5 days). Total stays required: 18 days.",
+            "Athens stay must occur between Day 1 and Day 7 (inclusive).",
+            "Only direct flights are allowed for travel.",
+            "Direct flight connections: Zurich <-> Krakow, Athens <-> Zurich."
+        ]
+    },
+    "workflow": {
+        "flight_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flights",
+                "system_prompt": "You are an expert with PDDL problems focusing on pathfinding and connectivity. You always provide a PDDL domain and a PDDL problem file to define locations and connectivity actions. Enclose the domain between <domain></domain> tags, and the problem between <problem></problem> tags.",
+                "prompt": "Your name is flight_agent. You are focusing on establishing connectivity for the trip plan. Public information: {environment->public_information}. Your knowledge: {agents->flight_agent->private_information}. Global goal: {agents->flight_agent->goal}. Provide PDDL definitions focusing only on locations and travel actions based on direct flight constraints."
+            }
+        },
+        "temporal_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_timing",
+                "system_prompt": "You are an expert with PDDL problems focusing on temporal scheduling and numeric planning. You always provide a PDDL domain and a PDDL problem file to define time progression and constraints. Enclose the domain between <domain></domain> tags, and the problem between <problem></problem> tags.",
+                "prompt": "Your name is temporal_agent. You are focusing on time allocation and duration constraints. Public information: {environment->public_information}. Your knowledge: {agents->temporal_agent->private_information}. Global goal: {agents->temporal_agent->goal}. Provide PDDL definitions focusing on managing day counters, implementing required stay durations (6, 7, 5 days), and modeling the specific Athens D1-D7 temporal window."
+            }
+        },
+        "consistency_auditor": {
+            "report": {
+                "input": [
+                    "environment"
+                ],
+                "output": "consistency_report",
+                "system_prompt": "You are a specialized auditor focusing on numerical and temporal consistency. Your task is to analyze the input constraints and identify potential contradictions (e.g., 18 days required vs 16 days limit). You must provide a concise report outlining the discrepancy and guiding the orchestrator on which constraint takes precedence.",
+                "prompt": "Your name is consistency_auditor. Audit the following constraints: Total trip days constraint: {environment->init->total_trip_days_constraint}. Total required stay days ({environment->init->stay_krakow_required} + {environment->init->stay_athens_required} + {environment->init->stay_zurich_required} = 18 days). Provide an assessment of the conflict and recommend prioritizing the fulfillment of required stays over the total trip day constraint."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_flights",
+                    "pddl_timing",
+                    "consistency_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-agent PDDL problems, specializing in integrating spatial and temporal requirements for planning. You always provide a final, complete PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Integrate the connectivity PDDL ({pddl_flights}) and the timing PDDL ({pddl_timing}) to solve the global goal: {agents->orchestrator->goal}.\n\nReview the consistency report: {consistency_report}\n\nSince the required stays (18 days) exceed the total limit (16 days), prioritize fulfilling all specified stay durations (6, 7, 5 days). Ensure the final PDDL plan strictly adheres to the direct flight rule and the Athens D1-D7 temporal constraint. Provide a single, unified PDDL plan."
+            }
+        },
+        "constraints": [
+            "flight_agent.pddl->orchestrator.pddl",
+            "temporal_agent.pddl->orchestrator.pddl",
+            "consistency_auditor.report->orchestrator.pddl"
+        ]
+    }
+}

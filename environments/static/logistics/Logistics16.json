@@ -1,0 +1,78 @@
+{
+    "name": "Logistics16",
+    "author": "Expert Planner",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner_agent",
+            "auditor_agent",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "Initial state: location_0_0 is an airport, location_1_0 is an airport, airplane_0 is at location_0_0, airplane_1 is at location_0_0, package_0 is at location_1_1, package_1 is at location_1_0, package_2 is at location_1_1, package_3 is at location_0_0, truck_0 is at location_0_1, truck_1 is at location_1_1, location_0_0 is in the city city_0, location_0_1 is in the city city_0, location_1_0 is in the city city_1 and location_1_1 is in the city city_1.",
+                "Goal state: package_0 is at location_0_0, package_1 is at location_1_1, package_2 is at location_0_1 and package_3 is at location_1_1."
+            ],
+            "goal": "Generate a PDDL domain and problem instance to solve the logistics task."
+        },
+        "auditor_agent": {
+            "private_information": [],
+            "goal": "Audit the generated PDDL plan for temporal/causal consistency, standard adherence, and ensure no bookkeeping shortcuts are present."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Finalize and integrate the validated PDDL plan for execution."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": 2,
+            "locations_per_city": 2,
+            "airplanes": 2,
+            "packages": 4,
+            "trucks": 2
+        },
+        "public_information": [
+            "Logistics planning involves transporting packages within cities via trucks and between cities via airplanes.",
+            "Locations within a city are directly connected (trucks can move between any two locations in the same city).",
+            "Cities are connected (airplanes can move between airport locations in different cities).",
+            "In each city there is exactly one truck and each city has one location that serves as an airport.",
+            "Actions include: Load/Unload (Package/Truck/Airplane), Drive (Truck), Fly (Airplane).",
+            "Constraints: Loading requires co-location. Driving requires co-city locations. Flying requires airport locations."
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You must define a domain that handles transportation logistics involving packages, trucks, airplanes, locations, and cities. You must model the actions described (Load/Unload, Drive, Fly) strictly following standard PDDL conventions. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your task is to generate a PDDL domain definition based on the logistics rules provided in the environment and a PDDL problem definition based on the specific instance facts and goal.\nEnvironment Public Rules:\n{environment->public_information}\nSpecific Task Information:\n{agents->planner_agent->private_information}\nGenerate the PDDL domain and problem to achieve the required goal state."
+            }
+        },
+        "auditor_agent": {
+            "audit": {
+                "input": [
+                    "pddl_plan"
+                ],
+                "output": "pddl_audited",
+                "system_prompt": "You are an expert PDDL auditor and validator. Your role is to analyze a provided PDDL domain and problem definition. Ensure the definitions are temporally and causally consistent, adhere to the standard STRIPS subset required for the problem type, and verify that no bookkeeping variables or shortcuts are used. You must return the potentially corrected and validated PDDL structure. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Review the following PDDL submission from the planner_agent:\n{pddl_plan}\nAudit the domain and problem structure for correctness, consistency, and adherence to standard PDDL practices. If corrections are minor (e.g., syntax), integrate them. If major flaws exist, explain why and attempt correction. Return the validated PDDL files."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_audited"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in integrating and finalizing PDDL planning problems for execution using solvers like FastDownwards. You receive validated PDDL domains and problems. Your only task is to ensure they are correctly formatted and ready for solving. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the audited PDDL files for the logistics task:\n{pddl_audited}\nFinalize this PDDL set to solve the task defined by the overall goal: {agents->orchestrator->goal}."
+            }
+        },
+        "constraints": [
+            "planner_agent.pddl->auditor_agent.audit",
+            "auditor_agent.audit->orchestrator.pddl"
+        ]
+    }
+}

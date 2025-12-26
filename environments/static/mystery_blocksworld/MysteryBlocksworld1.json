@@ -1,0 +1,104 @@
+{
+    "name": "MysteryBlocksworld1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "Domain_Planner",
+            "Action_Planner",
+            "Auditor",
+            "orchestrator"
+        ],
+        "Domain_Planner": {
+            "private_information": [
+                "I specialize in defining PDDL types, predicates, and unary actions (Attack, Succumb)."
+            ],
+            "goal": "Generate the necessary PDDL domain structures and actions for Attack and Succumb based on the task description."
+        },
+        "Action_Planner": {
+            "private_information": [
+                "I specialize in defining PDDL problem objects, initial state, goal state, and binary actions (Overcome, Feast)."
+            ],
+            "goal": "Generate the PDDL problem definition elements and the Overcome and Feast actions based on the task description."
+        },
+        "Auditor": {
+            "private_information": [
+                "My role is to verify the temporal and causal consistency of the planning definitions derived from the human description, ensuring correct preconditions and effects are modeled."
+            ],
+            "goal": "Verify that the synthesized PDDL components correctly represent the given action preconditions and effects, removing any potential bookkeeping shortcuts or inconsistencies."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Combine all partial PDDL components into a single, cohesive PDDL domain and problem file that can be solved by FastDownwards."
+        }
+    },
+    "environment": {
+        "init": {
+            "objects": [
+                "a",
+                "b",
+                "c",
+                "d"
+            ],
+            "predicates": [
+                "Province",
+                "Planet",
+                "Harmony",
+                "Pain",
+                "Craves"
+            ]
+        },
+        "public_information": [
+            "The environment involves four abstract objects (a, b, c, d) and abstract relational states.",
+            "Initial conditions: object b craves object c, object c craves object d, object d craves object a, global state Harmony is active, object a is in state Planet, object b is in state Province.",
+            "Goal: Achieve state where object a craves object c and object d craves object a.",
+            "Actions: Attack, Feast, Succumb, Overcome. Each action modifies specific relational states (predicates)."
+        ]
+    },
+    "workflow": {
+        "Domain_Planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_domain_planner",
+                "system_prompt": "You are an expert PDDL domain designer. Focus only on defining types, predicates, and the Attack and Succumb actions. You must strictly adhere to the input requirements provided in the prompt.",
+                "prompt": "Your name is Domain_Planner. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->Domain_Planner->private_information}\nThis is your goal:\n{agents->Domain_Planner->goal}\nDefine necessary types and predicates (Province, Planet, Harmony, Pain, Craves). Then define the actions Attack (?o) and Succumb (?o) following these specific rules:\nAttack: Preconditions (Province ?o), (Planet ?o), (Harmony). Effects (Pain ?o), (not (Province ?o)), (not (Planet ?o)), (not (Harmony)).\nSuccumb: Preconditions (Pain ?o). Effects (Province ?o), (Planet ?o), (Harmony), (not (Pain ?o)).\nEnclose the resulting PDDL domain structure, including only these definitions, between <domain></domain> tags. Do not produce a problem file."
+            }
+        },
+        "Action_Planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_action_planner",
+                "system_prompt": "You are an expert PDDL problem and action designer. Focus on defining the objects, initial state, goal state, and the Overcome and Feast actions. You must strictly adhere to the input requirements provided in the prompt.",
+                "prompt": "Your name is Action_Planner. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->Action_Planner->private_information}\nThis is your goal:\n{agents->Action_Planner->goal}\nDefine the actions Overcome (?o ?other_o) and Feast (?o ?other_o) following these specific rules:\nOvercome: Preconditions (Province ?other_o), (Pain ?o). Effects (Harmony), (Province ?o), (Craves ?o ?other_o), (not (Province ?other_o)), (not (Pain ?o)).\nFeast: Preconditions (Craves ?o ?other_o), (Province ?o), (Harmony). Effects (Pain ?o), (Province ?other_o), (not (Craves ?o ?other_o)), (not (Province ?o)), (not (Harmony)).\nAlso define the PDDL problem structure: objects (a, b, c, d), initial state (Craves b c), (Craves c d), (Craves d a), (Harmony), (Planet a), (Province b), and goal state (Craves a c), (Craves d a).\nEnclose the resulting PDDL domain structure (containing only Overcome and Feast) between <domain></domain> tags, and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "Auditor": {
+            "audit": {
+                "input": [
+                    "pddl_domain_planner",
+                    "pddl_action_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a planning auditor focused on temporal and causal consistency in PDDL definitions. Your job is to ensure strict fidelity between the natural language action descriptions and the PDDL implementations.",
+                "prompt": "Your name is Auditor. You are receiving partial PDDL definitions from two other agents. Your task is to verify that the preconditions and effects defined for the four actions (Attack, Succumb, Overcome, Feast) are causally consistent and correctly modeled according to the initial task specifications. Report any discrepancies or confirm consistency.\nDomain Planner output:\n{pddl_domain_planner}\nAction Planner output:\n{pddl_action_planner}\nProvide your confirmation or suggested corrections in a brief audit report format."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_domain_planner",
+                    "pddl_action_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) targeting the FastDownwards solver. You always provide a consolidated PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You must integrate the domain fragments and the problem definition provided by the planners into a single, cohesive PDDL domain and problem file. Ensure all types, predicates, and all four actions (Attack, Succumb, Overcome, Feast) are correctly combined in the domain, and that the problem instance (objects, init, goal) is accurately defined.\n\nHere is the domain fragment 1 (Attack/Succumb actions, predicates definition):\n{pddl_domain_planner}\n\nHere is the domain fragment 2 (Overcome/Feast actions, problem definition):\n{pddl_action_planner}\n\nHere is the audit report confirming consistency:\n{audit_report}\n\nConsolidate all parts. Think step by step and provide the complete PDDL domain and PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Domain_Planner.pddl->Auditor.audit",
+            "Action_Planner.pddl->Auditor.audit",
+            "Auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

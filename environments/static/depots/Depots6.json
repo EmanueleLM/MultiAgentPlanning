@@ -1,0 +1,76 @@
+{
+    "name": "Depots6",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "logistics_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "logistics_planner": {
+            "private_information": [],
+            "goal": "Generate a comprehensive PDDL plan to manage the movement of crates, utilizing trucks and hoists, to achieve the required final configuration."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Audit the generated PDDL plan for temporal consistency and adherence to physical constraints described in the environment specification."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate planning inputs and finalize the executable PDDL domain and problem file suitable for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment consists of places (depots: depot0, depot1, depot2; distributors: distributor0). All places are connected by roads.",
+            "The system includes crates (crate0, crate1, crate2), pallets (pallet0-3), hoists (hoist0-3), and trucks (truck0-2). Pallets and Crates act as surfaces.",
+            "Initial State Summary:",
+            "- Locations: crate0@depot2, crate1@depot0, crate2@depot0. Hoist0@depot0, Hoist1@depot1, Hoist2@depot2, Hoist3@distributor0. Pallet0@depot0, Pallet1@depot1, Pallet2@depot2, Pallet3@distributor0. Truck0@distributor0, Truck1@distributor0, Truck2@depot2.",
+            "- Status: All specified hoists are available. Crate0, Crate2, Pallet1, and Pallet3 are clear.",
+            "- Stacking: crate0 is on pallet2, crate1 is on pallet0, and crate2 is on crate1.",
+            "Goal: crate0 is on crate2, crate1 is on pallet2, and crate2 is on pallet1.",
+            "Actions: Drive (Truck), Lift (Crate via Hoist), Drop (Crate via Hoist), Load (Crate onto Truck via Hoist), Unload (Crate from Truck via Hoist). Detailed preconditions and effects must be strictly enforced."
+        ]
+    },
+    "workflow": {
+        "logistics_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_draft",
+                "system_prompt": "You are an expert PDDL planner specializing in complex logistics problems. You must accurately translate the provided types, initial state, goal state, and the precise preconditions and effects of all available actions into a valid PDDL domain and problem definition. Ensure the domain covers all constraints listed in the public information regarding hoists, trucks, crates, and surfaces.",
+                "prompt": "Your task is to plan the required logistics operations. Here is the public information:\n{environment->public_information}\nThis is your goal:\n{agents->logistics_planner->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "check": {
+                "input": [
+                    "pddl_draft"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a Temporal and Causal Consistency Auditor. Your job is to analyze PDDL plans for logical flaws, missing constraints, or incorrect translation of physical laws. You must verify that the PDDL domain correctly implements all action restrictions specified in the environment description (e.g., verifying that the 'Drive' action correctly handles the location predicates, and hoist actions correctly manage 'clear' and 'lifting' predicates).",
+                "prompt": "Review the following PDDL draft provided by the logistics_planner:\n{pddl_draft}\nSpecifically, check if the actions 'Drive', 'Lift', 'Drop', 'Load', and 'Unload' correctly incorporate all the restrictions detailed in the task description. State clearly if the PDDL is consistent and complete, or if revisions are necessary. If complete, output 'AUDIT SUCCESSFUL'. Otherwise, detail the inconsistencies found, referring back to the environment constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_draft",
+                    "audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert PDDL orchestrator, finalizing plans for the FastDownwards solver. You integrate planning inputs and ensure the final output is structurally sound, highly optimized, and ready for execution.",
+                "prompt": "The logistics_planner provided the following PDDL draft:\n{pddl_draft}\nThe audit result is:\n{audit_report}\nIf the audit was successful, confirm the PDDL domain and problem below. If the audit revealed inconsistencies, you must correct the PDDL (domain and problem) to strictly adhere to the constraints outlined in the task description and the audit findings.\nYour final goal is:\n{agents->orchestrator->goal}\nProvide the final, consolidated PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "logistics_planner.pddl->auditor.check",
+            "logistics_planner.pddl->orchestrator.pddl",
+            "auditor.check->orchestrator.pddl"
+        ]
+    }
+}

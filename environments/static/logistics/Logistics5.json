@@ -1,0 +1,115 @@
+{
+    "name": "Logistics5",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "intra_city_planner",
+            "inter_city_planner",
+            "orchestrator",
+            "auditor"
+        ],
+        "intra_city_planner": {
+            "private_information": [
+                "I focus on movement and actions related to trucks within a city.",
+                "In each city there is exactly one truck."
+            ],
+            "goal": "Define the PDDL components necessary for local package transport using trucks."
+        },
+        "inter_city_planner": {
+            "private_information": [
+                "I focus on movement and actions related to airplanes between cities.",
+                "Each city has one location that serves as an airport."
+            ],
+            "goal": "Define the PDDL components necessary for inter-city package transport using airplanes."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must ensure the final plan achieves the goal: package_0 is at location_1_0."
+            ],
+            "goal": "Integrate the plans of the IntraCity and InterCity planners to achieve the global goal: package_0 is at location_1_0."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for auditing the temporal and causal flow of the final plan."
+            ],
+            "goal": "Verify the logical consistency and solvability of the final PDDL solution."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 3
+        },
+        "public_information": [
+            "Logistics Domain Rules:",
+            "1. Locations within a city are directly connected (trucks can move between any two such locations).",
+            "2. Cities are directly connected (airplanes can fly between them).",
+            "3. Load package P into truck T at location L: P and T must be at L. Effect: P is in T, P is not at L.",
+            "4. Unload package P from truck T at location L: P must be in T, T must be at L. Effect: P is at L, P is not in T.",
+            "5. Drive truck T from L1 to L2: T must be at L1, L1 and L2 must be in the same city. Effect: T is at L2, T is not at L1.",
+            "6. Load package P into airplane A at location L: P and A must be at L. Effect: P is in A, P is not at L.",
+            "7. Unload package P from airplane A at location L: P must be in A, A must be at L. Effect: P is at L, P is not in A.",
+            "8. Fly airplane A from L1 to L2: A must be at L1, L1 and L2 must be airports in different cities. Effect: A is at L2, A is not at L1.",
+            "Initial State Facts:",
+            "Objects: package_0, truck_0, truck_1, airplane_0, location_0_0, location_0_1, location_1_0, location_1_1, city_0, city_1.",
+            "Location Definitions:",
+            "location_0_0 is an airport.",
+            "location_1_0 is an airport.",
+            "City Membership:",
+            "location_0_0 is in city_0.",
+            "location_0_1 is in city_0.",
+            "location_1_0 is in city_1.",
+            "location_1_1 is in city_1.",
+            "Initial Positions:",
+            "airplane_0 is at location_0_0.",
+            "package_0 is at location_0_1.",
+            "truck_0 is at location_0_0.",
+            "truck_1 is at location_1_1."
+        ]
+    },
+    "workflow": {
+        "intra_city_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_intra_city",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) focusing on local logistics (trucks and locations within a city). You always provide a PDDL domain and a PDDL problem file containing objects, predicates, and actions relevant to your specialization. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is intra_city_planner. You are aware of the following public information describing the logistics environment:\n{environment->public_information}\nYour goal is to define the PDDL components for local package transport using trucks, including object types, predicates, and actions (Load, Unload, Drive). Focus on capturing the rules for intra-city movement and truck manipulation defined in the public information. Think step by step and provide a partial PDDL domain and a PDDL problem file based on the initial state facts provided."
+            }
+        },
+        "inter_city_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_inter_city",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) focusing on inter-city logistics (airplanes and airports). You always provide a PDDL domain and a PDDL problem file containing objects, predicates, and actions relevant to your specialization. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is inter_city_planner. You are aware of the following public information describing the logistics environment:\n{environment->public_information}\nYour goal is to define the PDDL components for inter-city package transport using airplanes, including object types, predicates, and actions (Load, Unload, Fly). Ensure you capture the airport requirement and the rules for inter-city movement and airplane manipulation defined in the public information. Think step by step and provide a partial PDDL domain and a PDDL problem file based on the initial state facts provided."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_intra_city",
+                    "pddl_inter_city"
+                ],
+                "output": "pddl_final_solution",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You must integrate input from specialized planners to create a complete, monolithic PDDL domain and problem file targeted for the FastDownwards solver. You must ensure all initial state facts and the final global goal are accurately represented. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator for a logistics planning task. You need to integrate the PDDL definitions provided by the Intra-City Planner and the Inter-City Planner to solve the global goal:\nGoal: package_0 is at location_1_0.\n\nHere are the inputs:\nIntra-City PDDL (Trucks/Local Movement):\n{pddl_intra_city}\n\nInter-City PDDL (Airplanes/Inter-city Movement):\n{pddl_inter_city}\n\nReview the provided PDDL segments, resolve any ambiguities, merge the objects and actions, and ensure all specific initial state facts are included in the final problem definition based on the environment's public information. Provide the final, unified PDDL domain and problem files that solve the task."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "pddl_final_solution"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor specializing in planning problems. Your role is to check the temporal and causal consistency of the generated PDDL plan/environment specification. You do not generate PDDL. You must identify if the actions defined allow for a causal chain leading from the initial state to the goal state without contradictions or missing preconditions. Report your findings concisely.",
+                "prompt": "Analyze the following final PDDL solution generated by the Orchestrator:\n{pddl_final_solution}\n\nReview the logic and constraints defined in the PDDL domain and problem file to ensure that a valid plan exists to move package_0 from location_0_1 (City 0) to location_1_0 (City 1 Airport), confirming that truck and airplane operations can successfully link up at an airport location. Provide an audit report ensuring temporal/causal consistency is achievable."
+            }
+        },
+        "constraints": [
+            "intra_city_planner.pddl->orchestrator.pddl",
+            "inter_city_planner.pddl->orchestrator.pddl",
+            "orchestrator.pddl->auditor.audit"
+        ]
+    }
+}

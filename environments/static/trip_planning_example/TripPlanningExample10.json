@@ -1,0 +1,94 @@
+{
+    "name": "TripPlanningExample10",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "day_allocator",
+            "flight_sequencer",
+            "auditor",
+            "orchestrator"
+        ],
+        "day_allocator": {
+            "private_information": [
+                "The requested individual stays sum up to 11 days (3+5+3), but the total trip duration must be 9 days.",
+                "Valencia stay must occupy days 5 through 9."
+            ],
+            "goal": "Allocate the total trip duration of 9 days optimally among Oslo, Valencia, and Dublin, respecting the temporal constraints."
+        },
+        "flight_sequencer": {
+            "private_information": [
+                "Direct flights exist between Oslo and Dublin.",
+                "Direct flights exist between Dublin and Valencia."
+            ],
+            "goal": "Determine all possible travel sequences between Oslo, Dublin, and Valencia using only direct flights."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Verify if the proposed duration allocation and travel sequence are temporally consistent with the constraint that Valencia must be visited between day 5 and day 9."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Generate a final PDDL plan that sequences the cities and allocates exactly 9 days, satisfying all travel and temporal constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 9
+        },
+        "public_information": [
+            "The trip must visit three cities: Oslo (O), Dublin (D), and Valencia (V).",
+            "Total trip duration is 9 days.",
+            "Desired durations: Oslo: 3 days, Valencia: 5 days, Dublin: 3 days (Note: sum is 11 days, exceeding the limit).",
+            "Travel requires only direct flights between consecutive cities.",
+            "Direct flight connections: O <-> D, D <-> V.",
+            "The stay in Valencia must occur between day 5 and day 9 (inclusive)."
+        ]
+    },
+    "workflow": {
+        "day_allocator": {
+            "analysis": {
+                "input": [],
+                "output": "json_duration_data",
+                "system_prompt": "You are an expert in scheduling and constraint analysis. Your output must be a JSON object detailing constraints and required allocations.",
+                "prompt": "Analyze the following task and determine the constraints on duration and time slots:\nPublic Information:\n{environment->public_information}\nPrivate Knowledge:\n{agents->day_allocator->private_information}\nOutput a JSON object with keys 'total_days', 'city_durations', and 'temporal_constraints'. Explicitly address the conflict between the 9-day total and 11-day requested duration. Since Valencia must take 5 days (days 5-9), calculate the maximum available days remaining for Oslo and Dublin."
+            }
+        },
+        "flight_sequencer": {
+            "analysis": {
+                "input": [],
+                "output": "json_sequence_data",
+                "system_prompt": "You are an expert in graph connectivity. Your output must be a JSON object detailing possible valid travel sequences.",
+                "prompt": "Based only on direct flight connections, what are the possible sequences to visit Oslo (O), Dublin (D), and Valencia (V)? Travel must happen only via direct flights between consecutive cities.\nPublic Information:\n{environment->public_information}\nPrivate Knowledge:\n{agents->flight_sequencer->private_information}\nOutput a JSON object with a key 'valid_sequences' containing a list of strings representing the path (e.g., [\"O->D->V\", \"V->D->O\"])."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "json_duration_data",
+                    "json_sequence_data"
+                ],
+                "output": "text_audit_report",
+                "system_prompt": "You are a Temporal Auditor. Your role is to check consistency and feasibility of travel plans and remove any temporal bookkeeping inconsistencies or impossible scenarios. Provide a concise report.",
+                "prompt": "Review the following duration constraints and sequences provided by previous agents. Determine if a feasible 9-day plan exists where Valencia is visited for 5 days, specifically spanning days 5 through 9.\nDuration Analysis:\n{json_duration_data}\nSequence Analysis:\n{json_sequence_data}\n\nKey Temporal Constraint: If Valencia spans days 5-9 (5 days), the trip must end in Valencia, and the remaining 4 days (Days 1-4) must be allocated to Oslo and Dublin. Since Dublin is the connection hub for both Oslo and Valencia, Dublin must be the second city visited (O->D->V or V->D->O is impossible since V must be last). Check the derived sequences against the required terminal city (Valencia).\n\nProvide a definitive statement on feasibility and any necessary adjustments for the Orchestrator, ensuring that the total allocated time for O and D is exactly 4 days."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "json_duration_data",
+                    "json_sequence_data",
+                    "text_audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-step PDDL problems (Planning Domain Definition Language). You synthesize inputs from specialized agents to create a coherent PDDL domain and problem targeting the FastDownwards planner. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You must synthesize the following information to generate a PDDL plan for the 9-day trip. The plan must select a sequence and assign durations to cities (Oslo, Dublin, Valencia) such that:\n1. Total days spent in cities equals 9.\n2. Valencia stay is 5 days (Days 5-9) and is the final destination.\n3. The preceding cities (Oslo and Dublin) must share the remaining 4 days (Days 1-4).\n4. Travel is only allowed via direct connections (O-D, D-V).\n\nInputs:\nDuration Constraints Input:\n{json_duration_data}\nSequence Constraints Input:\n{json_sequence_data}\nAuditor Feedback (Consistency Check):\n{text_audit_report}\n\nSince Oslo and Dublin must share 4 days, you must split 4 days between them (e.g., 2 days each, or 1 and 3). Model the cities, connections, and time allocation using numeric fluents to reach the final goal state (9 days spent, currently located in Valencia).\n\nGenerate the complete PDDL domain and problem. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "day_allocator.analysis->auditor.audit",
+            "flight_sequencer.analysis->auditor.audit",
+            "auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

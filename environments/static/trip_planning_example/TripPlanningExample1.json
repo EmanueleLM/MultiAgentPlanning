@@ -1,0 +1,96 @@
+{
+    "name": "TripPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "location_duration_agent",
+            "flight_constraint_agent",
+            "auditor_agent",
+            "orchestrator"
+        ],
+        "location_duration_agent": {
+            "private_information": [
+                "Total trip duration must be exactly 15 days.",
+                "Required days: Split (6), Manchester (4), Riga (7)."
+            ],
+            "goal": "Model the temporal constraints, ensuring the total duration is 15 days while trying to satisfy the required minimum days for each city."
+        },
+        "flight_constraint_agent": {
+            "private_information": [
+                "Cities: Riga, Manchester, Split.",
+                "Direct Flights: Riga <-> Manchester, Manchester -> Split."
+            ],
+            "goal": "Model the locations and the valid travel actions between them using direct flights."
+        },
+        "auditor_agent": {
+            "private_information": [
+                "Requested durations: Split (6), Manchester (4), Riga (7). Total required: 17 days.",
+                "Maximum allowed duration: 15 days."
+            ],
+            "goal": "Analyze the consistency of the duration requirements (6+4+7=17) against the total allowed duration (15). Produce a report highlighting the conflict."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a trip plan visiting Split, Manchester, and Riga for exactly 15 days, maximizing time spent in each location while respecting direct flight constraints (Riga <-> Manchester, Manchester -> Split)."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "Riga",
+                "Manchester",
+                "Split"
+            ],
+            "max_duration": 15
+        },
+        "public_information": [
+            "The trip must visit three cities: Split, Manchester, and Riga.",
+            "The total trip duration must be 15 days.",
+            "Travel between cities must only use direct flights."
+        ]
+    },
+    "workflow": {
+        "location_duration_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_duration_model",
+                "system_prompt": "You are an expert in PDDL modeling focused on temporal and resource constraints. You must define objects, predicates, and functions (like total-time or time-spent-in-city) to track required minimum days spent in cities and the overall trip duration.",
+                "prompt": "Your name is location_duration_agent. You are modeling the duration requirements. The global goal is:\n{agents->location_duration_agent->goal}\nUse the following knowledge:\n{agents->location_duration_agent->private_information}\nThink step by step and provide a PDDL domain and a PDDL problem file modeling the requirements. Focus only on temporal and duration aspects. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "flight_constraint_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flight_model",
+                "system_prompt": "You are an expert in PDDL modeling focused on location and movement constraints. You must define objects for cities and predicates for connectivity based on direct flight paths.",
+                "prompt": "Your name is flight_constraint_agent. You are modeling the travel network. The global goal is:\n{agents->flight_constraint_agent->goal}\nUse the following knowledge:\n{agents->flight_constraint_agent->private_information}\nThink step by step and provide a PDDL domain and a PDDL problem file modeling the connectivity constraints and travel actions. Focus only on geographical and movement aspects. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor_agent": {
+            "report": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor specializing in constraint consistency checks. Your task is to identify conflicts and contradictions in the initial problem specification. Do not use PDDL.",
+                "prompt": "Your name is auditor_agent. Analyze the constraints provided:\n{agents->auditor_agent->private_information}\n{agents->auditor_agent->goal}\nProvide a structured report detailing any detected inconsistencies. Specifically address the conflict between requested total duration (17 days) and maximum allowed duration (15 days). Output the report content directly."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_duration_model",
+                    "pddl_flight_model",
+                    "audit_report"
+                ],
+                "output": "pddl_final_plan",
+                "system_prompt": "You are an expert with multi-aspect PDDL problems (Planning Domain Definition Language). You integrate partial models and external reports to create a unified PDDL plan targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. Your global goal is:\n{agents->orchestrator->goal}\n\nYou have received two PDDL fragments and an audit report:\n\n1. Duration Model:\n{pddl_duration_model}\n\n2. Flight Model:\n{pddl_flight_model}\n\n3. Audit Report:\n{audit_report}\n\nIntegrate the duration and flight models. Crucially, the Audit Report highlights a conflict: the total requested duration (17 days) exceeds the maximum allowed time (15 days). You must prioritize achieving a total trip length of exactly 15 days, finding a feasible itinerary (location order) based on the flight models, and assigning time blocks to cities such that the requested durations (6, 4, 7) are maximized up to 15 days total. Think step by step and and provide the unified PDDL domain and PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "location_duration_agent.pddl->orchestrator.pddl",
+            "flight_constraint_agent.pddl->orchestrator.pddl",
+            "auditor_agent.report->orchestrator.pddl"
+        ]
+    }
+}

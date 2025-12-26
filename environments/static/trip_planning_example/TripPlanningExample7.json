@@ -1,0 +1,77 @@
+{
+    "name": "TripPlanningExample7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "logistics_planner",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "logistics_planner": {
+            "private_information": [
+                "Cities involved: Venice, Dubrovnik, Istanbul.",
+                "Direct flights exist from Dubrovnik to Istanbul and Venice."
+            ],
+            "goal": "Define the travel graph and movement actions based on direct flights."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "Total trip duration constraint: 11 days.",
+                "Required stay days: Venice (6), Dubrovnik (4), Istanbul (3).",
+                "Total required stay days (13) exceeds the total trip duration (11)."
+            ],
+            "goal": "Define temporal constraints and resource tracking needed to solve the trip planning problem within the 11-day limit, addressing the inherent conflict."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a trip plan of visiting the cities for 11 days by taking direct flights to commute between them, respecting the maximum duration and prioritizing city visits."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Total trip duration: 11 days.",
+            "Required minimum stays (if achievable): Venice (6 days), Dubrovnik (4 days), Istanbul (3 days).",
+            "Cities: Venice, Dubrovnik, Istanbul.",
+            "Travel constraint: Only direct flights are allowed.",
+            "Known Direct Flights: From Dubrovnik to Istanbul, and from Dubrovnik to Venice."
+        ]
+    },
+    "workflow": {
+        "logistics_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_logistics",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is logistics_planner. You are setting up the geographical movement aspects of a trip planning problem. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->logistics_planner->private_information}\nThis is your task goal:\n{agents->logistics_planner->goal}\nDefine the objects (cities) and actions (flights) available, assuming flights take 1 day.\nThink step by step and and provide a PDDL domain and a PDDL problem file representing the travel network. Exclude temporal constraints and specific stay goals.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "temporal_auditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_time_constraints",
+                "system_prompt": "You are an expert with PDDL problems, specialized in temporal resource management and ensuring planning consistency. You always provide a PDDL domain and a PDDL problem file snippet focusing on temporal and numerical constraints. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is temporal_auditor. You are setting up the temporal constraints for a trip planning problem. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->temporal_auditor->private_information}\nThis is your task goal:\n{agents->temporal_auditor->goal}\nNote the conflict: 13 days of required stays vs 11 days total trip duration. You must define numeric fluents to track total days spent and days spent in each city. The total trip duration must not exceed 11 days. Ensure consistency by setting goals that reflect maximum achievable stay days while respecting the 11-day budget.\nThink step by step and provide a PDDL domain and a PDDL problem file snippet focused on defining these fluents and temporal goals.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_logistics",
+                    "pddl_time_constraints"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with integrated PDDL problems (Planning Domain Definition Language). You always provide a unified PDDL domain and a PDDL problem file to solve the task using numeric fluents and targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are tasked with generating a unified PDDL plan for a trip planning problem. You received PDDL snippets covering logistics and temporal constraints. You must integrate these snippets to form a complete, solvable planning problem.\nGoal: Find a trip plan of visiting the cities for 11 days by taking direct flights to commute between them.\n\nHere is the logistics PDDL:\n{pddl_logistics}\n\nHere is the temporal constraint PDDL (which highlights a conflict between required stays and budget):\n{pddl_time_constraints}\n\nKey integration requirements:\n1. Ensure travel actions (flights) correctly increment the total time counter (e.g., 1 day per flight).\n2. Define a 'stay' action for each city that increments the total time counter (1 day per stay action) and the city-specific stay counter.\n3. The final plan must strictly satisfy the total time budget (<= 11 days) and prioritize fulfilling the individual stay requirements as much as possible within that budget, ensuring all cities are visited at least once.\n\nThink step by step and provide a unified PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "logistics_planner.pddl->orchestrator.pddl",
+            "temporal_auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

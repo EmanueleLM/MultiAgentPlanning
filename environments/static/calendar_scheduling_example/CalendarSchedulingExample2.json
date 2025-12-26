@@ -1,0 +1,95 @@
+{
+    "name": "CalendarSchedulingExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "Roy",
+            "Kathryn",
+            "Amy",
+            "orchestrator"
+        ],
+        "Roy": {
+            "private_information": [
+                "I am Roy.",
+                "My blocked slots (30 mins duration, starting time): 9:00, 10:00, 11:00, 12:30."
+            ],
+            "goal": "Identify my available 30-minute time slots between 9:00 and 17:00 on Monday."
+        },
+        "Kathryn": {
+            "private_information": [
+                "I am Kathryn.",
+                "My blocked slots (30 mins duration, starting time): 9:30, 16:30."
+            ],
+            "goal": "Identify my available 30-minute time slots between 9:00 and 17:00 on Monday."
+        },
+        "Amy": {
+            "private_information": [
+                "I am Amy.",
+                "My blocked slots (30 mins duration, starting time): 9:00, 9:30, 10:00, 10:30, 11:00, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00 (due to 9:00-14:30 block). Also 15:00, 15:30, 16:30.",
+                "Preference: I would rather not meet after 15:30 (meaning meeting start time should be 15:30 or earlier)."
+            ],
+            "goal": "Identify my available 30-minute time slots between 9:00 and 17:00 on Monday, factoring in my time preferences."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a single 30-minute time slot for the meeting that works for Roy, Kathryn, and Amy, respecting all schedule constraints and Amy's preference."
+        }
+    },
+    "environment": {
+        "init": {
+            "meeting_duration_minutes": 30,
+            "day": "Monday",
+            "start_time": "9:00",
+            "end_time": "17:00"
+        },
+        "public_information": [
+            "A meeting must be scheduled for Roy, Kathryn, and Amy.",
+            "The meeting duration is exactly 30 minutes.",
+            "The scheduling window is Monday, 9:00 to 17:00. Time slots are 30 minutes long (e.g., starting at 9:00, 9:30, up to 16:30)."
+        ]
+    },
+    "workflow": {
+        "Roy": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_roy_availability",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) specialized in temporal constraints. You define objects representing 30-minute time slots (e.g., T0900, T0930, ..., T1630). Your task is to define PDDL predicates reflecting your availability.",
+                "prompt": "Your name is Roy. The global context is:\n{environment->public_information}\nMeeting duration is {environment->init->meeting_duration_minutes} minutes.\nYou have the following schedule constraints:\n{agents->Roy->private_information}\nDefine a PDDL domain and problem where the goal is to identify and list all available 30-minute slots. Use a predicate like (available_roy ?slot - timeslot) where the slot object represents the start time.\nThink step by step and provide a PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Kathryn": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_kathryn_availability",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) specialized in temporal constraints. You define objects representing 30-minute time slots (e.g., T0900, T0930, ..., T1630). Your task is to define PDDL predicates reflecting your availability.",
+                "prompt": "Your name is Kathryn. The global context is:\n{environment->public_information}\nMeeting duration is {environment->init->meeting_duration_minutes} minutes.\nYou have the following schedule constraints:\n{agents->Kathryn->private_information}\nDefine a PDDL domain and problem where the goal is to identify and list all available 30-minute slots. Use a predicate like (available_kathryn ?slot - timeslot) where the slot object represents the start time.\nThink step by step and provide a PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Amy": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_amy_availability",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) specialized in temporal constraints. You define objects representing 30-minute time slots (e.g., T0900, T0930, ..., T1630). Your task is to define PDDL predicates reflecting your availability and preference.",
+                "prompt": "Your name is Amy. The global context is:\n{environment->public_information}\nMeeting duration is {environment->init->meeting_duration_minutes} minutes.\nYou have the following schedule constraints and preferences:\n{agents->Amy->private_information}\nDefine a PDDL domain and problem. Define available slots using (available_amy ?slot - timeslot). Also define a separate predicate (preferred ?slot - timeslot) for slots meeting your preference (starting 15:30 or earlier).\nThink step by step and provide a PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_roy_availability",
+                    "pddl_kathryn_availability",
+                    "pddl_amy_availability"
+                ],
+                "output": "pddl_final_schedule",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) specialized in temporal planning and constraint satisfaction. You must integrate the received constraints to find a unified solution. You focus on auditing temporal consistency and merging information correctly.",
+                "prompt": "You are the orchestrator tasked with finding a common 30-minute time slot for Roy, Kathryn, and Amy between 9:00 and 17:00.\nYou received PDDL definitions specifying the availability of each participant. It is crucial to check temporal consistency (i.e., that 'available' predicates across agents refer to the same time slots) and ensure the final chosen slot respects Amy's preference whenever possible, as a solution is known to exist.\n\nRoy's Availability PDDL:\n{pddl_roy_availability}\n\nKathryn's Availability PDDL:\n{pddl_kathryn_availability}\n\nAmy's Availability PDDL (includes preferences):\n{pddl_amy_availability}\n\nIntegrate these PDDL responses. Define a new combined problem where the goal is to select exactly one common available slot, prioritizing slots marked as 'preferred' by Amy (those starting at 15:30 or earlier).\nThink step by step and and provide a single, unified PDDL domain and a PDDL problem file targeting the FastDownwards solver.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Roy.pddl->orchestrator.pddl",
+            "Kathryn.pddl->orchestrator.pddl",
+            "Amy.pddl->orchestrator.pddl"
+        ]
+    }
+}

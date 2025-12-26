@@ -1,0 +1,109 @@
+{
+    "name": "CalendarSchedulingExample13",
+    "author": "Expert Scheduler",
+    "agents": {
+        "number": 5,
+        "names": [
+            "gerald_planner",
+            "roy_planner",
+            "barbara_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "gerald_planner": {
+            "private_information": [
+                "Gerald is busy on Monday during 9:00 to 9:30, 13:00 to 14:00, 15:00 to 15:30, 16:00 to 17:00.",
+                "Gerald prefers to avoid meetings before 13:00."
+            ],
+            "goal": "Determine all possible 30-minute time slots Gerald is available for, noting his time preference."
+        },
+        "roy_planner": {
+            "private_information": [
+                "Roy is free the entire day (9:00 to 17:00)."
+            ],
+            "goal": "Determine all possible 30-minute time slots Roy is available for."
+        },
+        "barbara_planner": {
+            "private_information": [
+                "Barbara is busy on Monday during 9:30 to 10:00, 11:30 to 14:00, 14:30 to 15:00, 15:30 to 17:00."
+            ],
+            "goal": "Determine all possible 30-minute time slots Barbara is available for."
+        },
+        "auditor": {
+            "private_information": [
+                "The meeting duration is 30 minutes.",
+                "The working window is 9:00 to 17:00."
+            ],
+            "goal": "Verify the reported free time slots from Gerald, Roy, and Barbara for temporal consistency and adherence to the 30-minute meeting duration within the 9:00-17:00 window."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a mutually available 30-minute slot for Gerald, Roy, and Barbara that respects Gerald's time preference, and express the final schedule as a PDDL plan for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The task is to schedule a 30-minute meeting on Monday between 9:00 and 17:00 for Gerald, Roy, and Barbara.",
+            "All participants must be free for the entire 30-minute duration.",
+            "Gerald prefers to avoid meetings before 13:00."
+        ]
+    },
+    "workflow": {
+        "gerald_planner": {
+            "analysis": {
+                "input": [],
+                "output": "gerald_report",
+                "system_prompt": "You are an expert schedule analyst. You must analyze the schedule provided and output a JSON list of continuous free time intervals [start_time, end_time] in HH:MM format (24h clock) where the agent is available for at least 30 minutes. Enclose the JSON list between <report></report> tags.",
+                "prompt": "Your name is gerald_planner. You are analyzing Gerald's schedule for a 30-minute meeting. Work hours are 9:00 to 17:00. Public information:\n{environment->public_information}\nKnowledge:\n{agents->gerald_planner->private_information}\nGoal:\n{agents->gerald_planner->goal}\nProvide the JSON list of available 30-minute intervals."
+            }
+        },
+        "roy_planner": {
+            "analysis": {
+                "input": [],
+                "output": "roy_report",
+                "system_prompt": "You are an expert schedule analyst. You must analyze the schedule provided and output a JSON list of continuous free time intervals [start_time, end_time] in HH:MM format (24h clock) where the agent is available for at least 30 minutes. Enclose the JSON list between <report></report> tags.",
+                "prompt": "Your name is roy_planner. You are analyzing Roy's schedule for a 30-minute meeting. Work hours are 9:00 to 17:00. Public information:\n{environment->public_information}\nKnowledge:\n{agents->roy_planner->private_information}\nGoal:\n{agents->roy_planner->goal}\nProvide the JSON list of available 30-minute intervals."
+            }
+        },
+        "barbara_planner": {
+            "analysis": {
+                "input": [],
+                "output": "barbara_report",
+                "system_prompt": "You are an expert schedule analyst. You must analyze the schedule provided and output a JSON list of continuous free time intervals [start_time, end_time] in HH:MM format (24h clock) where the agent is available for at least 30 minutes. Enclose the JSON list between <report></report> tags.",
+                "prompt": "Your name is barbara_planner. You are analyzing Barbara's schedule for a 30-minute meeting. Work hours are 9:00 to 17:00. Public information:\n{environment->public_information}\nKnowledge:\n{agents->barbara_planner->private_information}\nGoal:\n{agents->barbara_planner->goal}\nProvide the JSON list of available 30-minute intervals."
+            }
+        },
+        "auditor": {
+            "verification": {
+                "input": [
+                    "gerald_report",
+                    "roy_report",
+                    "barbara_report"
+                ],
+                "output": "verified_schedules",
+                "system_prompt": "You are a temporal consistency auditor. Your role is to ensure all reported schedules are within the defined 9:00-17:00 window and correctly represent continuous 30-minute slots. You must merge and normalize the input reports into a single, clean JSON structure mapping agent name to their verified list of free intervals. Enclose the resulting JSON structure between <verified_data></verified_data> tags.",
+                "prompt": "Your name is auditor. You have received the following reported free schedules. Public information:\n{environment->public_information}\nKnowledge:\n{agents->auditor->private_information}\nGoal:\n{agents->auditor->goal}\nGerald's report:\n{gerald_report}\nRoy's report:\n{roy_report}\nBarbara's report:\n{barbara_report}\nProcess and verify the data, removing any temporal inconsistencies or formatting errors, and provide the normalized merged schedules."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "verified_schedules"
+                ],
+                "output": "pddl_final_schedule",
+                "system_prompt": "You are an expert in generating multi-constraint PDDL problems using temporal reasoning for the FastDownwards planner. You must define a domain and problem that finds a single 30-minute time slot that satisfies the schedules of all participants, prioritizing slots that meet Gerald's preference (after 13:00). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You need to schedule a 30-minute meeting using the following verified schedules:\n{verified_schedules}\nTask constraints:\n{environment->public_information}\nGoal:\n{agents->orchestrator->goal}\nSynthesize this information and generate a PDDL domain and problem that solves the scheduling task, ensuring the action finds the required time slot and respects the preference if possible."
+            }
+        },
+        "constraints": [
+            "gerald_planner.analysis->auditor.verification",
+            "roy_planner.analysis->auditor.verification",
+            "barbara_planner.analysis->auditor.verification",
+            "auditor.verification->orchestrator.pddl"
+        ]
+    }
+}

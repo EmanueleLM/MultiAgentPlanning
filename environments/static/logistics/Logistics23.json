@@ -1,0 +1,105 @@
+{
+    "name": "Logistics23",
+    "author": "AI Assistant",
+    "agents": {
+        "number": 4,
+        "names": [
+            "truck_planner",
+            "air_planner",
+            "orchestrator",
+            "auditor"
+        ],
+        "truck_planner": {
+            "private_information": [
+                "I specialize in PDDL planning for ground transportation and truck movement within cities.",
+                "There is one truck available per city."
+            ],
+            "goal": "Ensure all required ground logistics movements are accounted for to achieve the global goal."
+        },
+        "air_planner": {
+            "private_information": [
+                "I specialize in PDDL planning for air transportation between cities via designated airports."
+            ],
+            "goal": "Ensure all required air logistics movements are accounted for to achieve the global goal."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I integrate plans from specialized planners to create a final, unified PDDL solution."
+            ],
+            "goal": "Integrate the partial plans to achieve the final state: package_0 is at location_1_1 and package_1 is at location_1_0."
+        },
+        "auditor": {
+            "private_information": [
+                "I must audit the logical consistency of temporal and causal dependencies proposed by the specialized planners."
+            ],
+            "goal": "Audit temporal/causal consistency and remove bookkeeping shortcuts/inconsistencies across the specialized plans."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a logistics environment involving packages, trucks, airplanes, locations, and cities.",
+            "Locations within a city are directly connected (trucks can move between any two locations in the same city).",
+            "Inter-city movement requires airplanes operating between airport locations.",
+            "Initial setup:",
+            "  - Locations (0_0, 0_1, 0_2) are in city_0.",
+            "  - Locations (1_0, 1_1, 1_2) are in city_1.",
+            "  - location_0_0 and location_1_0 are airports.",
+            "  - truck_0 is at location_0_2.",
+            "  - truck_1 is at location_1_2.",
+            "  - airplane_0 is at location_1_0.",
+            "  - airplane_1 is at location_1_0.",
+            "  - package_0 is at location_1_2.",
+            "  - package_1 is at location_0_1."
+        ]
+    },
+    "workflow": {
+        "truck_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck_planner",
+                "system_prompt": "You are an expert with PDDL problems focusing solely on intra-city logistics and ground transportation (Truck actions: Load, Unload, Drive). You always provide a PDDL domain and a PDDL problem file. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Based on the public logistics information:\n{environment->public_information}\nand your goal:\n{agents->truck_planner->goal}\nGenerate a PDDL domain and problem file covering truck operations necessary to solve the global task. Define appropriate types (package, truck, location, city) and predicates (at, in, in-city, is-airport, connected)."
+            }
+        },
+        "air_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_air_planner",
+                "system_prompt": "You are an expert with PDDL problems focusing solely on inter-city logistics and air transportation (Airplane actions: Load, Unload, Fly). You always provide a PDDL domain and a PDDL problem file. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Based on the public logistics information:\n{environment->public_information}\nand your goal:\n{agents->air_planner->goal}\nGenerate a PDDL domain and problem file covering airplane operations necessary to solve the global task. Define appropriate types (package, airplane, location, city) and predicates (at, in, in-city, is-airport)."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_truck_planner",
+                    "pddl_air_planner"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a logistics planning auditor. Analyze the provided PDDL fragments for temporal and causal consistency, ensuring that resource usage (packages, locations) and state transitions are logically sound when moving between ground and air domains. Identify potential conflicts or missing coordination points.",
+                "prompt": "Analyze the PDDL domain and problem provided by the Truck Planner:\n{pddl_truck_planner}\n\nAnd the PDDL domain and problem provided by the Air Planner:\n{pddl_air_planner}\n\nProvide an audit report focusing on necessary steps for the Orchestrator to integrate them seamlessly to achieve the goal: package_0 is at location_1_1 and package_1 is at location_1_0."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_truck_planner",
+                    "pddl_air_planner",
+                    "audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-agent/multi-domain PDDL problems. Your role is to integrate the distinct PDDL domains and problems provided by specialized planners into a single, comprehensive PDDL domain and problem suitable for a classical solver like FastDownwards. Ensure the final PDDL solves the combined logistics task. The output PDDL must be executable by a standard PDDL solver.",
+                "prompt": "You must integrate the ground transportation plans ({pddl_truck_planner}) and air transportation plans ({pddl_air_planner}) informed by the audit report ({audit_report}). The final goal is to achieve: package_0 is at location_1_1 and package_1 is at location_1_0.\n\nCrucially, ensure the integrated PDDL domain supports all necessary actions (Load/Unload/Drive/Fly) and maintains object types, connectivity, and initial state facts accurately reflecting the full environment setup.\n\nThink step by step and provide the unified PDDL domain and problem file. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "truck_planner.pddl->auditor.review",
+            "air_planner.pddl->auditor.review",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

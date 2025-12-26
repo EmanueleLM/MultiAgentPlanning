@@ -1,0 +1,80 @@
+{
+    "name": "TripPlanningExample5",
+    "author": "Expert Planner",
+    "agents": {
+        "number": 3,
+        "names": [
+            "ItineraryPlanner",
+            "ConstraintAuditor",
+            "orchestrator"
+        ],
+        "ItineraryPlanner": {
+            "private_information": [
+                "I must minimize the deviation from the preferred stay durations: Oslo (6 days), Porto (7 days), Dubrovnik (5 days).",
+                "Total trip duration must be 16 days.",
+                "Flight connections: Oslo <-> Dubrovnik, Porto <-> Oslo."
+            ],
+            "goal": "Develop a feasible schedule of city visits and stay durations within the 16-day limit, maximizing preferred durations while respecting direct flight constraints."
+        },
+        "ConstraintAuditor": {
+            "private_information": [
+                "The total requested stay duration is 18 days (6+7+5), which exceeds the available 16 days.",
+                "The agent must be in Dubrovnik on Day 12 and Day 16 for a conference."
+            ],
+            "goal": "Audit the temporal consistency of the required inputs and verify that any proposed plan respects the 16-day limit and the critical conference attendance dates."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the schedule proposal and constraint analysis into a comprehensive multi-step PDDL domain and problem definition for the 16-day trip."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 16,
+            "cities": [
+                "Oslo",
+                "Porto",
+                "Dubrovnik"
+            ]
+        },
+        "public_information": [
+            "The trip is 16 days long.",
+            "Required stays: Oslo (6 days preference), Porto (7 days preference), Dubrovnik (5 days preference).",
+            "Direct flights exist between: Oslo and Dubrovnik, Porto and Oslo.",
+            "Conference attendance is mandatory in Dubrovnik on Day 12 and Day 16."
+        ]
+    },
+    "workflow": {
+        "ItineraryPlanner": {
+            "analysis": {
+                "input": [],
+                "output": "planner_report",
+                "system_prompt": "You are an expert itinerary planner. Analyze the constraints and requirements to propose a high-level travel schedule and resource allocation.",
+                "prompt": "Analyze the following public constraints:\n{environment->public_information}\nConsider your private knowledge:\n{agents->ItineraryPlanner->private_information}\nOutline a high-level, 16-day travel schedule, specifying the sequence of cities and the duration of stay in each. Explicitly address how you handle the conflict between the requested 18 days of stay and the 16-day limit."
+            }
+        },
+        "ConstraintAuditor": {
+            "audit": {
+                "input": [],
+                "output": "audit_findings",
+                "system_prompt": "You are a Constraint Auditor. Your job is to verify that the planning inputs are consistent, identify conflicts, and ensure critical deadlines are met.",
+                "prompt": "Analyze the total duration constraints and fixed temporal requirements (conference dates) based on the public information:\n{environment->public_information}\nUse your private knowledge:\n{agents->ConstraintAuditor->private_information}\nReport on the identified conflicts (e.g., requested days vs available days) and explicitly state the conditions necessary for a valid plan concerning the Dubrovnik conferences on Day 12 and Day 16."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "planner_report",
+                    "audit_findings"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL generator specialized in temporal and scheduling problems. You must integrate input reports into a single PDDL domain and problem file targeted for the FastDownwards solver (classical planning). You must model time explicitly (e.g., using predicates for current day) and ensure all constraints, including the 16-day limit, flight connections, and specific day requirements (Dubrovnik D12/D16), are satisfied.",
+                "prompt": "You have received the following reports:\n\nPLANNER REPORT:\n{planner_report}\n\nAUDIT FINDINGS:\n{audit_findings}\n\nIntegrate this information to create a single PDDL domain and problem that solves the overall goal: Find a 16-day trip plan visiting Oslo, Porto, and Dubrovnik, respecting connectivity, and ensuring the agent is in Dubrovnik on Day 12 and Day 16, while maximizing the total stay duration based on preferences.\n\nModel the days (1 to 16) and locations explicitly. Ensure the goal state is achieved by the end of Day 16.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "ItineraryPlanner.analysis->orchestrator.pddl",
+            "ConstraintAuditor.audit->orchestrator.pddl"
+        ]
+    }
+}

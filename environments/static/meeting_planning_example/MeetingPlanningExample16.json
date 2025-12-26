@@ -1,0 +1,78 @@
+{
+    "name": "MeetingPlanningExample16",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "scheduler",
+            "constraint_checker",
+            "orchestrator"
+        ],
+        "scheduler": {
+            "private_information": [
+                "Travel time Chinatown to Russian Hill: 7 minutes.",
+                "Travel time Russian Hill to Chinatown: 9 minutes."
+            ],
+            "goal": "Propose an initial schedule for meeting Ronald, starting at 9:00 AM in Chinatown, optimizing for total meeting time."
+        },
+        "constraint_checker": {
+            "private_information": [
+                "Ronald is available at Russian Hill from 3:15 PM to 9:30 PM (555 minutes to 1170 minutes from midnight).",
+                "The meeting with Ronald must last a minimum of 105 minutes (1 hour 45 minutes)."
+            ],
+            "goal": "Audit a proposed schedule for temporal feasibility and adherence to minimum meeting duration requirements."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the proposed schedule and constraint audit to generate the final optimized PDDL plan for meeting Ronald, maximizing the total meeting duration."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "9:00 AM",
+            "start_location": "Chinatown",
+            "goal_metric": "Maximize duration of meeting Ronald"
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day.",
+            "Goal: Meet as many friends as possible (focus on Ronald).",
+            "The journey starts at Chinatown at 9:00 AM.",
+            "Ronald is located at Russian Hill."
+        ]
+    },
+    "workflow": {
+        "scheduler": {
+            "planning": {
+                "input": [],
+                "output": "plan_draft",
+                "system_prompt": "You are a specialized planning agent focused on optimizing schedules based on geographical locations and travel times. Your output must be a detailed, time-stamped schedule in a standardized text format.",
+                "prompt": "Your name is scheduler. You are in San Francisco. The public information is: {environment->public_information}. Your private information is: {agents->scheduler->private_information}. Your goal is to {agents->scheduler->goal}. Provide a detailed schedule, listing location, action, start time, and end time, targeting the meeting with Ronald while respecting the starting conditions (9:00 AM arrival at Chinatown). Focus only on meeting Ronald for now. List all potential actions leading up to the earliest possible start of the meeting."
+            }
+        },
+        "constraint_checker": {
+            "audit": {
+                "input": [
+                    "plan_draft"
+                ],
+                "output": "constraint_report",
+                "system_prompt": "You are a temporal and causal consistency auditor. You strictly verify time windows and duration constraints against a proposed schedule. Your output must clearly state whether the schedule is valid or invalid, and if invalid, why. You focus on removing errors or inconsistencies, specifically confirming if the plan allows for a continuous 105-minute meeting block within Ronald's 3:15 PM to 9:30 PM availability.",
+                "prompt": "Your name is constraint_checker. Your private information is: {agents->constraint_checker->private_information}. Your goal is to {agents->constraint_checker->goal}. You have received the following plan draft:\n{plan_draft}\nCheck if this plan respects Ronald's availability (3:15 PM - 9:30 PM) and ensures a minimum meeting duration of 105 minutes. Provide a detailed report of your findings, confirming the earliest possible meeting start time and the latest possible meeting end time."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "plan_draft",
+                    "constraint_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems, specifically temporal planning (PDDL 2.1/3.0 preferred). You always provide a PDDL domain and a PDDL problem file designed for a FastDownwards solver. You must handle durations and metric maximization. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "The overall goal is: {agents->orchestrator->goal}. You have received a proposed schedule and an audit report. Use this information to construct a valid temporal PDDL plan for meeting Ronald, maximizing the total time spent meeting him while respecting all constraints (arrival time, travel duration, Ronald's availability, and minimum meeting duration of 105 minutes).\nProposed Schedule:\n{plan_draft}\nAudit Report:\n{constraint_report}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task. Use durative actions and the :action-cost or :metric requirements. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "scheduler.planning->constraint_checker.audit",
+            "constraint_checker.audit->orchestrator.pddl"
+        ]
+    }
+}

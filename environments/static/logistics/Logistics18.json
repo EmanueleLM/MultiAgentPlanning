@@ -1,0 +1,96 @@
+{
+    "name": "Logistics18",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TruckAgent",
+            "AirAgent",
+            "Orchestrator",
+            "Auditor"
+        ],
+        "TruckAgent": {
+            "private_information": [
+                "I operate trucks for intra-city movement and package handling within cities.",
+                "I know how to load, unload, and drive trucks between locations in the same city."
+            ],
+            "goal": "Handle local logistics movement required to position package_0 for inter-city travel or final delivery."
+        },
+        "AirAgent": {
+            "private_information": [
+                "I operate airplanes for inter-city movement.",
+                "I know how to load, unload, and fly airplanes only between designated airport locations."
+            ],
+            "goal": "Handle inter-city transport of package_0."
+        },
+        "Orchestrator": {
+            "private_information": [
+                "I combine the local (truck) and air (airplane) plans to achieve the global delivery goal."
+            ],
+            "goal": "Ensure package_0 is successfully transported from location_0_1 to location_1_2."
+        },
+        "Auditor": {
+            "private_information": [
+                "I am responsible for verifying that the synthesized plan adheres strictly to all defined logistics constraints."
+            ],
+            "goal": "Verify the final PDDL plan for causal and temporal consistency based on environmental constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 100,
+            "visibility": 4
+        },
+        "public_information": [
+            "This is a logistics planning problem involving trucks (intra-city) and airplanes (inter-city).",
+            "Initial setup: location_0_0 is an airport, location_1_0 is an airport.",
+            "Initial locations: airplane_0 is at location_1_0, package_0 is at location_0_1, truck_0 is at location_0_2, truck_1 is at location_1_0.",
+            "City membership: city_0 contains {location_0_0, location_0_1, location_0_2}. city_1 contains {location_1_0, location_1_1, location_1_2}.",
+            "Constraints summary: Packages must be co-located with vehicle for Load action. Trucks only drive within the same city. Airplanes only fly between airports."
+        ]
+    },
+    "workflow": {
+        "TruckAgent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in ground transport logistics (trucks). You must define types, predicates, and actions (load-truck, unload-truck, drive-truck) related to intra-city movement. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is TruckAgent. Focus on modeling the local transportation infrastructure using trucks. Include all relevant objects and initial states concerning trucks, packages, and local locations in city_0 and city_1. This PDDL might be incomplete regarding air travel but must be internally consistent regarding ground transport rules defined in the public information."
+            }
+        },
+        "AirAgent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_air",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in air transport logistics (airplanes). You must define types, predicates, and actions (load-airplane, unload-airplane, fly-airplane) related to inter-city movement between airports. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is AirAgent. Focus on modeling the air transportation infrastructure using airplanes and airports. Include all relevant objects and initial states concerning airplanes, packages, and airport locations. This PDDL might be incomplete regarding local ground movement but must be internally consistent regarding air travel rules defined in the public information."
+            }
+        },
+        "Orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_truck",
+                    "pddl_air"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language), focusing on integrating partial plans from specialized agents into a complete, unified domain and problem definition suitable for the FastDownwards solver. You must ensure all actions (truck and airplane) are present and correctly defined according to the overall logistics rules. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You need to integrate the PDDL responses from the TruckAgent and AirAgent to solve the global logistics task: {agents->Orchestrator->goal}.\nHere is the TruckAgent response:\n{pddl_truck}\nHere is the AirAgent response:\n{pddl_air}\nIdentify common objects, harmonize predicates, and synthesize a single PDDL Domain and PDDL Problem file that uses the defined initial state to achieve the goal: package_0 is at location_1_2. Ensure the resulting PDDL respects all underlying physical constraints (e.g., Load/Unload preconditions, intra-city driving, inter-city flying)."
+            }
+        },
+        "Auditor": {
+            "review": {
+                "input": [
+                    "pddl_orchestrator"
+                ],
+                "output": "review_audit",
+                "system_prompt": "You are an expert auditor specializing in PDDL validation and temporal/causal consistency checks against defined rules. Your role is to analyze a proposed PDDL domain and problem solution. You must verify if the generated PDDL correctly implements all required logistics constraints.",
+                "prompt": "Analyze the following final PDDL provided by the Orchestrator:\n{pddl_orchestrator}\n\nStrictly check the following constraints derived from the environment specification:\n1. Load/Unload constraints (package and vehicle must be co-located for loading; unloading places package at vehicle location).\n2. Truck movement constraint (Trucks can only move between locations within the same city).\n3. Airplane movement constraint (Airplanes can only fly between designated airport locations).\n\nProvide a detailed assessment of whether the domain and problem definition are causally and temporally consistent with the constraints. State explicitly if the PDDL appears valid or requires modification."
+            }
+        },
+        "constraints": [
+            "TruckAgent.pddl->Orchestrator.pddl",
+            "AirAgent.pddl->Orchestrator.pddl",
+            "Orchestrator.pddl->Auditor.review"
+        ]
+    }
+}

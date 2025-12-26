@@ -1,0 +1,81 @@
+{
+    "name": "TripPlanningExample19",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "FlightSpecialist",
+            "TemporalAuditor",
+            "orchestrator"
+        ],
+        "FlightSpecialist": {
+            "private_information": [
+                "The available flight routes are Brussels <-> Valencia and Nice <-> Brussels.",
+                "All commutes must be direct flights."
+            ],
+            "goal": "Determine a sequence of city visits that is achievable using only direct flights."
+        },
+        "TemporalAuditor": {
+            "private_information": [
+                "Total trip must be 9 days.",
+                "Stay requirements requested: Brussels (2 days), Valencia (3 days), Nice (6 days). (Note: 2+3+6 = 11 days, exceeding the 9 day limit)",
+                "A meeting must occur in Nice between the stay's Day 1 and Day 6."
+            ],
+            "goal": "Establish the time requirements and identify potential temporal inconsistencies for the trip sequence."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a single, comprehensive 9-day trip plan visiting Brussels, Valencia, and Nice, prioritizing the 9-day total limit, direct flight rule, and ensuring the meeting constraint in Nice is met."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_trip_duration": 9,
+            "cities": [
+                "Brussels",
+                "Valencia",
+                "Nice"
+            ]
+        },
+        "public_information": [
+            "The trip is 9 days long in total.",
+            "You must visit Brussels, Valencia, and Nice.",
+            "Commutes between cities must be direct flights.",
+            "Required stays: Brussels (2 days), Valencia (3 days), Nice (6 days).",
+            "Direct flights exist between: Brussels <-> Valencia, Nice <-> Brussels."
+        ]
+    },
+    "workflow": {
+        "FlightSpecialist": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flight_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is FlightSpecialist. Your primary concern is the connectivity between locations. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->FlightSpecialist->private_information}\nThis is the sub-goal to solve:\n{agents->FlightSpecialist->goal}\nBased on this context, define the necessary objects, predicates, and actions related to cities and travel routes to achieve your goal. If you miss some information, do not make assumptions, just define a plan based on the information you have.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "TemporalAuditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_temporal_constraints",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in temporal modeling and constraints validation. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is TemporalAuditor. Your primary concern is the allocation of time and checking for inconsistencies. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->TemporalAuditor->private_information}\nThis is the sub-goal to solve:\n{agents->TemporalAuditor->goal}\nBased on this context, define the necessary objects, predicates, and actions related to managing day counts, stay durations, and meeting constraints. Highlight the conflict between requested stay days (11) and total available days (9) in your model if possible, ensuring the 9-day limit is respected in the final problem definition.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_flight_plan",
+                    "pddl_temporal_constraints"
+                ],
+                "output": "pddl_final_plan",
+                "system_prompt": "You are an expert with integrated multi-perspective PDDL problems (Planning Domain Definition Language). You synthesize inputs from multiple specialized agents to form a cohesive, final plan targeting the FastDownwards solver. You always provide a unified PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator tasked with finalizing a 9-day trip itinerary. You will receive planning components from the FlightSpecialist (focusing on connectivity) and the TemporalAuditor (focusing on time constraints).\nYour global objective is:\n{agents->orchestrator->goal}\n\nReview the flight connectivity plan provided by the FlightSpecialist:\n{pddl_flight_plan}\n\nReview the temporal constraints and duration logic provided by the TemporalAuditor:\n{pddl_temporal_constraints}\n\nIntegrate all constraints: respect the 9-day total limit, the direct flight connectivity, and the requirement to visit all three cities while meeting friends in Nice (Day 1-6 of Nice stay). Since the requested stays exceed 9 days (11 total), you must adjust the durations to fit within the 9-day limit while prioritizing necessary actions (e.g., maximizing the Nice stay to cover the meeting window).\n\nThink step by step and and provide a single, unified PDDL domain and a PDDL problem file to solve the 9-day trip planning task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "FlightSpecialist.pddl->orchestrator.pddl",
+            "TemporalAuditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

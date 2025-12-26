@@ -1,0 +1,106 @@
+{
+    "name": "CalendarSchedulingExample4",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "donna",
+            "john",
+            "billy",
+            "auditor",
+            "orchestrator"
+        ],
+        "donna": {
+            "private_information": [
+                "My busy times are Monday 14:00 to 14:30 and 15:30 to 16:00."
+            ],
+            "goal": "Identify all 30-minute time slots available for a meeting between 9:00 and 17:00 on Monday."
+        },
+        "john": {
+            "private_information": [
+                "My busy times are Monday 11:00 to 11:30 and 16:30 to 17:00."
+            ],
+            "goal": "Identify all 30-minute time slots available for a meeting between 9:00 and 17:00 on Monday."
+        },
+        "billy": {
+            "private_information": [
+                "My busy times are Monday 9:00 to 10:00, 10:30 to 14:00, and 14:30 to 17:00."
+            ],
+            "goal": "Identify all 30-minute time slots available for a meeting between 9:00 and 17:00 on Monday."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Audit the reported individual availabilities for temporal consistency and consolidate them into a single comprehensive schedule input for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find the single common 30-minute time slot that works for Donna, John, and Billy, and express the final schedule as a PDDL plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "The required meeting duration is 30 minutes.",
+            "The meeting must occur on Monday between 9:00 and 17:00."
+        ]
+    },
+    "workflow": {
+        "donna": {
+            "report_availability": {
+                "input": [],
+                "output": "donna_availability",
+                "system_prompt": "You are a scheduling expert. Your task is to analyze your schedule based on the known constraints and report your available 30-minute slots. Output a JSON list of available intervals (e.g., [\"10:00-10:30\", \"13:00-13:30\"]).",
+                "prompt": "Your name is Donna. The constraints are:\n{environment->public_information}\nWorking hours are {environment->init->start_time} to {environment->init->end_time} on {environment->init->day}. Meeting duration is {environment->init->meeting_duration_minutes} minutes.\nYour schedule knowledge:\n{agents->donna->private_information}\nList your available 30-minute slots."
+            }
+        },
+        "john": {
+            "report_availability": {
+                "input": [],
+                "output": "john_availability",
+                "system_prompt": "You are a scheduling expert. Your task is to analyze your schedule based on the known constraints and report your available 30-minute slots. Output a JSON list of available intervals (e.g., [\"10:00-10:30\", \"13:00-13:30\"]).",
+                "prompt": "Your name is John. The constraints are:\n{environment->public_information}\nWorking hours are {environment->init->start_time} to {environment->init->end_time} on {environment->init->day}. Meeting duration is {environment->init->meeting_duration_minutes} minutes.\nYour schedule knowledge:\n{agents->john->private_information}\nList your available 30-minute slots."
+            }
+        },
+        "billy": {
+            "report_availability": {
+                "input": [],
+                "output": "billy_availability",
+                "system_prompt": "You are a scheduling expert. Your task is to analyze your schedule based on the known constraints and report your available 30-minute slots. Output a JSON list of available intervals (e.g., [\"10:00-10:30\", \"13:00-13:30\"]).",
+                "prompt": "Your name is Billy. The constraints are:\n{environment->public_information}\nWorking hours are {environment->init->start_time} to {environment->init->end_time} on {environment->init->day}. Meeting duration is {environment->init->meeting_duration_minutes} minutes.\nYour schedule knowledge:\n{agents->billy->private_information}\nList your available 30-minute slots."
+            }
+        },
+        "auditor": {
+            "check_consistency": {
+                "input": [
+                    "donna_availability",
+                    "john_availability",
+                    "billy_availability"
+                ],
+                "output": "consolidated_availability",
+                "system_prompt": "You are an expert in temporal logic and data auditing. Your task is to ensure the reported schedules are temporally consistent (e.g., no overlapping slots are listed as available if the agent listed them as busy internally) and combine the individual schedules into a single structured format suitable for the orchestrator to perform intersection logic. Output a single JSON object where keys are agent names and values are their verified available 30-minute slots.",
+                "prompt": "Analyze the following reported availability schedules against the known constraints (meeting duration 30 minutes, 9:00-17:00 Monday). Check for logical or temporal inconsistencies. Then, consolidate the verified data:\nDonna's Availability:\n{donna_availability}\nJohn's Availability:\n{john_availability}\nBilly's Availability:\n{billy_availability}\nProvide the consolidated and verified schedule data."
+            }
+        },
+        "orchestrator": {
+            "find_meeting_time": {
+                "input": [
+                    "consolidated_availability"
+                ],
+                "output": "pddl_final_schedule",
+                "system_prompt": "You are an expert with PDDL problems, specialized in constraint satisfaction and scheduling. You must translate the scheduling problem into a PDDL domain and problem where actions represent scheduling a meeting at a specific time slot, constrained by agent availability. You must find the single shared slot. Always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the consolidated availability schedule for Donna, John, and Billy. The goal is to schedule a 30-minute meeting on Monday between 9:00 and 17:00. Use the provided consolidated schedule data to define the planning objects and predicates (e.g., available_slot, meeting_scheduled). Find the common time slot and generate the resulting PDDL domain and problem.\nConsolidated Availability Data:\n{consolidated_availability}\nGlobal Goal: {agents->orchestrator->goal}\nThink step by step and provide the PDDL domain and PDDL problem file to solve the task, explicitly naming the chosen meeting time in the plan goal."
+            }
+        },
+        "constraints": [
+            "donna.report_availability->auditor.check_consistency",
+            "john.report_availability->auditor.check_consistency",
+            "billy.report_availability->auditor.check_consistency",
+            "auditor.check_consistency->orchestrator.find_meeting_time"
+        ]
+    }
+}

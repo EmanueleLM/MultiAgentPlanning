@@ -1,0 +1,122 @@
+{
+    "name": "Logistics27",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I must devise a plan using trucks for intra-city movement and airplanes for inter-city movement."
+            ],
+            "goal": "Generate a complete and valid PDDL domain and problem file to move packages to their target locations, respecting all transportation constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "I must verify that the generated PDDL correctly represents the defined logistics constraints and ensures causal consistency."
+            ],
+            "goal": "Ensure temporal and causal consistency in the generated PDDL plan draft by verifying adherence to logistics rules (e.g., truck movement within city, airplane movement between airports)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Finalize the PDDL domain and problem files, ensuring they are ready for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "city_0",
+                "city_1"
+            ],
+            "locations": [
+                "location_0_0",
+                "location_0_1",
+                "location_0_2",
+                "location_1_0",
+                "location_1_1",
+                "location_1_2"
+            ],
+            "packages": [
+                "package_0",
+                "package_1",
+                "package_2"
+            ],
+            "trucks": [
+                "truck_0",
+                "truck_1"
+            ],
+            "airplanes": [
+                "airplane_0",
+                "airplane_1"
+            ],
+            "initial_facts": [
+                "(is-airport location_0_0)",
+                "(is-airport location_1_0)",
+                "(at airplane_0 location_0_0)",
+                "(at airplane_1 location_1_0)",
+                "(at package_0 location_1_2)",
+                "(at package_1 location_0_0)",
+                "(at package_2 location_0_2)",
+                "(at truck_0 location_0_1)",
+                "(at truck_1 location_1_1)",
+                "(in-city location_0_0 city_0)",
+                "(in-city location_0_1 city_0)",
+                "(in-city location_0_2 city_0)",
+                "(in-city location_1_0 city_1)",
+                "(in-city location_1_1 city_1)",
+                "(in-city location_1_2 city_1)"
+            ],
+            "goal_facts": [
+                "(at package_0 location_1_1)",
+                "(at package_1 location_1_1)",
+                "(at package_2 location_1_0)"
+            ]
+        },
+        "public_information": [
+            "The goal is to transport packages between specific locations.",
+            "Movement within cities uses trucks; locations within a city are fully connected (e.g., truck can drive between any two locations L1 and L2 if L1 and L2 are in the same city C).",
+            "Movement between cities uses airplanes; only airport locations are used for inter-city travel.",
+            "Each city has exactly one truck.",
+            "Load/Unload actions require the package and vehicle to be at the same location.",
+            "Truck driving requires both start and end locations to be in the same city.",
+            "Airplane flying requires start and end locations to be airports."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_draft",
+                "system_prompt": "You are an expert PDDL planner. You must generate a PDDL domain and a PDDL problem file based on the provided environment description, initial state, and goal state. Ensure your domain defines predicates for 'at', 'in-city', 'is-airport', and actions for Load, Unload, Drive, and Fly, adhering strictly to the logistics constraints.",
+                "prompt": "You are the primary logistics planner. Below is the setup for the logistics problem. \n\nPublic Information:\n{environment->public_information}\n\nInitial State Facts:\n{environment->init->initial_facts}\n\nGoal State Facts:\n{environment->init->goal_facts}\n\nGenerate the PDDL domain and problem necessary to achieve the goal state from the initial state.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_draft"
+                ],
+                "output": "pddl_review",
+                "system_prompt": "You are a specialized auditor focused on planning domain consistency and causal adherence. Your task is to review the provided PDDL draft and ensure that it correctly models the logistics environment constraints (e.g., truck constraints vs airplane constraints).",
+                "prompt": "Review the following PDDL domain and problem drafted by the planner:\n{pddl_draft}\n\nYour goal is to ensure the domain correctly captures all rules:\n1. Truck actions are limited to locations within the same city.\n2. Airplane actions connect only airports between different cities.\n3. Load/Unload preconditions and effects are accurate.\n\nIf the PDDL is complete and consistent, output the unchanged PDDL structure. If modifications are absolutely necessary to ensure correctness, provide the revised PDDL. Always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags. If no changes are needed, state 'No changes needed' before reproducing the PDDL."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_review"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are the final orchestrator. Your role is to take the reviewed PDDL output and present it as the final solution suitable for the FastDownwards planner.",
+                "prompt": "The planning and auditing phase is complete. Integrate the reviewed PDDL output:\n{pddl_review}\n\nProduce the final PDDL domain and problem files. Ensure they are structured correctly for the solver.\nEnclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.pddl->auditor.review",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

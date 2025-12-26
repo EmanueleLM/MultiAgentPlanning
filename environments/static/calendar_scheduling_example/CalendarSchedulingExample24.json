@@ -1,0 +1,107 @@
+{
+    "name": "CalendarSchedulingExample24",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "benjamin_agent",
+            "hannah_agent",
+            "brenda_agent",
+            "constraint_auditor",
+            "orchestrator"
+        ],
+        "benjamin_agent": {
+            "private_information": [
+                "I am free 9:00 to 17:00 on Monday.",
+                "I strongly prefer not to meet after 9:30 AM."
+            ],
+            "goal": "Identify my available 30-minute time slots that respect my preferences."
+        },
+        "hannah_agent": {
+            "private_information": [
+                "I am free 9:00 to 17:00 on Monday."
+            ],
+            "goal": "Identify my available 30-minute time slots."
+        },
+        "brenda_agent": {
+            "private_information": [
+                "I have meetings on Monday during 9:30-10:00, 11:30-12:30, and 14:00-16:30."
+            ],
+            "goal": "Identify my available 30-minute time slots."
+        },
+        "constraint_auditor": {
+            "private_information": [],
+            "goal": "Validate and normalize the temporal constraints received from all participants before orchestration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find the intersection of all available time slots and produce a PDDL plan to schedule the 30-minute meeting."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "start_time": "9:00",
+            "end_time": "17:00",
+            "duration": "30 minutes"
+        },
+        "public_information": [
+            "The scheduling window is Monday, 9:00 to 17:00.",
+            "The required meeting duration is 30 minutes."
+        ]
+    },
+    "workflow": {
+        "benjamin_agent": {
+            "report": {
+                "input": [],
+                "output": "benjamin_data",
+                "system_prompt": "You are a professional scheduler analyzing Benjamin's availability. You must strictly adhere to all constraints and preferences.",
+                "prompt": "Your name is Benjamin Agent. The public constraints are: {environment->public_information}. Your private information is: {agents->benjamin_agent->private_information}. Based on a meeting duration of 30 minutes, list all possible start times (HH:MM) for the meeting. Output a simple JSON list of time strings."
+            }
+        },
+        "hannah_agent": {
+            "report": {
+                "input": [],
+                "output": "hannah_data",
+                "system_prompt": "You are a professional scheduler analyzing Hannah's availability.",
+                "prompt": "Your name is Hannah Agent. The public constraints are: {environment->public_information}. Your private information is: {agents->hannah_agent->private_information}. Based on a meeting duration of 30 minutes, list all possible start times (HH:MM) for the meeting. Output a simple JSON list of time strings."
+            }
+        },
+        "brenda_agent": {
+            "report": {
+                "input": [],
+                "output": "brenda_data",
+                "system_prompt": "You are a professional scheduler analyzing Brenda's availability. You must account for all existing busy slots.",
+                "prompt": "Your name is Brenda Agent. The public constraints are: {environment->public_information}. Your private information is: {agents->brenda_agent->private_information}. Based on a meeting duration of 30 minutes, list all possible start times (HH:MM) for the meeting. Output a simple JSON list of time strings."
+            }
+        },
+        "constraint_auditor": {
+            "validation": {
+                "input": [
+                    "benjamin_data",
+                    "hannah_data",
+                    "brenda_data"
+                ],
+                "output": "normalized_constraints",
+                "system_prompt": "You are a temporal constraint auditor. Your job is to verify that all received time slots are within the 9:00-17:00 boundary, ensure consistency, and consolidate the availability lists into a unified format for the orchestrator. You are responsible for removing any bookkeeping artifacts or inconsistent time slots.",
+                "prompt": "You have received the proposed available time slots from the three participants. Meeting duration is 30 minutes, required window is 9:00 to 17:00.\nBenjamin's slots: {benjamin_data}\nHannah's slots: {hannah_data}\nBrenda's slots: {brenda_data}\nAnalyze the lists and consolidate them into three normalized lists of valid 30-minute start times. Ensure no time overlaps or violates the global time window. Output a single JSON object containing three keys: 'Benjamin', 'Hannah', and 'Brenda', each mapping to a clean list of available start times (HH:MM)."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "normalized_constraints"
+                ],
+                "output": "pddl_solution",
+                "system_prompt": "You are an expert with PDDL problems focusing on scheduling and resource allocation. You must integrate the received constraints and produce a PDDL plan that schedules the meeting successfully. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the normalized constraints from the auditor:\n{normalized_constraints}\nThe global goal is to schedule a 30-minute meeting on Monday between 9:00 and 17:00 that satisfies all participants' schedules. Identify the common available time slot(s). Create a PDDL domain and problem where the objects are time slots and the goal is to select one valid slot and assert that the meeting is scheduled there.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "benjamin_agent.report->constraint_auditor.validation",
+            "hannah_agent.report->constraint_auditor.validation",
+            "brenda_agent.report->constraint_auditor.validation",
+            "constraint_auditor.validation->orchestrator.pddl"
+        ]
+    }
+}

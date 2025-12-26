@@ -1,0 +1,81 @@
+{
+    "name": "MeetingPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "scheduler",
+            "time_auditor",
+            "orchestrator"
+        ],
+        "scheduler": {
+            "private_information": [
+                "The goal is to meet as many friends as possible.",
+                "I arrive at Presidio at 9:00 AM."
+            ],
+            "goal": "Translate the meeting schedule requirements, locations, and travel times into structured facts and relations suitable for planning."
+        },
+        "time_auditor": {
+            "private_information": [
+                "Andrew requires a minimum meeting duration of 105 minutes.",
+                "Andrew is available from 11:15 AM to 5:15 PM at Union Square."
+            ],
+            "goal": "Verify all temporal constraints (arrival times, required meeting durations, travel times) and ensure consistency for the final plan generation."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Generate the optimal schedule in PDDL format that maximizes the number of meetings while adhering to all temporal and positional constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 0,
+            "visibility": 0,
+            "start_time": "9:00 AM",
+            "start_location": "Presidio"
+        },
+        "public_information": [
+            "Current locations are Presidio and Union Square.",
+            "Travel time Presidio to Union Square: 22 minutes.",
+            "Travel time Union Square to Presidio: 24 minutes.",
+            "Andrew is at Union Square from 11:15 AM to 5:15 PM.",
+            "The meeting with Andrew must last at least 105 minutes."
+        ]
+    },
+    "workflow": {
+        "scheduler": {
+            "analysis": {
+                "input": [],
+                "output": "scheduling_data",
+                "system_prompt": "You are a planning assistant specializing in converting human scheduling tasks into structured data (facts, objects, predicates). Focus on location definitions, time points, and preliminary constraints.",
+                "prompt": "Analyze the following task and translate its components into structured planning primitives. Do not generate PDDL yet. Focus on identifying objects (locations, agents, time slots) and initial conditions (starting location, current time).\nGoal: {agents->scheduler->goal}\nPublic Info: {environment->public_information}\nPrivate Info: {agents->scheduler->private_information}"
+            }
+        },
+        "time_auditor": {
+            "analysis": {
+                "input": [
+                    "scheduling_data"
+                ],
+                "output": "validated_constraints",
+                "system_prompt": "You are a temporal consistency auditor. Your role is to take structured scheduling data and rigorously verify all time-based constraints, ensuring minimum durations, availability windows, and travel times are accurately reflected for optimal planning. You must remove any unnecessary bookkeeping shortcuts.",
+                "prompt": "Analyze the scheduling data provided below, focusing specifically on temporal constraints related to Andrew's meeting. Andrew is available from 11:15 AM (675 minutes past midnight) to 5:15 PM (1035 minutes past midnight) and requires a 105-minute meeting. Calculate the absolute latest possible start time and the earliest possible end time to satisfy the 105-minute duration within the availability window. Provide these validated time facts.\nScheduling Data:\n{scheduling_data}\nPrivate Info: {agents->time_auditor->private_information}"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "scheduling_data",
+                    "validated_constraints"
+                ],
+                "output": "pddl_solution",
+                "system_prompt": "You are an expert in PDDL planning, specializing in temporal and scheduling problems targeting the FastDownwards planner. You must integrate all provided data and constraints to generate a single PDDL domain and problem file that finds the optimal schedule (maximizing meetings/satisfying constraints). You must use durative actions to model movement and meetings. Always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Integrate the following structured scheduling data and validated temporal constraints to create a PDDL solution:\n1. Scheduling Data (Locations, initial state):\n{scheduling_data}\n2. Validated Constraints (Time windows, durations):\n{validated_constraints}\n\nYour name is orchestrator. The overall goal is:\n{agents->orchestrator->goal}\n\nEnsure that:\n1. Travel actions reflect the required duration (22 or 24 minutes).\n2. The meeting with Andrew (105 minutes minimum) starts and ends within his 11:15 AM - 5:15 PM window.\n3. The plan starts at 9:00 AM at Presidio.\n\nThink step by step and provide the complete PDDL domain and PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "scheduler.analysis->time_auditor.analysis",
+            "scheduler.analysis->orchestrator.pddl",
+            "time_auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

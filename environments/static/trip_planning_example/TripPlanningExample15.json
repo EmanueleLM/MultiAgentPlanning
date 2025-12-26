@@ -1,0 +1,104 @@
+{
+    "name": "TripPlanningExample15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "BP_Planner",
+            "Krakow_Planner",
+            "Schedule_Auditor",
+            "orchestrator"
+        ],
+        "BP_Planner": {
+            "private_information": [
+                "I must spend 6 days in Berlin.",
+                "I must spend 2 days in Porto.",
+                "I must be in Porto between Day 10 and Day 11 (inclusive) to attend a wedding.",
+                "Direct flights exist between Berlin and Porto."
+            ],
+            "goal": "Generate a plan fragment covering the visits and transitions between Berlin and Porto, respecting duration and specific temporal placement constraints."
+        },
+        "Krakow_Planner": {
+            "private_information": [
+                "I must spend 5 days in Krakow.",
+                "Direct flights exist between Krakow and Berlin."
+            ],
+            "goal": "Generate a plan fragment covering the visit to Krakow and transitions involving Berlin, respecting the required duration."
+        },
+        "Schedule_Auditor": {
+            "private_information": [
+                "The overall trip must be 11 days long.",
+                "Individual stays required are 6 days (Berlin), 2 days (Porto), and 5 days (Krakow), totaling 13 days."
+            ],
+            "goal": "Audit the input planning fragments for temporal consistency, check conflicts between required individual durations (13 days total) and the overall trip limit (11 days), and advise on sequence prioritization (Porto Day 10-11 constraint)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all planning segments and the auditor's advice into a single coherent PDDL plan for an 11-day trip, resolving temporal contradictions identified."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1,
+            "total_days": 11,
+            "cities": [
+                "Berlin",
+                "Porto",
+                "Krakow"
+            ]
+        },
+        "public_information": [
+            "The trip duration must be exactly 11 days.",
+            "Required stays: Berlin (6 days), Porto (2 days), Krakow (5 days). Note: These stays sum to 13 days.",
+            "Direct flight connections exist between: Berlin <-> Porto and Krakow <-> Berlin.",
+            "Travel must utilize only direct flights."
+        ]
+    },
+    "workflow": {
+        "BP_Planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_bp_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is BP_Planner. You are planning a travel segment. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->BP_Planner->private_information}\nThis is the segment goal:\n{agents->BP_Planner->goal}\nFocus on modeling days, travel actions, and the constraint that Porto must be visited on Day 10 and Day 11. Provide a PDDL domain and a PDDL problem file to solve this segment.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Krakow_Planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_krakow_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is Krakow_Planner. You are planning a travel segment. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->Krakow_Planner->private_information}\nThis is the segment goal:\n{agents->Krakow_Planner->goal}\nFocus on modeling days, stay duration (5 days), and connecting Krakow to Berlin. Provide a PDDL domain and a PDDL problem file to solve this segment.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Schedule_Auditor": {
+            "analysis": {
+                "input": [
+                    "pddl_bp_plan",
+                    "pddl_krakow_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert in temporal consistency analysis and auditing planning constraints. Your role is to identify and articulate contradictions between conflicting requirements and suggest resolution strategies.",
+                "prompt": "Your name is Schedule_Auditor. You need to analyze the planning inputs provided by the segment planners against the global constraints. The global constraints demand an 11-day trip, but the required stays sum to 13 days (6+2+5). The critical constraint is being in Porto on Day 10 and Day 11.\nAnalyze the following plans:\nBP Planner Plan:\n{pddl_bp_plan}\nKrakow Planner Plan:\n{pddl_krakow_plan}\n\nProvide a detailed textual report highlighting temporal overlaps, duration conflicts, and sequence dependency issues. Suggest which stay duration must be reduced (and by how much) to meet the 11-day total, given the Porto 10/11 constraint is fixed. This output will be used by the orchestrator to adjust the final plan."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_bp_plan",
+                    "pddl_krakow_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) and conflict resolution. You always provide a PDDL domain and a PDDL problem file suitable for FastDownwards. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. You must integrate all actions into one sequential plan.",
+                "prompt": "You are orchestrating a complex trip plan based on segmented PDDL inputs and an audit report addressing temporal conflicts.\nGlobal goal: {agents->orchestrator->goal}\n\nReceived segment plans:\nBP Planner Plan:\n{pddl_bp_plan}\nKrakow Planner Plan:\n{pddl_krakow_plan}\n\nAudit Report on Conflicts:\n{audit_report}\n\nIntegrate the plans, prioritizing the overall 11-day duration constraint. Based on the auditor's input, adjust the stay durations for Berlin or Krakow to fit the 11-day window (11 days total travel time), while respecting all direct flight rules and the Porto Day 10/11 constraint.\nThink step by step and provide a single, unified PDDL domain and a PDDL problem file to solve the 11-day trip planning task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "BP_Planner.pddl->Schedule_Auditor.analysis",
+            "Krakow_Planner.pddl->Schedule_Auditor.analysis",
+            "Schedule_Auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

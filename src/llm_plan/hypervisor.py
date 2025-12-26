@@ -81,6 +81,7 @@ class Hypervisor:
             3. Temporal/Causal coherence — disallow token-based bookkeeping, enforce explicit ordering, and prevent oscillating transitions when the specification expects contiguous or monotonic progress.
 
             Select the class best positioned to address the most pressing issue given the current artefacts.
+            If there was no valid "pddl_plan" (i.e., "No plan found.") at the previous iteration, consider agents that can fix the "syntax_errors" first. Keep in mind what is the specific target solver ({target_solver} and PDDL 2.1) and, if useful, remove incompatible parts of the PDDL domain and problem.
             Only select the agent <class>NoOpAgent</class> when every objective above is demonstrably satisfied.
             """
         )

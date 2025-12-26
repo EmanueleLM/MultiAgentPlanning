@@ -1,0 +1,101 @@
+{
+    "name": "Logistics6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "truck_planner",
+            "air_planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "truck_planner": {
+            "private_information": [
+                "I am specialized in modeling ground movement actions (Load/Unload/Drive truck).",
+                "Trucks operate only within a single city."
+            ],
+            "goal": "Model the PDDL domain and problem specifically for ground transport operations to achieve the overall package movement goal."
+        },
+        "air_planner": {
+            "private_information": [
+                "I am specialized in modeling air movement actions (Load/Unload/Fly airplane).",
+                "Airplanes operate only between airport locations in different cities."
+            ],
+            "goal": "Model the PDDL domain and problem specifically for air transport operations to achieve the overall package movement goal."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for validating that all actions respect the physical constraints of the environment, such as location connectivity and transport capacity."
+            ],
+            "goal": "Formulate a PDDL domain that explicitly captures the constraints on movement (e.g., truck driving requires locations in the same city, flying requires airports) and provide the initial state and goal based on the environment description."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the planning components provided by the truck_planner, air_planner, and auditor to create a single, comprehensive PDDL domain and problem that solves the entire logistics task: moving package_0 from location_1_1 to location_0_0."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 4
+        },
+        "public_information": [
+            "The environment consists of packages, trucks, airplanes, locations, and cities.",
+            "Locations within a city are directly connected (trucks can move between any two locations in the same city).",
+            "Cities are connected via airports.",
+            "Initial State:",
+            "  - location_0_0 is an airport, located in city_0.",
+            "  - location_1_0 is an airport, located in city_1.",
+            "  - airplane_0 is at location_1_0.",
+            "  - airplane_1 is at location_0_0.",
+            "  - package_0 is at location_1_1.",
+            "  - truck_0 is at location_0_0 (in city_0).",
+            "  - truck_1 is at location_1_1 (in city_1).",
+            "  - location_0_1 is in city_0.",
+            "Goal State: package_0 is at location_0_0."
+        ]
+    },
+    "workflow": {
+        "truck_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus solely on modeling ground transportation (trucks). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is truck_planner. You are modeling the ground transport capabilities of the logistics environment based on the public information:\n{environment->public_information}\nYour task is:\n{agents->truck_planner->goal}\nFocus on the actions: Load package into truck, Unload package from truck, and Drive truck between locations in the same city. Define relevant predicates (e.g., (at ?o ?l), (in ?p ?v), (in-city ?l ?c)). Provide the necessary PDDL domain and a minimal PDDL problem file containing only the objects and initial state facts directly related to trucks and intra-city movement."
+            }
+        },
+        "air_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_air",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus solely on modeling air transportation (airplanes). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is air_planner. You are modeling the air transport capabilities of the logistics environment based on the public information:\n{environment->public_information}\nYour task is:\n{agents->air_planner->goal}\nFocus on the actions: Load package into airplane, Unload package from airplane, and Fly airplane between airports. Define relevant predicates (e.g., (at ?o ?l), (in ?p ?v), (is-airport ?l)). Provide the necessary PDDL domain and a minimal PDDL problem file containing only the objects and initial state facts directly related to airplanes and inter-city movement."
+            }
+        },
+        "auditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_constraints",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You are acting as an auditor focused on ensuring structural and causal consistency. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is auditor. Your role is to ensure that the initial state, goal state, and structural relationships (city membership, airport status, connectivity) are correctly defined for the planning task. Use the public information:\n{environment->public_information}\nYour task is:\n{agents->auditor->goal}\nDefine all necessary types (package, vehicle, location, city, etc.), define all required predicates ((is-airport), (in-city), (connected)), list ALL objects provided in the initial state description, and define the complete initial state and final goal state. Your domain should contain no actions, serving purely as a structural template. Think step by step and provide a PDDL domain and a PDDL problem file to solve the task."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_truck",
+                    "pddl_air",
+                    "pddl_constraints"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You must integrate partial PDDL definitions into a single, comprehensive plan suitable for the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator for a logistics planning task. Your goal is to:\n{agents->orchestrator->goal}\nYou will receive partial PDDL definitions from three agents. You must integrate them into a single, comprehensive domain and problem file.\n\nHere is the input from the truck_planner (ground actions):\n{pddl_truck}\n\nHere is the input from the air_planner (air actions):\n{pddl_air}\n\nHere is the input from the auditor (structure, initial state, and goal):\n{pddl_constraints}\n\nIntegrate all definitions: combine the types, predicates, and actions from the planners, and use the objects, complete initial state, and final goal state provided by the auditor. Ensure consistency across predicate names (standardize on one name for overlapping predicates, e.g., (at ?o ?l)) and object types. Think step by step and provide the final integrated PDDL domain and PDDL problem file to solve the task."
+            }
+        },
+        "constraints": [
+            "truck_planner.pddl->orchestrator.pddl",
+            "air_planner.pddl->orchestrator.pddl",
+            "auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

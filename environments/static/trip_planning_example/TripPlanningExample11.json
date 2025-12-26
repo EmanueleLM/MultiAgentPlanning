@@ -1,0 +1,80 @@
+{
+    "name": "TripPlanningExample11",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "CityPlanner",
+            "TimeScheduler",
+            "orchestrator"
+        ],
+        "CityPlanner": {
+            "private_information": [
+                "Direct flights exist between Vienna and Valencia.",
+                "Direct flights exist between Vilnius and Vienna."
+            ],
+            "goal": "Determine the optimal sequence of cities respecting flight constraints."
+        },
+        "TimeScheduler": {
+            "private_information": [
+                "The trip lasts 15 days.",
+                "Required stay: Vienna 5 days, Vilnius 5 days, Valencia 7 days (Total 17 days required).",
+                "Conference attendance is required in Valencia on Day 9 and Day 15."
+            ],
+            "goal": "Allocate 15 days across the sequence of cities respecting local duration requirements and hard temporal constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a trip plan of visiting the cities for 15 days by taking direct flights to commute between them, respecting all scheduling constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_duration": 15,
+            "cities": [
+                "Vienna",
+                "Vilnius",
+                "Valencia"
+            ]
+        },
+        "public_information": [
+            "The trip must last exactly 15 days.",
+            "Commuting between cities is only possible via direct flights.",
+            "The required stays are Vienna 5 days, Vilnius 5 days, and Valencia 7 days.",
+            "A conference must be attended in Valencia on Day 9 and Day 15."
+        ]
+    },
+    "workflow": {
+        "CityPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_city_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus on spatial and relational constraints. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your role is CityPlanner. You are planning a trip involving movement between cities based on direct flight availability. The overall task is to plan a 15-day trip. Focus on modeling the locations (Vienna, Vilnius, Valencia) and the connectivity based on direct flights.\nPublic information:\n{environment->public_information}\nPrivate knowledge:\n{agents->CityPlanner->private_information}\nGlobal Goal:\n{agents->CityPlanner->goal}\nGenerate the PDDL domain and problem reflecting city connectivity and possible travel actions. Do not make assumptions about time or duration.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "TimeScheduler": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_time_schedule",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in temporal planning and scheduling. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your role is TimeScheduler. You are planning the temporal allocation for a 15-day trip. Focus on modeling time steps, required minimum/maximum stays in Vienna (5 days), Vilnius (5 days), and Valencia (7 days), and fixed schedule points (conference in Valencia on Day 9 and Day 15).\nPublic information:\n{environment->public_information}\nPrivate knowledge:\n{agents->TimeScheduler->private_information}\nGlobal Goal:\n{agents->TimeScheduler->goal}\nGenerate the PDDL domain and problem reflecting temporal requirements and constraints. Do not worry about city connectivity.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_city_plan",
+                    "pddl_time_schedule"
+                ],
+                "output": "pddl_final_trip",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language), specializing in integration and conflict resolution. You combine inputs from specialized agents to create a comprehensive plan targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator tasked with synthesizing the final 15-day trip plan. You received partial PDDL information regarding city connectivity (from CityPlanner) and temporal scheduling (from TimeScheduler). You must combine these domains and problems, resolve conflicting constraints (e.g., total required days (17) vs. available days (15)), and ensure the final plan respects all spatial, temporal, and scheduling requirements.\n\nHere's the PDDL response from CityPlanner:\n{pddl_city_plan}\n\nHere's the PDDL response from TimeScheduler:\n{pddl_time_schedule}\n\nThink step by step, handle the constraint where required days (5+5+7=17) exceed total duration (15 days) by prioritizing the hard conferences on Day 9 and Day 15 and the flight constraints, and create a unified PDDL plan.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "CityPlanner.pddl->orchestrator.pddl",
+            "TimeScheduler.pddl->orchestrator.pddl"
+        ]
+    }
+}

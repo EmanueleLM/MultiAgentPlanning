@@ -1,0 +1,86 @@
+{
+    "name": "Logistics10",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "LogisticsPlanner",
+            "Auditor",
+            "orchestrator"
+        ],
+        "LogisticsPlanner": {
+            "private_information": [
+                "I must define objects, predicates, and actions related to trucks, airplanes, packages, locations, and cities.",
+                "I must ensure truck actions respect intra-city constraints and airplane actions respect inter-city/airport constraints."
+            ],
+            "goal": "Generate a valid PDDL domain and problem specification to achieve the required package deliveries."
+        },
+        "Auditor": {
+            "private_information": [
+                "My role is to verify the temporal and causal consistency of the generated planning solution, especially concerning constraints on vehicle movement and package transfers."
+            ],
+            "goal": "Audit the initial planning solution for correctness and adherence to complex logistics constraints."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I coordinate the planning process and finalize the integrated PDDL."
+            ],
+            "goal": "Finalize the PDDL domain and problem to solve the package delivery task, ensuring FastDownwards compatibility."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 4
+        },
+        "public_information": [
+            "The logistics system operates across multiple cities connected by airports. Trucks operate within cities, and airplanes operate between city airports.",
+            "Initial State:",
+            "location_0_0 is an airport, location_1_0 is an airport.",
+            "airplane_0 is at location_0_0.",
+            "package_0 is at location_0_0.",
+            "package_1 is at location_1_1.",
+            "package_2 is at location_0_1.",
+            "truck_0 is at location_0_0 (in city_0).",
+            "truck_1 is at location_1_0 (in city_1).",
+            "location_0_0 and location_0_1 are in city_0.",
+            "location_1_0 and location_1_1 are in city_1.",
+            "Goal: package_0, package_1, and package_2 must all be at location_1_0."
+        ]
+    },
+    "workflow": {
+        "LogisticsPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_initial",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is LogisticsPlanner. You are tasked with generating the complete PDDL definition (domain and problem) for a multi-modal logistics scenario. You must define objects for packages, trucks, airplanes, locations, and cities. Incorporate all specified actions (Load/Unload Package (Truck/Airplane), Drive Truck, Fly Airplane) and their constraints based on the locations and city boundaries described in the public information.\nEnvironment Public Information:\n{environment->public_information}\nGoal:\n{agents->LogisticsPlanner->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Auditor": {
+            "report": {
+                "input": [
+                    "pddl_initial"
+                ],
+                "output": "audit_feedback",
+                "system_prompt": "You are a planning auditor specializing in PDDL verification. Your task is to analyze the provided PDDL solution for causal and temporal consistency, ensuring all constraints described in the problem statement (e.g., location types, city boundaries for movement) are respected, and there are no logical shortcuts.",
+                "prompt": "Analyze the following PDDL submission:\n{pddl_initial}\n\nBased on the logistics scenario provided (moving packages between cities using trucks and airplanes), review the domain and problem files. Specifically, check if the actions are defined correctly to enforce:\n1. Trucks move only within a city, between connected locations.\n2. Airplanes move only between designated airports in different cities.\n3. Loading/unloading predicates correctly track package location (at location vs in vehicle).\n\nIf the PDDL is complete and logically consistent, state 'AUDIT PASSED'. Otherwise, describe necessary corrections clearly, ensuring to remove any bookkeeping or shortcut mechanisms."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_initial",
+                    "audit_feedback"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in finalizing PDDL solutions for execution using planning solvers like FastDownwards. You integrate feedback and ensure the output is standardized.",
+                "prompt": "You have received an initial PDDL plan and associated audit feedback. Your goal is to produce the final, validated PDDL domain and problem ready for solving the package delivery task: {agents->orchestrator->goal}.\n\nInitial PDDL Plan:\n{pddl_initial}\n\nAudit Feedback:\n{audit_feedback}\n\nReview the initial PDDL against the audit feedback. If the audit passed, output the PDDL as is. If corrections were suggested, incorporate them. Ensure the final PDDL is logically consistent and achieves the required goal.\nThink step by step and provide the final PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "LogisticsPlanner.pddl->Auditor.report",
+            "Auditor.report->orchestrator.pddl"
+        ]
+    }
+}

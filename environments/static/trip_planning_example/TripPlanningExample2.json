@@ -1,0 +1,99 @@
+{
+    "name": "TripPlanningExample2",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "city_planner",
+            "flight_specialist",
+            "auditor",
+            "orchestrator"
+        ],
+        "city_planner": {
+            "private_information": [
+                "Total trip duration is 11 days.",
+                "Reykjavik visit requires 2 days.",
+                "Vienna visit requires 7 days.",
+                "Venice visit requires 4 days.",
+                "I must be in Venice between Day 8 and Day 11 (inclusive)."
+            ],
+            "goal": "Plan the city itinerary considering required durations and temporal constraints (wedding)."
+        },
+        "flight_specialist": {
+            "private_information": [
+                "Direct flights exist between Reykjavik and Vienna.",
+                "Direct flights exist between Vienna and Venice.",
+                "No direct flight exists between Reykjavik and Venice."
+            ],
+            "goal": "Determine the legal movement constraints (flights) between the cities."
+        },
+        "auditor": {
+            "private_information": [
+                "Required duration sum: 2 (Reykjavik) + 7 (Vienna) + 4 (Venice) = 13 days.",
+                "Allowed duration: 11 days."
+            ],
+            "goal": "Audit the initial plans for temporal and logical consistency, specifically checking if the required stay days exceed the total allowed trip days (11 days)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the itinerary and flight rules to create a comprehensive 11-day PDDL trip plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 4
+        },
+        "public_information": [
+            "The trip involves 3 European cities: Reykjavik, Vienna, and Venice.",
+            "The total trip must last 11 days.",
+            "Commuting between cities only uses direct flights."
+        ]
+    },
+    "workflow": {
+        "city_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_city_plan",
+                "system_prompt": "You are an expert with PDDL problems focusing on temporal constraints and duration planning. You will provide a PDDL structure representing city durations and temporal goals.",
+                "prompt": "Your name is city_planner. You are planning a trip based on the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->city_planner->private_information}\nThis is your specific goal:\n{agents->city_planner->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file segment focusing on time allocation and city stays. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "flight_specialist": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_flight_rules",
+                "system_prompt": "You are an expert with PDDL problems focusing on movement and connectivity constraints. You will provide a PDDL structure representing legal movements.",
+                "prompt": "Your name is flight_specialist. You are planning a trip based on the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->flight_specialist->private_information}\nThis is your specific goal:\n{agents->flight_specialist->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file segment focusing on flight paths. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "verification": {
+                "input": [
+                    "pddl_city_plan",
+                    "pddl_flight_rules"
+                ],
+                "output": "verification_report",
+                "system_prompt": "You are an auditing agent specializing in causal and temporal consistency checks. Your primary task is to review the input plans for logical contradictions before integration.",
+                "prompt": "Your name is auditor. You have received initial plans for the trip:\nCity Plan Input:\n{pddl_city_plan}\nFlight Rules Input:\n{pddl_flight_rules}\nYour goal is to audit temporal and logical consistency. Specifically, check if the required stay durations (Reykjavik 2, Vienna 7, Venice 4) totaling 13 days, conflict with the overall trip duration (11 days).\nState your findings clearly in a structured report. If a contradiction is found, recommend how the orchestrator should proceed (e.g., state impossibility or ask for clarification/re-evaluation of constraints). Output the report using the following structure: <report> [Report content here] </report>"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "verification_report",
+                    "pddl_city_plan",
+                    "pddl_flight_rules"
+                ],
+                "output": "pddl_final_trip",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language) designed to produce a final, integrated plan suitable for the FastDownwards planner. You always provide a complete, validated PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator for an 11-day trip planning task. You have received the following inputs:\nAudit Report:\n{verification_report}\nCity Plan Details:\n{pddl_city_plan}\nFlight Constraints:\n{pddl_flight_rules}\nYour task is to integrate these components, resolve any inconsistencies identified by the auditor, and generate a final PDDL plan for the 11-day trip.\nIf the auditor identified a fundamental inconsistency (e.g., 13 required days vs 11 available days), the PDDL plan should clearly demonstrate this impossibility or structure the problem assuming the user intended maximization of stays within 11 days while meeting the required wedding constraint (Venice Day 8-11).\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task, assuming the goal is to satisfy as many constraints as possible within the 11-day limit, prioritizing the wedding constraint. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "city_planner.pddl->auditor.verification",
+            "flight_specialist.pddl->auditor.verification",
+            "auditor.verification->orchestrator.pddl"
+        ]
+    }
+}

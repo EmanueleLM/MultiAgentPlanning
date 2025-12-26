@@ -1,0 +1,80 @@
+{
+    "name": "MeetingPlanningExample9",
+    "author": "Expert Planner System",
+    "agents": {
+        "number": 3,
+        "names": [
+            "scheduler",
+            "constraint_validator",
+            "orchestrator"
+        ],
+        "scheduler": {
+            "private_information": [
+                "I prioritize maximizing meeting duration given all hard constraints."
+            ],
+            "goal": "Determine the optimal schedule to meet Mary for at least 75 minutes while respecting all time windows and travel constraints, focusing on temporal planning."
+        },
+        "constraint_validator": {
+            "private_information": [
+                "The core constraint is ensuring the meeting duration is >= 75 minutes within Mary's availability (12:00 PM to 4:15 PM)."
+            ],
+            "goal": "Verify the temporal feasibility and adherence to all constraints set forth in the public information."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate scheduling analysis and validation results to produce a robust PDDL plan that solves the optimal meeting schedule problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "locations": [
+                "Union_Square",
+                "Nob_Hill"
+            ],
+            "start_time": "9:00AM",
+            "total_time_window_minutes": 480
+        },
+        "public_information": [
+            "You start at Union Square at 9:00AM (540 minutes from midnight).",
+            "Mary is available at Nob Hill from 12:00PM (720 minutes from midnight) until 4:15PM (975 minutes from midnight).",
+            "Travel time Union Square to Nob Hill: 9 minutes.",
+            "Travel time Nob Hill to Union Square: 7 minutes.",
+            "The required minimum meeting duration with Mary is 75 minutes."
+        ]
+    },
+    "workflow": {
+        "scheduler": {
+            "planning": {
+                "input": [],
+                "output": "temporal_plan_attempt",
+                "system_prompt": "You are an expert in temporal planning (PDDL 2.1). You must generate a PDDL domain and problem file that attempts to solve the scheduling task. You must use durative actions to model travel and meeting times. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is scheduler. You are planning a day trip starting at {environment->init->start_time}. The public information is:\n{environment->public_information}\nYour goal is:\n{agents->scheduler->goal}\nThink step by step and provide a PDDL domain (using PDDL 2.1 syntax for durative actions) and a PDDL problem file to solve the task. Calculate all absolute times in minutes from midnight (0:00)."
+            }
+        },
+        "constraint_validator": {
+            "audit": {
+                "input": [
+                    "temporal_plan_attempt"
+                ],
+                "output": "validation_report",
+                "system_prompt": "You are a Constraint Validator and Auditor specializing in temporal consistency. Your role is to critically analyze temporal plans against hard constraints, particularly time windows and minimum durations. You must output a structured validation report (plain text or JSON describing findings).",
+                "prompt": "Your name is constraint_validator. You have received a proposed temporal plan (PDDL output) from the scheduler:\n{temporal_plan_attempt}\nYour goal is:\n{agents->constraint_validator->goal}\nSpecifically, check if the proposed meeting time with Mary starts at or after 12:00 PM (720 min) and ends at or before 4:15 PM (975 min), and lasts for exactly or more than 75 minutes. Provide a clear validation report stating whether the constraints are met, and if not, suggest necessary time adjustments to meet feasibility."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "temporal_plan_attempt",
+                    "validation_report"
+                ],
+                "output": "final_pddl_plan",
+                "system_prompt": "You are an expert with PDDL problems, specifically integrating temporal constraints and feedback (PDDL 2.1 or PDDL 3). You always provide a final PDDL domain and a PDDL problem file ready for a planner like FastDownwards. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. The goal is to produce the final, validated PDDL plan for the scheduling problem: {agents->orchestrator->goal}\n\nReceived temporal planning attempt:\n{temporal_plan_attempt}\n\nReceived validation report from the auditor:\n{validation_report}\n\nReview the proposed plan against the audit findings. Incorporate any necessary changes or refinements suggested by the validator to guarantee the required 75-minute meeting duration within Mary's 12:00 PM to 4:15 PM window, while minimizing total plan duration. Ensure the PDDL uses durative actions and is optimized for modern PDDL solvers."
+            }
+        },
+        "constraints": [
+            "scheduler.planning->constraint_validator.audit",
+            "constraint_validator.audit->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,97 @@
+{
+    "name": "TripPlanningExample24",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "duration_specialist",
+            "route_specialist",
+            "auditor",
+            "orchestrator"
+        ],
+        "duration_specialist": {
+            "private_information": [
+                "Desired stays: Florence (4 days), Amsterdam (6 days), Riga (5 days). Total desired: 15 days.",
+                "Total trip duration constraint: 13 days."
+            ],
+            "goal": "Determine the necessary duration adjustments in Amsterdam and Riga to meet the 13-day total limit while maintaining Florence's 4-day stay."
+        },
+        "route_specialist": {
+            "private_information": [
+                "Direct flights exist between Florence and Amsterdam (F-A).",
+                "Direct flights exist between Amsterdam and Riga (A-R).",
+                "No direct flight between Florence and Riga (F-R)."
+            ],
+            "goal": "Determine all possible valid sequences of visiting Florence, Amsterdam, and Riga using only direct flights."
+        },
+        "auditor": {
+            "private_information": [
+                "Workshop constraint: Must be in Florence from Day 1 through Day 4 of the total 13-day trip."
+            ],
+            "goal": "Audit the plans proposed by the Duration Specialist and Route Specialist for temporal and causal consistency, specifically ensuring the Florence stay aligns with the workshop requirement and all flights are direct."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a single coherent trip plan specifying the sequence of cities, the duration of stay in each city, and the dates of travel, respecting all constraints (13 days total, direct flights, Florence D1-D4 workshop)."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The trip must last exactly 13 days.",
+            "Cities to visit: Florence, Amsterdam, Riga.",
+            "Desired duration of stay: Florence 4 days, Amsterdam 6 days, Riga 5 days (Total desired 15 days).",
+            "Constraint: Workshop attendance is required in Florence, starting on Day 1 and ending on Day 4 of the entire trip.",
+            "Flight connectivity: Direct flights exist between Florence <-> Amsterdam and Amsterdam <-> Riga. All commutes must be direct flights."
+        ]
+    },
+    "workflow": {
+        "duration_specialist": {
+            "analysis": {
+                "input": [],
+                "output": "duration_plan",
+                "system_prompt": "You are an expert in resource management and constraint resolution.",
+                "prompt": "You are the Duration Specialist. You must reconcile the desired city durations (4 days in Florence, 6 days in Amsterdam, 5 days in Riga) with the strict total trip duration of 13 days. Florence's 4 days must be maintained due to external requirements. Determine the reduced duration for Amsterdam and Riga such that the total is 13 days (including travel days if they overlap with the 13 days). Provide a clear breakdown of days allocated per city."
+            }
+        },
+        "route_specialist": {
+            "analysis": {
+                "input": [],
+                "output": "route_plan",
+                "system_prompt": "You are an expert in graph traversal and pathfinding under connectivity constraints.",
+                "prompt": "You are the Route Specialist. You must identify all possible sequences for visiting Florence (F), Amsterdam (A), and Riga (R), ensuring that travel between consecutive cities uses only direct flights. Direct connections are F<->A and A<->R. List the valid sequences."
+            }
+        },
+        "auditor": {
+            "analysis": {
+                "input": [
+                    "duration_plan",
+                    "route_plan"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an Auditor focused on strict temporal and causal consistency. You must ensure all constraints are met and remove any logical conflicts or ambiguities.",
+                "prompt": "You are the Auditor. Review the proposed duration plan and route plan:\nDuration Plan:\n{duration_plan}\nRoute Plan:\n{route_plan}\n\nThe critical constraint is: Florence must be visited from Day 1 through Day 4 of the entire 13-day trip, and the duration must be 4 days. Evaluate the route plans based on this strict temporal requirement (especially regarding the starting city) and the total duration constraints. If a route violates the temporal placement of Florence (Day 1-4), discard it. Provide a final verified plan specifying the sequence, exact duration per city, and confirm that the Florence segment covers Days 1-4."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "duration_plan",
+                    "route_plan",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems, specialized in temporal planning and resource management, targeting the FastDownwards solver. You must integrate the findings of the specialists and the auditor to generate a final PDDL domain and problem. Ensure the plan sequences cities correctly, adheres to the 13-day duration, and fixes Florence's stay exactly within the first 4 days (Day 1, Day 2, Day 3, Day 4). You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the Orchestrator. You have received the following information regarding the 13-day trip planning task:\nDuration Plan:\n{duration_plan}\nRoute Plan:\n{route_plan}\nAudit Report:\n{audit_report}\n\nBased on the Audited constraints, construct a final PDDL domain and problem definition. The plan must explicitly model the days of the trip (1 to 13), the cities (Florence, Amsterdam, Riga), the required duration of stay in each (as determined by the Auditor/Duration Specialist), and ensure that the action of 'staying in Florence' happens precisely across Days 1, 2, 3, and 4. Model the travel actions between cities requiring direct connections (F-A, A-R). Use numeric fluents for tracking time/days.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "duration_specialist.analysis->auditor.analysis",
+            "route_specialist.analysis->auditor.analysis",
+            "auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

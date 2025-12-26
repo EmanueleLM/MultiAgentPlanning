@@ -1,17 +1,18 @@
 #!/bin/bash
 
-# Judge model
-judge="gpt-5-mini"
+# Judge 
+model=gemini-2.5-flash
+judge="gpt-5-nano"
 
 # Dataset names
 dataset_names=(
 # "calendar_scheduling"
-# "meeting_planning"
-# "trip_planning"
+"meeting_planning"
+"trip_planning"
 # "depots"
 # "logistics"
 # "mystery_blocksworld"
-# "obfuscated_deceptive_logistics"
+"obfuscated_deceptive_logistics"
 # "blocksworld_easy"
 # "blocksworld_medium"
 # "blocksworld_hard"
@@ -19,19 +20,19 @@ dataset_names=(
 # "hanoi_medium"
 # "hanoi_hard"
 # "hanoi_extreme"
-"floortile"
-"childsnack"
+# "floortile"
+# "childsnack"
 )
 
 # Datasets
 datasets=(
 # "./data/natural_plan/calendar_scheduling.json"
-# "./data/natural_plan/meeting_planning.json"
-# "./data/natural_plan/trip_planning.json"
+"./data/natural_plan/meeting_planning.json"
+"./data/natural_plan/trip_planning.json"
 # "./data/planbench/depots.json"
 # "./data/planbench/logistics.json"
 # "./data/planbench/mystery_blocksworld.json"
-# "./data/planbench/obfuscated_deceptive_logistics.json"
+"./data/planbench/obfuscated_deceptive_logistics.json"
 # "./data/blocksworld/blocksworld_easy.json"
 # "./data/blocksworld/blocksworld_medium.json"
 # "./data/blocksworld/blocksworld_hard.json"
@@ -39,19 +40,19 @@ datasets=(
 # "./data/hanoi/hanoi_medium.json"
 # "./data/hanoi/hanoi_hard.json"
 # "./data/hanoi/hanoi_extreme.json"
-"./data/borealis/floortile.json"
-"./data/borealis/childsnack.json"
+# "./data/borealis/floortile.json"
+# "./data/borealis/childsnack.json"
 )
 
 # Build result paths after model is bound so interpolation happens correctly
 results_pddl=(
     # "./results/google/calendar_scheduling/FastDownwards/"
-    # "./results/google/meeting_planning/FastDownwards/"
-    # "./results/google/trip_planning/FastDownwards/"
+    "./results/google/meeting_planning/FastDownwards/"
+    "./results/google/trip_planning/FastDownwards/"
     # "./results/planbench/depots/FastDownwards/"
     # "./results/planbench/logistics/FastDownwards/"
     # "./results/planbench/mystery_blocksworld/FastDownwards/"
-    # "./results/planbench/obfuscated_deceptive_logistics/FastDownwards/"
+    "./results/planbench/obfuscated_deceptive_logistics/FastDownwards/"
     # "./results/blocksworld/blocksworld_easy/blocksworld_easy/FastDownwards/"
     # "./results/blocksworld/blocksworld_medium/blocksworld_medium/FastDownwards/"
     # "./results/blocksworld/blocksworld_hard/blocksworld_hard/FastDownwards/"
@@ -59,8 +60,8 @@ results_pddl=(
     # "./results/hanoi/hanoi_medium/hanoi_medium/FastDownwards/"
     # "./results/hanoi/hanoi_hard/hanoi_hard/FastDownwards/"
     # "./results/hanoi/hanoi_extreme/hanoi_extreme/FastDownwards/"
-    "./results/borealis/floortile/floortile/FastDownwards/"
-    "./results/borealis/childsnack/childsnack/FastDownwards/"
+    # "./results/borealis/floortile/floortile/FastDownwards/"
+    # "./results/borealis/childsnack/childsnack/FastDownwards/"
 )
 
 results_vanilla=(
@@ -78,6 +79,8 @@ results_vanilla=(
     # "./results/hanoi/hanoi_medium/hanoi_medium/vanilla_llm/${model}.json"
     # "./results/hanoi/hanoi_hard/hanoi_hard/vanilla_llm/${model}.json"
     # "./results/hanoi/hanoi_extreme/hanoi_extreme/vanilla_llm/${model}.json"
+    # "./results/borealis/floortile/floortile/vanilla_llm/${model}.json"
+    # "./results/borealis/childsnack/childsnack/vanilla_llm/${model}.json"
 )
 
 # Evaluate PDDL-based approaches
@@ -89,7 +92,7 @@ for i in "${!datasets[@]}"; do
     python3 evaluate_pddl.py "$data" "$result" --model "$judge" --dataset-name "$dataset_name" --prompt-key "$dataset_name"
 done
 
-# # Evaluate vanilla LLM-based approaches
+# Evaluate vanilla LLM-based approaches
 # for i in "${!results_vanilla[@]}"; do
 #     result="${results_vanilla[$i]}"
 #     dataset_name="${dataset_names[$i]}"

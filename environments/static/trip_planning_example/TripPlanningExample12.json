@@ -1,0 +1,75 @@
+{
+    "name": "TripPlanningExample12",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "ItineraryPlanner",
+            "TemporalAuditor",
+            "orchestrator"
+        ],
+        "ItineraryPlanner": {
+            "private_information": [
+                "I must only schedule travel between cities that have direct flights.",
+                "All three target cities (Valencia, Amsterdam, Tallinn) must be visited."
+            ],
+            "goal": "Determine a valid sequence of cities to visit, respecting direct flight connections, assuming the trip starts and ends at an implicit 'Home' location."
+        },
+        "TemporalAuditor": {
+            "private_information": [
+                "Total trip duration must not exceed 15 days (hard constraint).",
+                "Desired durations (5, 5, 7 days) sum up to 17 days, creating a resource conflict.",
+                "Meeting constraint: Must be in Tallinn between day 9 and day 15 (inclusive)."
+            ],
+            "goal": "Audit the temporal requirements, highlighting resource conflicts and ensuring all hard temporal constraints (15-day limit, meeting time) are strictly met."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a complete 15-day itinerary (sequence and duration) that adheres to all direct flight connections and hard temporal constraints, while maximizing the duration of stay in each city up to the desired limits (V=5, A=5, T=7)."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days_available": 15
+        },
+        "public_information": [
+            "Cities to visit: Valencia (V), Amsterdam (A), Tallinn (T).",
+            "Direct flights exist between: Amsterdam <-> Tallinn, Valencia <-> Amsterdam.",
+            "Desired visit durations: V=5 days, A=5 days, T=7 days.",
+            "Travel between cities takes 1 full day (1 day per flight)."
+        ]
+    },
+    "workflow": {
+        "ItineraryPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_spatial_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is ItineraryPlanner. You are responsible for determining the sequence of cities visited. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->ItineraryPlanner->private_information}\nThis is the global goal to solve:\n{agents->ItineraryPlanner->goal}\nFocus only on the connectivity and sequencing aspects. Assume an initial location 'Home' from which the trip starts and ends. Provide a PDDL domain and a PDDL problem file to define a possible route visiting all three cities.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "TemporalAuditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_temporal_constraints",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is TemporalAuditor. You are responsible for verifying temporal feasibility. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->TemporalAuditor->private_information}\nThis is the global goal to solve:\n{agents->TemporalAuditor->goal}\nFocus specifically on modeling time resources, the 15-day limit, and the hard constraint of being in Tallinn between day 9 and day 15. The requested durations (5, 5, 7) must be modeled as desired objectives that may need compression due to the total 15-day limit. Provide a PDDL domain and a PDDL problem file reflecting these temporal constraints.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_spatial_plan",
+                    "pddl_temporal_constraints"
+                ],
+                "output": "pddl_final_solution",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language), specialized in combining spatial and temporal constraints. You always provide a PDDL domain and a PDDL problem file suitable for the FastDownwards planner. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. You must resolve conflicts and produce a final executable plan.",
+                "prompt": "You are the orchestrator tasked with generating the final 15-day travel itinerary. You must integrate the spatial connectivity logic provided by the ItineraryPlanner and the strict temporal constraints provided by the TemporalAuditor. The combined plan must strictly adhere to the 15-day limit, direct flight rules, and the Tallinn meeting constraint (Day 9-15). \nHere is the spatial plan information:\n{pddl_spatial_plan}\nHere is the temporal constraints information:\n{pddl_temporal_constraints}\nSince the requested city visit durations sum to 17 days but only 15 days are available, you must find a schedule that minimizes deviation from the requested durations while meeting all hard constraints. Model travel time (1 day per flight) and ensure all cities are visited.\nThink step by step and and provide a unified PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "ItineraryPlanner.pddl->orchestrator.pddl",
+            "TemporalAuditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

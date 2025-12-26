@@ -1,0 +1,76 @@
+{
+    "name": "TripPlanningExample0",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "itinerary_agent",
+            "temporal_auditor",
+            "orchestrator"
+        ],
+        "itinerary_agent": {
+            "private_information": [
+                "I focus exclusively on connectivity and sequence of visits."
+            ],
+            "goal": "Determine a valid sequence of cities to visit using only direct flights."
+        },
+        "temporal_auditor": {
+            "private_information": [
+                "I must ensure the final plan adheres strictly to the 14-day limit and all temporal constraints, even if it requires reducing desired stay durations."
+            ],
+            "goal": "Audit the timeline and duration allocations to ensure consistency with the 14-day total trip length and the specific Florence meeting window."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the city sequence plan and the validated timeline into a single, comprehensive PDDL plan for the 14-day trip."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 14,
+            "cities": 3
+        },
+        "public_information": [
+            "The total trip duration must be 14 days.",
+            "Cities to visit are Florence (F), Barcelona (B), and Helsinki (H).",
+            "Desired stay durations are 6 days in F, 5 days in B, and 5 days in H (Total 16 days desired).",
+            "Travel between cities must be via direct flights only.",
+            "Direct flights exist between: Barcelona <-> Florence, and Helsinki <-> Barcelona.",
+            "A friend must be met in Florence between Day 9 and Day 14 (inclusive).",
+            "Travel between any two cities consumes 1 full day slot."
+        ]
+    },
+    "workflow": {
+        "itinerary_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_itinerary",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus on object connectivity and sequencing. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is itinerary_agent. You are planning a trip defined by the following public information:\n{environment->public_information}\nYour goal is to focus exclusively on connectivity. Determine a valid sequence of 3 cities to visit using only direct flights. Travel takes 1 day, and the cities are Florence (F), Barcelona (B), Helsinki (H). The only direct connections are F <-> B and B <-> H. You need to model the sequence and connection constraints. Provide a PDDL domain and a PDDL problem file that identifies a valid route sequence (e.g., Start -> City1 -> City2 -> City3).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "temporal_auditor": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_temporal",
+                "system_prompt": "You are an expert with PDDL problems focusing on temporal consistency and constraint satisfaction. You are also tasked with auditing the complexity and consistency of the requirements. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is temporal_auditor. You are auditing the constraints for a 14-day trip defined by the following public information:\n{environment->public_information}\nCrucially, the desired stay time (16 days) exceeds the maximum possible stay time (12 days, assuming 2 travel days). You must define a structure (using PDDL objects/predicates) that ensures the total trip length is exactly 14 days (Day 1... Day 14), and that Florence is visited within the temporal window: Day 9 to Day 14. You must resolve the duration conflict by prioritizing the 14-day trip length. You do not need to worry about the sequence of cities, only the timing slots and ensuring the constraints on total duration and the Florence meeting are met.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_itinerary",
+                    "pddl_temporal"
+                ],
+                "output": "pddl_final_plan",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You must integrate partial PDDL definitions from multiple specialized agents to form a single, coherent, and solvable PDDL problem targeting the FastDownwards solver. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator tasked with finalizing a 14-day trip plan. You have received partial PDDL definitions from an itinerary agent and a temporal auditor. You must integrate them to achieve the overall goal: defining a complete 14-day trip schedule that satisfies all spatial (connectivity) and temporal (duration, meeting time) constraints.\nThis is the connectivity plan information:\n{pddl_itinerary}\nThis is the temporal constraint information:\n{pddl_temporal}\nUse the constraints provided by both inputs, resolve any ambiguities, and produce a final PDDL that specifies the sequence of locations and the duration of stays, strictly adhering to the 14-day limit and the D9-D14 Florence window. The final plan should explicitly schedule 14 days of activities (stays or travel).\nThink step by step and provide a unified PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "itinerary_agent.pddl->orchestrator.pddl",
+            "temporal_auditor.pddl->orchestrator.pddl"
+        ]
+    }
+}

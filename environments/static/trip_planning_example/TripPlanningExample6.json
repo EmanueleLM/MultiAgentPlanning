@@ -1,0 +1,98 @@
+{
+    "name": "TripPlanningExample6",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TravelerConstraints",
+            "FlightPlanner",
+            "Auditor",
+            "orchestrator"
+        ],
+        "TravelerConstraints": {
+            "private_information": [
+                "The trip must span exactly 8 days, starting on Day 1.",
+                "The conference requires attendance in Berlin on Day 1 and Day 4."
+            ],
+            "goal": "Identify and formalize all temporal and fixed location constraints for the 8-day trip using PDDL structures."
+        },
+        "FlightPlanner": {
+            "private_information": [
+                "Only direct flights are allowed.",
+                "Direct flight connections exist between: (Munich, Dubrovnik) and (Berlin, Munich)."
+            ],
+            "goal": "Define all possible movement actions between the three cities based on direct flight availability using PDDL structures."
+        },
+        "Auditor": {
+            "private_information": [
+                "Desired durations: Dubrovnik (3 days), Berlin (4 days), Munich (3 days).",
+                "Total trip duration constraint: 8 days."
+            ],
+            "goal": "Resolve the conflict between desired city durations (10 days total) and the maximum trip duration (8 days). Provide the mandatory 8-day schedule distribution, prioritizing Berlin requirements and maximizing stays based on initial requests."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Generate a final PDDL domain and problem that describes a valid 8-day trip plan visiting Dubrovnik, Berlin, and Munich, respecting all temporal, location, movement, and duration constraints."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 8,
+            "cities": [
+                "Dubrovnik",
+                "Berlin",
+                "Munich"
+            ]
+        },
+        "public_information": [
+            "Total trip duration is 8 days.",
+            "The trip must visit Dubrovnik, Berlin, and Munich.",
+            "Required conference attendance in Berlin on Day 1 and Day 4.",
+            "Direct flights: Munich <-> Dubrovnik, Berlin <-> Munich.",
+            "Desired durations: Dubrovnik (3 days), Berlin (4 days), Munich (3 days)."
+        ]
+    },
+    "workflow": {
+        "TravelerConstraints": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_temporal_constraints",
+                "system_prompt": "You are an expert in defining temporal constraints using PDDL. You must define the time points (Day 1 to Day 8) and static facts representing mandatory location requirements.",
+                "prompt": "Your task is to identify and formalize the temporal constraints. The total trip duration is 8 days. You must be in Berlin on Day 1 and Day 4. Define the necessary objects (days 1 through 8) and predicates related to time progression and fixed location events. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "FlightPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_movement_domain",
+                "system_prompt": "You are an expert in defining movement actions and locations in PDDL based on connectivity graphs.",
+                "prompt": "Your task is to define the locations (Dubrovnik, Berlin, Munich) and the 'move' actions. Remember that travel is only allowed between cities with direct flights: Munich <-> Dubrovnik, Berlin <-> Munich. Define the necessary object types, locations, and actions (e.g., (fly ?from ?to)). Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags (using minimal problem definition needed to establish types/objects)."
+            }
+        },
+        "Auditor": {
+            "resolution": {
+                "input": [],
+                "output": "audit_report_feasibility",
+                "system_prompt": "You are an expert in auditing environmental constraints, specifically temporal conflicts and goal feasibility.",
+                "prompt": "Analyze the desired durations (10 days total) versus the maximum trip duration (8 days). Since 4 days in Berlin and 3 days in Dubrovnik appear mandatory (or prioritized), the remaining duration for Munich must be 1 day (4+3+1=8). Generate a concise report confirming the required distribution of days for planning: Dubrovnik (3 days), Berlin (4 days), Munich (1 day). Output this specific required distribution enclosed in <resolution_report></resolution_report> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_temporal_constraints",
+                    "pddl_movement_domain",
+                    "audit_report_feasibility"
+                ],
+                "output": "pddl_final_plan",
+                "system_prompt": "You are an expert in integrating partial PDDL domains and textual analyses to create a comprehensive PDDL plan targeting the FastDownwards planner. Ensure temporal continuity (moving from Day N to Day N+1) and strict adherence to the 8-day constraint.",
+                "prompt": "You must integrate the following components to plan an 8-day trip. The plan must define the location of the traveler for all 8 days, ensuring they only move using defined direct flights and satisfy all location constraints. The trip must satisfy the resolved duration constraints for counting days spent in each city.\n1. Temporal Constraints PDDL:\n{pddl_temporal_constraints}\n2. Movement Domain PDDL:\n{pddl_movement_domain}\n3. Constraint Resolution Report (read this to set final duration goals):\n{audit_report_feasibility}\n\nIntegrate all information, ensure the agent location changes accurately reflect movement and time progression (Day N -> Day N+1). Define the final PDDL domain and PDDL problem. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "TravelerConstraints.pddl->orchestrator.pddl",
+            "FlightPlanner.pddl->orchestrator.pddl",
+            "Auditor.resolution->orchestrator.pddl"
+        ]
+    }
+}

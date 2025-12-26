@@ -1,0 +1,84 @@
+{
+    "name": "Logistics13",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "logistics_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "logistics_planner": {
+            "private_information": [],
+            "goal": "Transport package_0, package_1, and package_2 to location_0_1."
+        },
+        "consistency_auditor": {
+            "private_information": [],
+            "goal": "Audit the generated PDDL plan for logical consistency and adherence to all environmental constraints, ensuring temporal/causal integrity."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the planning output and audit results to produce the final, corrected PDDL domain and problem file."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 10,
+            "visibility": 3
+        },
+        "public_information": [
+            "This is a logistics environment involving trucks for intra-city movement and airplanes for inter-city movement.",
+            "Objects defined for this environment: locations (location_0_0, location_0_1, location_1_0, location_1_1), cities (city_0, city_1), packages (package_0, package_1, package_2), trucks (truck_0, truck_1), and airplanes (airplane_0, airplane_1).",
+            "Relationships and constraints:",
+            "  location_0_0 is in city_0; location_0_1 is in city_0.",
+            "  location_1_0 is in city_1; location_1_1 is in city_1.",
+            "  location_0_0 is designated as an airport.",
+            "  location_1_0 is designated as an airport.",
+            "Initial positions:",
+            "  airplane_0 is at location_1_0.",
+            "  airplane_1 is at location_0_0.",
+            "  package_0 is at location_1_0.",
+            "  package_1 is at location_1_1.",
+            "  package_2 is at location_0_0.",
+            "  truck_0 is at location_0_0 (in city_0).",
+            "  truck_1 is at location_1_1 (in city_1).",
+            "Movement constraints: Trucks can only move between locations within the same city. Airplanes can only fly between airport locations."
+        ]
+    },
+    "workflow": {
+        "logistics_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is logistics_planner. You are tasked with solving a complex logistics planning problem involving trucks and airplanes. You are in an environment with the following public information:\n{environment->public_information}\nThis is the global goal to solve:\n{agents->logistics_planner->goal}\nDefine the types, predicates, and actions necessary to model loading, unloading, driving (trucks within cities), and flying (airplanes between airports in different cities). Ensure your model respects all initial conditions and constraints described.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "consistency_auditor": {
+            "review": {
+                "input": [
+                    "pddl_planner"
+                ],
+                "output": "review_feedback",
+                "system_prompt": "You are an expert in reviewing and auditing PDDL plans against detailed specifications. Your primary function is to check for logical and temporal consistency and ensure that all stated environmental constraints are strictly modeled. You must remove any bookkeeping shortcuts (e.g., quota tokens or post-hoc penalties) from your review process.",
+                "prompt": "Your name is consistency_auditor. You must review the PDDL response provided by the logistics_planner (found in {pddl_planner}) to ensure it strictly follows all the rules described in the environment specification. Specifically, check that:\n1. Truck movements are only allowed between locations within the same city.\n2. Airplane movements are only allowed between airport locations.\n3. Loading/unloading actions correctly transition package locations (at location <-> in vehicle).\n4. The initial state and goal state match the environment description.\n\nProvide feedback on the temporal/causal consistency of the plan and verify that all necessary constraints regarding movement types and location relationships are included in the PDDL domain definition. State clearly if the PDDL is consistent and complete, or if modifications are needed. Do not provide a PDDL output, only the structured review feedback."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_planner",
+                    "review_feedback"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in integrating PDDL plans and audit feedback. Your goal is to produce the final, validated PDDL domain and problem ready for execution by a solver like FastDownwards. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received a PDDL plan ({pddl_planner}) and associated audit feedback ({review_feedback}) for a logistics task. Your goal is to produce the final, optimized PDDL package.\n\nUse the original PDDL, applying any necessary corrections or validations suggested by the audit feedback to ensure full compliance with the logistics rules (trucks intra-city, airplanes inter-city, proper loading/unloading mechanics).\nThink step by step and provide the final PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "logistics_planner.pddl->consistency_auditor.review",
+            "logistics_planner.pddl->orchestrator.pddl",
+            "consistency_auditor.review->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,113 @@
+{
+    "name": "CalendarSchedulingExample15",
+    "author": "GPT",
+    "agents": {
+        "number": 5,
+        "names": [
+            "Joyce",
+            "Christine",
+            "Alexander",
+            "Auditor",
+            "orchestrator"
+        ],
+        "Joyce": {
+            "private_information": [
+                "My existing meetings on Monday (9:00-17:00) are: 11:00 to 11:30, 13:30 to 14:00, 14:30 to 16:30."
+            ],
+            "goal": "Identify all available 30-minute slots for a meeting."
+        },
+        "Christine": {
+            "private_information": [
+                "I have no meetings scheduled on Monday (9:00-17:00).",
+                "I cannot meet before 12:00 on Monday."
+            ],
+            "goal": "Identify all available 30-minute slots for a meeting, considering my personal constraint."
+        },
+        "Alexander": {
+            "private_information": [
+                "My existing meetings on Monday (9:00-17:00) are: 9:00 to 11:00, 12:00 to 12:30, 13:30 to 15:00, 15:30 to 16:00, 16:30 to 17:00."
+            ],
+            "goal": "Identify all available 30-minute slots for a meeting."
+        },
+        "Auditor": {
+            "private_information": [
+                "My role is to ensure all analyzed schedules comply with the environmental constraints (duration, total work hours) and individual requirements."
+            ],
+            "goal": "Audit the calculated free slots from all participants for temporal consistency and adherence to constraints."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Combine the audited availability data, find the earliest mutually available 30-minute slot, and output the solution as a planning problem (PDDL)."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "start_time": "9:00",
+            "end_time": "17:00",
+            "meeting_duration": "30 minutes"
+        },
+        "public_information": [
+            "A meeting must be scheduled for Joyce, Christine, and Alexander.",
+            "The meeting must be 30 minutes long.",
+            "The meeting must occur between 9:00 and 17:00 on Monday."
+        ]
+    },
+    "workflow": {
+        "Joyce": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "joyce_slots",
+                "system_prompt": "You are an expert in calendar management. Your task is to analyze your schedule and environmental constraints to list all continuous 30-minute free intervals available for a meeting. Provide the output as a list of 'start_time - end_time' intervals.",
+                "prompt": "Your name is Joyce. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private schedule and constraints:\n{agents->Joyce->private_information}\nBased on this information, fulfill your goal: {agents->Joyce->goal}\nList the available slots."
+            }
+        },
+        "Christine": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "christine_slots",
+                "system_prompt": "You are an expert in calendar management. Your task is to analyze your schedule and environmental constraints to list all continuous 30-minute free intervals available for a meeting. Ensure you rigorously apply all personal constraints. Provide the output as a list of 'start_time - end_time' intervals.",
+                "prompt": "Your name is Christine. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private schedule and constraints:\n{agents->Christine->private_information}\nBased on this information, fulfill your goal: {agents->Christine->goal}\nList the available slots."
+            }
+        },
+        "Alexander": {
+            "analyze_schedule": {
+                "input": [],
+                "output": "alexander_slots",
+                "system_prompt": "You are an expert in calendar management. Your task is to analyze your schedule and environmental constraints to list all continuous 30-minute free intervals available for a meeting. Provide the output as a list of 'start_time - end_time' intervals.",
+                "prompt": "Your name is Alexander. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following private schedule and constraints:\n{agents->Alexander->private_information}\nBased on this information, fulfill your goal: {agents->Alexander->goal}\nList the available slots."
+            }
+        },
+        "Auditor": {
+            "audit_schedules": {
+                "input": [
+                    "joyce_slots",
+                    "christine_slots",
+                    "alexander_slots"
+                ],
+                "output": "auditor_report",
+                "system_prompt": "You are a robust auditor of temporal constraints. Your primary function is to check the consistency of time intervals provided by the participants. Verify that all listed slots: 1) Fall within the 9:00 to 17:00 work window. 2) Represent free intervals long enough to contain a 30-minute meeting. If inconsistencies are found, report them. If consistent, state 'All schedules appear temporally consistent.'",
+                "prompt": "Analyze the following collected availability lists against the known environmental constraints (9:00-17:00 work hours, 30 min meeting duration):\nJoyce's analysis: {joyce_slots}\nChristine's analysis: {christine_slots}\nAlexander's analysis: {alexander_slots}\nFulfill your goal: {agents->Auditor->goal}"
+            }
+        },
+        "orchestrator": {
+            "schedule_meeting": {
+                "input": [
+                    "auditor_report",
+                    "joyce_slots",
+                    "christine_slots",
+                    "alexander_slots"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert scheduler and PDDL generator, targeting the FastDownwards planner. Your task is to integrate the provided slot availability data and constraints to find the earliest mutually available 30-minute slot. Once the slot is identified, you must encode the planning problem (finding this slot) and the derived solution into a PDDL domain and problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the following availability reports and audit status:\nAudit Status: {auditor_report}\nJoyce's available slots: {joyce_slots}\nChristine's available slots: {christine_slots}\nAlexander's available slots: {alexander_slots}\n\nBased on these inputs, determine the earliest 30-minute time slot on Monday (9:00-17:00) where all three agents are free. Once the solution (e.g., 12:30) is determined, generate a PDDL domain and problem where the goal is to achieve the state (meeting_scheduled 1230). Represent time discretely in 30-minute intervals (e.g., 900, 930, 1000, 1030, etc.).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Joyce.analyze_schedule->Auditor.audit_schedules",
+            "Christine.analyze_schedule->Auditor.audit_schedules",
+            "Alexander.analyze_schedule->Auditor.audit_schedules",
+            "Auditor.audit_schedules->orchestrator.schedule_meeting"
+        ]
+    }
+}

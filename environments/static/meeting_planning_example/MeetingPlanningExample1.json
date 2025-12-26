@@ -1,0 +1,82 @@
+{
+    "name": "MeetingPlanningExample1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "traveler",
+            "constraint_auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "The traveler's objective is to meet as many people as possible.",
+                "The traveler must allocate time for travel between districts."
+            ],
+            "goal": "Develop an optimal schedule for meeting friends in San Francisco, maximizing the number of friends met while respecting time constraints."
+        },
+        "constraint_auditor": {
+            "private_information": [
+                "I must check the 9:00 AM arrival time constraint at Richmond District.",
+                "I must strictly verify the required minimum 60-minute meeting duration with Betty.",
+                "I must check all specified travel times between locations."
+            ],
+            "goal": "Verify that all temporal and spatial constraints are strictly adhered to in the proposed schedule."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final PDDL model representing the optimal confirmed schedule, suitable for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "09:00AM",
+            "start_location": "Richmond District",
+            "number_of_locations": 2,
+            "visibility": 1
+        },
+        "public_information": [
+            "The traveler arrives at Richmond District at 9:00 AM.",
+            "Friend Betty is available at Financial District from 5:15 PM to 9:45 PM.",
+            "The traveler needs to meet Betty for a minimum of 60 minutes.",
+            "Travel time Richmond District to Financial District: 22 minutes.",
+            "Travel time Financial District to Richmond District: 21 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "planning": {
+                "input": [],
+                "output": "schedule_description",
+                "system_prompt": "You are a professional travel scheduler specializing in maximizing meetings within tight temporal constraints. Your output should be a detailed, time-based schedule description, not PDDL.",
+                "prompt": "Your name is traveler. You are in San Francisco with the following public information:\n{environment->public_information}\nYour goal is:\n{agents->traveler->goal}\nThink step by step and outline a proposed schedule. For each step, state the location, action (travel or meet), and start/end time, ensuring all constraints are addressed."
+            }
+        },
+        "constraint_auditor": {
+            "verification": {
+                "input": [
+                    "schedule_description"
+                ],
+                "output": "schedule_verification",
+                "system_prompt": "You are a temporal constraints auditor. Your sole purpose is to verify the feasibility and temporal consistency of a proposed schedule against fixed constraints. You must check travel times, meeting durations, and availability windows. Your output must clearly state whether the schedule is 'FEASIBLE' or 'INFEASIBLE' and why.",
+                "prompt": "Your name is constraint_auditor. You need to audit the following schedule proposal based on the known public constraints:\n{environment->public_information}\nProposed Schedule:\n{schedule_description}\nCritically analyze the schedule to ensure the traveler adheres to all arrival times, minimum 60-minute meeting duration with Betty, and accurate travel times. Provide a detailed verification report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "schedule_description",
+                    "schedule_verification"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with single-agent PDDL problems focusing on temporal planning (e.g., using PDDL 2.1 features for time and duration). You always provide a PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received a proposed schedule and a verification report. Use this information to construct a final PDDL domain and problem file that models the traveler's movements, meetings, and temporal constraints (arrival time, travel duration, minimum meeting duration). If the schedule is verified as FEASIBLE, encode it as the goal state.\nPublic Information:\n{environment->public_information}\nProposed Schedule:\n{schedule_description}\nVerification Report:\n{schedule_verification}\nThink step by step and provide the PDDL domain and problem. Focus on representing time accurately."
+            }
+        },
+        "constraints": [
+            "traveler.planning->constraint_auditor.verification",
+            "traveler.planning->orchestrator.pddl",
+            "constraint_auditor.verification->orchestrator.pddl"
+        ]
+    }
+}

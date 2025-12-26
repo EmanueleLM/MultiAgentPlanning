@@ -1,0 +1,96 @@
+{
+    "name": "TripPlanningExample21",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "Time_Budgeter",
+            "Route_Optimizer",
+            "Temporal_Auditor",
+            "orchestrator"
+        ],
+        "Time_Budgeter": {
+            "private_information": [
+                "Desired durations: Venice (6 days), Mykonos (2 days), Vienna (4 days).",
+                "Total trip duration constraint: 10 days.",
+                "The sum of desired durations (12 days) exceeds the maximum trip duration (10 days)."
+            ],
+            "goal": "Determine the definitive duration of stay for each of the three cities such that the total duration is exactly 10 days, prioritizing mandatory or critical constraints (like the Venice workshop constraint which strongly implies a 6-day stay is required)."
+        },
+        "Route_Optimizer": {
+            "private_information": [
+                "Direct flight connections: Mykonos <-> Vienna, Vienna <-> Venice.",
+                "The trip must visit all three cities sequentially, using only direct flights."
+            ],
+            "goal": "Determine the valid sequence of visiting the three cities (Venice, Mykonos, Vienna) that minimizes travel steps and respects direct flight constraints."
+        },
+        "Temporal_Auditor": {
+            "private_information": [
+                "The workshop in Venice must occur between day 5 and day 10 of the overall 10-day trip."
+            ],
+            "goal": "Verify if a proposed schedule (sequence and durations) meets the critical temporal constraint regarding the workshop in Venice."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the derived durations, route sequence, and temporal checks into a single coherent PDDL plan to schedule the 10-day trip."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 10,
+            "cities": 3
+        },
+        "public_information": [
+            "Trip duration: 10 days total.",
+            "Cities to visit: Venice (desired 6 days), Mykonos (desired 2 days), Vienna (desired 4 days).",
+            "Constraint: Workshop in Venice must be attended between day 5 and day 10 (inclusive of Venice stay period).",
+            "Flight constraints: Only direct flights allowed. Connections: Mykonos <-> Vienna, Vienna <-> Venice."
+        ]
+    },
+    "workflow": {
+        "Time_Budgeter": {
+            "decision": {
+                "input": [],
+                "output": "durations_budget",
+                "system_prompt": "You are a specialized constraint satisfaction expert focused on time allocation. Analyze the constraints and provide a clear decision on the allocated days for each city.",
+                "prompt": "Analyze the following public information:\n{environment->public_information}\nGiven your private information:\n{agents->Time_Budgeter->private_information}\nDetermine the definitive duration (in days) allocated to Venice (V), Mykonos (M), and Vienna (W) such that V + M + W = 10 days. Justify your prioritization, especially concerning the critical constraints like the Venice workshop. Output the results as a list of city-duration pairs (e.g., [('Venice', 6), ('Mykonos', 2), ('Vienna', 2)])."
+            }
+        },
+        "Route_Optimizer": {
+            "decision": {
+                "input": [],
+                "output": "route_sequence",
+                "system_prompt": "You are a specialized pathfinding agent. Analyze the connections and determine the optimal sequence.",
+                "prompt": "Analyze the flight constraints described in the public information:\n{environment->public_information}\nDetermine a sequence of visiting the three cities (Venice, Mykonos, Vienna) starting and ending the trip at any of these cities, such that all movements are connected by direct flights. Provide the sequence (e.g., CityA -> CityB -> CityC)."
+            }
+        },
+        "Temporal_Auditor": {
+            "audit": {
+                "input": [
+                    "durations_budget",
+                    "route_sequence"
+                ],
+                "output": "schedule_validation",
+                "system_prompt": "You are a temporal consistency auditor. Your role is to check if scheduling constraints are met and suggest fixes if necessary.",
+                "prompt": "You have received the proposed durations and route sequence. Check if the critical constraint regarding the Venice workshop is met. The workshop must occur between Day 5 and Day 10 of the overall 10-day trip.\n\nProposed Durations:\n{durations_budget}\n\nProposed Route Sequence:\n{route_sequence}\n\nCalculate the start day and end day for the Venice stay (assuming Day 1 is the trip start). Confirm if the schedule is valid. If it fails, suggest necessary adjustments (if possible) to the durations or sequence to meet the workshop requirement, while keeping the total trip at 10 days."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "durations_budget",
+                    "route_sequence",
+                    "schedule_validation"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with scheduling and temporal PDDL problems (Planning Domain Definition Language). You must integrate all provided constraints, durations, and sequence information to produce a final, solvable PDDL domain and problem file targeted for the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the final planner. Integrate the following outputs regarding the 10-day trip plan involving Venice, Mykonos, and Vienna into a comprehensive PDDL plan:\n\n1. Budgeted Durations:\n{durations_budget}\n\n2. Optimized Route Sequence:\n{route_sequence}\n\n3. Schedule Validation and Adjustments:\n{schedule_validation}\n\nUse the validated schedule (durations and sequence) to define locations, time points (days 1 to 10), and movement actions. The goal is to successfully visit all locations according to the schedule within 10 days, ensuring the Venice stay adheres to the required temporal window.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Time_Budgeter.decision->Temporal_Auditor.audit",
+            "Route_Optimizer.decision->Temporal_Auditor.audit",
+            "Temporal_Auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

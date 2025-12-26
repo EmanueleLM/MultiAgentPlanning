@@ -1,0 +1,102 @@
+{
+    "name": "TripPlanningExample22",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "scheduler_berlin",
+            "router_cities",
+            "auditor",
+            "orchestrator"
+        ],
+        "scheduler_berlin": {
+            "private_information": [
+                "I must ensure Berlin is visited for 7 consecutive days.",
+                "The Berlin visit must occur between Day 1 and Day 7 to attend the annual show."
+            ],
+            "goal": "Determine the optimal time window for visiting Berlin based on external events."
+        },
+        "router_cities": {
+            "private_information": [
+                "I need to calculate the path considering only direct flights.",
+                "Frankfurt requires 4 days of visit, and Bucharest requires 2 days."
+            ],
+            "goal": "Determine a feasible travel path satisfying duration constraints and flight connectivity."
+        },
+        "auditor": {
+            "private_information": [
+                "The required activities sum up to 13 days (7 + 4 + 2).",
+                "The total trip duration must be 11 days."
+            ],
+            "goal": "Audit the temporal constraints and identify inconsistencies for the orchestrator."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a complete 11-day trip plan visiting all three cities, respecting flight routes and activity constraints, integrating inputs from all agents."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_trip_days": 11,
+            "cities": [
+                "Frankfurt",
+                "Bucharest",
+                "Berlin"
+            ],
+            "required_days": {
+                "Frankfurt": 4,
+                "Bucharest": 2,
+                "Berlin": 7
+            }
+        },
+        "public_information": [
+            "The total duration of the trip must be 11 days.",
+            "Required visit durations are: Berlin (7 days), Frankfurt (4 days), Bucharest (2 days).",
+            "The Berlin annual show runs from Day 1 to Day 7.",
+            "Direct flight routes: Berlin <-> Frankfurt, Frankfurt <-> Bucharest (Bucharest and Berlin have no direct flight)."
+        ]
+    },
+    "workflow": {
+        "scheduler_berlin": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_scheduler_berlin",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus on temporal constraints. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is scheduler_berlin. You are focused on fulfilling the Berlin schedule requirements. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->scheduler_berlin->private_information}\nThis is the goal:\n{agents->scheduler_berlin->goal}\nModel the time constraints (Days 1 to 7) and the requirement of spending 7 days in Berlin. Think step by step and provide a PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "router_cities": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_router_cities",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus on spatial constraints and movement. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is router_cities. You are focused on ensuring all required cities are visited using available direct flights, respecting the minimum duration for Frankfurt (4 days) and Bucharest (2 days). You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->router_cities->private_information}\nThis is the goal:\n{agents->router_cities->goal}\nModel the travel actions and location requirements. Think step by step and provide a PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "analyze": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are a temporal consistency auditor. Your task is to check if the specified trip constraints are mathematically possible given the total duration allowed. Output a brief, factual report detailing the inconsistency found.",
+                "prompt": "Analyze the following constraints:\nTotal trip duration allowed: {environment->init->total_trip_days} days.\nRequired city visits (total days needed): {environment->init->required_days}.\nTemporal constraint: Berlin must be visited during Day 1 to Day 7.\nProvide a clear statement on whether these constraints can be met within the 11-day limit, considering the required 13 days of activities (7+4+2). This report must directly inform the orchestrator about the feasibility."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_scheduler_berlin",
+                    "pddl_router_cities",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You must synthesize a unified plan that addresses all constraints, including temporal requirements (Berlin show D1-D7) and spatial connectivity. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "The goal is to generate a trip plan for 11 days. You have received partial plans from two agents and an audit report concerning the constraints.\nAudit Report:\n{audit_report}\n\nFirst Agent's PDDL (focusing on Berlin schedule):\n{pddl_scheduler_berlin}\n\nSecond Agent's PDDL (focusing on routing):\n{pddl_router_cities}\n\nBased on the audit report, the total required duration (13 days) exceeds the maximum trip duration (11 days). When generating the combined PDDL, you must prioritize fulfilling the Berlin show requirement (7 days between Day 1 and 7) while fitting the remaining travel and activity constraints into the 11-day total trip limit. If the goal is strictly impossible, aim for a plan that maximizes adherence to the constraints and clearly reflects the temporal challenge (11 days total).\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "scheduler_berlin.pddl->orchestrator.pddl",
+            "router_cities.pddl->orchestrator.pddl",
+            "auditor.analyze->orchestrator.pddl"
+        ]
+    }
+}

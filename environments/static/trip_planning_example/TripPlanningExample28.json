@@ -1,0 +1,79 @@
+{
+    "name": "TripPlanningExample28",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "temporal_planner",
+            "connectivity_planner",
+            "orchestrator"
+        ],
+        "temporal_planner": {
+            "private_information": [
+                "Desired stay in Venice: 6 days.",
+                "Desired stay in Florence: 6 days.",
+                "Desired stay in Zurich: 2 days."
+            ],
+            "goal": "Ensure the overall trip duration respects the 12-day limit while maximizing planned stay days based on preferred durations."
+        },
+        "connectivity_planner": {
+            "private_information": [
+                "Direct flights exist between Venice and Zurich (both ways).",
+                "A direct flight exists only from Zurich to Florence."
+            ],
+            "goal": "Sequence the city visits such that all movements are possible via direct flights."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Find a complete 12-day trip plan (sequence of city visits and durations) using only direct flights, ensuring temporal and causal consistency."
+        }
+    },
+    "environment": {
+        "init": {
+            "cities": [
+                "Venice",
+                "Florence",
+                "Zurich"
+            ],
+            "total_days_limit": 12
+        },
+        "public_information": [
+            "The total duration of the trip must be exactly 12 days.",
+            "Commuting between cities must use direct flights.",
+            "The traveler starts the planning process having not yet visited any of the three cities."
+        ]
+    },
+    "workflow": {
+        "temporal_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_temporal",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus specifically on temporal constraints and resource allocation. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is temporal_planner. You are planning a trip with a public duration limit of 12 days. The cities involved are Venice, Florence, and Zurich. You have the following knowledge regarding desired stays:\n{agents->temporal_planner->private_information}\nThis is the global goal to solve:\n{agents->temporal_planner->goal}\nYou must define actions that allocate days to cities while ensuring the final accumulated duration is exactly 12 days. Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "connectivity_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_connectivity",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus specifically on geographical movement and connectivity constraints. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is connectivity_planner. You are planning a trip visiting Venice, Florence, and Zurich. Public environment information:\n{environment->public_information}\nYou have the following knowledge regarding direct flight paths:\n{agents->connectivity_planner->private_information}\nThis is the global goal to solve:\n{agents->connectivity_planner->goal}\nYou must define move actions respecting the specified connectivity constraints. Think step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_temporal",
+                    "pddl_connectivity"
+                ],
+                "output": "pddl_final_plan",
+                "system_prompt": "You are an expert with multi-aspect PDDL problems. You specialize in integrating planning components, resolving conflicts, and auditing temporal and causal consistency. You always provide a PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator. You need to combine the temporal planning constraints and the geographical connectivity constraints provided by two specialist agents to generate a single, consistent 12-day trip plan.\nThe combined plan must respect the hard limit of 12 days total duration and strictly adhere to the defined direct flight routes.\n\nHere is the PDDL output from the temporal planner:\n{pddl_temporal}\n\nHere is the PDDL output from the connectivity planner:\n{pddl_connectivity}\n\nCrucially, you must audit the consistency of the input plans. Note that the temporal requirements requested 14 days of stay (6+6+2) but the environment dictates a 12-day limit. You must resolve this conflict by adjusting the stays (decreasing duration in one or more cities) while ensuring the final plan duration is exactly 12 days and all three cities are visited.\n\nIntegrate the PDDL responses. Think step by step and provide a single, unified PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "temporal_planner.pddl->orchestrator.pddl",
+            "connectivity_planner.pddl->orchestrator.pddl"
+        ]
+    }
+}

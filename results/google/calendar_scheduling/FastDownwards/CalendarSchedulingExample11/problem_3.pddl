@@ -1,0 +1,37 @@
+(define (problem calendar-scheduling-11)
+    (:domain calendar-scheduling)
+    (:objects
+        T0900 T0930 T1000 T1030 T1100 T1130 T1200 T1230 T1300 T1330 T1400 T1430 T1500 T1530 T1600 T1630 - time-slot
+        alexander elizabeth walter - participant
+    )
+    (:init
+        ; Availability for alexander
+        (free T0900 alexander)
+        (free T1000 alexander)
+        (free T1100 alexander)
+        (free T1130 alexander)
+        (free T1200 alexander)
+        (free T1300 alexander)
+        (free T1330 alexander)
+        (free T1400 alexander)
+        (free T1500 alexander)
+        (free T1530 alexander)
+
+        ; Availability for elizabeth
+        (free T0930 elizabeth)
+        (free T1000 elizabeth)
+        (free T1030 elizabeth)
+        (free T1100 elizabeth)
+        (free T1230 elizabeth)
+        (free T1430 elizabeth)
+        (free T1500 elizabeth)
+        (free T1530 elizabeth)
+        (free T1600 elizabeth)
+        (free T1630 elizabeth)
+
+        ; Availability for walter
+        (free T1430 walter)
+        (free T1500 walter)
+    )
+    (:goal (overall_goal_met))
+)

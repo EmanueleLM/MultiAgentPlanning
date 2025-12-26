@@ -1,0 +1,35 @@
+(define (problem schedule-meeting-0)
+    (:domain calendar-scheduling)
+    (:objects
+        T0900 T0930 T1000 T1030 T1100 T1130 T1200 T1230 T1300 T1330 T1400 T1430 T1500 T1530 T1600 T1630 T1700 - time-point
+    )
+    (:init
+        ; Time progression (30 minute increments)
+        (next-time T0900 T0930) (next-time T0930 T1000)
+        (next-time T1000 T1030) (next-time T1030 T1100)
+        (next-time T1100 T1130) (next-time T1130 T1200)
+        (next-time T1200 T1230) (next-time T1230 T1300)
+        (next-time T1300 T1330) (next-time T1330 T1400)
+        (next-time T1400 T1430) (next-time T1430 T1500)
+        (next-time T1500 T1530) (next-time T1530 T1600)
+        (next-time T1600 T1630) (next-time T1630 T1700)
+
+        ; Michelle Blocked (11:00 - 12:00)
+        (is-blocked michelle T1100) (is-blocked michelle T1130)
+
+        ; Steven Blocked (9:00-9:30, 11:30-12:00, 13:30-14:00, 15:30-16:00)
+        (is-blocked steven T0900)
+        (is-blocked steven T1130)
+        (is-blocked steven T1330)
+        (is-blocked steven T1530)
+
+        ; Jerry Blocked (9:00-9:30, 10:00-11:00, 11:30-12:30, 13:00-14:30, 15:30-16:00, 16:30-17:00)
+        (is-blocked jerry T0900)
+        (is-blocked jerry T1000) (is-blocked jerry T1030)
+        (is-blocked jerry T1130) (is-blocked jerry T1200)
+        (is-blocked jerry T1300) (is-blocked jerry T1330) (is-blocked jerry T1400)
+        (is-blocked jerry T1530)
+        (is-blocked jerry T1630)
+    )
+    (:goal (meeting-achieved))
+)

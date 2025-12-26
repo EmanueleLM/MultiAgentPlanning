@@ -1,0 +1,93 @@
+{
+    "name": "TripPlanningExample13",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "connectivity_agent",
+            "duration_agent",
+            "constraint_auditor",
+            "orchestrator"
+        ],
+        "connectivity_agent": {
+            "private_information": [
+                "I specialize in routing based on flight connectivity.",
+                "Cities: Lyon (L), Bucharest (B), Manchester (M)."
+            ],
+            "goal": "Determine a sequence of cities that can be visited using only direct flights, ensuring all three cities are included."
+        },
+        "duration_agent": {
+            "private_information": [
+                "I specialize in allocating time and ensuring temporal constraints are met."
+            ],
+            "goal": "Allocate the required stay days for Lyon (5), Bucharest (7), and Manchester (7) within the 17-day total limit, ensuring Lyon's stay includes days 13-17."
+        },
+        "constraint_auditor": {
+            "private_information": [
+                "I am responsible for identifying inconsistencies in numerical and temporal constraints."
+            ],
+            "goal": "Audit the provided constraints (stay days vs total trip duration and Lyon's temporal window) and report any fundamental conflicts or impossibilities."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the constraints from the connectivity and duration plans, resolve conflicts (prioritizing the 17-day trip limit), and output the final comprehensive PDDL plan for the 17-day trip."
+        }
+    },
+    "environment": {
+        "init": {
+            "total_days": 17,
+            "cities": 3
+        },
+        "public_information": [
+            "The total trip duration must be 17 days.",
+            "Cities to visit: Lyon (5 days required stay), Bucharest (7 days required stay), Manchester (7 days required stay).",
+            "Total requested stay days: 19.",
+            "Lyon stay must include visiting relatives between Day 13 and Day 17 (inclusive of trip timeline).",
+            "Direct flights exist between: Manchester <-> Bucharest and Bucharest <-> Lyon.",
+            "Commuting between cities requires a direct flight."
+        ]
+    },
+    "workflow": {
+        "connectivity_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_connectivity",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is connectivity_agent. You are tasked with defining the travel domain based on direct flight constraints. You are in an environment with the following public information:\n{environment->public_information}\nYour goal is to establish the necessary domain objects (cities) and predicates/actions (travel, direct-flight-connection) required for sequencing the trip, and define a problem instance goal of having visited all three cities, without worrying about time constraints yet.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "duration_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_duration",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), focusing on temporal planning (using numerical fluents for time/duration). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is duration_agent. You are tasked with defining the duration constraints for the trip. The trip must last 17 days. Stays requested: Lyon 5 days, Bucharest 7 days, Manchester 7 days. Lyon's stay must include relatives visit between Day 13 and Day 17. You are in an environment with the following public information:\n{environment->public_information}\nYour goal is to define the necessary fluents and actions to enforce these durations and temporal constraints. Note the potential conflict between total requested stays (19) and total trip time (17). Define the problem instance based on the strict numerical constraints given.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraint_auditor": {
+            "analysis": {
+                "input": [],
+                "output": "audit_report",
+                "system_prompt": "You are a professional constraint auditor. Your task is to verify numerical and temporal consistency and present findings in a concise report.",
+                "prompt": "Analyze the following public constraints:\n{environment->public_information}\nSpecifically, verify if the sum of required stay days (5 + 7 + 7) conflicts with the total trip duration (17 days). Provide a clear report on the consistency and feasibility of the task goals. If a conflict exists, recommend the necessary adjustments to satisfy the mandatory 17-day limit (e.g., reducing non-fixed stay times).\n"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_connectivity",
+                    "pddl_duration",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in integrating partial PDDL plans and temporal analysis into a comprehensive planning solution optimized for the FastDownwards solver. You always provide a final PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are the orchestrator for a trip planning task. You have received partial PDDL definitions concerning connectivity and duration, and an audit report.\nGoal: {agents->orchestrator->goal}\n\nConnectivity PDDL:\n{pddl_connectivity}\n\nDuration PDDL:\n{pddl_duration}\n\nAudit Report:\n{audit_report}\n\nBased on the audit, the required stays (19 days) exceed the total trip length (17 days). Assume the 17-day trip duration is mandatory. You must adjust the stays so the total stay time is 17 days (Lyon must be 5 days, leaving 12 days for Bucharest and Manchester combined). Ensure the resulting plan adheres to the direct flight rule and the temporal constraint for Lyon (staying on day 13 through 17 requires specific sequencing). You must define the final plan using temporal fluents to track the day count (1 to 17).\n\nThink step by step, synthesize the PDDL domain and problem, incorporating the corrected durations (e.g., set Manchester to 7 days and Bucharest to 5 days, summing to 17 total trip days), ensuring the sequence allows for the late scheduling of Lyon and uses direct flights.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "connectivity_agent.pddl->orchestrator.pddl",
+            "duration_agent.pddl->orchestrator.pddl",
+            "constraint_auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

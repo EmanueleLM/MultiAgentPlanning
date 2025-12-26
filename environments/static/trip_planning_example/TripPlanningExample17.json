@@ -1,0 +1,97 @@
+{
+    "name": "TripPlanningExample17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TimeManager",
+            "RoutePlanner",
+            "Auditor",
+            "orchestrator"
+        ],
+        "TimeManager": {
+            "private_information": [
+                "Copenhagen stay requested: 5 days (Day 1 and Day 5 conference attendance fixed).",
+                "Vienna stay requested: 4 days.",
+                "Lyon stay requested: 4 days.",
+                "Total requested stay duration (13 days) conflicts with the global 11-day trip limit."
+            ],
+            "goal": "Determine the necessary duration for each city stay, ensuring Copenhagen is 5 days and the total trip duration is exactly 11 days. Propose how the remaining 6 days should be distributed between Vienna and Lyon."
+        },
+        "RoutePlanner": {
+            "private_information": [
+                "Direct flights exist only between Copenhagen and Vienna, and Vienna and Lyon."
+            ],
+            "goal": "Propose all viable sequences of visiting the three cities (CPH, VIE, LYS) that require minimum flights (i.e., minimal travel days) and only use direct connections."
+        },
+        "Auditor": {
+            "private_information": [],
+            "goal": "Audit the proposed stay durations and routes to ensure consistency with the 11-day limit and flight constraints. Specifically, identify and flag the discrepancy between requested city stay totals (13 days) and the required overall trip total (11 days)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a comprehensive 11-day itinerary, represented as a PDDL domain and problem, that satisfies all temporal constraints (5 days CPH including fixed dates) and route constraints (direct flights only)."
+        }
+    },
+    "environment": {
+        "init": {
+            "trip_duration": 11,
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The total trip must last exactly 11 days.",
+            "The cities to visit are Copenhagen (CPH), Vienna (VIE), and Lyon (LYS).",
+            "Copenhagen must be visited for 5 days, including a conference on the first day of the trip and the fifth day of the Copenhagen stay.",
+            "Direct flight connectivity: CPH <-> VIE, VIE <-> LYS. No direct flights between CPH and LYS."
+        ]
+    },
+    "workflow": {
+        "TimeManager": {
+            "analysis": {
+                "input": [],
+                "output": "time_analysis",
+                "system_prompt": "You are an expert scheduler specialized in temporal constraints and resource allocation. You generate detailed, step-by-step reasoning and conclusions about temporal feasibility.",
+                "prompt": "Analyze the following constraints: Total trip duration is {environment->init->trip_duration} days. Public information: {environment->public_information}. Your private constraints are: {agents->TimeManager->private_information}. Determine the necessary duration for each city stay, ensuring Copenhagen is 5 days and the total trip duration is exactly 11 days. Propose how the remaining 6 days should be distributed between Vienna and Lyon. Provide your results as a structured analysis."
+            }
+        },
+        "RoutePlanner": {
+            "analysis": {
+                "input": [],
+                "output": "route_analysis",
+                "system_prompt": "You are an expert route planner specializing in minimum travel segment constraints based on connectivity graphs.",
+                "prompt": "Analyze the following constraints: Public information: {environment->public_information}. Your private constraints are: {agents->RoutePlanner->private_information}. Propose all viable, minimum-travel-segment sequences of visiting the three cities (CPH, VIE, LYS). Identify the number of travel days required for each sequence. Provide your results as a structured analysis."
+            }
+        },
+        "Auditor": {
+            "review": {
+                "input": [
+                    "time_analysis",
+                    "route_analysis"
+                ],
+                "output": "consistency_review",
+                "system_prompt": "You are an expert auditor specializing in consistency checks and identifying conflicts between constraints and proposals. You do not generate plans, only validation notes.",
+                "prompt": "Review the outputs from TimeManager and RoutePlanner against the global goal and public constraints: Total 11 days, CPH 5 days (D1/D5 fixed conference), CPH-VIE, VIE-LYS connectivity.\nTime Manager Analysis:\n{time_analysis}\nRoute Planner Analysis:\n{route_analysis}\nSpecifically, address the conflict between requested stay days (5+4+4=13) and the 11-day limit. Confirm if the proposed duration adjustments and routes are feasible. Provide a summary of validated constraints and remaining open issues."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "time_analysis",
+                    "route_analysis",
+                    "consistency_review"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) and resource allocation for temporal sequencing. You always provide a PDDL domain and a PDDL problem file targeting the FastDownwards solver. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You are tasked with planning an 11-day trip using the analyzed information below. The plan must explicitly track the day number (1 to 11), the agent's location, and the activity (staying, traveling, attending conference). Use the validated constraints, ensuring CPH is 5 days, and the remaining 6 days are split optimally between VIE and LYS based on feasibility and minimum travel segments (flights are one day each).\nTime Manager Analysis:\n{time_analysis}\nRoute Planner Analysis:\n{route_analysis}\nAuditor Review:\n{consistency_review}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the 11-day itinerary planning task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "TimeManager.analysis->Auditor.review",
+            "RoutePlanner.analysis->Auditor.review",
+            "TimeManager.analysis->orchestrator.pddl",
+            "RoutePlanner.analysis->orchestrator.pddl",
+            "Auditor.review->orchestrator.pddl"
+        ]
+    }
+}

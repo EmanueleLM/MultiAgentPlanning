@@ -1,0 +1,93 @@
+{
+    "name": "MeetingPlanningExample2",
+    "author": "Expert Writer",
+    "agents": {
+        "number": 4,
+        "names": [
+            "traveler",
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "traveler": {
+            "private_information": [
+                "I must arrive at Haight-Ashbury at 9:00 AM.",
+                "My primary goal is to meet friends and maximize contact time."
+            ],
+            "goal": "Optimize the schedule to meet all possible friends, respecting strict time constraints."
+        },
+        "scheduler": {
+            "private_information": [],
+            "goal": "Generate various potential schedules based on known constraints to find feasible meeting options."
+        },
+        "auditor": {
+            "private_information": [
+                "I must verify that travel times (15 min between locations), arrival time (9:00 AM), Jessica's availability (3:15 PM - 8:15 PM), and minimum meeting duration (90 minutes) are strictly followed."
+            ],
+            "goal": "Audit the temporal and causal consistency of generated schedules to eliminate invalid plans."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Select the optimal validated schedule and generate the final PDDL plan to achieve the overall goal."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "Location A: Haight-Ashbury.",
+            "Location B: Sunset District (where Jessica is).",
+            "Travel time A <-> B: 15 minutes.",
+            "Traveler arrives at Location A at 9:00 AM.",
+            "Jessica is available at Location B from 3:15 PM until 8:15 PM.",
+            "The meeting with Jessica must last a minimum of 90 minutes."
+        ]
+    },
+    "workflow": {
+        "traveler": {
+            "describe": {
+                "input": [],
+                "output": "problem_description",
+                "system_prompt": "You are documenting the environmental constraints and goals for a planning problem. Your output must clearly summarize all locations, travel times, initial conditions, and temporal constraints provided.",
+                "prompt": "Based on the public information and your private knowledge, provide a structured description of the planning problem required to meet Jessica. Include all locations, fixed times, travel times, and meeting requirements."
+            }
+        },
+        "scheduler": {
+            "generate": {
+                "input": [
+                    "problem_description"
+                ],
+                "output": "candidate_schedules",
+                "system_prompt": "You are a schedule generator. Based on the provided problem description, you must propose several diverse potential timelines/schedules, tracking departure, arrival, and meeting times precisely.",
+                "prompt": "Using the following description: {problem_description}\nGenerate three distinct potential schedules for the day that attempt to satisfy the goal of meeting Jessica for 90 minutes within her availability window (3:15 PM to 8:15 PM), considering the 15-minute travel time. Format the output as a list of detailed timelines showing start and end times for travel and meetings."
+            }
+        },
+        "auditor": {
+            "check": {
+                "input": [
+                    "candidate_schedules"
+                ],
+                "output": "validated_schedules",
+                "system_prompt": "You are a temporal constraints auditor. Your sole task is to verify the causal and temporal consistency of the proposed schedules against strict constraints (arrival time 9:00 AM, travel time 15 min, Jessica's window 3:15 PM-8:15 PM, meeting duration >= 90 min). Only output schedules that are fully compliant, thereby removing bookkeeping shortcuts or infeasible plans.",
+                "prompt": "Analyze the following candidate schedules:\n{candidate_schedules}\nIdentify and discard any schedule that violates the initial arrival time (9:00 AM), travel time (15 minutes), Jessica's availability (3:15 PM - 8:15 PM), or the minimum 90-minute meeting requirement. Provide only the valid schedules, ensuring temporal consistency throughout."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "validated_schedules"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language), specializing in temporal planning (PDDL 2.1). You must formalize the validated schedule into a plan suitable for a solver like Fast Downward. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the following set of validated schedules:\n{validated_schedules}\nSelect the most effective schedule (e.g., the one starting the meeting earliest or finishing latest, depending on optimization focus) or use the single provided valid schedule. Translate the constraints (locations, travel times, specific meeting start/end times derived from the schedule) into a PDDL domain and problem. The goal is to successfully complete the required 90-minute meeting with Jessica.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "traveler.describe->scheduler.generate",
+            "scheduler.generate->auditor.check",
+            "auditor.check->orchestrator.pddl"
+        ]
+    }
+}

@@ -1,0 +1,58 @@
+(define (domain MysteryBlocksworld7)
+    (:requirements :strips :typing :negative-preconditions)
+    (:types object)
+
+    (:predicates
+        (Craves ?o1 - object ?o2 - object)
+        (Harmony)
+        (Planet ?o - object)
+        (Province ?o - object)
+        (Pain ?o - object)
+    )
+
+    ;; 1. Attack object (?o)
+    (:action attack
+        :parameters (?o - object)
+        :precondition (and (Province ?o) (Planet ?o) (Harmony))
+        :effect (and (Pain ?o)
+                     (not (Province ?o))
+                     (not (Planet ?o))
+                     (not (Harmony))
+                )
+    )
+
+    ;; 2. Succumb object (?o)
+    (:action succumb
+        :parameters (?o - object)
+        :precondition (Pain ?o)
+        :effect (and (Province ?o)
+                     (Planet ?o)
+                     (Harmony)
+                     (not (Pain ?o))
+                )
+    )
+
+    ;; 3. Overcome object (?o) from other object (?o_other)
+    (:action overcome
+        :parameters (?o - object ?o_other - object)
+        :precondition (and (Province ?o_other) (Pain ?o))
+        :effect (and (Harmony)
+                     (Province ?o)
+                     (Craves ?o ?o_other)
+                     (not (Province ?o_other))
+                     (not (Pain ?o))
+                )
+    )
+
+    ;; 4. Feast object (?o) from other object (?o_other)
+    (:action feast
+        :parameters (?o - object ?o_other - object)
+        :precondition (and (Craves ?o ?o_other) (Province ?o) (Harmony))
+        :effect (and (Pain ?o)
+                     (Province ?o_other)
+                     (not (Craves ?o ?o_other))
+                     (not (Province ?o))
+                     (not (Harmony))
+                )
+    )
+)

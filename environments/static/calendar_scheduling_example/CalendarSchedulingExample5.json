@@ -1,0 +1,108 @@
+{
+    "name": "CalendarSchedulingExample5",
+    "author": "Human",
+    "agents": {
+        "number": 5,
+        "names": [
+            "kathryn",
+            "charlotte",
+            "lauren",
+            "auditor",
+            "orchestrator"
+        ],
+        "kathryn": {
+            "private_information": [
+                "Blocked slots: 09:00-09:30, 10:30-11:00, 11:30-12:00, 13:30-14:30, 16:30-17:00"
+            ],
+            "goal": "Provide all continuous 30-minute slots available for a meeting on Monday between 9:00 and 17:00."
+        },
+        "charlotte": {
+            "private_information": [
+                "Blocked slots: 12:00-12:30, 16:00-16:30",
+                "Preference: Do not want to meet after 13:30."
+            ],
+            "goal": "Provide all continuous 30-minute slots available, incorporating the preference not to meet after 13:30."
+        },
+        "lauren": {
+            "private_information": [
+                "Blocked slots: 09:00-10:00, 12:00-12:30, 13:30-14:30, 15:00-16:00, 16:30-17:00"
+            ],
+            "goal": "Provide all continuous 30-minute slots available for a meeting on Monday between 9:00 and 17:00."
+        },
+        "auditor": {
+            "private_information": [],
+            "goal": "Verify the temporal consistency and adherence to stated constraints for the availability lists provided by the participants before synthesis."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Synthesize the validated availability data and determine a common 30-minute time slot for the meeting on Monday between 9:00 and 17:00."
+        }
+    },
+    "environment": {
+        "init": {
+            "day": "Monday",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "meeting_duration_minutes": 30
+        },
+        "public_information": [
+            "Meeting required for Kathryn, Charlotte, and Lauren.",
+            "The meeting must be 30 minutes long.",
+            "The meeting must occur on Monday between 9:00 and 17:00."
+        ]
+    },
+    "workflow": {
+        "kathryn": {
+            "availability_analysis": {
+                "input": [],
+                "output": "kathryn_raw_availability",
+                "system_prompt": "You are an expert analyst who processes scheduling data. You must output a structured list (e.g., JSON list of strings representing 'HH:MM-HH:MM') listing all valid 30-minute continuous time intervals that are free based on your schedule and the public constraints. Do not output anything other than the structured list.",
+                "prompt": "Your name is Kathryn. Based on the public environment information:\n{environment->public_information}\nand your private schedule:\n{agents->kathryn->private_information}\nDetermine and list all possible 30-minute slots you are available on Monday between 9:00 and 17:00."
+            }
+        },
+        "charlotte": {
+            "availability_analysis": {
+                "input": [],
+                "output": "charlotte_raw_availability",
+                "system_prompt": "You are an expert analyst who processes scheduling data. You must output a structured list (e.g., JSON list of strings representing 'HH:MM-HH:MM') listing all valid 30-minute continuous time intervals that are free based on your schedule and the public constraints. Do not output anything other than the structured list.",
+                "prompt": "Your name is Charlotte. Based on the public environment information:\n{environment->public_information}\nand your private schedule and preferences:\n{agents->charlotte->private_information}\nDetermine and list all possible 30-minute slots you are available on Monday between 9:00 and 17:00, strictly excluding slots that violate your preferences (not meeting after 13:30)."
+            }
+        },
+        "lauren": {
+            "availability_analysis": {
+                "input": [],
+                "output": "lauren_raw_availability",
+                "system_prompt": "You are an expert analyst who processes scheduling data. You must output a structured list (e.g., JSON list of strings representing 'HH:MM-HH:MM') listing all valid 30-minute continuous time intervals that are free based on your schedule and the public constraints. Do not output anything other than the structured list.",
+                "prompt": "Your name is Lauren. Based on the public environment information:\n{environment->public_information}\nand your private schedule:\n{agents->lauren->private_information}\nDetermine and list all possible 30-minute slots you are available on Monday between 9:00 and 17:00."
+            }
+        },
+        "auditor": {
+            "consistency_check": {
+                "input": [
+                    "kathryn_raw_availability",
+                    "charlotte_raw_availability",
+                    "lauren_raw_availability"
+                ],
+                "output": "validated_schedules",
+                "system_prompt": "You are a stringent temporal consistency auditor. Your primary function is to verify that all provided schedules adhere strictly to the general time constraints (9:00-17:00, 30 minutes duration) and any stated agent preferences. Output a single JSON object containing the verified lists for all participants, keyed by agent name, ready for synthesis.",
+                "prompt": "You are the auditor. You have received the raw availability lists from the participants. Validate the following inputs based on the known constraints:\n- Meeting duration: 30 minutes\n- Time window: 9:00 to 17:00\n- Charlotte's preference: No meeting after 13:30.\n\nKathryn's raw availability: {kathryn_raw_availability}\nCharlotte's raw availability: {charlotte_raw_availability}\nLauren's raw availability: {lauren_raw_availability}\nProvide the cleaned and validated schedule data to the Orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "validated_schedules"
+                ],
+                "output": "pddl_schedule",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the validated available time slots for Kathryn, Charlotte, and Lauren:\n{validated_schedules}\nYour goal is to solve the task:\n{agents->orchestrator->goal}\nConvert the scheduling problem into a PDDL domain and problem. The PDDL should model time slots as objects and use predicates to represent availability, aiming for a goal state where a time slot is commonly available and selected for the meeting. Ensure the output is suitable for the FastDownwards solver."
+            }
+        },
+        "constraints": [
+            "kathryn.availability_analysis->auditor.consistency_check",
+            "charlotte.availability_analysis->auditor.consistency_check",
+            "lauren.availability_analysis->auditor.consistency_check",
+            "auditor.consistency_check->orchestrator.pddl"
+        ]
+    }
+}

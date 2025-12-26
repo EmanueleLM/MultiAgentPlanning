@@ -1,0 +1,79 @@
+{
+    "name": "MeetingPlanningExample14",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "scheduler",
+            "auditor",
+            "orchestrator"
+        ],
+        "scheduler": {
+            "private_information": [],
+            "goal": "Produce a PDDL domain and problem file that outlines a schedule maximizing the number of friends met during the day, incorporating all known temporal constraints."
+        },
+        "auditor": {
+            "private_information": [
+                "The core constraints involve arriving at Nob Hill at 9:00AM and meeting Mary for a continuous 120 minutes between 8:00 PM and 10:00 PM."
+            ],
+            "goal": "Audit the preliminary schedule provided by the scheduler for temporal consistency, specifically verifying that the 120-minute meeting constraint for Mary is satisfied without violating her availability window or travel times."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the initial scheduling plan and the temporal audit results to produce a final, verified PDDL solution for the entire day's schedule."
+        }
+    },
+    "environment": {
+        "init": {
+            "start_time": "9:00AM",
+            "start_location": "Nob Hill",
+            "travel_times": {
+                "Nob Hill_to_Marina District": "11 minutes",
+                "Marina District_to_Nob Hill": "12 minutes"
+            }
+        },
+        "public_information": [
+            "You are visiting San Francisco for the day and want to meet as many friends as possible.",
+            "Arrival time is 9:00 AM at Nob Hill.",
+            "Mary is located at Marina District.",
+            "Mary is available only from 8:00 PM (1200 minutes after 9:00 AM) to 10:00 PM (1320 minutes after 9:00 AM).",
+            "The goal is to meet Mary for a minimum of 120 minutes."
+        ]
+    },
+    "workflow": {
+        "scheduler": {
+            "pddl_schedule": {
+                "input": [],
+                "output": "pddl_schedule",
+                "system_prompt": "You are an expert planner specializing in scheduling and temporal problems. You must output a PDDL domain (using durative actions if necessary) and a PDDL problem file to define an optimal daily schedule. You will define time counters relative to the 9:00 AM start time.",
+                "prompt": "Your name is scheduler. Your goal is to generate a plan to meet as many friends as possible, ensuring adherence to the required 120-minute meeting with Mary. Public information:\n{environment->public_information}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "consistency_check": {
+                "input": [
+                    "pddl_schedule"
+                ],
+                "output": "pddl_audit",
+                "system_prompt": "You are a Temporal Constraint Auditor. Your job is to strictly verify the consistency and feasibility of a given PDDL schedule against complex time constraints. You focus on finding contradictions, especially concerning overlapping requirements (e.g., meeting duration vs. availability window).",
+                "prompt": "Your name is auditor. You have received an initial PDDL schedule plan. Your core constraint is critical: Mary is available exactly from 8:00 PM to 10:00 PM (120 minutes), and the requirement is to meet her for 120 continuous minutes. Analyze the schedule contained in {pddl_schedule}. Critique the plan and suggest necessary adjustments in a refined PDDL fragment or domain extension that enforces strict temporal fidelity.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. If the plan is temporally impossible or flawed based on the constraints, you must clearly state why and propose corrections."
+            }
+        },
+        "orchestrator": {
+            "integration": {
+                "input": [
+                    "pddl_schedule",
+                    "pddl_audit"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with multi-agent PDDL planning, skilled at integrating and reconciling potentially conflicting or incomplete planning artifacts. You always provide a final PDDL domain and a PDDL problem file suitable for the FastDownwards planner.",
+                "prompt": "Your name is orchestrator. You have received the initial scheduling plan and a rigorous audit of temporal constraints. Public information:\n{environment->public_information}\nThe initial plan attempt is:\n{pddl_schedule}\nThe temporal audit and suggested corrections are:\n{pddl_audit}\nIntegrate the findings from the audit into the scheduler's plan. Ensure the final PDDL plan solves the task of maximizing meetings while strictly adhering to the 120-minute meeting with Mary and accounting for all travel times. If the audit suggests a fundamental impossibility, address it in the plan/problem formulation.\nThink step by step and provide a final, executable PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "scheduler.pddl_schedule->auditor.consistency_check",
+            "scheduler.pddl_schedule->orchestrator.integration",
+            "auditor.consistency_check->orchestrator.integration"
+        ]
+    }
+}

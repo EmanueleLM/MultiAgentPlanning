@@ -9,7 +9,7 @@ BUDGET=10
 # Standard planning
 datasets=(
 # "calendar_scheduling"
-"meeting_planning"
+# "meeting_planning"
 "trip_planning"
 # "depots"
 # "logistics"

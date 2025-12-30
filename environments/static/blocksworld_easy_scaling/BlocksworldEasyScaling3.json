@@ -1,0 +1,86 @@
+{
+    "name": "BlocksworldEasyScaling3",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Disks are A (smallest), B, C, D (largest).",
+                "There are three pegs: Left, Middle, Right."
+            ],
+            "goal": "Generate a PDDL plan to move all 4 disks from the Left peg to the Right peg, using the standard Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "The plan must adhere to Tower of Hanoi rules: only one disk moved at a time, only top disk moved, no larger disk placed on smaller disk. The optimal solution requires 15 moves."
+            ],
+            "goal": "Audit the PDDL plan provided by the planner for temporal and causal consistency, ensuring all rules are respected and no logical shortcuts are taken."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, validated PDDL domain and problem file for the 4-disk Tower of Hanoi puzzle, suitable for FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 4,
+            "pegs": 3,
+            "initial_stack_order": [
+                "A",
+                "B",
+                "C",
+                "D"
+            ],
+            "source_peg": "Left",
+            "target_peg": "Right",
+            "auxiliary_peg": "Middle"
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 4 disks (A < B < C < D) and 3 pegs (Left, Middle, Right).",
+            "Initial state: Left peg holds D (bottom) up to A (top). Middle and Right pegs are empty.",
+            "Goal state: Right peg holds D (bottom) up to A (top). Left and Middle pegs must be empty.",
+            "Rules: Move one disk at a time, only move the top disk, never place a larger disk on a smaller disk."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_initial",
+                "system_prompt": "You are an expert PDDL generator for single-agent planning problems. You model movement constraints accurately.",
+                "prompt": "Model the 4-disk Tower of Hanoi puzzle. Your goal is:\n{agents->planner->goal}\n\nEnvironment details:\n{environment->public_information}\nPrivate knowledge:\n{agents->planner->private_information}\n\nProvide the PDDL domain and problem files. Enclose the domain between <domain></domain> tags, and the problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_initial"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a planning auditor specializing in verifying consistency and adherence to complex environmental constraints (like size ordering in Tower of Hanoi). You identify logical errors or reliance on non-standard shortcuts.",
+                "prompt": "You have received the following PDDL specification for the 4-disk Tower of Hanoi puzzle:\n{pddl_initial}\n\nThe public rules are:\n{environment->public_information}\n\nReview the PDDL provided. Specifically, check if the actions definition correctly enforces the rule that a larger disk can never be placed on a smaller disk, and that the initial/goal states are defined correctly. Provide a detailed summary of potential issues or confirm consistency. If consistent, state 'Status: Consistent'. If inconsistent, state 'Status: Inconsistent' and explain why. Do not generate PDDL, generate a text report."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_initial",
+                    "audit_report"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are the final integrator. You take initial PDDL plans and expert audit reports to finalize a robust PDDL specification suitable for the FastDownwards solver. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You have received the initial PDDL plan for the Tower of Hanoi:\n{pddl_initial}\n\nAnd the audit report confirming or denying its feasibility and constraint adherence:\n{audit_report}\n\nBased on the audit, finalize the PDDL domain and problem to achieve the goal: {agents->orchestrator->goal}. Ensure the resulting PDDL is complete, valid, and incorporates any necessary corrections identified by the auditor, specifically concerning disk size constraints. Enclose the final PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.pddl->auditor.review",
+            "planner.pddl->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

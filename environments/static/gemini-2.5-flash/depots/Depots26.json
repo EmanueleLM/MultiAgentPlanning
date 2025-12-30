@@ -1,0 +1,81 @@
+{
+    "name": "Depots26",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am responsible for generating the initial PDDL plan covering all logistics operations, including movement, loading, and unloading."
+            ],
+            "goal": "Generate a valid PDDL domain and problem file to move all crates to their required destinations using trucks and hoists."
+        },
+        "auditor": {
+            "private_information": [
+                "I must ensure that the generated plan strictly adheres to the physical and causal constraints defined in the problem description, focusing on temporal and causal consistency."
+            ],
+            "goal": "Verify the PDDL domain and problem for consistency and adherence to all action restrictions, standardizing the representation."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I oversee the entire planning process and finalize the PDDL output for external solvers."
+            ],
+            "goal": "Integrate and finalize the verified PDDL solution ready for the FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": null,
+            "visibility": null
+        },
+        "public_information": [
+            "The environment involves logistics between Depots and Distributors (Places). Pallets and Crates are Surfaces.",
+            "Initial State: crate0 is at depot0, crate1 is at depot1, crate2 is at distributor0.",
+            "Initial State: hoist0 is at depot0, hoist1 is at depot1, hoist2 is at depot2, hoist3 is at distributor0.",
+            "Initial State: pallet0 is at depot0, pallet1 is at depot1, pallet2 is at depot2, pallet3 is at distributor0.",
+            "Initial State: truck0 is at depot0, truck1 is at depot1, truck2 is at depot0.",
+            "Initial Status: All hoists are available. crate0, crate1, crate2, and pallet2 are clear.",
+            "Initial Contents: crate0 is on pallet0, crate1 is on pallet1, and crate2 is on pallet3.",
+            "Goal State: crate0 is on pallet2, crate1 is on pallet3, and crate2 is on pallet1.",
+            "Available actions: Drive Truck, Lift Crate (by Hoist from Surface), Drop Crate (by Hoist to Surface), Load Crate (by Hoist into Truck), Unload Crate (by Hoist from Truck). All actions are subject to strict preconditions regarding location (at), status (available, clear), and container state (in, on)."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_draft",
+                "system_prompt": "You are an expert in PDDL planning for logistics problems. You must define a domain that accurately reflects the movement, loading, and unloading actions described, adhering strictly to preconditions and effects. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your task is to generate a comprehensive PDDL domain and problem file to solve the logistical challenge defined by the public information and goal. Ensure all types (place, surface, truck, hoist), predicates, and actions (Drive, Lift, Drop, Load, Unload) are correctly modeled based on the provided constraints.\nPublic Information:\n{environment->public_information}\nGlobal Goal:\n{agents->planner->goal}\nThink step by step and provide the PDDL domain and problem required to achieve the goal.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "audit_pddl": {
+                "input": [
+                    "pddl_draft"
+                ],
+                "output": "pddl_refined",
+                "system_prompt": "You are a specialized PDDL auditor. Your primary role is to ensure temporal and causal consistency, and strict adherence to all stated preconditions and effects in the provided PDDL. You must verify and correct any potential bookkeeping shortcuts or logical inconsistencies. You always output a corrected and verified PDDL domain and problem. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Review the following PDDL draft provided by the planner:\n{pddl_draft}\nEnsure that the domain correctly models the movement of crates, hoists, and trucks, respecting constraints like 'surface clear' statuses, 'at' locations, and the precise definitions of the Load/Unload/Lift/Drop actions. Verify the initial state and goal state against the environment description.\nIf corrections are necessary, output the corrected PDDL. If the PDDL is correct, reiterate it.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "final_pddl": {
+                "input": [
+                    "pddl_refined"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are the final Orchestrator. Your role is to take the audited PDDL, ensure it is fully compliant with standard PDDL requirements (like those for FastDownwards), and present the final solution.",
+                "prompt": "You have received the audited and refined PDDL solution:\n{pddl_refined}\nReview this final solution. Ensure the Domain and Problem definitions are complete and syntactically correct for a standard PDDL solver targeting the FastDownwards solver.\nOutput the final, verified PDDL Domain and Problem.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.pddl->auditor.audit_pddl",
+            "auditor.audit_pddl->orchestrator.final_pddl"
+        ]
+    }
+}

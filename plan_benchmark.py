@@ -22,7 +22,7 @@ from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import collect_debug_logs
+from src.llm_plan.utils import collect_debug_logs, has_valid_plan_file
 
 
 def parse_args():
@@ -319,6 +319,8 @@ if __name__ == "__main__":
         # Start the refinement loop
         logger.info("Starting refinement loop with budget=%s", budget)
 
+        last_valid_iteration = 0 if has_valid_plan_file(BASE_FOLDER / "sas_plan_0") else -1
+
         # Hypervisor args
         prompt_args_hypervisor = {
             "human_specification": data["prompt_0shot"],
@@ -332,6 +334,9 @@ if __name__ == "__main__":
             "pddl_logs": result["pddl_logs"],
             "history": [],
             "proposed_solution": "",
+            "budget_total": budget,
+            "budget_used": 0,
+            "last_valid_plan_iteration": last_valid_iteration,
         }
 
         append_debug_log(
@@ -339,6 +344,8 @@ if __name__ == "__main__":
         )
 
         for j in range(1, budget + 1):
+            prompt_args_hypervisor["budget_used"] = j
+            prompt_args_hypervisor["last_valid_plan_iteration"] = last_valid_iteration
             hypervisor = Hypervisor(prompt_args_hypervisor)
             response = hypervisor.run(model_plan)
 
@@ -425,6 +432,12 @@ if __name__ == "__main__":
             # Update the hypervisor args
             for k, v in result.items():
                 prompt_args_hypervisor[k] = v
+
+            if has_valid_plan_file(BASE_FOLDER / f"sas_plan_{j}"):
+                last_valid_iteration = j
+                prompt_args_hypervisor[
+                    "last_valid_plan_iteration"
+                ] = last_valid_iteration
 
             # Update the history
             prompt_args_hypervisor["history"].append(agent_name)

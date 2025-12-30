@@ -1,0 +1,14 @@
+(define (problem MeetingPlanningOptimal)
+    (:domain meetingplanning-scheduling)
+    (:objects
+        bayview ggp - location
+    )
+    (:init
+        (at bayview) ; Traveler starts at Bayview (9:00 AM, T=0)
+        (= (total-cost) 0) ; Time reference: T=0
+    )
+    (:goal (met-barbara))
+    
+    ;; Optimize by minimizing the total time elapsed to achieve the goal.
+    (:metric minimize (total-cost))
+)

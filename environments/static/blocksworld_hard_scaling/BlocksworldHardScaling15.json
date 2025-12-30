@@ -1,0 +1,98 @@
+{
+    "name": "BlocksworldHardScaling15",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "planner_a",
+            "planner_b",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner_a": {
+            "private_information": [
+                "I focus on disks A, B, and C (the three smallest disks).",
+                "Disk A is smallest, followed by B, then C."
+            ],
+            "goal": "Generate a PDDL plan segment addressing the movement of disks A, B, and C to achieve the global goal."
+        },
+        "planner_b": {
+            "private_information": [
+                "I focus on disks D, E, and F (the three largest disks).",
+                "Disk D is smallest of my set, followed by E, then F (which is the largest disk overall)."
+            ],
+            "goal": "Generate a PDDL plan segment addressing the movement of disks D, E, and F to achieve the global goal."
+        },
+        "auditor": {
+            "private_information": [
+                "Hanoi Rule 3: A larger disk cannot be placed on a smaller disk.",
+                "All disks must maintain their relative size ordering: A<B<C<D<E<F."
+            ],
+            "goal": "Audit the PDDL segments provided by the planners for consistency with the strict rules of the Tower of Hanoi puzzle, ensuring no size constraint violations."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the fragmented PDDL plans from planner_a and planner_b, incorporating feedback from the auditor, to create a final, comprehensive PDDL solution for the 6-disk Tower of Hanoi puzzle, moving all disks from the Right peg to the Middle peg."
+        }
+    },
+    "environment": {
+        "init": {
+            "disks": 6,
+            "pegs": 3,
+            "initial_state": "Right Peg holds A (top) through F (bottom). Left and Middle pegs are empty."
+        },
+        "public_information": [
+            "This is a Tower of Hanoi puzzle involving 6 unique disks (A, B, C, D, E, F) and 3 pegs (Left, Middle, Right).",
+            "Rules: Move one top disk at a time; never place a larger disk on a smaller disk.",
+            "Goal: Move all 6 disks from the Right peg to the Middle peg, using the Left peg as auxiliary storage."
+        ]
+    },
+    "workflow": {
+        "planner_a": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner_a",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve a specialized segment of the task. Focus only on the objects listed in your private knowledge.",
+                "prompt": "Your specialized focus is: {agents->planner_a->private_information}\nEnvironment State: {environment->init->initial_state}\nPublic Information:\n{environment->public_information}\nGlobal Goal: {agents->orchestrator->goal}\nThink step by step and provide a PDDL domain and a PDDL problem focusing on your assigned disks (A, B, C) that facilitates the global goal. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "planner_b": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner_b",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve a specialized segment of the task. Focus only on the objects listed in your private knowledge.",
+                "prompt": "Your specialized focus is: {agents->planner_b->private_information}\nEnvironment State: {environment->init->initial_state}\nPublic Information:\n{environment->public_information}\nGlobal Goal: {agents->orchestrator->goal}\nThink step by step and provide a PDDL domain and a PDDL problem focusing on your assigned disks (D, E, F) that facilitates the global goal. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "audit": {
+                "input": [
+                    "pddl_planner_a",
+                    "pddl_planner_b"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a specialized auditor focusing on temporal and causal consistency in planning domains, specifically enforcing the strict rules of the Tower of Hanoi puzzle. Your goal is to identify and report any bookkeeping shortcuts that lead to non-adherence to the rules.",
+                "prompt": "You are auditing two partial PDDL responses against the global rules defined in your private information:\n{agents->auditor->private_information}\nHere is the input from Planner A:\n{pddl_planner_a}\nHere is the input from Planner B:\n{pddl_planner_b}\nAnalyze the proposed domains and problems. Pay special attention to how size relations across the A/B disk split (C vs D) are handled. Identify any potential conflicts or suggested shortcuts that violate the core rule (never place a larger disk on a smaller disk) or violate the 'top disk only' constraint. Generate a strict report highlighting critical constraints needed for successful integration. Output only the report contents necessary for the orchestrator."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_planner_a",
+                    "pddl_planner_b",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems. You must integrate possibly fragmented plans and external constraints (audit report) into a single, comprehensive PDDL domain and problem targeting the FastDownwards planner.",
+                "prompt": "You must solve the global goal: {agents->orchestrator->goal}\nEnvironment Initial State: {environment->init->initial_state}\nReceive and integrate the following:\n1. Planner A PDDL (A, B, C focus):\n{pddl_planner_a}\n2. Planner B PDDL (D, E, F focus):\n{pddl_planner_b}\n3. Audit Report (Consistency Constraints):\n{audit_report}\n\nSynthesize a complete and unified PDDL domain and problem file for the 6-disk Tower of Hanoi puzzle. Ensure all six disks (A through F) and the size ordering (A<B<C<D<E<F) are correctly defined. All actions must reflect the standard MOVE operation adhering strictly to Hanoi rules. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_a.pddl->auditor.audit",
+            "planner_b.pddl->auditor.audit",
+            "auditor.audit->orchestrator.pddl",
+            "planner_a.pddl->orchestrator.pddl",
+            "planner_b.pddl->orchestrator.pddl"
+        ]
+    }
+}

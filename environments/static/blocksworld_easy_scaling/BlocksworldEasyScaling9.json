@@ -1,0 +1,76 @@
+{
+    "name": "BlocksworldEasyScaling9",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "puzzle_solver",
+            "auditor",
+            "orchestrator"
+        ],
+        "puzzle_solver": {
+            "private_information": [
+                "I must follow the Tower of Hanoi rules: move one disk at a time, only move the top disk, never place a larger disk on a smaller disk.",
+                "Disks are sized D (largest) > C > B > A (smallest)."
+            ],
+            "goal": "Move all four disks (A, B, C, D) from the Middle Peg to the Right Peg, using the Left Peg as auxiliary, ensuring all pegs are empty except the Right Peg in the final state."
+        },
+        "auditor": {
+            "private_information": [
+                "I must check the plan for any violations of the game rules or use of forbidden planning artifacts (quotas, post-hoc penalties, etc.)."
+            ],
+            "goal": "Audit the temporal and causal consistency of the proposed PDDL plan."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, validated PDDL domain and problem specification for the 4-disk Tower of Hanoi puzzle, ready for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "There are 3 pegs: Left, Middle, Right.",
+            "There are 4 disks: A (smallest), B, C, D (largest).",
+            "Initial State: Middle Peg holds D (bottom), C, B, A (top). Left and Right Pegs are empty.",
+            "Goal State: Right Peg holds D (bottom), C, B, A (top). Left and Middle Pegs are empty."
+        ]
+    },
+    "workflow": {
+        "puzzle_solver": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_puzzle_solver",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language) specialized in classic recursive puzzles like the Tower of Hanoi. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is puzzle_solver. You are solving the Tower of Hanoi puzzle with 4 disks (A, B, C, D) and 3 pegs (Left, Middle, Right). Public rules and setup:\n{environment->public_information}\nYour knowledge:\n{agents->puzzle_solver->private_information}\nGlobal goal:\n{agents->puzzle_solver->goal}\nDefine the objects, predicates, and the single action 'move-disk' needed for the plan, ensuring the constraints are captured logically (e.g., smaller disks must be defined relative to larger ones). Think step by step and provide a PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_puzzle_solver"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert auditor specializing in validating logical and temporal consistency of PDDL plans. Your primary goal is to ensure the plan adheres strictly to environmental rules and avoids non-physical bookkeeping shortcuts (like resource quotas, time limits, or post-hoc penalties).",
+                "prompt": "You received a PDDL definition from the puzzle_solver agent:\n{pddl_puzzle_solver}\nReview this PDDL solution against the known constraints of the Tower of Hanoi puzzle. Confirm that the solution relies purely on physical state changes and causality, and does not use artificial planning constructs. Provide a concise audit report detailing whether the PDDL is valid and consistent, ready for final orchestration."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_puzzle_solver",
+                    "audit_report"
+                ],
+                "output": "pddl_final_solution",
+                "system_prompt": "You are an expert in finalizing PDDL solutions for execution using the FastDownwards planner. You integrate validated plans into a final domain and problem file.",
+                "prompt": "You have received the PDDL plan from the puzzle_solver and the corresponding audit report:\nPDDL Plan:\n{pddl_puzzle_solver}\nAudit Report:\n{audit_report}\nSince the audit confirmed validity, ensure the PDDL is complete and correctly formatted, suitable for a standard PDDL solver. Produce the final PDDL domain and problem. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "puzzle_solver.pddl->auditor.review",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

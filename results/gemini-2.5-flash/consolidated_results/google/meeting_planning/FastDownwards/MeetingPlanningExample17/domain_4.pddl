@@ -1,0 +1,80 @@
+(define (domain meeting-planning-domain)
+    (:requirements :strips :typing :negative-preconditions :action-costs)
+    (:types
+        location
+        person
+    )
+    (:predicates
+        (at ?l - location)
+        ; Time markers based on time elapsed since 9:00 AM (T_R = 0)
+        (T-R-254) ; Departure time from A (254 min elapsed, 1:14 PM)
+        (T-R-270) ; Arrival at S, meeting window start (270 min elapsed, 1:30 PM)
+        (T-R-285) ; Minimum meeting duration satisfied (285 min elapsed, 1:45 PM)
+        (meeting-started)
+        (met ?p - person)
+    )
+
+    ; 1. Wait/Idle at Alamo Square (Duration 254 min)
+    (:action wait-for-departure-window
+        :parameters ()
+        :precondition (and (at alamo-square)
+                            (not (T-R-254))
+                       )
+        :effect (and (T-R-254)
+                     (increase (total-cost) 254)
+                )
+    )
+    
+    ; 2. Travel A -> S (Duration 16 min)
+    (:action travel-a-s
+        :parameters ()
+        :precondition (and (at alamo-square)
+                            (T-R-254)
+                            (not (T-R-270))
+                       )
+        :effect (and (not (at alamo-square))
+                     (at sunset-district)
+                     (not (T-R-254))
+                     (T-R-270)
+                     (increase (total-cost) 16)
+                )
+    )
+    
+    ; 3. Start Meeting (Instantaneous at T=270, 1:30 PM)
+    (:action start-meeting
+        :parameters (?p - person)
+        :precondition (and (at sunset-district)
+                            (T-R-270)
+                            (not (meeting-started))
+                       )
+        :effect (and (meeting-started))
+    )
+
+    ; 4. Meet (Minimum 15 minutes) (T 270 -> 285)
+    (:action meet-matthew
+        :parameters (?p - person)
+        :precondition (and (at sunset-district)
+                            (meeting-started)
+                            (not (T-R-285))
+                       )
+        :effect (and (met ?p)
+                     (not (meeting-started)) 
+                     (T-R-285)
+                     (increase (total-cost) 15)
+                )
+    )
+    
+    ; 5. Travel S -> A (Duration 17 min)
+    (:action travel-s-a
+        :parameters ()
+        :precondition (and (at sunset-district)
+                            (T-R-285)
+                            (met matthew)
+                       )
+        :effect (and (not (at sunset-district))
+                     (at alamo-square)
+                     (increase (total-cost) 17)
+                )
+    )
+
+)

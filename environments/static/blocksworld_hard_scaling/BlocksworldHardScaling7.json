@@ -1,0 +1,77 @@
+{
+    "name": "BlocksworldHardScaling7",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "Disks are ordered by size: A < B < C < D < E < F (smallest to largest).",
+                "The puzzle involves 3 pegs: Left (L), Middle (M), Right (R)."
+            ],
+            "goal": "Move all 6 disks from the Middle peg to the Right peg, obeying the Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "Rule 1: Move only one disk at a time.",
+                "Rule 2: Only move the top disk on a peg.",
+                "Rule 3: Never place a larger disk on top of a smaller disk."
+            ],
+            "goal": "Audit the planner's PDDL domain and problem definition to ensure strict adherence to Tower of Hanoi rules and constraints, especially temporal/causal consistency of movement rules."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Finalize the verified PDDL definition for execution by the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 3
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 6 disks (A, B, C, D, E, F) and 3 pegs (Left, Middle, Right).",
+            "Initial state: All disks (A->F, top to bottom) are on the Middle peg. Left and Right pegs are empty.",
+            "Goal state: All disks (A->F, top to bottom) are on the Right peg. Left and Middle pegs must be empty.",
+            "Movement constraints: Only one disk moved at a time, only top disks can be moved, and larger disks cannot be placed on smaller disks."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is planner. You are solving the Tower of Hanoi puzzle with 6 disks (A through F) and 3 pegs. Public information:\n{environment->public_information}\nKnowledge:\n{agents->planner->private_information}\nGoal:\n{agents->planner->goal}\nGenerate the PDDL domain and problem definition. Ensure the domain correctly models the size relations and movement constraints.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "refine": {
+                "input": [
+                    "pddl_plan"
+                ],
+                "output": "pddl_refined",
+                "system_prompt": "You are an auditor specializing in planning formalisms. Your role is to rigorously check PDDL specifications for causal and temporal consistency, ensuring all domain constraints derived from the provided rules are correctly implemented. You must always output a full PDDL Domain and Problem, even if corrections are minor or none are required.",
+                "prompt": "Your name is auditor. You have received a PDDL plan intended to solve the Tower of Hanoi puzzle. Your goal is to audit and refine this plan based on the strict rules of the puzzle. Rules:\n{agents->auditor->private_information}\nOriginal PDDL attempt:\n{pddl_plan}\n\nReview the PDDL domain and problem definition. Pay special attention to: 1) Correct encoding of disk sizes (smaller-than predicate) and stacking constraints in the MOVE action, and 2) Correct initial and goal state definitions matching the 6-disk scenario. If corrections are needed, provide the refined, corrected PDDL domain and problem. If the PDDL is perfect, output it unchanged.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_refined"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You finalize planning specifications for execution by standard PDDL solvers like FastDownwards. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You have received the audited and refined PDDL specification:\n{pddl_refined}\nYour goal is:\n{agents->orchestrator->goal}\n\nReview the final structure and output the PDDL Domain and Problem definitions exactly as provided, ensuring compliance for the FastDownwards solver.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.pddl->auditor.refine",
+            "auditor.refine->orchestrator.pddl"
+        ]
+    }
+}

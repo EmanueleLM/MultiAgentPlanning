@@ -1,39 +1,34 @@
-(define (problem blocksworld-task)
-    (:domain blocksworld)
-    
-    (:objects 
-        O - block  ; Orange
-        Y - block  ; Yellow
-        B - block  ; Blue
-        R - block  ; Red
+(define (problem hanoi-4disk-M-to-R)
+    (:domain hanoi-4disk)
+    (:objects
+        A B C D - disk
+        L M R - peg
     )
-
     (:init
-        ;; Initial State: O/B/R stack, Y on table.
-        (on O B)
-        (on B R)
-        (on_table R)
-        (on_table Y)
-        
-        (clear O)
-        (clear Y)
-        
-        (hand_empty)
-    )
+        (smaller A B) (smaller A C) (smaller A D)
+        (smaller B C) (smaller B D)
+        (smaller C D) 
 
-    (:goal 
-        ;; Goal State: on(blue, red), on(yellow, orange). (B/R stack, Y/O stack)
-        (and 
-            (on B R)
-            (on Y O)
-            
-            (on_table R)
-            (on_table O)
-            
-            (clear B)
-            (clear Y)
-            
-            (hand_empty)
-        )
+        (on A B)
+        (on B C)
+        (on C D)
+        (on D M)
+
+        (clear A)
+        (clear L)
+        (clear R)
+        
+        (= (total-cost) 0)
     )
+    (:goal (and
+        (on A B)
+        (on B C)
+        (on C D)
+        (on D R)
+        
+        (clear L)
+        (clear M)
+    ))
+    
+    (:metric minimize (total-cost))
 )

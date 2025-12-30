@@ -1,0 +1,105 @@
+(define (domain trip-planning-v15)
+    (:requirements :typing :negative-preconditions :action-costs)
+    (:types
+        city - object
+        day - object
+        number - object
+    )
+
+    (:constants
+        berlin porto krakow - city
+        d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 - day
+        n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11 - number
+    )
+
+    (:predicates
+        (current-day ?d - day)
+        (at ?c - city)
+        (next-day ?d1 - day ?d2 - day)
+        (connection ?c1 - city ?c2 - city)
+        
+        (stay-count ?c - city ?n - number)
+        (is-successor ?n1 - number ?n2 - number)
+    )
+
+    (:functions
+        (total-cost)
+    )
+
+    ; --- Actions ---
+
+    ; 1. Stay action (D1 to D9): Regular stay, moves day forward, increments count.
+    ; Restricted to days D1 through D9 (to avoid conflict with specialized D10 action).
+    (define (action stay)
+        :parameters (?c - city ?d_current - day ?d_next - day ?n_current - number ?n_next - number)
+        :precondition (and
+            (at ?c)
+            (current-day ?d_current)
+            (next-day ?d_current ?d_next)
+            (not (current-day d10)) 
+            (stay-count ?c ?n_current)
+            (is-successor ?n_current ?n_next)
+        )
+        :effect (and
+            (not (current-day ?d_current))
+            (current-day ?d_next)
+            (not (stay-count ?c ?n_current))
+            (stay-count ?c ?n_next)
+            (increase (total-cost) 1)
+        )
+    )
+    
+    ; 2. Travel action (D1 to D10): Changes location, moves day forward. Does not increment stay count.
+    ; Restricted to D1 through D10 (as D11 is the final action/day).
+    (define (action travel)
+        :parameters (?c_from - city ?c_to - city ?d_current - day ?d_next - day)
+        :precondition (and
+            (at ?c_from)
+            (connection ?c_from ?c_to)
+            (current-day ?d_current)
+            (next-day ?d_current ?d_next)
+        )
+        :effect (and
+            (not (at ?c_from))
+            (at ?c_to)
+            (not (current-day ?d_current))
+            (current-day ?d_next)
+            (increase (total-cost) 1)
+        )
+    )
+
+    ; 3. D10 Stay Action: Must be Porto to ensure the required stay duration is met sequentially.
+    (define (action stay-d10-porto)
+        :parameters (?n_current - number ?n_next - number)
+        :precondition (and
+            (at porto)
+            (current-day d10)
+            (next-day d10 d11)
+            (stay-count porto ?n_current)
+            (is-successor ?n_current ?n_next)
+        )
+        :effect (and
+            (not (current-day d10))
+            (current-day d11)
+            (not (stay-count porto ?n_current))
+            (stay-count porto ?n_next)
+            (increase (total-cost) 1)
+        )
+    )
+    
+    ; 4. Final Day D11 Stay Action: Must be Porto, completes the 2-day requirement.
+    (define (action stay-d11-porto)
+        :parameters (?n_current - number ?n_next - number)
+        :precondition (and
+            (at porto)
+            (current-day d11)
+            (stay-count porto ?n_current)
+            (is-successor ?n_current ?n_next)
+        )
+        :effect (and
+            (not (stay-count porto ?n_current))
+            (stay-count porto ?n_next)
+            (increase (total-cost) 1)
+        )
+    )
+)

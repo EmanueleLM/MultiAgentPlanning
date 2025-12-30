@@ -25,7 +25,8 @@ from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
     collect_debug_logs,
-    get_latest_file
+    get_latest_file,
+    has_valid_plan_file,
 )
 
 ENVIRONMENT_SUBFOLDER = "miscellanea"
@@ -285,6 +286,10 @@ def _run_with_args(args: argparse.Namespace) -> dict[str, Any]:
         ),
     )
 
+    last_valid_iteration = (
+        0 if has_valid_plan_file(base_folder / "sas_plan_0") else -1
+    )
+
     prompt_args_hypervisor = {
         "human_specification": human_spec,
         "plan": "No plan yet.",
@@ -297,11 +302,20 @@ def _run_with_args(args: argparse.Namespace) -> dict[str, Any]:
         "pddl_logs": result["pddl_logs"],
         "history": [],
         "proposed_solution": "",
+        "budget_total": budget,
+        "budget_remaining": budget,
+        "last_valid_plan_iteration": last_valid_iteration,
     }
 
     append_debug_log("ITERATION 0", json.dumps(prompt_args_hypervisor, indent=4))
 
     for iteration in range(1, budget + 1):
+        prompt_args_hypervisor["budget_remaining"] = max(
+            budget - (iteration - 1), 0
+        )
+        prompt_args_hypervisor[
+            "last_valid_plan_iteration"
+        ] = last_valid_iteration
         hypervisor = Hypervisor(prompt_args_hypervisor)
         response = hypervisor.run(model_plan)
 
@@ -384,6 +398,13 @@ def _run_with_args(args: argparse.Namespace) -> dict[str, Any]:
 
         for key, value in result.items():
             prompt_args_hypervisor[key] = value
+
+        sas_path = base_folder / f"sas_plan_{iteration}"
+        if has_valid_plan_file(sas_path):
+            last_valid_iteration = iteration
+            prompt_args_hypervisor[
+                "last_valid_plan_iteration"
+            ] = last_valid_iteration
 
         prompt_args_hypervisor["history"].append(agent_name)
         append_debug_log(

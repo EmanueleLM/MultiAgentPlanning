@@ -1,0 +1,71 @@
+{
+    "name": "BlocksworldHardScaling1",
+    "author": "Human",
+    "agents": {
+        "number": 2,
+        "names": [
+            "blocksworld_planner",
+            "orchestrator"
+        ],
+        "blocksworld_planner": {
+            "private_information": [
+                "I am responsible for finding a sequence of actions (Pick up, Unstack, Put down, Stack) to rearrange blocks according to PDDL rules.",
+                "Action constraints must be strictly followed:",
+                "1. Can only pick up/unstack one block at a time (managed by the 'holding' predicate).",
+                "2. Hand must be empty to pick up/unstack ('handempty').",
+                "3. Pick up requires the block to be on the table and clear.",
+                "4. Unstack requires the block to be clear and on top of another specified block.",
+                "5. Put down requires holding the block.",
+                "6. Stack requires holding the block and the destination block must be clear."
+            ],
+            "goal": "Achieve the final configuration where the red block is on the yellow block and the yellow block is on the blue block."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must ensure the final PDDL solution is causally consistent and uses standard Blocksworld definitions, specifically validating the use of predicates like 'clear', 'holding', 'handempty', 'on', and 'ontable'."
+            ],
+            "goal": "Audit the PDDL output provided by the planner and finalize the domain and problem definition for optimal execution."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment consists of four blocks: blue, orange, red, and yellow.",
+            "Initial configuration (State 1: Y R O B stack):",
+            " - Hand is empty.",
+            " - Blue block is on the table.",
+            " - Orange block is on the blue block.",
+            " - Red block is on the orange block.",
+            " - Yellow block is on the red block (Yellow is the top block, thus clear).",
+            "Goal configuration (State 2: R Y B stack):",
+            " - Red block is on the yellow block.",
+            " - Yellow block is on the blue block."
+        ]
+    },
+    "workflow": {
+        "blocksworld_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner_output",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You must define the Blocksworld domain, including objects (blocks), predicates (on, clear, holding, handempty, ontable), and actions (pick-up, put-down, stack, unstack). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is blocksworld_planner. You are solving a planning problem described by the following public information:\n{environment->public_information}\nYour private knowledge defining the actions and constraints is:\n{agents->blocksworld_planner->private_information}\nThis is the global goal to solve:\n{agents->blocksworld_planner->goal}\nThink step by step and provide a complete PDDL domain and a PDDL problem file that adheres strictly to the constraints and state definitions provided.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "audit": {
+                "input": [
+                    "pddl_planner_output"
+                ],
+                "output": "pddl_final_solution",
+                "system_prompt": "You are an auditing expert designed to review PDDL definitions and ensure temporal/causal consistency, especially regarding state transitions and action applicability. Your output must be a finalized PDDL Domain and Problem file suitable for a FastDownwards planner. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "The primary planning agent provided the following PDDL solution:\n{pddl_planner_output}\nYour task is to review the domain logic, initial state definition, and goal formulation to ensure they accurately reflect the Blocksworld rules specified in the task description. Specifically, verify that the constraints regarding 'clear', 'holding', 'handempty', 'on', and 'ontable' are consistently enforced across all actions (pick-up, put-down, stack, unstack).\nIf the provided PDDL is complete and correct, output it exactly. If corrections are necessary for temporal/causal consistency, make those corrections.\nThink step by step and provide the finalized PDDL domain and PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "blocksworld_planner.pddl->orchestrator.audit"
+        ]
+    }
+}

@@ -1,83 +1,43 @@
-(define (domain blocksworld-easy-scaling)
-  (:requirements :strips :typing :negative-preconditions :action-costs)
-  (:types
-    block
-  )
-  
-  (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
-    (clear ?x - block)
-    (hand-empty)
-    (holding ?x - block)
-  )
+(define (domain hanoi-4disk)
+    (:requirements :typing :negative-preconditions :action-costs)
+    (:types
+        disk peg - object
+    )
 
-  (:functions 
-    (total-cost) - number
-  )
+    (:predicates
+        (on ?d - disk ?x - (either disk peg)) ; d is immediately on x
+        (clear ?x - (either disk peg))        ; x has nothing on it (top surface is available)
+        (smaller ?d1 - disk ?d2 - disk)       ; d1 is smaller than d2 (static constraint)
+    )
+    
+    (:functions
+        (total-cost) - number
+    )
 
-  ;; Action 1: Pick up a block from the table
-  (:action pick-up
-    :parameters (?x - block)
-    :precondition (and 
-      (clear ?x) 
-      (ontable ?x) 
-      (hand-empty)
+    (:action move
+        :parameters (?d - disk ?from - (either disk peg) ?to - (either disk peg))
+        :precondition (and
+            ; 1. D must be the top disk and must be on FROM
+            (clear ?d) 
+            (on ?d ?from)
+            
+            ; 2. TO must be available
+            (clear ?to)
+            
+            ; 3. Size constraint: D must be smaller than TO, OR TO must be a peg.
+            (or (peg ?to) (smaller ?d ?to))
+        )
+        :effect (and
+            ; Move D
+            (not (on ?d ?from))
+            (on ?d ?to)
+            
+            ; Update clear status
+            (not (clear ?to)) ; TO is now covered
+            (clear ?from)     ; FROM is now exposed
+            
+            ; Action cost
+            (increase (total-cost) 1)
+        )
     )
-    :effect (and 
-      (not (ontable ?x))
-      (not (clear ?x))
-      (not (hand-empty))
-      (holding ?x)
-      (increase (total-cost) 1)
-    )
-  )
-
-  ;; Action 2: Put down a block onto the table
-  (:action put-down
-    :parameters (?x - block)
-    :precondition (holding ?x)
-    :effect (and 
-      (ontable ?x)
-      (clear ?x)
-      (hand-empty)
-      (not (holding ?x))
-      (increase (total-cost) 1)
-    )
-  )
-
-  ;; Action 3: Unstack a block from another block
-  (:action unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and 
-      (on ?x ?y) 
-      (clear ?x) 
-      (hand-empty)
-    )
-    :effect (and 
-      (not (on ?x ?y))
-      (clear ?y)
-      (not (clear ?x))
-      (not (hand-empty))
-      (holding ?x)
-      (increase (total-cost) 1)
-    )
-  )
-
-  ;; Action 4: Stack a block onto another block
-  (:action stack
-    :parameters (?x - block ?y - block)
-    :precondition (and 
-      (holding ?x) 
-      (clear ?y)
-    )
-    :effect (and 
-      (on ?x ?y)
-      (not (clear ?y))
-      (clear ?x)
-      (hand-empty)
-      (not (holding ?x))
-      (increase (total-cost) 1)
-    )
-  )
 )

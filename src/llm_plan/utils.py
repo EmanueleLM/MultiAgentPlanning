@@ -77,6 +77,14 @@ def get_latest_file(
     return highest_file, highest_number
 
 
+def has_valid_plan_file(path: str | Path) -> bool:
+    try:
+        candidate = Path(path)
+        return candidate.is_file() and candidate.stat().st_size > 0
+    except OSError:
+        return False
+
+
 global_timeout = 10 * 60  # seconds
 _subprocess_execution_times: list[float] = []
 

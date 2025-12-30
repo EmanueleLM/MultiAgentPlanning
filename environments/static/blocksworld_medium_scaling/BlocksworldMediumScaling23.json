@@ -1,0 +1,92 @@
+{
+    "name": "BlocksworldMediumScaling23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "block_manipulator",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "block_manipulator": {
+            "private_information": [],
+            "goal": "Generate a valid PDDL plan to stack the blocks according to the final configuration specified."
+        },
+        "consistency_auditor": {
+            "private_information": [
+                "Your role is to ensure all temporal and causal constraints are rigorously respected in the planning domain and problem."
+            ],
+            "goal": "Audit the proposed PDDL plan for logical consistency against the rules of the Blocksworld environment."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final PDDL domain and problem ready for execution by a FastDownwards planner."
+        }
+    },
+    "environment": {
+        "init": {
+            "blocks": [
+                "orange",
+                "yellow",
+                "red",
+                "blue"
+            ]
+        },
+        "public_information": [
+            "This is a Blocksworld environment involving stacking actions.",
+            "Available Actions: Pick up a block, Unstack a block, Put down a block, Stack a block.",
+            "Rules (Causal Constraints):",
+            "1. Only one block can be held at a time (hand must be empty to start a lift action).",
+            "2. Pick up: Block A must be on the table AND Clear (no blocks on top).",
+            "3. Unstack: Block A must be on Block B, and Block A must be Clear.",
+            "4. Effect of Pick up/Unstack: The agent is now Holding the block.",
+            "5. Put down: Agent must be Holding the block. Effect: Hand becomes Empty, block is on the Table.",
+            "6. Stack: Agent must be Holding block A. Block B (target) must be Clear. Effect: Block A is On Block B, Hand becomes Empty, Block B is no longer Clear.",
+            "Initial State:",
+            "  (Clear orange)",
+            "  (Clear yellow)",
+            "  (Hand Empty)",
+            "  (On red blue) - Note: This setup is inconsistent with the full description. Following the full description: red block on top of blue block, yellow block on top of red block.",
+            "  (On yellow red)",
+            "  (OnTable blue)",
+            "  (OnTable orange)",
+            "Goal State:",
+            "  (On red orange)",
+            "  (On orange blue)"
+        ]
+    },
+    "workflow": {
+        "block_manipulator": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_initial_proposal",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is block_manipulator. You are operating in a standard Blocksworld environment. The public rules, initial state, and goal are provided below. Analyze them and generate the corresponding PDDL domain and problem.\n\nPublic Information:\n{environment->public_information}\n\nGlobal Goal:\n{agents->block_manipulator->goal}\n\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task. Ensure all causal constraints are correctly translated into preconditions and effects.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "consistency_auditor": {
+            "refine": {
+                "input": [
+                    "pddl_initial_proposal"
+                ],
+                "output": "pddl_audited_result",
+                "system_prompt": "You are a specialized expert in auditing Planning Domain Definition Language (PDDL) specifications. Your primary function is to verify temporal, logical, and causal consistency. You must ensure that every constraint, precondition, and effect defined in the original rules is accurately reflected in the PDDL provided. You always provide a valid PDDL domain and problem file as output, correcting any errors or inconsistencies you find.",
+                "prompt": "You have received the initial PDDL proposal for the Blocksworld task. Your task is to audit this proposal for consistency against the environment rules provided in the Public Information:\n{environment->public_information}\n\nHere is the initial PDDL proposal:\n{pddl_initial_proposal}\n\nReview the PDDL domain and problem definitions. Pay close attention to action preconditions and effects to guarantee they perfectly match the rules (e.g., ensuring a block is clear before stacking onto it, or that the hand is empty before picking up). Provide the final, verified PDDL domain and problem.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_audited_result"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in finalizing and packaging PDDL solutions for execution using standard solvers like FastDownwards. You receive verified PDDL structures and output the final required domain and problem files.",
+                "prompt": "The consistency_auditor has validated and refined the PDDL definitions for the Blocksworld task. Provide this final PDDL solution.\n\nValidated PDDL Input:\n{pddl_audited_result}\n\nOutput the final PDDL domain and problem files.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "block_manipulator.pddl->consistency_auditor.refine",
+            "consistency_auditor.refine->orchestrator.pddl"
+        ]
+    }
+}

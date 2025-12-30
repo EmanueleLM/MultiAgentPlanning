@@ -1,0 +1,81 @@
+{
+    "name": "BlocksworldHardScaling27",
+    "author": "System",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner_agent",
+            "auditor_agent",
+            "orchestrator"
+        ],
+        "planner_agent": {
+            "private_information": [
+                "I am responsible for defining the Blocksworld domain and finding a solution plan."
+            ],
+            "goal": "Model the Blocksworld rules and initial state, then find a valid sequence of actions to reach the target configuration described in the environment."
+        },
+        "auditor_agent": {
+            "private_information": [
+                "I prioritize physical consistency and constraint adherence."
+            ],
+            "goal": "Review the planning domain rules provided to ensure they accurately reflect the physical constraints of Blocksworld, specifically limitations on movement and preconditions (e.g., HandEmpty, Clear requirements)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Combine the PDDL domain and problem specifications provided by the planning agents into a unified, executable PDDL solution for the FastDownwards planner, ensuring all constraints are met to solve the target stack configuration."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "This is a Blocksworld planning problem involving four blocks: Blue (B), Red (R), Orange (O), and Yellow (Y).",
+            "Actions allowed are: Pick up a block from the table, Unstack a block from another block, Put down a block onto the table, and Stack a block onto another block.",
+            "Restrictions:",
+            "  - Only one block can be held at a time (HandEmpty required for pickup/unstack).",
+            "  - Pickup requires the block to be on the table and clear.",
+            "  - Unstacking requires the block to be clear and resting on the specified block.",
+            "  - Stacking requires the destination surface to be clear.",
+            "Initial State (Top to Bottom): Blue / Red / Orange / Yellow. (On(B, R), On(R, O), On(O, Y), OnTable(Y), Clear(B), HandEmpty).",
+            "Goal State (Conjunctions): On(R, O), On(B, Y), On(Y, R). (This results in the B/Y/R/O stack configuration, with O on the table)."
+        ]
+    },
+    "workflow": {
+        "planner_agent": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner_agent",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is planner_agent. You are solving a Blocksworld problem described in the public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->planner_agent->private_information}\nThis is the global goal to solve:\n{agents->planner_agent->goal}\nBased on the detailed rules provided, define the PDDL domain (including actions: pick_up, put_down, stack, unstack) and create the PDDL problem reflecting the initial and goal states.\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor_agent": {
+            "pddl": {
+                "input": [
+                    "pddl_planner_agent"
+                ],
+                "output": "pddl_auditor_agent",
+                "system_prompt": "You are an expert in validating PDDL domains for logical and causal consistency, specialized in Blocksworld constraints. You always provide a PDDL domain and a PDDL problem file that reflects your validated understanding of the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is auditor_agent. You have received an initial PDDL definition from the planner:\n{pddl_planner_agent}\nYour role is to ensure that the domain strictly implements all physical constraints described in the public information:\n{environment->public_information}\nSpecifically, verify all preconditions related to (HandEmpty), (Clear X), and state transitions defined by the effects of the actions. If necessary, refine the PDDL domain or problem.\nThink step by step and and provide the refined PDDL domain and a corresponding PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_planner_agent",
+                    "pddl_auditor_agent"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems (Planning Domain Definition Language). You must provide the final, synthesized PDDL domain and problem file optimized for the FastDownwards planner. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. You integrate inputs from previous planning attempts.",
+                "prompt": "You are the orchestrator. The goal is to solve the Blocksworld problem defined in the environment:\n{agents->orchestrator->goal}\nHere is the initial PDDL attempt:\n{pddl_planner_agent}\nAnd here is the validated/refined PDDL attempt focusing on consistency:\n{pddl_auditor_agent}\n\nIntegrate the most robust and accurate domain definition and problem configuration to derive the final PDDL solution.\nThink step by step and and provide a final, definitive PDDL domain and PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner_agent.pddl->auditor_agent.pddl",
+            "planner_agent.pddl->orchestrator.pddl",
+            "auditor_agent.pddl->orchestrator.pddl"
+        ]
+    }
+}

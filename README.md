@@ -2,6 +2,21 @@
 
 This repository combines large language models with classical PDDL solvers to deliver an end-to-end agentic planning stack. Use it to experiment with automated planning workflows, integrate multiple planners/validators, and visualise executions through LangGraph + LangChain tooling.
 
+If you want to better understand how the framework works, please read our article "An End-to-end Planning Framework with Agentic LLMs and PDDL", available <a href="https://arxiv.org/pdf/2512.09629)">here</a>.
+
+If you need to cite it, use this bibtex:
+```
+@misc{lamalfa2025endtoendplanningframeworkagentic,
+      title={An End-to-end Planning Framework with Agentic LLMs and PDDL}, 
+      author={Emanuele La Malfa and Ping Zhu and Samuele Marro and Sara Bernardini and Michael Wooldridge},
+      year={2025},
+      eprint={2512.09629},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2512.09629}, 
+}
+```
+
 The points of interest in this folder are the following:
 - Folder ``src/`` contains the core implementation of our framework; you can read the details in the paper: <link>.
 - Folder ``results/`` contains all the results for GPT-5-mini. 

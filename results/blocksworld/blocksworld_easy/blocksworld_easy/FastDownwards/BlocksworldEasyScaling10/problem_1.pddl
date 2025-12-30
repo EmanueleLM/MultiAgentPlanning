@@ -1,25 +1,21 @@
-(define (problem BlocksworldEasyScaling10-P1)
+(define (problem blocksworld-instance)
     (:domain blocksworld)
     (:objects
-        red - block
-        yellow - block
-        blue - block
-        orange - block
+        red yellow blue orange - block
     )
     (:init
-        (clear red)
-        (clear yellow)
         (hand-empty)
         
-        ; Stack 1
+        ;; Stacks and clearance
         (on red blue)
-        (on-table blue)
-        
-        ; Stack 2
         (on yellow orange)
+        
+        (clear red)
+        (clear yellow)
+        
+        ;; Bases on table
+        (on-table blue)
         (on-table orange)
     )
-    (:goal (and
-        (on orange red)
-    ))
+    (:goal (on orange red))
 )

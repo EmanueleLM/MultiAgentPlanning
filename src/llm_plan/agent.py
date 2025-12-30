@@ -181,6 +181,8 @@ class AgentDeepThinkPDDL(Agent):
         "target_solver": "(str) The target PDDL solver.",
         "pddl_plan": "(str) The PDDL plan. May be empty if no plan was found.",
         "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
+        "pddl_logs": "(str) Logs from the latest solver invocation.",
+        "syntax_errors": "(str) Parser/validator errors raised by the solver.",
     }  # Static!
 
     def __init__(self, llm: LLM, prompt_args: dict[str, str]):
@@ -212,6 +214,9 @@ class AgentDeepThinkPDDL(Agent):
             actions, etc.). Remove placeholder tokens such as '...' or 'None', limit :requirements to
             (:strips :typing :negative-preconditions) plus :action-costs only when matching (increase ...)
             effects are present, and ensure costs are modelled via effects rather than ':cost' headers.
+            When solver logs or syntax errors highlight problems (invalid requirements, unknown tokens,
+            malformed numeric expressions, stray parentheses), treat them as hard failures to fix immediately
+            before returning new PDDL.
             """
         )
         self.prompt = inspect.cleandoc("""\
@@ -232,6 +237,12 @@ class AgentDeepThinkPDDL(Agent):
                                       
                                       This is the best plan the solver could find (it may be empty if no plan was found):
                                       <plan>{pddl_plan}</plan>
+
+                                      Latest solver logs (fix every issue mentioned):
+                                      <logs>{pddl_logs}</logs>
+
+                                      Parser/validator errors (must be fully resolved):
+                                      <errors>{syntax_errors}</errors>
                                       
                                       Think very carefully about whether:
                                       - The PDDL domain reflects the human specification.
@@ -241,6 +252,7 @@ class AgentDeepThinkPDDL(Agent):
                                       - The PDDL plan satisfies the goal and the constraints of the human specification, including every availability or temporal preference mentioned. Be careful: the plan may be wrong.
                                       - The :requirements list stays within (:strips :typing :negative-preconditions) with :action-costs only when justified by (increase ...) effects, and there are no placeholder tokens such as '...' or 'None'.
                                       - Action costs, when needed, are implemented through (increase ...) effects rather than ':cost' declarations on headers.
+                                      - The solver/validator feedback above no longer applies: drop unsupported requirements (e.g., :durative-actions, :numeric-fluents), remove comparison operators like < or <=, declare every predicate referenced, balance parentheses, and rewrite any numeric fluent usage into classical predicates.
 
                                       The <proposed_solution></proposed_solution> is just a hypothesis to confirm or adjust with PDDL, do not rely on it and should never be explicitly stated in the goal of the PDDL problem! 
 
@@ -267,6 +279,138 @@ class AgentDeepThinkPDDL(Agent):
             pddl_domain=self.prompt_args["pddl_domain"],
             pddl_problem=self.prompt_args["pddl_problem"],
             pddl_plan=self.prompt_args["pddl_plan"],
+            pddl_logs=self.prompt_args.get("pddl_logs", ""),
+            syntax_errors=self.prompt_args.get("syntax_errors", ""),
+        )
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentEmergency(Agent):
+    required_args = {
+        "human_specification": "(str) The natural language description of the task.",
+        "specification": "(str) The structured JSON configuration of the environment.",
+        "pddl_domain": "(str) The latest PDDL domain draft.",
+        "pddl_problem": "(str) The latest PDDL problem draft.",
+        "target_solver": "(str) The solver that must accept the artifacts.",
+        "pddl_plan": "(str) The most recent planner output (possibly empty or 'No plan found.').",
+        "pddl_logs": "(str) Logs from the solver/validator explaining failures.",
+        "syntax_errors": "(str) Parser or validator errors raised by the solver.",
+    }
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentEmergency"
+        self.llm = llm
+
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are an emergency response agent for PDDL pipelines. The previous refinement loop failed to
+            produce any valid plan and the solver crashed with parser/validator errors. Your job is to resolve every
+            syntax or semantic issue reported in the logs and deliver a clean PDDL 2.1 domain and problem that are
+            fully compatible with the specified target solver (Fast Downward style classical STRIPS features only).
+            Never introduce unsupported requirements (:durative-actions, :fluents, axioms, conditional effects, etc.).
+            Fix missing predicates, mismatched parentheses, numeric fluents, inconsistent names, and malformed metrics.
+            Encode all constraints explicitly, ensure types/objects/predicates match across domain and problem, and
+            keep action schemas coherent with the human and JSON specifications. Treat every warning/error as mandatory.
+            """
+        )
+
+    def run(self) -> str:
+        self.upload_args(self.prompt_args)
+        prompt = inspect.cleandoc(
+            """\
+            Human specification:
+            <human_specification>{human_specification}</human_specification>
+
+            Environment JSON specification:
+            <specification>{specification}</specification>
+
+            Current PDDL domain (contains errors to fix):
+            <domain>{pddl_domain}</domain>
+
+            Current PDDL problem (contains errors to fix):
+            <problem>{pddl_problem}</problem>
+
+            Target solver:
+            <solver>{target_solver}</solver>
+
+            Latest solver attempt (plan may be empty/'No plan found.'):
+            <plan>{pddl_plan}</plan>
+
+            Solver/validator logs:
+            <logs>{pddl_logs}</logs>
+
+            Reported syntax errors:
+            <errors>{syntax_errors}</errors>
+
+            The framework could not generate a valid plan; resolve every issue above and return a corrected PDDL
+            domain and problem that comply with PDDL 2.1 and the target solver. Return ONLY the domain between
+            <domain></domain> and the problem between <problem></problem>, with no commentary.
+            """
+        ).format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args["pddl_domain"],
+            pddl_problem=self.prompt_args["pddl_problem"],
+            target_solver=self.prompt_args["target_solver"],
+            pddl_plan=self.prompt_args.get("pddl_plan", ""),
+            pddl_logs=self.prompt_args.get("pddl_logs", ""),
+            syntax_errors=self.prompt_args.get("syntax_errors", ""),
+        )
+
+        return self.llm.generate_sync(
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentEmergencySolution(Agent):
+    required_args = {
+        "human_specification": "(str) The natural language description of the task.",
+        "specification": "(str) The structured JSON configuration describing agents, resources, and constraints.",
+        "pddl_domain": "(str) The current PDDL domain (for context only).",
+        "pddl_problem": "(str) The current PDDL problem (for context only).",
+    }
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentEmergencySolution"
+        self.llm = llm
+        self.system_prompt = inspect.cleandoc(
+            """\
+            You are a senior planning analyst tasked with providing a concrete natural language solution outline
+            when automated planning fails. Your suggestions guide downstream agents in regenerating compliant PDDL.
+            """
+        )
+        self.prompt = inspect.cleandoc(
+            """\
+            Human specification:
+            <human_specification>{human_specification}</human_specification>
+
+            Environment JSON configuration:
+            <specification>{specification}</specification>
+
+            Current PDDL artifacts (for awareness only):
+            <domain>{pddl_domain}</domain>
+            <problem>{pddl_problem}</problem>
+
+            Produce a concise natural language plan that satisfies the specification, respecting availability windows,
+            durations, travel times, and resource constraints. Structure it as actionable steps with timings so it can
+            be injected into <proposed_solution> to guide future PDDL synthesis.
+            Return only the natural language plan between <proposed_solution></proposed_solution> tags.
+            """
+        )
+
+    def run(self) -> str:
+        self.upload_args(self.prompt_args)
+        prompt = self.prompt.format(
+            human_specification=self.prompt_args["human_specification"],
+            specification=self.prompt_args["specification"],
+            pddl_domain=self.prompt_args.get("pddl_domain", ""),
+            pddl_problem=self.prompt_args.get("pddl_problem", ""),
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,
@@ -573,7 +717,7 @@ class AgentFastDownwardsAdapter(Agent):
         """
         This agent adapts the PDDL domains and problems so that they are compatible with the Fast Downwards Planner solver.
         In particular:
-        - It replaces numeric fluent predicates with logical predicates.
+        - It replaces numeric fluent predicates, including numbers, comparisons, etc., with logical predicates.
         - It pre-computes arithmetic constraints as predicates in the problem.
         - It discretizes temporal/duration effects into sequences of instantaneous actions.
         - It uses symbolic ordering instead of numeric comparisons.

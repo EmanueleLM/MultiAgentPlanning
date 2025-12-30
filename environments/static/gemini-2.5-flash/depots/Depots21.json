@@ -1,0 +1,120 @@
+{
+    "name": "Depots21",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "LogisticsPlanner",
+            "Auditor",
+            "Orchestrator"
+        ],
+        "LogisticsPlanner": {
+            "private_information": [
+                "I am responsible for determining the optimal sequence of transportation and loading actions.",
+                "I must account for all constraints regarding hoists, trucks, crates, and locations."
+            ],
+            "goal": "Achieve the final configuration where crate0 is on pallet2, crate1 is on pallet0, and crate2 is on crate1."
+        },
+        "Auditor": {
+            "private_information": [
+                "My role is to verify the temporal and causal consistency of the planning domain and problem definitions.",
+                "I must ensure that action prerequisites are met before effects are applied, preventing illegal state transitions."
+            ],
+            "goal": "Ensure the generated PDDL plan is sound and logically consistent."
+        },
+        "Orchestrator": {
+            "private_information": [],
+            "goal": "Finalize the integrated PDDL domain and problem structure suitable for the FastDownwards planner, based on the audited plan components."
+        }
+    },
+    "environment": {
+        "init": {
+            "types": [
+                "place",
+                "surface",
+                "truck",
+                "hoist",
+                "crate",
+                "pallet",
+                "depot",
+                "distributor"
+            ],
+            "objects": {
+                "places": [
+                    "depot0",
+                    "depot1",
+                    "depot2",
+                    "distributor0"
+                ],
+                "crates": [
+                    "crate0",
+                    "crate1",
+                    "crate2"
+                ],
+                "pallets": [
+                    "pallet0",
+                    "pallet1",
+                    "pallet2",
+                    "pallet3"
+                ],
+                "hoists": [
+                    "hoist0",
+                    "hoist1",
+                    "hoist2",
+                    "hoist3"
+                ],
+                "trucks": [
+                    "truck0",
+                    "truck1",
+                    "truck2"
+                ]
+            }
+        },
+        "public_information": [
+            "Depots and distributors are places, connected by roads (implied connectivity between all pairs of places).",
+            "Crates and pallets are surfaces.",
+            "Initial State Details:",
+            " Locations: crate0 at distributor0, crate1 at depot1, crate2 at distributor0.",
+            " Hoist Locations: hoist0 at depot0, hoist1 at depot1, hoist2 at depot2, hoist3 at distributor0.",
+            " Pallet Locations: pallet0 at depot0, pallet1 at depot1, pallet2 at depot2, pallet3 at distributor0.",
+            " Truck Locations: truck0 at depot0, truck1 at depot0, truck2 at depot2.",
+            " States: All hoists are available. crate1, crate2, pallet0, and pallet2 are clear.",
+            " Relationships: crate0 is on pallet3, crate1 is on pallet1, and crate2 is on crate0."
+        ]
+    },
+    "workflow": {
+        "LogisticsPlanner": {
+            "pddl_initial_draft": {
+                "input": [],
+                "output": "pddl_logistics_draft",
+                "system_prompt": "You are an expert logistics planner specialized in generating PDDL solutions for complex transportation problems. Your goal is to translate the environment and constraints into a complete PDDL domain and problem definition to solve the required goal. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You must plan the transportation of crates between various places using trucks and hoists, respecting all physical constraints. Use the following context to define the PDDL entities, initial state, and goal state.\n\nContext:\nPublic Information:\n{environment->public_information}\nGoal:\n{agents->LogisticsPlanner->goal}\n\nDefine the necessary predicates and actions to model the logistics process, including driving trucks, and using hoists to lift, drop, load, and unload crates. Ensure the PDDL accurately reflects all constraints described in the task description.\n\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task."
+            }
+        },
+        "Auditor": {
+            "audit_check": {
+                "input": [
+                    "pddl_logistics_draft"
+                ],
+                "output": "pddl_audit_report",
+                "system_prompt": "You are an automated auditor specializing in temporal and causal consistency checking for PDDL models. Your primary function is to analyze the provided PDDL domain and problem to ensure that the defined actions strictly adhere to their preconditions and effects, specifically focusing on complex interactions (like clearance status inconsistency, hoisting states, and location changes).",
+                "prompt": "Review the PDDL domain and problem provided by the Logistics Planner:\n{pddl_logistics_draft}\n\nIdentify any potential shortcuts, ambiguities, or contradictions in the initial state setup or in the action definitions. Provide a summary of required adjustments or confirmation of consistency. If consistent, just confirm 'AUDIT SUCCESSFUL'. If inconsistent, detail the necessary modifications to the domain/problem definitions to achieve logical soundness. Enclose your final assessment/modified content in <report></report> tags."
+            }
+        },
+        "Orchestrator": {
+            "pddl_final": {
+                "input": [
+                    "pddl_logistics_draft",
+                    "pddl_audit_report"
+                ],
+                "output": "pddl_final_solution",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. Your task is to apply any necessary fixes from the audit report and finalize the PDDL.",
+                "prompt": "The Logistics Planner generated the initial PDDL draft:\n{pddl_logistics_draft}\n\nThis draft was reviewed by the Auditor:\n{pddl_audit_report}\n\nBased on the initial draft and the audit report, finalize the comprehensive PDDL domain and problem necessary to solve the logistics task. Ensure the output is ready for a standard PDDL solver like FastDownwards.\n\nThink step by step and and provide a PDDL domain and a PDDL problem file to solve the task."
+            }
+        },
+        "constraints": [
+            "LogisticsPlanner.pddl_initial_draft->Auditor.audit_check",
+            "Auditor.audit_check->Orchestrator.pddl_final"
+        ]
+    }
+}

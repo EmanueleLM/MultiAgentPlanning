@@ -1,0 +1,78 @@
+(define (domain BlocksworldHardScaling5)
+    (:requirements :strips :typing :negative-preconditions :action-costs)
+    (:types
+        block - object
+    )
+    (:predicates
+        (on ?x - block ?y - block)
+        (ontable ?x - block)
+        (clear ?x - block)
+        (holding ?x - block)
+        (handempty)
+    )
+    
+    (:functions
+        (total-cost) - number
+    )
+
+    (action pick-up
+        :parameters (?x - block)
+        :precondition (and 
+            (clear ?x) 
+            (ontable ?x) 
+            (handempty)
+        )
+        :effect (and 
+            (holding ?x) 
+            (not (clear ?x)) 
+            (not (ontable ?x)) 
+            (not (handempty))
+            (increase (total-cost) 1)
+        )
+    )
+
+    (action put-down
+        :parameters (?x - block)
+        :precondition (holding ?x)
+        :effect (and 
+            (clear ?x) 
+            (ontable ?x) 
+            (handempty) 
+            (not (holding ?x))
+            (increase (total-cost) 1)
+        )
+    )
+
+    (action stack
+        :parameters (?x - block ?y - block)
+        :precondition (and 
+            (holding ?x) 
+            (clear ?y)
+        )
+        :effect (and 
+            (on ?x ?y) 
+            (clear ?x) 
+            (handempty) 
+            (not (holding ?x)) 
+            (not (clear ?y))
+            (increase (total-cost) 1)
+        )
+    )
+
+    (action unstack
+        :parameters (?x - block ?y - block)
+        :precondition (and 
+            (on ?x ?y) 
+            (clear ?x) 
+            (handempty)
+        )
+        :effect (and 
+            (holding ?x) 
+            (clear ?y) 
+            (not (on ?x ?y)) 
+            (not (clear ?x)) 
+            (not (handempty))
+            (increase (total-cost) 1)
+        )
+    )
+)

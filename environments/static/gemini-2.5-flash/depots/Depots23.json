@@ -1,0 +1,90 @@
+{
+    "name": "Depots23",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "LogisticsPlanner",
+            "Auditor",
+            "orchestrator"
+        ],
+        "LogisticsPlanner": {
+            "private_information": [
+                "I am responsible for defining the PDDL model based on logistics rules and the initial state configuration.",
+                "The primary entities are places (depots, distributors), objects (crates, pallets), and movers (trucks, hoists)."
+            ],
+            "goal": "Generate a valid PDDL domain and problem definition to achieve the specified logistics goal."
+        },
+        "Auditor": {
+            "private_information": [
+                "I must check the logical consistency of all stated actions, preconditions, and effects, especially concerning stacking and movement constraints."
+            ],
+            "goal": "Ensure the description of logistics actions and initial state are consistent and complete."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the planning output to produce the final PDDL solution for the transportation task."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 1
+        },
+        "public_information": [
+            "The system involves depots and distributors (places) connected by roads.",
+            "Goal State: (on crate0 pallet2), (on crate1 crate0), and (on crate2 pallet0).",
+            "Initial State Objects:",
+            "  - Places: depot0, depot1, depot2 (Depots), distributor0 (Distributor).",
+            "  - Trucks: truck0 at distributor0, truck1 at depot1, truck2 at distributor0.",
+            "  - Hoists: hoist0 at depot0, hoist1 at depot1, hoist2 at depot2, hoist3 at distributor0. All hoists are available.",
+            "  - Crates: crate0, crate1, crate2.",
+            "  - Pallets: pallet0, pallet1, pallet2, pallet3.",
+            "Initial State Configuration:",
+            "  - Locations: (at crate0 depot0), (at crate1 depot0), (at crate2 distributor0).",
+            "  - Locations: (at pallet0 depot0), (at pallet1 depot1), (at pallet2 depot2), (at pallet3 distributor0).",
+            "  - Stacking: (on crate0 pallet0), (on crate1 crate0), (on crate2 pallet3).",
+            "  - Clear surfaces: (clear crate1), (clear crate2), (clear pallet1), (clear pallet2). (Note: pallet0, crate0, pallet3 are NOT clear).",
+            "Action Definitions and Constraints:",
+            "  1. Drive (truck, origin, destination): Preconditions: truck at origin. Effects: truck not at origin, truck at destination.",
+            "  2. Lift (hoist, crate, surface, place): Preconditions: hoist at place, crate at place, hoist available, crate clear, crate on surface. Effects: crate not at place, hoist lifting crate, hoist not available, surface clear, crate not on surface.",
+            "  3. Drop (hoist, crate, surface, place): Preconditions: hoist at place, surface at place, surface clear, hoist lifting crate. Effects: hoist available, hoist not lifting crate, crate at place, surface not clear, crate clear, crate on surface.",
+            "  4. Load (hoist, crate, truck, place): Preconditions: hoist at place, truck at place, hoist lifting crate. Effects: crate in truck, hoist available, hoist not lifting crate, crate is NOT at place (implied by lift action).",
+            "  5. Unload (hoist, crate, truck, place): Preconditions: hoist at place, truck at place, hoist available, crate in truck. Effects: crate not in truck, hoist not available, hoist lifting crate."
+        ]
+    },
+    "workflow": {
+        "Auditor": {
+            "check_consistency": {
+                "input": [],
+                "output": "consistency_report",
+                "system_prompt": "You are an expert in formalizing and checking the logical consistency of rules, definitions, and initial conditions for planning problems. You focus on temporal and causal logic. Your output should summarize the initial configuration and highlight any potential logical ambiguities or inconsistencies in the defined actions, preconditions, or effects.",
+                "prompt": "Review the environment description provided in the public information:\n{environment->public_information}\nEnsure that the stacking definitions (on, clear) in the initial state are consistent (e.g., if A is on B, B is not clear, and A is clear). Confirm that the preconditions and effects of all logistics actions (Drive, Lift, Drop, Load, Unload) ensure correct state transitions. Provide a detailed consistency report."
+            }
+        },
+        "LogisticsPlanner": {
+            "pddl": {
+                "input": [
+                    "consistency_report"
+                ],
+                "output": "pddl_draft",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your task is to generate the PDDL domain and problem files based on the logistics scenario. The scenario details, including initial state, goal state, and rules, are provided in the public information. The Auditor has reviewed the setup and provided the following report:\n{consistency_report}\nUse this context to accurately model the system using types, predicates, and actions. Ensure your PDDL accurately reflects the rules for movement, stacking, and hoist usage. Provide the PDDL domain and problem files."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_draft"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are an expert orchestrator specialized in finalizing PDDL solutions for the FastDownwards planner. You ensure the resulting PDDL is complete, well-formed, and ready for execution. You must ensure the types hierarchy (place, surface, etc.) is correctly defined in the final domain.",
+                "prompt": "The LogisticsPlanner has provided a PDDL draft for the transportation task:\n{pddl_draft}\nReview the draft for adherence to all environmental constraints and definitions. Output the final, validated PDDL domain and problem files required to achieve the goal: (on crate0 pallet2), (on crate1 crate0), and (on crate2 pallet0).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "Auditor.check_consistency->LogisticsPlanner.pddl",
+            "LogisticsPlanner.pddl->orchestrator.pddl"
+        ]
+    }
+}

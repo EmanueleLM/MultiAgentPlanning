@@ -1,0 +1,77 @@
+{
+    "name": "BlocksworldMediumScaling21",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "planner",
+            "auditor",
+            "orchestrator"
+        ],
+        "planner": {
+            "private_information": [
+                "I am responsible for manipulating blocks using standard Blocksworld actions (pick up, unstack, put down, stack).",
+                "Action constraints are: I can only pick up or unstack one clear block at a time if my hand is empty. Pick up is from the table. Unstack is from another block. Put down results in the block being on the table. Stack requires the target block to be clear. My hand is empty after put down or stack, and holding a block after pick up or unstack."
+            ],
+            "goal": "Achieve the state where the red block is on top of the orange block and the yellow block is on top of the red block."
+        },
+        "auditor": {
+            "private_information": [
+                "I must verify that the planning logic strictly adheres to all block manipulation constraints defined in the Blocksworld domain, especially concerning clearance, holding status, and block locations."
+            ],
+            "goal": "Audit the planner's generated PDDL for logical completeness and correctness against the known domain rules."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I synthesize the planning artifacts and ensure they are compliant with FastDownwards requirements."
+            ],
+            "goal": "Produce the final, validated PDDL domain and problem specification that solves the given Blocksworld task."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment contains four blocks: Blue (B), Orange (O), Yellow (Y), and Red (R).",
+            "Initial configuration (State S0): clear(B), clear(O), hand_empty. on(B, Y), on(O, R). on_table(R), on_table(Y).",
+            "Goal configuration: on(R, O) AND on(Y, R)."
+        ]
+    },
+    "workflow": {
+        "planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_planner",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You are given a single-agent task. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is planner. You are in a Blocksworld environment with the following public information:\n{environment->public_information}\nYou have the following inherent knowledge (domain rules):\n{agents->planner->private_information}\nThis is the global goal to solve:\n{agents->planner->goal}\nThink step by step and provide a PDDL domain that accurately models the required actions and a PDDL problem file defining the initial state and goal.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_planner"
+                ],
+                "output": "pddl_audit_review",
+                "system_prompt": "You are an expert logical auditor specialized in verifying PDDL specifications against natural language requirements. Your output must be a detailed logical critique.",
+                "prompt": "Your name is auditor. Your goal is to audit the PDDL provided by the planner to ensure it strictly follows all the rules described in the environment context. Pay special attention to prerequisites (hand status, clearance) and effects (change in block location and clearance status).\n\nHere is the PDDL to review:\n{pddl_planner}\n\n1. Verify that the domain correctly implements all four required actions (pick up, unstack, put down, stack).\n2. Confirm that preconditions and effects rigorously match the constraints defined in the agent's private information.\n\nProvide your detailed analysis and conclusion. If errors are found, suggest specific logical corrections. If correct, state validation passed. Do not output PDDL; output only the review text."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_planner",
+                    "pddl_audit_review"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert in finalizing PDDL planning tasks, ensuring the integrated domain and problem definition are ready for a solver like FastDownwards. If the input contains inconsistencies, you must resolve them before outputting the final PDDL.",
+                "prompt": "You have received the initial PDDL plan and domain specification, along with a peer review.\nGoal: {agents->orchestrator->goal}\n\nPlanner's PDDL:\n{pddl_planner}\n\nAuditor's Review:\n{pddl_audit_review}\n\nAnalyze the input. If the audit suggests corrections, integrate them to create a robust and accurate single-agent PDDL solution for the Blocksworld task.\nThink step by step, confirm consistency, and provide the final PDDL domain and a PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "planner.pddl->auditor.review",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

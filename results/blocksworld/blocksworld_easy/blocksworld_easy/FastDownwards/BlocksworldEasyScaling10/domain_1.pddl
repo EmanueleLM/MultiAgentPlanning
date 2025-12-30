@@ -1,8 +1,7 @@
 (define (domain blocksworld)
     (:requirements :strips :typing :negative-preconditions)
-    (:types
-        block
-    )
+    (:types block)
+    
     (:predicates
         (on ?x - block ?y - block)
         (on-table ?x - block)
@@ -11,57 +10,59 @@
         (hand-empty)
     )
 
-    ;; Action: pick-up (from table)
+    ;; 1. Pick up a block from the table
     (:action pick-up
         :parameters (?x - block)
-        :precondition (and
-            (clear ?x)
+        :precondition (and 
             (on-table ?x)
+            (clear ?x)
             (hand-empty)
         )
-        :effect (and
+        :effect (and 
             (holding ?x)
             (not (on-table ?x))
+            (not (clear ?x))
             (not (hand-empty))
         )
     )
 
-    ;; Action: put-down (onto table)
+    ;; 2. Unstack a block from another block
+    (:action unstack
+        :parameters (?x - block ?y - block)
+        :precondition (and 
+            (on ?x ?y)
+            (clear ?x)
+            (hand-empty)
+        )
+        :effect (and 
+            (holding ?x)
+            (clear ?y)
+            (not (on ?x ?y))
+            (not (clear ?x))
+            (not (hand-empty))
+        )
+    )
+
+    ;; 3. Put down a block onto the table
     (:action put-down
         :parameters (?x - block)
         :precondition (holding ?x)
-        :effect (and
-            (clear ?x)
+        :effect (and 
             (on-table ?x)
+            (clear ?x)
             (hand-empty)
             (not (holding ?x))
         )
     )
 
-    ;; Action: unstack (from block y)
-    (:action unstack
-        :parameters (?x - block ?y - block)
-        :precondition (and
-            (on ?x ?y)
-            (clear ?x)
-            (hand-empty)
-        )
-        :effect (and
-            (holding ?x)
-            (clear ?y)
-            (not (on ?x ?y))
-            (not (hand-empty))
-        )
-    )
-
-    ;; Action: stack (onto block y)
+    ;; 4. Stack a block onto another block
     (:action stack
         :parameters (?x - block ?y - block)
-        :precondition (and
+        :precondition (and 
             (holding ?x)
             (clear ?y)
         )
-        :effect (and
+        :effect (and 
             (on ?x ?y)
             (clear ?x)
             (hand-empty)

@@ -1,51 +1,87 @@
-(define (domain blocksworld)
+(define (domain tower-of-hanoi)
     (:requirements :strips :typing :negative-preconditions :action-costs)
-    (:types block)
-
+    (:types
+        disk peg
+    )
     (:predicates
-        (on ?b1 - block ?b2 - block)
-        (ontable ?b - block)
-        (clear ?b - block)
-        (handempty)
-        (holding ?b - block)
+        (on-peg ?d - disk ?p - peg)
+        (on-disk ?d1 - disk ?d2 - disk)
+        (clear-peg ?p - peg)
+        (clear-disk ?d - disk)
+        (smaller ?d1 - disk ?d2 - disk)
     )
 
     (:functions
-        (total-cost)
+        (total-cost) - number
     )
 
-    ;; Action 1: Pick up a block from the table
-    ;; Preconditions: Block is clear, on the table, and hand is empty.
-    ;; Effects: Block is held, no longer clear or on table, hand is full.
-    (:action pick-up
-        :parameters (?b - block)
-        :precondition (and (clear ?b) (ontable ?b) (handempty))
-        :effect (and (not (ontable ?b)) (not (clear ?b)) (not (handempty)) (holding ?b) (increase (total-cost) 1))
+    ; A. Move disk D from a disk B to a clear peg T
+    (:action move-disk-to-peg
+        :parameters (?d ?b - disk ?t - peg)
+        :precondition (and
+            (on-disk ?d ?b)
+            (clear-disk ?d)
+            (clear-peg ?t)
+        )
+        :effect (and
+            (not (on-disk ?d ?b))
+            (on-peg ?d ?t)
+            (clear-disk ?b)
+            (not (clear-peg ?t))
+            (increase (total-cost) 1)
+        )
     )
 
-    ;; Action 2: Put down a block onto the table
-    ;; Preconditions: Holding the block.
-    ;; Effects: Block is on the table and clear, hand becomes empty.
-    (:action put-down
-        :parameters (?b - block)
-        :precondition (holding ?b)
-        :effect (and (not (holding ?b)) (handempty) (ontable ?b) (clear ?b) (increase (total-cost) 1))
+    ; B. Move disk D from a peg S (where D is the bottom disk) to a clear peg T
+    (:action move-peg-to-peg
+        :parameters (?d - disk ?s ?t - peg)
+        :precondition (and
+            (on-peg ?d ?s)
+            (clear-disk ?d)
+            (clear-peg ?t)
+        )
+        :effect (and
+            (not (on-peg ?d ?s))
+            (on-peg ?d ?t)
+            (not (clear-peg ?t))
+            (clear-peg ?s)
+            (increase (total-cost) 1)
+        )
     )
 
-    ;; Action 3: Unstack a block from another block
-    ;; Preconditions: Block ?b is on ?c, ?b is clear, hand is empty.
-    ;; Effects: ?b is held, ?b is no longer on ?c or clear, ?c becomes clear, hand is full.
-    (:action unstack
-        :parameters (?b - block ?c - block)
-        :precondition (and (on ?b ?c) (clear ?b) (handempty))
-        :effect (and (not (on ?b ?c)) (not (clear ?b)) (not (handempty)) (holding ?b) (clear ?c) (increase (total-cost) 1))
+    ; C. Move disk D from a peg S onto a disk B
+    (:action move-peg-to-disk
+        :parameters (?d - disk ?s - peg ?b - disk)
+        :precondition (and
+            (on-peg ?d ?s)
+            (clear-disk ?d)
+            (clear-disk ?b)
+            (smaller ?d ?b) ; Enforces Tower of Hanoi size constraint
+        )
+        :effect (and
+            (not (on-peg ?d ?s))
+            (on-disk ?d ?b)
+            (not (clear-disk ?b))
+            (clear-peg ?s)
+            (increase (total-cost) 1)
+        )
     )
 
-    ;; Action 4: Stack a block onto another block
-    ;; Preconditions: Holding ?b, target block ?c is clear.
-    ;; Effects: ?b is stacked on ?c, ?c is no longer clear, ?b becomes clear (as it's now on top), hand is empty.
-    (:action stack
-        :parameters (?b - block ?c - block)
-        :precondition (and (holding ?b) (clear ?c))
-        :effect (and (not (holding ?b)) (not (clear ?c)) (handempty) (on ?b ?c) (clear ?b) (increase (total-cost) 1))
+    ; D. Move disk D from disk B onto disk C
+    (:action move-disk-to-disk
+        :parameters (?d ?b ?c - disk)
+        :precondition (and
+            (on-disk ?d ?b)
+            (clear-disk ?d)
+            (clear-disk ?c)
+            (smaller ?d ?c) ; Enforces Tower of Hanoi size constraint
+        )
+        :effect (and
+            (not (on-disk ?d ?b))
+            (on-disk ?d ?c)
+            (clear-disk ?b)
+            (not (clear-disk ?c))
+            (increase (total-cost) 1)
+        )
     )
+)

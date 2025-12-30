@@ -1,0 +1,106 @@
+{
+    "name": "Depots28",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "LogisticsPlanner",
+            "CargoHandler",
+            "Auditor",
+            "orchestrator"
+        ],
+        "LogisticsPlanner": {
+            "private_information": [
+                "I manage vehicle location and movement using the DRIVE action."
+            ],
+            "goal": "Define the PDDL domain components related to vehicle movement and location tracking."
+        },
+        "CargoHandler": {
+            "private_information": [
+                "I manage material handling and stacking constraints using LIFT, DROP, LOAD, and UNLOAD actions."
+            ],
+            "goal": "Define the PDDL domain components related to hoists, crates, pallets, and handling operations."
+        },
+        "Auditor": {
+            "private_information": [
+                "I am responsible for checking temporal and causal consistency between planning components."
+            ],
+            "goal": "Audit the PDDL definitions provided by the planners for compatibility and causal linkages."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate all planning components to solve the full logistics planning task: achieve crate0 on crate2, crate1 on crate0, and crate2 on pallet0."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1,
+            "types": [
+                "place (depot, distributor)",
+                "surface (pallet, crate)",
+                "truck",
+                "hoist"
+            ]
+        },
+        "public_information": [
+            "This is a logistics environment involving crates, trucks, hoists, depots, and distributors.",
+            "Initial State:",
+            "crate0 is at distributor0, crate1 is at distributor0, crate2 is at depot1",
+            "hoist0 is at depot0, hoist1 is at depot1, hoist2 is at depot2, hoist3 is at distributor0",
+            "pallet0 is at depot0, pallet1 is at depot1, pallet2 is at depot2, pallet3 is at distributor0",
+            "truck0 is at depot1, truck1 is at depot1, truck2 is at depot0",
+            "hoist0, hoist1, hoist2, hoist3 are available",
+            "crate1, crate2, pallet0, pallet2 are clear",
+            "crate0 is on pallet3, crate1 is on crate0, crate2 is on pallet1.",
+            "Goal State:",
+            "crate0 is on crate2, crate1 is on crate0, crate2 is on pallet0."
+        ]
+    },
+    "workflow": {
+        "LogisticsPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_logistics",
+                "system_prompt": "You are an expert PDDL planner focusing only on vehicle movement. Provide a PDDL domain and problem fragment defining types, predicates, and the DRIVE action.",
+                "prompt": "Based on the public information regarding locations (depots/distributors) and trucks, and knowing that trucks can drive between any two places, define the PDDL domain and problem objects focusing exclusively on movement and location predicates.\nPublic Information:\n{environment->public_information}\nKnowledge:\n{agents->LogisticsPlanner->private_information}\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "CargoHandler": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_cargo",
+                "system_prompt": "You are an expert PDDL planner focusing only on cargo handling operations. Provide a PDDL domain and problem fragment defining types, predicates, and the LIFT, DROP, LOAD, and UNLOAD actions.",
+                "prompt": "Based on the public information regarding hoists, crates, pallets, and stacking constraints, define the PDDL domain and problem objects focusing exclusively on handling operations (LIFT, DROP, LOAD, UNLOAD) and state predicates (on, clear, lifting, in).\nPublic Information:\n{environment->public_information}\nKnowledge:\n{agents->CargoHandler->private_information}\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Auditor": {
+            "review": {
+                "input": [
+                    "pddl_logistics",
+                    "pddl_cargo"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are an expert PDDL Auditor. Your task is to analyze the coherence and completeness of the provided PDDL fragments, ensuring all necessary objects and predicates overlap correctly for integration. Do not output PDDL; output a detailed review report.",
+                "prompt": "Review the following PDDL fragments provided by the LogisticsPlanner and CargoHandler to ensure they are temporally and causally consistent, especially regarding shared types (like places) and objects (trucks, hoists, crates) that appear in both domains.\nLogistics PDDL:\n{pddl_logistics}\nCargo PDDL:\n{pddl_cargo}\nProvide a detailed report identifying any potential inconsistencies, naming conflicts, or necessary integrations required before the Orchestrator combines them."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_logistics",
+                    "pddl_cargo",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert PDDL orchestrator specialized in integrating disparate planning domains into a unified, solvable problem targeting the FastDownwards planner. You always provide a complete PDDL domain and a PDDL problem file. You must combine the actions and predicates into a single coherent plan.",
+                "prompt": "You have received PDDL fragments defining movement and cargo handling, along with an audit report. Your goal is to combine these definitions into a single, cohesive PDDL domain and a complete PDDL problem file that achieves the required goal state from the initial state.\nGlobal Goal: {agents->orchestrator->goal}\nInitial and Public Information: {environment->public_information}\nLogistics PDDL:\n{pddl_logistics}\nCargo PDDL:\n{pddl_cargo}\nAudit Report:\n{audit_report}\n\nIntegrate the types, objects, predicates, and actions. Ensure the initial state predicates and the final goal state are correctly defined in the PDDL problem file. Think step by step and provide the final integrated PDDL domain and problem.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "LogisticsPlanner.pddl->Auditor.review",
+            "CargoHandler.pddl->Auditor.review",
+            "Auditor.review->orchestrator.pddl"
+        ]
+    }
+}

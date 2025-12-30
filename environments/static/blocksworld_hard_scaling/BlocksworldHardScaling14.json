@@ -1,0 +1,76 @@
+{
+    "name": "BlocksworldHardScaling14",
+    "author": "Human_AI",
+    "agents": {
+        "number": 3,
+        "names": [
+            "HanoiSolver",
+            "Auditor",
+            "orchestrator"
+        ],
+        "HanoiSolver": {
+            "private_information": [
+                "The primary action is 'move disk from peg A to peg B'.",
+                "Disk sizes must be respected: A < B < C < D < E < F."
+            ],
+            "goal": "Generate a PDDL plan to move disks A, B, C, D, E, F from the Middle Peg to the Left Peg, using the Right Peg as auxiliary."
+        },
+        "Auditor": {
+            "private_information": [
+                "The Auditor must check that the generated PDDL domain strictly enforces the rule: A larger disk may never be placed on a smaller disk.",
+                "The Auditor must ensure consistent use of object definitions and predicate structure."
+            ],
+            "goal": "Audit the HanoiSolver's PDDL output for causal consistency and rule enforcement, removing bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Consolidate the validated PDDL domain and problem files into a final, runnable configuration targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "pegs": 3,
+            "disks": 6
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 6 disks (A, B, C, D, E, F) and 3 pegs (Left, Middle, Right).",
+            "Initial State: Middle Peg holds all disks (A top, F bottom). Left and Right pegs are empty.",
+            "Goal State: Left Peg holds all disks (A top, F bottom). Middle and Right pegs are empty.",
+            "Rules: Move one disk at a time, only the top disk can be moved, and a larger disk cannot be placed on a smaller disk."
+        ]
+    },
+    "workflow": {
+        "HanoiSolver": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_hanoi_solver",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your task is to solve the Tower of Hanoi puzzle with 6 disks (A, B, C, D, E, F) and 3 pegs (L, M, R).\nYou are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->HanoiSolver->private_information}\nThis is the global goal to solve:\n{agents->HanoiSolver->goal}\nDefine disks as objects derived from a general type 'disk' and pegs derived from 'peg'. Ensure the domain correctly models the size relationship and the top/clear constraints.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Auditor": {
+            "review": {
+                "input": [
+                    "pddl_hanoi_solver"
+                ],
+                "output": "pddl_auditor_validated",
+                "system_prompt": "You are an expert PDDL auditor and validator. Your job is to check the logical consistency, adherence to rules, and correct structure of provided PDDL files. You must remove any informal comments or non-standard PDDL features and ensure the causal relationships are sound. You always provide the revised PDDL domain and PDDL problem files. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "You have received the following PDDL specification from the HanoiSolver agent:\n{pddl_hanoi_solver}\nYour specific auditing task is to verify that the PDDL domain enforces the strict Tower of Hanoi constraint: A larger disk can never be placed on a smaller disk. Ensure that the 'move' action preconditions correctly utilize size predicates (e.g., 'smaller'). Check for temporal/causal consistency. If the PDDL is structurally sound and adheres to the rules, return it unchanged. Otherwise, fix any inconsistencies or missing causal constraints.\nProvide the revised PDDL domain and PDDL problem file.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_auditor_validated"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator specializing in finalizing PDDL outputs for the FastDownwards planner. You take the validated PDDL files and ensure they are ready for execution. You always provide a PDDL domain and a PDDL problem file. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "The validated PDDL solution for the Tower of Hanoi task is provided below:\n{pddl_auditor_validated}\nConfirm that the final PDDL domain and problem files are complete, consistent, and ready for planning using FastDownwards. Generate the final output.\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the task.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "HanoiSolver.pddl->Auditor.review",
+            "Auditor.review->orchestrator.pddl"
+        ]
+    }
+}

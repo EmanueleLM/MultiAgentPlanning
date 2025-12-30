@@ -1,0 +1,81 @@
+{
+    "name": "BlocksworldEasyScaling1",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "hanoi_solver",
+            "auditor",
+            "orchestrator"
+        ],
+        "hanoi_solver": {
+            "private_information": [
+                "I am capable of moving disks between pegs.",
+                "I must solve the Tower of Hanoi puzzle."
+            ],
+            "goal": "Transfer all four disks (A, B, C, D) from the Right peg to the Left peg, using the Middle peg as auxiliary storage, while strictly following the Tower of Hanoi rules."
+        },
+        "auditor": {
+            "private_information": [
+                "I am responsible for checking logical and temporal consistency.",
+                "I verify that no larger disk is ever placed on a smaller one.",
+                "I ensure only one disk is moved per action."
+            ],
+            "goal": "Review the proposed plan for the Tower of Hanoi puzzle to ensure it strictly adheres to all physical and logical constraints specified by the environment, removing any inconsistencies or shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, validated PDDL domain and problem files required to solve the 4-disk Tower of Hanoi puzzle using the FastDownwards planner, integrating feedback from the auditor."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 4
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 4 disks and 3 pegs.",
+            "Disks are: disk A (smallest), disk B, disk C, disk D (largest).",
+            "Pegs are: Left, Middle, Right.",
+            "Initial State: Right peg holds, from top to bottom, A, B, C, D.",
+            "Goal State: Left peg holds, from top to bottom, A, B, C, D.",
+            "Rules: Only one top disk can be moved at a time. A larger disk can never be placed on a smaller disk."
+        ]
+    },
+    "workflow": {
+        "hanoi_solver": {
+            "planning": {
+                "input": [],
+                "output": "pddl_hanoi_solver",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is hanoi_solver. You are solving the Tower of Hanoi puzzle. You are in an environment with the following public information:\n{environment->public_information}\nYou have the following knowledge:\n{agents->hanoi_solver->private_information}\nThis is the global goal to solve:\n{agents->hanoi_solver->goal}\nThink step by step and provide a PDDL domain and a PDDL problem file to solve the 4-disk Tower of Hanoi puzzle. Ensure your domain defines the appropriate predicates for disk stacking and movement constraints.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "review": {
+                "input": [
+                    "pddl_hanoi_solver"
+                ],
+                "output": "audit_report",
+                "system_prompt": "You are a specialized auditor focused on verifying PDDL implementations against strict environmental rules, particularly ensuring causal and temporal consistency and removing bookkeeping shortcuts or invalid assumptions.",
+                "prompt": "Your name is auditor. Your goal is to review the PDDL proposal provided by the hanoi_solver agent:\n{pddl_hanoi_solver}\nCheck this PDDL against the fundamental constraints of the Tower of Hanoi puzzle, specifically: 1) Are the size ordering relations (e.g., smaller_than) correctly defined and enforced in the 'move' action? 2) Is the 'clear' top disk predicate correctly used? 3) Is the initial state (4 disks stacked on Right peg: A top, D bottom) and goal state (4 disks stacked on Left peg: A top, D bottom) correctly defined?\nProvide a detailed report analyzing potential inconsistencies or shortcomings in the domain or problem definition based on the environment rules.\nIf the PDDL is flawed, explain how it must be corrected. If it is sound, confirm its adherence to the constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_hanoi_solver",
+                    "audit_report"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert orchestrator and PDDL finalizer. You integrate initial plans and audit feedback to produce a single, coherent, and validated PDDL domain and problem targeting the FastDownwards solver. You always enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your name is orchestrator. You have received an initial PDDL plan proposal and an audit report for solving the Tower of Hanoi puzzle:\n\nInitial PDDL Proposal:\n{pddl_hanoi_solver}\n\nAudit Report:\n{audit_report}\n\nReview the initial PDDL proposal in light of the audit report. Ensure that the final PDDL adheres perfectly to the environmental rules (especially the disk size constraints and initial/goal configuration) and is suitable for solving the task: {agents->orchestrator->goal}.\nThink step by step about necessary adjustments or confirmations based on the audit. Then, provide the final, complete PDDL domain and problem files.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "hanoi_solver.planning->auditor.review",
+            "hanoi_solver.planning->orchestrator.pddl",
+            "auditor.review->orchestrator.pddl"
+        ]
+    }
+}

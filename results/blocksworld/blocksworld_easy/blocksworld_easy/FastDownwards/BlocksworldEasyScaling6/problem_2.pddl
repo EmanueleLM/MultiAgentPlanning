@@ -1,22 +1,26 @@
-(define (problem blocksworld-scaling6)
-    (:domain blocksworld)
-    (:requirements :strips :typing :negative-preconditions :action-costs)
+(define (problem blocks-4-instance)
+    (:domain blocksworld-4-blocks)
     (:objects
-        Orange - block
-        Yellow - block
-        Blue - block
-        Red - block
+        orange yellow blue red - block
     )
+    
     (:init
-        (handempty)
-        (clear Orange)
-        (clear Yellow)
-        (on Orange Blue)
-        (on Blue Red)
-        (ontable Red)
-        (ontable Yellow)
-        (= (total-cost) 0)
+        (hand-empty)
+
+        ; Initial Configuration: O->B->R on Table. Y on Table.
+        (on orange blue)
+        (on blue red)
+        (on-table red)
+        (on-table yellow)
+
+        ; Clearness provided in spec:
+        (clear orange)
+        (clear yellow)
+        
+        ; Blue and Red are implicitly not clear because something is stacked on them.
     )
-    (:goal (on Orange Yellow))
-    (:metric minimize (total-cost))
+
+    (:goal (and
+        (on orange yellow)
+    ))
 )

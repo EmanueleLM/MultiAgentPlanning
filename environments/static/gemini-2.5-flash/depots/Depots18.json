@@ -1,0 +1,77 @@
+{
+    "name": "Depots18",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "key_planner",
+            "rule_auditor",
+            "orchestrator"
+        ],
+        "key_planner": {
+            "private_information": [],
+            "goal": "Generate the initial PDDL domain and problem specification for the logistics task."
+        },
+        "rule_auditor": {
+            "private_information": [
+                "I must ensure that all actions strictly adhere to the defined preconditions and effects, especially regarding 'clear' status and location tracking."
+            ],
+            "goal": "Audit the planner's output for causal and temporal consistency before integration."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the validated PDDL components and produce the final combined PDDL domain and problem targeting the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment consists of Depots (depot0, depot1, depot2) and Distributors (distributor0). All are places and fully interconnected.",
+            "Entities include Crates (crate0, crate1, crate2), Pallets (pallet0, pallet1, pallet2, pallet3), Trucks (truck0, truck1, truck2), and Hoists (hoist0, hoist1, hoist2, hoist3). Crates and Pallets are Surfaces.",
+            "Initial setup: crate0@depot1, crate1@depot0, crate2@distributor0.",
+            "Hoists: hoist0@depot0, hoist1@depot1, hoist2@depot2, hoist3@distributor0. All hoists are available.",
+            "Pallets: pallet0@depot0, pallet1@depot1, pallet2@depot2, pallet3@distributor0.",
+            "Trucks: truck0@depot0, truck1@depot0, truck2@distributor0.",
+            "Initial stacking: (on crate0 pallet1), (on crate1 pallet0), (on crate2 pallet3).",
+            "Initial clear status: crate0, crate1, crate2 are clear. pallet2 is clear (empty). Pallets 0, 1, 3 are not clear.",
+            "Goal: (on crate0 crate2), (on crate1 pallet2), and (on crate2 pallet3)."
+        ]
+    },
+    "workflow": {
+        "key_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_initial_plan",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Define the PDDL domain and problem for the following logistics task based on the provided environment and constraints. \n\nEnvironment details:\n{environment->public_information}\n\nActions and Constraints:\nTypes: place (depot, distributor), surface (pallet, crate), truck, hoist.\n\nPredicates:\n(at ?x ?p) ; ?x is truck, hoist, crate, or pallet\n(on ?c - crate ?s - surface)\n(in ?c - crate ?t - truck)\n(lifting ?h - hoist ?c - crate)\n(available ?h - hoist)\n(clear ?s - surface)\n\n1. Drive Truck (?t - truck, ?p1 - place, ?p2 - place):\n   Preconditions: (at ?t ?p1)\n   Effects: (not (at ?t ?p1)) (at ?t ?p2)\n2. Lift Crate from Surface (?h - hoist, ?c - crate, ?s - surface, ?p - place):\n   Preconditions: (at ?h ?p) (at ?c ?p) (available ?h) (clear ?c) (on ?c ?s) ; Must ensure all objects are at location ?p.\n   Effects: (not (at ?c ?p)) (lifting ?h ?c) (not (available ?h)) (clear ?s) (not (on ?c ?s))\n3. Drop Crate onto Surface (?h - hoist, ?c - crate, ?s - surface, ?p - place):\n   Preconditions: (at ?h ?p) (at ?s ?p) (clear ?s) (lifting ?h ?c)\n   Effects: (available ?h) (not (lifting ?h ?c)) (at ?c ?p) (not (clear ?s)) (clear ?c) (on ?c ?s)\n4. Load Crate into Truck (?h - hoist, ?c - crate, ?t - truck, ?p - place):\n   Preconditions: (at ?h ?p) (at ?t ?p) (lifting ?h ?c)\n   Effects: (in ?c ?t) (available ?h) (not (lifting ?h ?c))\n5. Unload Crate from Truck (?h - hoist, ?c - crate, ?t - truck, ?p - place):\n   Preconditions: (at ?h ?p) (at ?t ?p) (available ?h) (in ?c ?t)\n   Effects: (not (in ?c ?t)) (not (available ?h)) (lifting ?h ?c)\n\nProvide the complete PDDL domain and problem wrapped in the appropriate tags. Focus on accurate representation of the initial state and goal."
+            }
+        },
+        "rule_auditor": {
+            "review": {
+                "input": [
+                    "pddl_initial_plan"
+                ],
+                "output": "pddl_audited_plan",
+                "system_prompt": "You are an expert PDDL auditor, specializing in logistics domains. You must ensure temporal and causal consistency, and prevent bookkeeping shortcuts. Your validation must specifically check that object placement and 'clear' statuses are handled strictly according to the defined rules for surfaces (crates/pallets).",
+                "prompt": "Review the provided PDDL plan ('pddl_initial_plan'). Verify:\n1. That the 'Lift Crate from Surface' action correctly requires (on ?c ?s) and ensures (clear ?s) after lifting.\n2. That the 'Drop Crate onto Surface' action correctly requires (clear ?s) and sets (not (clear ?s)) and (clear ?c) in the effects.\n3. That the initial state accurately reflects which surfaces are clear and which are not (Pallets 0, 1, 3 are occupied/not clear).\n\nIf you identify any missing predicates, ambiguities, or rule violations regarding the core logistics logic, refine the PDDL domain and problem accordingly. If satisfactory, output the provided PDDL plan verbatim.\n\nPDDL to review:\n{pddl_initial_plan}\n\nOutput the refined PDDL enclosed between <domain></domain> tags and <problem></problem> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_audited_plan"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are the final orchestrator and PDDL validator. You must ensure the resulting domain and problem are valid and ready for standard PDDL solvers like FastDownwards. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "The Rule Auditor has reviewed and finalized the PDDL plan for the logistics task. Present the final, unified PDDL domain and problem file.\n\nAudited PDDL:\n{pddl_audited_plan}\n\nEnclose the final PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "key_planner.pddl->rule_auditor.review",
+            "rule_auditor.review->orchestrator.pddl"
+        ]
+    }
+}

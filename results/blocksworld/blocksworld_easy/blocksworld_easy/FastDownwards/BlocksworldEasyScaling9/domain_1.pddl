@@ -1,62 +1,54 @@
-(define (domain blocksworld)
-  (:requirements :strips :typing :negative-preconditions :action-costs)
-  (:types block)
-  
-  (:predicates
-    (on ?x - block ?y - block)
-    (ontable ?x - block)
-    (clear ?x - block)
-    (holding ?x - block)
-    (handempty)
-  )
+(define (domain hanoi-4-disks)
+    (:requirements :strips :typing)
 
-  (:functions 
-    (total-cost)
-  )
+    (:types
+        disk 
+        peg
+    )
 
-  (:action pick-up
-    :parameters (?x - block)
-    :precondition (and (clear ?x) (ontable ?x) (handempty))
-    :effect (and (holding ?x)
-                 (not (clear ?x))
-                 (not (ontable ?x))
-                 (not (handempty))
-                 (increase (total-cost) 1)
-            )
-  )
+    (:predicates
+        ; d1 is immediately on support s2 (disk or peg)
+        (on ?d1 - disk ?s2 - (either disk peg)) 
+        
+        ; d1 is smaller than d2 (static constraint)
+        (smaller ?d1 - disk ?d2 - disk)        
+        
+        ; s has nothing on it (top disk or empty peg)
+        (clear ?s - (either disk peg))         
+    )
 
-  (:action unstack
-    :parameters (?x - block ?y - block)
-    :precondition (and (on ?x ?y) (clear ?x) (handempty))
-    :effect (and (holding ?x)
-                 (clear ?y)
-                 (not (on ?x ?y))
-                 (not (clear ?x))
-                 (not (handempty))
-                 (increase (total-cost) 1)
-            )
-  )
+    ;; Action 1: Move disk D from Support S_from to Disk D_to
+    ;; Requires D to be smaller than D_to
+    (:action move-disk-to-disk
+        :parameters (?d - disk ?s_from - (either disk peg) ?d_to - disk)
+        :precondition (and
+            (on ?d ?s_from)
+            (clear ?d)
+            (clear ?d_to)
+            (smaller ?d ?d_to)
+        )
+        :effect (and
+            (not (on ?d ?s_from))
+            (on ?d ?d_to)
+            (not (clear ?d_to))
+            (clear ?s_from)
+        )
+    )
 
-  (:action put-down
-    :parameters (?x - block)
-    :precondition (holding ?x)
-    :effect (and (clear ?x)
-                 (ontable ?x)
-                 (handempty)
-                 (not (holding ?x))
-                 (increase (total-cost) 1)
-            )
-  )
-
-  (:action stack
-    :parameters (?x - block ?y - block)
-    :precondition (and (holding ?x) (clear ?y) (not (= ?x ?y)))
-    :effect (and (on ?x ?y)
-                 (clear ?x)
-                 (handempty)
-                 (not (holding ?x))
-                 (not (clear ?y))
-                 (increase (total-cost) 1)
-            )
-  )
+    ;; Action 2: Move disk D from Support S_from to Peg P_to
+    ;; Applicable if P_to is empty (clear)
+    (:action move-disk-to-peg
+        :parameters (?d - disk ?s_from - (either disk peg) ?p_to - peg)
+        :precondition (and
+            (on ?d ?s_from)
+            (clear ?d)
+            (clear ?p_to)
+        )
+        :effect (and
+            (not (on ?d ?s_from))
+            (on ?d ?p_to)
+            (not (clear ?p_to))
+            (clear ?s_from)
+        )
+    )
 )

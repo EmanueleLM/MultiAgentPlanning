@@ -1,0 +1,77 @@
+{
+    "name": "Depots25",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "logistics_planner",
+            "consistency_auditor",
+            "orchestrator"
+        ],
+        "logistics_planner": {
+            "private_information": [],
+            "goal": "Generate a PDDL domain and problem file that fully captures the logistics rules, initial state, and target goal based on the public environment information."
+        },
+        "consistency_auditor": {
+            "private_information": [],
+            "goal": "Review the environment specifications, particularly the initial state and goal definition, for temporal and causal consistency, providing feedback before the final PDDL is constructed."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate planning components and produce the final, runnable PDDL domain and problem files for the FastDownwards solver."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 1,
+            "visibility": 1
+        },
+        "public_information": [
+            "This environment describes a logistics problem involving transporting crates between depots and distributors using trucks and hoists.",
+            "Entities include: places (depot, distributor), surfaces (pallet, crate), trucks, and hoists.",
+            "Initial Locations: crate0, crate1, crate2 are at depot2. hoist0 is at depot0. hoist1 is at depot1. hoist2 is at depot2. hoist3 is at distributor0. pallet0 is at depot0. pallet1 is at depot1. pallet2 is at depot2. pallet3 is at distributor0. truck0 is at distributor0. truck1 is at depot1. truck2 is at distributor0.",
+            "Initial State: hoist0, hoist1, hoist2, hoist3 are available. crate2, pallet0, pallet1, pallet3 are clear.",
+            "Initial Stacking: crate0 is on pallet2. crate1 is on crate0. crate2 is on crate1.",
+            "Goal State: crate1 is on crate2 AND crate2 is on pallet2.",
+            "Actions and Constraints:",
+            "1. Drive Truck (from P1 to P2): Requires truck at P1. Effect: truck not at P1, truck at P2.",
+            "2. Lift Crate (by Hoist H, from Surface S, at Place P): Requires H at P, C at P, H available, C clear. Effect: C not at P, H lifting C, H not available, S clear, C not on S.",
+            "3. Drop Crate (by Hoist H, to Surface S, at Place P): Requires H at P, S at P, S clear, H lifting C. Effect: H available, H not lifting C, C at P, S not clear, C clear, C on S.",
+            "4. Load Crate (by Hoist H, onto Truck T, at Place P): Requires H at P, T at P, H lifting C. Effect: C in T. (Note: The prompt suggests missing effects for Load/Unload, the planner must infer standard logistics domain effects like 'C not at P').",
+            "5. Unload Crate (by Hoist H, from Truck T, at Place P): Requires H at P, T at P, H available, C in T. Effect: C not in T, H not available, H lifting C."
+        ]
+    },
+    "workflow": {
+        "logistics_planner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_draft",
+                "system_prompt": "You are an expert in defining complex PDDL domains and problems for logistics tasks. You must strictly adhere to the provided initial state, goal state, and action definitions.",
+                "prompt": "You are the logistics planner. Based on the environment's public information regarding entities, locations, initial state, goal state, and action restrictions:\n{environment->public_information}\nThink step by step and generate a complete PDDL domain and a PDDL problem file to solve the task. Ensure all action prerequisites and effects listed are correctly modeled.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "consistency_auditor": {
+            "analysis": {
+                "input": [],
+                "output": "auditor_report",
+                "system_prompt": "You are a meticulous auditor specialized in verifying the temporal and causal consistency of planning inputs, focusing on initial state validity and goal achievability given the rules. Your report must explicitly address the initial stacking setup: 'crate0 on pallet2, crate1 on crate0, crate2 on crate1', and check if the initial 'clear' predicates are consistent.",
+                "prompt": "Analyze the following environment specification, paying close attention to the definition of the initial state, especially the stacking constraints and location definitions. Report any identified inconsistencies or potential conflicts that could invalidate the planning process:\n{environment->public_information}"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_draft",
+                    "auditor_report"
+                ],
+                "output": "final_pddl",
+                "system_prompt": "You are the central orchestrator responsible for finalizing the PDDL definition based on planner drafts and auditor feedback. Your final output must be optimized for execution by the FastDownwards solver.",
+                "prompt": "You have received the following PDDL draft from the logistics planner:\n{pddl_draft}\nAnd the following auditor report:\n{auditor_report}\nReview the draft and the report. If the report indicates minor issues (like naming conventions or clarity), integrate necessary fixes. If the report suggests major structural errors in the PDDL domain definition, you must correct them based on the original requirements provided in the public information:\n{environment->public_information}\nProduce the final, integrated PDDL domain and problem files, ensuring correct structure and syntax.\nEnclose the final pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "logistics_planner.pddl->orchestrator.pddl",
+            "consistency_auditor.analysis->orchestrator.pddl"
+        ]
+    }
+}

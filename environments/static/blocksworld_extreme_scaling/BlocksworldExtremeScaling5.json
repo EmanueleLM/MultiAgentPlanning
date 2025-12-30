@@ -1,0 +1,78 @@
+{
+    "name": "BlocksworldExtremeScaling5",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "hanoi_solver",
+            "auditor",
+            "orchestrator"
+        ],
+        "hanoi_solver": {
+            "private_information": [
+                "Disks A, B, C, D, E, F, G exist. A is the smallest, G is the largest.",
+                "There are 3 pegs: Left, Middle, Right."
+            ],
+            "goal": "Solve the 7-disk Tower of Hanoi puzzle optimally (127 moves) moving the stack from the Right peg to the Left peg."
+        },
+        "auditor": {
+            "private_information": [
+                "Hanoi rules: Move one disk at a time; move only the top disk; never place a larger disk on a smaller disk.",
+                "Optimal solution requires 2^N - 1 steps."
+            ],
+            "goal": "Audit the PDDL plan for rule compliance, ensuring optimality (127 steps) and correct initial/goal state modeling."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce the final, verified PDDL solution (Domain and Problem) targeting the FastDownwards solver for the 7-disk Tower of Hanoi problem."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 3,
+            "visibility": 3
+        },
+        "public_information": [
+            "This is the Tower of Hanoi puzzle with 7 disks (A, B, C, D, E, F, G). Disk A is the smallest, G is the largest.",
+            "The relative size ordering is fixed (A < B < C < D < E < F < G).",
+            "There are three pegs: Left (L), Middle (M), and Right (R).",
+            "Initial State: Peg R holds the stack (top to bottom: A, B, C, D, E, F, G). Pegs L and M are empty.",
+            "Goal State: Peg L holds the stack (top to bottom: A, B, C, D, E, F, G). Pegs R and M must be empty.",
+            "Standard Hanoi rules apply: move only one disk at a time, only the top disk, and never place a larger disk atop a smaller one."
+        ]
+    },
+    "workflow": {
+        "hanoi_solver": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_solver_attempt",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You must define predicates for size ordering and peg occupancy necessary for the Tower of Hanoi problem. You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is hanoi_solver. You are tasked with solving the 7-disk Tower of Hanoi puzzle. The goal is to move the entire stack from the Right peg (R) to the Left peg (L). Use the disks A (smallest) through G (largest). Follow the public information:\n{environment->public_information}\nBased on your knowledge:\n{agents->hanoi_solver->private_information}\nThink step by step and provide the PDDL domain and a PDDL problem file to solve the task optimally (127 steps).\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "auditor": {
+            "critique": {
+                "input": [
+                    "pddl_solver_attempt"
+                ],
+                "output": "pddl_audited_plan",
+                "system_prompt": "You are a meticulous auditor specializing in verifying PDDL solutions for canonical puzzles, ensuring correctness, optimality, and rule adherence. Your primary goal is to prevent planning shortcuts and ensure temporal consistency, specifically checking that the plan ensures 127 total moves.",
+                "prompt": "Review the planning output provided by the hanoi_solver. The task is the 7-disk Tower of Hanoi. The plan must adhere strictly to the rules and must achieve the target goal state using the minimal number of steps (127). Focus on the correctness of the PDDL structure, especially ensuring the preconditions for moving (e.g., 'clear' status and 'smaller-than' constraints) are properly defined and used in the actions. Remove any bookkeeping shortcuts or extraneous information.\nHere is the PDDL attempt:\n{pddl_solver_attempt}\nIf the provided PDDL is complete and correct, confirm it. If it contains errors or logical flaws regarding the puzzle rules or initial/goal state definition, correct them and output the complete, refined PDDL (both domain and problem files) that is ready for the solver.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags. If you are only confirming, wrap your confirmation text in <confirmation> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_audited_plan"
+                ],
+                "output": "pddl_orchestrator_final",
+                "system_prompt": "You are an expert with PDDL problems, finalizing planning solutions intended for the FastDownwards planner. You must ensure the output is a valid, clean, single-agent PDDL structure that fully defines the optimal solution for the requested task.",
+                "prompt": "You have received the audited and verified planning documents for the 7-disk Tower of Hanoi puzzle. Your task is to output the final, clean PDDL domain and problem files based on the input. Ensure all objects (7 disks, 3 pegs) and predicates are correctly defined to solve the task optimally (127 steps) as defined in the goal.\nInput:\n{pddl_audited_plan}\nProvide the final PDDL domain and problem files.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "hanoi_solver.pddl->auditor.critique",
+            "auditor.critique->orchestrator.pddl"
+        ]
+    }
+}

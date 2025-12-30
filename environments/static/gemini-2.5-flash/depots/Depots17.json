@@ -1,0 +1,121 @@
+{
+    "name": "Depots17",
+    "author": "Human",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TruckPlanner",
+            "HoistPlanner",
+            "orchestrator",
+            "ConsistencyAuditor"
+        ],
+        "TruckPlanner": {
+            "private_information": [
+                "I specialize in truck movement planning (Drive actions).",
+                "All depots and distributors are connected by roads."
+            ],
+            "goal": "Plan the movement of trucks required to fulfill the final location requirements for crates."
+        },
+        "HoistPlanner": {
+            "private_information": [
+                "I specialize in cargo handling using hoists (Lift, Drop, Load, Unload actions).",
+                "I must respect stacking and clearance constraints."
+            ],
+            "goal": "Plan the handling operations required to achieve the final stacking configuration."
+        },
+        "orchestrator": {
+            "private_information": [
+                "I must synthesize high-level transport plans and detailed handling plans into a single coherent logistics strategy."
+            ],
+            "goal": "Produce a complete, integrated PDDL domain and problem file that solves the entire logistics task."
+        },
+        "ConsistencyAuditor": {
+            "private_information": [
+                "I ensure that the final generated plan respects temporal causality and avoids shortcuts or unnecessary state complexity."
+            ],
+            "goal": "Verify the temporal and causal consistency of the orchestrated PDDL plan."
+        }
+    },
+    "environment": {
+        "init": {
+            "places": [
+                "depot0",
+                "depot1",
+                "depot2",
+                "distributor0"
+            ],
+            "grid_size": 1
+        },
+        "public_information": [
+            "Logistics Planning Task: Transporting crates between depots and distributors.",
+            "Places (Depots/Distributors): depot0, depot1, depot2, distributor0.",
+            "Crates: crate0, crate1, crate2.",
+            "Hoists: hoist0, hoist1, hoist2, hoist3.",
+            "Pallets: pallet0, pallet1, pallet2, pallet3.",
+            "Trucks: truck0, truck1, truck2.",
+            "Initial State:",
+            "  - crate0 is at distributor0, on pallet3.",
+            "  - crate1 is at distributor0, on crate0, and is clear.",
+            "  - crate2 is at depot1, on pallet1, and is clear.",
+            "  - hoist0 is at depot0, available.",
+            "  - hoist1 is at depot1, available.",
+            "  - hoist2 is at depot2, available.",
+            "  - hoist3 is at distributor0, available.",
+            "  - pallet0 is at depot0, clear.",
+            "  - pallet1 is at depot1 (not clear).",
+            "  - pallet2 is at depot2, clear.",
+            "  - pallet3 is at distributor0 (not clear).",
+            "  - truck0 is at distributor0.",
+            "  - truck1 is at depot2.",
+            "  - truck2 is at distributor0.",
+            "Goal State:",
+            "  - crate0 is on pallet0.",
+            "  - crate1 is on pallet2.",
+            "  - crate2 is on pallet3."
+        ]
+    },
+    "workflow": {
+        "TruckPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck_plan",
+                "system_prompt": "You are an expert PDDL planner specializing in movement and navigation. Focus on modeling the 'Drive' action and necessary object locations. You always provide a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your role is TruckPlanner. Analyze the environment and goals:\nPublic Info: {environment->public_information}\nGoal: {agents->TruckPlanner->goal}\nYour knowledge: {agents->TruckPlanner->private_information}\nProvide a PDDL model focusing only on truck movement to satisfy the final location requirements."
+            }
+        },
+        "HoistPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_hoist_plan",
+                "system_prompt": "You are an expert PDDL planner specializing in object handling and stacking. Focus on modeling 'Lift', 'Drop', 'Load', and 'Unload' actions, and clearance/on constraints. You always provide a PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "Your role is HoistPlanner. Analyze the environment and goals:\nPublic Info: {environment->public_information}\nGoal: {agents->HoistPlanner->goal}\nYour knowledge: {agents->HoistPlanner->private_information}\nProvide a PDDL model focusing only on cargo handling and stacking constraints."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_truck_plan",
+                    "pddl_hoist_plan"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert in integrating fragmented PDDL plans from multiple specialized agents into a unified, complete PDDL solution compatible with the FastDownwards planner. Your output must contain all necessary predicates, types, objects, actions (including both movement and handling), initial state, and the final goal definition. Ensure actions specific to movement and handling are distinct but integrated seamlessly. You always provide a final PDDL domain and a PDDL problem file. Enclose the PDDL domain between <domain></domain> tags, and the PDDL problem between <problem></problem> tags.",
+                "prompt": "You are the Orchestrator, tasked with solving the complete logistics problem: {agents->orchestrator->goal}\nReceived Truck Planning PDDL: {pddl_truck_plan}\nReceived Hoist Planning PDDL: {pddl_hoist_plan}\nIntegrate these plans into a single, cohesive PDDL domain and problem file that achieves the global goal outlined in the public information."
+            }
+        },
+        "ConsistencyAuditor": {
+            "check": {
+                "input": [
+                    "pddl_final"
+                ],
+                "output": "verification_report",
+                "system_prompt": "You are a logical verification engine. You check generated PDDL plans for temporal and causal consistency, ensuring no unsupported bookkeeping predicates or artificial constraints are used to simplify planning. Provide a detailed report of findings.",
+                "prompt": "You are the Consistency Auditor. Review the final orchestrated PDDL plan provided below for consistency and validity, especially checking for unnecessary planning shortcuts or temporal inconsistencies.\nPDDL Plan to Review: {pddl_final}\nProvide your verification report, focusing on whether the plan is physically realizable according to the initial constraints."
+            }
+        },
+        "constraints": [
+            "TruckPlanner.pddl->orchestrator.pddl",
+            "HoistPlanner.pddl->orchestrator.pddl",
+            "orchestrator.pddl->ConsistencyAuditor.check"
+        ]
+    }
+}

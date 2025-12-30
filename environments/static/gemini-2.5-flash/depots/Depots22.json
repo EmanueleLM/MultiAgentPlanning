@@ -1,0 +1,79 @@
+{
+    "name": "Depots22",
+    "author": "Human",
+    "agents": {
+        "number": 3,
+        "names": [
+            "LogisticsPlanner",
+            "CausalAuditor",
+            "orchestrator"
+        ],
+        "LogisticsPlanner": {
+            "private_information": [],
+            "goal": "Formulate a PDDL domain and problem that captures the full logistics task described, including all object types, actions, initial state, and goal state."
+        },
+        "CausalAuditor": {
+            "private_information": [
+                "Your role is to ensure all actions defined respect temporal and causal constraints (e.g., a truck must be present to be loaded, a hoist must be lifting a crate before dropping it, clearance statuses must be correctly managed)."
+            ],
+            "goal": "Audit the PDDL provided by the Logistics Planner for temporal and causal consistency, and identify any inconsistencies or bookkeeping shortcuts."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Produce a single, integrated PDDL domain and problem file to solve the logistical challenge defined by the overall goal: crate0 is on crate1 and crate1 is on pallet0."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 4,
+            "visibility": 1
+        },
+        "public_information": [
+            "The environment consists of places (depots and distributors), surfaces (pallets and crates), trucks, and hoists.",
+            "Initial State: crate0 is at depot1, crate1 is at depot2, crate2 is at distributor0.",
+            "Initial State: hoist0 is at depot0, hoist1 is at depot1, hoist2 is at depot2, hoist3 is at distributor0.",
+            "Initial State: pallet0 is at depot0, pallet1 is at depot1, pallet2 is at depot2, pallet3 is at distributor0.",
+            "Initial State: truck0 is at distributor0, truck1 is at depot1, truck2 is at depot1.",
+            "Initial State: All hoists are available (available hoist0, available hoist1, available hoist2, available hoist3).",
+            "Initial State: Crates 0, 1, 2, and pallet0 are clear.",
+            "Initial State: crate0 is on pallet1, crate1 is on pallet2, crate2 is on pallet3.",
+            "Goal: crate0 is on crate1 AND crate1 is on pallet0."
+        ]
+    },
+    "workflow": {
+        "LogisticsPlanner": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_logistics",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You must define a domain and a problem file based on the complex logistics rules provided (Drive, Lift, Drop, Load, Unload). You always provide a PDDL domain and a PDDL problem file to solve the task. You always enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags.",
+                "prompt": "Your name is LogisticsPlanner. Based on the public information provided:\n{environment->public_information}\nYour goal is:\n{agents->LogisticsPlanner->goal}\nDefine the PDDL domain, including object types (place, surface, depot, distributor, pallet, crate, truck, hoist) and actions (drive, lift, drop, load, unload) with the specified preconditions and effects. Then define the PDDL problem matching the initial state and goal. Assume all places are connected.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "CausalAuditor": {
+            "audit": {
+                "input": [
+                    "pddl_logistics"
+                ],
+                "output": "audit_result",
+                "system_prompt": "You are an expert in reviewing PDDL domains and problems for logical, temporal, and causal consistency. You must ensure that action definitions strictly adhere to preconditions and effects described in the task specification, especially regarding the status of objects (clearance, location, availability). You should look for and remove any bookkeeping shortcuts.",
+                "prompt": "Your name is CausalAuditor. Your goal is:\n{agents->CausalAuditor->goal}\nHere is the PDDL formulated by the Logistics Planner:\n{pddl_logistics}\nReview the domain and problem definitions. Ensure the domain accurately models the physical constraints:\n1. Drive: Truck at origin, result in truck at destination, not at origin.\n2. Lift: Hoist available, crate clear, hoist and crate at place. Effects: Hoist lifting crate, hoist not available, original surface clear, crate not at place.\n3. Drop: Hoist lifting crate, surface clear, hoist/surface at place. Effects: Hoist available, not lifting crate, crate at place, surface not clear, crate clear, crate on surface.\n4. Load: Hoist lifting crate, hoist and truck at place. Effects: Crate in truck, crate not being lifted.\n5. Unload: Hoist available, crate in truck, hoist and truck at place. Effects: Crate not in truck, hoist not available, hoist lifting crate.\nOutput your findings as a report enclosed in <report></report> tags."
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_logistics",
+                    "audit_result"
+                ],
+                "output": "pddl_final",
+                "system_prompt": "You are an expert PDDL integrator and finalizer, ensuring the generated plan is ready for a solver like FastDownwards. You accept the PDDL provided by the planner and the audit report, applying any necessary corrections suggested by the auditor. Since this is a single, integrated logistics task, the final output must be a unified PDDL domain and problem.",
+                "prompt": "Your name is orchestrator. You must produce the final PDDL domain and problem files based on the input received.\nLogistics Planner PDDL:\n{pddl_logistics}\nCausal Auditor Report:\n{audit_result}\nYour ultimate goal is:\n{agents->orchestrator->goal}\nReview the PDDL provided, ensuring consistency, incorporating necessary corrections highlighted by the audit. Provide the final PDDL domain and PDDL problem ready for execution.\nEnclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "LogisticsPlanner.pddl->CausalAuditor.audit",
+            "LogisticsPlanner.pddl->orchestrator.pddl",
+            "CausalAuditor.audit->orchestrator.pddl"
+        ]
+    }
+}

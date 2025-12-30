@@ -1,0 +1,106 @@
+{
+    "name": "Depots27",
+    "author": "System",
+    "agents": {
+        "number": 4,
+        "names": [
+            "TruckManager",
+            "HoistOperator",
+            "Auditor",
+            "orchestrator"
+        ],
+        "TruckManager": {
+            "private_information": [
+                "I am responsible for coordinating all truck movements (DRIVE actions)."
+            ],
+            "goal": "Ensure trucks are positioned correctly to enable the transport of crates from their initial locations to their final destinations (crate0 to distributor0, crate1 to depot0)."
+        },
+        "HoistOperator": {
+            "private_information": [
+                "I am responsible for all actions involving hoists: lifting, dropping, loading, and unloading crates."
+            ],
+            "goal": "Plan the loading and unloading of crates required to achieve the final stacking configuration: crate0 on pallet3 and crate1 on pallet0."
+        },
+        "Auditor": {
+            "private_information": [
+                "I must check the preliminary PDDL plans provided by the planning agents for causal and temporal consistency."
+            ],
+            "goal": "Ensure that the actions planned by the TruckManager and HoistOperator are compatible and do not violate shared resource states (e.g., truck locations or object clarity/availability)."
+        },
+        "orchestrator": {
+            "private_information": [],
+            "goal": "Integrate the audited plans into a single, comprehensive PDDL domain and problem file to achieve the global task: Crate 0 on Pallet 3 and Crate 1 on Pallet 0."
+        }
+    },
+    "environment": {
+        "init": {
+            "grid_size": 5,
+            "visibility": 5
+        },
+        "public_information": [
+            "Goal: crate0 must be on pallet3, and crate1 must be on pallet0.",
+            "Places: depot0, depot1, depot2 (Depots), distributor0 (Distributor). All places are connected.",
+            "Surfaces: pallet0, pallet1, pallet2, pallet3 (Pallets). crate0, crate1, crate2 (Crates, which can be surfaces).",
+            "Objects/Locations:",
+            "  - truck0, truck1 are at depot0.",
+            "  - truck2 is at depot1.",
+            "  - hoist0, pallet0 are at depot0.",
+            "  - hoist1, pallet1 are at depot1.",
+            "  - hoist2, pallet2 are at depot2.",
+            "  - hoist3, pallet3 are at distributor0.",
+            "  - crate0, crate1 are at depot0.",
+            "  - crate2 is at depot1.",
+            "State information:",
+            "  - All hoists are available.",
+            "  - Stacking: Crate 1 is on Crate 0, Crate 0 is on Pallet 0.",
+            "  - Stacking: Crate 2 is on Pallet 1.",
+            "  - Clear objects (ready to be lifted or stacked upon): crate1, crate2, pallet2, pallet3."
+        ]
+    },
+    "workflow": {
+        "TruckManager": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_truck",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus solely on truck movement and location predicates.",
+                "prompt": "You are the TruckManager. Your goal is to plan the movement of trucks to enable the transport of goods as required by the global goal:\n{agents->TruckManager->goal}\n\nEnvironment details:\n{environment->public_information}\nYour private knowledge:\n{agents->TruckManager->private_information}\n\nThink step by step and provide a PDDL domain and a PDDL problem file specifically modeling the truck driving actions and locations. Assume hoists handle loading/unloading implicitly. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "HoistOperator": {
+            "pddl": {
+                "input": [],
+                "output": "pddl_hoist",
+                "system_prompt": "You are an expert with PDDL problems (Planning Domain Definition Language). You focus solely on hoist operations (lifting, dropping, loading, unloading) and stacking predicates.",
+                "prompt": "You are the HoistOperator. Your goal is to plan the hoist operations required to achieve the global goal:\n{agents->HoistOperator->goal}\n\nEnvironment details:\n{environment->public_information}\nYour private knowledge:\n{agents->HoistOperator->private_information}\n\nThink step by step and provide a PDDL domain and a PDDL problem file specifically modeling the hoist actions, stacking, and loading/unloading crates. Assume trucks are available where needed implicitly. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "Auditor": {
+            "audit": {
+                "input": [
+                    "pddl_truck",
+                    "pddl_hoist"
+                ],
+                "output": "audit_result",
+                "system_prompt": "You are an audit agent specialized in reviewing preliminary PDDL plans for temporal and causal consistency in multi-agent logistics tasks. Your output must be strictly contained within <audit_report> tags.",
+                "prompt": "Review the two provided PDDL outputs generated by the TruckManager and the HoistOperator, respectively. The goal is global logistics fulfillment. Identify any potential conflicts, shared resource race conditions, or inconsistencies in assumed initial/goal states derived from incomplete planning.\n\nTruckManager PDDL:\n{pddl_truck}\n\nHoistOperator PDDL:\n{pddl_hoist}\n\nFocus especially on predicates that link the two processes, such as the location of trucks or the state of being loaded/unloaded.\n\nReport your findings concisely, highlighting necessary synchronization points or resolving ambiguities in object naming, if found. If the plans seem consistent given their partial scope, state so. Use the following structure:\n\n<audit_report>\n[Summary of findings]\n</audit_report>"
+            }
+        },
+        "orchestrator": {
+            "pddl": {
+                "input": [
+                    "pddl_truck",
+                    "pddl_hoist",
+                    "audit_result"
+                ],
+                "output": "pddl_orchestrator",
+                "system_prompt": "You are an expert with multi-agent PDDL problems targeting the FastDownwards solver. You integrate partial PDDL domains and problems into a unified, consistent model.",
+                "prompt": "You have received preliminary PDDL plans from the TruckManager and HoistOperator, along with an audit report. Your task is to integrate these separate views into a single, executable PDDL domain and problem that fully solves the global goal: crate0 on pallet3 and crate1 on pallet0.\n\nReview the incoming information:\n\n1. TruckManager PDDL:\n{pddl_truck}\n\n2. HoistOperator PDDL:\n{pddl_hoist}\n\n3. Audit Report:\n{audit_result}\n\nCarefully merge the object definitions, predicates, and actions from the partial domains. Ensure the initial state correctly reflects the environment description and the goal state is fully specified.\n\nThink step by step and provide a comprehensive PDDL domain and a PDDL problem file to solve the task. Enclose the pddl domain between <domain></domain> tags, and the pddl problem between <problem></problem> tags."
+            }
+        },
+        "constraints": [
+            "TruckManager.pddl->Auditor.audit",
+            "HoistOperator.pddl->Auditor.audit",
+            "Auditor.audit->orchestrator.pddl"
+        ]
+    }
+}

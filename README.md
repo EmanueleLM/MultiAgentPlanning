@@ -1,5 +1,15 @@
 # End-to-end Agentic Planning with LLMs and PDDL
 
+## Disclaimer
+I would like this tool to improve over time.
+I am happy to consider self-improvement, so an agentic tool like Codex that improves the general structure and proposes changes that are integrated as long as they improve the performance on salient tasks.
+If anyone is interested in making this tool work with a wide range of planning problems, please clone it and pull request any changes.
+In my mind, this can become a sort of open-source Planning Copilot.
+
+If you want to contact me, send an email at emanuele.lamalfa@cs.ox.ac.uk
+
+
+## Intro
 This repository combines large language models with classical PDDL solvers to deliver an end-to-end agentic planning stack. Use it to experiment with automated planning workflows, integrate multiple planners/validators, and visualise executions through LangGraph + LangChain tooling.
 
 If you want to better understand how the framework works, please read our article "An End-to-end Planning Framework with Agentic LLMs and PDDL", available <a href="https://arxiv.org/pdf/2512.09629">here</a>.

@@ -2,7 +2,7 @@
 
 This repository combines large language models with classical PDDL solvers to deliver an end-to-end agentic planning stack. Use it to experiment with automated planning workflows, integrate multiple planners/validators, and visualise executions through LangGraph + LangChain tooling.
 
-If you want to better understand how the framework works, please read our article "An End-to-end Planning Framework with Agentic LLMs and PDDL", available <a href="https://arxiv.org/pdf/2512.09629)">here</a>.
+If you want to better understand how the framework works, please read our article "An End-to-end Planning Framework with Agentic LLMs and PDDL", available <a href="https://arxiv.org/pdf/2512.09629">here</a>.
 
 If you need to cite it, use this bibtex:
 ```

@@ -6,6 +6,12 @@ I am happy to consider self-improvement, so an agentic tool like Codex that impr
 If anyone is interested in making this tool work with a wide range of planning problems, please clone it and pull request any changes.
 In my mind, this can become a sort of open-source Planning Copilot.
 
+Check the discussion (feel free to open a New Discussion!)
+[Discussions](https://github.com/EmanueleLM/MultiAgentPlanning/discussions)
+
+Check the Vision Issue:
+[Vision](https://github.com/EmanueleLM/MultiAgentPlanning/issues/18)
+
 If you want to contact me, send an email at emanuele.lamalfa@cs.ox.ac.uk
 
 

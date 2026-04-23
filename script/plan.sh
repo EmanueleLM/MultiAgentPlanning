@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # LLMs planning
-NUM_EXPERIMENTS_PER_FILE=18
-MODEL=gpt-5-mini
-BUDGET=10
+NUM_EXPERIMENTS_PER_FILE=100
+MODEL=gpt-5.4
+BUDGET=5
 
 # === PDDL based approaches ===
 # Standard planning
 datasets=(
-# "calendar_scheduling"
-# "meeting_planning"
-# "trip_planning"
-# "depots"
-# "logistics"
-# "mystery_blocksworld"
-# "obfuscated_deceptive_logistics"
+"calendar_scheduling"
+"meeting_planning"
+"trip_planning"
+"depots"
+"logistics"
+"mystery_blocksworld"
+"obfuscated_deceptive_logistics"
 # "blocksworld_easy"
 # "blocksworld_medium"
 # "blocksworld_hard"
@@ -22,13 +22,13 @@ datasets=(
 # "hanoi_medium"
 # "hanoi_hard"
 # "hanoi_extreme"
-"childsnack"
-"floortile"
+# "childsnack"
+# "floortile"
 )
-# for data in "${datasets[@]}"; do
-#     echo "Running plan_benchmark.py with $data"
-#     python plan_benchmark.py --dataset "$data" --model_json $MODEL --model_plan $MODEL --num_experiments $NUM_EXPERIMENTS_PER_FILE --budget $BUDGET --optimize_plan false
-# done
+for data in "${datasets[@]}"; do
+    echo "Running plan_benchmark.py with $data"
+    python plan_benchmark.py --dataset "$data" --model_json $MODEL --model_plan $MODEL --num_experiments $NUM_EXPERIMENTS_PER_FILE --budget $BUDGET --optimize_plan false
+done
 
 # === LLM based approaches ===
 # Standard planning

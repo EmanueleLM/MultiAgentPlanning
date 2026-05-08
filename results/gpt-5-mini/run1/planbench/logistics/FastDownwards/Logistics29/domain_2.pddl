@@ -1,0 +1,129 @@
+(define (domain logistics_combined)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    city
+    location
+    vehicle
+    truck airplane - vehicle
+    package
+  )
+
+  (:predicates
+    ;; location and city membership
+    (in_city ?l - location ?c - city)
+    (airport ?l - location)
+
+    ;; truck/airplane locations (separate predicates to keep typing explicit)
+    (at_truck ?t - truck ?l - location)
+    (at_plane ?a - airplane ?l - location)
+
+    ;; package on ground at a location
+    (at_pkg ?p - package ?l - location)
+
+    ;; package inside a vehicle (truck or airplane)
+    (in ?p - package ?v - vehicle)
+
+    ;; bookkeeping: package is free (on ground, not in any vehicle)
+    (free ?p - package)
+
+    ;; static binding: which city a truck belongs to
+    (city_of ?t - truck ?c - city)
+  )
+
+  ;; -------------------------
+  ;; Truck-manager actions (namespaced: truck_manager)
+  ;; -------------------------
+  (:action truck_manager_load_truck
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
+    :precondition (and
+      (city_of ?t ?c)
+      (in_city ?l ?c)
+      (at_pkg ?p ?l)
+      (at_truck ?t ?l)
+      (free ?p)
+    )
+    :effect (and
+      (in ?p ?t)
+      (not (at_pkg ?p ?l))
+      (not (free ?p))
+    )
+  )
+
+  (:action truck_manager_unload_truck
+    :parameters (?p - package ?t - truck ?l - location ?c - city)
+    :precondition (and
+      (city_of ?t ?c)
+      (in_city ?l ?c)
+      (in ?p ?t)
+      (at_truck ?t ?l)
+    )
+    :effect (and
+      (not (in ?p ?t))
+      (at_pkg ?p ?l)
+      (free ?p)
+    )
+  )
+
+  (:action truck_manager_drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and
+      (city_of ?t ?c)
+      (in_city ?from ?c)
+      (in_city ?to ?c)
+      (at_truck ?t ?from)
+    )
+    :effect (and
+      (at_truck ?t ?to)
+      (not (at_truck ?t ?from))
+    )
+  )
+
+  ;; -------------------------
+  ;; Air-manager actions (namespaced: air_manager)
+  ;; -------------------------
+  (:action air_manager_load_airplane
+    :parameters (?p - package ?a - airplane ?ap - location ?c - city)
+    :precondition (and
+      (airport ?ap)
+      (in_city ?ap ?c)
+      (at_pkg ?p ?ap)
+      (at_plane ?a ?ap)
+      (free ?p)
+    )
+    :effect (and
+      (in ?p ?a)
+      (not (at_pkg ?p ?ap))
+      (not (free ?p))
+    )
+  )
+
+  (:action air_manager_unload_airplane
+    :parameters (?p - package ?a - airplane ?ap - location ?c - city)
+    :precondition (and
+      (airport ?ap)
+      (in_city ?ap ?c)
+      (in ?p ?a)
+      (at_plane ?a ?ap)
+    )
+    :effect (and
+      (not (in ?p ?a))
+      (at_pkg ?p ?ap)
+      (free ?p)
+    )
+  )
+
+  (:action air_manager_fly
+    :parameters (?a - airplane ?from - location ?to - location ?c_from - city ?c_to - city)
+    :precondition (and
+      (airport ?from)
+      (airport ?to)
+      (at_plane ?a ?from)
+      (in_city ?from ?c_from)
+      (in_city ?to ?c_to)
+    )
+    :effect (and
+      (at_plane ?a ?to)
+      (not (at_plane ?a ?from))
+    )
+  )
+)

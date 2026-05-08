@@ -1,0 +1,27 @@
+(define (domain calendar_scheduling_domain)
+  (:requirements :strips :typing)
+  (:types person time)
+  (:constants janet rachel cynthia - person)
+  (:predicates
+    (next ?t1 ?t2 - time)
+    (available ?p - person ?t - time)
+    (preferred_start ?t - time)
+    (scheduled)
+  )
+
+  (:action schedule_1hr_meeting
+    :parameters (?s ?m ?e - time)
+    :precondition (and
+      (next ?s ?m)
+      (next ?m ?e)
+      (preferred_start ?s)
+      (available janet ?s)
+      (available janet ?m)
+      (available rachel ?s)
+      (available rachel ?m)
+      (available cynthia ?s)
+      (available cynthia ?m)
+    )
+    :effect (scheduled)
+  )
+)

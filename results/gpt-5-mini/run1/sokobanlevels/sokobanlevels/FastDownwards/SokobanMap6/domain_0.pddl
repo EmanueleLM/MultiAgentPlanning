@@ -1,0 +1,41 @@
+(define (domain sokoban_domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types player box cell)
+  (:predicates
+    (at_player ?p - player ?c - cell)
+    (box_at ?b - box ?c - cell)
+    (goal ?c - cell)
+    (wall ?c - cell)
+    (adj ?from - cell ?to - cell)
+  )
+  (:action move
+    :parameters (?p - player ?from - cell ?to - cell)
+    :precondition (and
+      (at_player ?p ?from)
+      (adj ?from ?to)
+      (not (wall ?to))
+      (not (box_at b1 ?to))
+    )
+    :effect (and
+      (not (at_player ?p ?from))
+      (at_player ?p ?to)
+    )
+  )
+  (:action push
+    :parameters (?p - player ?b - box ?pc - cell ?bc - cell ?tc - cell)
+    :precondition (and
+      (at_player ?p ?pc)
+      (box_at ?b ?bc)
+      (adj ?pc ?bc)
+      (adj ?bc ?tc)
+      (not (wall ?tc))
+      (not (box_at b1 ?tc))
+    )
+    :effect (and
+      (not (box_at ?b ?bc))
+      (box_at ?b ?tc)
+      (not (at_player ?p ?pc))
+      (at_player ?p ?bc)
+    )
+  )
+)

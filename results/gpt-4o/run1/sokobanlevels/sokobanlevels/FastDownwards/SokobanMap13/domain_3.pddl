@@ -1,0 +1,39 @@
+(define (domain sokoban)
+  (:requirements :strips :typing)
+  (:types agent box position)
+  (:predicates
+    (at ?a - agent ?p - position)
+    (at-box ?b - box ?p - position)
+    (clear ?p - position)
+    (adjacent ?p1 - position ?p2 - position)
+    (goal ?p - position)
+  )
+  (:action move
+    :parameters (?a - agent ?from - position ?to - position)
+    :precondition (and 
+      (at ?a ?from)
+      (clear ?to)
+      (adjacent ?from ?to))
+    :effect (and
+      (not (at ?a ?from))
+      (at ?a ?to)
+      (clear ?from)
+      (not (clear ?to)))
+  )
+  (:action push
+    :parameters (?a - agent ?b - box ?from - position ?box_pos - position ?to - position)
+    :precondition (and
+      (at ?a ?from)
+      (at-box ?b ?box_pos)
+      (adjacent ?from ?box_pos)
+      (adjacent ?box_pos ?to)
+      (clear ?to))
+    :effect (and
+      (not (at ?a ?from))
+      (at ?a ?box_pos)
+      (not (at-box ?b ?box_pos))
+      (at-box ?b ?to)
+      (clear ?from)
+      (not (clear ?to)))
+  )
+)

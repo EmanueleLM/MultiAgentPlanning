@@ -1,0 +1,75 @@
+(define (problem european_trip_16days_instance_problem)
+  (:domain european_trip_16days_instance)
+
+  (:objects
+    valencia lyon split - city
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 d14 d15 d16 - day
+  )
+
+  (:init
+    (direct lyon split)
+    (direct split lyon)
+    (direct valencia lyon)
+    (direct lyon valencia)
+
+    (next_day d1 d2)
+    (next_day d2 d3)
+    (next_day d3 d4)
+    (next_day d4 d5)
+    (next_day d5 d6)
+    (next_day d6 d7)
+    (next_day d7 d8)
+    (next_day d8 d9)
+    (next_day d9 d10)
+    (next_day d10 d11)
+    (next_day d11 d12)
+    (next_day d12 d13)
+    (next_day d13 d14)
+    (next_day d14 d15)
+    (next_day d15 d16)
+  )
+
+  (:goal
+    (and
+      (assigned d1)
+      (assigned d2)
+      (assigned d3)
+      (assigned d4)
+      (assigned d5)
+      (assigned d6)
+      (assigned d7)
+      (assigned d8)
+      (assigned d9)
+      (assigned d10)
+      (assigned d11)
+      (assigned d12)
+      (assigned d13)
+      (assigned d14)
+      (assigned d15)
+      (assigned d16)
+
+      (cursor d16)
+
+      (at d1 valencia)
+      (at d2 valencia)
+      (at d3 valencia)
+      (at d4 valencia)
+      (at d5 valencia)
+
+      (at d6 lyon)
+      (at d7 lyon)
+      (at d8 lyon)
+      (at d9 lyon)
+      (at d10 lyon)
+      (at d11 lyon)
+
+      (at d10 split)
+      (at d11 split)
+      (at d12 split)
+      (at d13 split)
+      (at d14 split)
+      (at d15 split)
+      (at d16 split)
+    )
+  )
+)

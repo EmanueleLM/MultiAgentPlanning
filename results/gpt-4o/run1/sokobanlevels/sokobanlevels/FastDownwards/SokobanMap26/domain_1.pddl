@@ -1,0 +1,40 @@
+(define (domain sokoban)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location movable)
+  (:predicates 
+    (at ?entity - movable ?loc - location)
+    (goal_at ?loc - location)
+    (is_wall ?loc - location)
+    (adjacent ?loc1 - location ?loc2 - location)
+  )
+  (:action move
+    :parameters (?from - location ?to - location ?p - movable)
+    :precondition (and
+      (at ?p ?from)
+      (adjacent ?from ?to)
+      (not (is_wall ?to))
+      (forall (?x - movable) (not (at ?x ?to)))
+    )
+    :effect (and
+      (not (at ?p ?from))
+      (at ?p ?to)
+    )
+  )
+  (:action push
+    :parameters (?from - location ?box_from - location ?to - location)
+    :precondition (and
+      (at player ?from)
+      (at box ?box_from)
+      (adjacent ?from ?box_from)
+      (adjacent ?box_from ?to)
+      (not (is_wall ?to))
+      (forall (?x - movable) (not (at ?x ?to)))
+    )
+    :effect (and
+      (not (at box ?box_from))
+      (at box ?to)
+      (not (at player ?from))
+      (at player ?box_from)
+    )
+  )
+)

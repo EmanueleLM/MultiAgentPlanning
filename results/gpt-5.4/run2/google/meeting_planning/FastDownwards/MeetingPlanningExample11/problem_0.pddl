@@ -1,0 +1,22 @@
+(define (problem san_francisco_day_meeting_instance)
+  (:domain san_francisco_day_meeting)
+
+  (:objects
+    nob_hill sunset_district - location
+    traveler carol - person
+    t0900 t0925 t0927 t1400 t1515 t2030 - time
+  )
+
+  (:init
+    (at traveler nob_hill)
+    (at carol sunset_district)
+    (current_time t0900)
+    (carol_available t1400)
+  )
+
+  (:goal
+    (and
+      (met carol)
+    )
+  )
+)

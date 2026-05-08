@@ -1,0 +1,78 @@
+(define (problem trip_plan_jack)
+  (:domain jack_of_all_trades_instance)
+  (:objects
+    istanbul tallinn zurich - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 - day
+  )
+  (:init
+    ; next_day chain
+    (next_day day1 day2)
+    (next_day day2 day3)
+    (next_day day3 day4)
+    (next_day day4 day5)
+    (next_day day5 day6)
+    (next_day day6 day7)
+    (next_day day7 day8)
+    (next_day day8 day9)
+    (next_day day9 day10)
+    (next_day day10 day11)
+    (next_day day11 day12)
+    (next_day day12 day13)
+    (next_day day13 day14)
+
+    ; direct flights (symmetric pairs assumed)
+    (direct_flight istanbul tallinn)
+    (direct_flight tallinn istanbul)
+    (direct_flight istanbul zurich)
+    (direct_flight zurich istanbul)
+    (direct_flight tallinn zurich)
+    (direct_flight zurich tallinn)
+
+    ; initial location and occupied flag for day1 (show requires zurich day1..day7; day1 is set)
+    (at zurich day1)
+    (occupied day1)
+  )
+
+  (:goal
+    (and
+      ; show attendance window: zurich on day1..day7
+      (at zurich day1)
+      (at zurich day2)
+      (at zurich day3)
+      (at zurich day4)
+      (at zurich day5)
+      (at zurich day6)
+      (at zurich day7)
+
+      ; per-day coverage: every day must be occupied (exactly one city per day enforced by actions' negative preconditions)
+      (occupied day1)
+      (occupied day2)
+      (occupied day3)
+      (occupied day4)
+      (occupied day5)
+      (occupied day6)
+      (occupied day7)
+      (occupied day8)
+      (occupied day9)
+      (occupied day10)
+      (occupied day11)
+      (occupied day12)
+      (occupied day13)
+      (occupied day14)
+
+      ; required stay durations encoded as explicit city-day assignments (hard constraints)
+      ; istanbul exactly 5 days (here constrained to these specific days)
+      (at istanbul day8)
+      (at istanbul day9)
+      (at istanbul day10)
+      (at istanbul day11)
+      (at istanbul day12)
+
+      ; tallinn exactly 4 days (here constrained to these specific days)
+      (at tallinn day11)
+      (at tallinn day12)
+      (at tallinn day13)
+      (at tallinn day14)
+    )
+  )
+)

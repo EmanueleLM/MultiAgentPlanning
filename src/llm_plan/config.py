@@ -115,6 +115,10 @@ DATASET = {
     "floortile": {
         "data": DATA_PATH / "./borealis/floortile.json",
         "results": RESULTS_FOLDER / "borealis" / "floortile",
+    },
+    "sokobanlevels": {
+        "data": DATA_PATH / "./sokobanlevels/linear.json",
+        "results": RESULTS_FOLDER / "sokobanlevels",
     }
 }
 
@@ -188,6 +192,12 @@ PROMPTS_LLM_JUDGE: Dict[str, List[str]] = {
         "You must also ignore the natural_plan: we are not using that.",
         "Your task is to check whether the candidate plan uses valid actions and produces a solution that is correct, i.e., it leads, with valid actions, to a state of the environment that is the one described in the last part of the prompt_0shot. Ignore if some actions are redundant or repeated, as long as they are valid.",
         ],
+    "sokobanlevels": [
+        "For this problem, check first whether the sas plan is present: if not present, then consider the answer wrong.",
+        "Otherwise, if the sas plan is present, that is the candidate plan.",
+        "Your task is to check whether the candidate plan uses valid actions and produces a solution that is correct, i.e., it leads, with valid actions, to a state of the environment that is the one described in the last part of the prompt_0shot. Ignore if some actions are redundant or repeated, as long as they are valid.",
+        "The golden plan contains the number of actions executed, which are usually repeated. Check that the actions are the same and count precisely!"
+        ],
 }
 
 # Solvers configuration
@@ -211,8 +221,13 @@ MODELS = {
     "gpt-5-mini": {"model": ChatGPT("gpt-5-mini"), "persistent": False, "sleep": 0},
     "gpt-5-nano": {"model": ChatGPT("gpt-5-nano"), "persistent": False, "sleep": 0},
     "gpt-5.4": {"model": ChatGPT("gpt-5.4"), "persistent": False, "sleep": 0},
+    "gemini-3-flash": {
+        "model": Gemini("gemini-3-flash-preview"),
+        "persistent": False,
+        "sleep": 20,
+    },
     "gemini-2.5-flash": {
-        "model": Gemini("gemini-2.5-flash-preview-09-2025"),
+        "model": Gemini("gemini-2.5-flash"),
         "persistent": False,
         "sleep": 20,
     },

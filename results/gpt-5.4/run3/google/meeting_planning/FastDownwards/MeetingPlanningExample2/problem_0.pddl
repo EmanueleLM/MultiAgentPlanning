@@ -1,0 +1,107 @@
+(define (problem san_francisco_jessica_meeting_instance)
+  (:domain san_francisco_jessica_meeting)
+
+  (:objects
+    haight_ashbury sunset_district - location
+    traveler jessica - person
+    t0900 t0915 t0930 t0945 t1000 t1015 t1030 t1045
+    t1100 t1115 t1130 t1145 t1200 t1215 t1230 t1245
+    t1300 t1315 t1330 t1345 t1400 t1415 t1430 t1445
+    t1500 t1515 t1530 t1545 t1600 t1615 t1630 t1645
+    t1700 t1715 t1730 t1745 t1800 t1815 t1830 t1845
+    t1900 t1915 t1930 t1945 t2000 t2015 - time
+    m0 m1 m2 m3 m4 m5 m6 - meeting_stage
+  )
+
+  (:init
+    (current_time t0900)
+    (at traveler haight_ashbury)
+    (at jessica sunset_district)
+
+    (connected haight_ashbury sunset_district)
+    (connected sunset_district haight_ashbury)
+
+    (next_time t0900 t0915)
+    (next_time t0915 t0930)
+    (next_time t0930 t0945)
+    (next_time t0945 t1000)
+    (next_time t1000 t1015)
+    (next_time t1015 t1030)
+    (next_time t1030 t1045)
+    (next_time t1045 t1100)
+    (next_time t1100 t1115)
+    (next_time t1115 t1130)
+    (next_time t1130 t1145)
+    (next_time t1145 t1200)
+    (next_time t1200 t1215)
+    (next_time t1215 t1230)
+    (next_time t1230 t1245)
+    (next_time t1245 t1300)
+    (next_time t1300 t1315)
+    (next_time t1315 t1330)
+    (next_time t1330 t1345)
+    (next_time t1345 t1400)
+    (next_time t1400 t1415)
+    (next_time t1415 t1430)
+    (next_time t1430 t1445)
+    (next_time t1445 t1500)
+    (next_time t1500 t1515)
+    (next_time t1515 t1530)
+    (next_time t1530 t1545)
+    (next_time t1545 t1600)
+    (next_time t1600 t1615)
+    (next_time t1615 t1630)
+    (next_time t1630 t1645)
+    (next_time t1645 t1700)
+    (next_time t1700 t1715)
+    (next_time t1715 t1730)
+    (next_time t1730 t1745)
+    (next_time t1745 t1800)
+    (next_time t1800 t1815)
+    (next_time t1815 t1830)
+    (next_time t1830 t1845)
+    (next_time t1845 t1900)
+    (next_time t1900 t1915)
+    (next_time t1915 t1930)
+    (next_time t1930 t1945)
+    (next_time t1945 t2000)
+    (next_time t2000 t2015)
+
+    (available jessica t1515)
+    (available jessica t1530)
+    (available jessica t1545)
+    (available jessica t1600)
+    (available jessica t1615)
+    (available jessica t1630)
+    (available jessica t1645)
+    (available jessica t1700)
+    (available jessica t1715)
+    (available jessica t1730)
+    (available jessica t1745)
+    (available jessica t1800)
+    (available jessica t1815)
+    (available jessica t1830)
+    (available jessica t1845)
+    (available jessica t1900)
+    (available jessica t1915)
+    (available jessica t1930)
+    (available jessica t1945)
+    (available jessica t2000)
+
+    (meeting_progress m0)
+    (meeting_next m0 m1)
+    (meeting_next m1 m2)
+    (meeting_next m2 m3)
+    (meeting_next m3 m4)
+    (meeting_next m4 m5)
+    (meeting_next m5 m6)
+  )
+
+  (:goal
+    (and
+      (met_minimum jessica)
+      (meeting_progress m6)
+      (at traveler sunset_district)
+    )
+  )
+)

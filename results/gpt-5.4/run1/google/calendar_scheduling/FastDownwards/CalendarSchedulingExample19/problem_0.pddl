@@ -1,0 +1,122 @@
+(define (problem meeting_schedule_monday_instance_problem)
+  (:domain meeting_schedule_monday_instance)
+
+  (:objects
+    stephen edward angela - participant
+
+    t0900_0930
+    t0930_1000
+    t1000_1030
+    t1030_1100
+    t1100_1130
+    t1130_1200
+    t1200_1230
+    t1230_1300
+    t1300_1330
+    t1330_1400
+    t1400_1430
+    t1430_1500
+    t1500_1530
+    t1530_1600
+    t1600_1630
+    t1630_1700 - slot
+
+    w0900
+    w0930
+    w1000
+    w1030
+    w1100
+    w1130
+    w1200
+    w1230
+    w1300
+    w1330
+    w1400
+    w1430
+    w1500
+    w1530
+    w1600 - window
+  )
+
+  (:init
+    (required stephen)
+    (required edward)
+    (required angela)
+
+    (window_first w0900 t0900_0930)
+    (window_second w0900 t0930_1000)
+
+    (window_first w0930 t0930_1000)
+    (window_second w0930 t1000_1030)
+
+    (window_first w1000 t1000_1030)
+    (window_second w1000 t1030_1100)
+
+    (window_first w1030 t1030_1100)
+    (window_second w1030 t1100_1130)
+
+    (window_first w1100 t1100_1130)
+    (window_second w1100 t1130_1200)
+
+    (window_first w1130 t1130_1200)
+    (window_second w1130 t1200_1230)
+
+    (window_first w1200 t1200_1230)
+    (window_second w1200 t1230_1300)
+
+    (window_first w1230 t1230_1300)
+    (window_second w1230 t1300_1330)
+
+    (window_first w1300 t1300_1330)
+    (window_second w1300 t1330_1400)
+
+    (window_first w1330 t1330_1400)
+    (window_second w1330 t1400_1430)
+
+    (window_first w1400 t1400_1430)
+    (window_second w1400 t1430_1500)
+
+    (window_first w1430 t1430_1500)
+    (window_second w1430 t1500_1530)
+
+    (window_first w1500 t1500_1530)
+    (window_second w1500 t1530_1600)
+
+    (window_first w1530 t1530_1600)
+    (window_second w1530 t1600_1630)
+
+    (window_first w1600 t1600_1630)
+    (window_second w1600 t1630_1700)
+
+    (busy stephen t1000_1030)
+    (busy stephen t1300_1330)
+    (busy stephen t1430_1500)
+    (busy stephen t1600_1630)
+
+    (busy edward t0900_0930)
+    (busy edward t1000_1030)
+    (busy edward t1330_1400)
+    (busy edward t1400_1430)
+    (busy edward t1500_1530)
+    (busy edward t1530_1600)
+
+    (busy angela t0900_0930)
+    (busy angela t0930_1000)
+    (busy angela t1000_1030)
+    (busy angela t1030_1100)
+    (busy angela t1100_1130)
+    (busy angela t1230_1300)
+    (busy angela t1330_1400)
+    (busy angela t1400_1430)
+    (busy angela t1430_1500)
+    (busy angela t1500_1530)
+    (busy angela t1600_1630)
+    (busy angela t1630_1700)
+  )
+
+  (:goal
+    (and
+      (meeting_scheduled)
+    )
+  )
+)

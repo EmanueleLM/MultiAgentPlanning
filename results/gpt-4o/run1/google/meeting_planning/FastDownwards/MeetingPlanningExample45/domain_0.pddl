@@ -1,0 +1,20 @@
+(define (domain travel_and_meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location person time)
+  (:predicates
+    (at ?p - person ?l - location)
+    (can_meet ?p1 - person ?p2 - person ?l - location ?t - time)
+    (can_travel ?from - location ?to - location ?start - time ?end - time)
+    (meeting_scheduled ?p1 - person ?p2 - person)
+  )
+  (:action travel
+    :parameters (?from - location ?to - location ?start - time ?end - time)
+    :precondition (and (at agent ?from) (can_travel ?from ?to ?start ?end))
+    :effect (and (not (at agent ?from)) (at agent ?to))
+  )
+  (:action schedule_meeting
+    :parameters (?with - person ?location - location ?start - time)
+    :precondition (and (at agent ?location) (can_meet agent ?with ?location ?start) (not (meeting_scheduled agent ?with)))
+    :effect (meeting_scheduled agent ?with)
+  )
+)

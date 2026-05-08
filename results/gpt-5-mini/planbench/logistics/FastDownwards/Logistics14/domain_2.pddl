@@ -1,0 +1,54 @@
+(define (domain logistics14)
+  (:requirements :strips :typing)
+  (:types package truck airplane location city)
+
+  (:predicates
+    (at_package ?p - package ?l - location)
+    (at_truck ?t - truck ?l - location)
+    (at_airplane ?a - airplane ?l - location)
+    (in_truck ?p - package ?t - truck)
+    (in_airplane ?p - package ?a - airplane)
+    (in_city ?l - location ?c - city)
+    (airport ?l - location)
+  )
+
+  ;; Truck actions
+  (:action truck-load
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (at_package ?p ?l) (at_truck ?t ?l))
+    :effect (and (not (at_package ?p ?l)) (in_truck ?p ?t))
+  )
+
+  (:action truck-unload
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (in_truck ?p ?t) (at_truck ?t ?l))
+    :effect (and (not (in_truck ?p ?t)) (at_package ?p ?l))
+  )
+
+  ;; Drive only allowed between locations in the same city
+  (:action truck-drive
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and (at_truck ?t ?from) (in_city ?from ?c) (in_city ?to ?c) (not (= ?from ?to)))
+    :effect (and (not (at_truck ?t ?from)) (at_truck ?t ?to))
+  )
+
+  ;; Airplane actions (operations only at airport locations)
+  (:action airplane-load
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (at_package ?p ?l) (at_airplane ?a ?l) (airport ?l))
+    :effect (and (not (at_package ?p ?l)) (in_airplane ?p ?a))
+  )
+
+  (:action airplane-unload
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (in_airplane ?p ?a) (at_airplane ?a ?l) (airport ?l))
+    :effect (and (not (in_airplane ?p ?a)) (at_package ?p ?l))
+  )
+
+  ;; Airplanes can fly between any two airport locations
+  (:action airplane-fly
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at_airplane ?a ?from) (airport ?from) (airport ?to) (not (= ?from ?to)))
+    :effect (and (not (at_airplane ?a ?from)) (at_airplane ?a ?to))
+  )
+)

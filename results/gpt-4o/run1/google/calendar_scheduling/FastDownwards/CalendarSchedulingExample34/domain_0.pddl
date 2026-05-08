@@ -1,0 +1,22 @@
+(define (domain meeting_scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant time_slot)
+  (:predicates
+    (free ?p - participant ?t - time_slot)
+    (meeting_scheduled ?t - time_slot)
+    (valid_time_slot ?t - time_slot)
+    (next ?t1 - time_slot ?t2 - time_slot)
+  )
+
+  (:action schedule_meeting
+    :parameters (?t - time_slot ?next_t - time_slot)
+    :precondition (and (free willie ?t)
+                       (free richard ?t)
+                       (free richard ?next_t)
+                       (free noah ?t)
+                       (free noah ?next_t)
+                       (not (meeting_scheduled ?t))
+                       (valid_time_slot ?t)
+                       (next ?t ?next_t))
+    :effect (meeting_scheduled ?t))
+)

@@ -1,0 +1,40 @@
+(define (domain meeting-scheduling)
+  (:requirements :typing :negative-preconditions :action-costs)
+  (:types person slot)
+  (:functions (total-cost))
+  (:predicates
+    (free ?p - person ?s - slot)
+    (preferred_start ?s - slot)
+    (meeting_scheduled)
+    (scheduled_at ?s - slot)
+  )
+  (:action schedule-preferred
+    :parameters (?s - slot)
+    :precondition (and
+      (not (meeting_scheduled))
+      (free raymond ?s)
+      (free billy ?s)
+      (free donald ?s)
+      (preferred_start ?s)
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled_at ?s)
+      (increase (total-cost) 0)
+    )
+  )
+  (:action schedule-any
+    :parameters (?s - slot)
+    :precondition (and
+      (not (meeting_scheduled))
+      (free raymond ?s)
+      (free billy ?s)
+      (free donald ?s)
+    )
+    :effect (and
+      (meeting_scheduled)
+      (scheduled_at ?s)
+      (increase (total-cost) 1)
+    )
+  )
+)

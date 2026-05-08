@@ -1,0 +1,81 @@
+(define (domain craving-domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types obj)
+
+  (:predicates
+    (province ?x - obj)        ; object ?x currently holds a province token
+    (planet ?x - obj)          ; object ?x currently is a planet
+    (pain ?x - obj)            ; object ?x currently in pain
+    (craves ?x - obj ?y - obj) ; object ?x craves object ?y
+    (harmony)                  ; global harmony flag
+  )
+
+  ;; Attack: requires province, planet and global harmony on the same object.
+  ;; Effects: creates pain for that object and removes its province, planet, and harmony.
+  (:action attack
+    :parameters (?o - obj)
+    :precondition (and
+                    (province ?o)
+                    (planet ?o)
+                    (harmony)
+                   )
+    :effect (and
+              (pain ?o)
+              (not (province ?o))
+              (not (planet ?o))
+              (not (harmony))
+             )
+  )
+
+  ;; Succumb: requires that the object is in pain.
+  ;; Effects: restores province, planet and harmony for that object and removes its pain.
+  (:action succumb
+    :parameters (?o - obj)
+    :precondition (and
+                    (pain ?o)
+                   )
+    :effect (and
+              (province ?o)
+              (planet ?o)
+              (harmony)
+              (not (pain ?o))
+             )
+  )
+
+  ;; Overcome: subject ?o must be in pain and ?other must hold a province.
+  ;; Effects: restores global harmony, gives province to subject, creates craves(subject, other),
+  ;; and removes the other's province and the subject's pain.
+  (:action overcome
+    :parameters (?o - obj ?other - obj)
+    :precondition (and
+                    (pain ?o)
+                    (province ?other)
+                   )
+    :effect (and
+              (harmony)
+              (province ?o)
+              (craves ?o ?other)
+              (not (province ?other))
+              (not (pain ?o))
+             )
+  )
+
+  ;; Feast: subject ?o feasts on ?other. Requires that ?o craves ?other, ?o has a province, and harmony.
+  ;; Effects: produces pain on the feaster, transfers the province to the target, consumes the craves link,
+  ;; and consumes harmony.
+  (:action feast
+    :parameters (?o - obj ?other - obj)
+    :precondition (and
+                    (craves ?o ?other)
+                    (province ?o)
+                    (harmony)
+                   )
+    :effect (and
+              (pain ?o)
+              (province ?other)
+              (not (craves ?o ?other))
+              (not (province ?o))
+              (not (harmony))
+             )
+  )
+)

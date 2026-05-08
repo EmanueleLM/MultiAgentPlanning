@@ -1,0 +1,23 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:constants madison diana shirley - person)
+  (:predicates
+    (available ?p - person ?s - slot)
+    (next ?s1 ?s2 - slot)
+    (scheduled)
+  )
+  (:action schedule_1h_meeting
+    :parameters (?s1 ?s2 - slot)
+    :precondition (and
+      (next ?s1 ?s2)
+      (available madison ?s1)
+      (available diana ?s1)
+      (available shirley ?s1)
+      (available madison ?s2)
+      (available diana ?s2)
+      (available shirley ?s2)
+    )
+    :effect (scheduled)
+  )
+)

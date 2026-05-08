@@ -1,0 +1,22 @@
+(define (domain sokoban_map48)
+  (:requirements :strips :typing)
+  (:types pos)
+  (:predicates
+    (at_player ?p - pos)
+    (at_box ?p - pos)
+    (is_empty ?p - pos)
+    (adjacent ?p1 ?p2 - pos)
+  )
+
+  (:action move
+    :parameters (?from - pos ?to - pos)
+    :precondition (and (at_player ?from) (adjacent ?from ?to) (is_empty ?to))
+    :effect (and (not (at_player ?from)) (at_player ?to) (is_empty ?from) (not (is_empty ?to)))
+  )
+
+  (:action push
+    :parameters (?p_from - pos ?b_from - pos ?b_to - pos)
+    :precondition (and (at_player ?p_from) (adjacent ?p_from ?b_from) (at_box ?b_from) (adjacent ?b_from ?b_to) (is_empty ?b_to))
+    :effect (and (not (at_player ?p_from)) (at_player ?b_from) (not (at_box ?b_from)) (at_box ?b_to) (is_empty ?p_from) (not (is_empty ?b_to)))
+  )
+)

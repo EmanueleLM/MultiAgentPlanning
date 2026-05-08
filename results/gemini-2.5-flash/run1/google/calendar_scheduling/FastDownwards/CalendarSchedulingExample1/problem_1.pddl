@@ -1,0 +1,47 @@
+(define (problem calendar_scheduling_instance_1)
+    (:domain calendar_scheduling)
+    (:objects
+        raymond billy donald - person
+        slot-09-00 slot-09-30 slot-10-00 slot-10-30 slot-11-00 slot-11-30 slot-12-00 slot-12-30
+        slot-13-00 slot-13-30 slot-14-00 slot-14-30 slot-15-00 slot-15-30 slot-16-00 slot-16-30 - time-slot
+    )
+    (:init
+        (no_meeting_scheduled)
+
+        ; Raymond's availability (slots where Raymond is NOT blocked)
+        (available raymond slot-09-30)
+        (available raymond slot-10-00)
+        (available raymond slot-10-30)
+        (available raymond slot-11-00)
+        (available raymond slot-12-00)
+        (available raymond slot-12-30)
+        (available raymond slot-13-30)
+        (available raymond slot-14-00)
+        (available raymond slot-14-30)
+        (available raymond slot-15-30)
+        (available raymond slot-16-00)
+        (available raymond slot-16-30)
+
+        ; Billy's availability (slots where Billy is NOT blocked, including preference to avoid after 15:00 as a hard constraint)
+        (available billy slot-09-00)
+        (available billy slot-09-30)
+        (available billy slot-10-30)
+        (available billy slot-11-00)
+        (available billy slot-11-30)
+        (available billy slot-13-00)
+        (available billy slot-13-30)
+        (available billy slot-14-00)
+        (available billy slot-14-30)
+
+        ; Donald's availability (slots where Donald is NOT blocked)
+        (available donald slot-09-30)
+        (available donald slot-11-00)
+        (available donald slot-11-30)
+        (available donald slot-13-00)
+        (available donald slot-13-30)
+        (available donald slot-14-30)
+        (available donald slot-15-00)
+        (available donald slot-15-30)
+    )
+    (:goal (exists (?s - time-slot) (meeting_scheduled ?s)))
+)

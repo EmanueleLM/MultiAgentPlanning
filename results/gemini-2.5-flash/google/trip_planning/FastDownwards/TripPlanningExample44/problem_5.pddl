@@ -1,0 +1,65 @@
+(define (problem trip_planning_example_44_problem)
+  (:domain trip_planning_example_44)
+  (:objects
+    traveler - person
+    rome lyon zurich - city
+    day0 day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - time_point
+    count0 count1 count2 count3 count4 count5 count6 count7 - day_count
+  )
+  (:init
+    (at traveler rome)
+    (current_day day0)
+    (next_time_point day0 day1)
+    (next_time_point day1 day2)
+    (next_time_point day2 day3)
+    (next_time_point day3 day4)
+    (next_time_point day4 day5)
+    (next_time_point day5 day6)
+    (next_time_point day6 day7)
+    (next_time_point day7 day8)
+    (next_time_point day8 day9)
+    (next_time_point day9 day10)
+    (next_time_point day10 day11)
+    (next_time_point day11 day12)
+    (next_time_point day12 day13)
+    (next_time_point day13 day14)
+    (next_time_point day14 day15)
+    (next_time_point day15 day16)
+    (next_time_point day16 day17)
+
+    (connected rome lyon)
+    (connected lyon rome)
+    (connected zurich rome)
+    (connected rome zurich)
+
+    (wedding_at_time day1)
+    (wedding_at_time day2)
+    (wedding_at_time day3)
+    (wedding_at_time day4)
+    (wedding_at_time day5)
+    (wedding_at_time day6)
+    (wedding_at_time day7)
+
+    (days_spent lyon count0)
+    (days_spent zurich count0)
+    (days_spent rome count0)
+
+    (next_day_count count0 count1)
+    (next_day_count count1 count2)
+    (next_day_count count2 count3)
+    (next_day_count count3 count4)
+    (next_day_count count4 count5)
+    (next_day_count count5 count6)
+    (next_day_count count6 count7)
+
+    (= (total-cost) 0)
+  )
+  (:goal (and
+    (current_day day17)
+    (days_spent lyon count6)
+    (days_spent zurich count7)
+    (days_spent rome count6)
+    (wedding_attended)
+  ))
+  (:metric minimize (total-cost))
+)

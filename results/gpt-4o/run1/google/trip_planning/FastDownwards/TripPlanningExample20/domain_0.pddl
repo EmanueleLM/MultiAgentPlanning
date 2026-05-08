@@ -1,0 +1,27 @@
+(define (domain european_trip)
+    (:requirements :strips :typing :negative-preconditions)
+    (:types city day)
+    (:predicates
+        (current_city ?c - city)
+        (visited_for ?c - city ?d - day)
+        (next_day ?d1 ?d2 - day)
+        (available_flight ?c1 ?c2 - city)
+        (trip_complete)
+    )
+    (:action fly
+        :parameters (?from ?to - city)
+        :precondition (and (current_city ?from) (available_flight ?from ?to))
+        :effect (and (not (current_city ?from)) (current_city ?to))
+    )
+    (:action visit
+        :parameters (?c - city ?d1 ?d2 - day)
+        :precondition (and (current_city ?c) (next_day ?d1 ?d2) (visited_for ?c ?d1))
+        :effect (visited_for ?c ?d2)
+    )
+    (:action complete_trip
+        :precondition (and (visited_for istanbul day5) 
+                           (visited_for budapest day11) 
+                           (visited_for dubrovnik day12))
+        :effect (trip_complete)
+    )
+)

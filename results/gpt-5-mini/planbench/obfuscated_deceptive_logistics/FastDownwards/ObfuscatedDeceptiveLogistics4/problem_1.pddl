@@ -1,0 +1,37 @@
+(define (problem obfuscated_deceptive_logistics4)
+  (:domain obfuscated_deceptive_logistics_domain)
+
+  (:objects
+    object_0 object_1 object_2 object_3 object_4 object_5 object_6 object_7 object_8 object_9 - object
+  )
+
+  (:init
+    ;; initial unary predicates
+    (cats object_0)
+    (hand object_9)
+    (sneeze object_3)
+    (sneeze object_4)
+    (spring object_5)
+    (spring object_7)
+    (stupendous object_1)
+    (stupendous object_2)
+    (texture object_5)
+    (texture object_6)
+    (texture object_7)
+    (texture object_8)
+
+    ;; collect relations
+    (collect object_5 object_1)
+    (collect object_6 object_1)
+    (collect object_7 object_2)
+    (collect object_8 object_2)
+
+    ;; next relations given in the problem statement
+    (next object_0 object_7)
+    (next object_3 object_5)
+    (next object_4 object_7)
+    (next object_9 object_7)
+  )
+
+  (:goal (next object_9 object_8))
+)

@@ -1,0 +1,27 @@
+(define (domain meeting_planning)
+  (:requirements :typing :negative-preconditions)
+  (:types location time person)
+  (:predicates
+    (at_me ?l - location)
+    (current_time ?t - time)
+    (met ?p - person)
+    (can_travel ?l1 ?l2 - location ?t1 ?t2 - time)
+    (can_wait ?l - location ?t1 ?t2 - time)
+    (person_at ?p - person ?l - location ?t1 ?t2 - time)
+  )
+  (:action travel
+    :parameters (?l1 ?l2 - location ?t1 ?t2 - time)
+    :precondition (and (at_me ?l1) (current_time ?t1) (can_travel ?l1 ?l2 ?t1 ?t2))
+    :effect (and (not (at_me ?l1)) (at_me ?l2) (not (current_time ?t1)) (current_time ?t2))
+  )
+  (:action wait
+    :parameters (?l - location ?t1 ?t2 - time)
+    :precondition (and (at_me ?l) (current_time ?t1) (can_wait ?l ?t1 ?t2))
+    :effect (and (not (current_time ?t1)) (current_time ?t2))
+  )
+  (:action meet
+    :parameters (?p - person ?l - location ?t1 ?t2 - time)
+    :precondition (and (at_me ?l) (current_time ?t1) (person_at ?p ?l ?t1 ?t2))
+    :effect (and (not (current_time ?t1)) (current_time ?t2) (met ?p))
+  )
+)

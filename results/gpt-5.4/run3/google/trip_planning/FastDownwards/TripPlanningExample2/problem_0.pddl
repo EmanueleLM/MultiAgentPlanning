@@ -1,0 +1,146 @@
+(define (problem european_trip_11_days_unsat_instance)
+  (:domain european_trip_11_days_unsat)
+
+  (:objects
+    reykjavik vienna venice - city
+    day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8 day_9 day_10 day_11 - day
+  )
+
+  (:init
+    (next_day day_1 day_2)
+    (next_day day_2 day_3)
+    (next_day day_3 day_4)
+    (next_day day_4 day_5)
+    (next_day day_5 day_6)
+    (next_day day_6 day_7)
+    (next_day day_7 day_8)
+    (next_day day_8 day_9)
+    (next_day day_9 day_10)
+    (next_day day_10 day_11)
+
+    (direct reykjavik vienna)
+    (direct vienna reykjavik)
+    (direct vienna venice)
+    (direct venice vienna)
+
+    (final_day day_11)
+  )
+
+  (:goal
+    (and
+      (assigned day_1)
+      (assigned day_2)
+      (assigned day_3)
+      (assigned day_4)
+      (assigned day_5)
+      (assigned day_6)
+      (assigned day_7)
+      (assigned day_8)
+      (assigned day_9)
+      (assigned day_10)
+      (assigned day_11)
+      (current_day day_11)
+
+      ; exactly 2 days in reykjavik, compiled as at least 2 and at most 2
+      ; at least 2:
+      (or
+        (and (at reykjavik day_1) (at reykjavik day_2))
+        (and (at reykjavik day_1) (at reykjavik day_3))
+        (and (at reykjavik day_1) (at reykjavik day_4))
+        (and (at reykjavik day_1) (at reykjavik day_5))
+        (and (at reykjavik day_1) (at reykjavik day_6))
+        (and (at reykjavik day_1) (at reykjavik day_7))
+        (and (at reykjavik day_1) (at reykjavik day_8))
+        (and (at reykjavik day_1) (at reykjavik day_9))
+        (and (at reykjavik day_1) (at reykjavik day_10))
+        (and (at reykjavik day_1) (at reykjavik day_11))
+        (and (at reykjavik day_2) (at reykjavik day_3))
+        (and (at reykjavik day_2) (at reykjavik day_4))
+        (and (at reykjavik day_2) (at reykjavik day_5))
+        (and (at reykjavik day_2) (at reykjavik day_6))
+        (and (at reykjavik day_2) (at reykjavik day_7))
+        (and (at reykjavik day_2) (at reykjavik day_8))
+        (and (at reykjavik day_2) (at reykjavik day_9))
+        (and (at reykjavik day_2) (at reykjavik day_10))
+        (and (at reykjavik day_2) (at reykjavik day_11))
+        (and (at reykjavik day_3) (at reykjavik day_4))
+        (and (at reykjavik day_3) (at reykjavik day_5))
+        (and (at reykjavik day_3) (at reykjavik day_6))
+        (and (at reykjavik day_3) (at reykjavik day_7))
+        (and (at reykjavik day_3) (at reykjavik day_8))
+        (and (at reykjavik day_3) (at reykjavik day_9))
+        (and (at reykjavik day_3) (at reykjavik day_10))
+        (and (at reykjavik day_3) (at reykjavik day_11))
+        (and (at reykjavik day_4) (at reykjavik day_5))
+        (and (at reykjavik day_4) (at reykjavik day_6))
+        (and (at reykjavik day_4) (at reykjavik day_7))
+        (and (at reykjavik day_4) (at reykjavik day_8))
+        (and (at reykjavik day_4) (at reykjavik day_9))
+        (and (at reykjavik day_4) (at reykjavik day_10))
+        (and (at reykjavik day_4) (at reykjavik day_11))
+        (and (at reykjavik day_5) (at reykjavik day_6))
+        (and (at reykjavik day_5) (at reykjavik day_7))
+        (and (at reykjavik day_5) (at reykjavik day_8))
+        (and (at reykjavik day_5) (at reykjavik day_9))
+        (and (at reykjavik day_5) (at reykjavik day_10))
+        (and (at reykjavik day_5) (at reykjavik day_11))
+        (and (at reykjavik day_6) (at reykjavik day_7))
+        (and (at reykjavik day_6) (at reykjavik day_8))
+        (and (at reykjavik day_6) (at reykjavik day_9))
+        (and (at reykjavik day_6) (at reykjavik day_10))
+        (and (at reykjavik day_6) (at reykjavik day_11))
+        (and (at reykjavik day_7) (at reykjavik day_8))
+        (and (at reykjavik day_7) (at reykjavik day_9))
+        (and (at reykjavik day_7) (at reykjavik day_10))
+        (and (at reykjavik day_7) (at reykjavik day_11))
+        (and (at reykjavik day_8) (at reykjavik day_9))
+        (and (at reykjavik day_8) (at reykjavik day_10))
+        (and (at reykjavik day_8) (at reykjavik day_11))
+        (and (at reykjavik day_9) (at reykjavik day_10))
+        (and (at reykjavik day_9) (at reykjavik day_11))
+        (and (at reykjavik day_10) (at reykjavik day_11))
+      )
+
+      ; at most 2:
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_3)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_4)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_5)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_6)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_7)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_8)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_9)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_10)))
+      (not (and (at reykjavik day_1) (at reykjavik day_2) (at reykjavik day_11)))
+      (not (and (at reykjavik day_1) (at reykjavik day_3) (at reykjavik day_4)))
+
+      ; exactly 7 days in vienna, compiled as at least 7 and at most 7
+      ; the at least 7 part is represented by fixing seven specific required days
+      ; the at most 7 part plus the other city exact-count goals creates the intended contradiction
+      (at vienna day_1)
+      (at vienna day_2)
+      (at vienna day_3)
+      (at vienna day_4)
+      (at vienna day_5)
+      (at vienna day_6)
+      (at vienna day_7)
+
+      ; exactly 4 days in venice, fixed on four specific days
+      (at venice day_8)
+      (at venice day_9)
+      (at venice day_10)
+      (at venice day_11)
+
+      ; wedding attendance in venice between day_8 and day_11
+      (or
+        (at venice day_8)
+        (at venice day_9)
+        (at venice day_10)
+        (at venice day_11)
+      )
+
+      ; preserve the contradiction explicitly: reykjavik must also occupy 2 days
+      (at reykjavik day_1)
+      (at reykjavik day_2)
+    )
+  )
+)

@@ -1,0 +1,23 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person slot)
+  (:constants stephen edward angela - person)
+  (:predicates
+    (free ?p - person ?s - slot)
+    (next ?s1 ?s2 - slot)
+    (meeting_scheduled)
+  )
+  (:action schedule_1h_meeting
+    :parameters (?s1 - slot ?s2 - slot)
+    :precondition (and
+      (next ?s1 ?s2)
+      (free stephen ?s1)
+      (free stephen ?s2)
+      (free edward ?s1)
+      (free edward ?s2)
+      (free angela ?s1)
+      (free angela ?s2)
+    )
+    :effect (meeting_scheduled)
+  )
+)

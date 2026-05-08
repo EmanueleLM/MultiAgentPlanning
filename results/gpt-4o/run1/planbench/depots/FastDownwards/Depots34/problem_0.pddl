@@ -1,0 +1,40 @@
+(define (problem logistics-instance)
+  (:domain logistics)
+  (:objects
+    crate0 crate1 crate2 - crate
+    pallet0 pallet1 pallet2 pallet3 - pallet
+    hoist0 hoist1 hoist2 hoist3 - hoist
+    truck0 truck1 truck2 - truck
+  )
+  (:init
+    (at depot2 crate0) (at depot2 crate1) (at depot2 crate2)
+    (on crate0 pallet2) (on crate1 crate0) (on crate2 crate1)
+    (at depot0 hoist0) (available hoist0)
+    (at depot1 hoist1) (available hoist1)
+    (at depot2 hoist2) (available hoist2)
+    (at distributor0 hoist3) (available hoist3)
+    (at depot0 pallet0) (clear pallet0)
+    (at depot1 pallet1) (clear pallet1)
+    (at depot2 pallet2)
+    (at distributor0 pallet3) (clear pallet3)
+    (at depot1 truck0)
+    (at depot1 truck1)
+    (at depot0 truck2)
+    (connected depot0 depot1)
+    (connected depot1 depot0)
+    (connected depot0 depot2)
+    (connected depot2 depot0)
+    (connected depot0 distributor0)
+    (connected distributor0 depot0)
+    (connected depot1 depot2)
+    (connected depot2 depot1)
+    (connected depot1 distributor0)
+    (connected distributor0 depot1)
+    (connected depot2 distributor0)
+    (connected distributor0 depot2)
+  )
+  (:goal (and
+    (on crate0 crate2)
+    (on crate2 pallet1)
+  ))
+)

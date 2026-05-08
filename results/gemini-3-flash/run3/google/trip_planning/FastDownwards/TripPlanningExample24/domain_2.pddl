@@ -1,0 +1,75 @@
+(define (domain trip_planning_example_24)
+    (:requirements :strips :typing :negative-preconditions)
+    (:types city day value)
+
+    (:predicates
+        (at ?c - city)
+        (day ?d - day)
+        (next ?d1 ?d2 - day)
+        (count ?c - city ?v - value)
+        (inc ?v1 ?v2 - value)
+        (can_fly ?c1 ?c2 - city)
+        (is_florence ?c - city)
+        (is_workshop_day ?d - day)
+        (trip_done)
+    )
+
+    (:action stay
+        :parameters (?c - city ?d_now - day ?d_next - day ?n_now - value ?n_next - value)
+        :precondition (and 
+            (at ?c) 
+            (day ?d_now) 
+            (next ?d_now ?d_next) 
+            (count ?c ?n_now) 
+            (inc ?n_now ?n_next)
+            (or (not (is_workshop_day ?d_now)) (is_florence ?c))
+        )
+        :effect (and 
+            (not (day ?d_now)) 
+            (day ?d_next) 
+            (not (count ?c ?n_now)) 
+            (count ?c ?n_next)
+        )
+    )
+
+    (:action fly
+        :parameters (?c_from - city ?c_to - city ?d_now - day ?d_next - day ?n_f_now - value ?n_f_next - value ?n_t_now - value ?n_t_next - value)
+        :precondition (and 
+            (at ?c_from) 
+            (day ?d_now) 
+            (next ?d_now ?d_next) 
+            (can_fly ?c_from ?c_to)
+            (count ?c_from ?n_f_now) 
+            (inc ?n_f_now ?n_f_next)
+            (count ?c_to ?n_t_now) 
+            (inc ?n_t_now ?n_t_next)
+            (or (not (is_workshop_day ?d_now)) (is_florence ?c_from))
+        )
+        :effect (and 
+            (not (at ?c_from)) 
+            (at ?c_to) 
+            (not (day ?d_now)) 
+            (day ?d_next)
+            (not (count ?c_from ?n_f_now)) 
+            (count ?c_from ?n_f_next)
+            (not (count ?c_to ?n_t_now)) 
+            (count ?c_to ?n_t_next)
+        )
+    )
+
+    (:action complete_trip
+        :parameters (?c - city ?d_last - day ?n_now - value ?n_next - value)
+        :precondition (and 
+            (at ?c) 
+            (day ?d_last) 
+            (count ?c ?n_now) 
+            (inc ?n_now ?n_next)
+            (or (not (is_workshop_day ?d_last)) (is_florence ?c))
+        )
+        :effect (and 
+            (trip_done) 
+            (not (count ?c ?n_now)) 
+            (count ?c ?n_next)
+        )
+    )
+)

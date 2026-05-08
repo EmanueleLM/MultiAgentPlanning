@@ -1,0 +1,41 @@
+(define (problem tripplanningexample47)
+  (:domain tripplanningexample47)
+  (:objects
+    paris istanbul salzburg - city
+    day1 day2 day3 day4 day5 day6 day7 end_of_trip - day
+    n0 n1 n2 n3 n4 n5 - num
+  )
+  (:init
+    (at paris)
+    (current_day day1)
+    (next_day day1 day2)
+    (next_day day2 day3)
+    (next_day day3 day4)
+    (next_day day4 day5)
+    (next_day day5 day6)
+    (next_day day6 day7)
+    (next_day day7 end_of_trip)
+    (has_flight paris istanbul)
+    (has_flight istanbul paris)
+    (has_flight istanbul salzburg)
+    (has_flight salzburg istanbul)
+    (days_spent_in paris n0)
+    (days_spent_in istanbul n0)
+    (days_spent_in salzburg n0)
+    (next_num n0 n1)
+    (next_num n1 n2)
+    (next_num n2 n3)
+    (next_num n3 n4)
+    (next_num n4 n5)
+  )
+  (:goal
+    (and
+      (current_day end_of_trip)
+      (conference_attended_day1)
+      (conference_attended_day2)
+      (days_spent_in salzburg n5)
+      (days_spent_in paris n2)
+      (days_spent_in istanbul n2)
+    )
+  )
+)

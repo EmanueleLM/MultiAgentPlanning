@@ -1,0 +1,28 @@
+(define (domain san_francisco_meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location person time)
+  (:predicates 
+    (at ?p - person ?l - location)
+    (current_location ?l - location)
+    (time_at ?t - time)
+    (visited ?l - location)
+    (met ?p - person)
+    (can_travel ?from - location ?to - location ?duration - time)
+    (available ?p - person ?t1 - time ?t2 - time)
+  )
+  (:action travel
+    :parameters (?from - location ?to - location ?duration - time)
+    :precondition (and (current_location ?from) (can_travel ?from ?to ?duration))
+    :effect (and (not (current_location ?from)) (current_location ?to))
+  )
+  (:action wait
+    :parameters (?current - location ?duration - time)
+    :precondition (current_location ?current)
+    :effect (and)
+  )
+  (:action meet
+    :parameters (?p - person ?l - location)
+    :precondition (and (at ?p ?l) (current_location ?l))
+    :effect (and (met ?p))
+  )
+)

@@ -1,0 +1,67 @@
+(define (problem calendar_scheduling_problem)
+  (:domain calendar_scheduling)
+  (:objects
+    billy maria william - person
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+  )
+  (:init
+    ;; Temporal structure: 30-minute intervals from 09:00 to 17:00
+    (next s0900 s0930)
+    (next s0930 s1000)
+    (next s1000 s1030)
+    (next s1030 s1100)
+    (next s1100 s1130)
+    (next s1130 s1200)
+    (next s1200 s1230)
+    (next s1230 s1300)
+    (next s1300 s1330)
+    (next s1330 s1400)
+    (next s1400 s1430)
+    (next s1430 s1500)
+    (next s1500 s1530)
+    (next s1530 s1600)
+    (next s1600 s1630)
+
+    ;; Billy's availability
+    ;; Busy: 11:30-12:00 (s1130), 13:00-15:00 (s1300, s1330, s1400, s1430), 16:00-16:30 (s1600)
+    (free billy s0900)
+    (free billy s0930)
+    (free billy s1000)
+    (free billy s1030)
+    (free billy s1100)
+    (free billy s1200)
+    (free billy s1230)
+    (free billy s1500)
+    (free billy s1530)
+    (free billy s1630)
+
+    ;; Maria's availability
+    ;; Busy: 9:00-9:30 (s0900), 10:00-10:30 (s1000), 13:00-13:30 (s1300), 14:00-14:30 (s1400)
+    (free maria s0930)
+    (free maria s1030)
+    (free maria s1100)
+    (free maria s1130)
+    (free maria s1200)
+    (free maria s1230)
+    (free maria s1330)
+    (free maria s1430)
+    (free maria s1500)
+    (free maria s1530)
+    (free maria s1600)
+    (free maria s1630)
+
+    ;; William's availability
+    ;; Busy: 9:30-10:00 (s0930), 12:00-12:30 (s1200), 13:30-15:00 (s1330, s1400, s1430), 15:30-17:00 (s1530, s1600, s1630)
+    (free william s0900)
+    (free william s1000)
+    (free william s1030)
+    (free william s1100)
+    (free william s1130)
+    (free william s1230)
+    (free william s1300)
+    (free william s1500)
+  )
+  (:goal (and
+    (meeting_scheduled)
+  ))
+)

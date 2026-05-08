@@ -1,0 +1,47 @@
+(define (domain european_trip)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+  (:predicates 
+    (at ?city - city)
+    (visited ?city - city)
+    (day_visited ?city - city ?day - day)
+    (meeting_possible ?day - day)
+    (next ?day - day ?next - day)
+  )
+
+  (:action fly_valencia_to_amsterdam
+    :parameters (?current_day - day ?next_day - day)
+    :precondition (and (at valencia) (next ?current_day ?next_day))
+    :effect (and (not (at valencia))
+                 (at amsterdam)
+                 (visited amsterdam)
+                 (day_visited amsterdam ?next_day))
+  )
+
+  (:action fly_amsterdam_to_valencia
+    :parameters (?current_day - day ?next_day - day)
+    :precondition (and (at amsterdam) (next ?current_day ?next_day))
+    :effect (and (not (at amsterdam))
+                 (at valencia)
+                 (visited valencia)
+                 (day_visited valencia ?next_day))
+  )
+
+  (:action fly_amsterdam_to_tallinn
+    :parameters (?current_day - day ?next_day - day)
+    :precondition (and (at amsterdam) (next ?current_day ?next_day))
+    :effect (and (not (at amsterdam))
+                 (at tallinn)
+                 (visited tallinn)
+                 (day_visited tallinn ?next_day))
+  )
+
+  (:action fly_tallinn_to_amsterdam
+    :parameters (?current_day - day ?next_day - day)
+    :precondition (and (at tallinn) (next ?current_day ?next_day))
+    :effect (and (not (at tallinn))
+                 (at amsterdam)
+                 (visited amsterdam)
+                 (day_visited amsterdam ?next_day))
+  )
+)

@@ -1,0 +1,53 @@
+(define (domain trip_planning_example15)
+  (:requirements :strips :typing :negative-preconditions)
+
+  (:types
+    city
+    day
+  )
+
+  (:predicates
+    (direct ?from - city ?to - city)
+    (next ?d1 - day ?d2 - day)
+    (at ?c - city)
+    (current ?d - day)
+    (visited ?c - city ?d - day)
+  )
+
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and
+      (at ?c)
+      (current ?d1)
+      (next ?d1 ?d2)
+      (not (visited berlin ?d2))
+      (not (visited porto ?d2))
+      (not (visited krakow ?d2))
+    )
+    :effect (and
+      (not (current ?d1))
+      (current ?d2)
+      (visited ?c ?d2)
+    )
+  )
+
+  (:action fly
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and
+      (at ?from)
+      (current ?d1)
+      (next ?d1 ?d2)
+      (direct ?from ?to)
+      (not (visited berlin ?d2))
+      (not (visited porto ?d2))
+      (not (visited krakow ?d2))
+    )
+    :effect (and
+      (not (at ?from))
+      (at ?to)
+      (not (current ?d1))
+      (current ?d2)
+      (visited ?to ?d2)
+    )
+  )
+)

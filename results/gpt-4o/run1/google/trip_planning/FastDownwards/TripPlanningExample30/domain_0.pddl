@@ -1,0 +1,22 @@
+(define (domain european_trip)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+  (:predicates 
+    (at ?c - city ?d - day)
+    (can_fly ?from - city ?to - city)
+    (event_in_zh_day ?d - day)
+    (successor ?d1 - day ?d2 - day)
+  )
+
+  (:action fly
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?from ?d1) (can_fly ?from ?to) (successor ?d1 ?d2))
+    :effect (and (not (at ?from ?d2)) (at ?to ?d2))
+  )
+
+  (:action plan_stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and (at ?c ?d1) (successor ?d1 ?d2))
+    :effect (and (at ?c ?d2))
+  )
+)

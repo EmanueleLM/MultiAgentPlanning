@@ -1,0 +1,36 @@
+(define (problem schedule_meeting_problem)
+  (:domain meeting_planning)
+  (:objects
+    richard martha kimberly - participant
+    t9_9_30 t9_30_10 t10_10_30 t10_30_11 t11_11_30 t11_30_12 
+    t12_12_30 t12_30_13 t13_13_30 t13_30_14 t14_14_30 t14_30_15 
+    t15_15_30 t15_30_16 t16_16_30 - time_slot
+  )
+  (:init
+    (busy richard t13_30_14)
+    (busy richard t15_15_30)
+    (busy martha t9_9_30)
+    (busy martha t13_13_30)
+    (busy kimberly t9_9_30)
+    (busy kimberly t9_30_10)
+    (busy kimberly t10_10_30)
+    (busy kimberly t10_30_11)
+    (busy kimberly t11_11_30)
+    (busy kimberly t11_30_12)
+    (busy kimberly t12_12_30)
+    (busy kimberly t12_30_13)
+    (busy kimberly t14_14_30)
+    (busy kimberly t14_30_15)
+    (busy kimberly t15_15_30)
+    (busy kimberly t15_30_16)
+    (preferred_after_14 martha)
+    (after_or_equal_14 t14_14_30)
+    (after_or_equal_14 t14_30_15)
+    (after_or_equal_14 t15_15_30)
+    (after_or_equal_14 t15_30_16)
+    (after_or_equal_14 t16_16_30)
+  )
+  (:goal
+    (exists (?t - time_slot) (scheduled ?t))
+  )
+)

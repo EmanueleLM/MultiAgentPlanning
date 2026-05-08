@@ -1,0 +1,77 @@
+(define (problem meeting_schedule_monday_andrew_grace_samuel_half_hour)
+  (:domain meeting_schedule_monday_instance)
+
+  (:objects
+    andrew grace samuel - participant
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+    t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - timeslot
+  )
+
+  (:init
+    (current_slot t0900)
+
+    (next_slot t0900 t0930)
+    (next_slot t0930 t1000)
+    (next_slot t1000 t1030)
+    (next_slot t1030 t1100)
+    (next_slot t1100 t1130)
+    (next_slot t1130 t1200)
+    (next_slot t1200 t1230)
+    (next_slot t1230 t1300)
+    (next_slot t1300 t1330)
+    (next_slot t1330 t1400)
+    (next_slot t1400 t1430)
+    (next_slot t1430 t1500)
+    (next_slot t1500 t1530)
+    (next_slot t1530 t1600)
+    (next_slot t1600 t1630)
+
+    (free andrew t0900)
+    (free andrew t0930)
+    (free andrew t1000)
+    (free andrew t1030)
+    (free andrew t1100)
+    (free andrew t1130)
+    (free andrew t1200)
+    (free andrew t1230)
+    (free andrew t1300)
+    (free andrew t1330)
+    (free andrew t1400)
+    (free andrew t1430)
+    (free andrew t1500)
+    (free andrew t1530)
+    (free andrew t1600)
+    (free andrew t1630)
+
+    (free grace t0900)
+    (free grace t0930)
+    (free grace t1000)
+    (free grace t1030)
+    (free grace t1100)
+    (free grace t1130)
+    (free grace t1200)
+    (free grace t1230)
+    (free grace t1300)
+    (free grace t1330)
+    (free grace t1400)
+    (free grace t1430)
+    (free grace t1500)
+    (free grace t1530)
+    (free grace t1600)
+    (free grace t1630)
+
+    (free samuel t1030)
+    (free samuel t1100)
+    (free samuel t1200)
+    (free samuel t1230)
+    (free samuel t1330)
+    (free samuel t1600)
+  )
+
+  (:goal
+    (and
+      (meeting_scheduled)
+      (scheduled_at t1030)
+    )
+  )
+)

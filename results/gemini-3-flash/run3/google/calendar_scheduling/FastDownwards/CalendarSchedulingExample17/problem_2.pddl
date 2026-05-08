@@ -1,0 +1,46 @@
+(define (problem calendar_problem_17)
+  (:domain calendar_scheduling)
+  (:objects
+    t_0900_0930 t_0930_1000 t_1000_1030 t_1030_1100 t_1100_1130 t_1130_1200 t_1200_1230 t_1230_1300 t_1300_1330 t_1330_1400 t_1400_1430 t_1430_1500 t_1500_1530 t_1530_1600 t_1600_1630 t_1630_1700 - timeslot
+  )
+  (:init
+    ;; Margaret's schedule
+    ;; Blocked: 9:00-10:00 (t_0900, t_0930), 10:30-11:00 (t_1030), 11:30-12:00 (t_1130), 13:00-13:30 (t_1300), 15:00-15:30 (t_1500)
+    (free margaret t_1000_1030)
+    (free margaret t_1100_1130)
+    (free margaret t_1200_1230)
+    (free margaret t_1230_1300)
+    (free margaret t_1330_1400)
+    (free margaret t_1400_1430)
+    (free margaret t_1430_1500)
+    (free margaret t_1530_1600)
+    (free margaret t_1600_1630)
+    (free margaret t_1630_1700)
+
+    ;; Donna's schedule
+    ;; Blocked: 14:30-15:00 (t_1430), 16:00-16:30 (t_1600)
+    (free donna t_0900_0930)
+    (free donna t_0930_1000)
+    (free donna t_1000_1030)
+    (free donna t_1030_1100)
+    (free donna t_1100_1130)
+    (free donna t_1130_1200)
+    (free donna t_1200_1230)
+    (free donna t_1230_1300)
+    (free donna t_1300_1330)
+    (free donna t_1330_1400)
+    (free donna t_1400_1430)
+    (free donna t_1500_1530)
+    (free donna t_1530_1600)
+    (free donna t_1630_1700)
+
+    ;; Helen's schedule
+    ;; Meetings: 9:00-9:30 (t_0900), 10:00-11:30 (t_1000, t_1030, t_1100), 13:00-14:00 (t_1300, t_1330), 14:30-15:00 (t_1430), 15:30-17:00 (t_1530, t_1600, t_1630)
+    ;; Preference: Not after 13:30 (Means any slot starting at or after 13:30 is blocked)
+    (free helen t_0930_1000)
+    (free helen t_1130_1200)
+    (free helen t_1200_1230)
+    (free helen t_1230_1300)
+  )
+  (:goal (goal_achieved))
+)

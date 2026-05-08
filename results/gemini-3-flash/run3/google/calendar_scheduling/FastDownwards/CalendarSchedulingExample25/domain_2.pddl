@@ -1,0 +1,25 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person time_slot)
+  (:constants anthony pamela zachary - person)
+  (:predicates
+    (free ?p - person ?ts - time_slot)
+    (next ?ts1 - time_slot ?ts2 - time_slot)
+    (meeting_scheduled)
+  )
+
+  (:action schedule_1hr_meeting
+    :parameters (?ts_start - time_slot ?ts_mid - time_slot ?ts_end - time_slot)
+    :precondition (and
+      (next ?ts_start ?ts_mid)
+      (next ?ts_mid ?ts_end)
+      (free anthony ?ts_start)
+      (free anthony ?ts_mid)
+      (free pamela ?ts_start)
+      (free pamela ?ts_mid)
+      (free zachary ?ts_start)
+      (free zachary ?ts_mid)
+    )
+    :effect (meeting_scheduled)
+  )
+)

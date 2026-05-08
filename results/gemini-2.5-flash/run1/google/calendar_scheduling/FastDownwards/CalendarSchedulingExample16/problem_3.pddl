@@ -1,0 +1,43 @@
+(define (problem calendar_scheduling_example16)
+  (:domain calendar_scheduling)
+  (:objects
+    scott gabriel christine - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - time_slot
+  )
+  (:init
+    ; Scott's availability based on busy times: 9:30-10:30, 13:30-14:00, 14:30-15:00, 15:30-16:00, 16:30-17:00
+    (is_available scott t0900)
+    (is_available scott t1030)
+    (is_available scott t1100)
+    (is_available scott t1130)
+    (is_available scott t1200)
+    (is_available scott t1230)
+    (is_available scott t1300)
+    (is_available scott t1400)
+    (is_available scott t1500)
+    (is_available scott t1600)
+
+    ; Gabriel's availability (No meetings the whole day)
+    (is_available gabriel t0900)
+    (is_available gabriel t0930)
+    (is_available gabriel t1000)
+    (is_available gabriel t1030)
+    (is_available gabriel t1100)
+    (is_available gabriel t1130)
+    (is_available gabriel t1200)
+    (is_available gabriel t1230)
+    (is_available gabriel t1300)
+    (is_available gabriel t1330)
+    (is_available gabriel t1400)
+    (is_available gabriel t1430)
+    (is_available gabriel t1500)
+    (is_available gabriel t1530)
+    (is_available gabriel t1600)
+    (is_available gabriel t1630)
+
+    ; Christine's availability based on busy times: 9:00-10:00, 10:30-12:30, 13:00-17:00
+    (is_available christine t1000)
+    (is_available christine t1230)
+  )
+  (:goal (exists (?t - time_slot) (meeting_scheduled ?t)))
+)

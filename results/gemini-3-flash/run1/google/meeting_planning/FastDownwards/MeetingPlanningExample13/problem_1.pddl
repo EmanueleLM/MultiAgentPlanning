@@ -1,0 +1,23 @@
+(define (problem meeting_planning_example_13)
+  (:domain meeting_planning)
+  (:objects
+    presidio north_beach - location
+    t0900 t0918 t1845 t2000 t2017 t2200 - time
+  )
+  (:init
+    (at_loc presidio)
+    (current_time t0900)
+    (dist_p_nb t0900 t0918)
+    (before t0918 t1845)
+    (duration_75 t1845 t2000)
+    (dist_nb_p t2000 t2017)
+    (before t2000 t2200)
+    (before t2000 t2017)
+    (before t2017 t2200)
+    (betty_available t1845)
+    (betty_available t2000)
+    (betty_available t2017)
+    (betty_available t2200)
+  )
+  (:goal (met_betty))
+)

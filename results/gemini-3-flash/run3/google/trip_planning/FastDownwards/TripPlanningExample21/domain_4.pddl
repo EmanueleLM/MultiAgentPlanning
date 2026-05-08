@@ -1,0 +1,61 @@
+(define (domain trip_planning)
+  (:requirements :strips :typing)
+  (:types city day count)
+  (:predicates
+    (at ?c - city)
+    (current_day ?d - day)
+    (visited ?c - city ?d - day)
+    (total_visits ?c - city ?n - count)
+    (next_day ?d1 ?d2 - day)
+    (next_count ?n1 ?n2 - count)
+    (flight ?c1 ?c2 - city)
+    (is_last_day ?d - day)
+    (finished)
+    (started)
+  )
+
+  (:action start_trip
+    :parameters (?c - city)
+    :precondition (not (started))
+    :effect (and (started) (at ?c) (current_day d1))
+  )
+
+  (:action stay
+    :parameters (?c - city ?d - day ?next_d - day ?n_old ?n_new - count)
+    :precondition (and (started) (at ?c) (current_day ?d) (next_day ?d ?next_d) 
+                       (total_visits ?c ?n_old) (next_count ?n_old ?n_new))
+    :effect (and (not (current_day ?d)) (current_day ?next_d) 
+                 (not (total_visits ?c ?n_old)) (total_visits ?c ?n_new) 
+                 (visited ?c ?d))
+  )
+
+  (:action fly
+    :parameters (?from ?to - city ?d - day ?next_d - day ?n_f_old ?n_f_new ?n_t_old ?n_t_new - count)
+    :precondition (and (started) (at ?from) (current_day ?d) (next_day ?d ?next_d) (flight ?from ?to)
+                       (total_visits ?from ?n_f_old) (next_count ?n_f_old ?n_f_new)
+                       (total_visits ?to ?n_t_old) (next_count ?n_t_old ?n_t_new))
+    :effect (and (not (at ?from)) (at ?to) (not (current_day ?d)) (current_day ?next_d)
+                 (not (total_visits ?from ?n_f_old)) (total_visits ?from ?n_f_new)
+                 (not (total_visits ?to ?n_t_old)) (total_visits ?to ?n_t_new)
+                 (visited ?from ?d) (visited ?to ?d))
+  )
+
+  (:action stay_final
+    :parameters (?c - city ?d - day ?n_old ?n_new - count)
+    :precondition (and (started) (at ?c) (current_day ?d) (is_last_day ?d) 
+                       (total_visits ?c ?n_old) (next_count ?n_old ?n_new))
+    :effect (and (not (current_day ?d)) (not (total_visits ?c ?n_old)) (total_visits ?c ?n_new) 
+                 (visited ?c ?d) (finished))
+  )
+
+  (:action fly_final
+    :parameters (?from ?to - city ?d - day ?n_f_old ?n_f_new ?n_t_old ?n_t_new - count)
+    :precondition (and (started) (at ?from) (current_day ?d) (is_last_day ?d) (flight ?from ?to)
+                       (total_visits ?from ?n_f_old) (next_count ?n_f_old ?n_f_new)
+                       (total_visits ?to ?n_t_old) (next_count ?n_t_old ?n_t_new))
+    :effect (and (not (at ?from)) (at ?to) (not (current_day ?d))
+                 (not (total_visits ?from ?n_f_old)) (total_visits ?from ?n_f_new)
+                 (not (total_visits ?to ?n_t_old)) (total_visits ?to ?n_t_new)
+                 (visited ?from ?d) (visited ?to ?d) (finished))
+  )
+)

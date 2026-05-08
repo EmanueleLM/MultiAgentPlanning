@@ -1,0 +1,139 @@
+(define (domain floor-tile)
+  (:requirements :typing :action-costs :negative-preconditions :derived-predicates)
+  (:types robot tile color - object)
+  (:predicates
+    (robot-at ?r - robot ?t - tile)
+    (robot-has ?r - robot ?c - color)
+    (available-color ?c - color)
+    (clear ?t - tile) ; A tile is clear if no robot is on it AND it is not painted.
+    (painted ?t - tile ?c - color)
+    ; Base predicates for grid connectivity, defining direction from a 'lower' index to an 'upper' index.
+    ; (adj-vertical ?t1 ?t2) means ?t2 is immediately above ?t1 (e.g., tile_R-C and tile_(R-1)-C)
+    (adj-vertical ?lower-t - tile ?upper-t - tile)
+    ; (adj-horizontal ?t1 ?t2) means ?t2 is immediately to the left of ?t1 (e.g., tile_R-C and tile_R-(C+1))
+    (adj-horizontal ?right-t - tile ?left-t - tile)
+  )
+  (:functions (total-cost))
+
+  ; Derived predicates for movement directions based on base adjacency facts
+  (:derived (up ?from - tile ?to - tile)
+    (adj-vertical ?from ?to)
+  )
+  (:derived (down ?from - tile ?to - tile)
+    (adj-vertical ?to ?from)
+  )
+  (:derived (right ?from - tile ?to - tile)
+    (adj-horizontal ?to ?from)
+  )
+  (:derived (left ?from - tile ?to - tile)
+    (adj-horizontal ?from ?to)
+  )
+
+  (:action change-color
+    :parameters (?r - robot ?old_c - color ?new_c - color)
+    :precondition (and
+      (robot-has ?r ?old_c)
+      (available-color ?new_c)
+      (not (= ?old_c ?new_c)) ; Robot must change to a different color
+    )
+    :effect (and
+      (not (robot-has ?r ?old_c))
+      (robot-has ?r ?new_c)
+      (increase (total-cost) 5)
+    )
+  )
+
+  (:action paint-up
+    :parameters (?r - robot ?current_t - tile ?target_t - tile ?c - color)
+    :precondition (and
+      (robot-has ?r ?c)
+      (robot-at ?r ?current_t)
+      (up ?current_t ?target_t) ; Derived predicate
+      (clear ?target_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (clear ?target_t)) ; Tile is no longer clear (it's now painted)
+      (painted ?target_t ?c)
+      (increase (total-cost) 2)
+    )
+  )
+
+  (:action paint-down
+    :parameters (?r - robot ?current_t - tile ?target_t - tile ?c - color)
+    :precondition (and
+      (robot-has ?r ?c)
+      (robot-at ?r ?current_t)
+      (down ?current_t ?target_t) ; Derived predicate
+      (clear ?target_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (clear ?target_t)) ; Tile is no longer clear (it's now painted)
+      (painted ?target_t ?c)
+      (increase (total-cost) 2)
+    )
+  )
+
+  (:action up
+    :parameters (?r - robot ?from_t - tile ?to_t - tile)
+    :precondition (and
+      (robot-at ?r ?from_t)
+      (up ?from_t ?to_t) ; Derived predicate
+      (clear ?to_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (robot-at ?r ?from_t))
+      (robot-at ?r ?to_t)
+      (clear ?from_t) ; The tile the robot left is now clear
+      (not (clear ?to_t)) ; The tile the robot moved to is now occupied, hence not clear
+      (increase (total-cost) 3)
+    )
+  )
+
+  (:action down
+    :parameters (?r - robot ?from_t - tile ?to_t - tile)
+    :precondition (and
+      (robot-at ?r ?from_t)
+      (down ?from_t ?to_t) ; Derived predicate
+      (clear ?to_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (robot-at ?r ?from_t))
+      (robot-at ?r ?to_t)
+      (clear ?from_t) ; The tile the robot left is now clear
+      (not (clear ?to_t)) ; The tile the robot moved to is now occupied, hence not clear
+      (increase (total-cost) 1)
+    )
+  )
+
+  (:action right
+    :parameters (?r - robot ?from_t - tile ?to_t - tile)
+    :precondition (and
+      (robot-at ?r ?from_t)
+      (right ?from_t ?to_t) ; Derived predicate
+      (clear ?to_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (robot-at ?r ?from_t))
+      (robot-at ?r ?to_t)
+      (clear ?from_t) ; The tile the robot left is now clear
+      (not (clear ?to_t)) ; The tile the robot moved to is now occupied, hence not clear
+      (increase (total-cost) 1)
+    )
+  )
+
+  (:action left
+    :parameters (?r - robot ?from_t - tile ?to_t - tile)
+    :precondition (and
+      (robot-at ?r ?from_t)
+      (left ?from_t ?to_t) ; Derived predicate
+      (clear ?to_t) ; Target tile must be clear (unoccupied and unpainted)
+    )
+    :effect (and
+      (not (robot-at ?r ?from_t))
+      (robot-at ?r ?to_t)
+      (clear ?from_t) ; The tile the robot left is now clear
+      (not (clear ?to_t)) ; The tile the robot moved to is now occupied, hence not clear
+      (increase (total-cost) 1)
+    )
+  )
+)

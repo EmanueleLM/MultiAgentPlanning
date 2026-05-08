@@ -25,6 +25,7 @@ from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
     collect_debug_logs,
+    extract_agent_name,
     get_latest_file,
     has_valid_plan_file,
 )
@@ -319,10 +320,9 @@ def _run_with_args(args: argparse.Namespace) -> dict[str, Any]:
         hypervisor = Hypervisor(prompt_args_hypervisor)
         response = hypervisor.run(model_plan)
 
-        match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
-        if match:
-            agent_name = match.group(1).strip()
-        else:
+        try:
+            agent_name = extract_agent_name(response, hypervisor.agents)
+        except ValueError:
             logger.warning(
                 "No agent class found in response. Falling back to AgentDeepThinkPDDL. Response snippet: %s",
                 response[:200],

@@ -1,0 +1,190 @@
+(define (domain trip_planning_example39)
+  (:requirements :strips :typing :negative-preconditions)
+
+  (:types
+    city day
+  )
+
+  (:predicates
+    (direct ?from - city ?to - city)
+    (next ?d1 - day ?d2 - day)
+    (current_day ?d - day)
+    (at ?c - city)
+    (visited ?c - city ?d - day)
+    (total_days_in ?c - city ?n - day)
+    (goal_days ?c - city ?n - day)
+    (window_day ?d - day)
+    (visited_porto_in_window)
+  )
+
+  (:action start_day_1
+    :parameters (?c - city)
+    :precondition (and
+      (current_day d1)
+      (not (at porto))
+      (not (at barcelona))
+      (not (at florence))
+      (not (visited porto d1))
+      (not (visited barcelona d1))
+      (not (visited florence d1))
+      (not (visited_porto_in_window))
+    )
+    :effect (and
+      (at ?c)
+      (visited ?c d1)
+      (when_dummy)
+    )
+  )
+
+  (:action start_day_1_porto
+    :parameters ()
+    :precondition (and
+      (current_day d1)
+      (not (at porto))
+      (not (at barcelona))
+      (not (at florence))
+      (not (visited porto d1))
+      (not (visited barcelona d1))
+      (not (visited florence d1))
+    )
+    :effect (and
+      (at porto)
+      (visited porto d1)
+      (visited_porto_in_window)
+    )
+  )
+
+  (:action start_day_1_barcelona
+    :parameters ()
+    :precondition (and
+      (current_day d1)
+      (not (at porto))
+      (not (at barcelona))
+      (not (at florence))
+      (not (visited porto d1))
+      (not (visited barcelona d1))
+      (not (visited florence d1))
+    )
+    :effect (and
+      (at barcelona)
+      (visited barcelona d1)
+    )
+  )
+
+  (:action start_day_1_florence
+    :parameters ()
+    :precondition (and
+      (current_day d1)
+      (not (at porto))
+      (not (at barcelona))
+      (not (at florence))
+      (not (visited porto d1))
+      (not (visited barcelona d1))
+      (not (visited florence d1))
+    )
+    :effect (and
+      (at florence)
+      (visited florence d1)
+    )
+  )
+
+  (:action stay
+    :parameters (?from - city ?d1 - day ?d2 - day ?n1 - day ?n2 - day)
+    :precondition (and
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (at ?from)
+      (visited ?from ?d1)
+      (total_days_in ?from ?n1)
+      (next ?n1 ?n2)
+      (not (visited porto ?d2))
+      (not (visited barcelona ?d2))
+      (not (visited florence ?d2))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (visited ?from ?d2)
+      (not (total_days_in ?from ?n1))
+      (total_days_in ?from ?n2)
+    )
+  )
+
+  (:action stay_in_porto_window
+    :parameters (?d1 - day ?d2 - day ?n1 - day ?n2 - day)
+    :precondition (and
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (window_day ?d2)
+      (at porto)
+      (visited porto ?d1)
+      (total_days_in porto ?n1)
+      (next ?n1 ?n2)
+      (not (visited porto ?d2))
+      (not (visited barcelona ?d2))
+      (not (visited florence ?d2))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (visited porto ?d2)
+      (not (total_days_in porto ?n1))
+      (total_days_in porto ?n2)
+      (visited_porto_in_window)
+    )
+  )
+
+  (:action fly
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day ?n1 - day ?n2 - day)
+    :precondition (and
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (at ?from)
+      (direct ?from ?to)
+      (visited ?from ?d1)
+      (total_days_in ?to ?n1)
+      (next ?n1 ?n2)
+      (not (visited porto ?d2))
+      (not (visited barcelona ?d2))
+      (not (visited florence ?d2))
+      (not (= ?from ?to))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (not (at ?from))
+      (at ?to)
+      (visited ?to ?d2)
+      (not (total_days_in ?to ?n1))
+      (total_days_in ?to ?n2)
+    )
+  )
+
+  (:action fly_to_porto_in_window
+    :parameters (?from - city ?d1 - day ?d2 - day ?n1 - day ?n2 - day)
+    :precondition (and
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (window_day ?d2)
+      (at ?from)
+      (direct ?from porto)
+      (visited ?from ?d1)
+      (total_days_in porto ?n1)
+      (next ?n1 ?n2)
+      (not (visited porto ?d2))
+      (not (visited barcelona ?d2))
+      (not (visited florence ?d2))
+      (not (= ?from porto))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (not (at ?from))
+      (at porto)
+      (visited porto ?d2)
+      (not (total_days_in porto ?n1))
+      (total_days_in porto ?n2)
+      (visited_porto_in_window)
+    )
+  )
+)

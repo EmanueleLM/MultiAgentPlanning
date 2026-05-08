@@ -1,0 +1,52 @@
+(define (domain trip_planning)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day count)
+  (:predicates
+    (at ?c - city)
+    (current_day ?d - day)
+    (visited ?c - city ?d - day)
+    (has_flown ?d - day)
+    (spent ?c - city ?n - count)
+    (next ?d1 ?d2 - day)
+    (next_count ?n1 ?n2 - count)
+    (connected ?c1 ?c2 - city)
+  )
+
+  (:action stay
+    :parameters (?c - city ?d_from ?d_to - day ?n_from ?n_to - count)
+    :precondition (and 
+      (at ?c) 
+      (current_day ?d_from) 
+      (next ?d_from ?d_to)
+      (spent ?c ?n_from) 
+      (next_count ?n_from ?n_to)
+    )
+    :effect (and 
+      (not (current_day ?d_from)) 
+      (current_day ?d_to)
+      (not (spent ?c ?n_from)) 
+      (spent ?c ?n_to)
+      (visited ?c ?d_to)
+    )
+  )
+
+  (:action fly
+    :parameters (?c_from ?c_to - city ?d - day ?n_from ?n_to - count)
+    :precondition (and 
+      (at ?c_from) 
+      (current_day ?d) 
+      (connected ?c_from ?c_to)
+      (not (has_flown ?d))
+      (spent ?c_to ?n_from) 
+      (next_count ?n_from ?n_to)
+    )
+    :effect (and 
+      (not (at ?c_from)) 
+      (at ?c_to)
+      (not (spent ?c_to ?n_from)) 
+      (spent ?c_to ?n_to)
+      (visited ?c_to ?d)
+      (has_flown ?d)
+    )
+  )
+)

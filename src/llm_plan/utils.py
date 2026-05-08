@@ -85,6 +85,37 @@ def has_valid_plan_file(path: str | Path) -> bool:
         return False
 
 
+def extract_agent_name(response: str, available_agents: dict[str, Any]) -> str:
+    """Extract a valid agent class name from a hypervisor response."""
+    if not response:
+        raise ValueError("Empty hypervisor response.")
+
+    match = re.search(r"<class>\s*([A-Za-z_][A-Za-z0-9_]*)\s*</class>", response)
+    if match:
+        agent_name = match.group(1).strip()
+        if agent_name in available_agents:
+            return agent_name
+
+    stripped_response = response.strip().strip("`")
+    if stripped_response in available_agents:
+        return stripped_response
+
+    for line in response.splitlines():
+        candidate = line.strip().strip("`")
+        if candidate in available_agents:
+            return candidate
+
+    mentioned_agents = [
+        agent_name
+        for agent_name in available_agents
+        if re.search(rf"\b{re.escape(agent_name)}\b", response)
+    ]
+    if len(mentioned_agents) == 1:
+        return mentioned_agents[0]
+
+    raise ValueError("No unique agent class found in hypervisor response.")
+
+
 global_timeout = 10 * 60  # seconds
 _subprocess_execution_times: list[float] = []
 

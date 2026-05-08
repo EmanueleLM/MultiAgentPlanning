@@ -1,0 +1,44 @@
+(define (problem calendar_scheduling_example_17)
+  (:domain calendar_scheduling)
+  (:objects
+    margaret donna helen - person
+    t0900_0930 t0930_1000 t1000_1030 t1030_1100 t1100_1130 t1130_1200 t1200_1230 t1230_1300 t1300_1330 t1330_1400 t1400_1430 t1430_1500 t1500_1530 t1530_1600 t1600_1630 t1630_1700 - timeslot
+  )
+  (:init
+    ; Margaret's free schedule
+    (available margaret t1000_1030)
+    (available margaret t1100_1130)
+    (available margaret t1200_1230)
+    (available margaret t1230_1300)
+    (available margaret t1330_1400)
+    (available margaret t1400_1430)
+    (available margaret t1430_1500)
+    (available margaret t1530_1600)
+    (available margaret t1600_1630)
+    (available margaret t1630_1700)
+
+    ; Donna's free schedule
+    (available donna t0900_0930)
+    (available donna t0930_1000)
+    (available donna t1000_1030)
+    (available donna t1030_1100)
+    (available donna t1100_1130)
+    (available donna t1130_1200)
+    (available donna t1200_1230)
+    (available donna t1230_1300)
+    (available donna t1300_1330)
+    (available donna t1330_1400)
+    (available donna t1400_1430)
+    (available donna t1500_1530)
+    (available donna t1530_1600)
+    (available donna t1630_1700)
+
+    ; Helen's free schedule and preference (before 13:30)
+    (available helen t0930_1000)
+    (available helen t1130_1200)
+    (available helen t1200_1230)
+    (available helen t1230_1300)
+    ; Helen is also free at t1400_1430 and t1500_1530, but those are excluded by her 13:30 preference.
+  )
+  (:goal (meeting_scheduled))
+)

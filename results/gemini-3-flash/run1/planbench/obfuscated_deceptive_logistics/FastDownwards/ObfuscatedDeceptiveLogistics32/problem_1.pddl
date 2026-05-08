@@ -1,0 +1,58 @@
+(define (problem obfuscated_deceptive_logistics_32_problem)
+  (:domain obfuscated_deceptive_logistics_32)
+  (:objects
+    object_0 - cats_t
+    object_1 object_2 - stupendous_t
+    object_3 object_4 - sneeze_t
+    object_5 object_8 - spring_t
+    object_6 object_7 object_9 object_10 - texture_t
+    object_11 object_12 object_13 object_14 object_15 - hand_t
+  )
+
+  (:init
+    (cats object_0)
+    (stupendous object_1)
+    (stupendous object_2)
+    (sneeze object_3)
+    (sneeze object_4)
+    (texture object_5)
+    (texture object_6)
+    (texture object_7)
+    (texture object_8)
+    (texture object_9)
+    (texture object_10)
+    (spring object_5)
+    (spring object_8)
+    (hand object_11)
+    (hand object_12)
+    (hand object_13)
+    (hand object_14)
+    (hand object_15)
+    
+    (collect object_10 object_2)
+    (collect object_5 object_1)
+    (collect object_6 object_1)
+    (collect object_7 object_1)
+    (collect object_8 object_2)
+    (collect object_9 object_2)
+    
+    (next object_0 object_5)
+    (next object_3 object_6)
+    (next object_4 object_8)
+    (next object_11 object_8)
+    (next object_12 object_5)
+    (next object_13 object_6)
+    (next object_14 object_5)
+    (next object_15 object_10)
+  )
+
+  (:goal
+    (and
+      (next object_11 object_7)
+      (next object_12 object_9)
+      (next object_13 object_8)
+      (next object_14 object_9)
+      (next object_15 object_6)
+    )
+  )
+)

@@ -1,0 +1,20 @@
+(define (domain sokoban)
+  (:requirements :strips :typing)
+  (:types location direction)
+  (:predicates
+    (at-player ?l - location)
+    (at-box ?l - location)
+    (adjacent ?l1 ?l2 - location ?d - direction)
+    (clear ?l - location)
+  )
+  (:action move
+    :parameters (?from ?to - location ?d - direction)
+    :precondition (and (at-player ?from) (adjacent ?from ?to ?d) (clear ?to))
+    :effect (and (not (at-player ?from)) (at-player ?to) (clear ?from) (not (clear ?to)))
+  )
+  (:action push
+    :parameters (?p_from ?b_from ?b_to - location ?d - direction)
+    :precondition (and (at-player ?p_from) (at-box ?b_from) (adjacent ?p_from ?b_from ?d) (adjacent ?b_from ?b_to ?d) (clear ?b_to))
+    :effect (and (not (at-player ?p_from)) (at-player ?b_from) (not (at-box ?b_from)) (at-box ?b_to) (clear ?p_from) (not (clear ?b_to)))
+  )
+)

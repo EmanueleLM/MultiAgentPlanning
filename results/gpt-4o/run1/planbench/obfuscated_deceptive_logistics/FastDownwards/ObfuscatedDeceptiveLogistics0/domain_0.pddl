@@ -1,0 +1,52 @@
+(define (domain object_manipulation)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types object)
+  (:predicates
+    (hand ?x - object)
+    (cats ?x - object)
+    (sneeze ?x - object)
+    (texture ?x - object)
+    (vase ?x ?y - object)
+    (next ?x ?y - object)
+    (collect ?x ?y - object)
+    (spring ?x - object)
+    (stupendous ?x - object)
+  )
+  
+  (:action action_paltry
+    :parameters (?o0 ?o1 ?o2 - object)
+    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (vase ?o0 ?o1) (next ?o1 ?o2))
+    :effect (and (not (vase ?o0 ?o1)) (next ?o0 ?o2))
+  )
+  
+  (:action action_sip
+    :parameters (?o0 ?o1 ?o2 - object)
+    :precondition (and (hand ?o0) (cats ?o1) (texture ?o2) (next ?o0 ?o2) (next ?o1 ?o2))
+    :effect (and (not (next ?o0 ?o2)) (vase ?o0 ?o1))
+  )
+  
+  (:action action_clip
+    :parameters (?o0 ?o1 ?o2 - object)
+    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (next ?o0 ?o2))
+    :effect (and (not (next ?o0 ?o2)) (vase ?o0 ?o1))
+  )
+  
+  (:action action_wretched
+    :parameters (?o0 ?o1 ?o2 ?o3 - object)
+    :precondition (and (sneeze ?o0) (texture ?o1) (texture ?o2) (stupendous ?o3) 
+                       (next ?o0 ?o1) (collect ?o1 ?o3) (collect ?o2 ?o3))
+    :effect (and (not (next ?o0 ?o1)) (next ?o0 ?o2))
+  )
+  
+  (:action action_memory
+    :parameters (?o0 ?o1 ?o2 - object)
+    :precondition (and (cats ?o0) (spring ?o1) (spring ?o2) (next ?o0 ?o1))
+    :effect (and (not (next ?o0 ?o1)) (next ?o0 ?o2))
+  )
+  
+  (:action action_tightfisted
+    :parameters (?o0 ?o1 ?o2 - object)
+    :precondition (and (hand ?o0) (sneeze ?o1) (texture ?o2) (next ?o1 ?o2) (vase ?o0 ?o1))
+    :effect (and (not (vase ?o0 ?o1)) (next ?o0 ?o2))
+  )
+)

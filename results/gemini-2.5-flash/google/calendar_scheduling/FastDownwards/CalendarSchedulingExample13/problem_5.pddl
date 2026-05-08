@@ -1,0 +1,71 @@
+(define (problem calendar_scheduling_example13_problem)
+    (:domain calendar_scheduling_example13)
+    (:objects
+        slot_0900 slot_0930 slot_1000 slot_1030 slot_1100 slot_1130
+        slot_1200 slot_1230 slot_1300 slot_1330 slot_1400 slot_1430
+        slot_1500 slot_1530 slot_1600 slot_1630 - time_slot
+    )
+    (:init
+        (= (total-cost) 0)
+
+        ; Gerald's availability (Busy: 9:00-9:30, 13:00-14:00, 15:00-15:30, 16:00-17:00)
+        (is_available gerald slot_0930) ; 9:30-10:00
+        (is_available gerald slot_1000) ; 10:00-10:30
+        (is_available gerald slot_1030) ; 10:30-11:00
+        (is_available gerald slot_1100) ; 11:00-11:30
+        (is_available gerald slot_1130) ; 11:30-12:00
+        (is_available gerald slot_1200) ; 12:00-12:30
+        (is_available gerald slot_1230) ; 12:30-13:00
+        (is_available gerald slot_1400) ; 14:00-14:30
+        (is_available gerald slot_1430) ; 14:30-15:00
+        (is_available gerald slot_1530) ; 15:30-16:00
+
+        ; Roy's availability (Free entire day 9:00-17:00)
+        (is_available roy slot_0900)
+        (is_available roy slot_0930)
+        (is_available roy slot_1000)
+        (is_available roy slot_1030)
+        (is_available roy slot_1100)
+        (is_available roy slot_1130)
+        (is_available roy slot_1200)
+        (is_available roy slot_1230)
+        (is_available roy slot_1300)
+        (is_available roy slot_1330)
+        (is_available roy slot_1400)
+        (is_available roy slot_1430)
+        (is_available roy slot_1500)
+        (is_available roy slot_1530)
+        (is_available roy slot_1600)
+        (is_available roy slot_1630)
+
+        ; Barbara's availability (Busy: 9:30-10:00, 11:30-14:00, 14:30-15:00, 15:30-17:00)
+        (is_available barbara slot_0900) ; 9:00-9:30
+        (is_available barbara slot_1000) ; 10:00-10:30
+        (is_available barbara slot_1030) ; 10:30-11:00
+        (is_available barbara slot_1100) ; 11:00-11:30
+        (is_available barbara slot_1400) ; 14:00-14:30
+        (is_available barbara slot_1500) ; 15:00-15:30
+
+        ; Gerald's preference: avoid before 13:00 (non-preferred slots)
+        (has_preference_type slot_0900 non_preferred_slot)
+        (has_preference_type slot_0930 non_preferred_slot)
+        (has_preference_type slot_1000 non_preferred_slot)
+        (has_preference_type slot_1030 non_preferred_slot)
+        (has_preference_type slot_1100 non_preferred_slot)
+        (has_preference_type slot_1130 non_preferred_slot)
+        (has_preference_type slot_1200 non_preferred_slot)
+        (has_preference_type slot_1230 non_preferred_slot)
+        
+        ; Slots at or after 13:00 are preferred for Gerald
+        (has_preference_type slot_1300 preferred_slot)
+        (has_preference_type slot_1330 preferred_slot)
+        (has_preference_type slot_1400 preferred_slot)
+        (has_preference_type slot_1430 preferred_slot)
+        (has_preference_type slot_1500 preferred_slot)
+        (has_preference_type slot_1530 preferred_slot)
+        (has_preference_type slot_1600 preferred_slot)
+        (has_preference_type slot_1630 preferred_slot)
+    )
+    (:goal (exists (?s - time_slot) (meeting_scheduled ?s)))
+    (:metric minimize (total-cost))
+)

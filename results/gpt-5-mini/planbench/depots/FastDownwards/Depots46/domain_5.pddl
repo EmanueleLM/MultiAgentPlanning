@@ -1,0 +1,133 @@
+(define (domain depots46)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    place
+    depot distributor - place
+    surface
+    pallet crate - surface
+    truck
+    hoist
+  )
+
+  (:predicates
+    (at_truck ?tr - truck ?p - place)
+    (at_hoist ?h - hoist ?p - place)
+    (at_crate ?c - crate ?p - place)
+    (at_pallet ?pl - pallet ?p - place)
+    (in_truck ?c - crate ?tr - truck)
+    (on ?c - crate ?s - surface)
+    (clear ?s - surface)
+    (available ?h - hoist)
+    (lifting ?h - hoist ?c - crate)
+  )
+
+  (:action drive
+    :parameters (?tr - truck ?from - place ?to - place)
+    :precondition (and (at_truck ?tr ?from))
+    :effect (and (not (at_truck ?tr ?from)) (at_truck ?tr ?to))
+  )
+
+  (:action lift_from_pallet
+    :parameters (?h - hoist ?c - crate ?pl - pallet ?p - place)
+    :precondition (and
+      (at_hoist ?h ?p)
+      (at_crate ?c ?p)
+      (on ?c ?pl)
+      (clear ?c)
+      (available ?h)
+      (at_pallet ?pl ?p)
+    )
+    :effect (and
+      (not (at_crate ?c ?p))
+      (not (on ?c ?pl))
+      (not (available ?h))
+      (lifting ?h ?c)
+      (clear ?pl)
+    )
+  )
+
+  (:action lift_from_crate
+    :parameters (?h - hoist ?c - crate ?sup - crate ?p - place)
+    :precondition (and
+      (at_hoist ?h ?p)
+      (at_crate ?c ?p)
+      (on ?c ?sup)
+      (clear ?c)
+      (available ?h)
+      (at_crate ?sup ?p)
+    )
+    :effect (and
+      (not (at_crate ?c ?p))
+      (not (on ?c ?sup))
+      (not (available ?h))
+      (lifting ?h ?c)
+      (clear ?sup)
+    )
+  )
+
+  (:action drop_to_pallet
+    :parameters (?h - hoist ?c - crate ?pl - pallet ?p - place)
+    :precondition (and
+      (lifting ?h ?c)
+      (at_hoist ?h ?p)
+      (at_pallet ?pl ?p)
+      (clear ?pl)
+    )
+    :effect (and
+      (not (lifting ?h ?c))
+      (available ?h)
+      (at_crate ?c ?p)
+      (on ?c ?pl)
+      (not (clear ?pl))
+      (clear ?c)
+    )
+  )
+
+  (:action drop_to_crate
+    :parameters (?h - hoist ?c - crate ?sup - crate ?p - place)
+    :precondition (and
+      (lifting ?h ?c)
+      (at_hoist ?h ?p)
+      (at_crate ?sup ?p)
+      (clear ?sup)
+    )
+    :effect (and
+      (not (lifting ?h ?c))
+      (available ?h)
+      (at_crate ?c ?p)
+      (on ?c ?sup)
+      (not (clear ?sup))
+      (clear ?c)
+    )
+  )
+
+  (:action load
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (at_hoist ?h ?p)
+      (at_truck ?tr ?p)
+      (lifting ?h ?c)
+    )
+    :effect (and
+      (not (lifting ?h ?c))
+      (available ?h)
+      (in_truck ?c ?tr)
+      (not (at_crate ?c ?p))
+    )
+  )
+
+  (:action unload
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (at_hoist ?h ?p)
+      (at_truck ?tr ?p)
+      (available ?h)
+      (in_truck ?c ?tr)
+    )
+    :effect (and
+      (not (in_truck ?c ?tr))
+      (not (available ?h))
+      (lifting ?h ?c)
+    )
+  )
+)

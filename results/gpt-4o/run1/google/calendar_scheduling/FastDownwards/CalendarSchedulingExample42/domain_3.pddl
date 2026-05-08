@@ -1,0 +1,22 @@
+(define (domain meeting_scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant meeting_slot)
+  (:predicates 
+    (available ?p - participant ?s - meeting_slot)
+    (meeting_scheduled ?s1 - meeting_slot ?s2 - meeting_slot)
+    (consecutive ?s1 - meeting_slot ?s2 - meeting_slot)
+  )
+  (:action schedule_meeting
+    :parameters (?s1 - meeting_slot ?s2 - meeting_slot)
+    :precondition (and 
+      (available julie ?s1) 
+      (available sean ?s1)
+      (available lori ?s1)
+      (available julie ?s2)
+      (available sean ?s2)
+      (available lori ?s2)
+      (consecutive ?s1 ?s2)
+    )
+    :effect (meeting_scheduled ?s1 ?s2)
+  )
+)

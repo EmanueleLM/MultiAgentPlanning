@@ -37,6 +37,20 @@ class Hypervisor:
             {target_solver} invocation succeeds.
             Diagnose the root cause of the last failure using the artefacts, solver logs, syntax errors,
             budget usage, and history, then select the single agent best positioned to remove that blocker.
+            Apply this policy strictly:
+            - If the failure is primarily syntactic or formatting-related (unknown token, undeclared symbol,
+              malformed parentheses, invalid requirements, malformed action header), prefer AgentSyntaxPDDL.
+            - If the failure is primarily about unsupported solver features (numeric fluents, durative actions,
+              unsupported comparisons, conditional effects), prefer AgentFastDownwardsAdapter.
+            - If the PDDL is mostly valid but the abstraction is semantically wrong (no relaxed solution,
+              dead-end initial state, trivially false goal, repeated unsolvability, wrong ontology, missing invariant,
+              wrong transition model, incorrect init/goal mapping), prefer AgentJackOfAllTrades.
+            - If the model looks semantically sound but search explodes because the grounded task is too large,
+              prefer AgentReduceVariables.
+            - If the main issue is temporal or ordering consistency inside an otherwise reasonable model,
+              prefer AgentTemporalConsistency.
+            - If one or two local repair agents have already failed and the model still appears semantically wrong,
+              escalate to AgentJackOfAllTrades.
             Never pick abstract classes, and only choose <class>NoOpAgent</class> once a valid plan exists
             and no unresolved issues remain.
             """
@@ -85,6 +99,17 @@ class Hypervisor:
             Use this information to determine why the solver failed (syntax errors, invalid requirements, missing predicates,
             temporal inconsistencies, etc.) and pick the agent that offers the highest likelihood of fixing that blocker
             within the remaining budget. Stick to {target_solver} compatible features.
+
+            Decision policy:
+            1. Pure syntax / parser / declaration failure -> AgentSyntaxPDDL.
+            2. Unsupported solver feature or non-classical construct -> AgentFastDownwardsAdapter.
+            3. Valid-looking PDDL but semantic failure (dead-end initial state, no relaxed solution, trivially false goal,
+               wrong ontology, missing invariant, wrong transition model, bad init/goal mapping) -> AgentJackOfAllTrades.
+            4. Search-space explosion with otherwise reasonable semantics -> AgentReduceVariables.
+            5. Temporal or contiguity bug inside an otherwise correct model -> AgentTemporalConsistency.
+            6. If local repairs have already been tried and failed while semantic issues remain -> AgentJackOfAllTrades.
+
+            Prefer AgentJackOfAllTrades for semantic failure, not for low-level syntax failure.
             
             When you think you are done (for sure, Last iteration with a valid plan should be different than -1), call the NoOpAgent to finalise the artefacts.
             """

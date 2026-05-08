@@ -1,0 +1,17 @@
+(define (problem craving-problem)
+  (:domain craving-domain)
+  (:objects a b c d)
+  (:init
+    (craves a d)
+    (craves d c)
+    (harmony)
+    (planet b)
+    (planet c)
+    (province a)
+    (province b)
+  )
+  (:goal (and
+    (craves b c)
+    (craves d a)
+  ))
+)

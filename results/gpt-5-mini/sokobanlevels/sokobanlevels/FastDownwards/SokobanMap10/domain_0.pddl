@@ -1,0 +1,28 @@
+(define (domain sokoban_corridor)
+  (:requirements :typing :strips :negative-preconditions)
+  (:types cell agent movable_box)
+  (:predicates
+    (adjacent ?from - cell ?to - cell)
+    (player_at ?c - cell)
+    (box_at ?c - cell)
+    (goal ?c - cell)
+    (free ?c - cell)
+  )
+  (:action move
+    :parameters (?from - cell ?to - cell)
+    :precondition (and (player_at ?from) (adjacent ?from ?to) (free ?to))
+    :effect (and (not (player_at ?from)) (player_at ?to))
+  )
+  (:action push
+    :parameters (?p - cell ?box_from - cell ?box_to - cell)
+    :precondition (and (player_at ?p) (adjacent ?p ?box_from) (box_at ?box_from) (adjacent ?box_from ?box_to) (free ?box_to))
+    :effect (and
+      (not (player_at ?p))
+      (player_at ?box_from)
+      (not (box_at ?box_from))
+      (box_at ?box_to)
+      (not (free ?box_to))
+      (free ?box_from)
+    )
+  )
+)

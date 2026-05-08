@@ -1,0 +1,62 @@
+(define (problem calendar_scheduling_example_19)
+  (:domain calendar_scheduling)
+  (:objects
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - timeslot
+  )
+  (:init
+    ;; Sequence of 30-minute intervals from 9:00 to 17:00
+    (next t0900 t0930)
+    (next t0930 t1000)
+    (next t1000 t1030)
+    (next t1030 t1100)
+    (next t1100 t1130)
+    (next t1130 t1200)
+    (next t1200 t1230)
+    (next t1230 t1300)
+    (next t1300 t1330)
+    (next t1330 t1400)
+    (next t1400 t1430)
+    (next t1430 t1500)
+    (next t1500 t1530)
+    (next t1530 t1600)
+    (next t1600 t1630)
+
+    ;; Stephen's Availability
+    ;; Busy: 10:00-10:30 (t1000), 13:00-13:30 (t1300), 14:30-15:00 (t1430), 16:00-16:30 (t1600)
+    (available stephen t0900)
+    (available stephen t0930)
+    (available stephen t1030)
+    (available stephen t1100)
+    (available stephen t1130)
+    (available stephen t1200)
+    (available stephen t1230)
+    (available stephen t1330)
+    (available stephen t1400)
+    (available stephen t1500)
+    (available stephen t1530)
+    (available stephen t1630)
+
+    ;; Edward's Availability
+    ;; Busy: 9:00-9:30 (t0900), 10:00-10:30 (t1000), 13:30-14:30 (t1330, t1400), 15:00-16:00 (t1500, t1530)
+    (available edward t0930)
+    (available edward t1030)
+    (available edward t1100)
+    (available edward t1130)
+    (available edward t1200)
+    (available edward t1230)
+    (available edward t1300)
+    (available edward t1430)
+    (available edward t1600)
+    (available edward t1630)
+
+    ;; Angela's Availability
+    ;; Busy: 9:00-11:30 (t0900, t0930, t1000, t1030, t1100), 12:30-13:00 (t1230), 13:30-15:30 (t1330, t1400, t1430, t1500), 16:00-17:00 (t1600, t1630)
+    (available angela t1130)
+    (available angela t1200)
+    (available angela t1300)
+    (available angela t1530)
+  )
+  (:goal
+    (meeting_scheduled)
+  )
+)

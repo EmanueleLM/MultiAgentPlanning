@@ -1,0 +1,58 @@
+(define (domain trip_planning_example_24)
+    (:requirements :strips :typing :negative-preconditions)
+    (:types city day count)
+
+    (:predicates
+        (at_city ?c - city)
+        (current_day ?d - day)
+        (next_day ?d1 ?d2 - day)
+        (count_at ?c - city ?v - count)
+        (next_count ?v1 ?v2 - count)
+        (can_fly ?c1 ?c2 - city)
+        (is_workshop_day ?d - day)
+        (is_florence ?c - city)
+    )
+
+    (:action stay
+        :parameters (?c - city ?d - day ?dn - day ?v - count ?vn - count)
+        :precondition (and 
+            (at_city ?c) 
+            (current_day ?d) 
+            (next_day ?d ?dn) 
+            (count_at ?c ?v) 
+            (next_count ?v ?vn)
+            (or (not (is_workshop_day ?d)) (is_florence ?c))
+        )
+        :effect (and 
+            (not (current_day ?d)) 
+            (current_day ?dn) 
+            (not (count_at ?c ?v)) 
+            (count_at ?c ?vn)
+        )
+    )
+
+    (:action fly
+        :parameters (?cf - city ?ct - city ?d - day ?dn - day ?vf - count ?vfn - count ?vt - count ?vtn - count)
+        :precondition (and 
+            (at_city ?cf) 
+            (can_fly ?cf ?ct)
+            (current_day ?d) 
+            (next_day ?d ?dn) 
+            (count_at ?cf ?vf) 
+            (next_count ?vf ?vfn)
+            (count_at ?ct ?vt)
+            (next_count ?vt ?vtn)
+            (or (not (is_workshop_day ?d)) (is_florence ?cf))
+        )
+        :effect (and 
+            (not (at_city ?cf)) 
+            (at_city ?ct) 
+            (not (current_day ?d)) 
+            (current_day ?dn)
+            (not (count_at ?cf ?vf)) 
+            (count_at ?cf ?vfn)
+            (not (count_at ?ct ?vt)) 
+            (count_at ?ct ?vtn)
+        )
+    )
+)

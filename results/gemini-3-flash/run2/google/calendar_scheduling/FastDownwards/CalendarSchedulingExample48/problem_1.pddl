@@ -1,0 +1,66 @@
+(define (problem calendar_scheduling_example_48)
+  (:domain calendar_scheduling)
+  (:objects
+    janet rachel cynthia - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 t1700 - time
+  )
+  (:init
+    ;; Time sequence
+    (next t0900 t0930)
+    (next t0930 t1000)
+    (next t1000 t1030)
+    (next t1030 t1100)
+    (next t1100 t1130)
+    (next t1130 t1200)
+    (next t1200 t1230)
+    (next t1230 t1300)
+    (next t1300 t1330)
+    (next t1330 t1400)
+    (next t1400 t1430)
+    (next t1430 t1500)
+    (next t1500 t1530)
+    (next t1530 t1600)
+    (next t1600 t1630)
+    (next t1630 t1700)
+
+    ;; Janet is busy on Monday during 9:30 to 10:30, 12:30 to 13:00, 14:00 to 14:30
+    (is_free janet t0900 t0930)
+    (is_free janet t1030 t1100)
+    (is_free janet t1100 t1130)
+    (is_free janet t1130 t1200)
+    (is_free janet t1200 t1230)
+    (is_free janet t1300 t1330)
+    (is_free janet t1330 t1400)
+    (is_free janet t1430 t1500)
+    (is_free janet t1500 t1530)
+    (is_free janet t1530 t1600)
+    (is_free janet t1600 t1630)
+    (is_free janet t1630 t1700)
+
+    ;; Rachel has no meetings the whole day
+    (is_free rachel t0900 t0930)
+    (is_free rachel t0930 t1000)
+    (is_free rachel t1000 t1030)
+    (is_free rachel t1030 t1100)
+    (is_free rachel t1100 t1130)
+    (is_free rachel t1130 t1200)
+    (is_free rachel t1200 t1230)
+    (is_free rachel t1230 t1300)
+    (is_free rachel t1300 t1330)
+    (is_free rachel t1330 t1400)
+    (is_free rachel t1400 t1430)
+    (is_free rachel t1430 t1500)
+    (is_free rachel t1500 t1530)
+    (is_free rachel t1530 t1600)
+    (is_free rachel t1600 t1630)
+    (is_free rachel t1630 t1700)
+
+    ;; Cynthia is busy: 9:30-10:00, 11:00-11:30, 12:30-14:30, 16:00-17:00
+    ;; Also honors Cynthia's preference not to meet before 13:30.
+    ;; Cynthia's remaining free segments:
+    (is_free cynthia t1430 t1500)
+    (is_free cynthia t1500 t1530)
+    (is_free cynthia t1530 t1600)
+  )
+  (:goal (scheduled))
+)

@@ -1,0 +1,44 @@
+(define (domain sokoban_map_38)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location direction)
+  (:predicates
+    (at_player ?l - location)
+    (at_box ?l - location)
+    (clear ?l - location)
+    (adjacent ?l1 ?l2 - location ?d - direction)
+  )
+
+  (:action move
+    :parameters (?from ?to - location ?dir - direction)
+    :precondition (and 
+      (at_player ?from) 
+      (adjacent ?from ?to ?dir) 
+      (clear ?to)
+    )
+    :effect (and 
+      (not (at_player ?from)) 
+      (at_player ?to) 
+      (clear ?from) 
+      (not (clear ?to))
+    )
+  )
+
+  (:action push
+    :parameters (?p_from ?b_from ?b_to - location ?dir - direction)
+    :precondition (and 
+      (at_player ?p_from) 
+      (at_box ?b_from) 
+      (clear ?b_to)
+      (adjacent ?p_from ?b_from ?dir)
+      (adjacent ?b_from ?b_to ?dir)
+    )
+    :effect (and 
+      (not (at_player ?p_from)) 
+      (at_player ?b_from) 
+      (not (at_box ?b_from)) 
+      (at_box ?b_to) 
+      (clear ?p_from) 
+      (not (clear ?b_to))
+    )
+  )
+)

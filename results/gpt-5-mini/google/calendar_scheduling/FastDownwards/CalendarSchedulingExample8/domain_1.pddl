@@ -1,0 +1,27 @@
+(define (domain orchestrator)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant slot meeting)
+  (:predicates
+    (free ?p - participant ?s - slot)
+    (occupied ?p - participant ?s - slot)
+    (meeting-scheduled ?m - meeting)
+    (meeting-at ?m - meeting ?s - slot)
+    (assigned-first ?p - participant)
+    (assigned-second ?p - participant)
+    (assigned-third ?p - participant)
+  )
+  (:action schedule-meeting
+    :parameters (?m - meeting ?s - slot ?p1 - participant ?p2 - participant ?p3 - participant)
+    :precondition (and
+      (not (meeting-scheduled ?m))
+      (free ?p1 ?s) (free ?p2 ?s) (free ?p3 ?s)
+    )
+    :effect (and
+      (meeting-scheduled ?m)
+      (meeting-at ?m ?s)
+      (occupied ?p1 ?s) (occupied ?p2 ?s) (occupied ?p3 ?s)
+      (not (free ?p1 ?s)) (not (free ?p2 ?s)) (not (free ?p3 ?s))
+      (assigned-first ?p1) (assigned-second ?p2) (assigned-third ?p3)
+    )
+  )
+)

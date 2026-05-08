@@ -1,0 +1,21 @@
+(define (domain meeting_planning)
+  (:requirements :strips :typing)
+  (:types location time)
+  (:predicates
+    (at ?l - location)
+    (current_time ?t - time)
+    (met_stephanie)
+    (can_travel ?from - location ?to - location ?t_start - time ?t_end - time)
+    (can_meet_stephanie ?loc - location ?t_start - time ?t_end - time)
+  )
+  (:action travel
+    :parameters (?from - location ?to - location ?t_start - time ?t_end - time)
+    :precondition (and (at ?from) (current_time ?t_start) (can_travel ?from ?to ?t_start ?t_end))
+    :effect (and (not (at ?from)) (at ?to) (not (current_time ?t_start)) (current_time ?t_end))
+  )
+  (:action meet_stephanie
+    :parameters (?loc - location ?t_start - time ?t_end - time)
+    :precondition (and (at ?loc) (current_time ?t_start) (can_meet_stephanie ?loc ?t_start ?t_end))
+    :effect (and (not (current_time ?t_start)) (current_time ?t_end) (met_stephanie))
+  )
+)

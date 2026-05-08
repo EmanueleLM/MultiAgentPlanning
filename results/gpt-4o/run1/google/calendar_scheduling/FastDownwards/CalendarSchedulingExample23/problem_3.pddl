@@ -1,0 +1,47 @@
+(define (problem specific_meeting_schedule)
+  (:domain meeting_scheduler)
+  (:objects
+    billy maria william - person
+    slot_0900_0930 slot_0930_1000 slot_1000_1030 slot_1030_1100
+    slot_1100_1130 slot_1130_1200 slot_1200_1230 slot_1230_1300
+    slot_1300_1330 slot_1330_1400 slot_1400_1430 slot_1430_1500
+    slot_1500_1530 slot_1530_1600 slot_1600_1630 slot_1630_1700 - time_slot
+  )
+  (:init
+    (is_busy billy slot_1130_1200)
+    (is_busy billy slot_1300_1330)
+    (is_busy billy slot_1330_1400)
+    (is_busy billy slot_1600_1630)
+    (is_busy maria slot_0900_0930)
+    (is_busy maria slot_1000_1030)
+    (is_busy maria slot_1300_1330)
+    (is_busy maria slot_1400_1430)
+    (is_busy william slot_0930_1000)
+    (is_busy william slot_1200_1230)
+    (is_busy william slot_1330_1400)
+    (is_busy william slot_1530_1600)
+    (is_busy william slot_1600_1630)
+    (is_busy william slot_1630_1700)
+    (next_slot slot_0900_0930 slot_0930_1000)
+    (next_slot slot_0930_1000 slot_1000_1030)
+    (next_slot slot_1000_1030 slot_1030_1100)
+    (next_slot slot_1030_1100 slot_1100_1130)
+    (next_slot slot_1100_1130 slot_1130_1200)
+    (next_slot slot_1130_1200 slot_1200_1230)
+    (next_slot slot_1200_1230 slot_1230_1300)
+    (next_slot slot_1230_1300 slot_1300_1330)
+    (next_slot slot_1300_1330 slot_1330_1400)
+    (next_slot slot_1330_1400 slot_1400_1430)
+    (next_slot slot_1400_1430 slot_1430_1500)
+    (next_slot slot_1430_1500 slot_1500_1530)
+    (next_slot slot_1500_1530 slot_1530_1600)
+    (next_slot slot_1530_1600 slot_1600_1630)
+    (next_slot slot_1600_1630 slot_1630_1700)
+  )
+  (:goal
+      (and
+        (meeting_scheduled slot_1030_1100)
+        (meeting_scheduled slot_1100_1130)
+      )
+  )
+)

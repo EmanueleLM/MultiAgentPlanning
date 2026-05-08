@@ -1,0 +1,68 @@
+(define (domain trip_planning)
+  (:requirements :strips :typing)
+  (:types city day count)
+
+  (:predicates
+    (at ?c - city ?d - day)
+    (city_count ?c - city ?n - count)
+    (next_day ?d1 ?d2 - day)
+    (next_count ?n1 ?n2 - count)
+    (can_fly ?c1 ?c2 - city)
+    (not_started)
+    (is_day_1 ?d - day)
+    (is_count_0 ?n - count)
+  )
+
+  ;; Sets the starting city on the first day and initializes its count to 1.
+  (:action start_trip
+    :parameters (?c - city ?d - day ?n0 ?n1 - count)
+    :precondition (and 
+      (not_started) 
+      (is_day_1 ?d) 
+      (is_count_0 ?n0) 
+      (next_count ?n0 ?n1)
+      (city_count ?c ?n0)
+    )
+    :effect (and 
+      (not (not_started)) 
+      (at ?c ?d) 
+      (not (city_count ?c ?n0))
+      (city_count ?c ?n1)
+    )
+  )
+
+  ;; Spend another day in the same city.
+  (:action stay
+    :parameters (?c - city ?d_now ?d_next - day ?n_old ?n_new - count)
+    :precondition (and
+      (at ?c ?d_now)
+      (next_day ?d_now ?d_next)
+      (city_count ?c ?n_old)
+      (next_count ?n_old ?n_new)
+    )
+    :effect (and
+      (not (at ?c ?d_now))
+      (at ?c ?d_next)
+      (not (city_count ?c ?n_old))
+      (city_count ?c ?n_new)
+    )
+  )
+
+  ;; Fly from one city to another, taking up one day and incrementing the destination city's count.
+  (:action fly
+    :parameters (?c_from ?c_to - city ?d_now ?d_next - day ?n_old ?n_new - count)
+    :precondition (and
+      (at ?c_from ?d_now)
+      (next_day ?d_now ?d_next)
+      (can_fly ?c_from ?c_to)
+      (city_count ?c_to ?n_old)
+      (next_count ?n_old ?n_new)
+    )
+    :effect (and
+      (not (at ?c_from ?d_now))
+      (at ?c_to ?d_next)
+      (not (city_count ?c_to ?n_old))
+      (city_count ?c_to ?n_new)
+    )
+  )
+)

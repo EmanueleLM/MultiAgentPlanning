@@ -1,0 +1,17 @@
+(define (problem jack_problem)
+  (:domain jack_of_all_trades)
+  (:objects a b c d - obj)
+  (:init
+    (craves a d)
+    (craves c b)
+    (harmony)
+    (planet b)
+    (planet d)
+    (province a)
+    (province c)
+  )
+  (:goal (and
+    (craves a d)
+    (craves d c)
+  ))
+)

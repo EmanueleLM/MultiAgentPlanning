@@ -1,0 +1,31 @@
+(define (domain jack_of_all_trades)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types object)
+  (:predicates
+    (province ?o - object)
+    (planet ?o - object)
+    (harmony)
+    (pain ?o - object)
+    (object_craves ?o1 - object ?o2 - object)
+  )
+  (:action attack
+    :parameters (?o - object)
+    :precondition (and (province ?o) (planet ?o) (harmony))
+    :effect (and (pain ?o) (not (province ?o)) (not (planet ?o)) (not (harmony)))
+  )
+  (:action succumb
+    :parameters (?o - object)
+    :precondition (pain ?o)
+    :effect (and (province ?o) (planet ?o) (harmony) (not (pain ?o)))
+  )
+  (:action overcome
+    :parameters (?o - object ?o2 - object)
+    :precondition (and (province ?o2) (pain ?o))
+    :effect (and (harmony) (province ?o) (object_craves ?o ?o2) (not (province ?o2)) (not (pain ?o)))
+  )
+  (:action feast
+    :parameters (?o - object ?o2 - object)
+    :precondition (and (object_craves ?o ?o2) (province ?o) (harmony))
+    :effect (and (pain ?o) (province ?o2) (not (object_craves ?o ?o2)) (not (province ?o)) (not (harmony)))
+  )
+)

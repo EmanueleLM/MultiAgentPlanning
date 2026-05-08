@@ -1,0 +1,17 @@
+(define (problem manipulate_objects)
+  (:domain object_manipulation)
+  (:objects a b c d - object)
+  (:init
+    (craves a b)
+    (craves c d)
+    (craves d a)
+    (harmony)
+    (planet b)
+    (province c)
+  )
+  (:goal (and
+    (craves a c)
+    (craves c d)
+    (craves d b)
+  ))
+)

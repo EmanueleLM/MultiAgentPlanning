@@ -1,0 +1,222 @@
+(define (problem meeting_planning_example0)
+  (:domain meeting_planning)
+  (:objects
+    marina mission - location
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9
+    t10 t11 t12 t13 t14 t15 t16 t17 t18 t19
+    t20 t21 t22 t23 t24 t25 t26 t27 t28 t29
+    t30 t31 t32 t33 t34 t35 t36 t37 t38 t39
+    t40 t41 t42 t43 t44 t45 t46 t47 t48 t49
+    t50 t51 t52 t53 t54 t55 t56 t57 t58 t59
+    t60 t61 t62 t63 t64 t65 t66 t67 t68 t69
+    t70 t71 t72 t73 t74 t75 t76 t77 t78 t79
+    t80 t81 t82 t83 t84 t85 t86 t87 t88 t89
+    t90 t91 t92 t93 t94 t95 t96 t97 t98 t99
+    t100 t101 t102 t103 t104 t105 t106 t107 t108 t109
+    t110 t111 t112 t113 t114 t115 t116 t117 t118 t119
+    t120 t121 t122 t123 t124 t125 t126 t127 t128 t129
+    t130 t131 t132 t133 t134 t135 t136 t137 t138 t139
+    t140 t141 t142 t143 t144 t145 t146 t147 t148 t149
+    t150 t151 t152 t153 t154 t155 t156 t157 t158 t159
+    t160 t161 t162 t163 t164 t165 t166 t167 t168 t169
+    t170 t171 t172 t173 t174 t175 t176 t177 t178 t179
+    t180 t181 t182 t183 t184 t185 t186 t187 t188 t189
+    t190 t191 t192 t193 t194 t195 t196 t197 t198 t199
+    t200 t201 t202 t203 t204 t205 t206 t207 t208 t209
+    t210 t211 t212 t213 t214 t215 t216 t217 t218 t219
+    t220 t221 t222 t223 t224 t225 t226 t227 t228 t229
+    t230 t231 t232 t233 t234 t235 t236 t237 t238 t239
+    t240 t241 t242 t243 t244 t245 t246 t247 t248 t249
+    t250 t251 t252 t253 t254 t255 t256 t257 t258 t259
+    t260 t261 t262 t263 t264 t265 t266 t267 t268 t269
+    t270 - time
+  )
+
+  (:init
+    ;; initial location: arrive at Marina District at 09:00 => t0
+    (at marina t0)
+
+    ;; linear time chain t0 -> t1 -> ... -> t270 (one-minute steps)
+    (next t0 t1) (next t1 t2) (next t2 t3) (next t3 t4) (next t4 t5)
+    (next t5 t6) (next t6 t7) (next t7 t8) (next t8 t9) (next t9 t10)
+    (next t10 t11) (next t11 t12) (next t12 t13) (next t13 t14) (next t14 t15)
+    (next t15 t16) (next t16 t17) (next t17 t18) (next t18 t19) (next t19 t20)
+    (next t20 t21) (next t21 t22) (next t22 t23) (next t23 t24) (next t24 t25)
+    (next t25 t26) (next t26 t27) (next t27 t28) (next t28 t29) (next t29 t30)
+    (next t30 t31) (next t31 t32) (next t32 t33) (next t33 t34) (next t34 t35)
+    (next t35 t36) (next t36 t37) (next t37 t38) (next t38 t39) (next t39 t40)
+    (next t40 t41) (next t41 t42) (next t42 t43) (next t43 t44) (next t44 t45)
+    (next t45 t46) (next t46 t47) (next t47 t48) (next t48 t49) (next t49 t50)
+    (next t50 t51) (next t51 t52) (next t52 t53) (next t53 t54) (next t54 t55)
+    (next t55 t56) (next t56 t57) (next t57 t58) (next t58 t59) (next t59 t60)
+    (next t60 t61) (next t61 t62) (next t62 t63) (next t63 t64) (next t64 t65)
+    (next t65 t66) (next t66 t67) (next t67 t68) (next t68 t69) (next t69 t70)
+    (next t70 t71) (next t71 t72) (next t72 t73) (next t73 t74) (next t74 t75)
+    (next t75 t76) (next t76 t77) (next t77 t78) (next t78 t79) (next t79 t80)
+    (next t80 t81) (next t81 t82) (next t82 t83) (next t83 t84) (next t84 t85)
+    (next t85 t86) (next t86 t87) (next t87 t88) (next t88 t89) (next t89 t90)
+    (next t90 t91) (next t91 t92) (next t92 t93) (next t93 t94) (next t94 t95)
+    (next t95 t96) (next t96 t97) (next t97 t98) (next t98 t99) (next t99 t100)
+    (next t100 t101) (next t101 t102) (next t102 t103) (next t103 t104) (next t104 t105)
+    (next t105 t106) (next t106 t107) (next t107 t108) (next t108 t109) (next t109 t110)
+    (next t110 t111) (next t111 t112) (next t112 t113) (next t113 t114) (next t114 t115)
+    (next t115 t116) (next t116 t117) (next t117 t118) (next t118 t119) (next t119 t120)
+    (next t120 t121) (next t121 t122) (next t122 t123) (next t123 t124) (next t124 t125)
+    (next t125 t126) (next t126 t127) (next t127 t128) (next t128 t129) (next t129 t130)
+    (next t130 t131) (next t131 t132) (next t132 t133) (next t133 t134) (next t134 t135)
+    (next t135 t136) (next t136 t137) (next t137 t138) (next t138 t139) (next t139 t140)
+    (next t140 t141) (next t141 t142) (next t142 t143) (next t143 t144) (next t144 t145)
+    (next t145 t146) (next t146 t147) (next t147 t148) (next t148 t149) (next t149 t150)
+    (next t150 t151) (next t151 t152) (next t152 t153) (next t153 t154) (next t154 t155)
+    (next t155 t156) (next t156 t157) (next t157 t158) (next t158 t159) (next t159 t160)
+    (next t160 t161) (next t161 t162) (next t162 t163) (next t163 t164) (next t164 t165)
+    (next t165 t166) (next t166 t167) (next t167 t168) (next t168 t169) (next t169 t170)
+    (next t170 t171) (next t171 t172) (next t172 t173) (next t173 t174) (next t174 t175)
+    (next t175 t176) (next t176 t177) (next t177 t178) (next t178 t179) (next t179 t180)
+    (next t180 t181) (next t181 t182) (next t182 t183) (next t183 t184) (next t184 t185)
+    (next t185 t186) (next t186 t187) (next t187 t188) (next t188 t189) (next t189 t190)
+    (next t190 t191) (next t191 t192) (next t192 t193) (next t193 t194) (next t194 t195)
+    (next t195 t196) (next t196 t197) (next t197 t198) (next t198 t199) (next t199 t200)
+    (next t200 t201) (next t201 t202) (next t202 t203) (next t203 t204) (next t204 t205)
+    (next t205 t206) (next t206 t207) (next t207 t208) (next t208 t209) (next t209 t210)
+    (next t210 t211) (next t211 t212) (next t212 t213) (next t213 t214) (next t214 t215)
+    (next t215 t216) (next t216 t217) (next t217 t218) (next t218 t219) (next t219 t220)
+    (next t220 t221) (next t221 t222) (next t222 t223) (next t223 t224) (next t224 t225)
+    (next t225 t226) (next t226 t227) (next t227 t228) (next t228 t229) (next t229 t230)
+    (next t230 t231) (next t231 t232) (next t232 t233) (next t233 t234) (next t234 t235)
+    (next t235 t236) (next t236 t237) (next t237 t238) (next t238 t239) (next t239 t240)
+    (next t240 t241) (next t241 t242) (next t242 t243) (next t243 t244) (next t244 t245)
+    (next t245 t246) (next t246 t247) (next t247 t248) (next t248 t249) (next t249 t250)
+    (next t250 t251) (next t251 t252) (next t252 t253) (next t253 t254) (next t254 t255)
+    (next t255 t256) (next t256 t257) (next t257 t258) (next t258 t259) (next t259 t260)
+    (next t260 t261) (next t261 t262) (next t262 t263) (next t263 t264) (next t264 t265)
+    (next t265 t266) (next t266 t267) (next t267 t268) (next t268 t269) (next t269 t270)
+
+    ;; travel mappings matching durations:
+    ;; marina -> mission = 20 minutes: travel_mm tX tX+20 for X = 0..250
+    (travel_mm t0 t20) (travel_mm t1 t21) (travel_mm t2 t22) (travel_mm t3 t23) (travel_mm t4 t24)
+    (travel_mm t5 t25) (travel_mm t6 t26) (travel_mm t7 t27) (travel_mm t8 t28) (travel_mm t9 t29)
+    (travel_mm t10 t30) (travel_mm t11 t31) (travel_mm t12 t32) (travel_mm t13 t33) (travel_mm t14 t34)
+    (travel_mm t15 t35) (travel_mm t16 t36) (travel_mm t17 t37) (travel_mm t18 t38) (travel_mm t19 t39)
+    (travel_mm t20 t40) (travel_mm t21 t41) (travel_mm t22 t42) (travel_mm t23 t43) (travel_mm t24 t44)
+    (travel_mm t25 t45) (travel_mm t26 t46) (travel_mm t27 t47) (travel_mm t28 t48) (travel_mm t29 t49)
+    (travel_mm t30 t50) (travel_mm t31 t51) (travel_mm t32 t52) (travel_mm t33 t53) (travel_mm t34 t54)
+    (travel_mm t35 t55) (travel_mm t36 t56) (travel_mm t37 t57) (travel_mm t38 t58) (travel_mm t39 t59)
+    (travel_mm t40 t60) (travel_mm t41 t61) (travel_mm t42 t62) (travel_mm t43 t63) (travel_mm t44 t64)
+    (travel_mm t45 t65) (travel_mm t46 t66) (travel_mm t47 t67) (travel_mm t48 t68) (travel_mm t49 t69)
+    (travel_mm t50 t70) (travel_mm t51 t71) (travel_mm t52 t72) (travel_mm t53 t73) (travel_mm t54 t74)
+    (travel_mm t55 t75) (travel_mm t56 t76) (travel_mm t57 t77) (travel_mm t58 t78) (travel_mm t59 t79)
+    (travel_mm t60 t80) (travel_mm t61 t81) (travel_mm t62 t82) (travel_mm t63 t83) (travel_mm t64 t84)
+    (travel_mm t65 t85) (travel_mm t66 t86) (travel_mm t67 t87) (travel_mm t68 t88) (travel_mm t69 t89)
+    (travel_mm t70 t90) (travel_mm t71 t91) (travel_mm t72 t92) (travel_mm t73 t93) (travel_mm t74 t94)
+    (travel_mm t75 t95) (travel_mm t76 t96) (travel_mm t77 t97) (travel_mm t78 t98) (travel_mm t79 t99)
+    (travel_mm t80 t100) (travel_mm t81 t101) (travel_mm t82 t102) (travel_mm t83 t103) (travel_mm t84 t104)
+    (travel_mm t85 t105) (travel_mm t86 t106) (travel_mm t87 t107) (travel_mm t88 t108) (travel_mm t89 t109)
+    (travel_mm t90 t110) (travel_mm t91 t111) (travel_mm t92 t112) (travel_mm t93 t113) (travel_mm t94 t114)
+    (travel_mm t95 t115) (travel_mm t96 t116) (travel_mm t97 t117) (travel_mm t98 t118) (travel_mm t99 t119)
+    (travel_mm t100 t120) (travel_mm t101 t121) (travel_mm t102 t122) (travel_mm t103 t123) (travel_mm t104 t124)
+    (travel_mm t105 t125) (travel_mm t106 t126) (travel_mm t107 t127) (travel_mm t108 t128) (travel_mm t109 t129)
+    (travel_mm t110 t130) (travel_mm t111 t131) (travel_mm t112 t132) (travel_mm t113 t133) (travel_mm t114 t134)
+    (travel_mm t115 t135) (travel_mm t116 t136) (travel_mm t117 t137) (travel_mm t118 t138) (travel_mm t119 t139)
+    (travel_mm t120 t140) (travel_mm t121 t141) (travel_mm t122 t142) (travel_mm t123 t143) (travel_mm t124 t144)
+    (travel_mm t125 t145) (travel_mm t126 t146) (travel_mm t127 t147) (travel_mm t128 t148) (travel_mm t129 t149)
+    (travel_mm t130 t150) (travel_mm t131 t151) (travel_mm t132 t152) (travel_mm t133 t153) (travel_mm t134 t154)
+    (travel_mm t135 t155) (travel_mm t136 t156) (travel_mm t137 t157) (travel_mm t138 t158) (travel_mm t139 t159)
+    (travel_mm t140 t160) (travel_mm t141 t161) (travel_mm t142 t162) (travel_mm t143 t163) (travel_mm t144 t164)
+    (travel_mm t145 t165) (travel_mm t146 t166) (travel_mm t147 t167) (travel_mm t148 t168) (travel_mm t149 t169)
+    (travel_mm t150 t170) (travel_mm t151 t171) (travel_mm t152 t172) (travel_mm t153 t173) (travel_mm t154 t174)
+    (travel_mm t155 t175) (travel_mm t156 t176) (travel_mm t157 t177) (travel_mm t158 t178) (travel_mm t159 t179)
+    (travel_mm t160 t180) (travel_mm t161 t181) (travel_mm t162 t182) (travel_mm t163 t183) (travel_mm t164 t184)
+    (travel_mm t165 t185) (travel_mm t166 t186) (travel_mm t167 t187) (travel_mm t168 t188) (travel_mm t169 t189)
+    (travel_mm t170 t190) (travel_mm t171 t191) (travel_mm t172 t192) (travel_mm t173 t193) (travel_mm t174 t194)
+    (travel_mm t175 t195) (travel_mm t176 t196) (travel_mm t177 t197) (travel_mm t178 t198) (travel_mm t179 t199)
+    (travel_mm t180 t200) (travel_mm t181 t201) (travel_mm t182 t202) (travel_mm t183 t203) (travel_mm t184 t204)
+    (travel_mm t185 t205) (travel_mm t186 t206) (travel_mm t187 t207) (travel_mm t188 t208) (travel_mm t189 t209)
+    (travel_mm t190 t210) (travel_mm t191 t211) (travel_mm t192 t212) (travel_mm t193 t213) (travel_mm t194 t214)
+    (travel_mm t195 t215) (travel_mm t196 t216) (travel_mm t197 t217) (travel_mm t198 t218) (travel_mm t199 t219)
+    (travel_mm t200 t220) (travel_mm t201 t221) (travel_mm t202 t222) (travel_mm t203 t223) (travel_mm t204 t224)
+    (travel_mm t205 t225) (travel_mm t206 t226) (travel_mm t207 t227) (travel_mm t208 t228) (travel_mm t209 t229)
+    (travel_mm t210 t230) (travel_mm t211 t231) (travel_mm t212 t232) (travel_mm t213 t233) (travel_mm t214 t234)
+    (travel_mm t215 t235) (travel_mm t216 t236) (travel_mm t217 t237) (travel_mm t218 t238) (travel_mm t219 t239)
+    (travel_mm t220 t240) (travel_mm t221 t241) (travel_mm t222 t242) (travel_mm t223 t243) (travel_mm t224 t244)
+    (travel_mm t225 t245) (travel_mm t226 t246) (travel_mm t227 t247) (travel_mm t228 t248) (travel_mm t229 t249)
+    (travel_mm t230 t250) (travel_mm t231 t251) (travel_mm t232 t252) (travel_mm t233 t253) (travel_mm t234 t254)
+    (travel_mm t235 t255) (travel_mm t236 t256) (travel_mm t237 t257) (travel_mm t238 t258) (travel_mm t239 t259)
+    (travel_mm t240 t260) (travel_mm t241 t261) (travel_mm t242 t262) (travel_mm t243 t263) (travel_mm t244 t264)
+    (travel_mm t245 t265) (travel_mm t246 t266) (travel_mm t247 t267) (travel_mm t248 t268) (travel_mm t249 t269)
+    (travel_mm t250 t270)
+
+    ;; mission -> marina = 19 minutes: travel_mr tX tX+19 for X = 0..251
+    (travel_mr t0 t19) (travel_mr t1 t20) (travel_mr t2 t21) (travel_mr t3 t22) (travel_mr t4 t23)
+    (travel_mr t5 t24) (travel_mr t6 t25) (travel_mr t7 t26) (travel_mr t8 t27) (travel_mr t9 t28)
+    (travel_mr t10 t29) (travel_mr t11 t30) (travel_mr t12 t31) (travel_mr t13 t32) (travel_mr t14 t33)
+    (travel_mr t15 t34) (travel_mr t16 t35) (travel_mr t17 t36) (travel_mr t18 t37) (travel_mr t19 t38)
+    (travel_mr t20 t39) (travel_mr t21 t40) (travel_mr t22 t41) (travel_mr t23 t42) (travel_mr t24 t43)
+    (travel_mr t25 t44) (travel_mr t26 t45) (travel_mr t27 t46) (travel_mr t28 t47) (travel_mr t29 t48)
+    (travel_mr t30 t49) (travel_mr t31 t50) (travel_mr t32 t51) (travel_mr t33 t52) (travel_mr t34 t53)
+    (travel_mr t35 t54) (travel_mr t36 t55) (travel_mr t37 t56) (travel_mr t38 t57) (travel_mr t39 t58)
+    (travel_mr t40 t59) (travel_mr t41 t60) (travel_mr t42 t61) (travel_mr t43 t62) (travel_mr t44 t63)
+    (travel_mr t45 t64) (travel_mr t46 t65) (travel_mr t47 t66) (travel_mr t48 t67) (travel_mr t49 t68)
+    (travel_mr t50 t69) (travel_mr t51 t70) (travel_mr t52 t71) (travel_mr t53 t72) (travel_mr t54 t73)
+    (travel_mr t55 t74) (travel_mr t56 t75) (travel_mr t57 t76) (travel_mr t58 t77) (travel_mr t59 t78)
+    (travel_mr t60 t79) (travel_mr t61 t80) (travel_mr t62 t81) (travel_mr t63 t82) (travel_mr t64 t83)
+    (travel_mr t65 t84) (travel_mr t66 t85) (travel_mr t67 t86) (travel_mr t68 t87) (travel_mr t69 t88)
+    (travel_mr t70 t89) (travel_mr t71 t90) (travel_mr t72 t91) (travel_mr t73 t92) (travel_mr t74 t93)
+    (travel_mr t75 t94) (travel_mr t76 t95) (travel_mr t77 t96) (travel_mr t78 t97) (travel_mr t79 t98)
+    (travel_mr t80 t99) (travel_mr t81 t100) (travel_mr t82 t101) (travel_mr t83 t102) (travel_mr t84 t103)
+    (travel_mr t85 t104) (travel_mr t86 t105) (travel_mr t87 t106) (travel_mr t88 t107) (travel_mr t89 t108)
+    (travel_mr t90 t109) (travel_mr t91 t110) (travel_mr t92 t111) (travel_mr t93 t112) (travel_mr t94 t113)
+    (travel_mr t95 t114) (travel_mr t96 t115) (travel_mr t97 t116) (travel_mr t98 t117) (travel_mr t99 t118)
+    (travel_mr t100 t119) (travel_mr t101 t120) (travel_mr t102 t121) (travel_mr t103 t122) (travel_mr t104 t123)
+    (travel_mr t105 t124) (travel_mr t106 t125) (travel_mr t107 t126) (travel_mr t108 t127) (travel_mr t109 t128)
+    (travel_mr t110 t129) (travel_mr t111 t130) (travel_mr t112 t131) (travel_mr t113 t132) (travel_mr t114 t133)
+    (travel_mr t115 t134) (travel_mr t116 t135) (travel_mr t117 t136) (travel_mr t118 t137) (travel_mr t119 t138)
+    (travel_mr t120 t139) (travel_mr t121 t140) (travel_mr t122 t141) (travel_mr t123 t142) (travel_mr t124 t143)
+    (travel_mr t125 t144) (travel_mr t126 t145) (travel_mr t127 t146) (travel_mr t128 t147) (travel_mr t129 t148)
+    (travel_mr t130 t149) (travel_mr t131 t150) (travel_mr t132 t151) (travel_mr t133 t152) (travel_mr t134 t153)
+    (travel_mr t135 t154) (travel_mr t136 t155) (travel_mr t137 t156) (travel_mr t138 t157) (travel_mr t139 t158)
+    (travel_mr t140 t159) (travel_mr t141 t160) (travel_mr t142 t161) (travel_mr t143 t162) (travel_mr t144 t163)
+    (travel_mr t145 t164) (travel_mr t146 t165) (travel_mr t147 t166) (travel_mr t148 t167) (travel_mr t149 t168)
+    (travel_mr t150 t169) (travel_mr t151 t170) (travel_mr t152 t171) (travel_mr t153 t172) (travel_mr t154 t173)
+    (travel_mr t155 t174) (travel_mr t156 t175) (travel_mr t157 t176) (travel_mr t158 t177) (travel_mr t159 t178)
+    (travel_mr t160 t179) (travel_mr t161 t180) (travel_mr t162 t181) (travel_mr t163 t182) (travel_mr t164 t183)
+    (travel_mr t165 t184) (travel_mr t166 t185) (travel_mr t167 t186) (travel_mr t168 t187) (travel_mr t169 t188)
+    (travel_mr t170 t189) (travel_mr t171 t190) (travel_mr t172 t191) (travel_mr t173 t192) (travel_mr t174 t193)
+    (travel_mr t175 t194) (travel_mr t176 t195) (travel_mr t177 t196) (travel_mr t178 t197) (travel_mr t179 t198)
+    (travel_mr t180 t199) (travel_mr t181 t200) (travel_mr t182 t201) (travel_mr t183 t202) (travel_mr t184 t203)
+    (travel_mr t185 t204) (travel_mr t186 t205) (travel_mr t187 t206) (travel_mr t188 t207) (travel_mr t189 t208)
+    (travel_mr t190 t209) (travel_mr t191 t210) (travel_mr t192 t211) (travel_mr t193 t212) (travel_mr t194 t213)
+    (travel_mr t195 t214) (travel_mr t196 t215) (travel_mr t197 t216) (travel_mr t198 t217) (travel_mr t199 t218)
+    (travel_mr t200 t219) (travel_mr t201 t220) (travel_mr t202 t221) (travel_mr t203 t222) (travel_mr t204 t223)
+    (travel_mr t205 t224) (travel_mr t206 t225) (travel_mr t207 t226) (travel_mr t208 t227) (travel_mr t209 t228)
+    (travel_mr t210 t229) (travel_mr t211 t230) (travel_mr t212 t231) (travel_mr t213 t232) (travel_mr t214 t233)
+    (travel_mr t215 t234) (travel_mr t216 t235) (travel_mr t217 t236) (travel_mr t218 t237) (travel_mr t219 t238)
+    (travel_mr t220 t239) (travel_mr t221 t240) (travel_mr t222 t241) (travel_mr t223 t242) (travel_mr t224 t243)
+    (travel_mr t225 t244) (travel_mr t226 t245) (travel_mr t227 t246) (travel_mr t228 t247) (travel_mr t229 t248)
+    (travel_mr t230 t249) (travel_mr t231 t250) (travel_mr t232 t251) (travel_mr t233 t252) (travel_mr t234 t253)
+    (travel_mr t235 t254) (travel_mr t236 t255) (travel_mr t237 t256) (travel_mr t238 t257) (travel_mr t239 t258)
+    (travel_mr t240 t259) (travel_mr t241 t260) (travel_mr t242 t261) (travel_mr t243 t262) (travel_mr t244 t263)
+    (travel_mr t245 t264) (travel_mr t246 t265) (travel_mr t247 t266) (travel_mr t248 t267) (travel_mr t249 t268)
+    (travel_mr t250 t269) (travel_mr t251 t270)
+
+    ;; Stephanie availability: Mission District from 10:30 to 13:30.
+    ;; Represented here as allowed meeting slots of at least 120 minutes.
+    ;; 09:00 is t0. 10:30 is t90. 13:30 is t270. Minimum meeting duration 120 minutes => end = start + 120.
+    ;; Allow meeting starts from t90 up to t150 inclusive (t150 + 120 = t270).
+    (meet_slot t90 t210) (meet_slot t91 t211) (meet_slot t92 t212) (meet_slot t93 t213) (meet_slot t94 t214)
+    (meet_slot t95 t215) (meet_slot t96 t216) (meet_slot t97 t217) (meet_slot t98 t218) (meet_slot t99 t219)
+    (meet_slot t100 t220) (meet_slot t101 t221) (meet_slot t102 t222) (meet_slot t103 t223) (meet_slot t104 t224)
+    (meet_slot t105 t225) (meet_slot t106 t226) (meet_slot t107 t227) (meet_slot t108 t228) (meet_slot t109 t229)
+    (meet_slot t110 t230) (meet_slot t111 t231) (meet_slot t112 t232) (meet_slot t113 t233) (meet_slot t114 t234)
+    (meet_slot t115 t235) (meet_slot t116 t236) (meet_slot t117 t237) (meet_slot t118 t238) (meet_slot t119 t239)
+    (meet_slot t120 t240) (meet_slot t121 t241) (meet_slot t122 t242) (meet_slot t123 t243) (meet_slot t124 t244)
+    (meet_slot t125 t245) (meet_slot t126 t246) (meet_slot t127 t247) (meet_slot t128 t248) (meet_slot t129 t249)
+    (meet_slot t130 t250) (meet_slot t131 t251) (meet_slot t132 t252) (meet_slot t133 t253) (meet_slot t134 t254)
+    (meet_slot t135 t255) (meet_slot t136 t256) (meet_slot t137 t257) (meet_slot t138 t258) (meet_slot t139 t259)
+    (meet_slot t140 t260) (meet_slot t141 t261) (meet_slot t142 t262) (meet_slot t143 t263) (meet_slot t144 t264)
+    (meet_slot t145 t265) (meet_slot t146 t266) (meet_slot t147 t267) (meet_slot t148 t268) (meet_slot t149 t269)
+    (meet_slot t150 t270)
+  )
+
+  (:goal (met))
+)

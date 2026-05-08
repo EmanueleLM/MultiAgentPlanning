@@ -1,0 +1,49 @@
+(define (domain sokoban_map9)
+  (:requirements :typing :strips)
+  (:types player box position)
+
+  (:predicates
+    (player_at ?p - position)
+    (box_at ?b - box ?p - position)
+    (goal ?p - position)
+    (adjacent ?p1 - position ?p2 - position)
+    (free ?p - position)
+  )
+
+  ;; Move the player into an adjacent free position.
+  (:action move
+    :parameters (?from - position ?to - position)
+    :precondition (and
+      (player_at ?from)
+      (adjacent ?from ?to)
+      (free ?to)
+    )
+    :effect (and
+      (not (player_at ?from))
+      (player_at ?to)
+      (free ?from)
+      (not (free ?to))
+    )
+  )
+
+  ;; Push a box from ?boxpos into ?topos. The player moves into the box's previous square.
+  (:action push
+    :parameters (?from - position ?boxpos - position ?topos - position ?b - box)
+    :precondition (and
+      (player_at ?from)
+      (adjacent ?from ?boxpos)
+      (box_at ?b ?boxpos)
+      (adjacent ?boxpos ?topos)
+      (free ?topos)
+    )
+    :effect (and
+      (not (player_at ?from))
+      (player_at ?boxpos)
+      (not (box_at ?b ?boxpos))
+      (box_at ?b ?topos)
+      (free ?from)
+      (not (free ?boxpos))
+      (not (free ?topos))
+    )
+  )
+)

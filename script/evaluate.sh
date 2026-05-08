@@ -1,101 +1,98 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Judge 
-model=gpt-5.4
-judge="gpt-5-nano"
+judge="gpt-5-mini"
 
-# Dataset names
-dataset_names=(
-"calendar_scheduling"
-"meeting_planning"
-"trip_planning"
-"depots"
-"logistics"
-"mystery_blocksworld"
-"obfuscated_deceptive_logistics"
-"blocksworld_easy"
-"blocksworld_medium"
-"blocksworld_hard"
-"hanoi_easy"
-"hanoi_medium"
-"hanoi_hard"
-"hanoi_extreme"
-"floortile"
-"childsnack"
+MODELS=(
+  "gpt-5-mini"
+  "gpt-5.4"
+  # "gemini-2.5-flash"
+  # "gemini-3-flash"
+  # "gpt-4o"
 )
 
-# Datasets
-datasets=(
-"./data/natural_plan/calendar_scheduling.json"
-"./data/natural_plan/meeting_planning.json"
-"./data/natural_plan/trip_planning.json"
-"./data/planbench/depots.json"
-"./data/planbench/logistics.json"
-"./data/planbench/mystery_blocksworld.json"
-"./data/planbench/obfuscated_deceptive_logistics.json"
-"./data/blocksworld/blocksworld_easy.json"
-"./data/blocksworld/blocksworld_medium.json"
-"./data/blocksworld/blocksworld_hard.json"
-"./data/hanoi/hanoi_easy.json"
-"./data/hanoi/hanoi_medium.json"
-"./data/hanoi/hanoi_hard.json"
-"./data/hanoi/hanoi_extreme.json"
-"./data/borealis/floortile.json"
-"./data/borealis/childsnack.json"
+# Format:
+#   "dataset_name|data_path|pddl_result_template|vanilla_result_template"
+# Templates may contain @model@ and @run@.
+CASES=(
+  "calendar_scheduling|./data/natural_plan/calendar_scheduling.json|./results/@model@/@run@/google/calendar_scheduling/FastDownwards/|./results/@model@/@run@/google/calendar_scheduling/vanilla_llm/@model@.json"
+  "meeting_planning|./data/natural_plan/meeting_planning.json|./results/@model@/@run@/google/meeting_planning/FastDownwards/|./results/@model@/@run@/google/meeting_planning/vanilla_llm/@model@.json"
+  "trip_planning|./data/natural_plan/trip_planning.json|./results/@model@/@run@/google/trip_planning/FastDownwards/|./results/@model@/@run@/google/trip_planning/vanilla_llm/@model@.json"
+  "depots|./data/planbench/depots.json|./results/@model@/@run@/planbench/depots/FastDownwards/|./results/@model@/@run@/planbench/depots/vanilla_llm/@model@.json"
+  "logistics|./data/planbench/logistics.json|./results/@model@/@run@/planbench/logistics/FastDownwards/|./results/@model@/@run@/planbench/logistics/vanilla_llm/@model@.json"
+  "mystery_blocksworld|./data/planbench/mystery_blocksworld.json|./results/@model@/@run@/planbench/mystery_blocksworld/FastDownwards/|./results/@model@/@run@/planbench/mystery_blocksworld/vanilla_llm/@model@.json"
+  "obfuscated_deceptive_logistics|./data/planbench/obfuscated_deceptive_logistics.json|./results/@model@/@run@/planbench/obfuscated_deceptive_logistics/FastDownwards/|./results/@model@/@run@/planbench/obfuscated_deceptive_logistics/vanilla_llm/@model@.json"
 )
 
-# Build result paths after model is bound so interpolation happens correctly
-results_pddl=(
-    "./results/google/calendar_scheduling/FastDownwards/"
-    "./results/google/meeting_planning/FastDownwards/"
-    "./results/google/trip_planning/FastDownwards/"
-    "./results/planbench/depots/FastDownwards/"
-    "./results/planbench/logistics/FastDownwards/"
-    "./results/planbench/mystery_blocksworld/FastDownwards/"
-    "./results/planbench/obfuscated_deceptive_logistics/FastDownwards/"
-    "./results/blocksworld/blocksworld_easy/blocksworld_easy/FastDownwards/"
-    "./results/blocksworld/blocksworld_medium/blocksworld_medium/FastDownwards/"
-    "./results/blocksworld/blocksworld_hard/blocksworld_hard/FastDownwards/"
-    "./results/hanoi/hanoi_easy/hanoi_easy/FastDownwards/"
-    "./results/hanoi/hanoi_medium/hanoi_medium/FastDownwards/"
-    "./results/hanoi/hanoi_hard/hanoi_hard/FastDownwards/"
-    "./results/hanoi/hanoi_extreme/hanoi_extreme/FastDownwards/"
-    "./results/borealis/floortile/floortile/FastDownwards/"
-    "./results/borealis/childsnack/childsnack/FastDownwards/"
-)
+subst_path() {
+  local template="$1"
+  local model="$2"
+  local run="$3"
 
-results_vanilla=(
-    "./results/google/calendar_scheduling/vanilla_llm/${model}.json"
-    "./results/google/meeting_planning/vanilla_llm/${model}.json"
-    "./results/google/trip_planning/vanilla_llm/${model}.json"
-    "./results/planbench/depots/vanilla_llm/${model}.json"
-    "./results/planbench/logistics/vanilla_llm/${model}.json"
-    "./results/planbench/mystery_blocksworld/vanilla_llm/${model}.json"
-    "./results/planbench/obfuscated_deceptive_logistics/vanilla_llm/${model}.json"
-    "./results/blocksworld/blocksworld_easy/blocksworld_easy/vanilla_llm/${model}.json"
-    "./results/blocksworld/blocksworld_medium/blocksworld_medium/vanilla_llm/${model}.json"
-    "./results/blocksworld/blocksworld_hard/blocksworld_hard/vanilla_llm/${model}.json"
-    "./results/hanoi/hanoi_easy/hanoi_easy/vanilla_llm/${model}.json"
-    "./results/hanoi/hanoi_medium/hanoi_medium/vanilla_llm/${model}.json"
-    "./results/hanoi/hanoi_hard/hanoi_hard/vanilla_llm/${model}.json"
-    "./results/hanoi/hanoi_extreme/hanoi_extreme/vanilla_llm/${model}.json"
-    "./results/borealis/floortile/floortile/vanilla_llm/${model}.json"
-    "./results/borealis/childsnack/childsnack/vanilla_llm/${model}.json"
-)
+  template="${template//@model@/$model}"
+  template="${template//@run@/$run}"
+  printf '%s' "$template"
+}
 
-# Evaluate PDDL-based approaches
-for i in "${!datasets[@]}"; do
-    data="${datasets[$i]}"
-    result="${results_pddl[$i]}"
-    dataset_name="${dataset_names[$i]}"
-    echo "Running evaluate_pddl.py with dataset=$data (name=$dataset_name) and result=$result. Judge model=$judge"
-    python3 evaluate_pddl.py "$data" "$result" --model "$judge" --dataset-name "$dataset_name" --prompt-key "$dataset_name"
-done
+run_pddl_eval() {
+  local run="$1"
+  local model="$2"
+  local dataset_name="$3"
+  local data_path="$4"
+  local result_template="$5"
 
-# Evaluate vanilla LLM-based approaches
-for i in "${!results_vanilla[@]}"; do
-    result="${results_vanilla[$i]}"
-    dataset_name="${dataset_names[$i]}"
-    echo "Running evaluate_vanilla.py with dataset=$result (name=$dataset_name). Judge model=$judge"
-    python3 evaluate_vanilla.py "$result" --model "$judge" --dataset-name "$dataset_name" --prompt-key "$dataset_name"
-done
+  local result_path
+  result_path="$(subst_path "$result_template" "$model" "$run")"
+
+  echo "Running evaluate_pddl.py with dataset=$data_path (name=$dataset_name) and result=$result_path. Judge model=$judge"
+  python3 evaluate_pddl.py \
+    "$data_path" \
+    "$result_path" \
+    --model "$judge" \
+    --dataset-name "$dataset_name" \
+    --prompt-key "$dataset_name"
+}
+
+run_vanilla_eval() {
+  local run="$1"
+  local model="$2"
+  local dataset_name="$3"
+  local result_template="$4"
+
+  local result_path
+  result_path="$(subst_path "$result_template" "$model" "$run")"
+
+  echo "Running evaluate_vanilla.py with dataset=$result_path (name=$dataset_name). Judge model=$judge"
+  python3 evaluate_vanilla.py \
+    "$result_path" \
+    --model "$judge" \
+    --dataset-name "$dataset_name" \
+    --prompt-key "$dataset_name"
+}
+
+main() {
+  local run model case dataset_name data_path pddl_tpl vanilla_tpl
+  local IFS='|'
+
+  # PDDL-based approaches
+  for run in run1; do
+    for model in "${MODELS[@]}"; do
+      for case in "${CASES[@]}"; do
+        read -r dataset_name data_path pddl_tpl vanilla_tpl <<< "$case"
+        run_pddl_eval "$run" "$model" "$dataset_name" "$data_path" "$pddl_tpl"
+      done
+    done
+  done
+
+  # Vanilla LLM-based approaches
+  for run in run1; do
+    for model in "${MODELS[@]}"; do
+      for case in "${CASES[@]}"; do
+        read -r dataset_name _data_path _pddl_tpl vanilla_tpl <<< "$case"
+        run_vanilla_eval "$run" "$model" "$dataset_name" "$vanilla_tpl"
+      done
+    done
+  done
+}
+
+main "$@"

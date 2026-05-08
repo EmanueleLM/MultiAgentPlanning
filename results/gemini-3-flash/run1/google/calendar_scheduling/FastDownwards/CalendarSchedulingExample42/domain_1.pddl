@@ -1,0 +1,22 @@
+(define (domain calendar_scheduling)
+  (:requirements :typing :negative-preconditions)
+  (:types person timeslot)
+  (:constants julie sean lori - person)
+  (:predicates
+    (busy ?p - person ?t - timeslot)
+    (next ?t1 ?t2 - timeslot)
+    (scheduled)
+  )
+  (:action schedule_1h_meeting
+    :parameters (?t1 ?t2 - timeslot)
+    :precondition (and
+      (next ?t1 ?t2)
+      (not (busy julie ?t1))
+      (not (busy julie ?t2))
+      (not (busy sean ?t1))
+      (not (busy sean ?t2))
+      (not (busy lori ?t1))
+      (not (busy lori ?t2))
+    )
+    :effect (scheduled)
+  )

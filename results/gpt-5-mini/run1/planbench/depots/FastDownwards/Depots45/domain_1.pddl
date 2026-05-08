@@ -1,0 +1,93 @@
+(define (domain jack_of_all_trades_instance)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types
+    place
+    surface
+    depot distributor - place
+    pallet crate - surface
+    hoist truck
+  )
+  (:predicates
+    (truck_at ?tr - truck ?p - place)
+    (hoist_at ?h - hoist ?p - place)
+    (at ?s - surface ?p - place)
+    (in_truck ?c - crate ?tr - truck)
+    (on ?c - crate ?s - surface)
+    (hoist_available ?h - hoist)
+    (hoist_lifting ?h - hoist ?c - crate)
+    (clear ?s - surface)
+  )
+
+  (:action drive
+    :parameters (?tr - truck ?from - place ?to - place)
+    :precondition (and (truck_at ?tr ?from) (not (truck_at ?tr ?to)))
+    :effect (and (not (truck_at ?tr ?from)) (truck_at ?tr ?to))
+  )
+
+  (:action hoist_lift_from_surface
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
+    :precondition (and
+      (hoist_at ?h ?p)
+      (at ?s ?p)
+      (at ?c ?p)
+      (on ?c ?s)
+      (hoist_available ?h)
+      (clear ?c)
+    )
+    :effect (and
+      (not (at ?c ?p))
+      (hoist_lifting ?h ?c)
+      (not (hoist_available ?h))
+      (clear ?s)
+      (not (on ?c ?s))
+    )
+  )
+
+  (:action hoist_drop_to_surface
+    :parameters (?h - hoist ?c - crate ?s - surface ?p - place)
+    :precondition (and
+      (hoist_at ?h ?p)
+      (at ?s ?p)
+      (hoist_lifting ?h ?c)
+      (clear ?s)
+    )
+    :effect (and
+      (hoist_available ?h)
+      (not (hoist_lifting ?h ?c))
+      (at ?c ?p)
+      (not (clear ?s))
+      (clear ?c)
+      (on ?c ?s)
+    )
+  )
+
+  (:action hoist_load_onto_truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist_at ?h ?p)
+      (truck_at ?tr ?p)
+      (hoist_lifting ?h ?c)
+    )
+    :effect (and
+      (in_truck ?c ?tr)
+      (not (hoist_lifting ?h ?c))
+      (hoist_available ?h)
+      (not (at ?c ?p))
+    )
+  )
+
+  (:action hoist_unload_from_truck
+    :parameters (?h - hoist ?c - crate ?tr - truck ?p - place)
+    :precondition (and
+      (hoist_at ?h ?p)
+      (truck_at ?tr ?p)
+      (hoist_available ?h)
+      (in_truck ?c ?tr)
+    )
+    :effect (and
+      (not (in_truck ?c ?tr))
+      (not (hoist_available ?h))
+      (hoist_lifting ?h ?c)
+    )
+  )
+)

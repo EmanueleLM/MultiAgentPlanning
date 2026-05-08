@@ -1,0 +1,653 @@
+(define (domain european_trip_16_days_instance)
+  (:requirements :strips :typing :negative-preconditions)
+
+  (:types
+    city day
+  )
+
+  (:predicates
+    (connected ?from - city ?to - city)
+    (next_day ?d1 - day ?d2 - day)
+
+    (at_on ?c - city ?d - day)
+    (day_assigned ?d - day)
+    (started)
+
+    (counted_athens ?d - day)
+    (counted_krakow ?d - day)
+    (counted_zurich ?d - day)
+
+    (athens_count_0)
+    (athens_count_1)
+    (athens_count_2)
+    (athens_count_3)
+    (athens_count_4)
+    (athens_count_5)
+    (athens_count_6)
+    (athens_count_7)
+
+    (krakow_count_0)
+    (krakow_count_1)
+    (krakow_count_2)
+    (krakow_count_3)
+    (krakow_count_4)
+    (krakow_count_5)
+    (krakow_count_6)
+
+    (zurich_count_0)
+    (zurich_count_1)
+    (zurich_count_2)
+    (zurich_count_3)
+    (zurich_count_4)
+    (zurich_count_5)
+
+    (athens_window_satisfied)
+  )
+
+  (:action choose_start_athens_0_1
+    :parameters ()
+    :precondition (and
+      (not (started))
+      (not (day_assigned day_1))
+      (athens_count_0)
+      (not (counted_athens day_1))
+    )
+    :effect (and
+      (started)
+      (day_assigned day_1)
+      (at_on athens day_1)
+      (counted_athens day_1)
+      (not (athens_count_0))
+      (athens_count_1)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action choose_start_krakow_0_1
+    :parameters ()
+    :precondition (and
+      (not (started))
+      (not (day_assigned day_1))
+      (krakow_count_0)
+      (not (counted_krakow day_1))
+    )
+    :effect (and
+      (started)
+      (day_assigned day_1)
+      (at_on krakow day_1)
+      (counted_krakow day_1)
+      (not (krakow_count_0))
+      (krakow_count_1)
+    )
+  )
+
+  (:action choose_start_zurich_0_1
+    :parameters ()
+    :precondition (and
+      (not (started))
+      (not (day_assigned day_1))
+      (zurich_count_0)
+      (not (counted_zurich day_1))
+    )
+    :effect (and
+      (started)
+      (day_assigned day_1)
+      (at_on zurich day_1)
+      (counted_zurich day_1)
+      (not (zurich_count_0))
+      (zurich_count_1)
+    )
+  )
+
+  (:action stay_athens_0_1_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_0)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_0))
+      (athens_count_1)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_1_2_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_1)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_1))
+      (athens_count_2)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_2_3_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_2)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_2))
+      (athens_count_3)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_3_4_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_3)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_3))
+      (athens_count_4)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_4_5_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_4)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_4))
+      (athens_count_5)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_5_6_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_5)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_5))
+      (athens_count_6)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_6_7_day_1_day_2
+    :parameters ()
+    :precondition (and
+      (at_on athens day_1)
+      (day_assigned day_1)
+      (next_day day_1 day_2)
+      (not (day_assigned day_2))
+      (athens_count_6)
+      (not (counted_athens day_2))
+    )
+    :effect (and
+      (at_on athens day_2)
+      (day_assigned day_2)
+      (counted_athens day_2)
+      (not (athens_count_6))
+      (athens_count_7)
+      (athens_window_satisfied)
+    )
+  )
+
+  (:action stay_athens_0_1_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_0) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied))
+  )
+  (:action stay_athens_1_2_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_1) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied))
+  )
+  (:action stay_athens_2_3_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_2) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied))
+  )
+  (:action stay_athens_3_4_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_3) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied))
+  )
+  (:action stay_athens_4_5_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_4) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied))
+  )
+  (:action stay_athens_5_6_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_5) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied))
+  )
+  (:action stay_athens_6_7_day_2_day_3
+    :parameters ()
+    :precondition (and (at_on athens day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (athens_count_6) (not (counted_athens day_3)))
+    :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied))
+  )
+
+  (:action stay_athens_0_1_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_0) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action stay_athens_1_2_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_1) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action stay_athens_2_3_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_2) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action stay_athens_3_4_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_3) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action stay_athens_4_5_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_4) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action stay_athens_5_6_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_5) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action stay_athens_6_7_day_3_day_4 :parameters () :precondition (and (at_on athens day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (athens_count_6) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action stay_athens_0_1_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_0) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action stay_athens_1_2_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_1) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action stay_athens_2_3_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_2) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action stay_athens_3_4_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_3) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action stay_athens_4_5_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_4) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action stay_athens_5_6_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_5) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action stay_athens_6_7_day_4_day_5 :parameters () :precondition (and (at_on athens day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (athens_count_6) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action stay_athens_0_1_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_0) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action stay_athens_1_2_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_1) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action stay_athens_2_3_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_2) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action stay_athens_3_4_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_3) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action stay_athens_4_5_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_4) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action stay_athens_5_6_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_5) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action stay_athens_6_7_day_5_day_6 :parameters () :precondition (and (at_on athens day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (athens_count_6) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action stay_athens_0_1_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_0) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action stay_athens_1_2_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_1) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action stay_athens_2_3_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_2) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action stay_athens_3_4_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_3) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action stay_athens_4_5_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_4) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action stay_athens_5_6_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_5) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action stay_athens_6_7_day_6_day_7 :parameters () :precondition (and (at_on athens day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (athens_count_6) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action stay_athens_0_1_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_0) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_1) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_2) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_3) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_4) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_5) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_7_day_8 :parameters () :precondition (and (at_on athens day_7) (day_assigned day_7) (next_day day_7 day_8) (not (day_assigned day_8)) (athens_count_6) (not (counted_athens day_8))) :effect (and (at_on athens day_8) (day_assigned day_8) (counted_athens day_8) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_0) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_1) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_2) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_3) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_4) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_5) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_8_day_9 :parameters () :precondition (and (at_on athens day_8) (day_assigned day_8) (next_day day_8 day_9) (not (day_assigned day_9)) (athens_count_6) (not (counted_athens day_9))) :effect (and (at_on athens day_9) (day_assigned day_9) (counted_athens day_9) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_0) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_1) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_2) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_3) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_4) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_5) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_9_day_10 :parameters () :precondition (and (at_on athens day_9) (day_assigned day_9) (next_day day_9 day_10) (not (day_assigned day_10)) (athens_count_6) (not (counted_athens day_10))) :effect (and (at_on athens day_10) (day_assigned day_10) (counted_athens day_10) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_0) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_1) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_2) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_3) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_4) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_5) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_10_day_11 :parameters () :precondition (and (at_on athens day_10) (day_assigned day_10) (next_day day_10 day_11) (not (day_assigned day_11)) (athens_count_6) (not (counted_athens day_11))) :effect (and (at_on athens day_11) (day_assigned day_11) (counted_athens day_11) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_0) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_1) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_2) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_3) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_4) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_5) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_11_day_12 :parameters () :precondition (and (at_on athens day_11) (day_assigned day_11) (next_day day_11 day_12) (not (day_assigned day_12)) (athens_count_6) (not (counted_athens day_12))) :effect (and (at_on athens day_12) (day_assigned day_12) (counted_athens day_12) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_0) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_1) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_2) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_3) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_4) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_5) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_12_day_13 :parameters () :precondition (and (at_on athens day_12) (day_assigned day_12) (next_day day_12 day_13) (not (day_assigned day_13)) (athens_count_6) (not (counted_athens day_13))) :effect (and (at_on athens day_13) (day_assigned day_13) (counted_athens day_13) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_0) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_1) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_2) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_3) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_4) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_5) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_13_day_14 :parameters () :precondition (and (at_on athens day_13) (day_assigned day_13) (next_day day_13 day_14) (not (day_assigned day_14)) (athens_count_6) (not (counted_athens day_14))) :effect (and (at_on athens day_14) (day_assigned day_14) (counted_athens day_14) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_0) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_1) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_2) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_3) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_4) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_5) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_14_day_15 :parameters () :precondition (and (at_on athens day_14) (day_assigned day_14) (next_day day_14 day_15) (not (day_assigned day_15)) (athens_count_6) (not (counted_athens day_15))) :effect (and (at_on athens day_15) (day_assigned day_15) (counted_athens day_15) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_athens_0_1_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_0) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_0)) (athens_count_1)))
+  (:action stay_athens_1_2_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_1) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_1)) (athens_count_2)))
+  (:action stay_athens_2_3_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_2) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_2)) (athens_count_3)))
+  (:action stay_athens_3_4_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_3) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_3)) (athens_count_4)))
+  (:action stay_athens_4_5_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_4) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_4)) (athens_count_5)))
+  (:action stay_athens_5_6_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_5) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_5)) (athens_count_6)))
+  (:action stay_athens_6_7_day_15_day_16 :parameters () :precondition (and (at_on athens day_15) (day_assigned day_15) (next_day day_15 day_16) (not (day_assigned day_16)) (athens_count_6) (not (counted_athens day_16))) :effect (and (at_on athens day_16) (day_assigned day_16) (counted_athens day_16) (not (athens_count_6)) (athens_count_7)))
+
+  (:action stay_krakow_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and
+      (at_on krakow ?d1)
+      (day_assigned ?d1)
+      (next_day ?d1 ?d2)
+      (not (day_assigned ?d2))
+      (krakow_count_0)
+      (not (counted_krakow ?d2))
+    )
+    :effect (and
+      (at_on krakow ?d2)
+      (day_assigned ?d2)
+      (counted_krakow ?d2)
+      (not (krakow_count_0))
+      (krakow_count_1)
+    )
+  )
+
+  (:action stay_krakow_1_2
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (krakow_count_1) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_1)) (krakow_count_2))
+  )
+  (:action stay_krakow_2_3
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (krakow_count_2) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_2)) (krakow_count_3))
+  )
+  (:action stay_krakow_3_4
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (krakow_count_3) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_3)) (krakow_count_4))
+  )
+  (:action stay_krakow_4_5
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (krakow_count_4) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_4)) (krakow_count_5))
+  )
+  (:action stay_krakow_5_6
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (krakow_count_5) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_5)) (krakow_count_6))
+  )
+
+  (:action stay_zurich_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and
+      (at_on zurich ?d1)
+      (day_assigned ?d1)
+      (next_day ?d1 ?d2)
+      (not (day_assigned ?d2))
+      (zurich_count_0)
+      (not (counted_zurich ?d2))
+    )
+    :effect (and
+      (at_on zurich ?d2)
+      (day_assigned ?d2)
+      (counted_zurich ?d2)
+      (not (zurich_count_0))
+      (zurich_count_1)
+    )
+  )
+
+  (:action stay_zurich_1_2
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (zurich_count_1) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_1)) (zurich_count_2))
+  )
+  (:action stay_zurich_2_3
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (zurich_count_2) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_2)) (zurich_count_3))
+  )
+  (:action stay_zurich_3_4
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (zurich_count_3) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_3)) (zurich_count_4))
+  )
+  (:action stay_zurich_4_5
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (zurich_count_4) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_4)) (zurich_count_5))
+  )
+
+  (:action fly_athens_to_zurich_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_0) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_0)) (zurich_count_1))
+  )
+  (:action fly_athens_to_zurich_1_2
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_1) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_1)) (zurich_count_2))
+  )
+  (:action fly_athens_to_zurich_2_3
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_2) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_2)) (zurich_count_3))
+  )
+  (:action fly_athens_to_zurich_3_4
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_3) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_3)) (zurich_count_4))
+  )
+  (:action fly_athens_to_zurich_4_5
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_4) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_4)) (zurich_count_5))
+  )
+
+  (:action fly_zurich_to_athens_0_1_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_0) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_1_2_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_1) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_2_3_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_2) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_3_4_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_3) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_4_5_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_4) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_5_6_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_5) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied))
+  )
+  (:action fly_zurich_to_athens_6_7_day_1_to_2
+    :parameters ()
+    :precondition (and (at_on zurich day_1) (day_assigned day_1) (next_day day_1 day_2) (not (day_assigned day_2)) (connected zurich athens) (athens_count_6) (not (counted_athens day_2)))
+    :effect (and (at_on athens day_2) (day_assigned day_2) (counted_athens day_2) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied))
+  )
+
+  (:action fly_zurich_to_athens_0_1_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_0) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_1_2_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_1) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_2_3_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_2) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_3_4_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_3) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_4_5_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_4) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_5_6_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_5) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_6_7_day_2_to_3 :parameters () :precondition (and (at_on zurich day_2) (day_assigned day_2) (next_day day_2 day_3) (not (day_assigned day_3)) (connected zurich athens) (athens_count_6) (not (counted_athens day_3))) :effect (and (at_on athens day_3) (day_assigned day_3) (counted_athens day_3) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action fly_zurich_to_athens_0_1_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_0) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_1_2_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_1) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_2_3_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_2) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_3_4_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_3) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_4_5_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_4) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_5_6_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_5) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_6_7_day_3_to_4 :parameters () :precondition (and (at_on zurich day_3) (day_assigned day_3) (next_day day_3 day_4) (not (day_assigned day_4)) (connected zurich athens) (athens_count_6) (not (counted_athens day_4))) :effect (and (at_on athens day_4) (day_assigned day_4) (counted_athens day_4) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action fly_zurich_to_athens_0_1_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_0) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_1_2_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_1) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_2_3_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_2) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_3_4_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_3) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_4_5_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_4) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_5_6_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_5) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_6_7_day_4_to_5 :parameters () :precondition (and (at_on zurich day_4) (day_assigned day_4) (next_day day_4 day_5) (not (day_assigned day_5)) (connected zurich athens) (athens_count_6) (not (counted_athens day_5))) :effect (and (at_on athens day_5) (day_assigned day_5) (counted_athens day_5) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action fly_zurich_to_athens_0_1_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_0) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_1_2_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_1) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_2_3_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_2) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_3_4_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_3) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_4_5_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_4) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_5_6_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_5) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_6_7_day_5_to_6 :parameters () :precondition (and (at_on zurich day_5) (day_assigned day_5) (next_day day_5 day_6) (not (day_assigned day_6)) (connected zurich athens) (athens_count_6) (not (counted_athens day_6))) :effect (and (at_on athens day_6) (day_assigned day_6) (counted_athens day_6) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action fly_zurich_to_athens_0_1_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_0) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_0)) (athens_count_1) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_1_2_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_1) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_1)) (athens_count_2) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_2_3_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_2) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_2)) (athens_count_3) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_3_4_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_3) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_3)) (athens_count_4) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_4_5_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_4) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_4)) (athens_count_5) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_5_6_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_5) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_5)) (athens_count_6) (athens_window_satisfied)))
+  (:action fly_zurich_to_athens_6_7_day_6_to_7 :parameters () :precondition (and (at_on zurich day_6) (day_assigned day_6) (next_day day_6 day_7) (not (day_assigned day_7)) (connected zurich athens) (athens_count_6) (not (counted_athens day_7))) :effect (and (at_on athens day_7) (day_assigned day_7) (counted_athens day_7) (not (athens_count_6)) (athens_count_7) (athens_window_satisfied)))
+
+  (:action fly_zurich_to_athens_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and
+      (at_on zurich ?d1)
+      (day_assigned ?d1)
+      (next_day ?d1 ?d2)
+      (not (day_assigned ?d2))
+      (connected zurich athens)
+      (athens_count_0)
+      (not (counted_athens ?d2))
+      (not (athens_window_satisfied))
+      (not (next_day day_7 ?d2))
+    )
+    :effect (and
+      (at_on athens ?d2)
+      (day_assigned ?d2)
+      (counted_athens ?d2)
+      (not (athens_count_0))
+      (athens_count_1)
+    )
+  )
+
+  (:action fly_athens_to_zurich_after_window_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on athens ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected athens zurich) (zurich_count_0) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_0)) (zurich_count_1))
+  )
+
+  (:action fly_krakow_to_zurich_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected krakow zurich) (zurich_count_0) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_0)) (zurich_count_1))
+  )
+  (:action fly_krakow_to_zurich_1_2
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected krakow zurich) (zurich_count_1) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_1)) (zurich_count_2))
+  )
+  (:action fly_krakow_to_zurich_2_3
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected krakow zurich) (zurich_count_2) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_2)) (zurich_count_3))
+  )
+  (:action fly_krakow_to_zurich_3_4
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected krakow zurich) (zurich_count_3) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_3)) (zurich_count_4))
+  )
+  (:action fly_krakow_to_zurich_4_5
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on krakow ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected krakow zurich) (zurich_count_4) (not (counted_zurich ?d2)))
+    :effect (and (at_on zurich ?d2) (day_assigned ?d2) (counted_zurich ?d2) (not (zurich_count_4)) (zurich_count_5))
+  )
+
+  (:action fly_zurich_to_krakow_0_1
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_0) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_0)) (krakow_count_1))
+  )
+  (:action fly_zurich_to_krakow_1_2
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_1) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_1)) (krakow_count_2))
+  )
+  (:action fly_zurich_to_krakow_2_3
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_2) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_2)) (krakow_count_3))
+  )
+  (:action fly_zurich_to_krakow_3_4
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_3) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_3)) (krakow_count_4))
+  )
+  (:action fly_zurich_to_krakow_4_5
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_4) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_4)) (krakow_count_5))
+  )
+  (:action fly_zurich_to_krakow_5_6
+    :parameters (?d1 - day ?d2 - day)
+    :precondition (and (at_on zurich ?d1) (day_assigned ?d1) (next_day ?d1 ?d2) (not (day_assigned ?d2)) (connected zurich krakow) (krakow_count_5) (not (counted_krakow ?d2)))
+    :effect (and (at_on krakow ?d2) (day_assigned ?d2) (counted_krakow ?d2) (not (krakow_count_5)) (krakow_count_6))
+  )
+)

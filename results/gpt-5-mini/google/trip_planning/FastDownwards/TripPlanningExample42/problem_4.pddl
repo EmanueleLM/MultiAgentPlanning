@@ -1,0 +1,78 @@
+(define (problem trip_planning_example42)
+  (:domain jack_of_all_trades_trip)
+
+  (:objects
+    paris nice mykonos - city
+
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 - day
+
+    paris_slot1 paris_slot2 paris_slot3 paris_slot4
+    mykonos_slot1 mykonos_slot2 mykonos_slot3 mykonos_slot4
+    nice_slot1 nice_slot2 nice_slot3 nice_slot4 nice_slot5
+    - slot
+  )
+
+  (:init
+    ;; day ordering
+    (next day1 day2)
+    (next day2 day3)
+    (next day3 day4)
+    (next day4 day5)
+    (next day5 day6)
+    (next day6 day7)
+    (next day7 day8)
+    (next day8 day9)
+    (next day9 day10)
+    (next day10 day11)
+
+    ;; available direct flights (bidirectional as given)
+    (flight paris nice)
+    (flight nice paris)
+    (flight nice mykonos)
+    (flight mykonos nice)
+
+    ;; slots represent one-day stays required per city
+    (slot_for paris_slot1 paris)
+    (slot_for paris_slot2 paris)
+    (slot_for paris_slot3 paris)
+    (slot_for paris_slot4 paris)
+
+    (slot_for mykonos_slot1 mykonos)
+    (slot_for mykonos_slot2 mykonos)
+    (slot_for mykonos_slot3 mykonos)
+    (slot_for mykonos_slot4 mykonos)
+
+    (slot_for nice_slot1 nice)
+    (slot_for nice_slot2 nice)
+    (slot_for nice_slot3 nice)
+    (slot_for nice_slot4 nice)
+    (slot_for nice_slot5 nice)
+
+    ;; meeting constraint: must meet friends in Paris on one day between day1 and day4
+    (meet_allowed day1)
+    (meet_allowed day2)
+    (meet_allowed day3)
+    (meet_allowed day4)
+
+    ;; start of assignment window
+    (initial_day day1)
+  )
+
+  (:goal (and
+    ;; every calendar day must be assigned to some city
+    (assigned day1) (assigned day2) (assigned day3) (assigned day4) (assigned day5)
+    (assigned day6) (assigned day7) (assigned day8) (assigned day9) (assigned day10)
+    (assigned day11)
+
+    ;; required number of days in each city encoded via slot usage:
+    ;; paris: 4 days
+    (used paris_slot1) (used paris_slot2) (used paris_slot3) (used paris_slot4)
+    ;; mykonos: 4 days
+    (used mykonos_slot1) (used mykonos_slot2) (used mykonos_slot3) (used mykonos_slot4)
+    ;; nice: 5 days
+    (used nice_slot1) (used nice_slot2) (used nice_slot3) (used nice_slot4) (used nice_slot5)
+
+    ;; must have the meet friends action executed once during allowed window
+    (met)
+  ))
+)

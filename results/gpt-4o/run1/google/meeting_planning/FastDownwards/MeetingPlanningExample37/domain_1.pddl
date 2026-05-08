@@ -1,0 +1,31 @@
+(define (domain san_francisco_meeting)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location person)
+  (:predicates
+    (at ?p - person ?l - location)
+    (visited_jeffrey ?p - person)
+    (can_travel ?from - location ?to - location)
+    (time_reached_financial_district ?p - person)
+    (waiting_period_ended ?p - person)
+  )
+  (:action travel
+    :parameters (?p - person ?from - location ?to - location)
+    :precondition (and (at ?p ?from) (can_travel ?from ?to))
+    :effect (and (not (at ?p ?from)) (at ?p ?to))
+  )
+  (:action wait
+    :parameters (?p - person)
+    :precondition (and (at ?p financial_district) (not (time_reached_financial_district ?p)))
+    :effect (time_reached_financial_district ?p)
+  )
+  (:action meet_jeffrey
+    :parameters (?p - person)
+    :precondition (and (at ?p financial_district) (time_reached_financial_district ?p) (waiting_period_ended ?p))
+    :effect (visited_jeffrey ?p)
+  )
+  (:action end_waiting_period
+    :parameters (?p - person)
+    :precondition (time_reached_financial_district ?p)
+    :effect (waiting_period_ended ?p)
+  )
+)

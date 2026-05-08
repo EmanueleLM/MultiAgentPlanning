@@ -1,0 +1,44 @@
+(define (problem logistics22_problem)
+  (:domain logistics22)
+
+  (:objects
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+    package_0 package_1 - package
+    location_0_0 location_0_1 location_0_2 location_1_0 location_1_1 location_1_2 - location
+    city_0 city_1 - city
+  )
+
+  (:init
+    ;; airports
+    (airport location_0_0)
+    (airport location_1_0)
+
+    ;; vehicle positions
+    (at-airplane airplane_0 location_1_0)
+    (at-truck truck_0 location_0_2)
+    (at-truck truck_1 location_1_2)
+
+    ;; package ground positions
+    (at-pkg package_0 location_0_1)
+    (at-pkg package_1 location_1_2)
+
+    ;; vehicle free/capacity flags (each vehicle can carry at most one package)
+    (free-airplane airplane_0)
+    (free-truck truck_0)
+    (free-truck truck_1)
+
+    ;; location -> city assignment
+    (in_city location_0_0 city_0)
+    (in_city location_0_1 city_0)
+    (in_city location_0_2 city_0)
+    (in_city location_1_0 city_1)
+    (in_city location_1_1 city_1)
+    (in_city location_1_2 city_1)
+  )
+
+  (:goal (and
+    (at-pkg package_0 location_0_2)
+    (at-pkg package_1 location_1_0)
+  ))
+)

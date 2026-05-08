@@ -1,0 +1,62 @@
+(define (problem sokoban_instance_1)
+  (:domain jack_of_all_trades_sokoban)
+  (:objects
+    agent_1 - agent
+    crate_1 - crate
+    c0 c1 c2 c3 c4 c5 c6 c7 c8 c9
+    c10 c11 c12 c13 c14 c15 c16 c17 c18 c19
+    c20 c21 c22 c23 c24 c25 c26 c27 c28 c29
+    c30 c31 c32 c33 c34 c35 c36 c37 c38 c39
+    c40 c41 c42 c43 c44 c45 c46 c47 c48 c49
+    c50 c51 c52 c53 c54 c55 c56 c57 c58 c59
+    c60 c61 c62 c63 c64 c65 c66 c67 c68 c69
+    c70 c71 c72 c73 c74 c75 c76 c77 c78 c79
+    c80 c81 c82 c83 c84 c85 c86 c87 c88 c89 - cell
+  )
+
+  (:init
+    ; adjacency left->right for linear corridor c0..c89
+    (adjacent c0 c1) (adjacent c1 c2) (adjacent c2 c3) (adjacent c3 c4) (adjacent c4 c5)
+    (adjacent c5 c6) (adjacent c6 c7) (adjacent c7 c8) (adjacent c8 c9) (adjacent c9 c10)
+    (adjacent c10 c11) (adjacent c11 c12) (adjacent c12 c13) (adjacent c13 c14) (adjacent c14 c15)
+    (adjacent c15 c16) (adjacent c16 c17) (adjacent c17 c18) (adjacent c18 c19) (adjacent c19 c20)
+    (adjacent c20 c21) (adjacent c21 c22) (adjacent c22 c23) (adjacent c23 c24) (adjacent c24 c25)
+    (adjacent c25 c26) (adjacent c26 c27) (adjacent c27 c28) (adjacent c28 c29) (adjacent c29 c30)
+    (adjacent c30 c31) (adjacent c31 c32) (adjacent c32 c33) (adjacent c33 c34) (adjacent c34 c35)
+    (adjacent c35 c36) (adjacent c36 c37) (adjacent c37 c38) (adjacent c38 c39) (adjacent c39 c40)
+    (adjacent c40 c41) (adjacent c41 c42) (adjacent c42 c43) (adjacent c43 c44) (adjacent c44 c45)
+    (adjacent c45 c46) (adjacent c46 c47) (adjacent c47 c48) (adjacent c48 c49) (adjacent c49 c50)
+    (adjacent c50 c51) (adjacent c51 c52) (adjacent c52 c53) (adjacent c53 c54) (adjacent c54 c55)
+    (adjacent c55 c56) (adjacent c56 c57) (adjacent c57 c58) (adjacent c58 c59) (adjacent c59 c60)
+    (adjacent c60 c61) (adjacent c61 c62) (adjacent c62 c63) (adjacent c63 c64) (adjacent c64 c65)
+    (adjacent c65 c66) (adjacent c66 c67) (adjacent c67 c68) (adjacent c68 c69) (adjacent c69 c70)
+    (adjacent c70 c71) (adjacent c71 c72) (adjacent c72 c73) (adjacent c73 c74) (adjacent c74 c75)
+    (adjacent c75 c76) (adjacent c76 c77) (adjacent c77 c78) (adjacent c78 c79) (adjacent c79 c80)
+    (adjacent c80 c81) (adjacent c81 c82) (adjacent c82 c83) (adjacent c83 c84) (adjacent c84 c85)
+    (adjacent c85 c86) (adjacent c86 c87) (adjacent c87 c88) (adjacent c88 c89)
+
+    ; initial positions
+    (player_at agent_1 c88)
+    (crate_at crate_1 c44)
+
+    ; goal cell designation
+    (goal c0)
+
+    ; emptiness: all cells except where player or crate start
+    (empty c0) (empty c1) (empty c2) (empty c3) (empty c4) (empty c5) (empty c6) (empty c7) (empty c8) (empty c9)
+    (empty c10) (empty c11) (empty c12) (empty c13) (empty c14) (empty c15) (empty c16) (empty c17) (empty c18) (empty c19)
+    (empty c20) (empty c21) (empty c22) (empty c23) (empty c24) (empty c25) (empty c26) (empty c27) (empty c28) (empty c29)
+    (empty c30) (empty c31) (empty c32) (empty c33) (empty c34) (empty c35) (empty c36) (empty c37) (empty c38) (empty c39)
+    (empty c40) (empty c41) (empty c42) (empty c43) ; c44 occupied by crate -> not empty
+    (empty c45) (empty c46) (empty c47) (empty c48) (empty c49) (empty c50) (empty c51) (empty c52) (empty c53) (empty c54)
+    (empty c55) (empty c56) (empty c57) (empty c58) (empty c59) (empty c60) (empty c61) (empty c62) (empty c63) (empty c64)
+    (empty c65) (empty c66) (empty c67) (empty c68) (empty c69) (empty c70) (empty c71) (empty c72) (empty c73) (empty c74)
+    (empty c75) (empty c76) (empty c77) (empty c78) (empty c79) (empty c80) (empty c81) (empty c82) (empty c83) (empty c84)
+    (empty c85) (empty c86) (empty c87) ; c88 occupied by player -> not empty
+    (empty c89)
+  )
+
+  (:goal (and
+    (crate_at crate_1 c0)
+  ))
+)

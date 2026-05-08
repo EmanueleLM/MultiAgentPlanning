@@ -19,6 +19,8 @@ LLM_FACTORIES: Dict[str, Callable[[], LLM]] = {
     "gpt-4o": lambda: ChatGPT("gpt-4o"),
     "gpt-5-mini": lambda: ChatGPT("gpt-5-mini"),
     "gpt-5-nano": lambda: ChatGPT("gpt-5-nano"),
+    "gpt-5.4": lambda: ChatGPT("gpt-5.4"),
+    "gemini-3-flash": lambda: Gemini("gemini-3-flash-preview"),
     "gemini-2.5-flash": lambda: Gemini("gemini-2.5-flash"),
     "gemini-2.5-pro": lambda: Gemini("gemini-2.5-pro"),
 }
@@ -26,6 +28,18 @@ LLM_FACTORIES: Dict[str, Callable[[], LLM]] = {
 DATASET_KEYS: List[str] = sorted(DATASET.keys())
 GENERIC_PROMPT_KEY = ""
 PROMPT_CHOICES: List[str] = [GENERIC_PROMPT_KEY, *DATASET_KEYS]
+
+
+def extract_results_namespace(path: Path) -> str:
+    parts = path.parts
+    try:
+        results_idx = parts.index("results")
+    except ValueError:
+        return "results"
+
+    if results_idx + 1 < len(parts):
+        return parts[results_idx + 1]
+    return "results"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -392,10 +406,11 @@ def append_accuracy_result(
 def write_detailed_evaluations(
     results: list[ExampleResult],
     dataset_name: str,
+    namespace: str,
     model: str,
     prompt_key: str,
 ) -> Path:
-    details_dir = Path("results") / "_evaluation" / "pddl"
+    details_dir = Path("results") / namespace / "_evaluation" / "pddl"
     details_dir.mkdir(parents=True, exist_ok=True)
     output_path = details_dir / f"{Path(dataset_name).stem}.json"
 
@@ -435,6 +450,7 @@ def main() -> None:
 
     dataset_label = args.dataset_name or str(args.data_file)
     prompt_key = args.prompt_key or GENERIC_PROMPT_KEY
+    results_namespace = extract_results_namespace(args.experiments_root)
 
     logging.info("Dataset label        : %s", dataset_label)
     logging.info("Hand-made prompt key : %s", prompt_key if prompt_key else "generic")
@@ -469,7 +485,7 @@ def main() -> None:
     if average_cost is not None:
         logging.info("Average plan cost        : %.2f", average_cost)
 
-    accuracy_dir = Path("results") / "_accuracies"
+    accuracy_dir = Path("results") / results_namespace / "_accuracies"
     accuracy_dir.mkdir(parents=True, exist_ok=True)
     accuracy_file = accuracy_dir / "accuracy_pddl.json"
     append_accuracy_result(
@@ -488,7 +504,9 @@ def main() -> None:
         prompt_key,
     )
     logging.info("Accuracy written to %s", accuracy_file)
-    detailed_path = write_detailed_evaluations(results, dataset_label, args.model, prompt_key)
+    detailed_path = write_detailed_evaluations(
+        results, dataset_label, results_namespace, args.model, prompt_key
+    )
     logging.info("Detailed evaluations written to %s", detailed_path)
 
 

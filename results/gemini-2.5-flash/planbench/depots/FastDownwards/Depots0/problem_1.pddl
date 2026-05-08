@@ -1,0 +1,62 @@
+(define (problem Depots0)
+    (:domain logistics-depot-combined)
+    (:objects
+        depot0 depot1 depot2 - depot
+        distributor0 - distributor
+        crate0 crate1 crate2 - crate
+        pallet0 pallet1 pallet2 pallet3 - pallet
+        hoist0 hoist1 hoist2 hoist3 - hoist
+        truck0 truck1 truck2 - truck
+    )
+    (:init
+        ;; Initial locations
+        (at crate0 depot1)
+        (at crate1 depot1)
+        (at crate2 depot0)
+        (at hoist0 depot0)
+        (at hoist1 depot1)
+        (at hoist2 depot2)
+        (at hoist3 distributor0)
+        (at pallet0 depot0)
+        (at pallet1 depot1)
+        (at pallet2 depot2)
+        (at pallet3 distributor0)
+        (at truck0 depot1)
+        (at truck1 depot1)
+        (at truck2 distributor0)
+
+        ;; Hoist availability
+        (hoist_available hoist0)
+        (hoist_available hoist1)
+        (hoist_available hoist2)
+        (hoist_available hoist3)
+
+        ;; Stacking relationships
+        (on crate0 pallet1)
+        (on crate1 crate0)
+        (on crate2 pallet0)
+
+        ;; Explicitly given clear states
+        (clear crate1)
+        (clear crate2)
+        (clear pallet2)
+        (clear pallet3)
+
+        ;; Inferred 'not clear' states from stacking
+        (not (clear crate0)) ; crate1 is on crate0
+        (not (clear pallet0)) ; crate2 is on pallet0
+        (not (clear pallet1)) ; crate0 is on pallet1
+
+        ;; Connectivity: All depots and distributors are fully connected
+        (connected depot0 depot1) (connected depot1 depot0)
+        (connected depot0 depot2) (connected depot2 depot0)
+        (connected depot0 distributor0) (connected distributor0 depot0)
+        (connected depot1 depot2) (connected depot2 depot1)
+        (connected depot1 distributor0) (connected distributor0 depot1)
+        (connected depot2 distributor0) (connected distributor0 depot2)
+    )
+    (:goal (and
+        (on crate1 pallet1)
+        (on crate2 pallet3)
+    ))
+)

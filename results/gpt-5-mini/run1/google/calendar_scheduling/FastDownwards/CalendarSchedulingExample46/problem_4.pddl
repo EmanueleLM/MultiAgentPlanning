@@ -1,0 +1,46 @@
+(define (problem schedule_meeting_arthur_theresa_carl_monday)
+  (:domain jack_of_all_trades_schedule)
+
+  (:objects
+    t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30 t_12_00 t_12_30
+    t_13_00 t_13_30 t_14_00 t_14_30 t_15_00 t_15_30 t_16_00 t_16_30 - timeslot
+  )
+
+  ;; Initial calendar busy blocks from the human specification:
+  ;; Arthur: 9:30-10:00, 14:00-14:30
+  ;; Theresa: 9:00-9:30, 12:00-13:00, 15:00-16:30
+  ;; Carl: 9:00-11:30, 12:00-14:00, 14:30-17:00
+  (:init
+    ;; Arthur busy slots
+    (busy_at arthur t_09_30)
+    (busy_at arthur t_14_00)
+
+    ;; Theresa busy slots
+    (busy_at theresa t_09_00)
+    (busy_at theresa t_12_00)
+    (busy_at theresa t_12_30)
+    (busy_at theresa t_15_00)
+    (busy_at theresa t_15_30)
+    (busy_at theresa t_16_00)
+
+    ;; Carl busy slots (9:00-11:30 covers 9:00,9:30,10:00,10:30,11:00)
+    (busy_at carl t_09_00)
+    (busy_at carl t_09_30)
+    (busy_at carl t_10_00)
+    (busy_at carl t_10_30)
+    (busy_at carl t_11_00)
+    ;; Carl busy 12:00-14:00 -> 12:00,12:30,13:00
+    (busy_at carl t_12_00)
+    (busy_at carl t_12_30)
+    (busy_at carl t_13_00)
+    ;; Carl busy 14:30-17:00 -> 14:30,15:00,15:30,16:00,16:30
+    (busy_at carl t_14_30)
+    (busy_at carl t_15_00)
+    (busy_at carl t_15_30)
+    (busy_at carl t_16_00)
+    (busy_at carl t_16_30)
+  )
+
+  ;; Goal: schedule the 30-minute meeting at 11:30 (this is a feasible time for all three)
+  (:goal (meeting_at t_11_30))
+)

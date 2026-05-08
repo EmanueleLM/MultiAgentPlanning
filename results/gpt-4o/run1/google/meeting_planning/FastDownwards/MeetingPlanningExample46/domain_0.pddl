@@ -1,0 +1,25 @@
+(define (domain visit_sf)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location person)
+  (:predicates 
+    (at ?loc - location)
+    (with ?person - person)
+    (time ?t - time)
+    (meet_target_achieved)
+  )
+  (:action move_to_north_beach
+    :parameters ()
+    :precondition (and (at haight_ashbury) (time t2))
+    :effect (and (not (at haight_ashbury)) (at north_beach) (not (time t2)) (time t3))
+  )
+  (:action move_to_haight_ashbury
+    :parameters ()
+    :precondition (and (at north_beach) (time t5))
+    :effect (and (not (at north_beach)) (at haight_ashbury) (not (time t5)) (time t6))
+  )
+  (:action meet_robert
+    :parameters ()
+    :precondition (and (at north_beach) (time t4))
+    :effect (and (with robert) (meet_target_achieved))
+  )
+)

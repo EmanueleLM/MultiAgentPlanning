@@ -1,0 +1,30 @@
+(define (domain meeting_planning)
+  (:requirements :typing :action-costs)
+  (:types location time person)
+  (:predicates
+    (at ?l - location)
+    (current_time ?t - time)
+    (can_travel ?l1 ?l2 - location ?t1 ?t2 - time)
+    (can_wait ?t1 ?t2 - time)
+    (can_meet ?p - person ?l - location ?t1 ?t2 - time)
+    (met ?p - person)
+  )
+  (:functions
+    (total-cost) - number
+  )
+  (:action travel
+    :parameters (?l1 ?l2 - location ?t1 ?t2 - time)
+    :precondition (and (at ?l1) (current_time ?t1) (can_travel ?l1 ?l2 ?t1 ?t2))
+    :effect (and (not (at ?l1)) (at ?l2) (not (current_time ?t1)) (current_time ?t2) (increase (total-cost) 1))
+  )
+  (:action wait
+    :parameters (?t1 ?t2 - time)
+    :precondition (and (current_time ?t1) (can_wait ?t1 ?t2))
+    :effect (and (not (current_time ?t1)) (current_time ?t2) (increase (total-cost) 1))
+  )
+  (:action meet
+    :parameters (?p - person ?l - location ?t1 ?t2 - time)
+    :precondition (and (at ?l) (current_time ?t1) (can_meet ?p ?l ?t1 ?t2))
+    :effect (and (met ?p) (not (current_time ?t1)) (current_time ?t2) (increase (total-cost) 1))
+  )
+)

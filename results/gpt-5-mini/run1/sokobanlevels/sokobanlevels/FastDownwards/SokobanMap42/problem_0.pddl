@@ -1,0 +1,66 @@
+(define (problem sokoban_problem)
+  (:domain sokoban_instance)
+  (:objects
+    player - agent
+    box1 - box
+    pos_1 pos_2 pos_3 pos_4 pos_5 pos_6 pos_7 pos_8 pos_9 pos_10
+    pos_11 pos_12 pos_13 pos_14 pos_15 pos_16 pos_17 pos_18 pos_19 pos_20
+    pos_21 pos_22 pos_23 pos_24 pos_25 pos_26 pos_27 pos_28 pos_29 pos_30
+    pos_31 pos_32 pos_33 pos_34 pos_35 pos_36 pos_37 pos_38 pos_39 pos_40
+    pos_41 pos_42 pos_43 pos_44 pos_45 pos_46 pos_47 pos_48 pos_49 pos_50
+    pos_51 pos_52 pos_53 pos_54 pos_55 pos_56 pos_57 pos_58 pos_59 pos_60
+    pos_61 pos_62 pos_63 pos_64 pos_65 pos_66 pos_67 pos_68 pos_69 pos_70
+    pos_71 pos_72 pos_73 pos_74 pos_75 pos_76 pos_77 pos_78 pos_79 pos_80
+    pos_81 pos_82 pos_83 pos_84 pos_85 pos_86 pos_87 pos_88 pos_89 pos_90
+    pos_91 pos_92 pos_93 pos_94 pos_95 pos_96 - position
+  )
+
+  (:init
+    ; agent and box initial locations derived from the ASCII map
+    (at player pos_96)
+    (box_at box1 pos_48)
+
+    ; goal location (the '.' at the leftmost floor cell)
+    (goal pos_1)
+
+    ; adjacency: linear chain pos_1 .. pos_96
+    (adj_left pos_1 pos_2) (adj_left pos_2 pos_3) (adj_left pos_3 pos_4) (adj_left pos_4 pos_5)
+    (adj_left pos_5 pos_6) (adj_left pos_6 pos_7) (adj_left pos_7 pos_8) (adj_left pos_8 pos_9)
+    (adj_left pos_9 pos_10) (adj_left pos_10 pos_11) (adj_left pos_11 pos_12) (adj_left pos_12 pos_13)
+    (adj_left pos_13 pos_14) (adj_left pos_14 pos_15) (adj_left pos_15 pos_16) (adj_left pos_16 pos_17)
+    (adj_left pos_17 pos_18) (adj_left pos_18 pos_19) (adj_left pos_19 pos_20) (adj_left pos_20 pos_21)
+    (adj_left pos_21 pos_22) (adj_left pos_22 pos_23) (adj_left pos_23 pos_24) (adj_left pos_24 pos_25)
+    (adj_left pos_25 pos_26) (adj_left pos_26 pos_27) (adj_left pos_27 pos_28) (adj_left pos_28 pos_29)
+    (adj_left pos_29 pos_30) (adj_left pos_30 pos_31) (adj_left pos_31 pos_32) (adj_left pos_32 pos_33)
+    (adj_left pos_33 pos_34) (adj_left pos_34 pos_35) (adj_left pos_35 pos_36) (adj_left pos_36 pos_37)
+    (adj_left pos_37 pos_38) (adj_left pos_38 pos_39) (adj_left pos_39 pos_40) (adj_left pos_40 pos_41)
+    (adj_left pos_41 pos_42) (adj_left pos_42 pos_43) (adj_left pos_43 pos_44) (adj_left pos_44 pos_45)
+    (adj_left pos_45 pos_46) (adj_left pos_46 pos_47) (adj_left pos_47 pos_48) (adj_left pos_48 pos_49)
+    (adj_left pos_49 pos_50) (adj_left pos_50 pos_51) (adj_left pos_51 pos_52) (adj_left pos_52 pos_53)
+    (adj_left pos_53 pos_54) (adj_left pos_54 pos_55) (adj_left pos_55 pos_56) (adj_left pos_56 pos_57)
+    (adj_left pos_57 pos_58) (adj_left pos_58 pos_59) (adj_left pos_59 pos_60) (adj_left pos_60 pos_61)
+    (adj_left pos_61 pos_62) (adj_left pos_62 pos_63) (adj_left pos_63 pos_64) (adj_left pos_64 pos_65)
+    (adj_left pos_65 pos_66) (adj_left pos_66 pos_67) (adj_left pos_67 pos_68) (adj_left pos_68 pos_69)
+    (adj_left pos_69 pos_70) (adj_left pos_70 pos_71) (adj_left pos_71 pos_72) (adj_left pos_72 pos_73)
+    (adj_left pos_73 pos_74) (adj_left pos_74 pos_75) (adj_left pos_75 pos_76) (adj_left pos_76 pos_77)
+    (adj_left pos_77 pos_78) (adj_left pos_78 pos_79) (adj_left pos_79 pos_80) (adj_left pos_80 pos_81)
+    (adj_left pos_81 pos_82) (adj_left pos_82 pos_83) (adj_left pos_83 pos_84) (adj_left pos_84 pos_85)
+    (adj_left pos_85 pos_86) (adj_left pos_86 pos_87) (adj_left pos_87 pos_88) (adj_left pos_88 pos_89)
+    (adj_left pos_89 pos_90) (adj_left pos_90 pos_91) (adj_left pos_91 pos_92) (adj_left pos_92 pos_93)
+    (adj_left pos_93 pos_94) (adj_left pos_94 pos_95) (adj_left pos_95 pos_96)
+
+    ; free facts: all positions except the one currently occupied by the box (pos_48)
+    (free pos_1) (free pos_2) (free pos_3) (free pos_4) (free pos_5) (free pos_6) (free pos_7) (free pos_8) (free pos_9) (free pos_10)
+    (free pos_11) (free pos_12) (free pos_13) (free pos_14) (free pos_15) (free pos_16) (free pos_17) (free pos_18) (free pos_19) (free pos_20)
+    (free pos_21) (free pos_22) (free pos_23) (free pos_24) (free pos_25) (free pos_26) (free pos_27) (free pos_28) (free pos_29) (free pos_30)
+    (free pos_31) (free pos_32) (free pos_33) (free pos_34) (free pos_35) (free pos_36) (free pos_37) (free pos_38) (free pos_39) (free pos_40)
+    (free pos_41) (free pos_42) (free pos_43) (free pos_44) (free pos_45) (free pos_46) (free pos_47) (free pos_49) (free pos_50) (free pos_51)
+    (free pos_52) (free pos_53) (free pos_54) (free pos_55) (free pos_56) (free pos_57) (free pos_58) (free pos_59) (free pos_60) (free pos_61)
+    (free pos_62) (free pos_63) (free pos_64) (free pos_65) (free pos_66) (free pos_67) (free pos_68) (free pos_69) (free pos_70) (free pos_71)
+    (free pos_72) (free pos_73) (free pos_74) (free pos_75) (free pos_76) (free pos_77) (free pos_78) (free pos_79) (free pos_80) (free pos_81)
+    (free pos_82) (free pos_83) (free pos_84) (free pos_85) (free pos_86) (free pos_87) (free pos_88) (free pos_89) (free pos_90) (free pos_91)
+    (free pos_92) (free pos_93) (free pos_94) (free pos_95) (free pos_96)
+  )
+
+  (:goal (and (box_at box1 pos_1)))
+)

@@ -19,9 +19,11 @@ This class implements methods to check whether:
 """
 
 import inspect
+import json
 from abc import ABC, abstractmethod
 
 from src.llm_plan.llm import LLM
+from src.llm_plan.task_profile import infer_task_profile
 
 
 class Agent(ABC):
@@ -48,7 +50,8 @@ class Agent(ABC):
         Input:
             prompt_args (dict): A dictionary containing the arguments.
         """
-        for arg in Agent.required_args.keys():
+        required_args = type(self).required_args
+        for arg in required_args.keys():
             if arg not in prompt_args:
                 raise ValueError(f"Missing required argument: {arg}")
             self.prompt_args[arg] = prompt_args[arg]
@@ -68,7 +71,7 @@ class Agent(ABC):
         Output:
             dict: A dictionary containing the required arguments.
         """
-        return Agent.required_args
+        return dict(type(self).required_args)
 
 
 class AgentHallucinations(Agent):
@@ -284,6 +287,128 @@ class AgentDeepThinkPDDL(Agent):
         )
         return self.llm.generate_sync(
             system_prompt=self.system_prompt,
+            prompt=prompt,
+        )
+
+
+class AgentJackOfAllTrades(Agent):
+    """
+    Adaptive semantic compiler for a specific task instance.
+    Use this agent when the current PDDL model is semantically wrong for the subdomain or when a broad
+    task-aware rewrite is needed before solver-facing repair agents can help.
+    """
+
+    required_args = {
+        "human_specification": "(str) The human-readable specification of the task.",
+        "specification": "(str) The structured JSON configuration or environment description.",
+        "pddl_domain": "(str) The current PDDL domain.",
+        "pddl_problem": "(str) The current PDDL problem.",
+        "target_solver": "(str) The target PDDL solver.",
+        "pddl_plan": "(str) The latest planner output, possibly empty.",
+        "pddl_logs": "(str) Logs from the latest solver invocation.",
+        "syntax_errors": "(str) Parser or validator errors raised by the solver.",
+        "proposed_solution": "(str) The currently endorsed solution to confirm or adjust.",
+    }
+
+    def __init__(self, llm: LLM, prompt_args: dict[str, str]):
+        super().__init__(prompt_args=prompt_args)
+        self.name = "AgentJackOfAllTrades"
+        self.llm = llm
+
+    def _build_dynamic_context(self) -> tuple[str, str]:
+        specification_text = self.prompt_args.get("specification", "")
+        parsed_spec = None
+        try:
+            parsed_spec = json.loads(specification_text)
+        except (json.JSONDecodeError, TypeError):
+            parsed_spec = None
+
+        task_profile = infer_task_profile(
+            human_specification=self.prompt_args["human_specification"],
+            specification=parsed_spec or specification_text,
+            target_solver=self.prompt_args.get("target_solver", "FastDownwards"),
+        )
+
+        solver_feedback = inspect.cleandoc(
+            f"""\
+            Latest solver output:
+            <plan>{self.prompt_args.get("pddl_plan", "")}</plan>
+
+            Solver logs:
+            <logs>{self.prompt_args.get("pddl_logs", "")}</logs>
+
+            Syntax or validator errors:
+            <errors>{self.prompt_args.get("syntax_errors", "")}</errors>
+            """
+        )
+
+        system_prompt = inspect.cleandoc(
+            f"""\
+            You are JackOfAllTrades, the semantic self-programming agent for planning.
+            Your role is to repair the current PDDL domain and problem by rethinking the planning abstraction for this
+            specific task instance while staying compatible with {self.prompt_args.get("target_solver", "the target solver")}.
+
+            Use the task profile below as weak guidance derived from the problem text:
+            {task_profile["task_profile_prompt"]}
+
+            Behave as the semantic model designer:
+            - Infer or revise the latent planning abstraction.
+            - Fix task-specific modeling errors in objects, types, predicates, invariants, action schemas, init, and goal.
+            - Preserve hard constraints exactly unless the human task explicitly asks for repair.
+            - If the instance is inconsistent, encode that fact conservatively instead of silently changing the task.
+            - Use lowercase underscore identifiers consistently.
+            - Stay within classical solver-compatible PDDL only.
+            """
+        )
+
+        prompt = inspect.cleandoc(
+            f"""\
+            Human specification:
+            <human_specification>{self.prompt_args["human_specification"]}</human_specification>
+
+            Structured task description:
+            <specification>{specification_text}</specification>
+
+            Previously hypothesised solution:
+            <proposed_solution>{self.prompt_args.get("proposed_solution", "")}</proposed_solution>
+
+            Current PDDL domain:
+            <domain>{self.prompt_args["pddl_domain"]}</domain>
+
+            Current PDDL problem:
+            <problem>{self.prompt_args["pddl_problem"]}</problem>
+
+            {solver_feedback}
+
+            First classify the failure internally:
+            - syntax-only
+            - wrong ontology
+            - missing invariant
+            - wrong transition model
+            - incorrect init/goal mapping
+            - contradictory or impossible instance
+
+            Then decide internally whether to keep the current abstraction or redesign it.
+
+            Rewrite the domain and problem for this instance.
+            Priorities:
+            - First fix the planning semantics for the specific problem instance.
+            - Explicitly restore missing invariants when they are needed for correctness.
+            - Ensure the action set is necessary and sufficient for the task, not merely plausible.
+            - Then ensure the artifacts are accepted by the target solver.
+            - Preserve canonical naming across domain and problem.
+            - Remove placeholders, unsupported requirements, and invented shortcuts.
+
+            Return only the revised domain between <domain></domain> and the revised problem between <problem></problem>.
+            """
+        )
+        return system_prompt, prompt
+
+    def run(self) -> str:
+        self.upload_args(self.prompt_args)
+        system_prompt, prompt = self._build_dynamic_context()
+        return self.llm.generate_sync(
+            system_prompt=system_prompt,
             prompt=prompt,
         )
 

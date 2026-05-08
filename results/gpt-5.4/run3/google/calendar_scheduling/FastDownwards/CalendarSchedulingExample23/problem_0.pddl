@@ -1,0 +1,65 @@
+(define (problem schedule_meeting_billy_maria_william_monday)
+  (:domain schedule_meeting_monday_instance)
+
+  (:objects
+    s_0900 s_0930 s_1000 s_1030 s_1100 s_1130 s_1200 s_1230
+    s_1300 s_1330 s_1400 s_1430 s_1500 s_1530 s_1600 s_1630 - slot
+  )
+
+  (:init
+    (next_slot s_0900 s_0930)
+    (next_slot s_0930 s_1000)
+    (next_slot s_1000 s_1030)
+    (next_slot s_1030 s_1100)
+    (next_slot s_1100 s_1130)
+    (next_slot s_1130 s_1200)
+    (next_slot s_1200 s_1230)
+    (next_slot s_1230 s_1300)
+    (next_slot s_1300 s_1330)
+    (next_slot s_1330 s_1400)
+    (next_slot s_1400 s_1430)
+    (next_slot s_1430 s_1500)
+    (next_slot s_1500 s_1530)
+    (next_slot s_1530 s_1600)
+    (next_slot s_1600 s_1630)
+
+    (free billy s_0900)
+    (free billy s_0930)
+    (free billy s_1000)
+    (free billy s_1030)
+    (free billy s_1100)
+    (free billy s_1200)
+    (free billy s_1230)
+    (free billy s_1500)
+    (free billy s_1530)
+    (free billy s_1630)
+
+    (free maria s_0930)
+    (free maria s_1030)
+    (free maria s_1100)
+    (free maria s_1130)
+    (free maria s_1200)
+    (free maria s_1230)
+    (free maria s_1330)
+    (free maria s_1430)
+    (free maria s_1500)
+    (free maria s_1530)
+    (free maria s_1600)
+    (free maria s_1630)
+
+    (free william s_0900)
+    (free william s_1000)
+    (free william s_1030)
+    (free william s_1100)
+    (free william s_1130)
+    (free william s_1230)
+    (free william s_1300)
+    (free william s_1500)
+  )
+
+  (:goal
+    (and
+      (scheduled)
+    )
+  )
+)

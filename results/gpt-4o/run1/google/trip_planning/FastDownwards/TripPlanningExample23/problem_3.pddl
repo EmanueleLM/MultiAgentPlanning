@@ -1,0 +1,32 @@
+(define (problem european_trip_problem)
+    (:domain european_trip)
+    (:objects
+        london bucharest riga - city
+        day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8 - day
+    )
+    (:init
+        (at london day_1)
+        (flight_exists london bucharest)
+        (flight_exists bucharest riga)
+        (day_sequence day_1 day_2)
+        (day_sequence day_2 day_3)
+        (day_sequence day_3 day_4)
+        (day_sequence day_4 day_5)
+        (day_sequence day_5 day_6)
+        (day_sequence day_6 day_7)
+        (day_sequence day_7 day_8)
+        (workshop_in_riga day_5)
+        (workshop_in_riga day_6)
+        (workshop_in_riga day_7)
+        (workshop_in_riga day_8)
+    )
+    (:goal (and
+        (at riga day_8)
+        (workshop_attended)
+        (at london day_2)
+        (at london day_3)
+        (at bucharest day_4)
+        (at bucharest day_5)
+        (at riga day_7)
+    ))
+)

@@ -1,0 +1,57 @@
+(define (problem calendar_problem)
+  (:domain calendar_scheduling)
+  (:objects
+    heather nicholas zachary - person
+    s0900_0930 s0930_1000 s1000_1030 s1030_1100 s1100_1130 s1130_1200 s1200_1230 s1230_1300 s1300_1330 s1330_1400 s1400_1430 s1430_1500 s1500_1530 s1530_1600 s1600_1630 s1630_1700 - slot
+  )
+  (:init
+    ;; Heather availability: blocked 9:00-9:30, 10:30-11:00, 13:00-14:00, 14:30-15:00, 16:00-16:30
+    (is_available heather s0930_1000)
+    (is_available heather s1000_1030)
+    (is_available heather s1100_1130)
+    (is_available heather s1130_1200)
+    (is_available heather s1200_1230)
+    (is_available heather s1230_1300)
+    (is_available heather s1400_1430)
+    (is_available heather s1500_1530)
+    (is_available heather s1530_1600)
+    (is_available heather s1630_1700)
+
+    ;; Nicholas availability: free the whole day
+    (is_available nicholas s0900_0930)
+    (is_available nicholas s0930_1000)
+    (is_available nicholas s1000_1030)
+    (is_available nicholas s1030_1100)
+    (is_available nicholas s1100_1130)
+    (is_available nicholas s1130_1200)
+    (is_available nicholas s1200_1230)
+    (is_available nicholas s1230_1300)
+    (is_available nicholas s1300_1330)
+    (is_available nicholas s1330_1400)
+    (is_available nicholas s1400_1430)
+    (is_available nicholas s1430_1500)
+    (is_available nicholas s1500_1530)
+    (is_available nicholas s1530_1600)
+    (is_available nicholas s1600_1630)
+    (is_available nicholas s1630_1700)
+
+    ;; Zachary availability: blocked 9:00-10:30, 11:00-12:00, 12:30-13:00, 13:30-16:30
+    (is_available zachary s1030_1100)
+    (is_available zachary s1200_1230)
+    (is_available zachary s1300_1330)
+    (is_available zachary s1630_1700)
+
+    ;; Preference: Zachary rather not meet after 14:00 (Hard constraint interpretation)
+    (is_preferred s0900_0930)
+    (is_preferred s0930_1000)
+    (is_preferred s1000_1030)
+    (is_preferred s1030_1100)
+    (is_preferred s1100_1130)
+    (is_preferred s1130_1200)
+    (is_preferred s1200_1230)
+    (is_preferred s1230_1300)
+    (is_preferred s1300_1330)
+    (is_preferred s1330_1400)
+  )
+  (:goal (meeting_scheduled))
+)

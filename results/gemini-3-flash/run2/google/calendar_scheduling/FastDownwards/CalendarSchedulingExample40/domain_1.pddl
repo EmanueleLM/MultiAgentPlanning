@@ -1,0 +1,22 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person time)
+  (:predicates
+    (available ?p - person ?t - time)
+    (next ?t1 ?t2 - time)
+    (meeting_scheduled)
+  )
+  (:action schedule_1h_meeting
+    :parameters (?p1 ?p2 ?p3 - person ?t1 ?t2 - time)
+    :precondition (and
+      (next ?t1 ?t2)
+      (available ?p1 ?t1)
+      (available ?p1 ?t2)
+      (available ?p2 ?t1)
+      (available ?p2 ?t2)
+      (available ?p3 ?t1)
+      (available ?p3 ?t2)
+    )
+    :effect (meeting_scheduled)
+  )
+)

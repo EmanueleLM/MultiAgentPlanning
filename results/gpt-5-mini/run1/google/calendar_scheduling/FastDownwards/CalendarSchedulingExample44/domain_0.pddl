@@ -1,0 +1,32 @@
+(define (domain jack_of_all_trades_schedule)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person slot)
+  (:predicates
+    (work_slot ?s - slot)
+    (busy ?p - person ?s - slot)
+    (slot_occupied ?s - slot)
+    (meeting_scheduled)
+    (meeting_at ?s - slot)
+    (preferred_slot ?s - slot)
+  )
+
+  (:action schedule_meeting_at
+    :parameters (?s - slot)
+    :precondition (and
+      (work_slot ?s)
+      (not (slot_occupied ?s))
+      (not (meeting_scheduled))
+      (not (busy isabella ?s))
+      (not (busy ronald ?s))
+      (not (busy amanda ?s))
+    )
+    :effect (and
+      (meeting_scheduled)
+      (meeting_at ?s)
+      (slot_occupied ?s)
+      (busy isabella ?s)
+      (busy ronald ?s)
+      (busy amanda ?s)
+    )
+  )
+)

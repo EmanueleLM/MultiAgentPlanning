@@ -1,0 +1,73 @@
+(define (problem sokoban-instance)
+  (:domain sokoban)
+  (:objects 
+    loc_1_1 loc_1_2 loc_1_3 loc_1_4 loc_1_5 loc_1_6 loc_1_7 loc_1_8 loc_1_9 loc_1_10 loc_1_11 loc_1_12 loc_1_13 loc_1_14 loc_1_15 loc_1_16 loc_1_17 loc_1_18 loc_1_19 loc_1_20 loc_1_21 loc_1_22 loc_1_23 loc_1_24 loc_1_25
+    loc_1_26 loc_1_27 loc_1_28 loc_1_29 loc_1_30 loc_1_31 loc_1_32 loc_1_33 loc_1_34 loc_1_35 loc_1_36 loc_1_37 loc_1_38 loc_1_39 loc_1_40 loc_1_41 loc_1_42 loc_1_43 loc_1_44 loc_1_45 loc_1_46 loc_1_47 loc_1_48 loc_1_49 loc_1_50
+    loc_1_51 loc_1_52 loc_1_53 loc_1_54 loc_1_55 loc_1_56 loc_1_57 loc_1_58 loc_1_59 loc_1_60 loc_1_61 loc_1_62 loc_1_63 loc_1_64 loc_1_65 loc_1_66 loc_1_67 loc_1_68 loc_1_69 loc_1_70 loc_1_71 loc_1_72 loc_1_73 loc_1_74 loc_1_75
+    loc_1_76 loc_1_77 loc_1_78 loc_1_79 loc_1_80 loc_1_81 loc_1_82 loc_1_83 loc_1_84 loc_1_85 loc_1_86 loc_1_87 loc_1_88 loc_1_89 loc_1_90 loc_1_91 loc_1_92 loc_1_93 loc_1_94 loc_1_95 loc_1_96 loc_1_97 loc_1_98 loc_1_99 loc_1_100
+    loc_1_101 loc_1_102 loc_1_103 loc_1_104
+    player - actor
+    box - actor
+  )
+  (:init 
+    (at player loc_1_104)
+    (at box loc_1_47)
+    (is_goal loc_1_1)
+    ; Define adjacent locations that aren't blocked by walls
+    ; This problem's pathway embedding...
+    (adjacent loc_1_104 loc_1_103) (adjacent loc_1_103 loc_1_104)
+    (adjacent loc_1_103 loc_1_102) (adjacent loc_1_102 loc_1_103)
+    (adjacent loc_1_102 loc_1_101) (adjacent loc_1_101 loc_1_102)
+    (adjacent loc_1_101 loc_1_100) (adjacent loc_1_100 loc_1_101)
+    ; etc. for the narrow corridor the player and box can travel.
+    (adjacent loc_1_47 loc_1_46) (adjacent loc_1_46 loc_1_47)
+    (adjacent loc_1_46 loc_1_45) (adjacent loc_1_45 loc_1_46)
+    (adjacent loc_1_45 loc_1_44) (adjacent loc_1_44 loc_1_45)
+    (adjacent loc_1_44 loc_1_43) (adjacent loc_1_43 loc_1_44)
+    (adjacent loc_1_43 loc_1_42) (adjacent loc_1_42 loc_1_43)
+    (adjacent loc_1_42 loc_1_41) (adjacent loc_1_41 loc_1_42)
+    (adjacent loc_1_41 loc_1_40) (adjacent loc_1_40 loc_1_41)
+    (adjacent loc_1_40 loc_1_39) (adjacent loc_1_39 loc_1_40)
+    (adjacent loc_1_39 loc_1_38) (adjacent loc_1_38 loc_1_39)
+    (adjacent loc_1_38 loc_1_37) (adjacent loc_1_37 loc_1_38)
+    (adjacent loc_1_37 loc_1_36) (adjacent loc_1_36 loc_1_37)
+    (adjacent loc_1_36 loc_1_35) (adjacent loc_1_35 loc_1_36)
+    (adjacent loc_1_35 loc_1_34) (adjacent loc_1_34 loc_1_35)
+    (adjacent loc_1_34 loc_1_33) (adjacent loc_1_33 loc_1_34)
+    (adjacent loc_1_33 loc_1_32) (adjacent loc_1_32 loc_1_33)
+    (adjacent loc_1_32 loc_1_31) (adjacent loc_1_31 loc_1_32)
+    (adjacent loc_1_31 loc_1_30) (adjacent loc_1_30 loc_1_31)
+    (adjacent loc_1_30 loc_1_29) (adjacent loc_1_29 loc_1_30)
+    (adjacent loc_1_29 loc_1_28) (adjacent loc_1_28 loc_1_29)
+    (adjacent loc_1_28 loc_1_27) (adjacent loc_1_27 loc_1_28)
+    (adjacent loc_1_27 loc_1_26) (adjacent loc_1_26 loc_1_27)
+    (adjacent loc_1_26 loc_1_25) (adjacent loc_1_25 loc_1_26)
+    (adjacent loc_1_25 loc_1_24) (adjacent loc_1_24 loc_1_25)
+    (adjacent loc_1_24 loc_1_23) (adjacent loc_1_23 loc_1_24)
+    (adjacent loc_1_23 loc_1_22) (adjacent loc_1_22 loc_1_23)
+    (adjacent loc_1_22 loc_1_21) (adjacent loc_1_21 loc_1_22)
+    (adjacent loc_1_21 loc_1_20) (adjacent loc_1_20 loc_1_21)
+    (adjacent loc_1_20 loc_1_19) (adjacent loc_1_19 loc_1_20)
+    (adjacent loc_1_19 loc_1_18) (adjacent loc_1_18 loc_1_19)
+    (adjacent loc_1_18 loc_1_17) (adjacent loc_1_17 loc_1_18)
+    (adjacent loc_1_17 loc_1_16) (adjacent loc_1_16 loc_1_17)
+    (adjacent loc_1_16 loc_1_15) (adjacent loc_1_15 loc_1_16)
+    (adjacent loc_1_15 loc_1_14) (adjacent loc_1_14 loc_1_15)
+    (adjacent loc_1_14 loc_1_13) (adjacent loc_1_13 loc_1_14)
+    (adjacent loc_1_13 loc_1_12) (adjacent loc_1_12 loc_1_13)
+    (adjacent loc_1_12 loc_1_11) (adjacent loc_1_11 loc_1_12)
+    (adjacent loc_1_11 loc_1_10) (adjacent loc_1_10 loc_1_11)
+    (adjacent loc_1_10 loc_1_9) (adjacent loc_1_9 loc_1_10)
+    (adjacent loc_1_9 loc_1_8) (adjacent loc_1_8 loc_1_9)
+    (adjacent loc_1_8 loc_1_7) (adjacent loc_1_7 loc_1_8)
+    (adjacent loc_1_7 loc_1_6) (adjacent loc_1_6 loc_1_7)
+    (adjacent loc_1_6 loc_1_5) (adjacent loc_1_5 loc_1_6)
+    (adjacent loc_1_5 loc_1_4) (adjacent loc_1_4 loc_1_5)
+    (adjacent loc_1_4 loc_1_3) (adjacent loc_1_3 loc_1_4)
+    (adjacent loc_1_3 loc_1_2) (adjacent loc_1_2 loc_1_3)
+    (adjacent loc_1_2 loc_1_1) (adjacent loc_1_1 loc_1_2)
+  )
+  (:goal
+    (at box loc_1_1)
+  )
+)

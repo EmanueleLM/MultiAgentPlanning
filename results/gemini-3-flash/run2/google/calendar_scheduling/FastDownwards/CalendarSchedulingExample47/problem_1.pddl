@@ -1,0 +1,70 @@
+(define (problem schedule_monday)
+  (:domain calendar_scheduling)
+  (:objects
+    david eric roger - person
+    slot1 slot2 slot3 slot4 slot5 slot6 slot7 slot8 slot9 slot10 slot11 slot12 slot13 slot14 slot15 slot16 - timeslot
+  )
+  (:init
+    ;; Time mapping (30-minute slots from 09:00 to 17:00):
+    ;; slot1: 09:00-09:30, slot2: 09:30-10:00, ..., slot16: 16:30-17:00
+    (next slot1 slot2)
+    (next slot2 slot3)
+    (next slot3 slot4)
+    (next slot4 slot5)
+    (next slot5 slot6)
+    (next slot6 slot7)
+    (next slot7 slot8)
+    (next slot8 slot9)
+    (next slot9 slot10)
+    (next slot10 slot11)
+    (next slot11 slot12)
+    (next slot12 slot13)
+    (next slot13 slot14)
+    (next slot14 slot15)
+    (next slot15 slot16)
+
+    ;; David is available all day.
+    (available david slot1)
+    (available david slot2)
+    (available david slot3)
+    (available david slot4)
+    (available david slot5)
+    (available david slot6)
+    (available david slot7)
+    (available david slot8)
+    (available david slot9)
+    (available david slot10)
+    (available david slot11)
+    (available david slot12)
+    (available david slot13)
+    (available david slot14)
+    (available david slot15)
+    (available david slot16)
+
+    ;; Eric busy: 9:00-9:30 (slot1), 10:30-11:30 (slot4, slot5), 15:00-15:30 (slot13).
+    (available eric slot2)
+    (available eric slot3)
+    (available eric slot6)
+    (available eric slot7)
+    (available eric slot8)
+    (available eric slot9)
+    (available eric slot10)
+    (available eric slot11)
+    (available eric slot12)
+    (available eric slot14)
+    (available eric slot15)
+    (available eric slot16)
+
+    ;; Roger busy: 9:30-10:30 (slot2, slot3), 11:00-12:00 (slot5, slot6), 
+    ;; 12:30-13:00 (slot8), 14:30-15:00 (slot12), 15:30-16:30 (slot14, slot15).
+    (available roger slot1)
+    (available roger slot4)
+    (available roger slot7)
+    (available roger slot9)
+    (available roger slot10)
+    (available roger slot11)
+    (available roger slot13)
+    (available roger slot16)
+  )
+  (:goal (meeting_scheduled))
+)

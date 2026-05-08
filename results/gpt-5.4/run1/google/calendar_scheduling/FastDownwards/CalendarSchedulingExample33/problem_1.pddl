@@ -1,0 +1,61 @@
+(define (problem monday_meeting_scheduling_instance_problem)
+  (:domain monday_meeting_scheduling_instance)
+
+  (:objects
+    s_09_00 s_09_30 s_10_00 s_10_30 s_11_00 s_11_30 s_12_00 s_12_30
+    s_13_00 s_13_30 s_14_00 s_14_30 s_15_00 s_15_30 s_16_00 s_16_30 - slot
+  )
+
+  (:init
+    (free lisa s_10_00)
+    (free lisa s_11_30)
+    (free lisa s_12_00)
+    (free lisa s_13_00)
+    (free lisa s_13_30)
+    (free lisa s_14_00)
+    (free lisa s_14_30)
+    (free lisa s_15_00)
+    (free lisa s_15_30)
+    (free lisa s_16_30)
+
+    (free bobby s_09_30)
+    (free bobby s_10_30)
+    (free bobby s_11_00)
+    (free bobby s_12_00)
+    (free bobby s_12_30)
+    (free bobby s_13_00)
+    (free bobby s_13_30)
+    (free bobby s_14_00)
+    (free bobby s_14_30)
+    (free bobby s_15_30)
+    (free bobby s_16_00)
+    (free bobby s_16_30)
+
+    (free randy s_09_00)
+    (free randy s_10_00)
+    (free randy s_11_00)
+    (free randy s_12_30)
+    (free randy s_13_30)
+    (free randy s_14_00)
+    (free randy s_15_30)
+    (free randy s_16_30)
+
+    (allowed_slot s_09_00)
+    (allowed_slot s_09_30)
+    (allowed_slot s_10_00)
+    (allowed_slot s_10_30)
+    (allowed_slot s_11_00)
+    (allowed_slot s_11_30)
+    (allowed_slot s_12_00)
+    (allowed_slot s_12_30)
+    (allowed_slot s_13_00)
+    (allowed_slot s_13_30)
+    (allowed_slot s_14_00)
+    (allowed_slot s_14_30)
+    (allowed_slot s_15_00)
+  )
+
+  (:goal
+    (meeting_scheduled)
+  )
+)

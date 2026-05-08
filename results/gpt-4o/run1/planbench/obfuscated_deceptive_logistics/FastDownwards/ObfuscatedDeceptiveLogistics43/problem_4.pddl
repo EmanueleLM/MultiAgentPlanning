@@ -1,0 +1,40 @@
+(define (problem jack_of_all_trades_problem)
+  (:domain jack_of_all_trades)
+  (:objects
+    object_0 object_1 - cats_type
+    object_2 object_3 object_4 - stupendous_type
+    object_5 object_6 object_7 - sneeze_type
+    object_8 object_9 - spring_type
+    object_10 - texture_type
+    object_11 - hand_type
+
+    object_10_collect object_4_collect object_8_collect object_2_collect object_9_collect object_3_collect - collect_type
+  )
+
+  (:init
+    (cats object_0)
+    (cats object_1)
+    (collect object_10_collect object_4_collect)
+    (collect object_8_collect object_2_collect)
+    (collect object_9_collect object_3_collect)
+    (hand object_11)
+    (next object_0 object_10)
+    (next object_1 object_8)
+    (next object_11 object_8)
+    (next object_5 object_8)
+    (next object_6 object_9)
+    (next object_7 object_10)
+    (sneeze object_5)
+    (sneeze object_6)
+    (sneeze object_7)
+    (spring object_10)
+    (spring object_8)
+    (spring object_9)
+    (stupendous object_2)
+    (stupendous object_3)
+    (stupendous object_4)
+    (texture object_10)
+  )
+
+  (:goal (and (next object_11 object_9)))
+)

@@ -1,0 +1,61 @@
+(define (problem calendar_scheduling_example_30)
+  (:domain calendar_scheduling)
+  (:objects
+    s0900 s0930 s1000 s1030 s1100 s1130 s1200 s1230 s1300 s1330 s1400 s1430 s1500 s1530 s1600 s1630 - slot
+  )
+
+  (:init
+    ;; Jeffrey availability (busy 9:30-10:00, 10:30-11:00)
+    (jeffrey_available s0900)
+    (jeffrey_available s1000)
+    (jeffrey_available s1100)
+    (jeffrey_available s1130)
+    (jeffrey_available s1200)
+    (jeffrey_available s1230)
+    (jeffrey_available s1300)
+    (jeffrey_available s1330)
+    (jeffrey_available s1400)
+    (jeffrey_available s1430)
+    (jeffrey_available s1500)
+    (jeffrey_available s1530)
+    (jeffrey_available s1600)
+    (jeffrey_available s1630)
+
+    ;; Virginia availability (busy 9:00-9:30, 10:00-10:30, 14:30-15:00, 16:00-16:30)
+    (virginia_available s0930)
+    (virginia_available s1030)
+    (virginia_available s1100)
+    (virginia_available s1130)
+    (virginia_available s1200)
+    (virginia_available s1230)
+    (virginia_available s1300)
+    (virginia_available s1330)
+    (virginia_available s1400)
+    (virginia_available s1500)
+    (virginia_available s1530)
+    (virginia_available s1630)
+
+    ;; Melissa availability (busy 9:00-11:30, 12:00-12:30, 13:00-15:00, 16:00-17:00)
+    (melissa_available s1130)
+    (melissa_available s1230)
+    (melissa_available s1500)
+    (melissa_available s1530)
+
+    ;; Melissa's preference: Not after 14:00
+    ;; Slots starting before 14:00 are considered preferred.
+    (is_preferred s0900)
+    (is_preferred s0930)
+    (is_preferred s1000)
+    (is_preferred s1030)
+    (is_preferred s1100)
+    (is_preferred s1130)
+    (is_preferred s1200)
+    (is_preferred s1230)
+    (is_preferred s1300)
+    (is_preferred s1330)
+  )
+
+  (:goal
+    (meeting_scheduled)
+  )
+)

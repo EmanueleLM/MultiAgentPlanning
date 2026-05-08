@@ -1,0 +1,62 @@
+(define (problem calendar_scheduling_example2)
+    (:domain calendar_scheduling)
+    (:objects
+        t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230
+        t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - timeslot
+    )
+    (:init
+        ; Roy's availability
+        (available_roy t0930)
+        (available_roy t1030)
+        (available_roy t1130)
+        (available_roy t1200)
+        (available_roy t1300)
+        (available_roy t1330)
+        (available_roy t1400)
+        (available_roy t1430)
+        (available_roy t1500)
+        (available_roy t1530)
+        (available_roy t1600)
+        (available_roy t1630)
+
+        ; Kathryn's availability
+        (available_kathryn t0900)
+        (available_kathryn t1000)
+        (available_kathryn t1030)
+        (available_kathryn t1100)
+        (available_kathryn t1130)
+        (available_kathryn t1200)
+        (available_kathryn t1230)
+        (available_kathryn t1300)
+        (available_kathryn t1330)
+        (available_kathryn t1400)
+        (available_kathryn t1430)
+        (available_kathryn t1500)
+        (available_kathryn t1530)
+        (available_kathryn t1600)
+
+        ; Amy's availability (derived from blocked slots)
+        (available_amy t1430)
+        (available_amy t1600)
+
+        ; Amy's preference (slots starting 15:30 or earlier)
+        (preferred_amy t0900)
+        (preferred_amy t0930)
+        (preferred_amy t1000)
+        (preferred_amy t1030)
+        (preferred_amy t1100)
+        (preferred_amy t1130)
+        (preferred_amy t1200)
+        (preferred_amy t1230)
+        (preferred_amy t1300)
+        (preferred_amy t1330)
+        (preferred_amy t1400)
+        (preferred_amy t1430)
+        (preferred_amy t1500)
+        (preferred_amy t1530)
+
+        ; Initial state: no slot has been chosen for the meeting
+        (not (has_chosen_slot))
+    )
+    (:goal (has_chosen_slot)) ; The goal is to simply have chosen a meeting slot
+)

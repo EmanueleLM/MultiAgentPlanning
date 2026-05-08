@@ -1,0 +1,45 @@
+(define (problem calendar_scheduling_example_16)
+  (:domain calendar_scheduling)
+  (:objects
+    slot_0900_0930 slot_0930_1000 slot_1000_1030 slot_1030_1100
+    slot_1100_1130 slot_1130_1200 slot_1200_1230 slot_1230_1300
+    slot_1300_1330 slot_1330_1400 slot_1400_1430 slot_1430_1500
+    slot_1500_1530 slot_1530_1600 slot_1600_1630 slot_1630_1700 - slot
+  )
+  (:init
+    ;; Scott's free schedule (busy: 09:30-10:30, 13:30-14:00, 14:30-15:00, 15:30-16:00, 16:30-17:00)
+    (free scott slot_0900_0930)
+    (free scott slot_1030_1100)
+    (free scott slot_1100_1130)
+    (free scott slot_1130_1200)
+    (free scott slot_1200_1230)
+    (free scott slot_1230_1300)
+    (free scott slot_1300_1330)
+    (free scott slot_1400_1430)
+    (free scott slot_1500_1530)
+    (free scott slot_1600_1630)
+
+    ;; Gabriel's free schedule (no meetings the whole day)
+    (free gabriel slot_0900_0930)
+    (free gabriel slot_0930_1000)
+    (free gabriel slot_1000_1030)
+    (free gabriel slot_1030_1100)
+    (free gabriel slot_1100_1130)
+    (free gabriel slot_1130_1200)
+    (free gabriel slot_1200_1230)
+    (free gabriel slot_1230_1300)
+    (free gabriel slot_1300_1330)
+    (free gabriel slot_1330_1400)
+    (free gabriel slot_1400_1430)
+    (free gabriel slot_1430_1500)
+    (free gabriel slot_1500_1530)
+    (free gabriel slot_1530_1600)
+    (free gabriel slot_1600_1630)
+    (free gabriel slot_1630_1700)
+
+    ;; Christine's free schedule (busy: 09:00-10:00, 10:30-12:30, 13:00-17:00)
+    (free christine slot_1000_1030)
+    (free christine slot_1230_1300)
+  )
+  (:goal (scheduled))
+)

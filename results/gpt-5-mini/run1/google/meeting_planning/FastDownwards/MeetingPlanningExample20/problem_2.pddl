@@ -1,0 +1,10 @@
+(define (problem meeting-problem)
+  (:domain meeting-planning)
+  (:init
+    (at traveler chinatown)
+    (current-time t0900)
+    ;; Joseph's availability: at Nob Hill from 11:30 to 15:15 (modeled by presence at Nob Hill)
+    (joseph-at nob_hill)
+  )
+  (:goal (met traveler))
+)

@@ -1,0 +1,57 @@
+(define (domain sokoban_domain)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent crate cell)
+
+  (:predicates
+    (wall ?c - cell)
+    (passable ?c - cell)
+    (adj ?a - cell ?b - cell)
+    (player_at ?p - agent ?c - cell)
+    (box_at ?b - crate ?c - cell)
+    (is_goal ?c - cell)
+    (occupied_by_box ?c - cell)
+    (occupied_by_player ?c - cell)
+  )
+
+  (:action walk
+    :parameters (?p - agent ?from - cell ?to - cell)
+    :precondition (and
+      (player_at ?p ?from)
+      (adj ?from ?to)
+      (passable ?to)
+      (not (occupied_by_box ?to))
+      (not (occupied_by_player ?to))
+      (not (wall ?to))
+    )
+    :effect (and
+      (not (player_at ?p ?from))
+      (player_at ?p ?to)
+      (not (occupied_by_player ?from))
+      (occupied_by_player ?to)
+    )
+  )
+
+  (:action push
+    :parameters (?p - agent ?box - crate ?from - cell ?boxcell - cell ?tocell - cell)
+    :precondition (and
+      (player_at ?p ?from)
+      (adj ?from ?boxcell)
+      (adj ?boxcell ?tocell)
+      (box_at ?box ?boxcell)
+      (passable ?tocell)
+      (not (occupied_by_box ?tocell))
+      (not (occupied_by_player ?tocell))
+      (not (wall ?tocell))
+    )
+    :effect (and
+      (not (box_at ?box ?boxcell))
+      (box_at ?box ?tocell)
+      (not (occupied_by_box ?boxcell))
+      (occupied_by_box ?tocell)
+      (not (player_at ?p ?from))
+      (player_at ?p ?boxcell)
+      (not (occupied_by_player ?from))
+      (occupied_by_player ?boxcell)
+    )
+  )
+)

@@ -1,0 +1,51 @@
+(define (problem trip_planning_example_22)
+  (:domain trip_planning)
+  (:objects
+    berlin frankfurt bucharest - city
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 - day
+    s0 s1 s2 s3 s4 s5 s6 s7 - slot
+  )
+  (:init
+    (at berlin d1)
+    (current_day d1)
+    (visit_count berlin s0)
+    (visit_count frankfurt s0)
+    (visit_count bucharest s0)
+    
+    (next_day d1 d2)
+    (next_day d2 d3)
+    (next_day d3 d4)
+    (next_day d4 d5)
+    (next_day d5 d6)
+    (next_day d6 d7)
+    (next_day d7 d8)
+    (next_day d8 d9)
+    (next_day d9 d10)
+    (next_day d10 d11)
+    
+    (next_slot s0 s1)
+    (next_slot s1 s2)
+    (next_slot s2 s3)
+    (next_slot s3 s4)
+    (next_slot s4 s5)
+    (next_slot s5 s6)
+    (next_slot s6 s7)
+    
+    (connected berlin frankfurt)
+    (connected frankfurt berlin)
+    (connected frankfurt bucharest)
+    (connected bucharest frankfurt)
+  )
+  (:goal (and
+    (at berlin d1)
+    (at berlin d2)
+    (at berlin d3)
+    (at berlin d4)
+    (at berlin d5)
+    (at berlin d6)
+    (at berlin d7)
+    (visit_count berlin s7)
+    (visit_count frankfurt s4)
+    (visit_count bucharest s2)
+  ))
+)

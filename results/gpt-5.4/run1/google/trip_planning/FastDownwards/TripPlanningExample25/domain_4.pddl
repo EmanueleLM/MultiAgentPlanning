@@ -1,0 +1,88 @@
+(define (domain tripplanningexample25_domain)
+  (:requirements :strips :typing :negative-preconditions)
+
+  (:types
+    city
+    day
+  )
+
+  (:constants
+    valencia lyon split - city
+  )
+
+  (:predicates
+    (direct ?from - city ?to - city)
+    (next ?d1 - day ?d2 - day)
+    (current_day ?d - day)
+    (at ?c - city ?d - day)
+    (started)
+  )
+
+  (:action start_in_valencia
+    :parameters (?d - day)
+    :precondition (and
+      (current_day ?d)
+      (not (started))
+    )
+    :effect (and
+      (started)
+      (at valencia ?d)
+    )
+  )
+
+  (:action start_in_lyon
+    :parameters (?d - day)
+    :precondition (and
+      (current_day ?d)
+      (not (started))
+    )
+    :effect (and
+      (started)
+      (at lyon ?d)
+    )
+  )
+
+  (:action start_in_split
+    :parameters (?d - day)
+    :precondition (and
+      (current_day ?d)
+      (not (started))
+    )
+    :effect (and
+      (started)
+      (at split ?d)
+    )
+  )
+
+  (:action stay
+    :parameters (?c - city ?d1 - day ?d2 - day)
+    :precondition (and
+      (started)
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (at ?c ?d1)
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (at ?c ?d2)
+    )
+  )
+
+  (:action fly
+    :parameters (?from - city ?to - city ?d1 - day ?d2 - day)
+    :precondition (and
+      (started)
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (at ?from ?d1)
+      (direct ?from ?to)
+      (not (at ?to ?d1))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (at ?to ?d2)
+    )
+  )
+)

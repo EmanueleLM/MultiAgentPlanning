@@ -1,0 +1,22 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person interval)
+  (:predicates
+    (adjacent ?i1 - interval ?i2 - interval)
+    (is_free ?p - person ?i - interval)
+    (meeting_scheduled ?p1 - person ?p2 - person ?p3 - person)
+  )
+  (:action schedule_1hr_meeting
+    :parameters (?p1 - person ?p2 - person ?p3 - person ?i1 - interval ?i2 - interval)
+    :precondition (and
+      (adjacent ?i1 ?i2)
+      (is_free ?p1 ?i1)
+      (is_free ?p1 ?i2)
+      (is_free ?p2 ?i1)
+      (is_free ?p2 ?i2)
+      (is_free ?p3 ?i1)
+      (is_free ?p3 ?i2)
+    )
+    :effect (meeting_scheduled ?p1 ?p2 ?p3)
+  )
+)

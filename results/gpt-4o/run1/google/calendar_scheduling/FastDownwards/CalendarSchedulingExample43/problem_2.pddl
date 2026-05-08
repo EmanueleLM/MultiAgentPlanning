@@ -1,0 +1,65 @@
+(define (problem schedule_meeting_problem)
+    (:domain schedule_meeting)
+    (:objects
+        albert gregory benjamin - participant
+        time_900 time_930 time_1000 time_1030 time_1100 time_1130 time_1200 
+        time_1230 time_1300 time_1330 time_1400 time_1430 time_1500 time_1530 
+        time_1600 time_1630 time_1700 - time
+    )
+    (:init
+        ; Define consecutive time slots
+        (next time_900 time_930)
+        (next time_930 time_1000)
+        (next time_1000 time_1030)
+        (next time_1030 time_1100)
+        (next time_1100 time_1130)
+        (next time_1130 time_1200)
+        (next time_1200 time_1230)
+        (next time_1230 time_1300)
+        (next time_1300 time_1330)
+        (next time_1330 time_1400)
+        (next time_1400 time_1430)
+        (next time_1430 time_1500)
+        (next time_1500 time_1530)
+        (next time_1530 time_1600)
+        (next time_1600 time_1630)
+        (next time_1630 time_1700)
+
+        ; Availability represents times when each participant is free to meet
+        (available albert time_900)
+        (available albert time_1000)
+        (available albert time_1030)
+        (available albert time_1100)
+        (available albert time_1130)
+        (available albert time_1230)
+        (available albert time_1300)
+        (available albert time_1330)
+        (available albert time_1430)
+        (available albert time_1530)
+        (available albert time_1600)
+
+        (available gregory time_900)
+        (available gregory time_930)
+        (available gregory time_1000)
+        (available gregory time_1030)
+        (available gregory time_1130)
+        (available gregory time_1200)
+        (available gregory time_1300)
+        (available gregory time_1400)
+        (available gregory time_1430)
+        (available gregory time_1500)
+        (available gregory time_1600)
+        (available gregory time_1630)
+        (available gregory time_1700)
+
+        (available benjamin time_900)
+        (available benjamin time_1000)
+        (available benjamin time_1300)
+        (available benjamin time_1330)
+        (available benjamin time_1430)
+        (available benjamin time_1500)
+    )
+    (:goal 
+        (meeting_scheduled)
+    )
+)

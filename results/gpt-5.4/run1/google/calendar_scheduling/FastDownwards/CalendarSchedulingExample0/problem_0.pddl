@@ -1,0 +1,71 @@
+(define (problem meeting_schedule_monday_instance)
+  (:domain meeting_schedule_monday)
+
+  (:objects
+    michelle steven jerry - participant
+    t_0900 t_0930 t_1000 t_1030 t_1100 t_1130 t_1200 t_1230
+    t_1300 t_1330 t_1400 t_1430 t_1500 t_1530 t_1600 t_1630 - timeslot
+  )
+
+  (:init
+    (next_slot t_0900 t_0930)
+    (next_slot t_0930 t_1000)
+    (next_slot t_1000 t_1030)
+    (next_slot t_1030 t_1100)
+    (next_slot t_1100 t_1130)
+    (next_slot t_1130 t_1200)
+    (next_slot t_1200 t_1230)
+    (next_slot t_1230 t_1300)
+    (next_slot t_1300 t_1330)
+    (next_slot t_1330 t_1400)
+    (next_slot t_1400 t_1430)
+    (next_slot t_1430 t_1500)
+    (next_slot t_1500 t_1530)
+    (next_slot t_1530 t_1600)
+    (next_slot t_1600 t_1630)
+
+    (free michelle t_0900)
+    (free michelle t_0930)
+    (free michelle t_1000)
+    (free michelle t_1030)
+    (free michelle t_1200)
+    (free michelle t_1230)
+    (free michelle t_1300)
+    (free michelle t_1330)
+    (free michelle t_1400)
+    (free michelle t_1430)
+    (free michelle t_1500)
+    (free michelle t_1530)
+    (free michelle t_1600)
+    (free michelle t_1630)
+
+    (free steven t_0930)
+    (free steven t_1000)
+    (free steven t_1030)
+    (free steven t_1100)
+    (free steven t_1200)
+    (free steven t_1230)
+    (free steven t_1300)
+    (free steven t_1400)
+    (free steven t_1430)
+    (free steven t_1500)
+    (free steven t_1600)
+    (free steven t_1630)
+
+    (free jerry t_0930)
+    (free jerry t_1100)
+    (free jerry t_1230)
+    (free jerry t_1430)
+    (free jerry t_1500)
+    (free jerry t_1600)
+  )
+
+  (:goal
+    (and
+      (meeting_scheduled)
+      (meeting_start t_1430)
+      (occupied t_1430)
+      (occupied t_1500)
+    )
+  )
+)

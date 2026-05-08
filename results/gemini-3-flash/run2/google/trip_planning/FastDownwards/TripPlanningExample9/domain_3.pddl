@@ -1,0 +1,128 @@
+(define (domain trip_planning_example9)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day count)
+  (:predicates
+    (at ?c - city)
+    (at_no_city)
+    (current_day ?d - day)
+    (next_day ?d1 ?d2 - day)
+    (count_at ?c - city ?n - count)
+    (next_count ?n1 ?n2 - count)
+    (flight ?c1 ?c2 - city)
+    (is_workshop_day ?d - day)
+    (is_stuttgart ?c - city)
+  )
+
+  ;; Action for the first day of the trip (not a workshop day)
+  (:action start_trip_no_workshop
+    :parameters (?c - city ?d - day ?dnext - day ?n0 - count ?n1 - count)
+    :precondition (and
+      (at_no_city)
+      (current_day ?d)
+      (next_day ?d ?dnext)
+      (not (is_workshop_day ?d))
+      (count_at ?c ?n0)
+      (next_count ?n0 ?n1)
+    )
+    :effect (and
+      (not (at_no_city))
+      (at ?c)
+      (not (current_day ?d))
+      (current_day ?dnext)
+      (not (count_at ?c ?n0))
+      (count_at ?c ?n1)
+    )
+  )
+
+  ;; Stay at the current city during a non-workshop day
+  (:action stay_no_workshop
+    :parameters (?c - city ?d - day ?dnext - day ?n_before - count ?n_after - count)
+    :precondition (and
+      (at ?c)
+      (current_day ?d)
+      (next_day ?d ?dnext)
+      (not (is_workshop_day ?d))
+      (count_at ?c ?n_before)
+      (next_count ?n_before ?n_after)
+    )
+    :effect (and
+      (not (current_day ?d))
+      (current_day ?dnext)
+      (not (count_at ?c ?n_before))
+      (count_at ?c ?n_after)
+    )
+  )
+
+  ;; Stay at the current city during a workshop day (must be Stuttgart)
+  (:action stay_workshop
+    :parameters (?c - city ?d - day ?dnext - day ?n_before - count ?n_after - count)
+    :precondition (and
+      (at ?c)
+      (current_day ?d)
+      (next_day ?d ?dnext)
+      (is_workshop_day ?d)
+      (is_stuttgart ?c)
+      (count_at ?c ?n_before)
+      (next_count ?n_before ?n_after)
+    )
+    :effect (and
+      (not (current_day ?d))
+      (current_day ?dnext)
+      (not (count_at ?c ?n_before))
+      (count_at ?c ?n_after)
+    )
+  )
+
+  ;; Fly to a new city during a non-workshop day
+  (:action fly_no_workshop
+    :parameters (?f - city ?t - city ?d - day ?dnext - day ?nf_before - count ?nf_after - count ?nt_before - count ?nt_after - count)
+    :precondition (and
+      (at ?f)
+      (current_day ?d)
+      (next_day ?d ?dnext)
+      (flight ?f ?t)
+      (not (is_workshop_day ?d))
+      (count_at ?f ?nf_before)
+      (next_count ?nf_before ?nf_after)
+      (count_at ?t ?nt_before)
+      (next_count ?nt_before ?nt_after)
+    )
+    :effect (and
+      (not (at ?f))
+      (at ?t)
+      (not (current_day ?d))
+      (current_day ?dnext)
+      (not (count_at ?f ?nf_before))
+      (count_at ?f ?nf_after)
+      (not (count_at ?t ?nt_before))
+      (count_at ?t ?nt_after)
+    )
+  )
+
+  ;; Fly into Stuttgart during a workshop day
+  (:action fly_into_workshop
+    :parameters (?f - city ?t - city ?d - day ?dnext - day ?nf_before - count ?nf_after - count ?nt_before - count ?nt_after - count)
+    :precondition (and
+      (at ?f)
+      (current_day ?d)
+      (next_day ?d ?dnext)
+      (flight ?f ?t)
+      (is_workshop_day ?d)
+      (is_stuttgart ?t)
+      (count_at ?f ?nf_before)
+      (next_count ?nf_before ?nf_after)
+      (count_at ?t ?nt_before)
+      (next_count ?nt_before ?nt_after)
+    )
+    :effect (and
+      (not (at ?f))
+      (at ?t)
+      (not (current_day ?d))
+      (current_day ?dnext)
+      (not (count_at ?f ?nf_before))
+      (count_at ?f ?nf_after)
+      (not (count_at ?t ?nt_before))
+      (count_at ?t ?nt_after)
+    )
+  )
+)

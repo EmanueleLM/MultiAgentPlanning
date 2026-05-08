@@ -1,0 +1,46 @@
+(define (problem schedule_38)
+  (:domain calendar_scheduling)
+  (:objects
+    catherine michael alexander - person
+    slot_0900_0930 slot_0930_1000 slot_1000_1030 slot_1030_1100
+    slot_1100_1130 slot_1130_1200 slot_1200_1230 slot_1230_1300
+    slot_1300_1330 slot_1330_1400 slot_1400_1430 slot_1430_1500
+    slot_1500_1530 slot_1530_1600 slot_1600_1630 slot_1630_1700 - timeslot
+  )
+  (:init
+    ;; Catherine's free slots (busy: 10:30-11:00, 12:30-13:30, 14:30-15:00)
+    (free catherine slot_0900_0930)
+    (free catherine slot_0930_1000)
+    (free catherine slot_1000_1030)
+    (free catherine slot_1100_1130)
+    (free catherine slot_1130_1200)
+    (free catherine slot_1200_1230)
+    (free catherine slot_1330_1400)
+    (free catherine slot_1400_1430)
+    (free catherine slot_1500_1530)
+    (free catherine slot_1530_1600)
+    (free catherine slot_1600_1630)
+    (free catherine slot_1630_1700)
+
+    ;; Michael's free slots (busy: 9:30-10:30, 12:00-13:00, 13:30-14:00, 15:00-15:30)
+    (free michael slot_0900_0930)
+    (free michael slot_1030_1100)
+    (free michael slot_1100_1130)
+    (free michael slot_1130_1200)
+    (free michael slot_1300_1330)
+    (free michael slot_1400_1430)
+    (free michael slot_1430_1500)
+    (free michael slot_1530_1600)
+    (free michael slot_1600_1630)
+    (free michael slot_1630_1700)
+
+    ;; Alexander's free slots (busy: 9:00-9:30, 10:00-10:30, 11:00-12:00, 13:00-13:30, 14:00-16:00, 16:30-17:00)
+    (free alexander slot_0930_1000)
+    (free alexander slot_1030_1100)
+    (free alexander slot_1200_1230)
+    (free alexander slot_1230_1300)
+    (free alexander slot_1330_1400)
+    (free alexander slot_1600_1630)
+  )
+  (:goal (meeting_scheduled))
+)

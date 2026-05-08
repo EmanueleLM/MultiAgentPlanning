@@ -1,0 +1,56 @@
+(define (problem sokoban-instance)
+  (:domain sokoban)
+  (:objects
+    player - entity
+    box1 - entity
+    goal1 - entity
+    l1 l2 l3 l4 l5 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19 l20
+    l21 l22 l23 l24 l25 l26 l27 l28 l29 l30 l31 l32 l33 l34 l35 l36 l37 l38
+    l39 l40 l41 l42 l43 l44 l45 l46 l47 l48 l49 l50 l51 l52 l53 l54 l55 l56
+    l57 l58 l59 l60 l61 l62 l63 l64 l65 l66 l67 l68 l69 l70 l71 l72 l73 l74
+    l75 l76 l77 l78 - location)
+  (:init
+    (player-at l1)
+    (box-at l29)
+    (goal-at l78)
+    (empty l2) (empty l3) (empty l4) (empty l5) (empty l6) (empty l7) (empty l8)
+    (empty l9) (empty l10) (empty l11) (empty l12) (empty l13) (empty l14) 
+    (empty l15) (empty l16) (empty l17) (empty l18) (empty l19) (empty l20)
+    (empty l21) (empty l22) (empty l23) (empty l24) (empty l25) (empty l26)
+    (empty l27) (empty l28) (empty l30) (empty l31) (empty l32) (empty l33)
+    (empty l34) (empty l35) (empty l36) (empty l37) (empty l38) (empty l39)
+    (empty l40) (empty l41) (empty l42) (empty l43) (empty l44) (empty l45)
+    (empty l46) (empty l47) (empty l48) (empty l49) (empty l50) (empty l51)
+    (empty l52) (empty l53) (empty l54) (empty l55) (empty l56) (empty l57)
+    (empty l58) (empty l59) (empty l60) (empty l61) (empty l62) (empty l63)
+    (empty l64) (empty l65) (empty l66) (empty l67) (empty l68) (empty l69)
+    (empty l70) (empty l71) (empty l72) (empty l73) (empty l74) (empty l75)
+    (empty l76) (empty l77)
+    (adjacent l1 l2) (adjacent l2 l3) (adjacent l3 l4) (adjacent l4 l5)
+    (adjacent l5 l6) (adjacent l6 l7) (adjacent l7 l8) (adjacent l8 l9)
+    (adjacent l9 l10) (adjacent l10 l11) (adjacent l11 l12)
+    (adjacent l12 l13) (adjacent l13 l14) (adjacent l14 l15)
+    (adjacent l15 l16) (adjacent l16 l17) (adjacent l17 l18)
+    (adjacent l18 l19) (adjacent l19 l20) (adjacent l20 l21)
+    (adjacent l21 l22) (adjacent l22 l23) (adjacent l23 l24)
+    (adjacent l24 l25) (adjacent l25 l26) (adjacent l26 l27)
+    (adjacent l27 l28) (adjacent l28 l29) (adjacent l29 l30)
+    (adjacent l30 l31) (adjacent l31 l32) (adjacent l32 l33)
+    (adjacent l33 l34) (adjacent l34 l35) (adjacent l35 l36)
+    (adjacent l36 l37) (adjacent l37 l38) (adjacent l38 l39)
+    (adjacent l39 l40) (adjacent l40 l41) (adjacent l41 l42)
+    (adjacent l42 l43) (adjacent l43 l44) (adjacent l44 l45)
+    (adjacent l45 l46) (adjacent l46 l47) (adjacent l47 l48)
+    (adjacent l48 l49) (adjacent l49 l50) (adjacent l50 l51)
+    (adjacent l51 l52) (adjacent l52 l53) (adjacent l53 l54)
+    (adjacent l54 l55) (adjacent l55 l56) (adjacent l56 l57)
+    (adjacent l57 l58) (adjacent l58 l59) (adjacent l59 l60)
+    (adjacent l60 l61) (adjacent l61 l62) (adjacent l62 l63)
+    (adjacent l63 l64) (adjacent l64 l65) (adjacent l65 l66)
+    (adjacent l66 l67) (adjacent l67 l68) (adjacent l68 l69)
+    (adjacent l69 l70) (adjacent l70 l71) (adjacent l71 l72)
+    (adjacent l72 l73) (adjacent l73 l74) (adjacent l74 l75)
+    (adjacent l75 l76) (adjacent l76 l77) (adjacent l77 l78))
+  (:goal
+    (and (box-at l78)))
+)

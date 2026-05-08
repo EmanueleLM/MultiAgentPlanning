@@ -1,0 +1,66 @@
+(define (problem schedule_meeting_julie_sean_lori_monday)
+  (:domain jack_of_all_trades_meeting)
+  (:objects
+    julie sean lori - person
+    t9_00 t9_30 t10_00 t10_30 t11_00 t11_30 t12_00 t12_30
+    t13_00 t13_30 t14_00 t14_30 t15_00 t15_30 t16_00 t16_30 t17_00 - time
+  )
+  (:init
+    ;; next relations (half-hour succession)
+    (next t9_00 t9_30)
+    (next t9_30 t10_00)
+    (next t10_00 t10_30)
+    (next t10_30 t11_00)
+    (next t11_00 t11_30)
+    (next t11_30 t12_00)
+    (next t12_00 t12_30)
+    (next t12_30 t13_00)
+    (next t13_00 t13_30)
+    (next t13_30 t14_00)
+    (next t14_00 t14_30)
+    (next t14_30 t15_00)
+    (next t15_00 t15_30)
+    (next t15_30 t16_00)
+    (next t16_00 t16_30)
+    (next t16_30 t17_00)
+
+    ;; free facts: julie
+    (free julie t9_30)
+    (free julie t10_00)
+    (free julie t10_30)
+    (free julie t11_30)
+    (free julie t12_30)
+    (free julie t13_00)
+    (free julie t14_00)
+    (free julie t14_30)
+    (free julie t15_00)
+    (free julie t15_30)
+
+    ;; free facts: sean
+    (free sean t9_30)
+    (free sean t10_00)
+    (free sean t10_30)
+    (free sean t11_00)
+    (free sean t11_30)
+    (free sean t12_00)
+    (free sean t12_30)
+    (free sean t13_30)
+    (free sean t14_00)
+    (free sean t14_30)
+    (free sean t15_30)
+    (free sean t16_30)
+
+    ;; free facts: lori
+    (free lori t9_00)
+    (free lori t9_30)
+    (free lori t10_30)
+    (free lori t13_00)
+    (free lori t13_30)
+    (free lori t14_00)
+    (free lori t14_30)
+    (free lori t15_00)
+  )
+  (:goal (and
+    (meeting_scheduled)
+  ))
+)

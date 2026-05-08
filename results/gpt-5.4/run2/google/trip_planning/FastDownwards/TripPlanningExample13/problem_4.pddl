@@ -1,0 +1,65 @@
+(define (problem trip_planning_example13_problem)
+  (:domain trip_planning_example13)
+
+  (:objects
+    manchester bucharest lyon - city
+    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11 d12 d13 d14 d15 d16 d17 d18 - day
+  )
+
+  (:init
+    (today d1)
+
+    (next_day d1 d2)
+    (next_day d2 d3)
+    (next_day d3 d4)
+    (next_day d4 d5)
+    (next_day d5 d6)
+    (next_day d6 d7)
+    (next_day d7 d8)
+    (next_day d8 d9)
+    (next_day d9 d10)
+    (next_day d10 d11)
+    (next_day d11 d12)
+    (next_day d12 d13)
+    (next_day d13 d14)
+    (next_day d14 d15)
+    (next_day d15 d16)
+    (next_day d16 d17)
+    (next_day d17 d18)
+
+    (direct manchester bucharest)
+    (direct bucharest manchester)
+    (direct bucharest lyon)
+    (direct lyon bucharest)
+
+    (in_lyon_window d13)
+    (in_lyon_window d14)
+    (in_lyon_window d15)
+    (in_lyon_window d16)
+    (in_lyon_window d17)
+  )
+
+  (:goal
+    (and
+      (today d18)
+      (stayed_manchester d1)
+      (stayed_manchester d2)
+      (stayed_manchester d3)
+      (stayed_manchester d4)
+      (stayed_manchester d5)
+      (stayed_manchester d6)
+      (stayed_manchester d7)
+      (stayed_bucharest d8)
+      (stayed_bucharest d9)
+      (stayed_bucharest d10)
+      (stayed_bucharest d11)
+      (stayed_bucharest d12)
+      (stayed_bucharest d13)
+      (stayed_bucharest d14)
+      (stayed_lyon d15)
+      (stayed_lyon d16)
+      (stayed_lyon d17)
+      (visited_relatives)
+    )
+  )
+)

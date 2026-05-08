@@ -1,0 +1,66 @@
+(define (problem calendar_scheduling_problem)
+  (:domain calendar_scheduling)
+  (:objects
+    lisa bobby randy - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 t1700 - time
+  )
+  (:init
+    ;; Time sequence for 30-minute intervals from 09:00 to 17:00
+    (next t0900 t0930)
+    (next t0930 t1000)
+    (next t1000 t1030)
+    (next t1030 t1100)
+    (next t1100 t1130)
+    (next t1130 t1200)
+    (next t1200 t1230)
+    (next t1230 t1300)
+    (next t1300 t1330)
+    (next t1330 t1400)
+    (next t1400 t1430)
+    (next t1430 t1500)
+    (next t1500 t1530)
+    (next t1530 t1600)
+    (next t1600 t1630)
+    (next t1630 t1700)
+
+    ;; Lisa's Availability
+    ;; Busy: 9:00-10:00 (t0900, t0930), 10:30-11:30 (t1030, t1100), 12:30-13:00 (t1230), 16:00-16:30 (t1600)
+    (available lisa t1000)
+    (available lisa t1130)
+    (available lisa t1200)
+    (available lisa t1300)
+    (available lisa t1330)
+    (available lisa t1400)
+    (available lisa t1430)
+    (available lisa t1500)
+    (available lisa t1530)
+    (available lisa t1630)
+
+    ;; Bobby's Availability
+    ;; Busy: 9:00-9:30 (t0900), 10:00-10:30 (t1000), 11:30-12:00 (t1130), 15:00-15:30 (t1500)
+    ;; Avoids after 15:00: 15:30-16:00 (t1530), 16:00-16:30 (t1600), 16:30-17:00 (t1630)
+    (available bobby t0930)
+    (available bobby t1030)
+    (available bobby t1100)
+    (available bobby t1200)
+    (available bobby t1230)
+    (available bobby t1300)
+    (available bobby t1330)
+    (available bobby t1400)
+    (available bobby t1430)
+
+    ;; Randy's Availability
+    ;; Busy: 9:30-10:00 (t0930), 10:30-11:00 (t1030), 11:30-12:30 (t1130, t1200), 13:00-13:30 (t1300), 14:30-15:30 (t1430, t1500), 16:00-16:30 (t1600)
+    (available randy t0900)
+    (available randy t1000)
+    (available randy t1100)
+    (available randy t1230)
+    (available randy t1330)
+    (available randy t1400)
+    (available randy t1530)
+    (available randy t1630)
+  )
+  (:goal
+    (meeting_is_scheduled)
+  )
+)

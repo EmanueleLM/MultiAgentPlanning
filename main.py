@@ -16,12 +16,26 @@ from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
 from src.llm_plan.utils import (
     collect_debug_logs,
+    extract_agent_name,
     get_latest_file,
     has_valid_plan_file,
 )
 
 ENVIRONMENT_SUBFOLDER = "miscellanea"
 RESULTS_ROOT = RESULTS_FOLDER / "miscellanea"
+
+
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes", "y", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -70,16 +84,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--optimize-plan",
-        type=bool,
+        type=parse_bool,
         default=True,
-        choices=[True, False],
         help="Allow the solver to spend extra time optimising the plan.",
     )
     parser.add_argument(
         "--debug",
-        type=bool,
+        type=parse_bool,
         default=True,
-        choices=[True, False],
         help="If True, write detailed iteration logs under __full_logs.txt.",
     )
     return parser.parse_args()
@@ -288,10 +300,9 @@ def main() -> None:
         hypervisor = Hypervisor(prompt_args_hypervisor)
         response = hypervisor.run(model_plan)
 
-        match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
-        if match:
-            agent_name = match.group(1).strip()
-        else:
+        try:
+            agent_name = extract_agent_name(response, hypervisor.agents)
+        except ValueError:
             logger.warning(
                 "No agent class found in response. Falling back to AgentDeepThinkPDDL. Response snippet: %s",
                 response[:200],

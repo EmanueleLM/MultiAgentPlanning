@@ -1,0 +1,18 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person timeslot)
+  (:constants ralph peter daniel - person)
+  (:predicates
+    (free ?p - person ?t - timeslot)
+    (meeting_scheduled)
+  )
+  (:action schedule_meeting
+    :parameters (?t - timeslot)
+    :precondition (and 
+      (free ralph ?t)
+      (free peter ?t)
+      (free daniel ?t)
+    )
+    :effect (meeting_scheduled)
+  )
+)

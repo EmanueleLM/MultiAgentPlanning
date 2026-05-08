@@ -1,0 +1,40 @@
+(define (domain sokoban_linear)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types cell agent box)
+  (:predicates
+    (player_at ?c - cell)
+    (box_at ?b - box ?c - cell)
+    (goal ?c - cell)
+    (adjacent ?from - cell ?to - cell)
+  )
+  (:action walk
+    :parameters (?from - cell ?to - cell ?b - box)
+    :precondition (and
+      (player_at ?from)
+      (adjacent ?from ?to)
+      (not (box_at ?b ?to))
+      (not (player_at ?to))
+    )
+    :effect (and
+      (not (player_at ?from))
+      (player_at ?to)
+    )
+  )
+  (:action push
+    :parameters (?pfrom - cell ?b - box ?boxfrom - cell ?boxto - cell)
+    :precondition (and
+      (player_at ?pfrom)
+      (box_at ?b ?boxfrom)
+      (adjacent ?pfrom ?boxfrom)
+      (adjacent ?boxfrom ?boxto)
+      (not (box_at ?b ?boxto))
+      (not (player_at ?boxto))
+    )
+    :effect (and
+      (not (box_at ?b ?boxfrom))
+      (box_at ?b ?boxto)
+      (not (player_at ?pfrom))
+      (player_at ?boxfrom)
+    )
+  )
+)

@@ -17,12 +17,34 @@ from time import sleep
 
 
 from src.llm_plan.agent import AgentNaturalLanguage
-from src.llm_plan.config import ENVIRONMENTS_JSON_PATH, DATASET, SOLVER, MODELS
+from src.llm_plan.config import (
+    ENVIRONMENTS_JSON_PATH,
+    RESULTS_FOLDER,
+    DATASET,
+    SOLVER,
+    MODELS,
+)
 from src.llm_plan.environment import Environment
 from src.llm_plan.hypervisor import Hypervisor
 from src.llm_plan.parser import PDDLParser
 from src.llm_plan.planner import Planner
-from src.llm_plan.utils import collect_debug_logs, has_valid_plan_file
+from src.llm_plan.utils import (
+    collect_debug_logs,
+    extract_agent_name,
+    has_valid_plan_file,
+)
+
+
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes", "y", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
 
 
 def parse_args():
@@ -63,8 +85,8 @@ def parse_args():
     parser.add_argument(
         "--base_agent",
         type=str,
-        default="AgentDeepThinkPDDL",
-        help="Base agent (default: AgentDeepThinkPDDL)",
+        default="AgentJackOfAllTrades",
+        help="Base agent used as fallback when hypervisor selection fails (default: AgentJackOfAllTrades)",
     )
     parser.add_argument(
         "--target_solver",
@@ -75,19 +97,28 @@ def parse_args():
     )
     parser.add_argument(
         "--optimize_plan",
-        type=bool,
+        type=parse_bool,
         default=False,
-        choices=[True, False],
         help="The PDDL solver tries to further minimize the plan cost.",
     )
     parser.add_argument(
         "--debug",
-        type=bool,
+        type=parse_bool,
         default=True,
         help="Outputs the full logs in a file named __full_logs.txt (default: True)",
     )
 
     return parser.parse_args()
+
+
+def get_model_results_root(dataset_name: str, model_name: str) -> Path:
+    base_results_root = DATASET[dataset_name]["results"]
+    relative_root = base_results_root.relative_to(RESULTS_FOLDER)
+    return RESULTS_FOLDER / model_name / relative_root
+
+
+def get_environment_path(model_name: str, problem_name: str, plan_path: Path) -> Path:
+    return ENVIRONMENTS_JSON_PATH / model_name / problem_name / plan_path
 
 
 def setup_logging(results_root: Path, dataset: str, solver_name: str) -> logging.Logger:
@@ -149,7 +180,9 @@ if __name__ == "__main__":
     debug = args.debug
 
     logger = setup_logging(
-        DATASET[dataset_name]["results"], dataset_name, args.target_solver
+        get_model_results_root(dataset_name, args.model_plan),
+        dataset_name,
+        args.target_solver,
     )
 
     # Init LLMs
@@ -176,24 +209,36 @@ if __name__ == "__main__":
     with open(DATASET[args.dataset]["data"], "r") as f:
         scheduling_data = json.load(f)
 
+    if not scheduling_data:
+        raise ValueError(f"Dataset '{dataset_name}' is empty.")
+
+    dataset_items = list(scheduling_data.items())
+    available_experiments = len(dataset_items)
+    if num_experiments > available_experiments:
+        logger.info(
+            "Requested %s experiments for dataset '%s', but only %s samples are available. Using all available samples.",
+            num_experiments,
+            dataset_name,
+            available_experiments,
+        )
+    num_experiments = min(num_experiments, available_experiments)
+
     # Take the problem name (e.g., calendar_scheduling_0 -> calendar_scheduling)
-    key = list(scheduling_data.keys())[0]
+    key = dataset_items[0][0]
     if "_" in key:
         problem_name, _ = key.rsplit("_", 1)
     else:
         problem_name = key
 
     # Start the experiments
-    for i in range(num_experiments):
+    for i, (numbered_problem_name, data) in enumerate(dataset_items[:num_experiments]):
         # Problem name and full path
-        numbered_problem_name = f"{problem_name}_{i}"
-        data = scheduling_data[numbered_problem_name]
         environment_name = "".join([v.capitalize() for v in numbered_problem_name.split("_")])
 
         # Generate the first representation
         planner = Planner()
         plan_path = Path(f"{environment_name}.{format}")
-        full_path = ENVIRONMENTS_JSON_PATH / problem_name / plan_path
+        full_path = get_environment_path(args.model_json, problem_name, plan_path)
 
         if not full_path.exists():
             logger.info("Generating representation for %s", environment_name)
@@ -201,7 +246,7 @@ if __name__ == "__main__":
                 model_json,
                 data["prompt_0shot"],
                 environment_name,
-                problem_name,
+                Path(args.model_json) / problem_name,
                 file_format=format,
             )
             sleep(sleep_time_json)
@@ -223,7 +268,7 @@ if __name__ == "__main__":
         logger.info("Initial plan structure: %s", env.plan)
 
         BASE_FOLDER = (
-            DATASET[args.dataset]["results"]
+            get_model_results_root(dataset_name, args.model_plan)
             / f"{dataset_name}/{args.target_solver}/{env.name}"
         )
         BASE_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -351,8 +396,7 @@ if __name__ == "__main__":
 
             # Dynamically instantiate the agent class
             try:
-                match = re.search(r"<class>(.*?)</class>", response, re.DOTALL)
-                agent_name = match.group(1).strip()
+                agent_name = extract_agent_name(response, hypervisor.agents)
                 agent_class = hypervisor.agents[agent_name]
             except Exception as exc:
                 logger.warning(
@@ -367,11 +411,12 @@ if __name__ == "__main__":
             logger.info("Selected agent: %s", agent_name)
 
             # Generate the refined plan
-            required_args: dict[object] = {}
-            for arg in agent_class.required_args.keys():
-                agent_class.required_args[arg] = prompt_args_hypervisor[arg]
+            instance_args = {
+                arg: prompt_args_hypervisor[arg]
+                for arg in agent_class.required_args.keys()
+            }
 
-            new_agent = agent_class(model_plan, agent_class.required_args)
+            new_agent = agent_class(model_plan, instance_args)
             response = new_agent.run()
             match_solution = re.search(
                 r"<proposed_solution>(.*?)</proposed_solution>",

@@ -1,0 +1,71 @@
+(define (domain trip_planning)
+  (:requirements :strips :typing)
+  (:types city day count)
+  (:predicates
+    (at ?c - city ?d - day)
+    (visited ?c - city ?d - day)
+    (visited_count ?c - city ?n - count)
+    (next_day ?d1 ?d2 - day)
+    (next_count ?n1 ?n2 - count)
+    (flight ?c1 ?c2 - city)
+    (not_started)
+    (is_first_day ?d - day)
+  )
+
+  (:action start
+    :parameters (?c - city ?d1 - day ?n0 ?n1 - count)
+    :precondition (and
+      (not_started)
+      (is_first_day ?d1)
+      (visited_count ?c ?n0)
+      (next_count ?n0 ?n1)
+    )
+    :effect (and
+      (not (not_started))
+      (at ?c ?d1)
+      (visited ?c ?d1)
+      (not (visited_count ?c ?n0))
+      (visited_count ?c ?n1)
+    )
+  )
+
+  (:action stay
+    :parameters (?c - city ?d_prev - day ?d_curr - day ?n_old - count ?n_new - count)
+    :precondition (and
+      (at ?c ?d_prev)
+      (next_day ?d_prev ?d_curr)
+      (visited_count ?c ?n_old)
+      (next_count ?n_old ?n_new)
+    )
+    :effect (and
+      (not (at ?c ?d_prev))
+      (at ?c ?d_curr)
+      (visited ?c ?d_curr)
+      (not (visited_count ?c ?n_old))
+      (visited_count ?c ?n_new)
+    )
+  )
+
+  (:action fly
+    :parameters (?c_from - city ?c_to - city ?d_prev - day ?d_curr - day ?n_f_old - count ?n_f_new - count ?n_t_old - count ?n_t_new - count)
+    :precondition (and
+      (at ?c_from ?d_prev)
+      (next_day ?d_prev ?d_curr)
+      (flight ?c_from ?c_to)
+      (visited_count ?c_from ?n_f_old)
+      (next_count ?n_f_old ?n_f_new)
+      (visited_count ?c_to ?n_t_old)
+      (next_count ?n_t_old ?n_t_new)
+    )
+    :effect (and
+      (not (at ?c_from ?d_prev))
+      (at ?c_to ?d_curr)
+      (visited ?c_from ?d_curr)
+      (visited ?c_to ?d_curr)
+      (not (visited_count ?c_from ?n_f_old))
+      (visited_count ?c_from ?n_f_new)
+      (not (visited_count ?c_to ?n_t_old))
+      (visited_count ?c_to ?n_t_new)
+    )
+  )
+)

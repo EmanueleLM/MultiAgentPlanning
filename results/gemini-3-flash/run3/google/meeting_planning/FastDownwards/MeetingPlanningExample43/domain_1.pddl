@@ -1,0 +1,23 @@
+(define (domain meeting_planning_domain)
+  (:requirements :typing :negative-preconditions)
+  (:types location person time)
+  (:predicates
+    (at ?loc - location)
+    (curr_time ?t - time)
+    (met ?p - person)
+    (move_duration ?from ?to - location ?t_start ?t_end - time)
+    (person_at ?p - person ?loc - location)
+    (meet_duration ?p - person ?t_start ?t_end - time)
+    (within_window ?p - person ?loc - location ?t - time)
+  )
+  (:action move
+    :parameters (?from - location ?to - location ?t_start - time ?t_end - time)
+    :precondition (and (at ?from) (curr_time ?t_start) (move_duration ?from ?to ?t_start ?t_end))
+    :effect (and (not (at ?from)) (at ?to) (not (curr_time ?t_start)) (curr_time ?t_end))
+  )
+  (:action meet
+    :parameters (?p - person ?loc - location ?t_start - time ?t_end - time)
+    :precondition (and (at ?loc) (curr_time ?t_start) (person_at ?p ?loc) (meet_duration ?p ?t_start ?t_end) (within_window ?p ?loc ?t_start) (within_window ?p ?loc ?t_end))
+    :effect (and (met ?p) (not (curr_time ?t_start)) (curr_time ?t_end))
+  )
+)

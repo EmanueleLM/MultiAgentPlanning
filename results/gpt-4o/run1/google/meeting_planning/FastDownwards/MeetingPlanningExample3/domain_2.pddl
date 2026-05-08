@@ -1,0 +1,51 @@
+(define (domain meeting_schedule)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location person time)
+  (:predicates
+    (at ?loc - location)
+    (meeting_possible ?person - person ?loc - location)
+    (met ?person - person)
+    (time_available ?start - time ?end - time)
+    (at_time ?time - time)
+    (current_location ?loc - location)
+    (next_time ?current - time ?next - time)
+  )
+
+  (:action travel_to_golden_gate_park
+    :parameters ()
+    :precondition (and (current_location bayview)
+                       (at_time 900))
+    :effect (and (not (current_location bayview))
+                 (current_location golden_gate_park)
+                 (not (at_time 900))
+                 (at_time 922))
+  )
+
+  (:action travel_to_bayview
+    :parameters ()
+    :precondition (and (current_location golden_gate_park)
+                       (at_time 1100))
+    :effect (and (not (current_location golden_gate_park))
+                 (current_location bayview)
+                 (not (at_time 1100))
+                 (at_time 1123))
+  )
+
+  (:action wait_at_golden_gate_park
+    :parameters (?current ?next - time)
+    :precondition (and (current_location golden_gate_park)
+                       (at_time ?current)
+                       (next_time ?current ?next))
+    :effect (and (not (at_time ?current))
+                 (at_time ?next))
+  )
+
+  (:action start_meeting_with_barbara
+    :parameters ()
+    :precondition (and (current_location golden_gate_park)
+                       (at_time 930)
+                       (not (met barbara))
+                       (meeting_possible barbara golden_gate_park))
+    :effect (met barbara)
+  )
+)

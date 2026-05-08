@@ -1,0 +1,10 @@
+(define (problem meeting-problem)
+  (:domain meeting-planning)
+  (:init
+    (at traveler Chinatown)
+    (current-time t0900)
+    (joseph-at NobHill)
+  )
+  (:goal (and (met traveler)))
+  (:metric minimize (total-cost))
+)

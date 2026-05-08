@@ -1,0 +1,67 @@
+(define (domain trip_planning)
+  (:requirements :strips :typing)
+  (:types city day num)
+  (:predicates
+    (at ?c - city)
+    (current_day ?d - day)
+    (city_count ?c - city ?n - num)
+    (next_day ?d1 ?d2 - day)
+    (next_count ?n1 ?n2 - num)
+    (connected ?c1 ?c2 - city)
+    (is_friend_window ?d - day)
+    (is_friend_city ?c - city)
+    (friend_met)
+  )
+
+  (:action stay
+    :parameters (?c - city ?d_old ?d_new - day ?n_old ?n_new - num)
+    :precondition (and 
+      (at ?c) 
+      (current_day ?d_old) 
+      (next_day ?d_old ?d_new)
+      (city_count ?c ?n_old)
+      (next_count ?n_old ?n_new)
+    )
+    :effect (and 
+      (not (current_day ?d_old)) 
+      (current_day ?d_new)
+      (not (city_count ?c ?n_old))
+      (city_count ?c ?n_new)
+    )
+  )
+
+  (:action fly
+    :parameters (?from ?to - city ?d_old ?d_new - day ?n_from_old ?n_from_new ?n_to_old ?n_to_new - num)
+    :precondition (and 
+      (at ?from) 
+      (connected ?from ?to)
+      (current_day ?d_old) 
+      (next_day ?d_old ?d_new)
+      (city_count ?from ?n_from_old)
+      (next_count ?n_from_old ?n_from_new)
+      (city_count ?to ?n_to_old)
+      (next_count ?n_to_old ?n_to_new)
+    )
+    :effect (and 
+      (not (at ?from)) 
+      (at ?to)
+      (not (current_day ?d_old)) 
+      (current_day ?d_new)
+      (not (city_count ?from ?n_from_old))
+      (city_count ?from ?n_from_new)
+      (not (city_count ?to ?n_to_old))
+      (city_count ?to ?n_to_new)
+    )
+  )
+
+  (:action meet_friend
+    :parameters (?c - city ?d - day)
+    :precondition (and 
+      (at ?c) 
+      (is_friend_city ?c)
+      (current_day ?d) 
+      (is_friend_window ?d)
+    )
+    :effect (friend_met)
+  )
+)

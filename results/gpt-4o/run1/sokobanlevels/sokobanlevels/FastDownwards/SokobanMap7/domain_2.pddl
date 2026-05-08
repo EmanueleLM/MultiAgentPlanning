@@ -1,0 +1,51 @@
+(define (domain sokoban)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types agent box wall position)
+  (:predicates
+    (at ?a - agent ?p - position)
+    (at ?b - box ?p - position)
+    (goal_pos ?p - position)
+    (adjacent ?p1 ?p2 - position)
+    (clear ?p - position)
+  )
+  (:action move-up
+    :parameters (?a - agent ?from - position ?to - position)
+    :precondition (and (at ?a ?from) (adjacent ?from ?to) (clear ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  )
+  (:action move-down
+    :parameters (?a - agent ?from - position ?to - position)
+    :precondition (and (at ?a ?from) (adjacent ?from ?to) (clear ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  )
+  (:action move-left
+    :parameters (?a - agent ?from - position ?to - position)
+    :precondition (and (at ?a ?from) (adjacent ?from ?to) (clear ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  )
+  (:action move-right
+    :parameters (?a - agent ?from - position ?to - position)
+    :precondition (and (at ?a ?from) (adjacent ?from ?to) (clear ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  )
+  (:action push-up
+    :parameters (?a - agent ?b - box ?from_a - position ?from_b - position ?to_a - position ?to_b - position)
+    :precondition (and (at ?a ?from_a) (at ?b ?from_b) (adjacent ?from_a ?from_b) (adjacent ?from_b ?to_b) (clear ?to_b))
+    :effect (and (not (at ?a ?from_a)) (not (at ?b ?from_b)) (at ?a ?from_b) (at ?b ?to_b) (clear ?from_b) (not (clear ?to_b)))
+  )
+  (:action push-down
+    :parameters (?a - agent ?b - box ?from_a - position ?from_b - position ?to_a - position ?to_b - position)
+    :precondition (and (at ?a ?from_a) (at ?b ?from_b) (adjacent ?from_a ?from_b) (adjacent ?from_b ?to_b) (clear ?to_b))
+    :effect (and (not (at ?a ?from_a)) (not (at ?b ?from_b)) (at ?a ?from_b) (at ?b ?to_b) (clear ?from_b) (not (clear ?to_b)))
+  )
+  (:action push-left
+    :parameters (?a - agent ?b - box ?from_a - position ?from_b - position ?to_a - position ?to_b - position)
+    :precondition (and (at ?a ?from_a) (at ?b ?from_b) (adjacent ?from_a ?from_b) (adjacent ?from_b ?to_b) (clear ?to_b))
+    :effect (and (not (at ?a ?from_a)) (not (at ?b ?from_b)) (at ?a ?from_b) (at ?b ?to_b) (clear ?from_b) (not (clear ?to_b)))
+  )
+  (:action push-right
+    :parameters (?a - agent ?b - box ?from_a - position ?from_b - position ?to_a - position ?to_b - position)
+    :precondition (and (at ?a ?from_a) (at ?b ?from_b) (adjacent ?from_a ?from_b) (adjacent ?from_b ?to_b) (clear ?to_b))
+    :effect (and (not (at ?a ?from_a)) (not (at ?b ?from_b)) (at ?a ?from_b) (at ?b ?to_b) (clear ?from_b) (not (clear ?to_b)))
+  )
+)

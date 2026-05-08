@@ -1,0 +1,26 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing :action-costs)
+  (:types person timeslot)
+  (:predicates
+    (at_slot ?s - timeslot)
+    (next ?s1 ?s2 - timeslot)
+    (free ?p - person ?s - timeslot)
+    (meeting_scheduled)
+  )
+  (:functions
+    (total-cost)
+  )
+  (:action advance
+    :parameters (?s1 - timeslot ?s2 - timeslot)
+    :precondition (and (at_slot ?s1) (next ?s1 ?s2))
+    :effect (and (not (at_slot ?s1)) (at_slot ?s2) (increase (total-cost) 1))
+  )
+  (:action schedule_meeting
+    :parameters (?s - timeslot)
+    :precondition (and (at_slot ?s)
+                       (free emily ?s)
+                       (free victoria ?s)
+                       (free nancy ?s))
+    :effect (and (meeting_scheduled))
+  )
+)

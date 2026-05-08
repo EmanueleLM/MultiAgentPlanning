@@ -1,0 +1,31 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types slot person)
+  (:predicates
+    (at_slot ?s - slot)
+    (next_slot ?s1 ?s2 - slot)
+    (free ?p - person ?s - slot)
+    (person_brittany ?p - person)
+    (person_emily ?p - person)
+    (person_doris ?p - person)
+    (scheduled)
+  )
+
+  (:action advance
+    :parameters (?s1 ?s2 - slot)
+    :precondition (and (at_slot ?s1) (next_slot ?s1 ?s2))
+    :effect (and (not (at_slot ?s1)) (at_slot ?s2))
+  )
+
+  (:action schedule
+    :parameters (?s - slot ?pb ?pe ?pd - person)
+    :precondition (and (at_slot ?s)
+                       (person_brittany ?pb)
+                       (person_emily ?pe)
+                       (person_doris ?pd)
+                       (free ?pb ?s)
+                       (free ?pe ?s)
+                       (free ?pd ?s))
+    :effect (scheduled)
+  )
+)

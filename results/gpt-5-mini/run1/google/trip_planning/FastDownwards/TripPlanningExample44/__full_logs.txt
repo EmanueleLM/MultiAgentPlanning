@@ -1,0 +1,885 @@
+PROBLEM
+------------------------------
+You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.
+
+Here are the cities that have direct flights:
+Rome and Lyon, Zurich and Rome.
+
+Find a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.
+================================================================================
+
+ENVIRONMENT
+------------------------------
+You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.
+
+Here are the cities that have direct flights:
+Rome and Lyon, Zurich and Rome.
+
+Find a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.
+================================================================================
+
+FINAL-PLAN
+------------------------------
+<domain>
+(define (domain jackofalltrades_trip)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day slot)
+
+  (:predicates
+    (next_day ?d1 - day ?d2 - day)
+    (day_is_first ?d - day)
+    (flight ?c_from - city ?c_to - city)
+    (slot_for_city ?s - slot ?c - city)
+    (wedding_day_window ?d - day)
+    (filled ?s - slot ?d - day)
+    (slot_filled ?s - slot)
+    (at ?c - city ?d - day)
+    (day_assigned ?d - day)
+    (wedding_attended)
+  )
+
+  (:action fill_first_day_for_city
+    :parameters (?s - slot ?c - city ?d - day)
+    :precondition (and
+      (slot_for_city ?s ?c)
+      (day_is_first ?d)
+      (not (slot_filled ?s))
+      (not (day_assigned ?d))
+    )
+    :effect (and
+      (filled ?s ?d)
+      (slot_filled ?s)
+      (day_assigned ?d)
+      (at ?c ?d)
+    )
+  )
+
+  (:action fill_next_day_stay
+    :parameters (?s_next - slot ?c - city ?d_prev - day ?d_next - day)
+    :precondition (and
+      (slot_for_city ?s_next ?c)
+      (next_day ?d_prev ?d_next)
+      (at ?c ?d_prev)
+      (not (slot_filled ?s_next))
+      (not (day_assigned ?d_next))
+    )
+    :effect (and
+      (filled ?s_next ?d_next)
+      (slot_filled ?s_next)
+      (day_assigned ?d_next)
+      (at ?c ?d_next)
+    )
+  )
+
+  (:action fill_next_day_move
+    :parameters (?s_next - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)
+    :precondition (and
+      (slot_for_city ?s_next ?c_to)
+      (next_day ?d_prev ?d_next)
+      (at ?c_from ?d_prev)
+      (flight ?c_from ?c_to)
+      (not (slot_filled ?s_next))
+      (not (day_assigned ?d_next))
+    )
+    :effect (and
+      (filled ?s_next ?d_next)
+      (slot_filled ?s_next)
+      (day_assigned ?d_next)
+      (at ?c_to ?d_next)
+    )
+  )
+
+  (:action mark_wedding_attended
+    :parameters (?s - slot ?d - day)
+    :precondition (and
+      (slot_for_city ?s zurich)
+      (filled ?s ?d)
+      (wedding_day_window ?d)
+      (not (wedding_attended))
+      ;; This action is intended to be applicable only for the designated wedding slot.
+      ;; The problem encodes that designation by having slot_for_city facts and by
+      ;; the goal requiring wedding_attended after the designated slot is filled in-window.
+    )
+    :effect (and
+      (wedding_attended)
+    )
+  )
+)
+</domain>
+<problem>
+(define (problem trip17)
+  (:domain jackofalltrades_trip)
+
+  (:objects
+    rome lyon zurich - city
+
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day
+
+    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6
+    zurich_slot_wed zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7
+    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot
+  )
+
+  (:init
+    ;; next_day links
+    (next_day day1 day2)
+    (next_day day2 day3)
+    (next_day day3 day4)
+    (next_day day4 day5)
+    (next_day day5 day6)
+    (next_day day6 day7)
+    (next_day day7 day8)
+    (next_day day8 day9)
+    (next_day day9 day10)
+    (next_day day10 day11)
+    (next_day day11 day12)
+    (next_day day12 day13)
+    (next_day day13 day14)
+    (next_day day14 day15)
+    (next_day day15 day16)
+    (next_day day16 day17)
+
+    ;; first day marker
+    (day_is_first day1)
+
+    ;; flight connectivity (bidirectional links as specified)
+    (flight rome lyon)
+    (flight lyon rome)
+    (flight rome zurich)
+    (flight zurich rome)
+
+    ;; slot to city mapping
+    (slot_for_city lyon_slot1 lyon)
+    (slot_for_city lyon_slot2 lyon)
+    (slot_for_city lyon_slot3 lyon)
+    (slot_for_city lyon_slot4 lyon)
+    (slot_for_city lyon_slot5 lyon)
+    (slot_for_city lyon_slot6 lyon)
+
+    (slot_for_city zurich_slot_wed zurich)
+    (slot_for_city zurich_slot2 zurich)
+    (slot_for_city zurich_slot3 zurich)
+    (slot_for_city zurich_slot4 zurich)
+    (slot_for_city zurich_slot5 zurich)
+    (slot_for_city zurich_slot6 zurich)
+    (slot_for_city zurich_slot7 zurich)
+
+    (slot_for_city rome_slot1 rome)
+    (slot_for_city rome_slot2 rome)
+    (slot_for_city rome_slot3 rome)
+    (slot_for_city rome_slot4 rome)
+    (slot_for_city rome_slot5 rome)
+    (slot_for_city rome_slot6 rome)
+
+    ;; wedding day window (inclusive day1..day7)
+    (wedding_day_window day1)
+    (wedding_day_window day2)
+    (wedding_day_window day3)
+    (wedding_day_window day4)
+    (wedding_day_window day5)
+    (wedding_day_window day6)
+    (wedding_day_window day7)
+  )
+
+  (:goal (and
+    ;; all slots must be filled
+    (slot_filled lyon_slot1)
+    (slot_filled lyon_slot2)
+    (slot_filled lyon_slot3)
+    (slot_filled lyon_slot4)
+    (slot_filled lyon_slot5)
+    (slot_filled lyon_slot6)
+
+    (slot_filled zurich_slot_wed)
+    (slot_filled zurich_slot2)
+    (slot_filled zurich_slot3)
+    (slot_filled zurich_slot4)
+    (slot_filled zurich_slot5)
+    (slot_filled zurich_slot6)
+    (slot_filled zurich_slot7)
+
+    (slot_filled rome_slot1)
+    (slot_filled rome_slot2)
+    (slot_filled rome_slot3)
+    (slot_filled rome_slot4)
+    (slot_filled rome_slot5)
+    (slot_filled rome_slot6)
+
+    ;; wedding must be attended via the designated slot being filled in the window
+    (wedding_attended)
+  ))
+)
+</problem>
+================================================================================
+
+DOMAIN
+------------------------------
+(define (domain jackofalltrades_trip)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day slot)
+
+  (:predicates
+    (next_day ?d1 - day ?d2 - day)
+    (day_is_first ?d - day)
+    (flight ?c_from - city ?c_to - city)
+    (slot_for_city ?s - slot ?c - city)
+    (wedding_day_window ?d - day)
+    (filled ?s - slot ?d - day)
+    (slot_filled ?s - slot)
+    (at ?c - city ?d - day)
+    (day_assigned ?d - day)
+    (wedding_attended)
+  )
+
+  (:action fill_first_day_for_city
+    :parameters (?s - slot ?c - city ?d - day)
+    :precondition (and
+      (slot_for_city ?s ?c)
+      (day_is_first ?d)
+      (not (slot_filled ?s))
+      (not (day_assigned ?d))
+    )
+    :effect (and
+      (filled ?s ?d)
+      (slot_filled ?s)
+      (day_assigned ?d)
+      (at ?c ?d)
+    )
+  )
+
+  (:action fill_next_day_stay
+    :parameters (?s_next - slot ?c - city ?d_prev - day ?d_next - day)
+    :precondition (and
+      (slot_for_city ?s_next ?c)
+      (next_day ?d_prev ?d_next)
+      (at ?c ?d_prev)
+      (not (slot_filled ?s_next))
+      (not (day_assigned ?d_next))
+    )
+    :effect (and
+      (filled ?s_next ?d_next)
+      (slot_filled ?s_next)
+      (day_assigned ?d_next)
+      (at ?c ?d_next)
+    )
+  )
+
+  (:action fill_next_day_move
+    :parameters (?s_next - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)
+    :precondition (and
+      (slot_for_city ?s_next ?c_to)
+      (next_day ?d_prev ?d_next)
+      (at ?c_from ?d_prev)
+      (flight ?c_from ?c_to)
+      (not (slot_filled ?s_next))
+      (not (day_assigned ?d_next))
+    )
+    :effect (and
+      (filled ?s_next ?d_next)
+      (slot_filled ?s_next)
+      (day_assigned ?d_next)
+      (at ?c_to ?d_next)
+    )
+  )
+
+  (:action mark_wedding_attended
+    :parameters (?s - slot ?d - day)
+    :precondition (and
+      (slot_for_city ?s zurich)
+      (filled ?s ?d)
+      (wedding_day_window ?d)
+      (not (wedding_attended))
+      ;; This action is intended to be applicable only for the designated wedding slot.
+      ;; The problem encodes that designation by having slot_for_city facts and by
+      ;; the goal requiring wedding_attended after the designated slot is filled in-window.
+    )
+    :effect (and
+      (wedding_attended)
+    )
+  )
+)
+================================================================================
+
+PROBLEM
+------------------------------
+(define (problem trip17)
+  (:domain jackofalltrades_trip)
+
+  (:objects
+    rome lyon zurich - city
+
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day
+
+    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6
+    zurich_slot_wed zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7
+    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot
+  )
+
+  (:init
+    ;; next_day links
+    (next_day day1 day2)
+    (next_day day2 day3)
+    (next_day day3 day4)
+    (next_day day4 day5)
+    (next_day day5 day6)
+    (next_day day6 day7)
+    (next_day day7 day8)
+    (next_day day8 day9)
+    (next_day day9 day10)
+    (next_day day10 day11)
+    (next_day day11 day12)
+    (next_day day12 day13)
+    (next_day day13 day14)
+    (next_day day14 day15)
+    (next_day day15 day16)
+    (next_day day16 day17)
+
+    ;; first day marker
+    (day_is_first day1)
+
+    ;; flight connectivity (bidirectional links as specified)
+    (flight rome lyon)
+    (flight lyon rome)
+    (flight rome zurich)
+    (flight zurich rome)
+
+    ;; slot to city mapping
+    (slot_for_city lyon_slot1 lyon)
+    (slot_for_city lyon_slot2 lyon)
+    (slot_for_city lyon_slot3 lyon)
+    (slot_for_city lyon_slot4 lyon)
+    (slot_for_city lyon_slot5 lyon)
+    (slot_for_city lyon_slot6 lyon)
+
+    (slot_for_city zurich_slot_wed zurich)
+    (slot_for_city zurich_slot2 zurich)
+    (slot_for_city zurich_slot3 zurich)
+    (slot_for_city zurich_slot4 zurich)
+    (slot_for_city zurich_slot5 zurich)
+    (slot_for_city zurich_slot6 zurich)
+    (slot_for_city zurich_slot7 zurich)
+
+    (slot_for_city rome_slot1 rome)
+    (slot_for_city rome_slot2 rome)
+    (slot_for_city rome_slot3 rome)
+    (slot_for_city rome_slot4 rome)
+    (slot_for_city rome_slot5 rome)
+    (slot_for_city rome_slot6 rome)
+
+    ;; wedding day window (inclusive day1..day7)
+    (wedding_day_window day1)
+    (wedding_day_window day2)
+    (wedding_day_window day3)
+    (wedding_day_window day4)
+    (wedding_day_window day5)
+    (wedding_day_window day6)
+    (wedding_day_window day7)
+  )
+
+  (:goal (and
+    ;; all slots must be filled
+    (slot_filled lyon_slot1)
+    (slot_filled lyon_slot2)
+    (slot_filled lyon_slot3)
+    (slot_filled lyon_slot4)
+    (slot_filled lyon_slot5)
+    (slot_filled lyon_slot6)
+
+    (slot_filled zurich_slot_wed)
+    (slot_filled zurich_slot2)
+    (slot_filled zurich_slot3)
+    (slot_filled zurich_slot4)
+    (slot_filled zurich_slot5)
+    (slot_filled zurich_slot6)
+    (slot_filled zurich_slot7)
+
+    (slot_filled rome_slot1)
+    (slot_filled rome_slot2)
+    (slot_filled rome_slot3)
+    (slot_filled rome_slot4)
+    (slot_filled rome_slot5)
+    (slot_filled rome_slot6)
+
+    ;; wedding must be attended via the designated slot being filled in the window
+    (wedding_attended)
+  ))
+)
+================================================================================
+
+ITERATION 0
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample44",
+        "author": "Codex",
+        "orchestrator": "orchestrator",
+        "agents": {
+            "number": 2,
+            "names": [
+                "jack_of_all_trades",
+                "orchestrator"
+            ],
+            "jack_of_all_trades": {
+                "private_information": [
+                    "I am the task-adaptive semantic modeling agent.",
+                    "I infer the benchmark subdomain, canonical symbols, invariants, and the right classical-planning abstraction for this problem instance.",
+                    "I do not emit final PDDL; I emit a structured modeling brief for the compiler."
+                ],
+                "goal": "Produce a high-precision modeling brief that captures the exact task semantics for this instance."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I compile the structured modeling brief into a full PDDL domain and problem.",
+                    "I keep the artifacts compatible with the target solver."
+                ],
+                "goal": "Return the final PDDL domain and problem for this instance."
+            }
+        },
+        "environment": {
+            "init": {
+                "target_solver": "FastDownwards",
+                "task_profile": {
+                    "problem_name": "",
+                    "problem_style": "temporal planning with routing and feasibility constraints",
+                    "observed_signals": [
+                        "explicit temporal constraints",
+                        "movement or routing constraints",
+                        "hard goal conditions"
+                    ],
+                    "modeling_directives": [
+                        "Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.",
+                        "Prefer a small, explicit classical model over a broad or clever one.",
+                        "Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.",
+                        "Keep the domain and problem fully specific to this instance.",
+                        "If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.",
+                        "Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions."
+                    ],
+                    "forbidden_shortcuts": [
+                        "Do not invent objects, routes, resources, or goals that are not grounded in the input problem.",
+                        "Do not silently relax contradictory constraints just to make the problem solvable.",
+                        "Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.",
+                        "Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions."
+                    ],
+                    "canonicalization_rules": [
+                        "Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.",
+                        "Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.",
+                        "Use the same symbol consistently across objects, predicates, actions, init, and goal."
+                    ],
+                    "solver_rules": [
+                        "Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.",
+                        "Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.",
+                        "Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                    ],
+                    "domain_reference": "",
+                    "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                },
+                "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators.",
+                "domain_reference": "",
+                "reference_note": "No reference domain is provided; infer the domain directly from the task."
+            },
+            "public_information": [
+                "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+                "Target solver: FastDownwards.",
+                "Return a complete PDDL domain and problem for this specific problem instance."
+            ]
+        },
+        "workflow": {
+            "jack_of_all_trades": {
+                "model": {
+                    "input": [],
+                    "output": "jack_modeling_brief",
+                    "system_prompt": "You are JackOfAllTrades, the semantic self-programming agent for classical planning. Your job is to infer the latent planning abstraction for this specific problem instance and design the semantic model that a downstream compiler will turn into PDDL. You own the modeling choices: ontology, predicates, invariants, and action schemas. Do not output final PDDL. Preserve hard constraints exactly, and do not invent unsupported routes, resources, or repairs.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference note:\n{environment->init->reference_note}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nInfer the correct planning model for this instance and produce a structured modeling brief using exactly these sections:\n<abstraction>...</abstraction>\n<objects>...</objects>\n<types>...</types>\n<predicates>...</predicates>\n<invariants>...</invariants>\n<actions>...</actions>\n<init_goal_mapping>...</init_goal_mapping>\n<failure_risks>...</failure_risks>\n\nRules:\n- Infer the latent planning abstraction from the problem itself, not from generic templates.\n- Decide the minimal correct ontology: objects, types, predicates, invariants, and action schemas.\n- State invariants explicitly whenever they are needed to make the model correct.\n- Preserve hard constraints exactly unless the task explicitly requests repair.\n- If the task appears inconsistent or underspecified, explain that in <failure_risks> instead of silently changing the semantics.\n- Use canonical lowercase underscore names for symbols.\n- Do not emit final PDDL."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "jack_modeling_brief"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are the solver-facing PDDL compiler. Convert the JackOfAllTrades semantic model into a complete PDDL domain and problem for the target solver. JackOfAllTrades owns the semantic design; you should compile it faithfully rather than reinterpreting the task from scratch. Return only the final domain between <domain></domain> and the final problem between <problem></problem>.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nJackOfAllTrades modeling brief:\n{jack_modeling_brief}\n\nCompile the final PDDL domain and problem.\nRequirements:\n- Target solver compatibility is mandatory.\n- Keep the domain and problem specific to this problem instance.\n- Preserve all hard constraints from the problem specification and from JackOfAllTrades' semantic model.\n- Use canonical lowercase underscore identifiers consistently.\n- Do not use unsupported numeric, durative, or conditional constructs.\n- Respect the <invariants> and <init_goal_mapping> sections explicitly.\n- If a reference domain is provided, use it only as an anchor; do not let it override the instance-specific semantics devised by JackOfAllTrades.\nReturn only <domain>...</domain> and <problem>...</problem>."
+                }
+            },
+            "constraints": [
+                "jack_of_all_trades.model->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain jackofalltrades_trip)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types city day slot)\n\n  (:predicates\n    (next_day ?d1 - day ?d2 - day)\n    (day_is_first ?d - day)\n    (flight ?c_from - city ?c_to - city)\n    (slot_for_city ?s - slot ?c - city)\n    (wedding_day_window ?d - day)\n    (filled ?s - slot ?d - day)\n    (slot_filled ?s - slot)\n    (at ?c - city ?d - day)\n    (day_assigned ?d - day)\n    (wedding_attended)\n  )\n\n  (:action fill_first_day_for_city\n    :parameters (?s - slot ?c - city ?d - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (day_is_first ?d)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d))\n    )\n    :effect (and\n      (filled ?s ?d)\n      (slot_filled ?s)\n      (day_assigned ?d)\n      (at ?c ?d)\n    )\n  )\n\n  (:action fill_next_day_stay\n    :parameters (?s_next - slot ?c - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s_next ?c)\n      (next_day ?d_prev ?d_next)\n      (at ?c ?d_prev)\n      (not (slot_filled ?s_next))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (filled ?s_next ?d_next)\n      (slot_filled ?s_next)\n      (day_assigned ?d_next)\n      (at ?c ?d_next)\n    )\n  )\n\n  (:action fill_next_day_move\n    :parameters (?s_next - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s_next ?c_to)\n      (next_day ?d_prev ?d_next)\n      (at ?c_from ?d_prev)\n      (flight ?c_from ?c_to)\n      (not (slot_filled ?s_next))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (filled ?s_next ?d_next)\n      (slot_filled ?s_next)\n      (day_assigned ?d_next)\n      (at ?c_to ?d_next)\n    )\n  )\n\n  (:action mark_wedding_attended\n    :parameters (?s - slot ?d - day)\n    :precondition (and\n      (slot_for_city ?s zurich)\n      (filled ?s ?d)\n      (wedding_day_window ?d)\n      (not (wedding_attended))\n      ;; This action is intended to be applicable only for the designated wedding slot.\n      ;; The problem encodes that designation by having slot_for_city facts and by\n      ;; the goal requiring wedding_attended after the designated slot is filled in-window.\n    )\n    :effect (and\n      (wedding_attended)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip17)\n  (:domain jackofalltrades_trip)\n\n  (:objects\n    rome lyon zurich - city\n\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day\n\n    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6\n    zurich_slot_wed zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7\n    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot\n  )\n\n  (:init\n    ;; next_day links\n    (next_day day1 day2)\n    (next_day day2 day3)\n    (next_day day3 day4)\n    (next_day day4 day5)\n    (next_day day5 day6)\n    (next_day day6 day7)\n    (next_day day7 day8)\n    (next_day day8 day9)\n    (next_day day9 day10)\n    (next_day day10 day11)\n    (next_day day11 day12)\n    (next_day day12 day13)\n    (next_day day13 day14)\n    (next_day day14 day15)\n    (next_day day15 day16)\n    (next_day day16 day17)\n\n    ;; first day marker\n    (day_is_first day1)\n\n    ;; flight connectivity (bidirectional links as specified)\n    (flight rome lyon)\n    (flight lyon rome)\n    (flight rome zurich)\n    (flight zurich rome)\n\n    ;; slot to city mapping\n    (slot_for_city lyon_slot1 lyon)\n    (slot_for_city lyon_slot2 lyon)\n    (slot_for_city lyon_slot3 lyon)\n    (slot_for_city lyon_slot4 lyon)\n    (slot_for_city lyon_slot5 lyon)\n    (slot_for_city lyon_slot6 lyon)\n\n    (slot_for_city zurich_slot_wed zurich)\n    (slot_for_city zurich_slot2 zurich)\n    (slot_for_city zurich_slot3 zurich)\n    (slot_for_city zurich_slot4 zurich)\n    (slot_for_city zurich_slot5 zurich)\n    (slot_for_city zurich_slot6 zurich)\n    (slot_for_city zurich_slot7 zurich)\n\n    (slot_for_city rome_slot1 rome)\n    (slot_for_city rome_slot2 rome)\n    (slot_for_city rome_slot3 rome)\n    (slot_for_city rome_slot4 rome)\n    (slot_for_city rome_slot5 rome)\n    (slot_for_city rome_slot6 rome)\n\n    ;; wedding day window (inclusive day1..day7)\n    (wedding_day_window day1)\n    (wedding_day_window day2)\n    (wedding_day_window day3)\n    (wedding_day_window day4)\n    (wedding_day_window day5)\n    (wedding_day_window day6)\n    (wedding_day_window day7)\n  )\n\n  (:goal (and\n    ;; all slots must be filled\n    (slot_filled lyon_slot1)\n    (slot_filled lyon_slot2)\n    (slot_filled lyon_slot3)\n    (slot_filled lyon_slot4)\n    (slot_filled lyon_slot5)\n    (slot_filled lyon_slot6)\n\n    (slot_filled zurich_slot_wed)\n    (slot_filled zurich_slot2)\n    (slot_filled zurich_slot3)\n    (slot_filled zurich_slot4)\n    (slot_filled zurich_slot5)\n    (slot_filled zurich_slot6)\n    (slot_filled zurich_slot7)\n\n    (slot_filled rome_slot1)\n    (slot_filled rome_slot2)\n    (slot_filled rome_slot3)\n    (slot_filled rome_slot4)\n    (slot_filled rome_slot5)\n    (slot_filled rome_slot6)\n\n    ;; wedding must be attended via the designated slot being filled in the window\n    (wedding_attended)\n  ))\n)",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "Timeout. FastDownwards took too long to finish. In the next call, you should generate a domain and problem with less variables. You can use AgentReduceVariables to achieve that.",
+    "syntax_errors": "No syntax error log was generated.",
+    "pddl_logs": "No log was generated.",
+    "history": [],
+    "proposed_solution": "",
+    "budget_total": 5,
+    "budget_used": 0,
+    "last_valid_plan_iteration": -1
+}
+================================================================================
+
+ITERATION 1
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample44",
+        "author": "Codex",
+        "orchestrator": "orchestrator",
+        "agents": {
+            "number": 2,
+            "names": [
+                "jack_of_all_trades",
+                "orchestrator"
+            ],
+            "jack_of_all_trades": {
+                "private_information": [
+                    "I am the task-adaptive semantic modeling agent.",
+                    "I infer the benchmark subdomain, canonical symbols, invariants, and the right classical-planning abstraction for this problem instance.",
+                    "I do not emit final PDDL; I emit a structured modeling brief for the compiler."
+                ],
+                "goal": "Produce a high-precision modeling brief that captures the exact task semantics for this instance."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I compile the structured modeling brief into a full PDDL domain and problem.",
+                    "I keep the artifacts compatible with the target solver."
+                ],
+                "goal": "Return the final PDDL domain and problem for this instance."
+            }
+        },
+        "environment": {
+            "init": {
+                "target_solver": "FastDownwards",
+                "task_profile": {
+                    "problem_name": "",
+                    "problem_style": "temporal planning with routing and feasibility constraints",
+                    "observed_signals": [
+                        "explicit temporal constraints",
+                        "movement or routing constraints",
+                        "hard goal conditions"
+                    ],
+                    "modeling_directives": [
+                        "Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.",
+                        "Prefer a small, explicit classical model over a broad or clever one.",
+                        "Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.",
+                        "Keep the domain and problem fully specific to this instance.",
+                        "If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.",
+                        "Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions."
+                    ],
+                    "forbidden_shortcuts": [
+                        "Do not invent objects, routes, resources, or goals that are not grounded in the input problem.",
+                        "Do not silently relax contradictory constraints just to make the problem solvable.",
+                        "Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.",
+                        "Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions."
+                    ],
+                    "canonicalization_rules": [
+                        "Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.",
+                        "Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.",
+                        "Use the same symbol consistently across objects, predicates, actions, init, and goal."
+                    ],
+                    "solver_rules": [
+                        "Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.",
+                        "Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.",
+                        "Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                    ],
+                    "domain_reference": "",
+                    "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                },
+                "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators.",
+                "domain_reference": "",
+                "reference_note": "No reference domain is provided; infer the domain directly from the task."
+            },
+            "public_information": [
+                "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+                "Target solver: FastDownwards.",
+                "Return a complete PDDL domain and problem for this specific problem instance."
+            ]
+        },
+        "workflow": {
+            "jack_of_all_trades": {
+                "model": {
+                    "input": [],
+                    "output": "jack_modeling_brief",
+                    "system_prompt": "You are JackOfAllTrades, the semantic self-programming agent for classical planning. Your job is to infer the latent planning abstraction for this specific problem instance and design the semantic model that a downstream compiler will turn into PDDL. You own the modeling choices: ontology, predicates, invariants, and action schemas. Do not output final PDDL. Preserve hard constraints exactly, and do not invent unsupported routes, resources, or repairs.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference note:\n{environment->init->reference_note}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nInfer the correct planning model for this instance and produce a structured modeling brief using exactly these sections:\n<abstraction>...</abstraction>\n<objects>...</objects>\n<types>...</types>\n<predicates>...</predicates>\n<invariants>...</invariants>\n<actions>...</actions>\n<init_goal_mapping>...</init_goal_mapping>\n<failure_risks>...</failure_risks>\n\nRules:\n- Infer the latent planning abstraction from the problem itself, not from generic templates.\n- Decide the minimal correct ontology: objects, types, predicates, invariants, and action schemas.\n- State invariants explicitly whenever they are needed to make the model correct.\n- Preserve hard constraints exactly unless the task explicitly requests repair.\n- If the task appears inconsistent or underspecified, explain that in <failure_risks> instead of silently changing the semantics.\n- Use canonical lowercase underscore names for symbols.\n- Do not emit final PDDL."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "jack_modeling_brief"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are the solver-facing PDDL compiler. Convert the JackOfAllTrades semantic model into a complete PDDL domain and problem for the target solver. JackOfAllTrades owns the semantic design; you should compile it faithfully rather than reinterpreting the task from scratch. Return only the final domain between <domain></domain> and the final problem between <problem></problem>.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nJackOfAllTrades modeling brief:\n{jack_modeling_brief}\n\nCompile the final PDDL domain and problem.\nRequirements:\n- Target solver compatibility is mandatory.\n- Keep the domain and problem specific to this problem instance.\n- Preserve all hard constraints from the problem specification and from JackOfAllTrades' semantic model.\n- Use canonical lowercase underscore identifiers consistently.\n- Do not use unsupported numeric, durative, or conditional constructs.\n- Respect the <invariants> and <init_goal_mapping> sections explicitly.\n- If a reference domain is provided, use it only as an anchor; do not let it override the instance-specific semantics devised by JackOfAllTrades.\nReturn only <domain>...</domain> and <problem>...</problem>."
+                }
+            },
+            "constraints": [
+                "jack_of_all_trades.model->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip_planning)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types city day slot)\n\n  (:predicates\n    (next_day ?d1 - day ?d2 - day)\n    (day_is_first ?d - day)\n    (flight ?c_from - city ?c_to - city)\n    (slot_for_city ?s - slot ?c - city)\n    (wedding_day_window ?d - day)\n    (slot_assigned ?s - slot ?d - day)        ;; slot s is assigned to day d\n    (slot_filled ?s - slot)                   ;; slot has been assigned to some day\n    (at ?c - city ?d - day)                   ;; on day d you are in city c\n    (day_assigned ?d - day)                   ;; day d has been used/assigned\n    (wedding_attended)                        ;; wedding in zurich attended\n  )\n\n  ;; assign a slot to the first day (establish starting city on day1)\n  (:action assign_first_day\n    :parameters (?s - slot ?c - city ?d - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (day_is_first ?d)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d))\n    )\n    :effect (and\n      (slot_assigned ?s ?d)\n      (slot_filled ?s)\n      (day_assigned ?d)\n      (at ?c ?d)\n    )\n  )\n\n  ;; assign a slot to the next day when staying in the same city\n  (:action assign_next_day_same_city\n    :parameters (?s - slot ?c - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (next_day ?d_prev ?d_next)\n      (at ?c ?d_prev)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c ?d_next)\n    )\n  )\n\n  ;; assign a slot to the next day when flying from c_from to c_to\n  (:action assign_next_day_flight\n    :parameters (?s - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c_to)\n      (next_day ?d_prev ?d_next)\n      (at ?c_from ?d_prev)\n      (flight ?c_from ?c_to)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c_to ?d_next)\n    )\n  )\n\n  ;; mark the wedding as attended: requires that the designated zurich slot has been assigned to a day in the wedding window\n  (:action attend_wedding\n    :parameters (?s - slot ?d - day)\n    :precondition (and\n      (slot_for_city ?s zurich)\n      (slot_assigned ?s ?d)\n      (wedding_day_window ?d)\n      (not (wedding_attended))\n    )\n    :effect (and\n      (wedding_attended)\n    )\n  )\n)",
+    "pddl_problem": "(define (problem trip17)\n  (:domain trip_planning)\n\n  (:objects\n    rome lyon zurich - city\n\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day\n\n    ;; slots representing required visit-days per city (explicit tokens)\n    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6\n    zurich_slot1 zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7\n    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot\n  )\n\n  (:init\n    ;; linear next_day relation for 17 days\n    (next_day day1 day2)\n    (next_day day2 day3)\n    (next_day day3 day4)\n    (next_day day4 day5)\n    (next_day day5 day6)\n    (next_day day6 day7)\n    (next_day day7 day8)\n    (next_day day8 day9)\n    (next_day day9 day10)\n    (next_day day10 day11)\n    (next_day day11 day12)\n    (next_day day12 day13)\n    (next_day day13 day14)\n    (next_day day14 day15)\n    (next_day day15 day16)\n    (next_day day16 day17)\n\n    (day_is_first day1)\n\n    ;; direct flights (bidirectional as given)\n    (flight rome lyon)\n    (flight lyon rome)\n    (flight rome zurich)\n    (flight zurich rome)\n\n    ;; slots mapped to their cities (tokens: 6 lyon + 7 zurich + 6 rome = 19 required visit-days)\n    (slot_for_city lyon_slot1 lyon)\n    (slot_for_city lyon_slot2 lyon)\n    (slot_for_city lyon_slot3 lyon)\n    (slot_for_city lyon_slot4 lyon)\n    (slot_for_city lyon_slot5 lyon)\n    (slot_for_city lyon_slot6 lyon)\n\n    (slot_for_city zurich_slot1 zurich)\n    (slot_for_city zurich_slot2 zurich)\n    (slot_for_city zurich_slot3 zurich)\n    (slot_for_city zurich_slot4 zurich)\n    (slot_for_city zurich_slot5 zurich)\n    (slot_for_city zurich_slot6 zurich)\n    (slot_for_city zurich_slot7 zurich)\n\n    (slot_for_city rome_slot1 rome)\n    (slot_for_city rome_slot2 rome)\n    (slot_for_city rome_slot3 rome)\n    (slot_for_city rome_slot4 rome)\n    (slot_for_city rome_slot5 rome)\n    (slot_for_city rome_slot6 rome)\n\n    ;; wedding must be attended on a day in the inclusive window day1..day7\n    (wedding_day_window day1)\n    (wedding_day_window day2)\n    (wedding_day_window day3)\n    (wedding_day_window day4)\n    (wedding_day_window day5)\n    (wedding_day_window day6)\n    (wedding_day_window day7)\n  )\n\n  (:goal (and\n    ;; every slot (required visit-day) must be filled (this encodes the user's per-city day requirements)\n    (slot_filled lyon_slot1)\n    (slot_filled lyon_slot2)\n    (slot_filled lyon_slot3)\n    (slot_filled lyon_slot4)\n    (slot_filled lyon_slot5)\n    (slot_filled lyon_slot6)\n\n    (slot_filled zurich_slot1)\n    (slot_filled zurich_slot2)\n    (slot_filled zurich_slot3)\n    (slot_filled zurich_slot4)\n    (slot_filled zurich_slot5)\n    (slot_filled zurich_slot6)\n    (slot_filled zurich_slot7)\n\n    (slot_filled rome_slot1)\n    (slot_filled rome_slot2)\n    (slot_filled rome_slot3)\n    (slot_filled rome_slot4)\n    (slot_filled rome_slot5)\n    (slot_filled rome_slot6)\n\n    ;; wedding must be attended (requires one of the zurich slots to be assigned to a wedding-window day)\n    (wedding_attended)\n  ))",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ZURICH does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/domain_1.pddl results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_1.pddl --sas-file output.sas\nParsing...\nError: Could not parse task file: results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_1.pddl\nReason: Missing ')'\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.10s\n",
+    "history": [
+        "AgentJackOfAllTrades"
+    ],
+    "proposed_solution": "",
+    "budget_total": 5,
+    "budget_used": 1,
+    "last_valid_plan_iteration": -1
+}
+================================================================================
+
+ITERATION 2
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample44",
+        "author": "Codex",
+        "orchestrator": "orchestrator",
+        "agents": {
+            "number": 2,
+            "names": [
+                "jack_of_all_trades",
+                "orchestrator"
+            ],
+            "jack_of_all_trades": {
+                "private_information": [
+                    "I am the task-adaptive semantic modeling agent.",
+                    "I infer the benchmark subdomain, canonical symbols, invariants, and the right classical-planning abstraction for this problem instance.",
+                    "I do not emit final PDDL; I emit a structured modeling brief for the compiler."
+                ],
+                "goal": "Produce a high-precision modeling brief that captures the exact task semantics for this instance."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I compile the structured modeling brief into a full PDDL domain and problem.",
+                    "I keep the artifacts compatible with the target solver."
+                ],
+                "goal": "Return the final PDDL domain and problem for this instance."
+            }
+        },
+        "environment": {
+            "init": {
+                "target_solver": "FastDownwards",
+                "task_profile": {
+                    "problem_name": "",
+                    "problem_style": "temporal planning with routing and feasibility constraints",
+                    "observed_signals": [
+                        "explicit temporal constraints",
+                        "movement or routing constraints",
+                        "hard goal conditions"
+                    ],
+                    "modeling_directives": [
+                        "Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.",
+                        "Prefer a small, explicit classical model over a broad or clever one.",
+                        "Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.",
+                        "Keep the domain and problem fully specific to this instance.",
+                        "If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.",
+                        "Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions."
+                    ],
+                    "forbidden_shortcuts": [
+                        "Do not invent objects, routes, resources, or goals that are not grounded in the input problem.",
+                        "Do not silently relax contradictory constraints just to make the problem solvable.",
+                        "Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.",
+                        "Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions."
+                    ],
+                    "canonicalization_rules": [
+                        "Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.",
+                        "Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.",
+                        "Use the same symbol consistently across objects, predicates, actions, init, and goal."
+                    ],
+                    "solver_rules": [
+                        "Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.",
+                        "Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.",
+                        "Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                    ],
+                    "domain_reference": "",
+                    "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                },
+                "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators.",
+                "domain_reference": "",
+                "reference_note": "No reference domain is provided; infer the domain directly from the task."
+            },
+            "public_information": [
+                "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+                "Target solver: FastDownwards.",
+                "Return a complete PDDL domain and problem for this specific problem instance."
+            ]
+        },
+        "workflow": {
+            "jack_of_all_trades": {
+                "model": {
+                    "input": [],
+                    "output": "jack_modeling_brief",
+                    "system_prompt": "You are JackOfAllTrades, the semantic self-programming agent for classical planning. Your job is to infer the latent planning abstraction for this specific problem instance and design the semantic model that a downstream compiler will turn into PDDL. You own the modeling choices: ontology, predicates, invariants, and action schemas. Do not output final PDDL. Preserve hard constraints exactly, and do not invent unsupported routes, resources, or repairs.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference note:\n{environment->init->reference_note}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nInfer the correct planning model for this instance and produce a structured modeling brief using exactly these sections:\n<abstraction>...</abstraction>\n<objects>...</objects>\n<types>...</types>\n<predicates>...</predicates>\n<invariants>...</invariants>\n<actions>...</actions>\n<init_goal_mapping>...</init_goal_mapping>\n<failure_risks>...</failure_risks>\n\nRules:\n- Infer the latent planning abstraction from the problem itself, not from generic templates.\n- Decide the minimal correct ontology: objects, types, predicates, invariants, and action schemas.\n- State invariants explicitly whenever they are needed to make the model correct.\n- Preserve hard constraints exactly unless the task explicitly requests repair.\n- If the task appears inconsistent or underspecified, explain that in <failure_risks> instead of silently changing the semantics.\n- Use canonical lowercase underscore names for symbols.\n- Do not emit final PDDL."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "jack_modeling_brief"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are the solver-facing PDDL compiler. Convert the JackOfAllTrades semantic model into a complete PDDL domain and problem for the target solver. JackOfAllTrades owns the semantic design; you should compile it faithfully rather than reinterpreting the task from scratch. Return only the final domain between <domain></domain> and the final problem between <problem></problem>.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nJackOfAllTrades modeling brief:\n{jack_modeling_brief}\n\nCompile the final PDDL domain and problem.\nRequirements:\n- Target solver compatibility is mandatory.\n- Keep the domain and problem specific to this problem instance.\n- Preserve all hard constraints from the problem specification and from JackOfAllTrades' semantic model.\n- Use canonical lowercase underscore identifiers consistently.\n- Do not use unsupported numeric, durative, or conditional constructs.\n- Respect the <invariants> and <init_goal_mapping> sections explicitly.\n- If a reference domain is provided, use it only as an anchor; do not let it override the instance-specific semantics devised by JackOfAllTrades.\nReturn only <domain>...</domain> and <problem>...</problem>."
+                }
+            },
+            "constraints": [
+                "jack_of_all_trades.model->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip_planning)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types city day slot)\n\n  (:predicates\n    (next_day ?d1 - day ?d2 - day)\n    (day_is_first ?d - day)\n    (flight ?c_from - city ?c_to - city)\n    (slot_for_city ?s - slot ?c - city)\n    (wedding_day_window ?d - day)\n    (slot_assigned ?s - slot ?d - day)\n    (slot_filled ?s - slot)\n    (at ?c - city ?d - day)\n    (day_assigned ?d - day)\n    (wedding_attended)\n  )\n\n  (:action assign_first_day\n    :parameters (?s - slot ?c - city ?d - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (day_is_first ?d)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d))\n    )\n    :effect (and\n      (slot_assigned ?s ?d)\n      (slot_filled ?s)\n      (day_assigned ?d)\n      (at ?c ?d)\n    )\n  )\n\n  (:action assign_next_day_same_city\n    :parameters (?s - slot ?c - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (next_day ?d_prev ?d_next)\n      (at ?c ?d_prev)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c ?d_next)\n    )\n  )\n\n  (:action assign_next_day_flight\n    :parameters (?s - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c_to)\n      (next_day ?d_prev ?d_next)\n      (at ?c_from ?d_prev)\n      (flight ?c_from ?c_to)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c_to ?d_next)\n    )\n  )\n\n  (:action attend_wedding\n    :parameters (?s - slot ?d - day)\n    :precondition (and\n      (slot_for_city ?s zurich)\n      (slot_assigned ?s ?d)\n      (wedding_day_window ?d)\n      (not (wedding_attended))\n    )\n    :effect (wedding_attended)\n  )\n)",
+    "pddl_problem": "(define (problem trip17)\n  (:domain trip_planning)\n\n  (:objects\n    rome lyon zurich - city\n\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day\n\n    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6\n    zurich_slot1 zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7\n    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot\n  )\n\n  (:init\n    (next_day day1 day2)\n    (next_day day2 day3)\n    (next_day day3 day4)\n    (next_day day4 day5)\n    (next_day day5 day6)\n    (next_day day6 day7)\n    (next_day day7 day8)\n    (next_day day8 day9)\n    (next_day day9 day10)\n    (next_day day10 day11)\n    (next_day day11 day12)\n    (next_day day12 day13)\n    (next_day day13 day14)\n    (next_day day14 day15)\n    (next_day day15 day16)\n    (next_day day16 day17)\n\n    (day_is_first day1)\n\n    (flight rome lyon)\n    (flight lyon rome)\n    (flight rome zurich)\n    (flight zurich rome)\n\n    (slot_for_city lyon_slot1 lyon)\n    (slot_for_city lyon_slot2 lyon)\n    (slot_for_city lyon_slot3 lyon)\n    (slot_for_city lyon_slot4 lyon)\n    (slot_for_city lyon_slot5 lyon)\n    (slot_for_city lyon_slot6 lyon)\n\n    (slot_for_city zurich_slot1 zurich)\n    (slot_for_city zurich_slot2 zurich)\n    (slot_for_city zurich_slot3 zurich)\n    (slot_for_city zurich_slot4 zurich)\n    (slot_for_city zurich_slot5 zurich)\n    (slot_for_city zurich_slot6 zurich)\n    (slot_for_city zurich_slot7 zurich)\n\n    (slot_for_city rome_slot1 rome)\n    (slot_for_city rome_slot2 rome)\n    (slot_for_city rome_slot3 rome)\n    (slot_for_city rome_slot4 rome)\n    (slot_for_city rome_slot5 rome)\n    (slot_for_city rome_slot6 rome)\n\n    (wedding_day_window day1)\n    (wedding_day_window day2)\n    (wedding_day_window day3)\n    (wedding_day_window day4)\n    (wedding_day_window day5)\n    (wedding_day_window day6)\n    (wedding_day_window day7)\n  )\n\n  (:goal (and\n    (slot_filled lyon_slot1)\n    (slot_filled lyon_slot2)\n    (slot_filled lyon_slot3)\n    (slot_filled lyon_slot4)\n    (slot_filled lyon_slot5)\n    (slot_filled lyon_slot6)\n\n    (slot_filled zurich_slot1)\n    (slot_filled zurich_slot2)\n    (slot_filled zurich_slot3)\n    (slot_filled zurich_slot4)\n    (slot_filled zurich_slot5)\n    (slot_filled zurich_slot6)\n    (slot_filled zurich_slot7)\n\n    (slot_filled rome_slot1)\n    (slot_filled rome_slot2)\n    (slot_filled rome_slot3)\n    (slot_filled rome_slot4)\n    (slot_filled rome_slot5)\n    (slot_filled rome_slot6)\n\n    (wedding_attended)\n  ))",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ZURICH does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/domain_2.pddl results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_2.pddl --sas-file output.sas\nParsing...\nError: Could not parse task file: results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_2.pddl\nReason: Missing ')'\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentJackOfAllTrades",
+        "AgentJackOfAllTrades"
+    ],
+    "proposed_solution": "",
+    "budget_total": 5,
+    "budget_used": 2,
+    "last_valid_plan_iteration": -1
+}
+================================================================================
+
+ITERATION 3
+------------------------------
+{
+    "human_specification": "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+    "plan": "No plan yet.",
+    "specification": {
+        "name": "TripPlanningExample44",
+        "author": "Codex",
+        "orchestrator": "orchestrator",
+        "agents": {
+            "number": 2,
+            "names": [
+                "jack_of_all_trades",
+                "orchestrator"
+            ],
+            "jack_of_all_trades": {
+                "private_information": [
+                    "I am the task-adaptive semantic modeling agent.",
+                    "I infer the benchmark subdomain, canonical symbols, invariants, and the right classical-planning abstraction for this problem instance.",
+                    "I do not emit final PDDL; I emit a structured modeling brief for the compiler."
+                ],
+                "goal": "Produce a high-precision modeling brief that captures the exact task semantics for this instance."
+            },
+            "orchestrator": {
+                "private_information": [
+                    "I compile the structured modeling brief into a full PDDL domain and problem.",
+                    "I keep the artifacts compatible with the target solver."
+                ],
+                "goal": "Return the final PDDL domain and problem for this instance."
+            }
+        },
+        "environment": {
+            "init": {
+                "target_solver": "FastDownwards",
+                "task_profile": {
+                    "problem_name": "",
+                    "problem_style": "temporal planning with routing and feasibility constraints",
+                    "observed_signals": [
+                        "explicit temporal constraints",
+                        "movement or routing constraints",
+                        "hard goal conditions"
+                    ],
+                    "modeling_directives": [
+                        "Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.",
+                        "Prefer a small, explicit classical model over a broad or clever one.",
+                        "Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.",
+                        "Keep the domain and problem fully specific to this instance.",
+                        "If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.",
+                        "Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions."
+                    ],
+                    "forbidden_shortcuts": [
+                        "Do not invent objects, routes, resources, or goals that are not grounded in the input problem.",
+                        "Do not silently relax contradictory constraints just to make the problem solvable.",
+                        "Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.",
+                        "Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions."
+                    ],
+                    "canonicalization_rules": [
+                        "Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.",
+                        "Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.",
+                        "Use the same symbol consistently across objects, predicates, actions, init, and goal."
+                    ],
+                    "solver_rules": [
+                        "Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.",
+                        "Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.",
+                        "Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                    ],
+                    "domain_reference": "",
+                    "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators."
+                },
+                "task_profile_prompt": "Problem style hypothesis: temporal planning with routing and feasibility constraints\n\nObserved signals:\n- explicit temporal constraints\n- movement or routing constraints\n- hard goal conditions\n\nModeling directives:\n- Infer objects, types, predicates, and actions only from the problem statement and the available structured inputs.\n- Prefer a small, explicit classical model over a broad or clever one.\n- Make hard constraints structural in the PDDL instead of relying on rewards, penalties, or post-hoc bookkeeping.\n- Keep the domain and problem fully specific to this instance.\n- If the task implies time or duration, encode it using ordered symbolic stages or time objects rather than unsupported numeric or durative features.\n- Model connectivity and movement preconditions explicitly; do not invent missing routes or transitions.\n\nForbidden shortcuts:\n- Do not invent objects, routes, resources, or goals that are not grounded in the input problem.\n- Do not silently relax contradictory constraints just to make the problem solvable.\n- Do not leave placeholders such as '...', 'None', or 'TBD' in the final artifacts.\n- Do not replace durations, windows, or contiguity constraints with quota tokens, penalties, or optional clean-up actions.\n\nCanonicalization rules:\n- Use lowercase ASCII identifiers with underscores for symbols whenever you introduce canonical names.\n- Preserve object identity exactly; do not alias two entities unless the problem explicitly states they are the same.\n- Use the same symbol consistently across objects, predicates, actions, init, and goal.\n\nSolver rules:\n- Target solver: FastDownwards. Stay within classical PDDL features supported by the solver.\n- Prefer :strips, :typing, and :negative-preconditions only; keep :action-costs only when explicit increase effects are actually used.\n- Do not use numeric fluents, durative actions, axioms, conditional effects, or unsupported comparison operators.",
+                "domain_reference": "",
+                "reference_note": "No reference domain is provided; infer the domain directly from the task."
+            },
+            "public_information": [
+                "You plan to visit 3 European cities for 17 days in total. You only take direct flights to commute between cities. You would like to visit Lyon for 6 days. You would like to visit Zurich for 7 days. You are going to attend a wedding in Zurich between day 1 and day 7. You plan to stay in Rome for 6 days.\n\nHere are the cities that have direct flights:\nRome and Lyon, Zurich and Rome.\n\nFind a trip plan of visiting the cities for 17 days by taking direct flights to commute between them.",
+                "Target solver: FastDownwards.",
+                "Return a complete PDDL domain and problem for this specific problem instance."
+            ]
+        },
+        "workflow": {
+            "jack_of_all_trades": {
+                "model": {
+                    "input": [],
+                    "output": "jack_modeling_brief",
+                    "system_prompt": "You are JackOfAllTrades, the semantic self-programming agent for classical planning. Your job is to infer the latent planning abstraction for this specific problem instance and design the semantic model that a downstream compiler will turn into PDDL. You own the modeling choices: ontology, predicates, invariants, and action schemas. Do not output final PDDL. Preserve hard constraints exactly, and do not invent unsupported routes, resources, or repairs.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference note:\n{environment->init->reference_note}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nInfer the correct planning model for this instance and produce a structured modeling brief using exactly these sections:\n<abstraction>...</abstraction>\n<objects>...</objects>\n<types>...</types>\n<predicates>...</predicates>\n<invariants>...</invariants>\n<actions>...</actions>\n<init_goal_mapping>...</init_goal_mapping>\n<failure_risks>...</failure_risks>\n\nRules:\n- Infer the latent planning abstraction from the problem itself, not from generic templates.\n- Decide the minimal correct ontology: objects, types, predicates, invariants, and action schemas.\n- State invariants explicitly whenever they are needed to make the model correct.\n- Preserve hard constraints exactly unless the task explicitly requests repair.\n- If the task appears inconsistent or underspecified, explain that in <failure_risks> instead of silently changing the semantics.\n- Use canonical lowercase underscore names for symbols.\n- Do not emit final PDDL."
+                }
+            },
+            "orchestrator": {
+                "pddl": {
+                    "input": [
+                        "jack_modeling_brief"
+                    ],
+                    "output": "pddl_orchestrator",
+                    "system_prompt": "You are the solver-facing PDDL compiler. Convert the JackOfAllTrades semantic model into a complete PDDL domain and problem for the target solver. JackOfAllTrades owns the semantic design; you should compile it faithfully rather than reinterpreting the task from scratch. Return only the final domain between <domain></domain> and the final problem between <problem></problem>.",
+                    "prompt": "Problem specification:\n{environment->public_information}\n\nTask profile:\n{environment->init->task_profile_prompt}\n\nReference domain, if provided:\n{environment->init->domain_reference}\n\nJackOfAllTrades modeling brief:\n{jack_modeling_brief}\n\nCompile the final PDDL domain and problem.\nRequirements:\n- Target solver compatibility is mandatory.\n- Keep the domain and problem specific to this problem instance.\n- Preserve all hard constraints from the problem specification and from JackOfAllTrades' semantic model.\n- Use canonical lowercase underscore identifiers consistently.\n- Do not use unsupported numeric, durative, or conditional constructs.\n- Respect the <invariants> and <init_goal_mapping> sections explicitly.\n- If a reference domain is provided, use it only as an anchor; do not let it override the instance-specific semantics devised by JackOfAllTrades.\nReturn only <domain>...</domain> and <problem>...</problem>."
+                }
+            },
+            "constraints": [
+                "jack_of_all_trades.model->orchestrator.pddl"
+            ]
+        }
+    },
+    "pddl_domain": "(define (domain trip_planning)\n  (:requirements :strips :typing :negative-preconditions)\n  (:types city day slot)\n\n  (:predicates\n    (next_day ?d1 - day ?d2 - day)\n    (day_is_first ?d - day)\n    (flight ?c_from - city ?c_to - city)\n    (slot_for_city ?s - slot ?c - city)\n    (wedding_day_window ?d - day)\n    (slot_assigned ?s - slot ?d - day)\n    (slot_filled ?s - slot)\n    (at ?c - city ?d - day)\n    (day_assigned ?d - day)\n    (wedding_attended)\n  )\n\n  (:action assign_first_day\n    :parameters (?s - slot ?c - city ?d - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (day_is_first ?d)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d))\n    )\n    :effect (and\n      (slot_assigned ?s ?d)\n      (slot_filled ?s)\n      (day_assigned ?d)\n      (at ?c ?d)\n    )\n  )\n\n  (:action assign_next_day_same_city\n    :parameters (?s - slot ?c - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c)\n      (next_day ?d_prev ?d_next)\n      (at ?c ?d_prev)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c ?d_next)\n    )\n  )\n\n  (:action assign_next_day_flight\n    :parameters (?s - slot ?c_from - city ?c_to - city ?d_prev - day ?d_next - day)\n    :precondition (and\n      (slot_for_city ?s ?c_to)\n      (next_day ?d_prev ?d_next)\n      (at ?c_from ?d_prev)\n      (flight ?c_from ?c_to)\n      (not (slot_filled ?s))\n      (not (day_assigned ?d_next))\n    )\n    :effect (and\n      (slot_assigned ?s ?d_next)\n      (slot_filled ?s)\n      (day_assigned ?d_next)\n      (at ?c_to ?d_next)\n    )\n  )\n\n  (:action attend_wedding\n    :parameters (?s - slot ?d - day)\n    :precondition (and\n      (slot_for_city ?s zurich)\n      (slot_assigned ?s ?d)\n      (wedding_day_window ?d)\n      (not (wedding_attended))\n    )\n    :effect (wedding_attended)\n  )\n)",
+    "pddl_problem": "(define (problem trip17)\n  (:domain trip_planning)\n\n  (:objects\n    rome lyon zurich - city\n\n    day1 day2 day3 day4 day5 day6 day7 day8 day9 day10 day11 day12 day13 day14 day15 day16 day17 - day\n\n    lyon_slot1 lyon_slot2 lyon_slot3 lyon_slot4 lyon_slot5 lyon_slot6\n    zurich_slot1 zurich_slot2 zurich_slot3 zurich_slot4 zurich_slot5 zurich_slot6 zurich_slot7\n    rome_slot1 rome_slot2 rome_slot3 rome_slot4 rome_slot5 rome_slot6 - slot\n  )\n\n  (:init\n    (next_day day1 day2)\n    (next_day day2 day3)\n    (next_day day3 day4)\n    (next_day day4 day5)\n    (next_day day5 day6)\n    (next_day day6 day7)\n    (next_day day7 day8)\n    (next_day day8 day9)\n    (next_day day9 day10)\n    (next_day day10 day11)\n    (next_day day11 day12)\n    (next_day day12 day13)\n    (next_day day13 day14)\n    (next_day day14 day15)\n    (next_day day15 day16)\n    (next_day day16 day17)\n\n    (day_is_first day1)\n\n    (flight rome lyon)\n    (flight lyon rome)\n    (flight rome zurich)\n    (flight zurich rome)\n\n    (slot_for_city lyon_slot1 lyon)\n    (slot_for_city lyon_slot2 lyon)\n    (slot_for_city lyon_slot3 lyon)\n    (slot_for_city lyon_slot4 lyon)\n    (slot_for_city lyon_slot5 lyon)\n    (slot_for_city lyon_slot6 lyon)\n\n    (slot_for_city zurich_slot1 zurich)\n    (slot_for_city zurich_slot2 zurich)\n    (slot_for_city zurich_slot3 zurich)\n    (slot_for_city zurich_slot4 zurich)\n    (slot_for_city zurich_slot5 zurich)\n    (slot_for_city zurich_slot6 zurich)\n    (slot_for_city zurich_slot7 zurich)\n\n    (slot_for_city rome_slot1 rome)\n    (slot_for_city rome_slot2 rome)\n    (slot_for_city rome_slot3 rome)\n    (slot_for_city rome_slot4 rome)\n    (slot_for_city rome_slot5 rome)\n    (slot_for_city rome_slot6 rome)\n\n    (wedding_day_window day1)\n    (wedding_day_window day2)\n    (wedding_day_window day3)\n    (wedding_day_window day4)\n    (wedding_day_window day5)\n    (wedding_day_window day6)\n    (wedding_day_window day7)\n  )\n\n  (:goal (and\n    ; required stays: 6 days Lyon, 7 days Zurich, 6 days Rome\n    ; Note: these sum to 19 days while only 17 days are available; the instance is therefore unsatisfiable.\n    (slot_filled lyon_slot1)\n    (slot_filled lyon_slot2)\n    (slot_filled lyon_slot3)\n    (slot_filled lyon_slot4)\n    (slot_filled lyon_slot5)\n    (slot_filled lyon_slot6)\n\n    (slot_filled zurich_slot1)\n    (slot_filled zurich_slot2)\n    (slot_filled zurich_slot3)\n    (slot_filled zurich_slot4)\n    (slot_filled zurich_slot5)\n    (slot_filled zurich_slot6)\n    (slot_filled zurich_slot7)\n\n    (slot_filled rome_slot1)\n    (slot_filled rome_slot2)\n    (slot_filled rome_slot3)\n    (slot_filled rome_slot4)\n    (slot_filled rome_slot5)\n    (slot_filled rome_slot6)\n\n    (wedding_attended)\n  ))",
+    "target_solver": "FastDownwards",
+    "pddl_plan": "No plan found.",
+    "syntax_errors": "terminate called after throwing an instance of 'parser::pddl::UnknownToken'\n  what():  ZURICH does not name a known token\nAborted (core dumped)\n",
+    "pddl_logs": "INFO     planner time limit: None\nINFO     planner memory limit: None\n\nINFO     Running translator.\nINFO     translator stdin: None\nINFO     translator time limit: None\nINFO     translator memory limit: None\nINFO     translator command line string: /home/emanuele/MultiAgentPlanning/.venv/bin/python3 /home/emanuele/MultiAgentPlanning/solvers/fast-downward-24.06.1/builds/release/bin/translate/translate.py results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/domain_3.pddl results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_3.pddl --sas-file output.sas\nParsing...\nError: Could not parse task file: results/gpt-5-mini/google/trip_planning/FastDownwards/TripPlanningExample44/problem_3.pddl\nReason: Missing ')'\ntranslate exit code: 31\n\nDriver aborting after translate\nINFO     Planner time: 0.09s\n",
+    "history": [
+        "AgentJackOfAllTrades",
+        "AgentJackOfAllTrades",
+        "AgentJackOfAllTrades"
+    ],
+    "proposed_solution": "",
+    "budget_total": 5,
+    "budget_used": 3,
+    "last_valid_plan_iteration": -1
+}
+================================================================================
+

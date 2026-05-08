@@ -1,0 +1,62 @@
+(define (problem calendar_scheduling_example49)
+  (:domain calendar_scheduling)
+
+  (:objects
+    teresa kathleen patricia - person
+    s0900_0930 s0930_1000 s1000_1030 s1030_1100 s1100_1130 s1130_1200 s1200_1230 s1230_1300 s1300_1330 s1330_1400 s1400_1430 s1430_1500 s1500_1530 s1530_1600 s1600_1630 s1630_1700 - slot
+  )
+
+  (:init
+    ;; Teresa's free slots
+    (free teresa s1000_1030)
+    (free teresa s1030_1100)
+    (free teresa s1100_1130)
+    (free teresa s1130_1200)
+    (free teresa s1200_1230)
+    (free teresa s1230_1300)
+    (free teresa s1330_1400)
+    (free teresa s1430_1500)
+    (free teresa s1530_1600)
+    (free teresa s1600_1630)
+
+    ;; Kathleen's free slots
+    (free kathleen s0930_1000)
+    (free kathleen s1000_1030)
+    (free kathleen s1030_1100)
+    (free kathleen s1100_1130)
+    (free kathleen s1130_1200)
+    (free kathleen s1200_1230)
+    (free kathleen s1300_1330)
+    (free kathleen s1400_1430)
+    (free kathleen s1430_1500)
+    (free kathleen s1530_1600)
+    (free kathleen s1600_1630)
+    (free kathleen s1630_1700)
+
+    ;; Patricia's free slots
+    (free patricia s1030_1100)
+    (free patricia s1100_1130)
+    (free patricia s1200_1230)
+    (free patricia s1230_1300)
+    (free patricia s1330_1400)
+    (free patricia s1430_1500)
+    (free patricia s1500_1530)
+    (free patricia s1600_1630)
+
+    ;; Kathleen's preference: Not after 14:30
+    ;; This means the meeting should start before 14:30.
+    (preferred s0900_0930)
+    (preferred s0930_1000)
+    (preferred s1000_1030)
+    (preferred s1030_1100)
+    (preferred s1100_1130)
+    (preferred s1130_1200)
+    (preferred s1200_1230)
+    (preferred s1230_1300)
+    (preferred s1300_1330)
+    (preferred s1330_1400)
+    (preferred s1400_1430)
+  )
+
+  (:goal (scheduled))
+)

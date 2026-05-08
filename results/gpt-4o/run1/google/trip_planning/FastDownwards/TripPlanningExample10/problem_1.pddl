@@ -1,0 +1,38 @@
+(define (problem trip_plan)
+  (:domain european_trip)
+  (:objects
+    oslo dublin valencia - city
+    day1 day2 day3 day4 day5 day6 day7 day8 day9 - day
+    trip_planner - planner
+  )
+  (:init
+    (current_city trip_planner oslo)
+    (day_in_trip day1)
+    (visited trip_planner oslo)
+    (can_fly oslo dublin)
+    (can_fly dublin valencia)
+    (next_day day1 day2)
+    (next_day day2 day3)
+    (next_day day3 day4)
+    (next_day day4 day5)
+    (next_day day5 day6)
+    (next_day day6 day7)
+    (next_day day7 day8)
+    (next_day day8 day9)
+    (day_allocated oslo day1)
+    (day_allocated oslo day2)
+    (day_allocated oslo day3)
+    (day_allocated dublin day4)
+    (day_allocated dublin day5)
+    (day_allocated valencia day6)
+    (day_allocated valencia day7)
+    (day_allocated valencia day8)
+    (day_allocated valencia day9)
+  )
+  (:goal (and
+    (visited trip_planner dublin)
+    (visited trip_planner valencia)
+    (day_in_trip day9)
+    (current_city trip_planner valencia)
+  ))
+)

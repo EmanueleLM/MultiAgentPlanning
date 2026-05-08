@@ -1,0 +1,40 @@
+(define (domain calendar_scheduling)
+  (:requirements :strips :typing)
+  (:types person slot)
+
+  (:predicates
+    (available ?p - person ?s - slot)
+    (next ?s1 - slot ?s2 - slot)
+    (meeting_not_scheduled)
+    (meeting_scheduled)
+    (scheduled_at ?s - slot)
+    (allowed_start ?s - slot)
+  )
+
+  (:action schedule_meeting
+    :parameters (?p1 - person ?p2 - person ?p3 - person ?s - slot ?s2 - slot)
+    :precondition (and
+      (meeting_not_scheduled)
+      (next ?s ?s2)
+      (allowed_start ?s)
+      (available ?p1 ?s)
+      (available ?p1 ?s2)
+      (available ?p2 ?s)
+      (available ?p2 ?s2)
+      (available ?p3 ?s)
+      (available ?p3 ?s2)
+    )
+    :effect (and
+      (not (meeting_not_scheduled))
+      (meeting_scheduled)
+      (scheduled_at ?s)
+
+      (not (available ?p1 ?s))
+      (not (available ?p1 ?s2))
+      (not (available ?p2 ?s))
+      (not (available ?p2 ?s2))
+      (not (available ?p3 ?s))
+      (not (available ?p3 ?s2))
+    )
+  )
+)

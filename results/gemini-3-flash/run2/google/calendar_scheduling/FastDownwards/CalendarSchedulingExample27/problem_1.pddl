@@ -1,0 +1,48 @@
+(define (problem calendar_scheduling_problem)
+  (:domain calendar_scheduling)
+  (:objects
+    jesse kathryn megan - person
+    t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330 t1400 t1430 t1500 t1530 t1600 t1630 - slot
+  )
+  (:init
+    (= (total-cost) 0)
+
+    ;; Slot Costs to favor earlier times
+    (= (slot_cost t0900) 1)
+    (= (slot_cost t0930) 2)
+    (= (slot_cost t1000) 3)
+    (= (slot_cost t1030) 4)
+    (= (slot_cost t1100) 5)
+    (= (slot_cost t1130) 6)
+    (= (slot_cost t1200) 7)
+    (= (slot_cost t1230) 8)
+    (= (slot_cost t1300) 9)
+    (= (slot_cost t1330) 10)
+    (= (slot_cost t1400) 11)
+    (= (slot_cost t1430) 12)
+    (= (slot_cost t1500) 13)
+    (= (slot_cost t1530) 14)
+    (= (slot_cost t1600) 15)
+    (= (slot_cost t1630) 16)
+
+    ;; Jesse availability (Busy: 10:00-10:30, 15:30-16:00)
+    (is_free jesse t0900) (is_free jesse t0930)
+    (is_free jesse t1030) (is_free jesse t1100) (is_free jesse t1130)
+    (is_free jesse t1200) (is_free jesse t1230) (is_free jesse t1300)
+    (is_free jesse t1330) (is_free jesse t1400) (is_free jesse t1430)
+    (is_free jesse t1500) (is_free jesse t1600) (is_free jesse t1630)
+
+    ;; Kathryn availability (Wide open)
+    (is_free kathryn t0900) (is_free kathryn t0930) (is_free kathryn t1000) (is_free kathryn t1030)
+    (is_free kathryn t1100) (is_free kathryn t1130) (is_free kathryn t1200) (is_free kathryn t1230)
+    (is_free kathryn t1300) (is_free kathryn t1330) (is_free kathryn t1400) (is_free kathryn t1430)
+    (is_free kathryn t1500) (is_free kathryn t1530) (is_free kathryn t1600) (is_free kathryn t1630)
+
+    ;; Megan availability (Busy: 10:30-11:00, 11:30-12:30, 13:30-14:30, 15:00-16:30)
+    (is_free megan t0900) (is_free megan t0930) (is_free megan t1000)
+    (is_free megan t1100) (is_free megan t1230) (is_free megan t1300)
+    (is_free megan t1430) (is_free megan t1630)
+  )
+  (:goal (scheduled))
+  (:metric minimize (total-cost))
+)

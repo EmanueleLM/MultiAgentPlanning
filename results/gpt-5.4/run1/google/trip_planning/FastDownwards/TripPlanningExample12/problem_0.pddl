@@ -1,0 +1,70 @@
+(define (problem european_trip_15_days_instance)
+  (:domain european_trip_15_days)
+
+  (:objects
+    valencia amsterdam tallinn - city
+    day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8
+    day_9 day_10 day_11 day_12 day_13 day_14 day_15 day_16 - day
+  )
+
+  (:init
+    (start_not_chosen)
+    (current_day day_1)
+
+    (next_day day_1 day_2)
+    (next_day day_2 day_3)
+    (next_day day_3 day_4)
+    (next_day day_4 day_5)
+    (next_day day_5 day_6)
+    (next_day day_6 day_7)
+    (next_day day_7 day_8)
+    (next_day day_8 day_9)
+    (next_day day_9 day_10)
+    (next_day day_10 day_11)
+    (next_day day_11 day_12)
+    (next_day day_12 day_13)
+    (next_day day_13 day_14)
+    (next_day day_14 day_15)
+    (next_day day_15 day_16)
+
+    (direct_flight amsterdam tallinn)
+    (direct_flight tallinn amsterdam)
+    (direct_flight valencia amsterdam)
+    (direct_flight amsterdam valencia)
+
+    (meeting_window_day day_9)
+    (meeting_window_day day_10)
+    (meeting_window_day day_11)
+    (meeting_window_day day_12)
+    (meeting_window_day day_13)
+    (meeting_window_day day_14)
+    (meeting_window_day day_15)
+  )
+
+  (:goal
+    (and
+      (current_day day_16)
+      (met_friend)
+
+      (valencia_slot_1_filled)
+      (valencia_slot_2_filled)
+      (valencia_slot_3_filled)
+      (valencia_slot_4_filled)
+      (valencia_slot_5_filled)
+
+      (amsterdam_slot_1_filled)
+      (amsterdam_slot_2_filled)
+      (amsterdam_slot_3_filled)
+      (amsterdam_slot_4_filled)
+      (amsterdam_slot_5_filled)
+
+      (tallinn_slot_1_filled)
+      (tallinn_slot_2_filled)
+      (tallinn_slot_3_filled)
+      (tallinn_slot_4_filled)
+      (tallinn_slot_5_filled)
+      (tallinn_slot_6_filled)
+      (tallinn_slot_7_filled)
+    )
+  )
+)

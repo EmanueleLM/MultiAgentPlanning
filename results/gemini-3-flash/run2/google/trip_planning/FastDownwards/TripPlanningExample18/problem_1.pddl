@@ -1,0 +1,56 @@
+(define (problem trip_planning_example_18)
+  (:domain trip_planning)
+  (:objects
+    amsterdam vilnius bucharest - city
+    d_1 d_2 d_3 d_4 d_5 d_6 d_7 d_8 d_9 d_10 d_11 d_12 - day
+    v_0 v_1 v_2 v_3 v_4 v_5 v_6 v_7 v_8 v_9 v_10 v_11 - count
+  )
+  (:init
+    (city_count amsterdam v_0)
+    (city_count vilnius v_0)
+    (city_count bucharest v_0)
+    
+    (next_day d_1 d_2)
+    (next_day d_2 d_3)
+    (next_day d_3 d_4)
+    (next_day d_4 d_5)
+    (next_day d_5 d_6)
+    (next_day d_6 d_7)
+    (next_day d_7 d_8)
+    (next_day d_8 d_9)
+    (next_day d_9 d_10)
+    (next_day d_10 d_11)
+    (next_day d_11 d_12)
+    
+    (next_count v_0 v_1)
+    (next_count v_1 v_2)
+    (next_count v_2 v_3)
+    (next_count v_3 v_4)
+    (next_count v_4 v_5)
+    (next_count v_5 v_6)
+    (next_count v_6 v_7)
+    (next_count v_7 v_8)
+    (next_count v_8 v_9)
+    (next_count v_9 v_10)
+    (next_count v_10 v_11)
+    
+    (can_fly amsterdam bucharest)
+    (can_fly bucharest amsterdam)
+    (can_fly vilnius amsterdam)
+    (can_fly amsterdam vilnius)
+  )
+  (:goal
+    (and
+      (current_day d_12)
+      (city_count amsterdam v_5)
+      (city_count vilnius v_2)
+      (city_count bucharest v_6)
+      (visited bucharest d_6)
+      (visited bucharest d_7)
+      (visited bucharest d_8)
+      (visited bucharest d_9)
+      (visited bucharest d_10)
+      (visited bucharest d_11)
+    )
+  )
+)

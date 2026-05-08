@@ -1,0 +1,33 @@
+(define (problem meet_jessica_instance)
+  (:domain meeting_planning)
+  (:objects
+    haight_ashbury sunset_district - location
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 - time
+    s0 s1 s2 s3 s4 s5 s6 - step
+  )
+  (:init
+    (at haight_ashbury)
+    (current-time t0)
+    (meeting-progress s0)
+    (connected haight_ashbury sunset_district)
+    (connected sunset_district haight_ashbury)
+    (next-time t0 t1) (next-time t1 t2) (next-time t2 t3) (next-time t3 t4) (next-time t4 t5)
+    (next-time t5 t6) (next-time t6 t7) (next-time t7 t8) (next-time t8 t9) (next-time t9 t10)
+    (next-time t10 t11) (next-time t11 t12) (next-time t12 t13) (next-time t13 t14) (next-time t14 t15)
+    (next-time t15 t16) (next-time t16 t17) (next-time t17 t18) (next-time t18 t19) (next-time t19 t20)
+    (next-time t20 t21) (next-time t21 t22) (next-time t22 t23) (next-time t23 t24) (next-time t24 t25)
+    (next-time t25 t26) (next-time t26 t27) (next-time t27 t28) (next-time t28 t29) (next-time t29 t30)
+    (next-time t30 t31) (next-time t31 t32) (next-time t32 t33) (next-time t33 t34) (next-time t34 t35)
+    (next-time t35 t36) (next-time t36 t37) (next-time t37 t38) (next-time t38 t39) (next-time t39 t40)
+    (next-time t40 t41) (next-time t41 t42) (next-time t42 t43) (next-time t43 t44) (next-time t44 t45)
+    (jessica-at sunset_district t25 t26) (jessica-at sunset_district t26 t27) (jessica-at sunset_district t27 t28)
+    (jessica-at sunset_district t28 t29) (jessica-at sunset_district t29 t30) (jessica-at sunset_district t30 t31)
+    (jessica-at sunset_district t31 t32) (jessica-at sunset_district t32 t33) (jessica-at sunset_district t33 t34)
+    (jessica-at sunset_district t34 t35) (jessica-at sunset_district t35 t36) (jessica-at sunset_district t36 t37)
+    (jessica-at sunset_district t37 t38) (jessica-at sunset_district t38 t39) (jessica-at sunset_district t39 t40)
+    (jessica-at sunset_district t40 t41) (jessica-at sunset_district t41 t42) (jessica-at sunset_district t42 t43)
+    (jessica-at sunset_district t43 t44) (jessica-at sunset_district t44 t45)
+    (next-step s0 s1) (next-step s1 s2) (next-step s2 s3) (next-step s3 s4) (next-step s4 s5) (next-step s5 s6)
+  )
+  (:goal (meeting-progress s6))
+)

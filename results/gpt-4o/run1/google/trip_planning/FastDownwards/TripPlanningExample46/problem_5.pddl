@@ -1,0 +1,32 @@
+(define (problem european_trip_instance)
+  (:domain european_trip)
+  (:objects 
+    seville manchester stockholm - city
+    day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8 day_9 day_10 day_11 - day
+  )
+  (:init 
+    (at stockholm day_1)
+    (conference_in_stockholm day_1)
+    (conference_in_stockholm day_3)
+    (flight_available manchester seville)
+    (flight_available seville manchester)
+    (flight_available stockholm manchester)
+    (flight_available manchester stockholm)
+    (next_day day_1 day_2)
+    (next_day day_2 day_3)
+    (next_day day_3 day_4)
+    (next_day day_4 day_5)
+    (next_day day_5 day_6)
+    (next_day day_6 day_7)
+    (next_day day_7 day_8)
+    (next_day day_8 day_9)
+    (next_day day_9 day_10)
+    (next_day day_10 day_11)
+  )
+  (:goal (and 
+    (at seville day_5)
+    (at seville day_9)
+    (at manchester day_10)
+    (at stockholm day_11)
+  ))
+)

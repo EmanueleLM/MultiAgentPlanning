@@ -1,0 +1,82 @@
+(define (problem logistics-multiagent-problem)
+  (:domain logistics-multiagent)
+
+  (:objects
+    ;; Cities
+    city_0 city_1 - city
+
+    ;; Locations
+    location_0_0 location_0_1 location_0_2 location_1_0 location_1_1 location_1_2 - location
+
+    ;; Vehicles
+    truck_0 truck_1 - truck
+    airplane_0 - airplane
+
+    ;; Packages
+    package_0 package_1 package_2 package_3 - package
+  )
+
+  (:init
+    ;; Location -> city mapping
+    (loc_in_city location_0_0 city_0)
+    (loc_in_city location_0_1 city_0)
+    (loc_in_city location_0_2 city_0)
+    (loc_in_city location_1_0 city_1)
+    (loc_in_city location_1_1 city_1)
+    (loc_in_city location_1_2 city_1)
+
+    ;; same_city facts (symmetric pairs within each city)
+    ;; city_0 pairs
+    (same_city location_0_0 location_0_0)
+    (same_city location_0_0 location_0_1)
+    (same_city location_0_0 location_0_2)
+    (same_city location_0_1 location_0_0)
+    (same_city location_0_1 location_0_1)
+    (same_city location_0_1 location_0_2)
+    (same_city location_0_2 location_0_0)
+    (same_city location_0_2 location_0_1)
+    (same_city location_0_2 location_0_2)
+
+    ;; city_1 pairs
+    (same_city location_1_0 location_1_0)
+    (same_city location_1_0 location_1_1)
+    (same_city location_1_0 location_1_2)
+    (same_city location_1_1 location_1_0)
+    (same_city location_1_1 location_1_1)
+    (same_city location_1_1 location_1_2)
+    (same_city location_1_2 location_1_0)
+    (same_city location_1_2 location_1_1)
+    (same_city location_1_2 location_1_2)
+
+    ;; diff_city facts (symmetric pairs for locations in different cities)
+    ;; For robustness, include cross-city pairs (only ones needed by airplane fly)
+    (diff_city location_0_0 location_1_0)
+    (diff_city location_1_0 location_0_0)
+    ;; (optional additional cross-city pairs could be added if flights between other locs were allowed)
+
+    ;; Airports
+    (airport location_0_0)
+    (airport location_1_0)
+
+    ;; Initial vehicle positions (as adopted by the integrated audit)
+    (vehicle_at truck_0 location_0_1)
+    (vehicle_at truck_1 location_1_1)
+    (vehicle_at airplane_0 location_1_0)
+
+    ;; Initial package positions (as adopted by the integrated audit)
+    (pkg_at package_0 location_1_2)
+    (pkg_at package_1 location_0_0)
+    (pkg_at package_2 location_0_2)
+    (pkg_at package_3 location_1_1)
+  )
+
+  ;; Global goal (explicit terminal package positions mandated)
+  (:goal
+    (and
+      (pkg_at package_0 location_1_1)
+      (pkg_at package_1 location_1_0)
+      (pkg_at package_2 location_0_0)
+      (pkg_at package_3 location_0_2)
+    )
+  )
+)

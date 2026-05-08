@@ -12,7 +12,19 @@ import re
 from time import sleep
 from pathlib import Path
 
-from src.llm_plan.config import DATASET, MODELS
+from src.llm_plan.config import DATASET, MODELS, RESULTS_FOLDER
+
+
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes", "y", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
 
 
 def parse_args():
@@ -42,12 +54,18 @@ def parse_args():
     )
     parser.add_argument(
         "--debug",
-        type=bool,
+        type=parse_bool,
         default=True,
         help="Outputs the full logs in a file named __full_logs.txt (default: True)",
     )
 
     return parser.parse_args()
+
+
+def get_model_results_root(dataset_name: str, model_name: str) -> Path:
+    base_results_root = DATASET[dataset_name]["results"]
+    relative_root = base_results_root.relative_to(RESULTS_FOLDER)
+    return RESULTS_FOLDER / model_name / relative_root
 
 
 if __name__ == "__main__":
@@ -74,7 +92,7 @@ if __name__ == "__main__":
     else:
         problem_name = key
         
-    BASE_FOLDER = DATASET[args.dataset]["results"] / f"{dataset_name}/vanilla_llm"
+    BASE_FOLDER = get_model_results_root(dataset_name, args.model) / f"{dataset_name}/vanilla_llm"
     
     system_prompt = "You are an expert planner and scheduling assistant."
     for i in range(num_experiments):

@@ -1,0 +1,58 @@
+(define (problem trip_planning_example_21)
+    (:domain trip_planning_example_21)
+    (:objects
+        mykonos vienna venice - city
+        d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 end_of_trip - day_step
+        daycount0 daycount1 daycount2 daycount3 daycount4 daycount5 daycount6 - day_count
+    )
+    (:init
+        ;; Initial state based on the derived schedule: Mykonos, 2 days, on day 1
+        (at mykonos)
+        (current_day d1)
+        (days_remaining_at_current_city daycount2) ; Mykonos planned for 2 days
+        (visited mykonos) ; Mykonos is visited by being there
+
+        ;; Day progression for total trip duration
+        (next_day d1 d2)
+        (next_day d2 d3)
+        (next_day d3 d4)
+        (next_day d4 d5)
+        (next_day d5 d6)
+        (next_day d6 d7)
+        (next_day d7 d8)
+        (next_day d8 d9)
+        (next_day d9 d10)
+        (next_day d10 end_of_trip) ; Marks the end of the 10-day trip
+
+        ;; Day count progression (for decrementing days at current city)
+        (next_count daycount1 daycount0)
+        (next_count daycount2 daycount1)
+        (next_count daycount3 daycount2)
+        (next_count daycount4 daycount3)
+        (next_count daycount5 daycount4)
+        (next_count daycount6 daycount5)
+
+        ;; Flight connections (bidirectional as implied by "Mykonos and Vienna, Vienna and Venice")
+        (flight mykonos vienna)
+        (flight vienna mykonos)
+        (flight vienna venice)
+        (flight venice vienna)
+
+        ;; Workshop window definition: between day 5 and day 10
+        (is_workshop_day d5)
+        (is_workshop_day d6)
+        (is_workshop_day d7)
+        (is_workshop_day d8)
+        (is_workshop_day d9)
+        (is_workshop_day d10)
+
+        ;; Workshop not attended initially (implicitly false by absence of (workshop_attended))
+    )
+    (:goal (and
+        (current_day end_of_trip) ; Trip completed after 10 days of city stays
+        (visited mykonos)
+        (visited vienna)
+        (visited venice) ; All cities visited
+        (workshop_attended) ; Workshop attended in Venice
+        (days_remaining_at_current_city daycount0) ; All days budgeted for the last city must be spent
+    ))

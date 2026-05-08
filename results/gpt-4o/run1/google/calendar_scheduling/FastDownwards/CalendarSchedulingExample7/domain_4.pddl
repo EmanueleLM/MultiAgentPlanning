@@ -1,0 +1,23 @@
+(define (domain meeting_scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types participant timeslot)
+  (:predicates
+    (busy ?p - participant ?t - timeslot)
+    (available ?p - participant ?t - timeslot)
+    (half_hour_block ?t_start - timeslot ?t_end - timeslot)
+    (meeting_scheduled)
+  )
+  (:action schedule_meeting
+    :parameters (?t_start - timeslot ?t_end - timeslot)
+    :precondition (and
+        (half_hour_block ?t_start ?t_end)
+        (available heather ?t_start)
+        (available heather ?t_end)
+        (available nicholas ?t_start)
+        (available nicholas ?t_end)
+        (available zachary ?t_start)
+        (available zachary ?t_end)
+    )
+    :effect (meeting_scheduled)
+  )
+)

@@ -1,0 +1,34 @@
+(define (domain trip_planner)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day)
+
+  (:predicates
+    (flight ?from - city ?to - city)
+    (succ ?d - day ?dnext - day)
+    (at ?c - city ?d - day)
+    (assigned ?d - day)
+    (start_day ?d - day)
+  )
+
+  ;; Start the trip on a start day by assigning that day to a city (only if the day is not yet assigned).
+  (:action start_at
+    :parameters (?c - city ?d - day)
+    :precondition (and (start_day ?d) (not (assigned ?d)))
+    :effect (and (at ?c ?d) (assigned ?d))
+  )
+
+  ;; Stay in the same city from one day to the next (requires the current day to be assigned to that city,
+  ;; the next day to be the successor, and the next day not yet assigned).
+  (:action stay
+    :parameters (?c - city ?d - day ?dnext - day)
+    :precondition (and (at ?c ?d) (succ ?d ?dnext) (not (assigned ?dnext)))
+    :effect (and (at ?c ?dnext) (assigned ?dnext))
+  )
+
+  ;; Fly from one city to another between consecutive days if a direct flight exists.
+  (:action fly
+    :parameters (?from - city ?to - city ?d - day ?dnext - day)
+    :precondition (and (at ?from ?d) (succ ?d ?dnext) (flight ?from ?to) (not (assigned ?dnext)))
+    :effect (and (at ?to ?dnext) (assigned ?dnext))
+  )
+)

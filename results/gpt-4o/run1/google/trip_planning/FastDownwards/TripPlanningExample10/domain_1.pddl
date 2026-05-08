@@ -1,0 +1,28 @@
+(define (domain european_trip)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types city day planner)
+  (:predicates
+    (current_city ?p - planner ?c - city)
+    (day_in_trip ?d - day)
+    (can_fly ?c1 - city ?c2 - city)
+    (visited ?p - planner ?c - city)
+    (day_allocated ?c - city ?d - day)
+    (next_day ?d1 - day ?d2 - day)
+  )
+  (:action fly
+    :parameters (?p - planner ?c1 - city ?c2 - city ?d1 - day ?d2 - day)
+    :precondition (and
+      (current_city ?p ?c1)
+      (can_fly ?c1 ?c2)
+      (next_day ?d1 ?d2)
+      (day_allocated ?c2 ?d2)
+    )
+    :effect (and
+      (not (current_city ?p ?c1))
+      (current_city ?p ?c2)
+      (visited ?p ?c2)
+      (not (day_in_trip ?d1))
+      (day_in_trip ?d2)
+    )
+  )
+)

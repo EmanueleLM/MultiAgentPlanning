@@ -1,0 +1,17 @@
+(define (problem mysteryblocksworld32)
+  (:domain jack_of_all_trades)
+  (:objects a b c d - object)
+  (:init
+    (object_craves a c)
+    (object_craves b a)
+    (harmony)
+    (planet c)
+    (planet d)
+    (province b)
+    (province d)
+  )
+  (:goal (and
+    (object_craves a c)
+    (object_craves d b)
+  ))
+)

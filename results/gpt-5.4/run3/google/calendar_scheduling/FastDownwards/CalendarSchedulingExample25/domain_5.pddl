@@ -1,0 +1,34 @@
+(define (domain calendar_scheduling_example25)
+  (:requirements :strips :typing)
+
+  (:types
+    participant
+    slot
+  )
+
+  (:constants
+    anthony pamela zachary - participant
+  )
+
+  (:predicates
+    (free ?p - participant ?s - slot)
+    (allowed_for_pamela ?s - slot)
+    (chosen ?s - slot)
+    (meeting_scheduled)
+  )
+
+  (:action schedule_meeting
+    :parameters (?s - slot)
+    :precondition (and
+      (free anthony ?s)
+      (free pamela ?s)
+      (free zachary ?s)
+      (allowed_for_pamela ?s)
+      (not (meeting_scheduled))
+    )
+    :effect (and
+      (chosen ?s)
+      (meeting_scheduled)
+    )
+  )
+)

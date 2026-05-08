@@ -1,0 +1,55 @@
+(define (domain logistics)
+  (:requirements :strips :typing)
+  (:types
+    city location thing - object
+    package vehicle - thing
+    truck airplane - vehicle
+  )
+
+  (:predicates
+    ;; An object (package or vehicle) is at a specific location
+    (at ?obj - thing ?loc - location)
+    ;; A package is inside a vehicle (truck or airplane)
+    (in ?p - package ?v - vehicle)
+    ;; A location belongs to a specific city
+    (in_city ?loc - location ?c - city)
+    ;; A location is an airport
+    (airport ?loc - location)
+  )
+
+  (:action load_truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (at ?p ?l) (at ?t ?l))
+    :effect (and (not (at ?p ?l)) (in ?p ?t))
+  )
+
+  (:action unload_truck
+    :parameters (?p - package ?t - truck ?l - location)
+    :precondition (and (in ?p ?t) (at ?t ?l))
+    :effect (and (not (in ?p ?t)) (at ?p ?l))
+  )
+
+  (:action load_airplane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (at ?p ?l) (at ?a ?l))
+    :effect (and (not (at ?p ?l)) (in ?p ?a))
+  )
+
+  (:action unload_airplane
+    :parameters (?p - package ?a - airplane ?l - location)
+    :precondition (and (in ?p ?a) (at ?a ?l))
+    :effect (and (not (in ?p ?a)) (at ?p ?l))
+  )
+
+  (:action drive_truck
+    :parameters (?t - truck ?from - location ?to - location ?c - city)
+    :precondition (and (at ?t ?from) (in_city ?from ?c) (in_city ?to ?c))
+    :effect (and (not (at ?t ?from)) (at ?t ?to))
+  )
+
+  (:action fly_airplane
+    :parameters (?a - airplane ?from - location ?to - location)
+    :precondition (and (at ?a ?from) (airport ?from) (airport ?to))
+    :effect (and (not (at ?a ?from)) (at ?a ?to))
+  )
+)

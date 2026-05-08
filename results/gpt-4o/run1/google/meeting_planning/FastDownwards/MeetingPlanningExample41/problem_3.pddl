@@ -1,0 +1,32 @@
+(define (problem meet_friends_in_san_francisco)
+  (:domain san_francisco_visit)
+  (:objects
+    north_beach haight_ashbury - location
+    george planner - person
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 - time ; Represents 30-minute intervals from 09:00 AM to 1:30 PM
+  )
+  (:init
+    (at planner north_beach)
+    (at george haight_ashbury)
+    (current_time t0)
+    (at_time north_beach t0)
+    (at_time haight_ashbury t1)
+    (at_time haight_ashbury t2)
+    (at_time haight_ashbury t3)
+    (at_time haight_ashbury t4)
+    (at_time haight_ashbury t5)
+    (at_time haight_ashbury t6)
+    (next_visit_time t0 t1)
+    (next_visit_time t1 t2)
+    (next_visit_time t2 t3)
+    (next_visit_time t3 t4)
+    (next_visit_time t4 t5)
+    (next_visit_time t5 t6)
+    (next_visit_time t6 t7)
+    (next_visit_time t7 t8)
+    (next_visit_time t8 t9)
+    (next_visit_time t9 t10)
+    (can_meet george)
+  )
+  (:goal (and (met george)))
+)

@@ -1,0 +1,83 @@
+(define (problem calendar-scheduling-example30-problem)
+    (:domain calendar-scheduling-example30)
+    (:objects
+        jeffrey - person
+        virginia - person
+        melissa - person
+
+        t0900 t0930 t1000 t1030 t1100 t1130 t1200 t1230 t1300 t1330
+        t1400 t1430 t1500 t1530 t1600 t1630 - time_slot
+    )
+    (:init
+        (current_time_slot t0900)
+
+        ; Next time slot relations
+        (next_time_slot t0900 t0930)
+        (next_time_slot t0930 t1000)
+        (next_time_slot t1000 t1030)
+        (next_time_slot t1030 t1100)
+        (next_time_slot t1100 t1130)
+        (next_time_slot t1130 t1200)
+        (next_time_slot t1200 t1230)
+        (next_time_slot t1230 t1300)
+        (next_time_slot t1300 t1330)
+        (next_time_slot t1330 t1400)
+        (next_time_slot t1400 t1430)
+        (next_time_slot t1430 t1500)
+        (next_time_slot t1500 t1530)
+        (next_time_slot t1530 t1600)
+        (next_time_slot t1600 t1630)
+
+        ; Jeffrey's free times (busy 9:30-10:00, 10:30-11:00)
+        (is_free jeffrey t0900)
+        (is_free jeffrey t1000)
+        (is_free jeffrey t1100)
+        (is_free jeffrey t1130)
+        (is_free jeffrey t1200)
+        (is_free jeffrey t1230)
+        (is_free jeffrey t1300)
+        (is_free jeffrey t1330)
+        (is_free jeffrey t1400)
+        (is_free jeffrey t1430)
+        (is_free jeffrey t1500)
+        (is_free jeffrey t1530)
+        (is_free jeffrey t1600)
+        (is_free jeffrey t1630)
+
+        ; Virginia's free times (busy 9:00-9:30, 10:00-10:30, 14:30-15:00, 16:00-16:30)
+        (is_free virginia t0930)
+        (is_free virginia t1030)
+        (is_free virginia t1100)
+        (is_free virginia t1130)
+        (is_free virginia t1200)
+        (is_free virginia t1230)
+        (is_free virginia t1300)
+        (is_free virginia t1330)
+        (is_free virginia t1400)
+        (is_free virginia t1500)
+        (is_free virginia t1530)
+        (is_free virginia t1630)
+
+        ; Melissa's free times (busy 9:00-11:30, 12:00-12:30, 13:00-15:00, 16:00-17:00)
+        (is_free melissa t1130)
+        (is_free melissa t1230)
+        (is_free melissa t1500)
+        (is_free melissa t1530)
+
+        ; Melissa's preference: "rather not meet on Monday after 14:00"
+        ; Interpreted as hard constraint: only allow slots before 14:00 (i.e., up to t1330)
+        (melissa_ok_with_time t0900)
+        (melissa_ok_with_time t0930)
+        (melissa_ok_with_time t1000)
+        (melissa_ok_with_time t1030)
+        (melissa_ok_with_time t1100)
+        (melissa_ok_with_time t1130)
+        (melissa_ok_with_time t1200)
+        (melissa_ok_with_time t1230)
+        (melissa_ok_with_time t1300)
+        (melissa_ok_with_time t1330)
+    )
+    (:goal (exists (?t - time_slot)
+        (meeting_scheduled ?t)
+    ))
+)

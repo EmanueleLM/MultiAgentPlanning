@@ -1,0 +1,66 @@
+(define (problem monday_meeting_schedule_instance)
+  (:domain monday_meeting_schedule)
+
+  (:objects
+    arthur michael samantha - participant
+    t_09_00 t_09_30 t_10_00 t_10_30 t_11_00 t_11_30 t_12_00 t_12_30
+    t_13_00 t_13_30 t_14_00 t_14_30 t_15_00 t_15_30 t_16_00 t_16_30 - slot
+  )
+
+  (:init
+    (next_slot t_09_00 t_09_30)
+    (next_slot t_09_30 t_10_00)
+    (next_slot t_10_00 t_10_30)
+    (next_slot t_10_30 t_11_00)
+    (next_slot t_11_00 t_11_30)
+    (next_slot t_11_30 t_12_00)
+    (next_slot t_12_00 t_12_30)
+    (next_slot t_12_30 t_13_00)
+    (next_slot t_13_00 t_13_30)
+    (next_slot t_13_30 t_14_00)
+    (next_slot t_14_00 t_14_30)
+    (next_slot t_14_30 t_15_00)
+    (next_slot t_15_00 t_15_30)
+    (next_slot t_15_30 t_16_00)
+    (next_slot t_16_00 t_16_30)
+
+    (free arthur t_09_30)
+    (free arthur t_10_00)
+    (free arthur t_12_00)
+    (free arthur t_12_30)
+    (free arthur t_13_00)
+    (free arthur t_13_30)
+    (free arthur t_14_00)
+    (free arthur t_14_30)
+    (free arthur t_15_00)
+    (free arthur t_15_30)
+
+    (free michael t_09_00)
+    (free michael t_09_30)
+    (free michael t_10_00)
+    (free michael t_10_30)
+    (free michael t_11_00)
+    (free michael t_11_30)
+    (free michael t_12_00)
+    (free michael t_12_30)
+    (free michael t_13_30)
+    (free michael t_14_30)
+    (free michael t_15_00)
+    (free michael t_15_30)
+    (free michael t_16_00)
+    (free michael t_16_30)
+
+    (free samantha t_09_00)
+    (free samantha t_09_30)
+    (free samantha t_10_00)
+    (free samantha t_11_00)
+    (free samantha t_11_30)
+    (free samantha t_15_00)
+  )
+
+  (:goal
+    (and
+      (scheduled)
+    )
+  )
+)

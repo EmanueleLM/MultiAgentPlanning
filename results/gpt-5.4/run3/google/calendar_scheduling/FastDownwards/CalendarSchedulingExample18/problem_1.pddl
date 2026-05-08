@@ -1,0 +1,66 @@
+(define (problem schedule_meeting_instance)
+  (:domain schedule_meeting_monday)
+
+  (:objects
+    s_09_00 s_09_30 s_10_00 s_10_30 s_11_00 s_11_30 s_12_00 s_12_30
+    s_13_00 s_13_30 s_14_00 s_14_30 s_15_00 s_15_30 s_16_00 s_16_30 - slot
+  )
+
+  (:init
+    (allowed_start s_09_00)
+    (allowed_start s_09_30)
+    (allowed_start s_10_00)
+    (allowed_start s_10_30)
+    (allowed_start s_11_00)
+    (allowed_start s_11_30)
+    (allowed_start s_12_00)
+    (allowed_start s_12_30)
+    (allowed_start s_13_00)
+    (allowed_start s_13_30)
+    (allowed_start s_14_00)
+    (allowed_start s_14_30)
+    (allowed_start s_15_00)
+    (allowed_start s_15_30)
+
+    (free brian s_09_00)
+    (free brian s_09_30)
+    (free brian s_10_00)
+    (free brian s_10_30)
+    (free brian s_11_00)
+    (free brian s_11_30)
+    (free brian s_12_00)
+    (free brian s_12_30)
+    (free brian s_13_00)
+    (free brian s_13_30)
+    (free brian s_14_00)
+    (free brian s_14_30)
+    (free brian s_15_00)
+    (free brian s_15_30)
+    (free brian s_16_00)
+    (free brian s_16_30)
+
+    (free billy s_09_00)
+    (free billy s_09_30)
+    (free billy s_10_30)
+    (free billy s_11_00)
+    (free billy s_12_00)
+    (free billy s_12_30)
+    (free billy s_13_00)
+    (free billy s_13_30)
+    (free billy s_14_30)
+    (free billy s_15_00)
+    (free billy s_15_30)
+    (free billy s_16_00)
+
+    (free patricia s_12_30)
+    (free patricia s_13_00)
+    (free patricia s_14_00)
+    (free patricia s_16_00)
+  )
+
+  (:goal
+    (and
+      (scheduled)
+    )
+  )
+)

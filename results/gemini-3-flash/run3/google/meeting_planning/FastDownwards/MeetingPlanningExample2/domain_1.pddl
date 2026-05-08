@@ -1,0 +1,57 @@
+(define (domain meeting_planning)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types location time step)
+  (:predicates
+    (at ?l - location)
+    (current-time ?t - time)
+    (next-time ?t1 ?t2 - time)
+    (connected ?l1 ?l2 - location)
+    (jessica-at ?l - location ?t1 ?t2 - time)
+    (meeting-progress ?s - step)
+    (next-step ?s1 ?s2 - step)
+  )
+  (:action travel
+    :parameters (?from ?to - location ?t1 ?t2 - time)
+    :precondition (and
+      (at ?from)
+      (connected ?from ?to)
+      (current-time ?t1)
+      (next-time ?t1 ?t2)
+    )
+    :effect (and
+      (not (at ?from))
+      (at ?to)
+      (not (current-time ?t1))
+      (current-time ?t2)
+    )
+  )
+  (:action wait
+    :parameters (?l - location ?t1 ?t2 - time)
+    :precondition (and
+      (at ?l)
+      (current-time ?t1)
+      (next-time ?t1 ?t2)
+    )
+    :effect (and
+      (not (current-time ?t1))
+      (current-time ?t2)
+    )
+  )
+  (:action meet
+    :parameters (?l - location ?t1 ?t2 - time ?s1 ?s2 - step)
+    :precondition (and
+      (at ?l)
+      (current-time ?t1)
+      (next-time ?t1 ?t2)
+      (jessica-at ?l ?t1 ?t2)
+      (meeting-progress ?s1)
+      (next-step ?s1 ?s2)
+    )
+    :effect (and
+      (not (current-time ?t1))
+      (current-time ?t2)
+      (not (meeting-progress ?s1))
+      (meeting-progress ?s2)
+    )
+  )
+)

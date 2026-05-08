@@ -1,0 +1,178 @@
+(define (domain trip_planning_example0)
+  (:requirements :strips :typing :negative-preconditions)
+
+  (:types
+    city
+    day
+    stay_length
+  )
+
+  (:predicates
+    (direct ?from - city ?to - city)
+    (next ?d1 - day ?d2 - day)
+    (window_day ?d - day)
+
+    (at ?c - city)
+    (current_day ?d - day)
+    (final_day ?d - day)
+
+    (unfinished)
+
+    (assigned ?d - day)
+    (visited ?d - day ?c - city)
+
+    (segment_open ?c - city)
+    (segment_length ?n - stay_length)
+
+    (len0)
+    (len1)
+    (len2)
+    (len3)
+    (len4)
+    (len5)
+    (len6)
+
+    (friend_met)
+  )
+
+  (:action start_day_1
+    :parameters (?c - city ?n - stay_length)
+    :precondition (and
+      (unfinished)
+      (current_day day_1)
+      (at ?c)
+      (not (assigned day_1))
+      (segment_length ?n)
+    )
+    :effect (and
+      (assigned day_1)
+      (visited day_1 ?c)
+      (segment_open ?c)
+      (not (segment_length ?n))
+      (len1)
+    )
+  )
+
+  (:action continue_segment
+    :parameters (?d1 - day ?d2 - day ?c - city ?from_n - stay_length ?to_n - stay_length)
+    :precondition (and
+      (unfinished)
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (assigned ?d1)
+      (not (assigned ?d2))
+      (at ?c)
+      (segment_open ?c)
+      (segment_length ?from_n)
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (assigned ?d2)
+      (visited ?d2 ?c)
+      (not (segment_length ?from_n))
+      (segment_length ?to_n)
+    )
+  )
+
+  (:action fly_and_start_segment
+    :parameters (?d1 - day ?d2 - day ?from - city ?to - city ?n - stay_length)
+    :precondition (and
+      (unfinished)
+      (current_day ?d1)
+      (next ?d1 ?d2)
+      (assigned ?d1)
+      (not (assigned ?d2))
+      (at ?from)
+      (segment_open ?from)
+      (direct ?from ?to)
+      (segment_length ?n)
+      (not (at ?to))
+    )
+    :effect (and
+      (not (current_day ?d1))
+      (current_day ?d2)
+      (not (at ?from))
+      (at ?to)
+      (not (segment_open ?from))
+      (segment_open ?to)
+      (not (assigned ?d2))
+      (assigned ?d2)
+      (visited ?d2 ?to)
+      (not (segment_length ?n))
+      (len1)
+    )
+  )
+
+  (:action meet_friend
+    :parameters (?d - day)
+    :precondition (and
+      (unfinished)
+      (window_day ?d)
+      (current_day ?d)
+      (assigned ?d)
+      (at florence)
+      (visited ?d florence)
+      (not (friend_met))
+    )
+    :effect (friend_met)
+  )
+
+  (:action finish_from_florence_6
+    :parameters (?d - day)
+    :precondition (and
+      (unfinished)
+      (current_day ?d)
+      (final_day ?d)
+      (assigned ?d)
+      (at florence)
+      (segment_open florence)
+      (len6)
+      (friend_met)
+      (visited day_1 barcelona)
+      (visited day_2 barcelona)
+      (visited day_3 barcelona)
+      (visited day_4 barcelona)
+      (visited day_5 barcelona)
+      (visited day_6 helsinki)
+      (visited day_7 helsinki)
+      (visited day_8 helsinki)
+      (visited day_9 helsinki)
+      (visited day_10 helsinki)
+      (visited day_11 florence)
+      (visited day_12 florence)
+      (visited day_13 florence)
+      (visited day_14 florence)
+    )
+    :effect (not (unfinished))
+  )
+
+  (:action finish_from_barcelona_5
+    :parameters (?d - day)
+    :precondition (and
+      (unfinished)
+      (current_day ?d)
+      (final_day ?d)
+      (assigned ?d)
+      (at barcelona)
+      (segment_open barcelona)
+      (len5)
+      (friend_met)
+      (visited day_1 florence)
+      (visited day_2 florence)
+      (visited day_3 florence)
+      (visited day_4 florence)
+      (visited day_5 florence)
+      (visited day_6 florence)
+      (visited day_7 helsinki)
+      (visited day_8 helsinki)
+      (visited day_9 helsinki)
+      (visited day_10 helsinki)
+      (visited day_11 helsinki)
+      (visited day_12 barcelona)
+      (visited day_13 barcelona)
+      (visited day_14 barcelona)
+    )
+    :effect (not (unfinished))
+  )
+)

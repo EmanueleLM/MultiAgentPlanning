@@ -1,0 +1,75 @@
+(define (domain scheduling)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types person timeslot)
+  (:constants alexander elizabeth walter - person)
+
+  (:predicates
+    (free ?p - person ?s - timeslot)
+    (slot-occupied ?s - timeslot)
+    (meeting-not-scheduled)
+    (meeting-scheduled)
+    (meeting-at ?s - timeslot)
+    (attending ?p - person ?s - timeslot)
+    (next ?s1 - timeslot ?s2 - timeslot)
+  )
+
+  (:action schedule-by-alexander
+    :parameters (?s - timeslot)
+    :precondition (and
+      (meeting-not-scheduled)
+      (free alexander ?s)
+      (free elizabeth ?s)
+      (free walter ?s)
+      (not (slot-occupied ?s))
+    )
+    :effect (and
+      (not (meeting-not-scheduled))
+      (meeting-scheduled)
+      (meeting-at ?s)
+      (attending alexander ?s)
+      (attending elizabeth ?s)
+      (attending walter ?s)
+      (slot-occupied ?s)
+    )
+  )
+
+  (:action schedule-by-elizabeth
+    :parameters (?s - timeslot)
+    :precondition (and
+      (meeting-not-scheduled)
+      (free alexander ?s)
+      (free elizabeth ?s)
+      (free walter ?s)
+      (not (slot-occupied ?s))
+    )
+    :effect (and
+      (not (meeting-not-scheduled))
+      (meeting-scheduled)
+      (meeting-at ?s)
+      (attending alexander ?s)
+      (attending elizabeth ?s)
+      (attending walter ?s)
+      (slot-occupied ?s)
+    )
+  )
+
+  (:action schedule-by-walter
+    :parameters (?s - timeslot)
+    :precondition (and
+      (meeting-not-scheduled)
+      (free alexander ?s)
+      (free elizabeth ?s)
+      (free walter ?s)
+      (not (slot-occupied ?s))
+    )
+    :effect (and
+      (not (meeting-not-scheduled))
+      (meeting-scheduled)
+      (meeting-at ?s)
+      (attending alexander ?s)
+      (attending elizabeth ?s)
+      (attending walter ?s)
+      (slot-occupied ?s)
+    )
+  )
+)

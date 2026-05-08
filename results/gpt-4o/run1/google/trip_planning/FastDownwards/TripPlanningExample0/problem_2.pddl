@@ -1,0 +1,42 @@
+(define (problem trip_planning_instance)
+  (:domain trip_planning)
+  (:objects
+    florence barcelona helsinki - city
+    day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8
+    day_9 day_10 day_11 day_12 day_13 day_14 - day
+  )
+  (:init
+    (in_city day_1 barcelona)
+    (can_fly barcelona florence)
+    (can_fly barcelona helsinki)
+    (friend_city florence)
+    (friend_meeting_day day_9)
+    (friend_meeting_day day_10)
+    (friend_meeting_day day_11)
+    (friend_meeting_day day_12)
+    (friend_meeting_day day_13)
+    (friend_meeting_day day_14)
+    (adjacent_days day_1 day_2)
+    (adjacent_days day_2 day_3)
+    (adjacent_days day_3 day_4)
+    (adjacent_days day_4 day_5)
+    (adjacent_days day_5 day_6)
+    (adjacent_days day_6 day_7)
+    (adjacent_days day_7 day_8)
+    (adjacent_days day_8 day_9)
+    (adjacent_days day_9 day_10)
+    (adjacent_days day_10 day_11)
+    (adjacent_days day_11 day_12)
+    (adjacent_days day_12 day_13)
+    (adjacent_days day_13 day_14)
+  )
+  (:goal
+    (and
+      (in_city day_14 barcelona)
+      (visited florence)
+      (visited helsinki)
+      (exists (?d - day) (and (in_city ?d florence) (friend_meeting_day ?d)))
+      (forall (?c - city) (visited ?c))
+    )
+  )
+)

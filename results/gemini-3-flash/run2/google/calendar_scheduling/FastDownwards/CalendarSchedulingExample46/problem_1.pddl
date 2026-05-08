@@ -1,0 +1,38 @@
+(define (problem schedule_meeting_problem)
+  (:domain calendar_scheduling)
+  (:objects
+    slot_0900_0930 slot_0930_1000 slot_1000_1030 slot_1030_1100
+    slot_1100_1130 slot_1130_1200 slot_1200_1230 slot_1230_1300
+    slot_1300_1330 slot_1330_1400 slot_1400_1430 slot_1430_1500
+    slot_1500_1530 slot_1530_1600 slot_1600_1630 slot_1630_1700 - timeslot
+  )
+  (:init
+    (available arthur slot_0900_0930)
+    (available arthur slot_1000_1030)
+    (available arthur slot_1030_1100)
+    (available arthur slot_1100_1130)
+    (available arthur slot_1130_1200)
+    (available arthur slot_1200_1230)
+    (available arthur slot_1230_1300)
+    (available arthur slot_1300_1330)
+    (available arthur slot_1330_1400)
+    (available arthur slot_1430_1500)
+    (available arthur slot_1500_1530)
+    (available arthur slot_1530_1600)
+    (available arthur slot_1600_1630)
+    (available arthur slot_1630_1700)
+    (available theresa slot_0930_1000)
+    (available theresa slot_1000_1030)
+    (available theresa slot_1030_1100)
+    (available theresa slot_1100_1130)
+    (available theresa slot_1130_1200)
+    (available theresa slot_1300_1330)
+    (available theresa slot_1330_1400)
+    (available theresa slot_1400_1430)
+    (available theresa slot_1430_1500)
+    (available theresa slot_1630_1700)
+    (available carl slot_1130_1200)
+    (available carl slot_1400_1430)
+  )
+  (:goal (meeting_scheduled))
+)

@@ -1,0 +1,81 @@
+(define (problem trip_planning_example8_problem)
+  (:domain trip_planning_example8)
+
+  (:objects
+    athens zurich krakow - city
+    day_1 day_2 day_3 day_4 day_5 day_6 day_7 day_8
+    day_9 day_10 day_11 day_12 day_13 day_14 day_15 day_16 day_17 - day
+  )
+
+  (:init
+    (current_day day_1)
+    (at athens)
+
+    (next_day day_1 day_2)
+    (next_day day_2 day_3)
+    (next_day day_3 day_4)
+    (next_day day_4 day_5)
+    (next_day day_5 day_6)
+    (next_day day_6 day_7)
+    (next_day day_7 day_8)
+    (next_day day_8 day_9)
+    (next_day day_9 day_10)
+    (next_day day_10 day_11)
+    (next_day day_11 day_12)
+    (next_day day_12 day_13)
+    (next_day day_13 day_14)
+    (next_day day_14 day_15)
+    (next_day day_15 day_16)
+    (next_day day_16 day_17)
+
+    (direct athens zurich)
+    (direct zurich athens)
+    (direct zurich krakow)
+    (direct krakow zurich)
+
+    (need_athens_day_1)
+    (need_athens_day_2)
+    (need_athens_day_3)
+    (need_athens_day_4)
+    (need_athens_day_5)
+    (need_athens_day_6)
+    (need_athens_day_7)
+
+    (need_zurich_day_1)
+    (need_zurich_day_2)
+    (need_zurich_day_3)
+    (need_zurich_day_4)
+    (need_zurich_day_5)
+
+    (need_krakow_day_1)
+    (need_krakow_day_2)
+    (need_krakow_day_3)
+    (need_krakow_day_4)
+    (need_krakow_day_5)
+    (need_krakow_day_6)
+  )
+
+  (:goal
+    (and
+      (current_day day_17)
+      (visited_athens_on day_1)
+      (visited_athens_on day_2)
+      (visited_athens_on day_3)
+      (visited_athens_on day_4)
+      (visited_athens_on day_5)
+      (visited_athens_on day_6)
+      (visited_athens_on day_7)
+      (not (need_zurich_day_1))
+      (not (need_zurich_day_2))
+      (not (need_zurich_day_3))
+      (not (need_zurich_day_4))
+      (not (need_zurich_day_5))
+      (not (need_krakow_day_1))
+      (not (need_krakow_day_2))
+      (not (need_krakow_day_3))
+      (not (need_krakow_day_4))
+      (not (need_krakow_day_5))
+      (not (need_krakow_day_6))
+    )
+  )
+)

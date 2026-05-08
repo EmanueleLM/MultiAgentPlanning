@@ -1,0 +1,51 @@
+(define (domain sokoban)
+  (:requirements :strips :typing :negative-preconditions)
+  (:types player box goal cell)
+  (:predicates 
+    (at ?p - player ?c - cell)
+    (box_at ?b - box ?c - cell)
+    (goal_at ?g - goal ?c - cell)
+    (box_on_goal ?b - box ?g - goal)
+    (adjacent ?from - cell ?to - cell)
+  )
+  (:action move_left
+    :parameters (?p - player ?from - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?to) (not (box_at box1 ?to)))
+    :effect (and (not (at ?p ?from)) (at ?p ?to))
+  )
+  (:action move_right
+    :parameters (?p - player ?from - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?to) (not (box_at box1 ?to)))
+    :effect (and (not (at ?p ?from)) (at ?p ?to))
+  )
+  (:action move_up
+    :parameters (?p - player ?from - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?to) (not (box_at box1 ?to)))
+    :effect (and (not (at ?p ?from)) (at ?p ?to))
+  )
+  (:action move_down
+    :parameters (?p - player ?from - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?to) (not (box_at box1 ?to)))
+    :effect (and (not (at ?p ?from)) (at ?p ?to))
+  )
+  (:action push_left
+    :parameters (?p - player ?from - cell ?box_pos - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?box_pos) (box_at box1 ?box_pos) (adjacent ?box_pos ?to) (not (box_at box1 ?to)))
+    :effect (and (not (box_at box1 ?box_pos)) (box_at box1 ?to) (not (at ?p ?from)) (at ?p ?box_pos))
+  )
+  (:action push_right
+    :parameters (?p - player ?from - cell ?box_pos - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?box_pos) (box_at box1 ?box_pos) (adjacent ?box_pos ?to) (not (box_at box1 ?to)))
+    :effect (and (not (box_at box1 ?box_pos)) (box_at box1 ?to) (not (at ?p ?from)) (at ?p ?box_pos))
+  )
+  (:action push_up
+    :parameters (?p - player ?from - cell ?box_pos - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?box_pos) (box_at box1 ?box_pos) (adjacent ?box_pos ?to) (not (box_at box1 ?to)))
+    :effect (and (not (box_at box1 ?box_pos)) (box_at box1 ?to) (not (at ?p ?from)) (at ?p ?box_pos))
+  )
+  (:action push_down
+    :parameters (?p - player ?from - cell ?box_pos - cell ?to - cell)
+    :precondition (and (at ?p ?from) (adjacent ?from ?box_pos) (box_at box1 ?box_pos) (adjacent ?box_pos ?to) (not (box_at box1 ?to)))
+    :effect (and (not (box_at box1 ?box_pos)) (box_at box1 ?to) (not (at ?p ?from)) (at ?p ?box_pos))
+  )
+)
